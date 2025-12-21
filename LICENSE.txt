@@ -1,0 +1,63 @@
+# The Reaper's Covenant
+## End-User License Agreement and Terms of Service
+
+**Effective Date:** December 16, 2025
+
+Copyright © 2025 Cody Ray Threewit (Aries). All rights reserved.
+
+This End-User License Agreement and Terms of Service ("Agreement") is a legal agreement between you ("User" or "you") and Cody Ray Threewit ("Owner," "Creator," or "Aries") for the Discord bot software known as **The Reaper** ("Software").
+
+**BY INVITING, INTERACTING WITH, OR USING ANY COMMAND OR FEATURE OF THE SOFTWARE, YOU ACKNOWLEDGE THE AUTHORITY OF THE REAPER AND AGREE TO BE BOUND BY THE TERMS OF THIS COVENANT. IF YOU DO NOT AGREE, YOU MUST DEPART AND CEASE ALL USE IMMEDIATELY.**
+
+### 1. Definitions
+
+- **"Software"** refers to the Discord bot "The Reaper," including its code, soul-harvesting algorithms, data, and associated files.
+- **"Service"** refers to the operation and hosting of the Software for use on Discord.
+- **"Owner"** refers to Cody Ray Threewit (a.k.a. Aries), the sole author and Master of the Reaper.
+- **"Authorized Alliance"** refers exclusively to the Politics and War alliance **"Death Before Dishonor" (DB4D)**.
+- **"Authorized User"** refers to a verified member or ally of DB4D who has been granted clearance to wield the Reaper's power.
+
+### 2. Grant of License
+
+Subject to your strict compliance with this Agreement, the Owner grants you a limited, non-exclusive, non-transferable, revocable license to access and use the Service solely for the benefit and glory of **Death Before Dishonor**.
+
+### 3. License Restrictions and The Reaper's Laws
+
+The Software is proprietary and licensed, not sold. Your soul may belong to the void, but this code belongs to Aries. You agree that you will NOT:
+
+a.  Use the Software to undermine, betray, or act against the interests of Death Before Dishonor.
+b.  Copy, modify, distribute, sell, or create derivative works of the Software without the Owner's express written consent.
+c.  Reverse engineer, decompile, or attempt to steal the secrets of the Reaper's internal workings.
+d.  Use the Service to harass, abuse, or violate the rights of others (unless sanctioned by High Command for strategic purposes within the game rules).
+e.  Claim ownership of The Reaper or represent yourself as its Creator.
+
+Any violation of these terms constitutes a breach of the Covenant and may result in immediate termination of access, blacklisting, and the metaphorical reaping of your digital presence.
+
+### 4. Intellectual Property
+
+All rights, title, and interest in and to The Reaper, including its name, code, and "Death Before Dishonor" branding integrations, remain the exclusive property of the Owner.
+
+### 5. Disclaimer of Warranty
+
+THE SOFTWARE IS PROVIDED **"AS IS"**, WITHOUT WARRANTY OF ANY KIND. THE REAPER DOES NOT PROMISE MERCY, NOR DOES IT PROMISE BUG-FREE OPERATION. THE OWNER DISCLAIMS ALL WARRANTIES, EXPRESS OR IMPLIED, INCLUDING MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE. USE AT YOUR OWN RISK.
+
+### 6. Limitation of Liability
+
+IN NO EVENT SHALL ARIES OR THE LEADERSHIP OF DB4D BE LIABLE FOR ANY DAMAGES, DATA LOSS, OR DIGITAL CALAMITIES ARISING FROM THE USE OF THE REAPER. THE ENTIRE RISK AS TO THE QUALITY AND PERFORMANCE OF THE SOFTWARE IS WITH YOU.
+
+### 7. Termination
+
+The Owner or DB4D High Command reserves the right to terminate your access to The Reaper at any time, for any reason, particularly for acts of dishonor, treason, or incompetence. "Death Before Dishonor" is not just a name; it is the condition of your continued access.
+
+### 8. Governing Law
+
+This Agreement shall be governed by the laws of the State of Missouri, United States, and the internal regulations of the Death Before Dishonor alliance.
+
+### 9. Contact Information
+
+For inquiries, bug reports, or to plead your case:
+- **Discord:** `the_infamous_aries`
+- **Email:** `cody.ray.inc@gmail.com`
+- **Alliance:** Death Before Dishonor (DB4D)
+
+*Fear the Reaper.*
