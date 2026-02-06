@@ -1,0 +1,110 @@
+[
+  {
+    "name": "Aries",
+    "symbol": "Ram",
+    "emoji": "♈️",
+    "compatibility": ["Leo", "Sagittarius", "Gemini", "Aquarius"],
+    "date_range": "March 21 - April 19",
+    "traits": ["Courageous", "Energetic", "Pioneering", "Impulsive", "Assertive"],
+    "description": "As the first sign, Aries is a Cardinal Fire sign known for initiating action. Ruled by Mars, they are natural leaders who thrive on challenge and momentum, approaching life with boldness and competitiveness. Their strengths include courage, decisiveness, and drive; their challenges include impatience, a quick temper, and acting before thinking."
+  },
+  {
+    "name": "Taurus",
+    "symbol": "Bull",
+    "emoji": "♉️",
+    "compatibility": ["Virgo", "Capricorn", "Cancer", "Pisces"],
+    "date_range": "April 20 - May 20",
+    "traits": ["Patient", "Reliable", "Sensual", "Practical", "Stubborn"],
+    "description": "Taurus is a Fixed Earth sign ruled by Venus, with a deep appreciation for comfort, beauty, and material security. Steadfast and loyal, they value consistency and build patiently over time. Their strengths are reliability, endurance, and sensuality; their challenges include stubbornness, resistance to change, and occasional possessiveness."
+  },
+  {
+    "name": "Gemini",
+    "symbol": "Twins",
+    "emoji": "♊️",
+    "compatibility": ["Libra", "Aquarius", "Aries", "Leo"],
+    "date_range": "May 21 - June 20",
+    "traits": ["Communicative", "Quick-witted", "Curious", "Adaptable", "Inconsistent"],
+    "description": "Gemini is a Mutable Air sign represented by the Twins and ruled by Mercury. They are curious communicators who thrive on variety, ideas, and social exchange. Their strengths include adaptability, mental agility, and wit; their challenges include scattered attention, overthinking, and occasional indecisiveness."
+  },
+  {
+    "name": "Cancer",
+    "symbol": "Crab",
+    "emoji": "♋️",
+    "compatibility": ["Scorpio", "Pisces", "Taurus", "Virgo"],
+    "date_range": "June 21 - July 22",
+    "traits": ["Nurturing", "Intuitive", "Emotional", "Protective", "Moody"],
+    "description": "Cancer is a Cardinal Water sign ruled by the Moon. Deeply sensitive and home-oriented, they care fiercely for loved ones and possess powerful intuition. Their strengths are empathy, protectiveness, and emotional depth; their challenges include moodiness, defensiveness, and retreating into their shell when overwhelmed."
+  },
+  {
+    "name": "Leo",
+    "symbol": "Lion",
+    "emoji": "♌️",
+    "compatibility": ["Aries", "Sagittarius", "Gemini", "Libra"],
+    "date_range": "July 23 - August 22",
+    "traits": ["Charismatic", "Generous", "Confident", "Dramatic", "Passionate"],
+    "description": "Leo is a Fixed Fire sign ruled by the Sun, radiating confidence, warmth, and vitality. Creative and proud, they thrive when expressing themselves and often take the spotlight with natural leadership. Their strengths include loyalty, courage, and generosity; their challenges include pride, a need for validation, and occasional dramatics."
+  },
+  {
+    "name": "Virgo",
+    "symbol": "Maiden",
+    "emoji": "♍️",
+    "compatibility": ["Taurus", "Capricorn", "Cancer", "Scorpio"],
+    "date_range": "August 23 - September 22",
+    "traits": ["Analytical", "Hardworking", "Practical", "Detail-oriented", "Critical"],
+    "description": "Virgo is a Mutable Earth sign ruled by Mercury, focused on service, craft, and practical excellence. Meticulous and organized, they bring clarity and refinement to complex tasks. Their strengths are diligence, discernment, and humility; their challenges include perfectionism, overcritical tendencies, and overthinking."
+  },
+  {
+    "name": "Libra",
+    "symbol": "Scales",
+    "emoji": "♎️",
+    "compatibility": ["Gemini", "Aquarius", "Leo", "Sagittarius"],
+    "date_range": "September 23 - October 22",
+    "traits": ["Diplomatic", "Harmonious", "Fair-minded", "Social", "Indecisive"],
+    "description": "Libra is a Cardinal Air sign ruled by Venus, striving for balance, beauty, and partnership. Charming and diplomatic, they excel at mediation and seeing multiple perspectives. Their strengths include fairness, sociability, and tact; their challenges include indecision and people-pleasing to avoid conflict."
+  },
+  {
+    "name": "Scorpio",
+    "symbol": "Scorpion",
+    "emoji": "♏️",
+    "compatibility": ["Cancer", "Pisces", "Virgo", "Capricorn"],
+    "date_range": "October 23 - November 21",
+    "traits": ["Intense", "Resourceful", "Passionate", "Secretive", "Transformative"],
+    "description": "Scorpio is a Fixed Water sign traditionally ruled by Mars and in modern astrology by Pluto. Profoundly perceptive, they seek truth, emotional depth, and transformation. Their strengths include resilience, focus, and loyalty; their challenges include secrecy, jealousy, and intensity that can become consuming."
+  },
+  {
+    "name": "Sagittarius",
+    "symbol": "Archer",
+    "emoji": "♐️",
+    "compatibility": ["Aries", "Leo", "Libra", "Aquarius"],
+    "date_range": "November 22 - December 21",
+    "traits": ["Adventurous", "Optimistic", "Philosophical", "Blunt", "Freedom-loving"],
+    "description": "Sagittarius is a Mutable Fire sign ruled by Jupiter, driven by adventure, learning, and truth-seeking. Visionary and spirited, they are natural explorers who broaden horizons—literally and philosophically. Their strengths include optimism, generosity, and big-picture thinking; their challenges include restlessness, overpromising, and tactless honesty."
+  },
+  {
+    "name": "Capricorn",
+    "symbol": "Sea-Goat",
+    "emoji": "♑️",
+    "compatibility": ["Taurus", "Virgo", "Scorpio", "Pisces"],
+    "date_range": "December 22 - January 19",
+    "traits": ["Disciplined", "Ambitious", "Responsible", "Methodical", "Reserved"],
+    "description": "Capricorn is a Cardinal Earth sign ruled by Saturn, focused on mastery, structure, and long-term achievement. Disciplined and pragmatic, they lead through example and strategic planning. Their strengths include responsibility, resilience, and resourcefulness; their challenges include rigidity, workaholism, and a guarded emotional style."
+  },
+  {
+    "name": "Aquarius",
+    "symbol": "Water Bearer",
+    "emoji": "♒️",
+    "compatibility": ["Gemini", "Libra", "Aries", "Sagittarius"],
+    "date_range": "January 20 - February 18",
+    "traits": ["Innovative", "Independent", "Intellectual", "Humanitarian", "Aloof"],
+    "description": "Aquarius is a Fixed Air sign traditionally ruled by Saturn and in modern astrology by Uranus. Progressive and unconventional, they champion innovation, community, and systems change. Their strengths include originality, objectivity, and humanitarian vision; their challenges include aloofness, contrarianism, and emotional detachment."
+  },
+  {
+    "name": "Pisces",
+    "symbol": "Fish",
+    "emoji": "♓️",
+    "compatibility": ["Cancer", "Scorpio", "Taurus", "Capricorn"],
+    "date_range": "February 19 - March 20",
+    "traits": ["Compassionate", "Intuitive", "Artistic", "Empathic", "Escapist"],
+    "description": "Pisces is a Mutable Water sign traditionally ruled by Jupiter and in modern astrology by Neptune. Imaginative and compassionate, they sense the unseen and connect through feeling and artistry. Their strengths include empathy, creativity, and spiritual insight; their challenges include escapism, porous boundaries, and absorbing others’ emotions."
+  }
+]

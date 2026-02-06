@@ -1,0 +1,1012 @@
+[
+  {
+    "Name": "Tyrannosaurus Rex",
+    "Sign Combination": "Aries / Dragon",
+    "Traits": "aggressive, confident, energetic, idealistic, intimidating, uncompromising, lucky",
+    "Compatibility": "Thrives with strong, patient partners who encourage ideals yet temper intensity.",
+    "Description": "Aggressive, confident, and intensely driven. Idealistic leaders with intimidating presence, gifted and often lucky, but uncompromising when chasing goals."
+  },
+  {
+    "Name": "Hammerhead Shark",
+    "Sign Combination": "Aries / Horse",
+    "Traits": "independent, adventurous, impulsive, restless, blunt, impatient",
+    "Compatibility": "Best with freedom-loving partners who embrace adventure and avoid routine.",
+    "Description": "Independent, restless, and adventure-obsessed. Impulsive and blunt, always moving forward and allergic to routine."
+  },
+  {
+    "Name": "Gorilla",
+    "Sign Combination": "Aries / Monkey",
+    "Traits": "outgoing, energetic, confident, witty, pioneering, distractible, curious",
+    "Compatibility": "Needs supportive partners who help focus and finish what they start.",
+    "Description": "Outgoing, energetic, and pioneering. Confident and witty yet easily distracted; shines when finishing what they start."
+  },
+  {
+    "Name": "Hippopotamus",
+    "Sign Combination": "Aries / Ox",
+    "Traits": "patient, determined, sweet, forceful, balanced, steadfast",
+    "Compatibility": "Stable, patient partners who appreciate persistence and calm their impulses.",
+    "Description": "Sweet and docile on the surface, forceful when pushed. Patient and determined, balancing Aries’ impulsivity with steady persistence."
+  },
+  {
+    "Name": "Llama",
+    "Sign Combination": "Aries / Rabbit",
+    "Traits": "misunderstood, adventurous, comfort-seeking, cautious, pessimistic, growth-focused",
+    "Compatibility": "Balanced, patient partners who ground anxiety and resist spoiling.",
+    "Description": "Misunderstood adventurers torn between excitement and comfort. Powerful when balanced; must resist being spoiled to meet life's challenges."
+  },
+  {
+    "Name": "Piranha",
+    "Sign Combination": "Aries / Rat",
+    "Traits": "fearless, risk-taking, competitive, energetic, confident, decisive",
+    "Compatibility": "Matches with ambitious risk-takers; partners must respect drive and independence.",
+    "Description": "Fearless competitors hungry for the next challenge. Risk-taking, energetic, and decisive, with survivalist instincts and strong confidence."
+  },
+  {
+    "Name": "Goldfinch",
+    "Sign Combination": "Aries / Rooster",
+    "Traits": "confident, charismatic, outspoken, energetic, social, bold",
+    "Compatibility": "Compatible with social, confident mates who accept blunt honesty.",
+    "Description": "Bright, charismatic, and self-assured. Outspoken and energetic; polarizing to some but thrives socially and expects results."
+  },
+  {
+    "Name": "Praying Mantis",
+    "Sign Combination": "Aries / Snake",
+    "Traits": "charming, mysterious, strategic, elegant, cautious, unforgiving",
+    "Compatibility": "Works with trusting, composed partners who value discretion and strategy.",
+    "Description": "Charming, mysterious, and strategic. Elegant and cautious, less forgiving than other Aries and prefers controlled, calculated moves."
+  },
+  {
+    "Name": "Rhinoceros",
+    "Sign Combination": "Aries / Tiger",
+    "Traits": "fearless, intense, rebellious, quick-tempered, magnetic, stubborn",
+    "Compatibility": "Strong-willed partners who can handle intensity and share humanitarian values.",
+    "Description": "Fearless, intense rebels with quick tempers. Magnetic and stubborn, humanitarian streak and a never‑give‑up attitude."
+  },
+  {
+    "Name": "Doberman Pinscher",
+    "Sign Combination": "Aries / Dog",
+    "Traits": "loyal, sincere, protective, anxious, emotionally sensitive, candid",
+    "Compatibility": "Best with steady, empathetic partners; avoid volatile, critical types.",
+    "Description": "Loyal and sincere Aries with Dog’s warmth. Protective and candid, but more emotionally sensitive than most Aries."
+  },
+  {
+    "Name": "Dodo",
+    "Sign Combination": "Aries / Pig",
+    "Traits": "friendly, generous, optimistic, naive, trusting, playful",
+    "Compatibility": "Thrives with kind, grounded partners; watch out for manipulators.",
+    "Description": "Friendly optimist with big heart. Trusting and playful; Pig’s sweetness softens Aries’ rough edges."
+  },
+  {
+    "Name": "Catfish",
+    "Sign Combination": "Aries / Sheep",
+    "Traits": "independent, optimistic, sincere, creative, intelligent, insecure",
+    "Compatibility": "Pairs with encouraging, patient partners; avoid harsh critics and chaos.",
+    "Description": "Contradictory blend of Aries confidence and Sheep elegance. Creative and sincere, yet sensitive to insecurity."
+  },
+  {
+    "Name": "Seagull",
+    "Sign Combination": "Taurus / Dog",
+    "Traits": "loyal, practical, protective, emotionally sensitive, traditional, sincere",
+    "Compatibility": "Best with steady, empathetic partners; challenged by volatile or aloof types.",
+    "Description": "Loyal realist with a protective streak. Traditional, sincere, and emotionally sensitive yet dependable."
+  },
+  {
+    "Name": "Rattlesnake",
+    "Sign Combination": "Taurus / Dragon",
+    "Traits": "charismatic, bold, romantic, strategic, stubborn, self-assured",
+    "Compatibility": "Drawn to confident yet supportive partners; clashes with controlling egos.",
+    "Description": "Charismatic and bold with a romantic streak. Strategic and stubborn, keeps Taurus from timid following."
+  },
+  {
+    "Name": "Kangaroo",
+    "Sign Combination": "Taurus / Horse",
+    "Traits": "sturdy, adventurous, independent, decisive, grounded, straightforward",
+    "Compatibility": "Works with adventurous yet grounded partners; struggles with indecisive or clingy types.",
+    "Description": "Sturdy and independent adventurer. Decisive and grounded, prefers straightforward paths and freedom."
+  },
+  {
+    "Name": "Ostrich",
+    "Sign Combination": "Taurus / Monkey",
+    "Traits": "clever, adaptable, optimistic, charming, steady, practical",
+    "Compatibility": "Thrives with flexible, upbeat allies; dislikes pessimists and nitpickers.",
+    "Description": "Clever, adaptable, and optimistic. Charming steadiness meets practical Taurus sensibility."
+  },
+  {
+    "Name": "Yak",
+    "Sign Combination": "Taurus / Ox",
+    "Traits": "dependable, persistent, stubborn, hardworking, resilient, patient",
+    "Compatibility": "Best with patient, dependable partners; friction with impulsive risk‑takers.",
+    "Description": "Rock‑solid and persistent. Stubborn, hardworking, and resilient; a reliable builder of long-term security."
+  },
+  {
+    "Name": "Wombat",
+    "Sign Combination": "Taurus / Pig",
+    "Traits": "warm, indulgent, generous, grounded, pleasure-seeking, loyal",
+    "Compatibility": "Warm matches with affectionate, stable partners; avoid jealous or rigid types.",
+    "Description": "Cozy, generous homebody who loves comfort and good company. Grounded yet indulgent."
+  },
+  {
+    "Name": "Hedgehog",
+    "Sign Combination": "Taurus / Rabbit",
+    "Traits": "artistic, polite, gentle, cautious, peace-seeking, sensitive",
+    "Compatibility": "Compatible with gentle creatives; tense with confrontational personalities.",
+    "Description": "Artistic and well‑mannered. Gentle, cautious, and peace‑seeking; struggles with tense, high‑pressure situations."
+  },
+  {
+    "Name": "Squirrel",
+    "Sign Combination": "Taurus / Rat",
+    "Traits": "energetic, curious, resourceful, imaginative, determined, quick",
+    "Compatibility": "Pairs with curious go‑getters; conflicts with lazy or domineering types.",
+    "Description": "Energetic, curious, and resourceful. Imaginative planner with determined follow‑through."
+  },
+  {
+    "Name": "Beaver",
+    "Sign Combination": "Taurus / Rooster",
+    "Traits": "organized, persistent, eccentric, romantic, industrious, perfectionist",
+    "Compatibility": "Prefers organized, loyal partners; uneasy with chaotic or flakey types.",
+    "Description": "Industrious builder with eccentric charm. Persistent, romantic, and highly organized."
+  },
+  {
+    "Name": "Jackal",
+    "Sign Combination": "Taurus / Snake",
+    "Traits": "graceful, instinctive, charming, funny, mysterious, possessive",
+    "Compatibility": "Magnetic with confident, respectful partners; trouble with possessive or secretive types.",
+    "Description": "Graceful, instinctive charmer with a mysterious vibe. Funny yet possessive; self‑indulgent tendencies."
+  },
+  {
+    "Name": "Wolf",
+    "Sign Combination": "Taurus / Tiger",
+    "Traits": "rebellious, passionate, independent, protective, unwavering, adventurous",
+    "Compatibility": "Strong with loyal, supportive partners; combustible with controlling rivals.",
+    "Description": "Passionate, determined, and protective. Independent rebel who seeks both security and adventure."
+  },
+  {
+    "Name": "Buffalo",
+    "Sign Combination": "Taurus / Sheep",
+    "Traits": "patient, nurturing, reliable, comfort-loving, steady, compassionate",
+    "Compatibility": "Harmonizes with caring homebodies; strains with restless thrill‑seekers.",
+    "Description": "Patient, nurturing provider who values comfort and stability. Reliable and steady-hearted."
+  },
+  {
+    "Name": "Deer",
+    "Sign Combination": "Gemini / Dog",
+    "Traits": "friendly, loyal, curious, humanitarian, nervous, restless",
+    "Compatibility": "Best with calm, supportive partners; avoid high-drama or controlling types.",
+    "Description": "Friendly, loyal, and intensely curious. Humanitarian streak with a restless edge; sensitive to tension."
+  },
+  {
+    "Name": "Hummingbird",
+    "Sign Combination": "Gemini / Dragon",
+    "Traits": "feisty, tenacious, proud, energetic, outspoken, imaginative",
+    "Compatibility": "Thrives with confident but humble partners; clashes with arrogant egos.",
+    "Description": "Feisty and tenacious communicators. Dragon’s pride adds leadership and ambition; can seem arrogant when unchecked."
+  },
+  {
+    "Name": "Great White Shark",
+    "Sign Combination": "Gemini / Horse",
+    "Traits": "hyper-energetic, restless, humorous, outgoing, impulsive, experience-seeking",
+    "Compatibility": "Works with adventurous, flexible partners; struggles with routine or clinginess.",
+    "Description": "Never stops moving. Restless, funny, and outgoing; constantly chasing the next big experience."
+  },
+  {
+    "Name": "Seal",
+    "Sign Combination": "Gemini / Monkey",
+    "Traits": "curious, witty, funny, sociable, playful, easily bored",
+    "Compatibility": "Pairs with clever, upbeat partners; avoid dull or rigid personalities.",
+    "Description": "Curious, witty, and hilarious. Loves puzzles and people; needs variety and fun to stay engaged."
+  },
+  {
+    "Name": "Coyote",
+    "Sign Combination": "Gemini / Ox",
+    "Traits": "independent, adaptable, conflicted, practical, determined, observant",
+    "Compatibility": "Best with patient, steady partners; friction with impulsive risk‑takers.",
+    "Description": "Independent but conflicted. Practical and determined; balances Gemini’s flexibility with Ox’s steadiness."
+  },
+  {
+    "Name": "Cricket",
+    "Sign Combination": "Gemini / Pig",
+    "Traits": "friendly, impulsive, eccentric, charming, affectionate, witty",
+    "Compatibility": "Compatible with warm, playful partners; avoid jealous or possessive types.",
+    "Description": "Friendly, impulsive original. Pig’s warmth adds affection to Gemini’s witty charm and social buzz."
+  },
+  {
+    "Name": "Toucan",
+    "Sign Combination": "Gemini / Rabbit",
+    "Traits": "artistic, sensitive, tasteful, gentle, sympathetic, creative",
+    "Compatibility": "Flourishes with gentle creatives; tense with confrontational personalities.",
+    "Description": "Artistic, sensitive tastemaker. Gentle and sympathetic; prefers harmony and beauty to conflict."
+  },
+  {
+    "Name": "Chipmunk",
+    "Sign Combination": "Gemini / Rat",
+    "Traits": "observant, independent, ambitious, aggressive, quick, high-strung",
+    "Compatibility": "Pairs with focused, respectful partners; avoid chaotic or domineering types.",
+    "Description": "Observant self-starter with sharp instincts. Ambitious, aggressive, and quick—prone to stress when overextended."
+  },
+  {
+    "Name": "Parrot",
+    "Sign Combination": "Gemini / Rooster",
+    "Traits": "loud, proud, boisterous, self-assured, outspoken, opinionated",
+    "Compatibility": "Best with confident but considerate partners; polarizes fragile egos.",
+    "Description": "Bold, boisterous communicator. Loud and self-assured; speaks their mind with flair and conviction."
+  },
+  {
+    "Name": "Lemur",
+    "Sign Combination": "Gemini / Snake",
+    "Traits": "talkative, cerebral, seductive, charming, strategic, persuasive",
+    "Compatibility": "Works with trusting, composed partners who value wit and subtlety.",
+    "Description": "Silver‑tongued strategist. Seductive charm and cerebral wit make them masters of persuasive conversation."
+  },
+  {
+    "Name": "Chimpanzee",
+    "Sign Combination": "Gemini / Tiger",
+    "Traits": "social, outspoken, rebellious, independent, unpredictable, intense",
+    "Compatibility": "Strong with brave, principled partners; volatile with controlling rivals.",
+    "Description": "Strongly social and outspoken. Rebel energy meets Gemini voice—unpredictable, intense, and potentially world‑changing."
+  },
+  {
+    "Name": "Centipede",
+    "Sign Combination": "Gemini / Sheep",
+    "Traits": "quiet, observant, calm, elegant, creative, sensitive",
+    "Compatibility": "Fits with gentle, patient partners; avoid loud, domineering personalities.",
+    "Description": "Quiet observer with elegant calm. Creative and sensitive; prefers listening over leading."
+  },
+  {
+    "Name": "Pit Bull",
+    "Sign Combination": "Cancer / Dog",
+    "Traits": "loyal, dependable, traditional, protective, selfless, emotionally sensitive",
+    "Compatibility": "Best with steady, empathetic partners; avoid volatile, critical types.",
+    "Description": "Among the most loyal and dependable Cancers. Traditional and protective, often sacrificing personal happiness for loved ones and honor."
+  },
+  {
+    "Name": "Hornet",
+    "Sign Combination": "Cancer / Dragon",
+    "Traits": "confident, proud, entitled, noble, self-respecting, powerful",
+    "Compatibility": "Thrives with honest partners who help balance pride and emotion.",
+    "Description": "Dragon adds pride and self-respect to fragile Cancer. Potentially very powerful when emotions are kept in check and honesty prevails."
+  },
+  {
+    "Name": "Hermit Crab",
+    "Sign Combination": "Cancer / Horse",
+    "Traits": "honest, open-minded, independent, restless, migratory, late to settle",
+    "Compatibility": "Works with honest partners who value independence and stability.",
+    "Description": "A good combination when balanced: Horse brings honesty and openness; Cancer tames the wild side. Often moves from place to place before settling."
+  },
+  {
+    "Name": "Emperor Tamarin",
+    "Sign Combination": "Cancer / Monkey",
+    "Traits": "outgoing, self-confident, curious, restless, popular, analytical",
+    "Compatibility": "Pairs with upbeat partners who help rein in overthinking.",
+    "Description": "Among the most outgoing Cancers with less concern for others’ opinions. Restless curiosity can lead to dissatisfaction if not kept in check."
+  },
+  {
+    "Name": "Black Bear",
+    "Sign Combination": "Cancer / Ox",
+    "Traits": "solitary, dependable, perseverant, protective of stability, emotionally reserved",
+    "Compatibility": "Best with patient partners who respect the need for security.",
+    "Description": "Invests energy in a select few. Values stability and security; rarely shares deep emotions though serves as a rock for others."
+  },
+  {
+    "Name": "Lobster",
+    "Sign Combination": "Cancer / Pig",
+    "Traits": "caring, loving, self‑sacrificing, optimistic, gentle, warm",
+    "Compatibility": "Compatible with warm, affectionate partners who reciprocate care.",
+    "Description": "Deeply caring and often self‑sacrificing. Pig’s influence keeps outlook optimistic while Cancer’s nurturing nature shines."
+  },
+  {
+    "Name": "Seahorse",
+    "Sign Combination": "Cancer / Rat",
+    "Traits": "driven, risk‑prone, emotionally reserved, goal‑focused, perceptive, strategic",
+    "Compatibility": "Needs partners who encourage healthy emotional expression and balance ambition.",
+    "Description": "Tends to bury feelings and chase external goals. Rat’s judgment and perception provide balance to Cancer’s inward complexity."
+  },
+  {
+    "Name": "Iguana",
+    "Sign Combination": "Cancer / Rooster",
+    "Traits": "self‑assured, organized, proud, sensitive, emotionally contradictory, praise‑seeking",
+    "Compatibility": "Best with considerate partners who temper perfectionism and mood swings.",
+    "Description": "Rooster’s influence can conflict with Cancer’s natural state, creating emotional contradictions. Loves praise but is easily offended—adorable yet controversial."
+  },
+  {
+    "Name": "Snail",
+    "Sign Combination": "Cancer / Snake",
+    "Traits": "intuitive, possibly psychic, witty, charming, solitary, emotionally intense",
+    "Compatibility": "Pairs with grounding partners who help regulate strong emotions.",
+    "Description": "Highly intuitive and charming yet prone to loneliness. Can manipulate others’ emotions better than regulating their own; must keep thoughts in check."
+  },
+  {
+    "Name": "Duck",
+    "Sign Combination": "Cancer / Sheep",
+    "Traits": "dependable, nurturing, insecure, gentle, comfort‑seeking, solitary",
+    "Compatibility": "Flourishes with gentle, supportive homebodies; struggles with loud or domineering types.",
+    "Description": "Sheep intensifies Cancer’s dependability and insecurity and deepens the tendency toward solitude. Caring providers who value comfort and stability."
+  },
+  {
+    "Name": "Vampire Bat",
+    "Sign Combination": "Cancer / Tiger",
+    "Traits": "unpredictable, outspoken, intense, principled, confident, emotionally volatile",
+    "Compatibility": "Strong with brave, principled partners; combustible with controlling rivals.",
+    "Description": "Contradictory yet sincere defenders of their beliefs. Tiger brings confidence and purpose, but also intensifies Cancer’s emotional volatility."
+  },
+  {
+    "Name": "Turtle",
+    "Sign Combination": "Cancer / Rabbit",
+    "Traits": "caring, loving, reserved, self‑doubting, home‑oriented, sensitive",
+    "Compatibility": "Best with patient, encouraging partners; avoid harsh critics and chaos.",
+    "Description": "Quiet, home‑oriented caretakers who hide in their shell when unsafe. Rabbit adds love of life but can increase withdrawal or depression."
+  },
+  {
+    "Name": "Shih Tzu",
+    "Sign Combination": "Leo / Dog",
+    "Traits": "traditional, just, loyal, anxious, emotionally sensitive, protective",
+    "Compatibility": "Works with steady partners who help stabilize emotions.",
+    "Description": "More traditional than other Leos with a strong sense of justice. Loyal and protective but less socially adept; emotionally sensitive and candid."
+  },
+  {
+    "Name": "Orca",
+    "Sign Combination": "Leo / Dragon",
+    "Traits": "prideful, self‑assured, feisty, dramatic, at risk of self‑delusion",
+    "Compatibility": "Best with humble, accountable partners who keep egos in check.",
+    "Description": "The most prideful of Leos. Dragon intensifies self‑assurance and dramatics, risking self‑delusion and lack of personal responsibility if unchecked."
+  },
+  {
+    "Name": "Hyena",
+    "Sign Combination": "Leo / Horse",
+    "Traits": "energetic, ambitious, independent, witty, gregarious, self‑centering risk",
+    "Compatibility": "Pairs with empathetic partners who balance drive with humility.",
+    "Description": "Constantly on the go; the most energetic and ambitious of Leos. Highly independent and social, but can become self‑centered if Horse dominates."
+  },
+  {
+    "Name": "Ferret",
+    "Sign Combination": "Leo / Monkey",
+    "Traits": "clever, curious, charming, achievement‑oriented, restless, puzzle‑loving",
+    "Compatibility": "Thrives with partners who help focus efforts and follow through.",
+    "Description": "Intelligent charmers who revel in accomplishments. Curious and ambitious, often moving from job to job or relationship to relationship."
+  },
+  {
+    "Name": "Sun Bear",
+    "Sign Combination": "Leo / Ox",
+    "Traits": "stubborn, tireless, dependable, loyal, prideful, less social",
+    "Compatibility": "Best with patient partners who respect independence and pride.",
+    "Description": "Much less social than other Leos but more stubborn. Tireless and dependable; pride can make asking for help difficult."
+  },
+  {
+    "Name": "Quetzal",
+    "Sign Combination": "Leo / Pig",
+    "Traits": "warm, indulgent, charming, vulnerable, romantic, generous",
+    "Compatibility": "Compatible with caring, grounded partners; avoid manipulative types.",
+    "Description": "Among the most vulnerable of prideful Leos. Warm and generous, seeking affection and comfort while maintaining Leo charm."
+  },
+  {
+    "Name": "Otter",
+    "Sign Combination": "Leo / Rat",
+    "Traits": "clever, lively, curious, social, opportunistic, talkative",
+    "Compatibility": "Pairs with fun‑loving partners who embrace wit and adventure.",
+    "Description": "Clever, lively communicators with quick instincts. Social and opportunistic, they bring playful energy and curiosity to Leo’s flair."
+  },
+  {
+    "Name": "Peacock",
+    "Sign Combination": "Leo / Rooster",
+    "Traits": "self‑assured, precise, organized, proud, perfectionist, outspoken",
+    "Compatibility": "Best with considerate partners who temper bossiness and arrogance.",
+    "Description": "Hands‑down the most self‑assured Leos. More precise and organized; Rooster boosts confidence but risks bossy, arrogant perfectionism."
+  },
+  {
+    "Name": "Fox",
+    "Sign Combination": "Leo / Snake",
+    "Traits": "clever, funny, mysterious, dramatic, charming, persuasive",
+    "Compatibility": "Works with grounded partners who indulge theatrics without enabling exaggeration.",
+    "Description": "Clever, funny storytellers with an air of mystery. Leo’s love of drama meets Snake’s manipulation—boring tales become epics with irresistible flair."
+  },
+  {
+    "Name": "Wolverine",
+    "Sign Combination": "Leo / Tiger",
+    "Traits": "rebellious, unpredictable, intense, outspoken, quick‑tempered, magnetic",
+    "Compatibility": "Strong with brave, principled partners; volatile with controlling rivals.",
+    "Description": "The most rebellious and unpredictable of Leos. Natural leaders with good hearts and strong work ethics; intense and outspoken."
+  },
+  {
+    "Name": "Swan",
+    "Sign Combination": "Leo / Sheep",
+    "Traits": "elegant, romantic, calm, lucky, slightly lazy, gentle",
+    "Compatibility": "Pairs with motivating partners who add structure and momentum.",
+    "Description": "A bit lazier than other Leos but luckier than most. Elegant, romantic, and calm with a gentle heart and taste for beauty."
+  },
+  {
+    "Name": "Angora Rabbit",
+    "Sign Combination": "Leo / Rabbit",
+    "Traits": "artistic, stylish, creative, sensitive, warm, tasteful",
+    "Compatibility": "Flourishes with gentle creatives; tense with confrontational personalities.",
+    "Description": "Artistic Leos with heightened talent and taste for beauty. Warm, stylish, and creative; sensitivity prefers harmony over conflict."
+  },
+  {
+    "Name": "Salamander",
+    "Sign Combination": "Virgo / Dog",
+    "Traits": "helpful, giving, faithful, sincere, sensitive, socially anxious",
+    "Compatibility": "Best with warm, empathetic partners; avoid harsh or critical types.",
+    "Description": "Helpful and sincere caretakers with nervous energy. Sensitive in social situations yet faithful and giving; Dog’s warmth inspires confidence."
+  },
+  {
+    "Name": "Polar Bear",
+    "Sign Combination": "Virgo / Dragon",
+    "Traits": "confident, proud, perfectionist, analytical, noble, self‑assured",
+    "Compatibility": "Works with grounded partners who temper perfectionism and indecision.",
+    "Description": "Dragon adds dynamic confidence and pride to analytical Virgo. Capable of great things if inflexible perfectionism and indecision are kept in check."
+  },
+  {
+    "Name": "Giraffe",
+    "Sign Combination": "Virgo / Horse",
+    "Traits": "creative, independent, forward‑looking, individualistic, occasionally hot‑tempered",
+    "Compatibility": "Pairs with patient partners who embrace individuality and calm restlessness.",
+    "Description": "True individuals who make great use of creativity. Horse looks forward while Virgo looks back, keeping Giraffes open‑minded and independent."
+  },
+  {
+    "Name": "Penguin",
+    "Sign Combination": "Virgo / Monkey",
+    "Traits": "vivacious, curious, clever, witty, social, playful",
+    "Compatibility": "Best with structured partners who encourage follow‑through and balance analysis.",
+    "Description": "Monkey brings clever wit and fun while enhancing Virgo’s intelligence. More vivacious and curious than most Virgos; complement each other when aligned."
+  },
+  {
+    "Name": "Sea Star",
+    "Sign Combination": "Virgo / Ox",
+    "Traits": "strong‑willed, perceptive, intelligent, dependable, systematic, determined",
+    "Compatibility": "Thrives with steady partners who appreciate reliability and persistence.",
+    "Description": "Ox brings tireless determination and systematic dependability Virgo needs. Sea Stars feel vulnerable but have all the tools necessary to succeed."
+  },
+  {
+    "Name": "Gazelle",
+    "Sign Combination": "Virgo / Pig",
+    "Traits": "easygoing, kind, refined, artistic, optimistic, occasionally naive",
+    "Compatibility": "Compatible with gentle, supportive partners; avoid manipulative or chaotic types.",
+    "Description": "Pig’s easygoing attitude relieves serious Virgo though naivety can frustrate. Graceful and refined with a kind, artistic nature."
+  },
+  {
+    "Name": "Mouse",
+    "Sign Combination": "Virgo / Rat",
+    "Traits": "expressive, risk‑taking, nervous, tense, charming, independent",
+    "Compatibility": "Pairs with supportive partners who ease anxiety and temper ambition.",
+    "Description": "More expressive and willing to take risks than other Virgos. Rat warms up Virgo’s personality but can become power hungry if unchecked."
+  },
+  {
+    "Name": "Corgi",
+    "Sign Combination": "Virgo / Rooster",
+    "Traits": "analytical, observant, self‑assured, perfectionist, helpful, stylish",
+    "Compatibility": "Works with considerate partners who temper perfectionism and indecision.",
+    "Description": "Analytical helpers eager to contribute in unique ways. Rooster adds confidence and charisma, though perfectionism clashes with Virgo’s reflective nature."
+  },
+  {
+    "Name": "Jellyfish",
+    "Sign Combination": "Virgo / Snake",
+    "Traits": "mysterious, elusive, instinctive, cerebral, skeptical, emotionally controlled",
+    "Compatibility": "Best with trustworthy partners who respect privacy and intellect.",
+    "Description": "Snake’s subtle precision pairs with Virgo’s keen observation. Highly cerebral and skeptical yet controlled and instinctive."
+  },
+  {
+    "Name": "Flamingo",
+    "Sign Combination": "Virgo / Sheep",
+    "Traits": "nurturing, creative, intelligent, artistic, charming, insecure",
+    "Compatibility": "Flourishes with reassuring partners who help them decide and act.",
+    "Description": "Among the most nurturing signs; Sheep brings charm and artistry but also insecurity. Can obsess over analysis before making decisions."
+  },
+  {
+    "Name": "Narwhal",
+    "Sign Combination": "Virgo / Tiger",
+    "Traits": "rebellious, unpredictable, bold, intense, emotionally expressive, independent",
+    "Compatibility": "Strong with brave partners who support independence; volatile with controlling types.",
+    "Description": "With Tiger in the mix these Virgos are wildcards—bold, unpredictable, and expressive while retaining Virgo’s analytical core."
+  },
+  {
+    "Name": "Earthworm",
+    "Sign Combination": "Virgo / Rabbit",
+    "Traits": "deep‑thinking, sensitive, fragile yet resilient, beauty‑loving, indecisive",
+    "Compatibility": "Best with patient encouragers who provide calm and optimism.",
+    "Description": "Thoughtful and resilient with sensitive hearts. Rabbit adds appreciation of beauty and luck in money; the hardest task is making decisions."
+  },
+  {
+    "Name": "Crane",
+    "Sign Combination": "Libra / Dog",
+    "Traits": "diplomatic, honest, caring, humanitarian, justice‑focused, occasionally emotionally unstable",
+    "Compatibility": "Best with loyal, steady partners who provide emotional stability.",
+    "Description": "Nobody cares about justice more than a Crane. Dog enhances Libra’s humanitarian nature and loyalty, though it can bring emotional instability."
+  },
+  {
+    "Name": "Porcupine",
+    "Sign Combination": "Libra / Dragon",
+    "Traits": "confident, noble, proud, stubborn, temperamental, perfectionist",
+    "Compatibility": "Pairs with humble partners who curb entitlement and impossible standards.",
+    "Description": "Capable of great things but must avoid feeling entitled or becoming such perfectionists that no one can live up to their standards."
+  },
+  {
+    "Name": "Goose",
+    "Sign Combination": "Libra / Horse",
+    "Traits": "adventurous, independent, restless, impatient, quick‑tempered, creative",
+    "Compatibility": "Works with patient partners who offer grounding and balance.",
+    "Description": "More likely than other Libras to jump on adventure. Independent but can be restless and quick tempered; a creative sign that can see goals through."
+  },
+  {
+    "Name": "Axolotl",
+    "Sign Combination": "Libra / Monkey",
+    "Traits": "intellectual, observant, social, charming, humorous, outgoing",
+    "Compatibility": "Best with structured partners who encourage finishing what they start.",
+    "Description": "Monkey enhances Libra’s intellect and social skills while adding charm and humor. Can stick with a groove too long and struggle to finish projects."
+  },
+  {
+    "Name": "Elephant",
+    "Sign Combination": "Libra / Ox",
+    "Traits": "stable, dependable, traditional, respectful, tireless, emotionally and financially steady",
+    "Compatibility": "Thrives with steady partners who appreciate tradition and reliability.",
+    "Description": "Ox brings emotional and financial stability, a tireless work ethic, and respect for traditions—qualities that suit Libra well."
+  },
+  {
+    "Name": "Marmot",
+    "Sign Combination": "Libra / Pig",
+    "Traits": "peaceful, idealistic, innocent, likeable, comfort‑loving, occasionally naive",
+    "Compatibility": "Compatible with gentle partners who keep drama low and reinforce boundaries.",
+    "Description": "Pig enhances Libra’s peaceful idealism and likeable innocence but also brings naivety. Marmots love nice things and tend to be good with money."
+  },
+  {
+    "Name": "Vulture",
+    "Sign Combination": "Libra / Rat",
+    "Traits": "future‑focused, strategic, perceptive, witty, curious, opportunistic",
+    "Compatibility": "Works with partners who value planning, substance, and reciprocity.",
+    "Description": "Keen observers who focus on the future and strategy. Rat adds sharpness and wit to Libra’s social grace."
+  },
+  {
+    "Name": "Ladybug",
+    "Sign Combination": "Libra / Snake",
+    "Traits": "charming, mysterious, humorous, well‑mannered, independent, polished",
+    "Compatibility": "Pairs with respectful partners who give space and appreciate subtlety.",
+    "Description": "Snake brings charm, mystery, and humor while enhancing Libra’s good manners and desire for independence."
+  },
+  {
+    "Name": "Butterfly",
+    "Sign Combination": "Libra / Rabbit",
+    "Traits": "warm, mannered, easygoing, stylish, occasionally pessimistic, superficially judgmental",
+    "Compatibility": "Best with positive partners who encourage depth and optimism.",
+    "Description": "Rabbit calms Libra’s restless need for new experiences and adds warmth and good manners. Butterflies can be pessimistic and judge superficially."
+  },
+  {
+    "Name": "Pelican",
+    "Sign Combination": "Libra / Rooster",
+    "Traits": "confident, socially radiant, determined, attention‑loving, romantic, self‑assured",
+    "Compatibility": "Works with supportive partners who keep ego grounded and on course.",
+    "Description": "Rooster adds confidence and social radiance. Pelicans love attention and flattery and are determined to become successful in whatever they pursue."
+  },
+  {
+    "Name": "Clownfish",
+    "Sign Combination": "Libra / Sheep",
+    "Traits": "sweet, childlike, stylish, appearance‑focused, insecure, hospitable",
+    "Compatibility": "Compatible with reassuring partners who build self‑esteem and encourage self‑care.",
+    "Description": "Appearances are highly important to Clownfish. Excellent hosts with charm and taste; must work on self‑esteem and putting themselves first sometimes."
+  },
+  {
+    "Name": "Tasmanian Devil",
+    "Sign Combination": "Libra / Tiger",
+    "Traits": "emotional, opinionated, unpredictable, bold, intense, outspoken",
+    "Compatibility": "Strong with brave partners who support independence; volatile with controlling types.",
+    "Description": "Tiger makes these Libras more likely to show their emotions and voice their opinions. A bold wildcard among Libras."
+  },
+  
+  {
+    "Name": "Octopus",
+    "Sign Combination": "Scorpio / Dog",
+    "Traits": "loyal, protective, sincere, intense, strategic, emotionally sensitive",
+    "Compatibility": "Best with steady, empathetic partners; avoid volatile critics.",
+    "Description": "Dog adds warmth and sincerity to intense Scorpio. Loyal protectors with strategic minds and strong emotional sensitivity."
+  },
+  {
+    "Name": "Jaguar",
+    "Sign Combination": "Scorpio / Dragon",
+    "Traits": "powerful, resourceful, proud, ambitious, perfectionist, charismatic",
+    "Compatibility": "Works with humble, accountable partners who balance intensity.",
+    "Description": "Dragon enhances Scorpio’s drive and perfectionism, creating powerful, charismatic personalities who demand excellence."
+  },
+  {
+    "Name": "Dragonfly",
+    "Sign Combination": "Scorpio / Horse",
+    "Traits": "humorous, quick‑tempered, attention‑seeking, energetic, intense, self‑critical",
+    "Compatibility": "Matches with patient partners who ground emotions and ego.",
+    "Description": "Horse adds humor and restless energy but a quick temper and need for attention. Powerful individuals whose biggest obstacle is themselves."
+  },
+  {
+    "Name": "Raven",
+    "Sign Combination": "Scorpio / Monkey",
+    "Traits": "intelligent, innovative, curious, strategic, witty, skeptical",
+    "Compatibility": "Thrives with clever, supportive partners who respect independence.",
+    "Description": "Intelligence and innovation meet Scorpio’s strategy. Differences complement each other, producing sharp observers with problem‑solving flair."
+  },
+  {
+    "Name": "Platypus",
+    "Sign Combination": "Scorpio / Ox",
+    "Traits": "determined, steadfast, practical, misunderstood, private, resilient",
+    "Compatibility": "Best with patient partners who appreciate quiet strength and focus.",
+    "Description": "Ox enhances Scorpio’s quest for greatness and steady persistence. Platypuses live in their own world and are often misunderstood."
+  },
+  {
+    "Name": "Squid",
+    "Sign Combination": "Scorpio / Pig",
+    "Traits": "loving, caring, generous, confident, determined, protective",
+    "Compatibility": "Compatible with warm, grounded partners; avoid manipulators.",
+    "Description": "Pig brings a loving, caring side to Scorpio while adding determination and confidence to pursue goals."
+  },
+  {
+    "Name": "Koala",
+    "Sign Combination": "Scorpio / Rabbit",
+    "Traits": "elegant, solitary, sensitive, tasteful, introspective, gentle",
+    "Compatibility": "Flourishes with gentle partners who respect space and calm.",
+    "Description": "Like Scorpio, Rabbit is a loner but adds appreciation for elegance and beauty to balance Scorpio’s focus on power."
+  },
+  {
+    "Name": "Anaconda",
+    "Sign Combination": "Scorpio / Rat",
+    "Traits": "perceptive, survivalist, resourceful, observant, nervous, intense",
+    "Compatibility": "Works with calming partners who temper stress and intensity.",
+    "Description": "Rat enhances Scorpio’s survival instincts and observational skills but also brings nervous energy. Anacondas are powerful, resourceful, and perceptive."
+  },
+  {
+    "Name": "Owl",
+    "Sign Combination": "Scorpio / Rooster",
+    "Traits": "determined, hardworking, confident, outspoken, observant, proud",
+    "Compatibility": "Best with considerate partners who keep ego in check.",
+    "Description": "Rooster contributes determination, hard work, and confidence; Scorpio values expressiveness though Rooster’s arrogance can cause trouble."
+  },
+  {
+    "Name": "Anglerfish",
+    "Sign Combination": "Scorpio / Snake",
+    "Traits": "charming, mysterious, manipulative, strategic, elegant, disciplined",
+    "Compatibility": "Pairs with discreet partners who value subtlety and control.",
+    "Description": "Snake brings charm and mystery to help Anglerfish achieve goals. Both agree on using strategy to gain power."
+  },
+  {
+    "Name": "Honey Badger",
+    "Sign Combination": "Scorpio / Tiger",
+    "Traits": "defiant, fearless, intense, rebellious, quick‑tempered, relentless",
+    "Compatibility": "Strong with principled partners; volatile with controlling rivals.",
+    "Description": "A defiant nature makes Honey Badgers formidable. Powerful and relentless personalities who refuse to back down."
+  },
+  {
+    "Name": "Panda",
+    "Sign Combination": "Scorpio / Sheep",
+    "Traits": "charming, artistic, introspective, gentle, sensitive, thoughtful",
+    "Compatibility": "Compatible with reassuring partners who encourage self‑belief.",
+    "Description": "Sheep brings a charming, artistic side and helps Scorpio get lost in thought. Each complements the other’s weaknesses."
+  },
+  {
+    "Name": "Golden Retriever",
+    "Sign Combination": "Sagittarius / Dog",
+    "Traits": "restless, idealistic, intelligent, sincere, humanitarian, emotionally unstable",
+    "Compatibility": "Best with steady, empathetic partners who offer stability.",
+    "Description": "Dog enhances Sagittarius’s restlessness, idealism, and intelligence but can bring emotional instability. Big‑hearted, loyal seekers of truth."
+  },
+  {
+    "Name": "Whale",
+    "Sign Combination": "Sagittarius / Dragon",
+    "Traits": "proud, self‑assured, ambitious, dramatic, idealistic, noble",
+    "Compatibility": "Best with humble partners who keep egos accountable.",
+    "Description": "Dragon magnifies ambition, pride, and drama while energizing Sagittarius’s ideals. Big‑picture vision with a commanding presence."
+  },
+  {
+    "Name": "Dove",
+    "Sign Combination": "Sagittarius / Horse",
+    "Traits": "humorous, restless, independent, blunt, freedom‑loving, romantic",
+    "Compatibility": "Pairs with adventurous partners who respect space and honesty.",
+    "Description": "Doves add humor and restless independence. Horse’s energy amplifies Sagittarius’s love of freedom and candid nature."
+  },
+  {
+    "Name": "Roadrunner",
+    "Sign Combination": "Sagittarius / Monkey",
+    "Traits": "quick, witty, playful, curious, opportunistic, sociable",
+    "Compatibility": "Works with clever partners who embrace variety and momentum.",
+    "Description": "Roadrunners are fast‑moving, witty explorers. Monkey adds humor and agility to Sagittarius’s adventurous curiosity."
+  },
+  {
+    "Name": "Raccoon",
+    "Sign Combination": "Sagittarius / Ox",
+    "Traits": "practical, resilient, determined, adaptable, observant, conflicted",
+    "Compatibility": "Best with steady partners who provide structure and patience.",
+    "Description": "Ox brings practical determination and resilience to Sagittarius. Raccoons adapt well but can feel conflicted between freedom and duty."
+  },
+  {
+    "Name": "Camel",
+    "Sign Combination": "Sagittarius / Pig",
+    "Traits": "sociable, people‑pleasing, generous, optimistic, indulgent, warm",
+    "Compatibility": "Works with grounded partners who reinforce boundaries and focus.",
+    "Description": "More sociable and people‑pleasing than other Sagittariuses. Warm and generous spirits who enjoy comfort yet aim high."
+  },
+  {
+    "Name": "Sugar Glider",
+    "Sign Combination": "Sagittarius / Rabbit",
+    "Traits": "charming, energetic, stylish, tasteful, cautious, lucky in money",
+    "Compatibility": "Compatible with gentle partners who appreciate flair and patience.",
+    "Description": "Sugar Gliders are charming, energetic, and well‑dressed. Rabbit forces Sagittarius to be more cautious in social situations; luck favors money matters."
+  },
+  {
+    "Name": "Skunk",
+    "Sign Combination": "Sagittarius / Rat",
+    "Traits": "resilient, persistent, clever, competitive, independent, spirited",
+    "Compatibility": "Thrives with supportive partners who respect drive and grit.",
+    "Description": "Skunks are resilient individuals who never give up. Rat adds quick instincts to Sagittarius’s optimism."
+  },
+  {
+    "Name": "Swordfish",
+    "Sign Combination": "Sagittarius / Rooster",
+    "Traits": "big‑personality, confident, outspoken, optimistic, straightforward, proud",
+    "Compatibility": "Best with considerate partners who help balance ego and pace.",
+    "Description": "Swordfish share dauntless optimism and straightforward conversation style with other Sagittariuses, carrying bigger personalities and presence."
+  },
+  {
+    "Name": "Tarantula",
+    "Sign Combination": "Sagittarius / Snake",
+    "Traits": "charming, instinctive, graceful, cautious, strategic, composed",
+    "Compatibility": "Pairs with steady partners who encourage prudent risk‑taking.",
+    "Description": "Snake brings charm, instinct, and grace while mitigating Sagittarius’s risk‑taking tendencies, producing composed strategists."
+  },
+  {
+    "Name": "Mongoose",
+    "Sign Combination": "Sagittarius / Tiger",
+    "Traits": "rebellious, moody, brave, outspoken, independent, intense",
+    "Compatibility": "Strong with principled partners; combustible with controlling types.",
+    "Description": "Tiger adds rebelliousness and moodiness to Sagittarius, creating intense, outspoken individuals who fight for what they believe."
+  },
+  {
+    "Name": "Tortoise",
+    "Sign Combination": "Sagittarius / Sheep",
+    "Traits": "peaceful, intelligent, creative, gentle, thoughtful, calm",
+    "Compatibility": "Works with patient partners who value serenity and curiosity.",
+    "Description": "Tortoises are more peaceful and intelligent than other Sagittariuses with a creative approach to life."
+  },
+  {
+    "Name": "Boxer",
+    "Sign Combination": "Capricorn / Dog",
+    "Traits": "loyal, helpful, caring, sincere, anxious, emotionally sensitive",
+    "Compatibility": "Best with steady, empathetic partners who offer stability.",
+    "Description": "The Dog intensifies Capricorn’s loyalty, helpfulness, and caring nature, but also brings a tendency to be overly emotional and anxious. Sincere and protective, they do best with calm support."
+  },
+  {
+    "Name": "Eagle",
+    "Sign Combination": "Capricorn / Dragon",
+    "Traits": "proud, hard-working, ambitious, noble, self-confident, judgmental",
+    "Compatibility": "Best with humble partners who encourage flexibility and reflection.",
+    "Description": "Dragon adds a noble flair and tireless self-confidence to steadfast Capricorn, but can increase black-or-white judgment. Ambitious and hard working, they must avoid overpromising and overworking."
+  },
+  {
+    "Name": "Salmon",
+    "Sign Combination": "Capricorn / Horse",
+    "Traits": "outgoing, energetic, restless, self-reliant, self-centered, independent",
+    "Compatibility": "Works with adventurous yet grounded partners who help finish what they start.",
+    "Description": "More outgoing and energetic than most Capricorns, Salmon love starting new projects and goals but are less likely to finish them. Self-reliant and restless, they thrive with structure and encouragement."
+  },
+  {
+    "Name": "Woodpecker",
+    "Sign Combination": "Capricorn / Monkey",
+    "Traits": "resourceful, inventive, witty, agile, strategic, curious",
+    "Compatibility": "Thrives with flexible partners who support innovation within structure.",
+    "Description": "Capricorn brings resourcefulness and perseverance while Monkey adds inventiveness and charm. Quick-thinking strategists who blend practicality with curiosity and a knack for clever solutions."
+  },
+  {
+    "Name": "Ant",
+    "Sign Combination": "Capricorn / Ox",
+    "Traits": "patient, persistent, organized, hardworking, resilient, methodical",
+    "Compatibility": "Best with diligent, supportive partners; friction with impulsive risk-takers.",
+    "Description": "Disciplined builders who value order, teamwork, and long-term results. Methodical and resilient, Ants combine Capricorn’s ambition with Ox’s steady endurance and reliability."
+  },
+  {
+    "Name": "Spider",
+    "Sign Combination": "Capricorn / Pig",
+    "Traits": "perfectionist, generous, loyal, warm, self-sacrificing, sensitive",
+    "Compatibility": "Works with kind, grounded partners; avoid manipulative or exploitative types.",
+    "Description": "Spiders are more likely to be perfectionists and to sacrifice personal happiness for others. Warm and loyal, they must balance duty with self-care to avoid burnout."
+  },
+  {
+    "Name": "Aardvark",
+    "Sign Combination": "Capricorn / Rat",
+    "Traits": "observant, independent, cautious, private, expressive, strategic",
+    "Compatibility": "Best with respectful partners who give space and encourage sharing.",
+    "Description": "Aardvarks are more likely to keep their thoughts to themselves yet are also better at expressing them when ready. Quiet, determined planners who value privacy and precision."
+  },
+  {
+    "Name": "Weaver Finch",
+    "Sign Combination": "Capricorn / Rabbit",
+    "Traits": "ambitious, sensitive, stressed, tasteful, gentle, detail-avoidant",
+    "Compatibility": "Flourishes with gentle, supportive partners; avoid chaotic environments.",
+    "Description": "Ambitious yet sensitive, Weaver Finches struggle with stress and prefer to avoid messy details. Artistic and tasteful, they do best in calm, orderly surroundings."
+  },
+  {
+    "Name": "Bee",
+    "Sign Combination": "Capricorn / Rooster",
+    "Traits": "colorful, radiant, detail-oriented, organized, meticulous, self-assured",
+    "Compatibility": "Best with confident yet considerate partners; ego clashes can arise with showy critics.",
+    "Description": "Rooster brings colorful radiance and an increased ability to handle small details. Bees are efficient, productive, and proud of their tidy, well-planned work."
+  },
+  {
+    "Name": "Mole",
+    "Sign Combination": "Capricorn / Sheep",
+    "Traits": "elegant, well-mannered, thoughtful, team-oriented, trusting, reserved",
+    "Compatibility": "Harmonizes with patient, collaborative partners who value trust and timing.",
+    "Description": "Sheep helps Capricorn let go, work with a team, trust others more, and know when to cash out and start a new project. Moles are thinkers and often loners with quiet elegance."
+  },
+  {
+    "Name": "Alligator",
+    "Sign Combination": "Capricorn / Snake",
+    "Traits": "clever, charming, graceful, strategic, composed, intense",
+    "Compatibility": "Pairs with calm, strategic partners who appreciate discretion and timing.",
+    "Description": "Clever Capricorns who can be charming and graceful. Composed strategists who balance ambition with subtlety and strong instincts."
+  },
+  {
+    "Name": "Komodo Dragon",
+    "Sign Combination": "Capricorn / Tiger",
+    "Traits": "resilient, intense, dedicated, unpredictable, volatile, rebellious",
+    "Compatibility": "Strong with grounded, patient partners; combustible with controlling types.",
+    "Description": "Komodo Dragons may be the least Capricorn-like of all Capricorns. They share resilience, intensity, and dedication but also bring unpredictable, volatile emotion and rebellious spirit."
+  },
+  {
+    "Name": "Chameleon",
+    "Sign Combination": "Aquarius / Dog",
+    "Traits": "humanitarian, curious, idealistic, private, detail-conscious, dogmatic-prone",
+    "Compatibility": "Best with patient partners who respect alone time and encourage flexible beliefs.",
+    "Description": "Dog tempers Aquarius’s free-wheeling curiosity with care for details. Highly humanitarian and sincere, these Aquarians need solitude and should avoid becoming too dogmatic."
+  },
+  {
+    "Name": "Leopard",
+    "Sign Combination": "Aquarius / Dragon",
+    "Traits": "exuberant, opinionated, charismatic, confident, proud, leadership‑inclined",
+    "Compatibility": "Thrives with humble partners who balance ego and keep focus on the greater good.",
+    "Description": "Often de facto leaders, Leopards are among the more exuberant and opinionated Aquarians. Dragon boosts confidence and presence; they must avoid falling in love with their own ideas."
+  },
+  {
+    "Name": "Unicorn",
+    "Sign Combination": "Aquarius / Horse",
+    "Traits": "eccentric, outspoken, energetic, standout, independent, restless",
+    "Compatibility": "Pairs with adventurous partners who embrace individuality and pace.",
+    "Description": "Standouts wherever they go, Unicorns tend to be among the more eccentric Aquarians and are more likely to voice their opinions openly and energetically."
+  },
+  {
+    "Name": "Dolphin",
+    "Sign Combination": "Aquarius / Monkey",
+    "Traits": "intellectually gifted, curious, imaginative, witty, playful, boredom‑averse",
+    "Compatibility": "Thrives with stimulating partners who value curiosity and encourage service to others.",
+    "Description": "Among the most intellectually gifted and curious signs. Mental stimulation is key; Monkey intensifies imaginative reasoning but can lessen interest in humanitarian pursuits."
+  },
+  {
+    "Name": "Walrus",
+    "Sign Combination": "Aquarius / Ox",
+    "Traits": "quiet, reserved, patient, dependable, steadfast, practical",
+    "Compatibility": "Best with steady partners who respect a calm pace and provide structure.",
+    "Description": "Ox brings quiet reserve, patience, and steadiness to Aquarius. Practical and dependable, Walruses prefer structure and measured progress."
+  },
+  {
+    "Name": "Pufferfish",
+    "Sign Combination": "Aquarius / Pig",
+    "Traits": "soft‑spoken, thoughtful, sociable, generous, warm, trusting",
+    "Compatibility": "Works with kind, grounded partners; avoid manipulative or exploitative types.",
+    "Description": "Pig adds sociability to thoughtful, soft‑spoken Aquarians. Warm and generous, Pufferfish enjoy people and benefit from supportive, grounded companions."
+  },
+  {
+    "Name": "Meerkat",
+    "Sign Combination": "Aquarius / Rat",
+    "Traits": "imaginative, intellectual, problem‑solving, private, risk‑planning, stress‑prone",
+    "Compatibility": "Pairs with respectful partners who help share ideas and manage stress.",
+    "Description": "Big dreamers who share ideas less readily than other Aquarians. Meerkats enjoy solving problems and taking well‑planned risks, but are more prone to regular stress."
+  },
+  {
+    "Name": "Sloth",
+    "Sign Combination": "Aquarius / Rabbit",
+    "Traits": "tasteful, beauty‑loving, gentle, sensitive, calm, low‑energy",
+    "Compatibility": "Flourishes with gentle partners who provide structure, motivation, and harmony.",
+    "Description": "A bit lazier than other Aquarians but with excellent taste and appreciation for beauty. Gentle, sensitive individuals who prefer calm and aesthetically pleasing environments."
+  },
+  {
+    "Name": "Bird-of-Paradise",
+    "Sign Combination": "Aquarius / Rooster",
+    "Traits": "colorful, confident, outgoing, self‑assured, intuitive, practical, arrogance‑prone",
+    "Compatibility": "Best with considerate partners who temper pride and the need for flattery.",
+    "Description": "Bright, colorful standouts who command attention. Rooster adds intuition and practicality but can bring arrogance and a constant need for flattery."
+  },
+  {
+    "Name": "Handfish",
+    "Sign Combination": "Aquarius / Sheep",
+    "Traits": "creative, visionary, elegant, well‑mannered, self‑doubting, artistic",
+    "Compatibility": "Works with reassuring partners who encourage self‑belief and help finish projects.",
+    "Description": "Among the most creative signs with ideas often ahead of their time. Sheep brings artistic charm but also self‑doubt; Handfish love projects and work hard to be happy."
+  },
+  {
+    "Name": "Boa Constrictor",
+    "Sign Combination": "Aquarius / Snake",
+    "Traits": "mysterious, graceful, well‑mannered, charming, romantic, jealousy‑prone, icy when hurt",
+    "Compatibility": "Pairs with calm, strategic partners who value discretion and help avoid jealousy triggers.",
+    "Description": "Less interested in humanitarian pursuits than other Aquarians, but among the most romantic, instinctive, and charming. Potential for jealousy and icy hostility when wronged."
+  },
+  {
+    "Name": "Panther",
+    "Sign Combination": "Aquarius / Tiger",
+    "Traits": "intense, rebellious, emotional, humanitarian, tough, idealistic",
+    "Compatibility": "Strong with principled, grounded partners; combustible with controlling types.",
+    "Description": "More intense and rebellious than other Aquarians. Often politically oriented and emotional; can drift into utopian thinking and feel dissociated without grounding."
+  }
+  ,
+  {
+    "Name": "Lemming",
+    "Sign Combination": "Pisces / Rat",
+    "Traits": "clever, charming, emotional, influential, high‑strung, stress‑prone",
+    "Compatibility": "Works with grounding partners who help manage stress and pace.",
+    "Description": "Rat brings cleverness and charm to introverted Pisces; Lemmings are highly emotional and influential but tend to get high‑strung and stressed."
+  },
+  {
+    "Name": "Tarsier",
+    "Sign Combination": "Pisces / Dog",
+    "Traits": "honest, loyal, intelligent, humanitarian, escapist, sensitive",
+    "Compatibility": "Best with supportive partners who promote healthy coping over escapism.",
+    "Description": "Honest, loyal humanitarians who believe in the greater good; under stress Tarsiers can turn to escapism to avoid real‑life pressure."
+  },
+  {
+    "Name": "Firefly",
+    "Sign Combination": "Pisces / Dragon",
+    "Traits": "optimistic, forceful, confident, social, progress‑driven, inspired",
+    "Compatibility": "Thrives with upbeat partners who encourage momentum and social balance.",
+    "Description": "Dragon’s optimism and forceful personality outweigh Pisces’ introversion when confidence rises; Fireflies need more social activity to balance energy and keep progress."
+  },
+  {
+    "Name": "Gecko",
+    "Sign Combination": "Pisces / Horse",
+    "Traits": "spontaneous, creative, open‑minded, excitable, unstable, adventurous",
+    "Compatibility": "Pairs with calm partners who help channel excitement into completion.",
+    "Description": "Horse brings excitement and spontaneity, enhancing creativity and open‑mindedness; Geckos can feel out of control but achieve greatly when letting go of worries."
+  },
+  {
+    "Name": "Cheetah",
+    "Sign Combination": "Pisces / Monkey",
+    "Traits": "charming, outgoing, inventive, playful, distracted, unfinished‑prone",
+    "Compatibility": "Works with structured partners who help focus and finish tasks.",
+    "Description": "More charming and outgoing than most Pisces; innovative and playful, Cheetahs are easily distracted and rarely finish what they start."
+  },
+  {
+    "Name": "Moose",
+    "Sign Combination": "Pisces / Ox",
+    "Traits": "dependable, hardworking, dedicated, practical, romantic, stability‑seeking",
+    "Compatibility": "Best with patient partners who balance security with creative freedom.",
+    "Description": "Ox brings strong work ethic and task dedication; Pisces’ artistic side may feel stifled. Moose are sweet romantics who dream of luxury and creativity entwined."
+  },
+  {
+    "Name": "Silkworm",
+    "Sign Combination": "Pisces / Rabbit",
+    "Traits": "artistic, lucky, sensitive, brilliant, self‑doubting, depression‑prone",
+    "Compatibility": "Thrives with encouraging partners who nurture confidence and expression.",
+    "Description": "Rabbit adds artistry and good luck to Pisces’ imagination; Silkworms are prone to depression but can be brilliant when confident enough to express themselves honestly."
+  },
+  {
+    "Name": "Frog",
+    "Sign Combination": "Pisces / Snake",
+    "Traits": "elusive, mysterious, private, intuitive, complex, hard‑to‑define",
+    "Compatibility": "Pairs with patient partners who respect privacy and gradual trust.",
+    "Description": "One of the most difficult signs to explain; Frogs are elusive, mysterious, and only show what they want others to see."
+  },
+  {
+    "Name": "Stingray",
+    "Sign Combination": "Pisces / Tiger",
+    "Traits": "moody, unpredictable, intense, humanitarian, passionate, rebellious",
+    "Compatibility": "Strong with principled partners who provide grounding and calm.",
+    "Description": "Stingrays are moody and unpredictable yet huge humanitarians at heart, blending intensity with compassion."
+  },
+  {
+    "Name": "Leafy Seadragon",
+    "Sign Combination": "Pisces / Sheep",
+    "Traits": "artistic, elegant, sensitive, self‑doubting, visionary, gentle",
+    "Compatibility": "Works with reassuring partners who provide stability and self‑belief.",
+    "Description": "A sign of many tortured artists; Leafy Seadragons pair Pisces’ imagination with Sheep’s artistic charm, often battling self‑doubt."
+  },
+  {
+    "Name": "Ocelot",
+    "Sign Combination": "Pisces / Rooster",
+    "Traits": "confident, self‑assured, independent, self‑focused, reserved, slow‑to‑warm",
+    "Compatibility": "Best with considerate partners who avoid rushing and respect autonomy.",
+    "Description": "Rooster brings confidence and a self‑centered streak; Ocelots often prefer solitude and like to do things their own way on their own time."
+  },
+  {
+    "Name": "Zebra",
+    "Sign Combination": "Pisces / Pig",
+    "Traits": "socially conscious, gentle, generous, chivalrous, naive, conflict‑averse",
+    "Compatibility": "Thrives with kind partners who reinforce boundaries and practicality.",
+    "Description": "Zebras are socially conscious and want to do things right; Pig enhances Pisces’ gentle generosity while adding chivalry and naivety. Artistic and intellectual, they avoid confrontation."
+  }
+]
