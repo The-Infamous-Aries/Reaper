@@ -1,0 +1,18 @@
+{
+    "logs": [
+        {
+            "user_id": "LogTest",
+            "action": "test_action",
+            "timestamp": "now"
+        },
+        {
+            "user_id": "LogTest",
+            "action": "test_action",
+            "timestamp": "now"
+        },
+        {
+            "user_id": "test_user_123",
+            "action": "test"
+        }
+    ]
+}
