@@ -1,0 +1,719 @@
+{
+  "story_map": {
+    "event_start": {
+      "text": "🏙️ **THE CRIMINAL UNDERWORLD AWAITS** 🏙️\n\nYou're a small-time crook in 1920s Chicago, trying to make it big in the criminal underworld. The city is controlled by powerful gangs, corrupt cops, and dangerous opportunities. Every choice you make increases or decreases your Heat level with the authorities.\n\n**Current Heat: 0%** 🌡️\n\nWhat's your first move?",
+      "choices": {
+        "1. Start small - pickpocket wealthy pedestrians": {
+          "success_chance": 70,
+          "success_text": "You successfully pickpocket several wealthy marks without being noticed. You've earned some quick cash and learned the streets.",
+          "failure_text": "A mark catches you in the act and shouts for police. You escape but witnesses saw your face.",
+          "success_next_stage": "event_1",
+          "failure_next_stage": "event_1",
+          "heat_change": 3,
+          "success_heat_change": 1
+        },
+        "2. Approach the Black Hand gang for work": {
+          "success_chance": 50,
+          "success_text": "Vinnie 'The Shiv' is impressed by your boldness. He gives you a chance to prove yourself with a simple job.",
+          "failure_text": "The gang members laugh at you and rough you up. Word spreads that you're desperate and weak.",
+          "success_next_stage": "event_1",
+          "failure_next_stage": "event_1",
+          "heat_change": 5,
+          "success_heat_change": 2
+        },
+        "3. Try to get information on police patrol routes": {
+          "success_chance": 40,
+          "success_text": "You successfully bribe a low-level cop for patrol information. This knowledge will serve you well.",
+          "failure_text": "The cop reports your bribery attempt. Now you're on their radar as a potential troublemaker.",
+          "success_next_stage": "event_1",
+          "failure_next_stage": "event_1",
+          "heat_change": 8,
+          "success_heat_change": -2,
+          "total_failure_chance": 10
+        }
+      }
+    },
+    "event_1": {
+      "text": "🎯 **THE FIRST REAL JOB** 🎯\n\nVinnie gives you a simple task: rob a small-time bookie who's been skimming from the Black Hand's protection money. The Red Skulls gang also operates in this area, and tensions are high.\n\nWhat's your approach?",
+      "choices": {
+        "1. Hit the bookie directly during business hours": {
+          "success_chance": 65,
+          "success_text": "You successfully intimidate the bookie and collect the money. Vinnie is impressed with your direct approach.",
+          "failure_text": "The bookie's enforcer arrives during the robbery. You escape but empty-handed and bruised.",
+          "success_next_stage": "event_2",
+          "failure_next_stage": "event_2",
+          "heat_change": 6,
+          "success_heat_change": 3,
+          "total_failure_chance": 8
+        },
+        "2. Wait for nightfall and break in quietly": {
+          "success_chance": 55,
+          "success_text": "You break in after hours and find the hidden safe. Clean job with minimal witnesses.",
+          "failure_text": "You trigger a silent alarm. Police arrive as you're escaping, getting a good look at you.",
+          "success_next_stage": "event_2",
+          "failure_next_stage": "event_2",
+          "heat_change": 4,
+          "success_heat_change": 1,
+          "total_failure_chance": 12
+        },
+        "3. Try to make a deal with the Red Skulls to split the take": {
+          "success_chance": 45,
+          "success_text": "The Red Skulls are impressed by your boldness. You split the money and gain a dangerous ally.",
+          "failure_text": "The Red Skulls see you as weak and untrustworthy. They threaten to expose you to Vinnie.",
+          "success_next_stage": "event_2",
+          "failure_next_stage": "event_2",
+          "heat_change": 7,
+          "success_heat_change": 4
+        }
+      }
+    },
+    "event_2": {
+      "text": "🍺 **SPEAKEASY TROUBLES** 🍺\n\nVinnie is pleased with your work and gives you a bigger job: collect protection money from Murphy's speakeasy. The owner has been late on payments, and rival gangs are sniffing around.\n\nHow do you handle this?",
+      "choices": {
+        "1. Go in with muscle and make a scene": {
+          "success_chance": 70,
+          "success_text": "Your show of force works. Murphy pays up immediately and other businesses take notice.",
+          "failure_text": "The scene attracts police attention. Murphy refuses to pay and files a complaint.",
+          "success_next_stage": "event_3",
+          "failure_next_stage": "event_3",
+          "heat_change": 8,
+          "success_heat_change": 5
+        },
+        "2. Negotiate privately with Murphy": {
+          "success_chance": 50,
+          "success_text": "Murphy agrees to a payment plan. You maintain good relations while getting results.",
+          "failure_text": "Murphy plays dumb and claims he doesn't owe anything. You leave empty-handed.",
+          "success_next_stage": "event_3",
+          "failure_next_stage": "event_3",
+          "heat_change": 3,
+          "success_heat_change": 0,
+          "total_failure_chance": 8
+        },
+        "3. Sabotage his liquor supply to send a message": {
+          "success_chance": 60,
+          "success_text": "The sabotage works perfectly. Murphy pays up to avoid further 'accidents'.",
+          "failure_text": "You're caught in the act by Murphy's men. They beat you and threaten to call the cops.",
+          "success_next_stage": "event_3",
+          "failure_next_stage": "event_3",
+          "heat_change": 5,
+          "success_heat_change": 2
+        }
+      }
+    },
+    "event_3": {
+      "text": "🚢 **SMUGGLING OPPORTUNITY** 🚢\n\nA contact offers you a chance to get into the lucrative liquor smuggling business. Canadian whiskey is worth its weight in gold, but the Coast Guard has been cracking down hard.\n\nWhat's your move?",
+      "choices": {
+        "1. Take a small boat and make the run yourself": {
+          "success_chance": 55,
+          "success_text": "You successfully navigate past Coast Guard patrols and deliver the goods. Big profits!",
+          "failure_text": "Coast Guard spots you and gives chase. You dump the cargo and barely escape arrest.",
+          "success_next_stage": "event_4",
+          "failure_next_stage": "event_4",
+          "heat_change": 10,
+          "success_heat_change": 6,
+          "total_failure_chance": 5
+        },
+        "2. Organize a larger operation with multiple boats": {
+          "success_chance": 40,
+          "success_text": "Your convoy successfully overwhelms Coast Guard resources. Massive haul and respect earned.",
+          "failure_text": "Federal agents were tipped off. Multiple arrests and your name is now on their list.",
+          "success_next_stage": "event_4",
+          "failure_next_stage": "event_4",
+          "heat_change": 15,
+          "success_heat_change": 8
+        },
+        "3. Focus on bribing dock officials instead": {
+          "success_chance": 65,
+          "success_text": "Your bribes work perfectly. Shipments flow through 'official' channels with no questions asked.",
+          "failure_text": "An honest official reports your bribery attempt. Federal investigation begins.",
+          "success_next_stage": "event_4",
+          "failure_next_stage": "event_4",
+          "heat_change": 7,
+          "success_heat_change": -1
+        }
+      }
+    },
+    "event_4": {
+      "text": "🏦 **THE BIG SCORE** 🏦\n\nVinnie trusts you enough for a major job: robbing the First National Bank. This could set you up for life, but it's also the kind of job that brings serious heat.\n\nHow do you approach this?",
+      "choices": {
+        "1. Plan a quick smash-and-grab during business hours": {
+          "success_chance": 50,
+          "success_text": "The robbery goes perfectly. You're in and out with a fortune before police arrive.",
+          "failure_text": "Bank security was better than expected. You escape but the job fails spectacularly.",
+          "success_next_stage": "event_5",
+          "failure_next_stage": "event_5",
+          "heat_change": 20,
+          "success_heat_change": 15
+        },
+        "2. Infiltrate the bank by getting someone hired inside": {
+          "success_chance": 35,
+          "success_text": "Your inside man disables alarms and opens the vault. Clean job with minimal evidence.",
+          "failure_text": "Your inside man gets cold feet and confesses everything to bank security.",
+          "success_next_stage": "event_5",
+          "failure_next_stage": "event_5",
+          "heat_change": 12,
+          "success_heat_change": 3
+        },
+        "3. Rob the bank's armored car instead": {
+          "success_chance": 60,
+          "success_text": "You successfully ambush the armored car. Good money with less security than the bank itself.",
+          "failure_text": "The guards were armed and ready. Shootout in the street brings massive police response.",
+          "success_next_stage": "event_5",
+          "failure_next_stage": "event_5",
+          "heat_change": 18,
+          "success_heat_change": 12,
+          "total_failure_chance": 10
+        }
+      }
+    },
+    "event_5": {
+      "text": "🔫 **GANG WAR BREWING** 🔫\n\nTensions with the Red Skulls have reached a breaking point. Frankie 'The Razor' wants to meet to discuss territory, but everyone knows this could be a trap.\n\nWhat's your strategy?",
+      "choices": {
+        "1. Go to the meeting with heavy backup": {
+          "success_chance": 65,
+          "success_text": "Your show of force convinces Frankie to negotiate seriously. Territory is divided peacefully.",
+          "failure_text": "The meeting erupts into a gunfight. Multiple casualties bring police and federal attention.",
+          "success_next_stage": "event_6",
+          "failure_next_stage": "event_6",
+          "heat_change": 12,
+          "success_heat_change": 8,
+          "total_failure_chance": 2
+        },
+        "2. Try to eliminate Frankie before the meeting": {
+          "success_chance": 45,
+          "success_text": "You successfully assassinate Frankie. The Red Skulls fall into chaos without their leader.",
+          "failure_text": "The assassination attempt fails. Now you have a blood feud with the entire Red Skulls gang.",
+          "success_next_stage": "event_6",
+          "failure_next_stage": "event_6",
+          "heat_change": 25,
+          "success_heat_change": 18
+        },
+        "3. Propose an alliance against the police crackdown": {
+          "success_chance": 55,
+          "success_text": "Frankie agrees that the real enemy is law enforcement. Your alliance makes both gangs stronger.",
+          "failure_text": "Frankie sees this as weakness and decides to eliminate you while you're vulnerable.",
+          "success_next_stage": "event_6",
+          "failure_next_stage": "event_6",
+          "heat_change": 8,
+          "success_heat_change": 3
+        }
+      }
+    },
+    "event_6": {
+      "text": "👮 **POLICE CRACKDOWN** 👮\n\nThe new police commissioner has declared war on organized crime. Raids are happening daily, and several of your associates have been arrested.\n\nHow do you adapt?",
+      "choices": {
+        "1. Go underground and lay low for a while": {
+          "success_chance": 70,
+          "success_text": "You successfully avoid the crackdown. Your patience pays off as the heat dies down.",
+          "failure_text": "Police track you to your hideout. You escape but they're getting closer.",
+          "success_next_stage": "event_7",
+          "failure_next_stage": "event_7",
+          "heat_change": 5,
+          "success_heat_change": -5
+        },
+        "2. Bribe key officials to call off the heat": {
+          "success_chance": 40,
+          "success_text": "Your bribes work. The crackdown mysteriously loses steam and targets other gangs instead.",
+          "failure_text": "The officials take your money but don't deliver. Now you're broke and still hunted.",
+          "success_next_stage": "event_7",
+          "failure_next_stage": "event_7",
+          "heat_change": 15,
+          "success_heat_change": -8,
+          "total_failure_chance": 5
+        },
+        "3. Fight back by targeting police directly": {
+          "success_chance": 30,
+          "success_text": "Your bold attacks force police to back down. You've earned respect but made dangerous enemies.",
+          "failure_text": "Attacking police brings federal agents and military support. You're now public enemy number one.",
+          "success_next_stage": "event_7",
+          "failure_next_stage": "event_7",
+          "heat_change": 30,
+          "success_heat_change": 20
+        }
+      }
+    },
+    "event_7": {
+      "text": "💰 **THE CASINO OPPORTUNITY** 💰\n\nA corrupt city councilman offers you the chance to run an illegal casino in exchange for a cut of the profits. It's steady money but also a high-profile target.\n\nWhat's your decision?",
+      "choices": {
+        "1. Open the casino and run it yourself": {
+          "success_chance": 55,
+          "success_text": "The casino is a goldmine. High-class clientele and steady profits flow in.",
+          "failure_text": "Federal agents raid the casino on opening night. Your investment is lost.",
+          "success_next_stage": "event_8",
+          "failure_next_stage": "event_8",
+          "heat_change": 12,
+          "success_heat_change": 8
+        },
+        "2. Partner with other gangs to share the risk": {
+          "success_chance": 65,
+          "success_text": "The partnership works well. Shared profits and shared protection make everyone stronger.",
+          "failure_text": "Your partners try to cut you out of the deal. Gang politics turn ugly.",
+          "success_next_stage": "event_8",
+          "failure_next_stage": "event_8",
+          "heat_change": 8,
+          "success_heat_change": 5,
+          "total_failure_chance": 8
+        },
+        "3. Decline and focus on smaller, safer operations": {
+          "success_chance": 75,
+          "success_text": "Your caution pays off. You avoid the casino raid and maintain steady income.",
+          "failure_text": "The councilman is offended by your refusal and tips off police about your other activities.",
+          "success_next_stage": "event_8",
+          "failure_next_stage": "event_8",
+          "heat_change": 3,
+          "success_heat_change": -3
+        }
+      }
+    },
+    "event_8": {
+      "text": "🚗 **THE FEDERAL INVESTIGATION** 🚗\n\nFederal agents are building a case against organized crime in the city. They're offering deals to anyone willing to testify against gang leaders.\n\nHow do you respond?",
+      "choices": {
+        "1. Eliminate potential witnesses before they can talk": {
+          "success_chance": 45,
+          "success_text": "You successfully silence the witnesses. The federal case falls apart.",
+          "failure_text": "Your assassination attempts fail and now you're wanted for murder by federal agents.",
+          "success_next_stage": "event_9",
+          "failure_next_stage": "event_9",
+          "heat_change": 25,
+          "success_heat_change": 15,
+          "total_failure_chance": 20
+        },
+        "2. Offer to become an informant yourself": {
+          "success_chance": 60,
+          "success_text": "You successfully play both sides, feeding information while protecting your interests.",
+          "failure_text": "Both the feds and the gangs discover your double-dealing. Everyone wants you dead.",
+          "success_next_stage": "event_9",
+          "failure_next_stage": "event_9",
+          "heat_change": 10,
+          "success_heat_change": -10
+        },
+        "3. Flee the city before the investigation concludes": {
+          "success_chance": 70,
+          "success_text": "You successfully escape to another city and start fresh with your accumulated wealth.",
+          "failure_text": "Federal agents catch you at the train station. Your escape attempt fails.",
+          "success_next_stage": "event_9",
+          "failure_next_stage": "event_9",
+          "heat_change": 8,
+          "success_heat_change": -15
+        }
+      }
+    },
+    "event_9": {
+      "text": "🏛️ **POLITICAL CONNECTIONS** 🏛️\n\nA powerful political boss offers you protection in exchange for handling his 'problems.' This could provide immunity but also makes you a target for his enemies.\n\nWhat's your choice?",
+      "choices": {
+        "1. Accept and become his personal enforcer": {
+          "success_chance": 50,
+          "success_text": "Your political protection works perfectly. You operate with near-immunity from law enforcement.",
+          "failure_text": "The political boss is exposed in a scandal. Your connection makes you a target.",
+          "success_next_stage": "event_10",
+          "failure_next_stage": "event_10",
+          "heat_change": 15,
+          "success_heat_change": -12,
+          "total_failure_chance": 2
+        },
+        "2. Blackmail him for money instead of protection": {
+          "success_chance": 40,
+          "success_text": "Your blackmail scheme works. Regular payments flow in with minimal risk.",
+          "failure_text": "The politician calls your bluff and sends assassins after you.",
+          "success_next_stage": "event_10",
+          "failure_next_stage": "event_10",
+          "heat_change": 12,
+          "success_heat_change": 5
+        },
+        "3. Decline and maintain your independence": {
+          "success_chance": 65,
+          "success_text": "Your independence serves you well. You avoid political entanglements while maintaining flexibility.",
+          "failure_text": "The politician takes your refusal as an insult and uses his influence against you.",
+          "success_next_stage": "event_10",
+          "failure_next_stage": "event_10",
+          "heat_change": 8,
+          "success_heat_change": 3
+        }
+      }
+    },
+    "event_10": {
+      "text": "⚡ **THE POWER STRUGGLE** ⚡\n\nVinnie is getting old and weak. Other lieutenants are positioning themselves to take over the Black Hand. This is your chance to seize power or find a new path.\n\nWhat's your move?",
+      "choices": {
+        "1. Challenge Vinnie directly for leadership": {
+          "success_chance": 35,
+          "success_text": "You successfully overthrow Vinnie and become the new boss of the Black Hand.",
+          "failure_text": "Vinnie proves he's still dangerous. Your coup attempt fails and you're marked for death.",
+          "success_next_stage": "event_11",
+          "failure_next_stage": "event_11",
+          "heat_change": 20,
+          "success_heat_change": 12
+        },
+        "2. Form an alliance with other lieutenants": {
+          "success_chance": 55,
+          "success_text": "Your alliance successfully removes Vinnie. Power is shared among the conspirators.",
+          "failure_text": "One of your allies betrays the plot to Vinnie. Now you're all targets.",
+          "success_next_stage": "event_11",
+          "failure_next_stage": "event_11",
+          "heat_change": 15,
+          "success_heat_change": 8,
+          "total_failure_chance": 5
+        },
+        "3. Start your own independent operation": {
+          "success_chance": 70,
+          "success_text": "You successfully break away and establish your own criminal empire.",
+          "failure_text": "Vinnie's loyalists hunt you down for betraying the family.",
+          "success_next_stage": "event_11",
+          "failure_next_stage": "event_11",
+          "heat_change": 12,
+          "success_heat_change": 6
+        }
+      }
+    },
+    "event_11": {
+      "text": "🌆 **EXPANDING THE EMPIRE** 🌆\n\nYour criminal organization is growing, but so is the attention from law enforcement. You need to decide how to expand while managing the increasing heat.\n\nWhat's your strategy?",
+      "choices": {
+        "1. Expand aggressively into new territories": {
+          "success_chance": 45,
+          "success_text": "Your aggressive expansion succeeds. You now control multiple neighborhoods.",
+          "failure_text": "Your expansion triggers a multi-gang war. Violence brings massive police response.",
+          "success_next_stage": "event_12",
+          "failure_next_stage": "event_12",
+          "heat_change": 18,
+          "success_heat_change": 12
+        },
+        "2. Focus on consolidating current operations": {
+          "success_chance": 65,
+          "success_text": "Your consolidation strategy works. Stronger control means better profits and security.",
+          "failure_text": "While you consolidate, rivals move into territories you could have claimed.",
+          "success_next_stage": "event_12",
+          "failure_next_stage": "event_12",
+          "heat_change": 8,
+          "success_heat_change": 2
+        },
+        "3. Invest in legitimate businesses as fronts": {
+          "success_chance": 55,
+          "success_text": "Your legitimate fronts provide perfect cover for criminal activities.",
+          "failure_text": "Federal agents see through your business fronts and begin investigating.",
+          "success_next_stage": "event_12",
+          "failure_next_stage": "event_12",
+          "heat_change": 10,
+          "success_heat_change": -5,
+          "total_failure_chance": 10
+        }
+      }
+    },
+    "event_12": {
+      "text": "🔥 **THE HEAT IS RISING** 🔥\n\nYour Heat level is becoming dangerous. Federal agents, rival gangs, and corrupt cops all have you in their sights. You need to make a crucial decision about your future.\n\nHow do you handle the pressure?",
+      "choices": {
+        "1. Go to war against all enemies simultaneously": {
+          "success_chance": 30,
+          "success_text": "Against all odds, your all-out war succeeds. Your enemies are defeated and you emerge supreme.",
+          "failure_text": "Fighting everyone at once proves impossible. You're overwhelmed and destroyed.",
+          "success_next_stage": "event_13",
+          "failure_next_stage": "event_13",
+          "heat_change": 25,
+          "success_heat_change": 15,
+          "total_failure_chance": 35
+        },
+        "2. Negotiate truces and alliances to reduce pressure": {
+          "success_chance": 60,
+          "success_text": "Your diplomatic approach works. Temporary peace gives you breathing room.",
+          "failure_text": "Your attempts at negotiation are seen as weakness. Enemies press their advantage.",
+          "success_next_stage": "event_13",
+          "failure_next_stage": "event_13",
+          "heat_change": 12,
+          "success_heat_change": -8
+        },
+        "3. Prepare for a strategic retreat and regroup": {
+          "success_chance": 75,
+          "success_text": "Your strategic withdrawal succeeds. You preserve your resources for a future comeback.",
+          "failure_text": "Your retreat is seen as defeat. Former allies abandon you in your weakness.",
+          "success_next_stage": "event_13",
+          "failure_next_stage": "event_13",
+          "heat_change": 5,
+          "success_heat_change": -10
+        }
+      }
+    },
+    "event_13": {
+      "text": "💎 **THE ULTIMATE SCORE** 💎\n\nInformation reaches you about a massive shipment of diamonds coming through the city. This could be the score that sets you up for life, but it's also heavily guarded.\n\nWhat's your approach?",
+      "choices": {
+        "1. Assemble a large crew for a direct assault": {
+          "success_chance": 40,
+          "success_text": "Your assault succeeds spectacularly. The diamond heist makes you incredibly wealthy.",
+          "failure_text": "The assault fails catastrophically. Multiple crew members are killed or captured.",
+          "success_next_stage": "event_14",
+          "failure_next_stage": "event_14",
+          "heat_change": 22,
+          "success_heat_change": 18
+        },
+        "2. Use inside information to intercept the shipment quietly": {
+          "success_chance": 55,
+          "success_text": "Your inside information pays off. You intercept the diamonds with minimal violence.",
+          "failure_text": "Your inside man was discovered. The shipment is a trap set by federal agents.",
+          "success_next_stage": "event_14",
+          "failure_next_stage": "event_14",
+          "heat_change": 15,
+          "success_heat_change": 8,
+          "total_failure_chance": 8
+        },
+        "3. Sell the information to the highest bidder instead": {
+          "success_chance": 70,
+          "success_text": "You profit from the information without the risk. Smart business keeps you alive.",
+          "failure_text": "The buyer betrays you and uses the information to frame you for the heist.",
+          "success_next_stage": "event_14",
+          "failure_next_stage": "event_14",
+          "heat_change": 8,
+          "success_heat_change": 3
+        }
+      }
+    },
+    "event_14": {
+      "text": "🎭 **THE DOUBLE CROSS** 🎭\n\nYour most trusted lieutenant approaches you with disturbing news: there's a traitor in your organization feeding information to the feds. But can you trust the messenger?\n\nHow do you handle this?",
+      "choices": {
+        "1. Immediately eliminate the suspected traitor": {
+          "success_chance": 50,
+          "success_text": "You correctly identify and eliminate the real traitor. Your organization is secure.",
+          "failure_text": "You killed an innocent member. The real traitor remains, and morale plummets.",
+          "success_next_stage": "event_15",
+          "failure_next_stage": "event_15",
+          "heat_change": 15,
+          "success_heat_change": 5,
+          "total_failure_chance": 5
+        },
+        "2. Test your lieutenant's loyalty with false information": {
+          "success_chance": 65,
+          "success_text": "Your test reveals the lieutenant is loyal. Together you identify the real traitor.",
+          "failure_text": "Your lieutenant was the traitor all along. Your test backfires spectacularly.",
+          "success_next_stage": "event_15",
+          "failure_next_stage": "event_15",
+          "heat_change": 12,
+          "success_heat_change": 2
+        },
+        "3. Pretend to believe while secretly investigating": {
+          "success_chance": 45,
+          "success_text": "Your investigation uncovers a complex web of betrayal. You eliminate all traitors.",
+          "failure_text": "While you investigate, the traitors strike first. Your organization is compromised.",
+          "success_next_stage": "event_15",
+          "failure_next_stage": "event_15",
+          "heat_change": 18,
+          "success_heat_change": 8
+        }
+      }
+    },
+    "event_15": {
+      "text": "🏴‍☠️ **THE FINAL GAMBIT** 🏴‍☠️\n\nEverything is falling apart. Federal agents are closing in, rival gangs smell weakness, and your own people are questioning your leadership. This is your last chance to secure your legacy.\n\nWhat's your final move?",
+      "choices": {
+        "1. Make a deal with federal agents to take down your rivals": {
+          "success_chance": 60,
+          "success_text": "Your deal works perfectly. You eliminate your enemies while securing immunity.",
+          "failure_text": "The feds double-cross you. You're arrested along with everyone else.",
+          "success_next_stage": "event_16",
+          "failure_next_stage": "event_16",
+          "heat_change": 20,
+          "success_heat_change": -20
+        },
+        "2. Burn everything down and disappear with whatever you can carry": {
+          "success_chance": 75,
+          "success_text": "You successfully destroy all evidence and escape with a fortune. Clean getaway.",
+          "failure_text": "Your escape plan fails. You're caught trying to flee the country.",
+          "success_next_stage": "event_16",
+          "failure_next_stage": "event_16",
+          "heat_change": 10,
+          "success_heat_change": -25,
+          "total_failure_chance": 10
+        },
+        "3. Go down fighting and take as many enemies with you as possible": {
+          "success_chance": 35,
+          "success_text": "Your final stand becomes legend. You defeat your enemies and emerge victorious.",
+          "failure_text": "Your last stand ends in defeat. You go down fighting but you still go down.",
+          "success_next_stage": "event_16",
+          "failure_next_stage": "event_16",
+          "heat_change": 30,
+          "success_heat_change": 25
+        }
+      }
+    },
+    "event_16": {
+      "text": "👑 **THE CROWN JEWEL** 👑\n\nAgainst all odds, you've survived this long in the criminal underworld. One final opportunity presents itself: a chance to either cement your legacy or escape to a peaceful retirement.\n\nWhat defines your story's end?",
+      "choices": {
+        "1. Establish a criminal dynasty that will last generations": {
+          "success_chance": 40,
+          "success_text": "You successfully establish a criminal empire that will be remembered forever.",
+          "failure_text": "Your attempt to build a dynasty crumbles. Law enforcement finally catches up.",
+          "success_next_stage": "event_17",
+          "failure_next_stage": "event_17",
+          "heat_change": 25,
+          "success_heat_change": 15
+        },
+        "2. Use your wealth and connections to go completely legitimate": {
+          "success_chance": 65,
+          "success_text": "You successfully transition to legitimate business while keeping your criminal wealth.",
+          "failure_text": "Your criminal past is exposed during your transition to legitimacy.",
+          "success_next_stage": "event_17",
+          "failure_next_stage": "event_17",
+          "heat_change": 8,
+          "success_heat_change": -15,
+          "total_failure_chance": 2
+        },
+        "3. Retire to a tropical paradise with your accumulated fortune": {
+          "success_chance": 80,
+          "success_text": "You successfully disappear and live out your days in luxury and peace.",
+          "failure_text": "Your enemies track you down even in paradise. No rest for the wicked.",
+          "success_next_stage": "event_17",
+          "failure_next_stage": "event_17",
+          "heat_change": 5,
+          "success_heat_change": -30
+        }
+      }
+    },
+    "event_17": {
+      "text": "⚖️ **JUDGMENT DAY** ⚖️\n\nYour choices have led you to this moment. The heat you've accumulated throughout your criminal career now determines your fate. Will you escape justice, or will it finally catch up with you?\n\nThis is your final test.",
+      "choices": {
+        "1. Face your fate with dignity and accept the consequences": {
+          "success_chance": 70,
+          "success_text": "Your acceptance of responsibility earns respect even from your enemies. You face your fate with honor.",
+          "failure_text": "Even dignity can't save you now. Justice demands its due.",
+          "success_next_stage": "event_18",
+          "failure_next_stage": "event_18",
+          "heat_change": 5,
+          "success_heat_change": -10,
+          "total_failure_chance": 20
+        },
+        "2. Use every trick and connection to escape one final time": {
+          "success_chance": 45,
+          "success_text": "Your cunning and connections save you one last time. You escape to fight another day.",
+          "failure_text": "Your tricks have run out. There's nowhere left to run.",
+          "success_next_stage": "event_18",
+          "failure_next_stage": "event_18",
+          "heat_change": 15,
+          "success_heat_change": -5
+        },
+        "3. Attempt to take down the entire system with you": {
+          "success_chance": 25,
+          "success_text": "Your final gambit succeeds. You expose corruption at every level and emerge victorious.",
+          "failure_text": "Your attempt to bring down the system fails. You're crushed by the very forces you tried to destroy.",
+          "success_next_stage": "event_18",
+          "failure_next_stage": "event_18",
+          "heat_change": 20,
+          "success_heat_change": 10
+        }
+      }
+    },
+    "event_18": {
+      "text": "🎬 **THE FINAL CURTAIN** 🎬\n\nYour story in the criminal underworld reaches its conclusion. The choices you've made, the heat you've accumulated, and the enemies you've created all come together to determine your ultimate fate.\n\nHow does your legend end?",
+      "choices": {
+        "1. Write your memoirs and become a legend": {
+          "success_chance": 60,
+          "success_text": "Your memoirs become bestsellers. You're remembered as a criminal mastermind.",
+          "failure_text": "Your memoirs are used as evidence against you. Your words become your downfall.",
+          "success_next_stage": "event_19",
+          "failure_next_stage": "event_19",
+          "heat_change": 10,
+          "success_heat_change": 5
+        },
+        "2. Mentor the next generation of criminals": {
+          "success_chance": 50,
+          "success_text": "You successfully pass on your knowledge. Your legacy lives on through your proteges.",
+          "failure_text": "Your proteges betray you to reduce their own sentences. No honor among thieves.",
+          "success_next_stage": "event_19",
+          "failure_next_stage": "event_19",
+          "heat_change": 15,
+          "success_heat_change": 8,
+          "total_failure_chance": 25
+        },
+        "3. Seek redemption and try to make amends": {
+          "success_chance": 75,
+          "success_text": "Your genuine attempts at redemption are recognized. You find peace in your final years.",
+          "failure_text": "Your past is too dark for redemption. Some sins can never be forgiven.",
+          "success_next_stage": "event_19",
+          "failure_next_stage": "event_19",
+          "heat_change": 5,
+          "success_heat_change": -15
+        }
+      }
+    },
+    "event_19": {
+      "text": "🌅 **THE FINAL RECKONING** 🌅\n\nAfter a lifetime in the criminal underworld, your story reaches its ultimate conclusion. The heat you've accumulated, the choices you've made, and the path you've chosen all determine how your legend ends.\n\nThis is your final moment.",
+      "choices": {
+        "1. Accept your fate and face the consequences with courage": {
+          "success_chance": 80,
+          "success_text": "You face your final moment with courage and dignity. Your story ends with honor.",
+          "failure_text": "Even courage cannot change the inevitable. Your story ends in defeat.",
+          "success_next_stage": "ending_determination",
+          "failure_next_stage": "ending_determination",
+          "heat_change": 0,
+          "success_heat_change": -5,
+          "total_failure_chance": 5
+        },
+        "2. Make one final desperate gambit for freedom": {
+          "success_chance": 30,
+          "success_text": "Against all odds, your final gambit succeeds. You achieve the impossible.",
+          "failure_text": "Your desperate gambit fails. You've run out of luck and options.",
+          "success_next_stage": "ending_determination",
+          "failure_next_stage": "ending_determination",
+          "heat_change": 10,
+          "success_heat_change": -10
+        },
+        "3. Reflect on your choices and find peace with your decisions": {
+          "success_chance": 90,
+          "success_text": "You find peace with your choices. Your story ends with acceptance and wisdom.",
+          "failure_text": "Regret consumes your final moments. You cannot find peace with what you've done.",
+          "success_next_stage": "ending_determination",
+          "failure_next_stage": "ending_determination",
+          "heat_change": 0,
+          "success_heat_change": -8
+        }
+      }
+    },
+    "ending_determination": {
+      "text": "Your final fate is determined by the heat you've accumulated throughout your criminal career...",
+      "choices": {}
+    }
+  },
+  "ending_templates": {
+    "ending_determination": {
+      "low_heat": "🏆 **CRIMINAL MASTERMIND** 🏆\n\nYou have achieved the impossible - a successful criminal career with minimal heat. Your careful planning, strategic thinking, and ability to stay under the radar have made you a legend. You retire wealthy, respected, and free. The perfect crime boss.",
+      "medium_heat": "🏆 **NOTORIOUS GANGSTER** 🏆\n\nYou've built a criminal empire through bold actions and calculated risks. While you've attracted attention from law enforcement, your power and influence keep you protected. You're a feared and respected figure in the underworld.",
+      "high_heat": "🏆 **LEGENDARY OUTLAW** 🏆\n\nYour criminal career has been marked by audacious crimes and narrow escapes. You're constantly hunted but never caught. Your name strikes fear into the hearts of both criminals and law enforcement. You live dangerously but you live free.",
+      "escape_ending": "🏃 **NARROW ESCAPE** 🏃\n\nThe heat became too much, but you managed to escape at the last moment. You flee to a distant country with whatever wealth you could carry. You're alive and free, but always looking over your shoulder.",
+      "jail_ending": "⛓️ **BEHIND BARS** ⛓️\n\nThe heat finally caught up with you. Federal agents, corrupt cops, and rival gangs all closed in at once. You're arrested and sentenced to life in prison. Your criminal empire crumbles, and your name becomes a cautionary tale."
+    }
+  },
+  "victory_templates": {
+    "victory_low_heat": {
+      "condition": "heat < 30",
+      "text": "🏆 **CRIMINAL MASTERMIND** 🏆\n\nYou have achieved the impossible - a successful criminal career with minimal heat. Your careful planning, strategic thinking, and ability to stay under the radar have made you a legend. You retire wealthy, respected, and free. The perfect crime boss. [VICTORY]"
+    },
+    "victory_medium_heat": {
+      "condition": "heat < 60",
+      "text": "🏆 **NOTORIOUS GANGSTER** 🏆\n\nYou've built a criminal empire through bold actions and calculated risks. While you've attracted attention from law enforcement, your power and influence keep you protected. You're a feared and respected figure in the underworld. [VICTORY]"
+    },
+    "victory_high_heat": {
+      "condition": "heat < 85",
+      "text": "🏆 **LEGENDARY OUTLAW** 🏆\n\nYour criminal career has been marked by audacious crimes and narrow escapes. You're constantly hunted but never caught. Your name strikes fear into the hearts of both criminals and law enforcement. You live dangerously but you live free. [VICTORY]"
+    },
+    "escape_ending": {
+      "condition": "heat < 95",
+      "text": "🏃 **NARROW ESCAPE** 🏃\n\nThe heat became too much, but you managed to escape at the last moment. You flee to a distant country with whatever wealth you could carry. You're alive and free, but always looking over your shoulder. A pyrrhic victory, but victory nonetheless. [ESCAPE]"
+    },
+    "jail_ending": {
+      "condition": "heat >= 100",
+      "text": "⛓️ **BEHIND BARS** ⛓️\n\nThe heat finally caught up with you. Federal agents, corrupt cops, and rival gangs all closed in at once. You're arrested and sentenced to life in prison. Your criminal empire crumbles, and your name becomes a cautionary tale. The house always wins in the end. [DEFEAT]"
+    }
+  },
+  "warning_thresholds": {
+  "heat": {
+    "critical": 90,
+    "danger": 75,
+    "warning": 50,
+    "caution": 25
+  },
+  "messages": {
+    "critical": "🚨 The cops are closing in! One wrong move and you're going to jail!",
+    "danger": "🔥 You're burning hot with the authorities! Lay low!",
+    "warning": "⚠️ Police attention is increasing. Be more careful!",
+    "caution": "👮 You're starting to attract unwanted attention."
+  }
+},
+  "heat_mechanics": {
+    "max_heat": 100,
+    "natural_decay": 2,
+    "decay_frequency": 3
+  }
+}

@@ -1,0 +1,136 @@
+{
+    "user_id": "1344242023577817098",
+    "username": "Mr. Ringo",
+    "created_at": "2026-02-14T22:27:55.206043",
+    "last_updated": "2026-02-14T22:31:50.475528",
+    "pets": {
+        "pet_data": {
+            "name": "Mr. Ringo",
+            "category": "flying",
+            "species": "Snail",
+            "element": "electric",
+            "level": 1,
+            "experience": 150,
+            "ATT": 6,
+            "DEF": 23,
+            "INT": 8,
+            "DEX": 5,
+            "HAP": 19,
+            "ENE": 14,
+            "max_health": 2785,
+            "health": 2785,
+            "created_at": "2026-02-14T22:27:55.207561",
+            "specializations": [
+                "DEF",
+                "HAP"
+            ],
+            "inventory": [
+                {
+                    "name": "Smart",
+                    "emoji_id": 1450441230663155833,
+                    "bonuses": {
+                        "ATT": 5,
+                        "DEF": 5,
+                        "DEX": 5
+                    },
+                    "rarity": "Mythic",
+                    "type": "Material",
+                    "acquired_at": "2026-02-14T22:31:50.474007",
+                    "count": 1
+                }
+            ],
+            "equipment": {},
+            "element2": "holy",
+            "mission_xp_earned": 100,
+            "battle_xp_earned": 0,
+            "training_xp_earned": 50,
+            "total_xp_earned": 150,
+            "missions_completed": 0,
+            "missions_failed": 0,
+            "mission_xp_gambled_total": 0,
+            "mission_xp_gambled_won": 0,
+            "mission_xp_gambled_lost": 0,
+            "mission_gambles_success": 0,
+            "mission_gambles_failed": 0,
+            "training_completed": 0,
+            "training_failed": 0,
+            "battle_stats": {
+                "npc": {
+                    "wins": 0,
+                    "losses": 0,
+                    "xp_earned": 0
+                },
+                "pvp": {
+                    "wins": 0,
+                    "losses": 0,
+                    "xp_earned": 0,
+                    "eliminations": 0
+                },
+                "tournament": {
+                    "wins": 0,
+                    "losses": 0,
+                    "xp_earned": 0
+                },
+                "survivor_series": {
+                    "wins": 0,
+                    "losses": 0,
+                    "eliminations": 0,
+                    "most_eliminations": 0,
+                    "xp_earned": 0
+                }
+            },
+            "gambling_stats": {
+                "slots": {
+                    "total_games_played": 0,
+                    "xp_won_total": 0,
+                    "xp_lost_total": 0,
+                    "highest_xp_win": 0,
+                    "highest_xp_bet": 0,
+                    "games_by_difficulty": {
+                        "easy": 0,
+                        "medium": 0,
+                        "hard": 0,
+                        "insanity": 0
+                    }
+                },
+                "blackjack": {
+                    "rounds_played": 0,
+                    "rounds_won": 0,
+                    "rounds_lost": 0,
+                    "xp_won_total": 0,
+                    "xp_lost_total": 0,
+                    "highest_xp_win": 0,
+                    "highest_xp_bet": 0
+                },
+                "holdem": {
+                    "games_played": 0,
+                    "games_won": 0,
+                    "games_lost": 0,
+                    "xp_won_total": 0,
+                    "xp_lost_total": 0,
+                    "highest_xp_win": 0,
+                    "highest_xp_bet": 0
+                },
+                "craps": {
+                    "games_played": 0,
+                    "games_won": 0,
+                    "games_lost": 0,
+                    "xp_won_total": 0,
+                    "xp_lost_total": 0,
+                    "highest_xp_win": 0,
+                    "highest_xp_bet": 0
+                },
+                "races": {
+                    "races_played": 0,
+                    "races_won": 0,
+                    "races_lost": 0,
+                    "xp_won_total": 0,
+                    "xp_lost_total": 0,
+                    "highest_xp_win": 0,
+                    "highest_xp_bet": 0
+                }
+            }
+        }
+    },
+    "active_pet": "pet"
+}
