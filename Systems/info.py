@@ -48,9 +48,9 @@ class TicketConfirmView(discord.ui.View):
             item.disabled = True
         await interaction.message.edit(view=self)
         
-    @discord.ui.button(label="Deny", style=discord.ButtonStyle.danger)
+    @discord.ui.button(label="Deny", style=discord.ButtonStyle.danger, emoji=emoji_mod.get_partial('Warning') or "❌")
     async def deny(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.send_message("❌ Ticket denied. Deleting channel in 5 seconds...", ephemeral=True)
+        await interaction.response.send_message(f"{emoji_mod.mention('Warning') or '❌'} Ticket denied. Deleting channel in 5 seconds...", ephemeral=True)
         # Disable buttons to prevent re-clicking
         for item in self.children:
             item.disabled = True
@@ -181,7 +181,7 @@ class TicketModal(ui.Modal, title="Enter Nation Details"):
             }
             
             if self.ticket_type == "membership":
-                embed = build_nation_mini_embed(
+                embed = await build_nation_mini_embed(
                     nation=nation,
                     vacation_turns=int(nation.get("vacation_mode_turns", 0)),
                     beige_turns=int(nation.get("beige_turns", 0)),
@@ -217,7 +217,7 @@ class TicketModal(ui.Modal, title="Enter Nation Details"):
                     "total_score": alliance.get("score", 0)
                 }
                 
-                embed = build_alliance_mini_embed(full_mill_data, nations_count)
+                embed = await build_alliance_mini_embed(full_mill_data, nations_count)
                 
                 # Update save data with alliance ID
                 save_data["alliance_id"] = alliance_id
