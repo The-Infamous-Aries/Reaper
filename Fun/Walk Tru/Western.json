@@ -1,0 +1,692 @@
+{
+  "story_map": {
+    "event_start": {
+      "text": "The sun beats down on your dusty hat as you ride into the frontier town of Deadwood Gulch. Your reputation as a gunslinger gambler precedes you, but so does the bounty on your head. The saloon doors swing in the wind, and you can hear the sound of poker chips and piano music. What's your first move, partner?",
+      "choices": {
+        "1. Enter the saloon for a high-stakes poker game": {
+          "success_chance": 70,
+          "success_text": ["You win big at the poker table, earning respect and coin. The other gamblers tip their hats to your skill.", "Your poker face is legendary. You clean house and make valuable contacts."],
+          "failure_text": ["You're caught cheating and barely escape with your life. The angry gamblers chase you out.", "A sore loser accuses you of marking cards. Fists fly and you take a beating."],
+          "success_next_stage": "event_1",
+          "failure_next_stage": "event_1",
+          "health_change": -5,
+          "success_health_change": 5
+        },
+        "2. Challenge the local sheriff to a duel": {
+          "success_chance": 50,
+          "success_text": ["Your quick draw is faster than lightning. The sheriff backs down, impressed by your skill.", "You outdraw the sheriff cleanly. Your reputation grows throughout the territory."],
+          "failure_text": ["The sheriff's bullet grazes your arm. You retreat, wounded but alive.", "You're slower on the draw. The sheriff's shot finds its mark."],
+          "success_next_stage": "event_1",
+          "failure_next_stage": "event_1",
+          "health_change": -15,
+          "success_health_change": 0,
+          "total_failure_chance": 5
+        },
+        "3. Quietly gather information about local opportunities": {
+          "success_chance": 85,
+          "success_text": ["You learn about a wealthy cattle baron's poker game tonight. Perfect opportunity.", "The bartender tips you off about a gold shipment coming through town."],
+          "failure_text": ["Your questions attract unwanted attention from bounty hunters.", "A suspicious townsperson alerts the authorities to your presence."],
+          "success_next_stage": "event_1",
+          "failure_next_stage": "event_1",
+          "health_change": -3,
+          "success_health_change": 2
+        }
+      }
+    },
+    "event_1": {
+      "text": "Word spreads quickly in Deadwood Gulch. A wealthy cattle baron named 'Big Jim' Morrison is hosting a private poker game tonight with a $1000 buy-in. Meanwhile, you overhear talk of a gold shipment arriving on tomorrow's stagecoach. Your health is holding steady, but every choice matters in this dangerous territory.",
+      "choices": {
+        "1. Join Big Jim's high-stakes poker game": {
+          "success_chance": 60,
+          "success_text": ["You bluff your way to a massive pot. Big Jim respects your guts and offers you a job.", "Your gambling skills shine. You walk away with enough gold to last months."],
+          "failure_text": ["Big Jim catches you palming cards. His men rough you up before throwing you out.", "You lose everything and owe Big Jim money. His enforcers make their displeasure known."],
+          "success_next_stage": "event_2",
+          "failure_next_stage": "event_2",
+          "health_change": -10,
+          "success_health_change": 3
+        },
+        "2. Plan to rob the gold shipment stagecoach": {
+          "success_chance": 40,
+          "success_text": ["Your ambush is perfect. The guards surrender without a fight, and you ride away rich.", "You successfully hold up the stagecoach and escape into the badlands."],
+          "failure_text": ["The stagecoach has more guards than expected. You're shot during the failed robbery.", "A hidden shotgun guard gets the drop on you. You barely escape with your life."],
+          "success_next_stage": "event_2",
+          "failure_next_stage": "event_2",
+          "health_change": -20,
+          "success_health_change": 0,
+          "total_failure_chance": 10
+        },
+        "3. Seek work as a hired gun for local ranchers": {
+          "success_chance": 75,
+          "success_text": ["A rancher hires you to deal with rustlers. Honest work that pays well.", "Your reputation gets you steady employment protecting cattle drives."],
+          "failure_text": ["The ranchers don't trust a known gambler. You're turned away at every door.", "A rival gunslinger challenges your credentials. The confrontation doesn't go well."],
+          "success_next_stage": "event_2",
+          "failure_next_stage": "event_2",
+          "health_change": -5,
+          "success_health_change": 5
+        }
+      }
+    },
+    "event_2": {
+      "text": "Your actions have consequences in this small town. Whether through gambling, robbery, or honest work, you've made your mark. Now a mysterious woman in black approaches you with a proposition involving a train robbery. The stakes are getting higher, and your health is being tested.",
+      "choices": {
+        "1. Accept the woman's train robbery proposal": {
+          "success_chance": 45,
+          "success_text": ["The train job goes perfectly. You and the woman escape with a fortune in gold.", "Your partnership with the mysterious woman proves profitable and exciting."],
+          "failure_text": ["It's a trap! The woman is working with the law. You're ambushed by federal marshals.", "The train has military guards. You're shot multiple times during the failed heist."],
+          "success_next_stage": "event_3",
+          "failure_next_stage": "event_3",
+          "health_change": -25,
+          "success_health_change": 0,
+          "total_failure_chance": 15
+        },
+        "2. Decline and report her to the authorities": {
+          "success_chance": 80,
+          "success_text": ["The sheriff rewards your honesty. Your reputation as a reformed gunslinger grows.", "Turning in the woman earns you respect and a clean slate with the law."],
+          "failure_text": ["The woman escapes and puts a price on your head. Her gang comes for revenge.", "The authorities don't believe you. You're arrested as an accomplice."],
+          "success_next_stage": "event_3",
+          "failure_next_stage": "event_3",
+          "health_change": -8,
+          "success_health_change": 8
+        },
+        "3. Follow the woman to learn more about her plans": {
+          "success_chance": 65,
+          "success_text": ["You discover she's planning something bigger than a simple train robbery.", "Your surveillance reveals valuable information about a criminal network."],
+          "failure_text": ["She spots you following her. Her associates give you a painful warning.", "You walk into an ambush. The woman's gang doesn't appreciate being spied on."],
+          "success_next_stage": "event_3",
+          "failure_next_stage": "event_3",
+          "health_change": -12,
+          "success_health_change": 2
+        }
+      }
+    },
+    "event_3": {
+      "text": "The frontier is heating up. Federal marshals are asking questions, and your name keeps coming up in conversations. A famous gunslinger known as 'Dead-Eye Dan' has arrived in town, claiming you stole his reputation. The tension is thick as molasses.",
+      "choices": {
+        "1. Challenge Dead-Eye Dan to a formal duel": {
+          "success_chance": 55,
+          "success_text": ["Your draw is true and fast. Dead-Eye Dan falls, and your legend is secured.", "You outdraw the famous gunslinger. The whole territory will know your name."],
+          "failure_text": ["Dead-Eye Dan lives up to his reputation. His bullet finds its mark.", "You're fast, but not fast enough. Dan's shot wounds you severely."],
+          "success_next_stage": "event_4",
+          "failure_next_stage": "event_4",
+          "health_change": -20,
+          "success_health_change": 0,
+          "total_failure_chance": 8
+        },
+        "2. Try to avoid confrontation and leave town": {
+          "success_chance": 70,
+          "success_text": ["You slip out of town under cover of darkness. Sometimes discretion is the better part of valor.", "Your strategic retreat saves your life. You'll fight another day."],
+          "failure_text": ["Dead-Eye Dan tracks you down on the trail. There's no avoiding this fight.", "Bounty hunters catch up with you outside town. Your escape attempt fails."],
+          "success_next_stage": "event_4",
+          "failure_next_stage": "event_4",
+          "health_change": -10,
+          "success_health_change": 5
+        },
+        "3. Propose a gambling contest instead of gunplay": {
+          "success_chance": 40,
+          "success_text": ["Dead-Eye Dan accepts your poker challenge. You outplay him and win his respect.", "Your gambling skills prove superior. Dan admits you're the better man."],
+          "failure_text": ["Dan laughs at your proposal and forces the gunfight anyway.", "The gambling contest is a ruse. Dan cheats and then draws on you."],
+          "success_next_stage": "event_4",
+          "failure_next_stage": "event_4",
+          "health_change": -15,
+          "success_health_change": 3
+        }
+      }
+    },
+    "event_4": {
+      "text": "Your reputation precedes you now, for better or worse. A telegram arrives offering you a job as a town marshal in Silver Creek, a lawless mining town. Alternatively, a gang of outlaws wants to recruit you for a bank robbery. Your health is being tested by the constant danger.",
+      "choices": {
+        "1. Accept the marshal position in Silver Creek": {
+          "success_chance": 65,
+          "success_text": ["You clean up Silver Creek and become a respected lawman. Your past is forgiven.", "Your badge brings order to chaos. The miners look up to you."],
+          "failure_text": ["The corrupt mining bosses don't want law and order. They hire assassins.", "Your first day as marshal nearly becomes your last. The outlaws fight back hard."],
+          "success_next_stage": "event_5",
+          "failure_next_stage": "event_5",
+          "health_change": -12,
+          "success_health_change": 10
+        },
+        "2. Join the outlaw gang for the bank robbery": {
+          "success_chance": 35,
+          "success_text": ["The bank job goes smoothly. You're now rich but forever an outlaw.", "Your skills help the gang pull off the perfect heist."],
+          "failure_text": ["The bank has hidden defenses. You're shot multiple times during the failed robbery.", "A rival gang ambushes you during the heist. It's a bloodbath."],
+          "success_next_stage": "event_5",
+          "failure_next_stage": "event_5",
+          "health_change": -30,
+          "success_health_change": -5,
+          "total_failure_chance": 20
+        },
+        "3. Start your own gambling hall and saloon": {
+          "success_chance": 75,
+          "success_text": ["Your establishment becomes the most popular in the territory. Honest profit at last.", "Gamblers and cowboys flock to your saloon. You're becoming wealthy legitimately."],
+          "failure_text": ["Competitors try to burn down your saloon. You're caught in the fire.", "A protection racket demands payment. When you refuse, they make an example of you."],
+          "success_next_stage": "event_5",
+          "failure_next_stage": "event_5",
+          "health_change": -8,
+          "success_health_change": 7
+        }
+      }
+    },
+    "event_5": {
+      "text": "The frontier is changing, and so are you. Railroad companies are bringing civilization, but also new kinds of corruption. A railroad baron offers you a job as his personal enforcer, while a group of homesteaders asks for your help against land grabbers.",
+      "choices": {
+        "1. Work for the railroad baron as an enforcer": {
+          "success_chance": 50,
+          "success_text": ["Your reputation intimidates the baron's enemies. You're well paid for your services.", "The railroad work is steady and profitable. You're becoming respectable."],
+          "failure_text": ["The homesteaders fight back harder than expected. You're caught in a range war.", "A rival railroad hires better guns than you. The confrontation goes badly."],
+          "success_next_stage": "event_6",
+          "failure_next_stage": "event_6",
+          "health_change": -15,
+          "success_health_change": 3
+        },
+        "2. Help the homesteaders fight the land grabbers": {
+          "success_chance": 60,
+          "success_text": ["Your guns help the settlers keep their land. They offer you a place to call home.", "Justice prevails with your help. The grateful families welcome you as one of their own."],
+          "failure_text": ["The land grabbers have more firepower than expected. You're outgunned and wounded.", "Corrupt officials side with the grabbers. You're branded an outlaw again."],
+          "success_next_stage": "event_6",
+          "failure_next_stage": "event_6",
+          "health_change": -10,
+          "success_health_change": 8
+        },
+        "3. Play both sides for maximum profit": {
+          "success_chance": 30,
+          "success_text": ["Your double-dealing pays off handsomely. Both sides pay you to stay neutral.", "You manipulate the conflict to your advantage, coming out ahead financially."],
+          "failure_text": ["Both sides discover your treachery. Now everyone wants you dead.", "Your double-crossing is exposed. You're shot by agents from both factions."],
+          "success_next_stage": "event_6",
+          "failure_next_stage": "event_6",
+          "health_change": -25,
+          "success_health_change": 0,
+          "total_failure_chance": 12
+        }
+      }
+    },
+    "event_6": {
+      "text": "Your choices have shaped your path through the dangerous frontier. Now a final challenge approaches: a legendary gunslinger known as 'The Phantom' has put a bounty on your head. Meanwhile, an opportunity for one last big score presents itself.",
+      "choices": {
+        "1. Hunt down The Phantom before he finds you": {
+          "success_chance": 45,
+          "success_text": ["You track down The Phantom and defeat him in an epic showdown. Your legend is complete.", "The hunter becomes the hunted. You eliminate The Phantom and claim his reputation."],
+          "failure_text": ["The Phantom lives up to his name. He ambushes you when you least expect it.", "Your hunt fails. The Phantom's bullet finds its mark in the final confrontation."],
+          "success_next_stage": "event_7",
+          "failure_next_stage": "event_7",
+          "health_change": -20,
+          "success_health_change": 0,
+          "total_failure_chance": 10
+        },
+        "2. Take the big score and retire from gunslinging": {
+          "success_chance": 70,
+          "success_text": ["The final heist sets you up for life. You disappear into comfortable anonymity.", "Your last job is your best. You retire wealthy and alive."],
+          "failure_text": ["The job goes wrong. You're wounded and barely escape with your life.", "The Phantom catches up during your final score. The timing couldn't be worse."],
+          "success_next_stage": "event_7",
+          "failure_next_stage": "event_7",
+          "health_change": -12,
+          "success_health_change": 5
+        },
+        "3. Fake your own death to escape both problems": {
+          "success_chance": 55,
+          "success_text": ["Your fake death is convincing. You start a new life under a different name.", "Everyone believes you're dead. You're finally free from your past."],
+          "failure_text": ["The Phantom sees through your ruse. Your fake death becomes very real.", "Your deception is discovered. Now you have even more enemies."],
+          "success_next_stage": "event_7",
+          "failure_next_stage": "event_7",
+          "health_change": -15,
+          "success_health_change": 3
+        }
+      }
+    },
+    "event_7": {
+      "text": "The frontier days are ending, but your story continues. A new century approaches, bringing automobiles and electric lights to replace horses and oil lamps. How will a gunslinger gambler adapt to this changing world?",
+      "choices": {
+        "1. Embrace the modern world and start a legitimate business": {
+          "success_chance": 80,
+          "success_text": ["You successfully transition to the modern era, using your skills in new ways.", "Your business acumen, honed by years of gambling, serves you well in legitimate enterprise."],
+          "failure_text": ["Old enemies from your gunslinging days catch up with you in the city.", "Your past reputation makes it hard to gain trust in legitimate business circles."],
+          "success_next_stage": "event_8",
+          "failure_next_stage": "event_8",
+          "health_change": -5,
+          "success_health_change": 10
+        },
+        "2. Become a Wild West show performer": {
+          "success_chance": 65,
+          "success_text": ["Your real gunslinging skills make you a star of the Wild West shows.", "Audiences love your authentic frontier stories and trick shooting."],
+          "failure_text": ["A rival performer sabotages your act. You're injured during a show.", "The show business is more cutthroat than the frontier ever was."],
+          "success_next_stage": "event_8",
+          "failure_next_stage": "event_8",
+          "health_change": -8,
+          "success_health_change": 5
+        },
+        "3. Return to the frontier for one last adventure": {
+          "success_chance": 40,
+          "success_text": ["The old frontier still has room for a legendary gunslinger. You find your place.", "Your final frontier adventure cements your legend for all time."],
+          "failure_text": ["The frontier has changed too much. You're a relic of a bygone era.", "Modern lawmen with modern weapons prove too much for an old gunslinger."],
+          "success_next_stage": "event_8",
+          "failure_next_stage": "event_8",
+          "health_change": -18,
+          "success_health_change": 0,
+          "total_failure_chance": 8
+        }
+      }
+    },
+    "event_8": {
+      "text": "Your legend has grown beyond the frontier. Writers want to tell your story, and young men seek to follow in your footsteps. But the past has a way of catching up, and your health has been tested by years of danger.",
+      "choices": {
+        "1. Write your memoirs and share your story": {
+          "success_chance": 75,
+          "success_text": ["Your autobiography becomes a bestseller. Your legend lives on in print.", "People are fascinated by your true stories of the frontier days."],
+          "failure_text": ["Your memoirs reveal too much. Old enemies come out of hiding.", "Lawmen use your book as evidence of past crimes. You're arrested."],
+          "success_next_stage": "event_9",
+          "failure_next_stage": "event_9",
+          "health_change": -6,
+          "success_health_change": 8
+        },
+        "2. Train a new generation of gunslingers": {
+          "success_chance": 50,
+          "success_text": ["Your students carry on your legacy with honor and skill.", "You pass on not just shooting skills, but wisdom about right and wrong."],
+          "failure_text": ["One of your students turns bad and uses your training for evil.", "A student challenges you to prove they've surpassed the master."],
+          "success_next_stage": "event_9",
+          "failure_next_stage": "event_9",
+          "health_change": -12,
+          "success_health_change": 3
+        },
+        "3. Disappear into anonymity and live quietly": {
+          "success_chance": 85,
+          "success_text": ["You find peace in a quiet life away from the spotlight.", "Anonymity brings the rest and healing your body desperately needs."],
+          "failure_text": ["Even in hiding, your past finds you. There's no escape from your reputation.", "A bounty hunter tracks you down despite your careful concealment."],
+          "success_next_stage": "event_9",
+          "failure_next_stage": "event_9",
+          "health_change": -4,
+          "success_health_change": 12
+        }
+      }
+    },
+    "event_9": {
+      "text": "The world has changed dramatically since your gunslinging days. Automobiles fill the streets where horses once walked. But your reputation as a frontier legend continues to grow. A wealthy collector wants to buy your famous guns, while a movie producer wants to make a film about your life.",
+      "choices": {
+        "1. Sell your guns to the collector and retire completely": {
+          "success_chance": 90,
+          "success_text": ["The collector pays handsomely for your legendary weapons. You're set for life.", "Your guns will be displayed in a museum, preserving your legacy forever."],
+          "failure_text": ["The collector is a fraud who steals your guns and disappears.", "The deal goes bad when the collector tries to cheat you."],
+          "success_next_stage": "event_10",
+          "failure_next_stage": "event_10",
+          "health_change": -3,
+          "success_health_change": 15
+        },
+        "2. Work with the movie producer to tell your story": {
+          "success_chance": 60,
+          "success_text": ["The movie becomes a huge success, immortalizing your legend on screen.", "Working in Hollywood gives you a new lease on life and purpose."],
+          "failure_text": ["Hollywood corruption ruins the project and tarnishes your reputation.", "The producer exploits your story and leaves you with nothing."],
+          "success_next_stage": "event_10",
+          "failure_next_stage": "event_10",
+          "health_change": -10,
+          "success_health_change": 5
+        },
+        "3. Keep your guns and maintain your independence": {
+          "success_chance": 70,
+          "success_text": ["You maintain your dignity and independence. Your guns stay where they belong.", "Keeping your weapons preserves the mystique and power of your legend."],
+          "failure_text": ["Gun thieves target you for your famous weapons. You're attacked in your home.", "Criminals think an old gunslinger is an easy target. They're wrong, but you pay a price."],
+          "success_next_stage": "event_10",
+          "failure_next_stage": "event_10",
+          "health_change": -8,
+          "success_health_change": 3
+        }
+      }
+    },
+    "event_10": {
+      "text": "The Roaring Twenties have arrived, bringing jazz music, speakeasies, and a new kind of outlaw - the bootlegger. Your frontier skills might be useful in this new world of organized crime. A crime boss approaches you with an offer, while the government wants to hire you as a consultant.",
+      "choices": {
+        "1. Join the crime boss as an enforcer in the bootlegging business": {
+          "success_chance": 40,
+          "success_text": ["Your gunslinging skills translate perfectly to the bootlegging wars. You're feared and respected.", "The crime boss values your experience and makes you a trusted lieutenant."],
+          "failure_text": ["Federal agents raid the operation. You're caught in a massive shootout.", "A rival gang targets you specifically because of your reputation."],
+          "success_next_stage": "event_11",
+          "failure_next_stage": "event_11",
+          "health_change": -20,
+          "success_health_change": 0,
+          "total_failure_chance": 15
+        },
+        "2. Work as a government consultant hunting bootleggers": {
+          "success_chance": 75,
+          "success_text": ["Your frontier tracking skills help the government catch many criminals.", "Working for the law gives you a chance to redeem your past."],
+          "failure_text": ["Corrupt officials tip off the criminals. You walk into an ambush.", "The bootleggers put a price on your head for helping the feds."],
+          "success_next_stage": "event_11",
+          "failure_next_stage": "event_11",
+          "health_change": -8,
+          "success_health_change": 8
+        },
+        "3. Stay neutral and open a legitimate security business": {
+          "success_chance": 85,
+          "success_text": ["Your security business thrives. Rich clients pay well for your protection.", "You've found a way to use your skills legally and profitably."],
+          "failure_text": ["Both criminals and corrupt cops try to extort your business.", "A protection racket targets your company for 'insurance' payments."],
+          "success_next_stage": "event_11",
+          "failure_next_stage": "event_11",
+          "health_change": -5,
+          "success_health_change": 10
+        }
+      }
+    },
+    "event_11": {
+      "text": "The Great Depression has hit America hard. Banks are failing, people are desperate, and a new breed of bank robber is making headlines. Your old skills are in demand again, but your aging body feels every year of hard living.",
+      "choices": {
+        "1. Help the FBI hunt down the new bank robbers": {
+          "success_chance": 65,
+          "success_text": ["Your experience helps the FBI capture several notorious bank robbers.", "The government rewards your service with a comfortable pension."],
+          "failure_text": ["The bank robbers are younger and more ruthless than you expected.", "You're ambushed while tracking a gang of desperate criminals."],
+          "success_next_stage": "event_12",
+          "failure_next_stage": "event_12",
+          "health_change": -12,
+          "success_health_change": 6
+        },
+        "2. Protect banks and wealthy clients from robbers": {
+          "success_chance": 80,
+          "success_text": ["Your reputation alone deters most would-be robbers. You're well paid for your services.", "Banks compete to hire you as their security consultant."],
+          "failure_text": ["Desperate times create desperate criminals who don't fear your reputation.", "You're overwhelmed by a gang of hungry, desperate robbers."],
+          "success_next_stage": "event_12",
+          "failure_next_stage": "event_12",
+          "health_change": -6,
+          "success_health_change": 8
+        },
+        "3. Help struggling families by robbing from the rich": {
+          "success_chance": 30,
+          "success_text": ["You become a folk hero, stealing from the rich to help the poor.", "Your Robin Hood act wins you the love of common people."],
+          "failure_text": ["The authorities catch up with you. Your age has slowed your escape skills.", "A wealthy target has better security than you anticipated."],
+          "success_next_stage": "event_12",
+          "failure_next_stage": "event_12",
+          "health_change": -25,
+          "success_health_change": 0,
+          "total_failure_chance": 18
+        }
+      }
+    },
+    "event_12": {
+      "text": "World War II has begun, and even in your advanced years, your country calls upon your expertise. The military wants to train soldiers in marksmanship and survival skills. Meanwhile, foreign spies are operating on American soil.",
+      "choices": {
+        "1. Train military recruits in marksmanship and survival": {
+          "success_chance": 90,
+          "success_text": ["Your training saves countless soldiers' lives overseas. You're honored as a war hero.", "Young soldiers look up to you as a living legend of American marksmanship."],
+          "failure_text": ["A training accident injures you and several recruits.", "Your old methods don't translate well to modern military tactics."],
+          "success_next_stage": "event_13",
+          "failure_next_stage": "event_13",
+          "health_change": -4,
+          "success_health_change": 12
+        },
+        "2. Hunt foreign spies operating in America": {
+          "success_chance": 55,
+          "success_text": ["Your frontier tracking skills help uncover a major spy ring.", "The government secretly honors your contribution to national security."],
+          "failure_text": ["The spy network is more sophisticated than frontier outlaws. They outmaneuver you.", "Foreign agents target you for elimination after you get too close."],
+          "success_next_stage": "event_13",
+          "failure_next_stage": "event_13",
+          "health_change": -15,
+          "success_health_change": 3
+        },
+        "3. Protect defense plants from sabotage": {
+          "success_chance": 75,
+          "success_text": ["Your security measures prevent several sabotage attempts.", "Defense contractors compete to hire your security services."],
+          "failure_text": ["Saboteurs slip past your defenses and damage critical war production.", "You're blamed when a defense plant is successfully attacked."],
+          "success_next_stage": "event_13",
+          "failure_next_stage": "event_13",
+          "health_change": -8,
+          "success_health_change": 7
+        }
+      }
+    },
+    "event_13": {
+      "text": "The war is over, and America is changing again. Television is becoming popular, and there's talk of making a TV show about your life. Your health is declining, but your legend continues to grow with each passing year.",
+      "choices": {
+        "1. Star in your own television Western series": {
+          "success_chance": 70,
+          "success_text": ["Your TV show becomes a hit. A new generation learns about the Old West from you.", "Television makes you more famous than you ever were as a real gunslinger."],
+          "failure_text": ["The show is poorly made and damages your reputation.", "Television executives exploit your story and leave you with nothing."],
+          "success_next_stage": "event_14",
+          "failure_next_stage": "event_14",
+          "health_change": -6,
+          "success_health_change": 8
+        },
+        "2. Consult on Western movies and TV shows for authenticity": {
+          "success_chance": 85,
+          "success_text": ["Your expertise makes Western movies more authentic and popular.", "Hollywood pays you well for your knowledge of the real frontier."],
+          "failure_text": ["Hollywood ignores your advice and makes ridiculous, inaccurate Westerns.", "Producers use your name but ignore your input, damaging your credibility."],
+          "success_next_stage": "event_14",
+          "failure_next_stage": "event_14",
+          "health_change": -3,
+          "success_health_change": 10
+        },
+        "3. Retire completely and write your final memoirs": {
+          "success_chance": 95,
+          "success_text": ["Your final book becomes the definitive account of the Old West.", "You find peace in your final years, your legacy secure."],
+          "failure_text": ["A dishonest publisher steals your work and publishes it without credit.", "Your memoirs are dismissed as the fantasies of an old man."],
+          "success_next_stage": "event_14",
+          "failure_next_stage": "event_14",
+          "health_change": -2,
+          "success_health_change": 15
+        }
+      }
+    },
+    "event_14": {
+      "text": "The 1950s bring prosperity to America, but you're feeling your age. A young historian wants to record your stories for posterity, while a museum wants to create an exhibit about your life. Your health is fragile, but your spirit remains strong.",
+      "choices": {
+        "1. Work with the historian to preserve your stories": {
+          "success_chance": 80,
+          "success_text": ["Your recorded stories become a valuable historical record.", "Future generations will know the truth about the Old West through your words."],
+          "failure_text": ["The historian twists your stories to fit his own agenda.", "Your recorded interviews are edited to make you look foolish."],
+          "success_next_stage": "event_15",
+          "failure_next_stage": "event_15",
+          "health_change": -4,
+          "success_health_change": 8
+        },
+        "2. Help create the museum exhibit about your life": {
+          "success_chance": 75,
+          "success_text": ["The museum exhibit honors your life and the era you lived through.", "Visitors leave the museum with a true understanding of frontier life."],
+          "failure_text": ["The museum sensationalizes your life and gets the facts wrong.", "The exhibit makes you look like a cartoon character rather than a real person."],
+          "success_next_stage": "event_15",
+          "failure_next_stage": "event_15",
+          "health_change": -6,
+          "success_health_change": 6
+        },
+        "3. Spend your remaining time with family and friends": {
+          "success_chance": 90,
+          "success_text": ["You find joy and peace in the company of loved ones.", "Your family treasures every moment they have left with you."],
+          "failure_text": ["You realize you've outlived most of your friends and family.", "Regret over past choices haunts your final years."],
+          "success_next_stage": "event_15",
+          "failure_next_stage": "event_15",
+          "health_change": -3,
+          "success_health_change": 12
+        }
+      }
+    },
+    "event_15": {
+      "text": "The 1960s are bringing massive changes to America. Young people are questioning everything, including the myths of the Old West. Your health is failing, but you've lived to see the world transform beyond recognition.",
+      "choices": {
+        "1. Speak to young people about the real Old West": {
+          "success_chance": 60,
+          "success_text": ["Young people are fascinated by your authentic stories of the frontier.", "You bridge the gap between the old world and the new."],
+          "failure_text": ["Young people dismiss you as a relic of a violent, outdated past.", "Your stories are seen as glorifying violence and lawlessness."],
+          "success_next_stage": "event_16",
+          "failure_next_stage": "event_16",
+          "health_change": -8,
+          "success_health_change": 5
+        },
+        "2. Defend the honor of the Old West against revisionist historians": {
+          "success_chance": 45,
+          "success_text": ["Your firsthand accounts challenge the new negative portrayals of the frontier.", "You successfully defend the complexity and humanity of the Old West."],
+          "failure_text": ["Modern historians dismiss your accounts as biased and unreliable.", "Your defense of the Old West is seen as defending violence and injustice."],
+          "success_next_stage": "event_16",
+          "failure_next_stage": "event_16",
+          "health_change": -12,
+          "success_health_change": 2
+        },
+        "3. Accept that times have changed and focus on personal peace": {
+          "success_chance": 85,
+          "success_text": ["You find wisdom in accepting change and focusing on what truly matters.", "Your peaceful acceptance inspires others facing the challenges of aging."],
+          "failure_text": ["Bitterness over how the world has changed consumes your final years.", "You become angry and isolated as the world moves past you."],
+          "success_next_stage": "event_16",
+          "failure_next_stage": "event_16",
+          "health_change": -5,
+          "success_health_change": 10
+        }
+      }
+    },
+    "event_16": {
+      "text": "You've lived through the transformation of America from frontier to superpower. Your body is frail, but your mind remains sharp. A documentary filmmaker wants to capture your final thoughts about your extraordinary life.",
+      "choices": {
+        "1. Participate in the documentary about your life": {
+          "success_chance": 70,
+          "success_text": ["The documentary becomes a classic, preserving your story for future generations.", "Your final interview becomes a powerful testament to the American frontier experience."],
+          "failure_text": ["The filmmaker exploits your frailty and makes you look pathetic.", "The documentary focuses on sensational violence rather than your full story."],
+          "success_next_stage": "event_17",
+          "failure_next_stage": "event_17",
+          "health_change": -6,
+          "success_health_change": 5
+        },
+        "2. Write final letters to be opened after your death": {
+          "success_chance": 90,
+          "success_text": ["Your final letters provide wisdom and closure to those you leave behind.", "Your written words become treasured family heirlooms."],
+          "failure_text": ["Your letters are lost in the chaos after your death.", "No one bothers to read your final thoughts and wisdom."],
+          "success_next_stage": "event_17",
+          "failure_next_stage": "event_17",
+          "health_change": -3,
+          "success_health_change": 8
+        },
+        "3. Spend your final days in quiet reflection": {
+          "success_chance": 95,
+          "success_text": ["You find peace in reflecting on a life fully lived.", "Your quiet dignity in facing death inspires all who know you."],
+          "failure_text": ["Regrets and what-ifs torment your final days.", "You're haunted by all the violence and choices of your past."],
+          "success_next_stage": "event_17",
+          "failure_next_stage": "event_17",
+          "health_change": -2,
+          "success_health_change": 10
+        }
+      }
+    },
+    "event_17": {
+      "text": "Your legendary life is drawing to a close. You've survived gunfights, outlaws, wars, and the complete transformation of America. Your health is critical, but your legacy is secure. How will you face your final chapter?",
+      "choices": {
+        "1. Gather your family for final goodbyes": {
+          "success_chance": 85,
+          "success_text": ["Your family surrounds you with love in your final days.", "You pass on your wisdom and values to the next generation."],
+          "failure_text": ["Family conflicts and old grudges surface during your final days.", "Some family members are too busy or distant to come say goodbye."],
+          "success_next_stage": "event_18",
+          "failure_next_stage": "event_18",
+          "health_change": -4,
+          "success_health_change": 8
+        },
+        "2. Make peace with old enemies and rivals": {
+          "success_chance": 60,
+          "success_text": ["You find forgiveness and peace with those you once fought.", "Old enemies become friends in the face of mortality."],
+          "failure_text": ["Some old enemies refuse to forgive or be forgiven.", "Attempts at reconciliation reopen old wounds and conflicts."],
+          "success_next_stage": "event_18",
+          "failure_next_stage": "event_18",
+          "health_change": -8,
+          "success_health_change": 5
+        },
+        "3. Face death alone with dignity": {
+          "success_chance": 75,
+          "success_text": ["You face death with the same courage you showed in life.", "Your dignified acceptance of mortality becomes part of your legend."],
+          "failure_text": ["Fear and loneliness overwhelm you in your final hours.", "You die bitter and alone, regretting the isolation your choices brought."],
+          "success_next_stage": "event_18",
+          "failure_next_stage": "event_18",
+          "health_change": -6,
+          "success_health_change": 3
+        }
+      }
+    },
+    "event_18": {
+      "text": "This is your final stand, not against outlaws or lawmen, but against time itself. Your body is failing, but your spirit burns as bright as ever. The choices you make now will determine how you're remembered.",
+      "choices": {
+        "1. Share your final wisdom about life and the frontier": {
+          "success_chance": 80,
+          "success_text": ["Your final words become legendary, inspiring future generations.", "You distill a lifetime of experience into profound final wisdom."],
+          "failure_text": ["Your final words are misunderstood or taken out of context.", "Pain and medication make your final thoughts unclear."],
+          "success_next_stage": "event_19",
+          "failure_next_stage": "event_19",
+          "health_change": -5,
+          "success_health_change": 5
+        },
+        "2. Ensure your guns and possessions go to worthy heirs": {
+          "success_chance": 90,
+          "success_text": ["Your legendary guns are passed to worthy successors who honor your memory.", "Your possessions become treasured family heirlooms."],
+          "failure_text": ["Family members fight over your possessions, dishonoring your memory.", "Your guns end up in the wrong hands or are sold for profit."],
+          "success_next_stage": "event_19",
+          "failure_next_stage": "event_19",
+          "health_change": -3,
+          "success_health_change": 7
+        },
+        "3. Die as you lived - on your own terms": {
+          "success_chance": 95,
+          "success_text": ["You control your final moments, dying with dignity and on your own terms.", "Your death is as legendary as your life - peaceful but powerful."],
+          "failure_text": ["Death comes suddenly, robbing you of the chance to die on your terms.", "Your final moments are chaotic and undignified."],
+          "success_next_stage": "event_19",
+          "failure_next_stage": "event_19",
+          "health_change": -2,
+          "success_health_change": 10
+        }
+      }
+    },
+    "event_19": {
+      "text": "Your time has come. You've lived through the entire transformation of the American frontier, from wild territory to modern nation. Your legend will outlive you, but how that legend is remembered depends on your final choices.",
+      "choices": {
+        "1. Pass peacefully surrounded by loved ones": {
+          "success_chance": 85,
+          "success_text": ["You die peacefully, surrounded by love and respect.", "Your peaceful death becomes the perfect end to a legendary life."],
+          "failure_text": ["Pain and suffering mar your final moments.", "Medical complications make your death difficult and prolonged."],
+          "success_next_stage": "victory",
+          "failure_next_stage": "victory",
+          "health_change": 0,
+          "success_health_change": 0
+        },
+        "2. Die with your boots on, facing one final challenge": {
+          "success_chance": 60,
+          "success_text": ["You die as you lived - facing danger head-on with courage.", "Your final act of bravery becomes the stuff of legend."],
+          "failure_text": ["Your final challenge proves too much for your failing body.", "You die defeated, your legend tarnished by your final failure."],
+          "success_next_stage": "victory",
+          "failure_next_stage": "defeat",
+          "health_change": 0,
+          "success_health_change": 0,
+          "total_failure_chance": 10
+        },
+        "3. Ensure your story will be told truthfully for generations": {
+          "success_chance": 90,
+          "success_text": ["You secure your legacy, ensuring your true story will be told for generations.", "Your final act ensures that the real frontier experience will never be forgotten."],
+          "failure_text": ["Your story becomes distorted myth rather than preserved history.", "Future generations will never know the real you or the real frontier."],
+          "success_next_stage": "victory",
+          "failure_next_stage": "defeat",
+          "health_change": 0,
+          "success_health_change": 0
+        }
+      }
+    }
+  },
+  "ending_templates": {
+    "victory_templates": {
+      "high_health": "🤠 LEGENDARY GUNSLINGER! 🤠\n\nYou've lived a legendary life and died with dignity. Your health remained strong through most of your adventures, and you're remembered as one of the greatest gunslingers who ever lived. Your story inspires generations of Americans to face their challenges with courage and honor.",
+      "medium_health": "🌟 TRUE FRONTIER HERO! 🌟\n\nDespite the wounds and hardships, you've lived an extraordinary life. Your legend grows with each telling, and you're remembered as a true frontier hero who helped shape the American West. Your courage in the face of danger becomes the stuff of legend.",
+      "low_health": "💪 SURVIVOR'S LEGEND! 💪\n\nYou've survived against all odds, though your body bears the scars of a hard life. Your legend is one of perseverance and determination. You proved that it's not how many times you get knocked down, but how many times you get back up that defines a person.",
+      "defeat_health_zero": "⚰️ GUNSLINGER'S END! ⚰️\n\nYour health finally gave out after years of dangerous living. You died as you lived - on the frontier, facing danger head-on. While your life was cut short, your legend lives on in the stories told around campfires and in saloons across the territory.",
+      "defeat_total_failure": "💀 FINAL GAMBLE! 💀\n\nYour final gamble didn't pay off. Whether through bad luck or poor judgment, your legendary run came to an end. But even in defeat, your story becomes part of frontier folklore - a reminder that even the greatest gunslingers are still mortal."
+    }
+  },
+  "victory_templates": {
+    "victory_high_health": "You've lived a legendary life and died with dignity. Your health remained strong through most of your adventures, and you're remembered as one of the greatest gunslingers who ever lived. Your story inspires generations of Americans to face their challenges with courage and honor.",
+    "victory_medium_health": "Despite the wounds and hardships, you've lived an extraordinary life. Your legend grows with each telling, and you're remembered as a true frontier hero who helped shape the American West. Your courage in the face of danger becomes the stuff of legend.",
+    "victory_low_health": "You've survived against all odds, though your body bears the scars of a hard life. Your legend is one of perseverance and determination. You proved that it's not how many times you get knocked down, but how many times you get back up that defines a person.",
+    "defeat_health_zero": "Your health finally gave out after years of dangerous living. You died as you lived - on the frontier, facing danger head-on. While your life was cut short, your legend lives on in the stories told around campfires and in saloons across the territory.",
+    "defeat_total_failure": "Your final gamble didn't pay off. Whether through bad luck or poor judgment, your legendary run came to an end. But even in defeat, your story becomes part of frontier folklore - a reminder that even the greatest gunslingers are still mortal."
+  },
+  "warning_thresholds": {
+  "health": {
+    "critical": 10,
+    "danger": 25,
+    "warning": 50,
+    "caution": 75
+  },
+  "messages": {
+    "critical": "💀 You're barely alive! One more hit could be fatal!",
+    "danger": "🩸 You're badly wounded! Seek medical attention!",
+    "warning": "🤕 You're injured and need to be careful!",
+    "caution": "🩹 You've taken some damage. Watch your health!"
+  }
+},
+  "health_mechanics": {
+    "starting_health": 100,
+    "max_health": 100,
+    "min_health": 0,
+    "natural_recovery": 2,
+    "recovery_frequency": 3
+  }
+}
