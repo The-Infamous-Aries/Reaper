@@ -1,0 +1,622 @@
+{
+    "Pets": {
+        "Alligator": {
+            "Stats": {"ATT": 18, "DEF": 19, "INT": 8, "DEX": 7, "HAP": 12, "ENE": 11},
+            "Spec": ["DEF", "ATT"],
+            "Descriptions": "A patient companion that uses its thick, armored hide and crushing bite to great effect. It's built for power and resilience.",
+            "Actions": {"Attack": "Death Roll", "Defense": "Thick Scales", "Charge": "Ambush Stance"}
+        },
+        "Ant": {
+            "Stats": {"ATT": 7, "DEF": 7, "INT": 19, "DEX": 13, "HAP": 12, "ENE": 17},
+            "Spec": ["INT", "ENE"],
+            "Descriptions": "A fascinating pet demonstrating complex colony behaviors (smarts) and tireless activity, maintaining high energy for foraging.",
+            "Actions": {"Attack": "Mandible Bite", "Defense": "Exoskeleton", "Charge": "Colony Call"}
+        },
+        "Anteater": {
+            "Stats": {"ATT": 10, "DEF": 10, "INT": 15, "DEX": 17, "HAP": 11, "ENE": 12},
+            "Spec": ["DEX", "INT"],
+            "Descriptions": "Quick with its tongue and highly observant, this pet excels at tricky, precise maneuvers and thoughtful actions.",
+            "Actions": {"Attack": "Claw Swipe", "Defense": "Thick Fur", "Charge": "Tongue Flick"}
+        },
+        "Badger": {
+            "Stats": {"ATT": 19, "DEF": 18, "INT": 7, "DEX": 8, "HAP": 10, "ENE": 13},
+            "Spec": ["ATT", "DEF"],
+            "Descriptions": "Tenacious and scrappy, known for its fierce determination and ability to shrug off damage with its sturdy build.",
+            "Actions": {"Attack": "Frenzy Claw", "Defense": "Loose Skin", "Charge": "Tenacity"}
+        },
+        "Bat": {
+            "Stats": {"ATT": 7, "DEF": 8, "INT": 18, "DEX": 23, "HAP": 11, "ENE": 8},
+            "Spec": ["DEX", "INT"],
+            "Descriptions": "Master of the air, it navigates with incredible precision and uses its natural sonar to understand its surroundings perfectly.",
+            "Actions": {"Attack": "Wing Slap", "Defense": "Evasive Flight", "Charge": "Sonar Pulse"}
+        },
+        "Beaver": {
+            "Stats": {"ATT": 8, "DEF": 19, "INT": 21, "DEX": 7, "HAP": 8, "ENE": 12},
+            "Spec": ["DEF", "INT"],
+            "Descriptions": "An expert engineer with a knack for building, its sturdy body and keen intellect make it a surprisingly robust companion.",
+            "Actions": {"Attack": "Tail Slap", "Defense": "Lodge Block", "Charge": "Tooth Sharpen"}
+        },
+        "Bee": {
+            "Stats": {"ATT": 7, "DEF": 8, "INT": 17, "DEX": 19, "HAP": 13, "ENE": 11},
+            "Spec": ["DEX", "INT"],
+            "Descriptions": "Speedy flyer and essential pollinator with complex hive behavior and strong flight dexterity.",
+            "Actions": {"Attack": "Stinger", "Defense": "Evasive Buzz", "Charge": "Pollen Power"}
+        },
+        "Beetle": {
+            "Stats": {"ATT": 10, "DEF": 22, "INT": 7, "DEX": 7, "HAP": 11, "ENE": 18},
+            "Spec": ["DEF", "ENE"],
+            "Descriptions": "Heavily armored insect with a sturdy carapace, providing superior protection and allowing for long periods of sustained activity.",
+            "Actions": {"Attack": "Horn Toss", "Defense": "Carapace", "Charge": "Ground Brace"}
+        },
+        "Bison": {
+            "Stats": {"ATT": 19, "DEF": 23, "INT": 7, "DEX": 6, "HAP": 10, "ENE": 10},
+            "Spec": ["DEF", "ATT"],
+            "Descriptions": "A massive herbivore with incredible charge power and a thick, durable defense.",
+            "Actions": {"Attack": "Heavy Ram", "Defense": "Thick Wool", "Charge": "Stampede Prep"}
+        },
+        "BlueTang": {
+            "Stats": {"ATT": 7, "DEF": 8, "INT": 16, "DEX": 19, "HAP": 14, "ENE": 11},
+            "Spec": ["DEX", "HAP"],
+            "Descriptions": "A cheerful and vibrant swimmer known for its lightning-fast movement and sunny, agreeable disposition.",
+            "Actions": {"Attack": "Fin Slice", "Defense": "Coral Hide", "Charge": "Current Ride"}
+        },
+        "Camel": {
+            "Stats": {"ATT": 8, "DEF": 11, "INT": 17, "DEX": 8, "HAP": 13, "ENE": 18},
+            "Spec": ["ENE", "INT"],
+            "Descriptions": "A companion built for the long haul, using its deep knowledge of navigation and massive endurance to travel tirelessly.",
+            "Actions": {"Attack": "Spit Shot", "Defense": "Sand Endure", "Charge": "Hump Store"}
+        },
+        "Cardinal": {
+            "Stats": {"ATT": 7, "DEF": 7, "INT": 11, "DEX": 21, "HAP": 22, "ENE": 7},
+            "Spec": ["HAP", "DEX"],
+            "Descriptions": "A remarkably joyful pet, specializing in swift, graceful movement and filling the air with its happy, cheerful presence.",
+            "Actions": {"Attack": "Peck Barrage", "Defense": "Branch Weave", "Charge": "Red Plume"}
+        },
+        "Cat": {
+            "Stats": {"ATT": 16, "DEF": 11, "INT": 17, "DEX": 12, "HAP": 11, "ENE": 8},
+            "Spec": ["ATT", "INT"],
+            "Descriptions": "A calculating and clever hunter, preferring smart, targeted strikes over brute force and always planning its next move.",
+            "Actions": {"Attack": "Pounce", "Defense": "Nine Lives", "Charge": "Predator Eye"}
+        },
+        "Cheetah": {
+            "Stats": {"ATT": 18, "DEF": 10, "INT": 8, "DEX": 26, "HAP": 6, "ENE": 7},
+            "Spec": ["DEX", "ATT"],
+            "Descriptions": "The ultimate speedster, relying on explosive dexterity and powerful bursts of attack.",
+            "Actions": {"Attack": "Rush Bite", "Defense": "Speed Dodge", "Charge": "Sprint Ready"}
+        },
+        "Chicken": {
+            "Stats": {"ATT": 7, "DEF": 10, "INT": 10, "DEX": 12, "HAP": 19, "ENE": 17},
+            "Spec": ["HAP", "ENE"],
+            "Descriptions": "A simple, contented pet that is always active and constantly foraging with a cheerful, high-spirited nature.",
+            "Actions": {"Attack": "Spur Kick", "Defense": "Feather Fluff", "Charge": "Morning Crow"}
+        },
+        "Clownfish": {
+            "Stats": {"ATT": 7, "DEF": 8, "INT": 18, "DEX": 12, "HAP": 23, "ENE": 7},
+            "Spec": ["HAP", "INT"],
+            "Descriptions": "A famously happy and social pet, demonstrating surprising cleverness in finding safety and forming mutualistic bonds.",
+            "Actions": {"Attack": "Fin Slap", "Defense": "Anemone Hide", "Charge": "Symbiosis"}
+        },
+        "Cow": {
+            "Stats": {"ATT": 8, "DEF": 22, "INT": 10, "DEX": 6, "HAP": 21, "ENE": 8},
+            "Spec": ["DEF", "HAP"],
+            "Descriptions": "A large, docile grazer with exceptional defensive bulk and peaceful disposition.",
+            "Actions": {"Attack": "Kick", "Defense": "Herd Wall", "Charge": "Moo Bellow"}
+        },
+        "Crab": {
+            "Stats": {"ATT": 16, "DEF": 21, "INT": 8, "DEX": 7, "HAP": 11, "ENE": 12},
+            "Spec": ["DEF", "ATT"],
+            "Descriptions": "An armored companion with a strong, protective shell and powerful pincers used for a surprisingly strong pinch.",
+            "Actions": {"Attack": "Pincer Snap", "Defense": "Hard Shell", "Charge": "Bubble Blow"}
+        },
+        "Crow": {
+            "Stats": {"ATT": 7, "DEF": 11, "INT": 25, "DEX": 13, "HAP": 10, "ENE": 9},
+            "Spec": ["INT", "DEF"],
+            "Descriptions": "The smartest bird, exhibiting unmatched intelligence and sturdy, watchful protection.",
+            "Actions": {"Attack": "Dive Bomb", "Defense": "Shadow Meld", "Charge": "Murder Call"}
+        },
+        "Deer": {
+            "Stats": {"ATT": 9, "DEF": 10, "INT": 12, "DEX": 24, "HAP": 11, "ENE": 9},
+            "Spec": ["DEX", "ATT"],
+            "Descriptions": "Extremely quick and graceful, relying on evasion (DEX) and alertness (INT/ENE) to survive.",
+            "Actions": {"Attack": "Antler Thrust", "Defense": "Forest Dash", "Charge": "Alert Ear"}
+        },
+        "Dog": {
+            "Stats": {"ATT": 11, "DEF": 10, "INT": 14, "DEX": 10, "HAP": 17, "ENE": 13},
+            "Spec": ["HAP", "INT"],
+            "Descriptions": "Loyal, trainable intelligence paired with a highly social, happy nature.",
+            "Actions": {"Attack": "Bite", "Defense": "Guard Stance", "Charge": "Howl"}
+        },
+        "Dolphin": {
+            "Stats": {"ATT": 10, "DEF": 12, "INT": 23, "DEX": 19, "HAP": 8, "ENE": 3},
+            "Spec": ["INT", "DEX"],
+            "Descriptions": "A highly intelligent marine mammal specializing in complex communication and swift aquatic dexterity.",
+            "Actions": {"Attack": "Nose Ram", "Defense": "Pod Swirl", "Charge": "Sonar Ping"}
+        },
+        "Duck": {
+            "Stats": {"ATT": 8, "DEF": 10, "INT": 13, "DEX": 18, "HAP": 14, "ENE": 12},
+            "Spec": ["DEX", "ENE"],
+            "Descriptions": "An adaptable animal with high dexterity across air and water, showing balanced energy.",
+            "Actions": {"Attack": "Bill Nip", "Defense": "Water Slide", "Charge": "Feather Oil"}
+        },
+        "Eagle": {
+            "Stats": {"ATT": 19, "DEF": 10, "INT": 18, "DEX": 15, "HAP": 6, "ENE": 7},
+            "Spec": ["ATT", "INT"],
+            "Descriptions": "A powerful aerial predator with keen eyesight (INT) and lethal hunting attacks.",
+            "Actions": {"Attack": "Talon Grip", "Defense": "Soar High", "Charge": "Keen Eye"}
+        },
+        "Elephant": {
+            "Stats": {"ATT": 21, "DEF": 26, "INT": 12, "DEX": 2, "HAP": 8, "ENE": 6},
+            "Spec": ["DEF", "ATT"],
+            "Descriptions": "The largest land animal, defined by immense defense and crushing attack power.",
+            "Actions": {"Attack": "Tusk Gore", "Defense": "Thick Skin", "Charge": "Trumpet"}
+        },
+        "Emu": {
+            "Stats": {"ATT": 10, "DEF": 11, "INT": 7, "DEX": 22, "HAP": 13, "ENE": 12},
+            "Spec": ["DEX", "ENE"],
+            "Descriptions": "A tall, flightless bird known for its fast running dexterity and good endurance.",
+            "Actions": {"Attack": "High Kick", "Defense": "Sprint Away", "Charge": "Stretch Neck"}
+        },
+        "Fox": {
+            "Stats": {"ATT": 17, "DEF": 10, "INT": 21, "DEX": 12, "HAP": 8, "ENE": 7},
+            "Spec": ["INT", "ATT"],
+            "Descriptions": "A solitary hunter known for its extreme cunning (INT) and targeted attacks.",
+            "Actions": {"Attack": "Quick Nip", "Defense": "Sly Dodge", "Charge": "Cunning Plot"}
+        },
+        "Frog": {
+            "Stats": {"ATT": 7, "DEF": 8, "INT": 10, "DEX": 23, "HAP": 13, "ENE": 14},
+            "Spec": ["DEX", "ENE"],
+            "Descriptions": "A phenomenal jumper with explosive dexterity and high readiness (ENE).",
+            "Actions": {"Attack": "Tongue Lash", "Defense": "Slippery Skin", "Charge": "Leg Spring"}
+        },
+        "Giraffe": {
+            "Stats": {"ATT": 10, "DEF": 19, "INT": 17, "DEX": 7, "HAP": 11, "ENE": 11},
+            "Spec": ["DEF", "INT"],
+            "Descriptions": "Tall stature grants defensive advantage and superior field intelligence.",
+            "Actions": {"Attack": "Neck Swing", "Defense": "Tall Watch", "Charge": "High Reach"}
+        },
+        "Goat": {
+            "Stats": {"ATT": 13, "DEF": 13, "INT": 8, "DEX": 12, "HAP": 22, "ENE": 7},
+            "Spec": ["HAP", "ATT"],
+            "Descriptions": "A hardy animal with a strong headbutt (ATT) and a notoriously playful, happy disposition.",
+            "Actions": {"Attack": "Headbutt", "Defense": "Mountain Stand", "Charge": "Bleat"}
+        },
+        "Goose": {
+            "Stats": {"ATT": 14, "DEF": 11, "INT": 10, "DEX": 12, "HAP": 11, "ENE": 17},
+            "Spec": ["ENE", "ATT"],
+            "Descriptions": "An aggressive guard bird with a formidable hiss/attack and high, watchful energy.",
+            "Actions": {"Attack": "Honk Blast", "Defense": "Wing Flap", "Charge": "Aggression"}
+        },
+        "Gorilla": {
+            "Stats": {"ATT": 19, "DEF": 18, "INT": 13, "DEX": 7, "HAP": 11, "ENE": 7},
+            "Spec": ["ATT", "DEF"],
+            "Descriptions": "A powerful, territorial ape relying on brute strength and formidable defense.",
+            "Actions": {"Attack": "Slam", "Defense": "Chest Beat", "Charge": "Silverback"}
+        },
+        "Grizzly": {
+            "Stats": {"ATT": 22, "DEF": 21, "INT": 7, "DEX": 6, "HAP": 8, "ENE": 11},
+            "Spec": ["ATT", "DEF"],
+            "Descriptions": "Pure physical strength defines this pet, which relies on devastating power and thick, durable protection.",
+            "Actions": {"Attack": "Maul", "Defense": "Thick Fur", "Charge": "Roar"}
+        },
+        "Hamster": {
+            "Stats": {"ATT": 6, "DEF": 7, "INT": 10, "DEX": 13, "HAP": 12, "ENE": 27},
+            "Spec": ["ENE", "HAP"],
+            "Descriptions": "A small, tireless worker, perpetually active and maintaining a constant, simple happiness while on the wheel.",
+            "Actions": {"Attack": "Cheek Stuff", "Defense": "Ball Curl", "Charge": "Wheel Run"}
+        },
+        "Hedgehog": {
+            "Stats": {"ATT": 9, "DEF": 19, "INT": 7, "DEX": 7, "HAP": 12, "ENE": 21},
+            "Spec": ["DEF", "ENE"],
+            "Descriptions": "Defends itself with sharp quills, possessing high energy for nocturnal foraging and durable protection.",
+            "Actions": {"Attack": "Spine Poke", "Defense": "Quill Ball", "Charge": "Curl Up"}
+        },
+        "Hippo": {
+            "Stats": {"ATT": 20, "DEF": 22, "INT": 6, "DEX": 6, "HAP": 10, "ENE": 11},
+            "Spec": ["DEF", "ATT"],
+            "Descriptions": "Highly territorial and deceptively fast, combining immense attack power and defensive bulk.",
+            "Actions": {"Attack": "Jaw Crush", "Defense": "Fat Layer", "Charge": "Water Rise"}
+        },
+        "Horse": {
+            "Stats": {"ATT": 11, "DEF": 13, "INT": 10, "DEX": 22, "HAP": 12, "ENE": 7},
+            "Spec": ["DEX", "ATT"],
+            "Descriptions": "A swift and powerful partner, specializing in high-speed travel and using its kicks and momentum in battle.",
+            "Actions": {"Attack": "Rear Kick", "Defense": "Gallop Away", "Charge": "Neigh"}
+        },
+        "Hummingbird": {
+            "Stats": {"ATT": 6, "DEF": 7, "INT": 10, "DEX": 26, "HAP": 20, "ENE": 6},
+            "Spec": ["DEX", "HAP"],
+            "Descriptions": "The ultimate agile pet, specializing in breathtaking aerial stunts and perpetually joyful flight.",
+            "Actions": {"Attack": "Needle Beak", "Defense": "Hover Dodge", "Charge": "Fast Beat"}
+        },
+        "Iguana": {
+            "Stats": {"ATT": 10, "DEF": 11, "INT": 10, "DEX": 8, "HAP": 13, "ENE": 23},
+            "Spec": ["ENE", "DEF"],
+            "Descriptions": "A stoic reptile with great endurance and a powerful tail whip, maintaining a tough, leathery defense.",
+            "Actions": {"Attack": "Tail Whip", "Defense": "Scale Armor", "Charge": "Sun Bask"}
+        },
+        "Jaguar": {
+            "Stats": {"ATT": 19, "DEF": 12, "INT": 10, "DEX": 18, "HAP": 8, "ENE": 8},
+            "Spec": ["ATT", "DEX"],
+            "Descriptions": "A solitary, muscular hunter with powerful attack and lethal stealth (DEX).",
+            "Actions": {"Attack": "Skull Bite", "Defense": "Jungle Camo", "Charge": "Stalk"}
+        },
+        "Jellyfish": {
+            "Stats": {"ATT": 7, "DEF": 11, "INT": 8, "DEX": 7, "HAP": 10, "ENE": 32},
+            "Spec": ["ENE", "DEF"],
+            "Descriptions": "An ancient creature specializing in high endurance with a stinging attack, protected by its fluid body.",
+            "Actions": {"Attack": "Sting Tentacle", "Defense": "Transparent", "Charge": "Glow Pulse"}
+        },
+        "Kangaroo": {
+            "Stats": {"ATT": 18, "DEF": 11, "INT": 10, "DEX": 22, "HAP": 8, "ENE": 6},
+            "Spec": ["DEX", "ATT"],
+            "Descriptions": "Specializes in powerful leg attacks and leaping dexterity.",
+            "Actions": {"Attack": "Double Kick", "Defense": "Tail Balance", "Charge": "Hop Prep"}
+        },
+        "Kiwi": {
+            "Stats": {"ATT": 7, "DEF": 10, "INT": 11, "DEX": 8, "HAP": 13, "ENE": 26},
+            "Spec": ["ENE", "DEF"],
+            "Descriptions": "A flightless bird with high-endurance foraging and a sturdy, robust defense.",
+            "Actions": {"Attack": "Beak Probe", "Defense": "Bush Hide", "Charge": "Night Vision"}
+        },
+        "Koala": {
+            "Stats": {"ATT": 7, "DEF": 12, "INT": 8, "DEX": 6, "HAP": 26, "ENE": 16},
+            "Spec": ["HAP", "DEF"],
+            "Descriptions": "The happiest pet, spending most of its time in contented rest, protected by a sturdy grip and high defensive tolerance.",
+            "Actions": {"Attack": "Claw Grip", "Defense": "Tree Hug", "Charge": "Nap Energy"}
+        },
+        "Ladybug": {
+            "Stats": {"ATT": 6, "DEF": 10, "INT": 8, "DEX": 13, "HAP": 19, "ENE": 19},
+            "Spec": ["ENE", "HAP"],
+            "Descriptions": "A perpetually cheerful little friend, constantly active and radiating a simple, enduring contentment.",
+            "Actions": {"Attack": "Aphid Bite", "Defense": "Red Shell", "Charge": "Luck Charm"}
+        },
+        "Lemur": {
+            "Stats": {"ATT": 7, "DEF": 8, "INT": 13, "DEX": 24, "HAP": 17, "ENE": 6},
+            "Spec": ["DEX", "HAP"],
+            "Descriptions": "Highly social and vocal primate specializing in leaping dexterity and social happiness.",
+            "Actions": {"Attack": "Tail Strike", "Defense": "Tree Leap", "Charge": "Wide Eye"}
+        },
+        "Leopard": {
+            "Stats": {"ATT": 18, "DEF": 12, "INT": 11, "DEX": 19, "HAP": 7, "ENE": 8},
+            "Spec": ["DEX", "ATT"],
+            "Descriptions": "A balanced and skilled hunter, specializing in graceful stealth (agility) and decisive, powerful attacks.",
+            "Actions": {"Attack": "Ambush Bite", "Defense": "Tree Haul", "Charge": "Spot Camo"}
+        },
+        "Lion": {
+            "Stats": {"ATT": 21, "DEF": 12, "INT": 10, "DEX": 10, "HAP": 15, "ENE": 7},
+            "Spec": ["ATT", "HAP"],
+            "Descriptions": "The social king of beasts, combining raw attack power and pack happiness.",
+            "Actions": {"Attack": "Pride Strike", "Defense": "Mane Shield", "Charge": "Royal Roar"}
+        },
+        "Llama": {
+            "Stats": {"ATT": 10, "DEF": 15, "INT": 11, "DEX": 10, "HAP": 19, "ENE": 10},
+            "Spec": ["DEF", "HAP"],
+            "Descriptions": "A sturdy pack animal, valued for its protective nature (defense) and its generally content, easygoing disposition.",
+            "Actions": {"Attack": "Spit", "Defense": "Wool Coat", "Charge": "Hum"}
+        },
+        "Mantis": {
+            "Stats": {"ATT": 17, "DEF": 8, "INT": 13, "DEX": 19, "HAP": 7, "ENE": 11},
+            "Spec": ["DEX", "ATT"],
+            "Descriptions": "An ambush master, relying on blindingly fast movements (agility) to execute quick, deadly strikes.",
+            "Actions": {"Attack": "Scythe Slash", "Defense": "Leaf Mimic", "Charge": "Pray Pose"}
+        },
+        "Monkey": {
+            "Stats": {"ATT": 10, "DEF": 8, "INT": 20, "DEX": 22, "HAP": 10, "ENE": 5},
+            "Spec": ["DEX", "INT"],
+            "Descriptions": "Incredibly quick and agile in the trees, this pet is highly curious and adept at problem-solving.",
+            "Actions": {"Attack": "Throw", "Defense": "Swing Away", "Charge": "Chatter"}
+        },
+        "Mouse": {
+            "Stats": {"ATT": 7, "DEF": 8, "INT": 11, "DEX": 21, "HAP": 21, "ENE": 7},
+            "Spec": ["DEX", "HAP"],
+            "Descriptions": "Small, fast, and hard to catch, with excellent evasive ability and a highly adaptable, contented nature.",
+            "Actions": {"Attack": "Nibble", "Defense": "Scurry", "Charge": "Whisker Twitch"}
+        },
+        "Octopus": {
+            "Stats": {"ATT": 10, "DEF": 11, "INT": 26, "DEX": 18, "HAP": 5, "ENE": 5},
+            "Spec": ["INT", "DEX"],
+            "Descriptions": "The genius of the sea, possessing a fluid, adaptive body and the highest level of strategic, cognitive ability.",
+            "Actions": {"Attack": "Tentacle Wrap", "Defense": "Ink Cloud", "Charge": "Camouflage"}
+        },
+        "Orangutan": {
+            "Stats": {"ATT": 11, "DEF": 14, "INT": 22, "DEX": 7, "HAP": 10, "ENE": 11},
+            "Spec": ["INT", "DEF"],
+            "Descriptions": "A thoughtful and patient ape, specializing in tool use (smarts) and using its strength to maintain a robust defense.",
+            "Actions": {"Attack": "Long Reach", "Defense": "Canopy Hide", "Charge": "Wisdom"}
+        },
+        "Orca": {
+            "Stats": {"ATT": 21, "DEF": 12, "INT": 22, "DEX": 8, "HAP": 6, "ENE": 6},
+            "Spec": ["ATT", "INT"],
+            "Descriptions": "The apex marine predator, combining immense strength with complex hunting strategies (intelligence).",
+            "Actions": {"Attack": "Breach Slam", "Defense": "Pod Shield", "Charge": "Killer Instinct"}
+        },
+        "Ostrich": {
+            "Stats": {"ATT": 13, "DEF": 11, "INT": 7, "DEX": 24, "HAP": 10, "ENE": 10},
+            "Spec": ["DEX", "ATT"],
+            "Descriptions": "Fastest two-legged runner, using powerful kicks (ATT) and incredible speed (DEX).",
+            "Actions": {"Attack": "Mega Kick", "Defense": "Sand Cloud", "Charge": "Sprint Prep"}
+        },
+        "Otter": {
+            "Stats": {"ATT": 8, "DEF": 10, "INT": 18, "DEX": 19, "HAP": 12, "ENE": 8},
+            "Spec": ["DEX", "INT"],
+            "Descriptions": "Playful and quick in the water, specializing in hunting intelligence and aquatic dexterity.",
+            "Actions": {"Attack": "Shell Crack", "Defense": "Water Roll", "Charge": "Hand Hold"}
+        },
+        "Panda": {
+            "Stats": {"ATT": 7, "DEF": 23, "INT": 8, "DEX": 6, "HAP": 26, "ENE": 5},
+            "Spec": ["HAP", "DEF"],
+            "Descriptions": "A gentle giant with superb defensive padding and the most peaceful, happy disposition.",
+            "Actions": {"Attack": "Bear Hug", "Defense": "Bamboo Wall", "Charge": "Lazy Roll"}
+        },
+        "Parrot": {
+            "Stats": {"ATT": 7, "DEF": 8, "INT": 23, "DEX": 13, "HAP": 19, "ENE": 5},
+            "Spec": ["INT", "HAP"],
+            "Descriptions": "An excellent communicator and mimic, specializing in social intelligence and an incredibly cheerful, talkative disposition.",
+            "Actions": {"Attack": "Beak Snap", "Defense": "Fly Away", "Charge": "Mimicry"}
+        },
+        "Peacock": {
+            "Stats": {"ATT": 7, "DEF": 10, "INT": 10, "DEX": 13, "HAP": 24, "ENE": 11},
+            "Spec": ["HAP", "DEF"],
+            "Descriptions": "Allure and display (HAP) are high, with balanced energy for strutting and a modest defense.",
+            "Actions": {"Attack": "Spur Strike", "Defense": "Eye Dazzle", "Charge": "Fan Tail"}
+        },
+        "Pelican": {
+            "Stats": {"ATT": 10, "DEF": 12, "INT": 11, "DEX": 17, "HAP": 11, "ENE": 14},
+            "Spec": ["DEX", "ENE"],
+            "Descriptions": "A sturdy water bird with good flying dexterity and endurance for long fishing trips.",
+            "Actions": {"Attack": "Scoop", "Defense": "Wing Shield", "Charge": "Gulp"}
+        },
+        "Penguin": {
+            "Stats": {"ATT": 8, "DEF": 18, "INT": 12, "DEX": 17, "HAP": 10, "ENE": 10},
+            "Spec": ["DEF", "DEX"],
+            "Descriptions": "A hardy, flightless bird with high defense against cold and agile swimming dexterity.",
+            "Actions": {"Attack": "Slide Tackle", "Defense": "Huddle", "Charge": "Belly Slide"}
+        },
+        "Pig": {
+            "Stats": {"ATT": 11, "DEF": 14, "INT": 18, "DEX": 7, "HAP": 19, "ENE": 6},
+            "Spec": ["HAP", "INT"],
+            "Descriptions": "Surprisingly intelligent animal with a strong rooting attack and contented happiness.",
+            "Actions": {"Attack": "Snout Shove", "Defense": "Mud Coat", "Charge": "Oink"}
+        },
+        "Pigeon": {
+            "Stats": {"ATT": 7, "DEF": 8, "INT": 10, "DEX": 22, "HAP": 12, "ENE": 16},
+            "Spec": ["DEX", "ENE"],
+            "Descriptions": "An excellent flyer, specializing in swift flight dexterity and homing endurance.",
+            "Actions": {"Attack": "Peck", "Defense": "Flock Merge", "Charge": "Coo"}
+        },
+        "Platypus": {
+            "Stats": {"ATT": 11, "DEF": 11, "INT": 19, "DEX": 13, "HAP": 10, "ENE": 11},
+            "Spec": ["INT", "ATT"],
+            "Descriptions": "Unique monotreme with venomous spurs (ATT) and high sensory intelligence.",
+            "Actions": {"Attack": "Spur Poison", "Defense": "Water Dive", "Charge": "Electro Sense"}
+        },
+        "PolarBear": {
+            "Stats": {"ATT": 21, "DEF": 23, "INT": 10, "DEX": 6, "HAP": 7, "ENE": 8},
+            "Spec": ["DEF", "ATT"],
+            "Descriptions": "A massive, powerful Arctic predator with peak strength and defense against the elements.",
+            "Actions": {"Attack": "Ice Smash", "Defense": "Blubber", "Charge": "White Camo"}
+        },
+        "Pufferfish": {
+            "Stats": {"ATT": 10, "DEF": 22, "INT": 8, "DEX": 7, "HAP": 11, "ENE": 17},
+            "Spec": ["DEF", "ENE"],
+            "Descriptions": "Relies on defensive inflation (DEF) and toxic warning (ATT) with high endurance.",
+            "Actions": {"Attack": "Spike Burst", "Defense": "Inflate", "Charge": "Toxin"}
+        },
+        "Rabbit": {
+            "Stats": {"ATT": 7, "DEF": 8, "INT": 10, "DEX": 24, "HAP": 13, "ENE": 13},
+            "Spec": ["DEX", "HAP"],
+            "Descriptions": "Highly evasive and speedy (DEX) with a social, reproductive happiness.",
+            "Actions": {"Attack": "Thump", "Defense": "Burrow", "Charge": "Ear Perk"}
+        },
+        "Raccoon": {
+            "Stats": {"ATT": 11, "DEF": 11, "INT": 21, "DEX": 19, "HAP": 7, "ENE": 6},
+            "Spec": ["INT", "DEX"],
+            "Descriptions": "A highly adaptable, dexterous scavenger known for its intelligence and 'masked' persona.",
+            "Actions": {"Attack": "Scratch", "Defense": "Mask Hide", "Charge": "Scavenge"}
+        },
+        "Ram": {
+            "Stats": {"ATT": 19, "DEF": 18, "INT": 7, "DEX": 8, "HAP": 12, "ENE": 11},
+            "Spec": ["ATT", "DEF"],
+            "Descriptions": "A powerful head-butter with strong attack and defensive horns/skull.",
+            "Actions": {"Attack": "Head Bash", "Defense": "Horn Block", "Charge": "Back Up"}
+        },
+        "Rat": {
+            "Stats": {"ATT": 8, "DEF": 8, "INT": 18, "DEX": 21, "HAP": 10, "ENE": 10},
+            "Spec": ["DEX", "INT"],
+            "Descriptions": "An adaptable, quick creature specializing in fast movement and survival intelligence.",
+            "Actions": {"Attack": "Bite", "Defense": "Squeeze", "Charge": "Gnaw"}
+        },
+        "RedPanda": {
+            "Stats": {"ATT": 7, "DEF": 8, "INT": 13, "DEX": 13, "HAP": 23, "ENE": 11},
+            "Spec": ["HAP", "DEF"],
+            "Descriptions": "A peaceful, arboreal mammal with high happiness and moderate energy for climbing.",
+            "Actions": {"Attack": "Pounce", "Defense": "Tail Wrap", "Charge": "Stand Tall"}
+        },
+        "Reindeer": {
+            "Stats": {"ATT": 13, "DEF": 19, "INT": 8, "DEX": 10, "HAP": 11, "ENE": 14},
+            "Spec": ["DEF", "ENE"],
+            "Descriptions": "Hardy arctic deer with strong defense and great endurance for long migrations.",
+            "Actions": {"Attack": "Antler Clash", "Defense": "Snow Step", "Charge": "Nose Glow"}
+        },
+        "Rhino": {
+            "Stats": {"ATT": 19, "DEF": 24, "INT": 6, "DEX": 6, "HAP": 8, "ENE": 12},
+            "Spec": ["DEF", "ATT"],
+            "Descriptions": "A heavy charger with peak defensive hide and a powerful horn attack.",
+            "Actions": {"Attack": "Horn Charge", "Defense": "Armor Skin", "Charge": "Dust Cloud"}
+        },
+        "Salmon": {
+            "Stats": {"ATT": 7, "DEF": 8, "INT": 10, "DEX": 13, "HAP": 11, "ENE": 26},
+            "Spec": ["ENE", "DEX"],
+            "Descriptions": "Defined by its incredible migratory endurance (ENE) and natural instinct (INT).",
+            "Actions": {"Attack": "Leap Strike", "Defense": "Scale Slip", "Charge": "Upstream"}
+        },
+        "Scorpion": {
+            "Stats": {"ATT": 18, "DEF": 17, "INT": 8, "DEX": 10, "HAP": 7, "ENE": 15},
+            "Spec": ["ATT", "DEF"],
+            "Descriptions": "A venomous arachnid with a potent sting (ATT) and hard-shelled defense.",
+            "Actions": {"Attack": "Tail Sting", "Defense": "Chitin Armor", "Charge": "Pincer Raise"}
+        },
+        "Seahorse": {
+            "Stats": {"ATT": 7, "DEF": 8, "INT": 10, "DEX": 6, "HAP": 23, "ENE": 21},
+            "Spec": ["HAP", "ENE"],
+            "Descriptions": "An unusual fish with excellent camouflage (DEF) and high, calm happiness and energy.",
+            "Actions": {"Attack": "Snout Suck", "Defense": "Coral Grip", "Charge": "Upright"}
+        },
+        "Seal": {
+            "Stats": {"ATT": 11, "DEF": 19, "INT": 17, "DEX": 10, "HAP": 11, "ENE": 7},
+            "Spec": ["DEF", "INT"],
+            "Descriptions": "An intelligent, blubbery mammal with high defense against cold and water.",
+            "Actions": {"Attack": "Bark Bite", "Defense": "Blubber Bounce", "Charge": "Clap"}
+        },
+        "Shark": {
+            "Stats": {"ATT": 19, "DEF": 13, "INT": 12, "DEX": 18, "HAP": 8, "ENE": 5},
+            "Spec": ["ATT", "DEX"],
+            "Descriptions": "The perfect aquatic hunter, combining powerful attack with agile swimming dexterity.",
+            "Actions": {"Attack": "Jaws", "Defense": "Rough Skin", "Charge": "Blood Scent"}
+        },
+        "Sheep": {
+            "Stats": {"ATT": 7, "DEF": 21, "INT": 7, "DEX": 7, "HAP": 24, "ENE": 9},
+            "Spec": ["HAP", "DEF"],
+            "Descriptions": "A flock animal with peak docile happiness and a thick, wooly defense.",
+            "Actions": {"Attack": "Butt", "Defense": "Wool Fluff", "Charge": "Baa"}
+        },
+        "Shrimp": {
+            "Stats": {"ATT": 6, "DEF": 8, "INT": 8, "DEX": 23, "HAP": 11, "ENE": 19},
+            "Spec": ["DEX", "ENE"],
+            "Descriptions": "A tiny crustacean with explosive tail flicks (DEX) and high metabolic energy.",
+            "Actions": {"Attack": "Snap Punch", "Defense": "Shell Curl", "Charge": "Antennae"}
+        },
+        "Skunk": {
+            "Stats": {"ATT": 13, "DEF": 13, "INT": 8, "DEX": 11, "HAP": 11, "ENE": 19},
+            "Spec": ["ENE", "ATT"],
+            "Descriptions": "Its pungent spray (ATT) acts as its defense, allowing high energy for nocturnal activity.",
+            "Actions": {"Attack": "Spray", "Defense": "Warning Stomp", "Charge": "Tail Lift"}
+        },
+        "Sloth": {
+            "Stats": {"ATT": 6, "DEF": 20, "INT": 10, "DEX": 5, "HAP": 23, "ENE": 11},
+            "Spec": ["HAP", "DEF"],
+            "Descriptions": "The master of slowness, with peak happiness and natural defensive camouflage.",
+            "Actions": {"Attack": "Slow Swipe", "Defense": "Moss Fur", "Charge": "Hang"}
+        },
+        "Snail": {
+            "Stats": {"ATT": 6, "DEF": 23, "INT": 8, "DEX": 5, "HAP": 19, "ENE": 14},
+            "Spec": ["DEF", "HAP"],
+            "Descriptions": "Protected by a sturdy shell (DEF) and possessing slow, sustained happiness.",
+            "Actions": {"Attack": "Rasp", "Defense": "Shell Retreat", "Charge": "Slime Trail"}
+        },
+        "Snake": {
+            "Stats": {"ATT": 17, "DEF": 10, "INT": 18, "DEX": 12, "HAP": 8, "ENE": 10},
+            "Spec": ["INT", "ATT"],
+            "Descriptions": "A cunning hunter, using sharp intelligence to stalk its prey before striking with a powerful, venomous attack.",
+            "Actions": {"Attack": "Fang Strike", "Defense": "Coil", "Charge": "Hiss"}
+        },
+        "Spider": {
+            "Stats": {"ATT": 13, "DEF": 8, "INT": 19, "DEX": 21, "HAP": 6, "ENE": 8},
+            "Spec": ["DEX", "INT"],
+            "Descriptions": "A master architect, specializing in complex web design (smarts) and quick, precise eight-legged movement.",
+            "Actions": {"Attack": "Venom Bite", "Defense": "Web Shield", "Charge": "Silk Spin"}
+        },
+        "Squirrel": {
+            "Stats": {"ATT": 8, "DEF": 8, "INT": 12, "DEX": 24, "HAP": 13, "ENE": 10},
+            "Spec": ["DEX", "HAP"],
+            "Descriptions": "A nimble, playful companion that uses its impressive agility to dart and climb with cheerful enthusiasm.",
+            "Actions": {"Attack": "Nut Throw", "Defense": "Tree Dodge", "Charge": "Chatter"}
+        },
+        "Starfish": {
+            "Stats": {"ATT": 6, "DEF": 19, "INT": 7, "DEX": 6, "HAP": 19, "ENE": 18},
+            "Spec": ["DEF", "HAP"],
+            "Descriptions": "A durable, tough marine pet (defense) that maintains a calm, enduring state of simple contentment.",
+            "Actions": {"Attack": "Arm Hug", "Defense": "Regenerate", "Charge": "Suction"}
+        },
+        "Stingray": {
+            "Stats": {"ATT": 13, "DEF": 11, "INT": 10, "DEX": 19, "HAP": 10, "ENE": 12},
+            "Spec": ["DEX", "ATT"],
+            "Descriptions": "A graceful swimmer (agility) that can deliver a surprisingly strong and sudden venomous barb attack.",
+            "Actions": {"Attack": "Barb Sting", "Defense": "Sand Bury", "Charge": "Glide"}
+        },
+        "SugarGlider": {
+            "Stats": {"ATT": 7, "DEF": 7, "INT": 11, "DEX": 24, "HAP": 23, "ENE": 3},
+            "Spec": ["DEX", "HAP"],
+            "Descriptions": "An aerial acrobat, specializing in beautiful gliding movements and an extremely social, happy nature.",
+            "Actions": {"Attack": "Glide Strike", "Defense": "Pouch Hide", "Charge": "Night Eyes"}
+        },
+        "Tiger": {
+            "Stats": {"ATT": 21, "DEF": 12, "INT": 10, "DEX": 17, "HAP": 8, "ENE": 7},
+            "Spec": ["ATT", "DEX"],
+            "Descriptions": "The epitome of a powerful feline, combining immense strength with stealthy, agile movements.",
+            "Actions": {"Attack": "Ambush", "Defense": "Stripe Camo", "Charge": "Roar"}
+        },
+        "Toucan": {
+            "Stats": {"ATT": 10, "DEF": 10, "INT": 12, "DEX": 21, "HAP": 16, "ENE": 6},
+            "Spec": ["DEX", "HAP"],
+            "Descriptions": "A colorful flyer, specializing in swift movement and displaying a high-spirited, cheerful personality.",
+            "Actions": {"Attack": "Beak Bash", "Defense": "Branch Hop", "Charge": "Color Flash"}
+        },
+        "Turkey": {
+            "Stats": {"ATT": 11, "DEF": 11, "INT": 8, "DEX": 11, "HAP": 13, "ENE": 21},
+            "Spec": ["ENE", "ATT"],
+            "Descriptions": "A surprisingly robust pet, possessing good stamina for running and a powerful spur/attack.",
+            "Actions": {"Attack": "Gobble Peck", "Defense": "Fan Display", "Charge": "Strut"}
+        },
+        "Turtle": {
+            "Stats": {"ATT": 7, "DEF": 28, "INT": 10, "DEX": 5, "HAP": 10, "ENE": 15},
+            "Spec": ["DEF", "ENE"],
+            "Descriptions": "The defense champion, featuring an unparalleled shell for protection and high endurance for slow, steady progress.",
+            "Actions": {"Attack": "Snap", "Defense": "Shell Box", "Charge": "Patience"}
+        },
+        "Walrus": {
+            "Stats": {"ATT": 18, "DEF": 22, "INT": 8, "DEX": 6, "HAP": 10, "ENE": 11},
+            "Spec": ["DEF", "ATT"],
+            "Descriptions": "A massive marine pet with thick blubber defense and powerful tusks used for high-impact attacks.",
+            "Actions": {"Attack": "Tusk Strike", "Defense": "Thick Blubber", "Charge": "Bellow"}
+        },
+        "Whale": {
+            "Stats": {"ATT": 10, "DEF": 26, "INT": 19, "DEX": 6, "HAP": 8, "ENE": 6},
+            "Spec": ["DEF", "INT"],
+            "Descriptions": "The oceanic giant, specializing in defensive size and complex, thoughtful navigation (smarts).",
+            "Actions": {"Attack": "Tail Splash", "Defense": "Deep Dive", "Charge": "Song"}
+        },
+        "Wolf": {
+            "Stats": {"ATT": 18, "DEF": 11, "INT": 17, "DEX": 10, "HAP": 11, "ENE": 8},
+            "Spec": ["ATT", "INT"],
+            "Descriptions": "A strategic hunter, specializing in coordinated strength and a high degree of survival intellect.",
+            "Actions": {"Attack": "Pack Bite", "Defense": "Fur Coat", "Charge": "Moon Howl"}
+        },
+        "Yak": {
+            "Stats": {"ATT": 12, "DEF": 22, "INT": 7, "DEX": 6, "HAP": 11, "ENE": 17},
+            "Spec": ["DEF", "ENE"],
+            "Descriptions": "A robust, hardy animal with maximum defense against the cold and sustained stamina for survival.",
+            "Actions": {"Attack": "Horn Toss", "Defense": "Shaggy Coat", "Charge": "Mountain Breath"}
+        },
+        "Zebra": {
+            "Stats": {"ATT": 10, "DEF": 13, "INT": 8, "DEX": 23, "HAP": 11, "ENE": 10},
+            "Spec": ["DEX", "DEF"],
+            "Descriptions": "An evasive ungulate, relying on its speed and stripes to confuse predators (agility) and its natural alertness.",
+            "Actions": {"Attack": "Kick", "Defense": "Dazzle Stripe", "Charge": "Herd Run"}
+        },
+        "Owl": {
+            "Stats": {"ATT": 15, "DEF": 10, "INT": 20, "DEX": 15, "HAP": 10, "ENE": 5},
+            "Spec": ["INT", "ATT"],
+            "Descriptions": "A wise nocturnal hunter, specializing in silent flight and keen observation.",
+            "Actions": {"Attack": "Silent Swoop", "Defense": "Head Turn", "Charge": "Night Watch"}
+        },
+        "Axolotl": {
+            "Stats": {"ATT": 8, "DEF": 12, "INT": 10, "DEX": 10, "HAP": 20, "ENE": 15},
+            "Spec": ["HAP", "ENE"],
+            "Descriptions": "A regenerative aquatic friend, known for its eternal smile and high spirits.",
+            "Actions": {"Attack": "Gulp", "Defense": "Regen", "Charge": "Gill Flutter"}
+        },
+        "Centipede": {
+            "Stats": {"ATT": 18, "DEF": 12, "INT": 8, "DEX": 20, "HAP": 5, "ENE": 12},
+            "Spec": ["DEX", "ATT"],
+            "Descriptions": "A fast, many-legged crawler that strikes with precision and speed.",
+            "Actions": {"Attack": "Venom Legs", "Defense": "Segment Armor", "Charge": "Scuttle"}
+        },
+        "Firefly": {
+            "Stats": {"ATT": 5, "DEF": 5, "INT": 18, "DEX": 12, "HAP": 20, "ENE": 15},
+            "Spec": ["HAP", "INT"],
+            "Descriptions": "A glowing bug that lights the night, bringing joy and wonder.",
+            "Actions": {"Attack": "Flash Blind", "Defense": "Dim Light", "Charge": "Glow Up"}
+        }
+    }
+}
