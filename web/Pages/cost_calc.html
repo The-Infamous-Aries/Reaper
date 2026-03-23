@@ -1,0 +1,446 @@
+
+<style>
+        /* Make input field labels lighter */
+        .form-label {
+            color: #a0a0a0 !important;
+        }
+        
+        /* Make input placeholders lighter */
+        .form-control::placeholder {
+            color: #c0c0c0 !important;
+            opacity: 0.8;
+        }
+        
+        /* Make calculator titles much lighter */
+        #building-calculator h3,
+        #military-calculator h3 {
+            color: #d0d0d0 !important;
+        }
+        
+        /* Make toggle switch text glow gold */
+        .form-check-label {
+            color: #ffd700 !important;
+            text-shadow: 0 0 5px #ffd700, 0 0 10px #ffd700;
+            font-weight: 500;
+        }
+        
+        /* Make results labels lighter and bold */
+        #results-body h5,
+        #results-body h6 {
+            color: #e0e0e0 !important;
+            font-weight: bold !important;
+        }
+        
+        /* Make actual results glow gold */
+        #results-body p,
+        #results-body li {
+            color: #ffd700 !important;
+            text-shadow: 0 0 3px #ffd700, 0 0 6px #ffd700;
+        }
+    </style>
+
+    <div class="container py-5">
+        <div class="row justify-content-center">
+            <div class="col-lg-10">
+                <div class="card">
+                    <div class="card-header text-center">
+                        <h2>PnW Calculators</h2>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-check form-switch mb-4 d-flex justify-content-center">
+                            <input class="form-check-input" type="checkbox" id="calculator-toggle">
+                            <label class="form-check-label ms-2" for="calculator-toggle">Switch to Military Calculator</label>
+                        </div>
+
+                        <div id="building-calculator">
+                            <h3 class="text-center mb-4">Building Calculator</h3>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="nation-query" class="form-label">Nation Name or ID</label>
+                                    <input type="text" class="form-control" id="nation-query" placeholder="e.g., Reaper">
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="infra-to-buy" class="form-label">Desired Infrastructure</label>
+                                    <input type="number" class="form-control" id="infra-to-buy" placeholder="e.g., 5000">
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="land-to-buy" class="form-label">Desired Land</label>
+                                    <input type="number" class="form-control" id="land-to-buy" placeholder="e.g., 2500">
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="cities-to-buy" class="form-label">Cities to Buy</label>
+                                    <input type="number" class="form-control" id="cities-to-buy" placeholder="e.g., 1">
+                                </div>
+                                <div class="col-md-12 mb-3">
+                                    <label for="projects-to-buy" class="form-label">Projects to Buy (comma-separated)</label>
+                                    <input type="text" class="form-control" id="projects-to-buy" placeholder="e.g., Space Program, Nuclear Research Facility">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="military-calculator" style="display: none;">
+                            <h3 class="text-center mb-4">Military Calculator</h3>
+                            <div class="row">
+                                <div class="col-md-4 mb-3">
+                                    <label for="soldiers" class="form-label">
+                                        <img src="/web/Emojis/Military/soldier.png" alt="Soldier" height="24"> Soldiers
+                                    </label>
+                                    <input type="number" class="form-control" id="soldiers" placeholder="e.g., 10000">
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label for="tanks" class="form-label">
+                                        <img src="/web/Emojis/Military/tank.png" alt="Tank" height="24"> Tanks
+                                    </label>
+                                    <input type="number" class="form-control" id="tanks" placeholder="e.g., 500">
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label for="aircraft" class="form-label">
+                                        <img src="/web/Emojis/Military/jet.png" alt="Aircraft" height="24"> Aircraft
+                                    </label>
+                                    <input type="number" class="form-control" id="aircraft" placeholder="e.g., 100">
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label for="ships" class="form-label">
+                                        <img src="/web/Emojis/Military/ship.png" alt="Ship" height="24"> Ships
+                                    </label>
+                                    <input type="number" class="form-control" id="ships" placeholder="e.g., 25">
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label for="missiles" class="form-label">
+                                        <img src="/web/Emojis/Military/missile.png" alt="Missile" height="24"> Missiles
+                                    </label>
+                                    <input type="number" class="form-control" id="missiles" placeholder="e.g., 10">
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label for="nukes" class="form-label">
+                                        <img src="/web/Emojis/Military/bomb.png" alt="Nuke" height="24"> Nukes
+                                    </label>
+                                    <input type="number" class="form-control" id="nukes" placeholder="e.g., 1">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="text-center mt-4">
+                            <button class="btn btn-primary" id="calculate-btn">Calculate</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card mt-4 results-card" id="results-container" style="display: none;">
+                    <div class="card-header text-center">
+                        <h3>Results</h3>
+                    </div>
+                    <div class="card-body" id="results-body">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const calculatorToggle = document.getElementById('calculator-toggle');
+        const buildingCalculator = document.getElementById('building-calculator');
+        const militaryCalculator = document.getElementById('military-calculator');
+        const calculateBtn = document.getElementById('calculate-btn');
+        const resultsContainer = document.getElementById('results-container');
+        const resultsBody = document.getElementById('results-body');
+
+        calculatorToggle.addEventListener('change', () => {
+            if (calculatorToggle.checked) {
+                buildingCalculator.style.display = 'none';
+                militaryCalculator.style.display = 'block';
+                document.querySelector('label[for="calculator-toggle"]').textContent = 'Switch to Building Calculator';
+            } else {
+                buildingCalculator.style.display = 'block';
+                militaryCalculator.style.display = 'none';
+                document.querySelector('label[for="calculator-toggle"]').textContent = 'Switch to Military Calculator';
+            }
+        });
+
+        calculateBtn.addEventListener('click', () => {
+            resultsContainer.style.display = 'block';
+            resultsBody.innerHTML = '<div class="text-center"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div></div>';
+            
+            if (calculatorToggle.checked) {
+                calculateMilitaryCosts();
+            } else {
+                calculateBuildingCosts();
+            }
+        });
+
+        async function calculateBuildingCosts() {
+            const nationQuery = document.getElementById('nation-query').value;
+            const infraToBuy = parseFloat(document.getElementById('infra-to-buy').value) || 0;
+            const landToBuy = parseFloat(document.getElementById('land-to-buy').value) || 0;
+            const citiesToBuy = parseInt(document.getElementById('cities-to-buy').value) || 0;
+            const projectsToBuy = document.getElementById('projects-to-buy').value.split(',').map(p => p.trim()).filter(p => p);
+
+            try {
+                const [nationData, gameInfo, resourcePrices] = await Promise.all([
+                    nationQuery ? fetch(`/api/pnw/nation-info/${nationQuery}`).then(res => res.json()) : Promise.resolve(null),
+                    fetch('/api/pnw/game-info').then(res => res.json()),
+                    fetch('/api/pnw/resource-prices').then(res => res.json())
+                ]);
+
+                if (nationQuery && nationData.error) {
+                    resultsBody.innerHTML = `<p class="text-center text-danger">Error: ${nationData.error}</p>`;
+                    return;
+                }
+
+                let resultsHTML = '';
+
+                // Infra
+                if (infraToBuy > 0 && nationData) {
+                    const avgCurrentInfra = nationData.cities.reduce((acc, city) => acc + city.infrastructure, 0) / nationData.num_cities;
+                    const infraCost = infra_purchase_cost(avgCurrentInfra, infraToBuy - avgCurrentInfra, nationData);
+                    resultsHTML += `<h5>Infrastructure Cost</h5>
+                                  <p>Base Cost: $${infraCost.base_cost.toLocaleString()}</p>
+                                  <p>Final Cost: $${infraCost.final_cost.toLocaleString()}</p><hr>`;
+                }
+
+                // Land
+                if (landToBuy > 0 && nationData) {
+                    const avgCurrentLand = nationData.cities.reduce((acc, city) => acc + city.land, 0) / nationData.num_cities;
+                    const landCost = land_purchase_cost(avgCurrentLand, landToBuy - avgCurrentLand, nationData);
+                    resultsHTML += `<h5>Land Cost</h5>
+                                  <p>Base Cost: $${landCost.base_cost.toLocaleString()}</p>
+                                  <p>Final Cost: $${landCost.final_cost.toLocaleString()}</p><hr>`;
+                }
+
+                // Cities
+                if (citiesToBuy > 0 && gameInfo) {
+                    const cityCost = city_purchase_cost(nationData.num_cities + citiesToBuy, gameInfo.city_average, nationData);
+                    resultsHTML += `<h5>City Cost</h5>
+                                  <p>Base Cost: $${cityCost.base_cost.toLocaleString()}</p>
+                                  <p>Final Cost: $${cityCost.final_cost.toLocaleString()}</p><hr>`;
+                }
+
+                // Projects
+                if (projectsToBuy.length > 0) {
+                    resultsHTML += '<h5>Project Costs</h5>';
+                    projectsToBuy.forEach(projectName => {
+                        const cost = project_build_cost(projectName, nationData);
+                        if(cost) {
+                            resultsHTML += `<h6>${projectName}</h6>
+                                          <p>Money: $${cost.final_costs.money.toLocaleString()}</p>
+                                          <ul>`;
+                            for (const resource in cost.final_costs) {
+                                if (resource !== 'money') {
+                                    resultsHTML += `<li>${resource}: ${cost.final_costs[resource].toLocaleString()}</li>`;
+                                }
+                            }
+                            resultsHTML += `</ul>`;
+                        }
+                    });
+                }
+
+
+                resultsBody.innerHTML = resultsHTML;
+
+            } catch (error) {
+                resultsBody.innerHTML = `<p class="text-center text-danger">Error calculating costs: ${error.message}</p>`;
+            }
+        }
+
+        async function calculateMilitaryCosts() {
+            const soldiers = parseInt(document.getElementById('soldiers').value) || 0;
+            const tanks = parseInt(document.getElementById('tanks').value) || 0;
+            const aircraft = parseInt(document.getElementById('aircraft').value) || 0;
+            const ships = parseInt(document.getElementById('ships').value) || 0;
+            const missiles = parseInt(document.getElementById('missiles').value) || 0;
+            const nukes = parseInt(document.getElementById('nukes').value) || 0;
+
+            const units = { soldiers, tanks, aircraft, ships, missiles, nukes };
+
+            try {
+                const resourcePrices = await fetch('/api/pnw/resource-prices').then(res => res.json());
+                const UNIT_COSTS = {
+                    "soldiers": {"cash": 5},
+                    "tanks": {"cash": 60, "steel": 0.5},
+                    "aircraft": {"cash": 4000, "aluminum": 10},
+                    "ships": {"cash": 50000, "steel": 30},
+                    "missiles": {"cash": 150000, "gasoline": 100, "munitions": 100, "aluminum": 150},
+                    "nukes": {"cash": 1750000, "uranium": 500, "gasoline": 500, "aluminum": 1000},
+                };
+
+                let totalMoneyCost = 0;
+                const totalResourceCost = {};
+
+                for (const unit in units) {
+                    if (units[unit] > 0) {
+                        const unitCost = UNIT_COSTS[unit];
+                        totalMoneyCost += unitCost.cash * units[unit];
+                        for (const resource in unitCost) {
+                            if (resource !== 'cash') {
+                                totalResourceCost[resource] = (totalResourceCost[resource] || 0) + (unitCost[resource] * units[unit]);
+                            }
+                        }
+                    }
+                }
+
+                let totalResourceValue = 0;
+                let resultsHTML = `<h5>Total Money Cost: $${totalMoneyCost.toLocaleString()}</h5><hr><h5>Total Resource Cost</h5><ul>`;
+                for(const resource in totalResourceCost) {
+                    const price = resourcePrices.buy[resource] || 0;
+                    const value = price * totalResourceCost[resource];
+                    totalResourceValue += value;
+                    resultsHTML += `<li>${resource}: ${totalResourceCost[resource].toLocaleString()} (Est. Value: $${value.toLocaleString()})</li>`;
+                }
+                resultsHTML += `</ul><hr><h5>Total Estimated Value: $${(totalMoneyCost + totalResourceValue).toLocaleString()}</h5>`;
+                
+                resultsBody.innerHTML = resultsHTML;
+
+            } catch (error) {
+                resultsBody.innerHTML = `<p class="text-center text-danger">Error calculating costs: ${error.message}</p>`;
+            }
+        }
+        
+        // Building Cost Functions (from costs.py)
+        function infra_price(amount) {
+            return ((Math.abs(amount - 10) ** 2.2) / 710.0) + 300.0;
+        }
+
+        function calc_infra_value(starting_amount, ending_amount) {
+            let start = parseFloat(starting_amount.toFixed(2));
+            let end = parseFloat(ending_amount.toFixed(2));
+            let diff = end - start;
+
+            if (diff > 10000) return Infinity;
+            if (diff <= 0) return 150.0 * diff;
+
+            let total_cost = 0;
+            while(start < end) {
+                let chunk = Math.min(100, end - start);
+                total_cost += infra_price(start) * chunk;
+                start += chunk;
+            }
+            return total_cost;
+        }
+        
+        function land_price(amount) {
+            return (0.002 * (amount - 20) * (amount - 20)) + 50.0;
+        }
+
+        function calc_land_value(starting_amount, ending_amount) {
+            let start = parseFloat(starting_amount.toFixed(2));
+            let end = parseFloat(ending_amount.toFixed(2));
+            let diff = end - start;
+
+            if (diff > 10000) return Infinity;
+            if (diff <= 0) return 50.0 * diff;
+
+            let total_cost = 0;
+            while(start < end) {
+                let chunk = Math.min(500, end-start);
+                total_cost += land_price(start) * chunk;
+                start += chunk;
+            }
+            return total_cost;
+        }
+
+        function calculate_project_discounts(nation_data) {
+            if (!nation_data) return { infra_cost_reduction: 0.0, land_cost_reduction: 0.0, domestic_policy_multiplier: 1.0 };
+            const discounts = { infra_cost_reduction: 0.0, land_cost_reduction: 0.0, domestic_policy_multiplier: 1.0 };
+            if (nation_data.center_for_civil_engineering) discounts.infra_cost_reduction += 0.05;
+            if (nation_data.advanced_engineering_corps) {
+                discounts.infra_cost_reduction += 0.05;
+                discounts.land_cost_reduction += 0.05;
+            }
+            if (nation_data.arable_land_agency) discounts.land_cost_reduction += 0.05;
+            if (nation_data.bureau_of_domestic_affairs) discounts.domestic_policy_multiplier += 0.25;
+            if (nation_data.government_support_agency) discounts.domestic_policy_multiplier += 0.50;
+            return discounts;
+        }
+
+        function infra_purchase_cost(current_infra, infra_to_buy, nation_data) {
+            const target_infra = current_infra + infra_to_buy;
+            const raw_cost = calc_infra_value(current_infra, target_infra);
+            const project_discounts = calculate_project_discounts(nation_data);
+            const project_reduction = project_discounts.infra_cost_reduction;
+            const base_cost = raw_cost * (1.0 - project_reduction);
+            const policy_reduction = 0.05 * project_discounts.domestic_policy_multiplier;
+            const final_cost = base_cost * (1.0 - policy_reduction);
+            return { base_cost, final_cost };
+        }
+
+        function land_purchase_cost(current_land, land_to_buy, nation_data) {
+            const target_land = current_land + land_to_buy;
+            const raw_cost = calc_land_value(current_land, target_land);
+            const project_discounts = calculate_project_discounts(nation_data);
+            const project_reduction = project_discounts.land_cost_reduction;
+            const base_cost = raw_cost * (1.0 - project_reduction);
+            const policy_reduction = 0.05 * project_discounts.domestic_policy_multiplier;
+            const final_cost = base_cost * (1.0 - policy_reduction);
+            return { base_cost, final_cost };
+        }
+
+        function city_purchase_cost(city_to_buy, top_20_average, nation_data) {
+            const term1 = 100000 * ((city_to_buy - (top_20_average / 4)) ** 3);
+            const term2 = 150000 * (city_to_buy - (top_20_average / 4));
+            const term3 = 75000;
+            const cost1 = term1 + term2 + term3;
+            const cost2 = (city_to_buy ** 2) * 100000;
+            const base_cost = Math.max(cost1, cost2);
+            const project_discounts = calculate_project_discounts(nation_data);
+            const policy_reduction = 0.05 * project_discounts.domestic_policy_multiplier;
+            const final_cost = base_cost * (1.0 - policy_reduction);
+            return { base_cost, final_cost };
+        }
+        
+        const PROJECT_BUILD_COSTS = {
+            'Activity Center': { money: 500000, food: 1000 },
+            'Advanced Engineering Corps': { money: 50000000, munitions: 10000, gasoline: 10000, uranium: 1000 },
+            'Arable Land Agency': { money: 3000000, coal: 1500, lead: 1500 },
+            'Bureau of Domestic Affairs': { money: 20000000, food: 500000, coal: 8000, bauxite: 8000, lead: 8000, iron: 8000, oil: 8000 },
+            'Center Civil Engineering': { money: 3000000, oil: 1000, iron: 1000, bauxite: 1000 },
+            'Clinical Research Center': { money: 10000000, food: 100000 },
+            'Government Support Agency': { money: 20000000, aluminum: 10000, food: 200000 },
+            'Green Technologies': { money: 50000000, food: 100000, aluminum: 10000, iron: 10000, oil: 10000 },
+            'International Trade Center': { money: 50000000, aluminum: 10000 },
+            'Advanced Pirate Economy': { money: 50000000, coal: 10000, iron: 10000, oil: 10000, bauxite: 10000, lead: 10000 },
+            'Central Intelligence Agency': { money: 5000000, steel: 500, gasoline: 500 },
+            'Guiding Satellite': { money: 200000000, munitions: 40000, aluminum: 40000, uranium: 40000, gasoline: 40000, steel: 20000 },
+            'Iron Dome': { money: 15000000, munitions: 5000 },
+            'Missile Launch Pad': { money: 5000000, steel: 500, gasoline: 500 },
+            'Nuclear Research Facility': { money: 50000000, aluminum: 10000, uranium: 1000 },
+            'Propaganda Bureau': { money: 5000000, coal: 1000, iron: 1000 },
+            'Space Program': { money: 50000000, aluminum: 10000, steel: 10000, gasoline: 10000 },
+            'Vital Defense System': { money: 60000000, steel: 25000, aluminum: 25000, munitions: 25000 },
+            'Military Research Center': { money: 100000000, steel: 10000, aluminum: 10000, munitions: 10000, gasoline: 10000 },
+            'Military Doctrine': { money: 10000000, steel: 10000, aluminum: 10000, munitions: 10000, gasoline: 10000 },
+            'Arms Stockpile': { money: 10000000, coal: 500, iron: 500, oil: 500, bauxite: 500, lead: 500 },
+            'Bauxite Works': { money: 10000000, coal: 500, iron: 500, oil: 500, bauxite: 500, lead: 500 },
+            'Emergency Gasoline Reserve': { money: 10000000, coal: 500, iron: 500, oil: 500, bauxite: 500, lead: 500 },
+            'Fallout Shelter': { money: 25000000, food: 100000, lead: 10000, aluminum: 15000, steel: 10000 },
+            'Iron Works': { money: 10000000, coal: 500, iron: 500, oil: 500, bauxite: 500, lead: 500 },
+            'Mars Landing': { money: 200000000, oil: 20000, aluminum: 20000, munitions: 20000, steel: 20000, gasoline: 20000, uranium: 20000 },
+            'Mass Irrigation': { money: 10000000, food: 50000, coal: 500, iron: 500, oil: 500, bauxite: 500, lead: 500 },
+            'Military Salvage': { money: 20000000, aluminum: 5000, steel: 5000, gasoline: 5000 },
+            'Moon Landing': { money: 50000000, oil: 5000, aluminum: 5000, munitions: 5000, steel: 5000, gasoline: 5000, uranium: 10000 },
+            'Nuclear Launch Facility': { money: 750000000, uranium: 50000, gasoline: 50000, aluminum: 50000 },
+            'Pirate Economy': { money: 25000000, coal: 7500, iron: 7500, oil: 7500, bauxite: 7500, lead: 7500 },
+            'Recycling Initiative': { money: 10000000, food: 100000 },
+            'Research & Development Center': { money: 50000000, aluminum: 5000, food: 100000, uranium: 1000 },
+            'Specialized Police Training Program': { money: 50000000, food: 250000, aluminum: 5000 },
+            'Spy Satellite': { money: 20000000, oil: 10000, bauxite: 10000, iron: 10000, lead: 10000, coal: 10000 },
+            'Surveillance Network': { money: 50000000, aluminum: 50000, bauxite: 15000, iron: 15000, lead: 15000, coal: 15000 },
+            'Telecommunications Satellite': { money: 300000000, oil: 10000, aluminum: 10000, iron: 10000, uranium: 10000 },
+            'Uranium Enrichment Program': { money: 25000000, uranium: 2500, coal: 500, iron: 500, oil: 500, bauxite: 500, lead: 500 },
+        };
+        
+        function project_build_cost(project_name, nation_data) {
+            if (!PROJECT_BUILD_COSTS[project_name]) return null;
+
+            const raw_costs = { ...PROJECT_BUILD_COSTS[project_name] };
+            const project_discounts = calculate_project_discounts(nation_data);
+
+            const final_cost = { ...raw_costs };
+            if (final_cost.money) {
+                const policy_discount_multiplier = project_discounts.domestic_policy_multiplier || 1.0;
+                const discount_rate = 0.05 * policy_discount_multiplier;
+                final_cost.money -= final_cost.money * discount_rate;
+            }
+
+            return { base_costs: raw_costs, final_costs: final_cost };
+        }
+    </script>

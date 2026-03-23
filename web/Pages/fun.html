@@ -1,0 +1,2990 @@
+<div class="container-fluid">
+
+    <!-- Fun Features Section -->
+    <div class="row">
+        <!-- Coin Flip Box -->
+        <div class="col-md-4">
+            <div class="card mb-3 fun-card">
+                <div class="card-header text-center">
+                    <h3>🔄 Coin Flip</h3>
+                </div>
+                <div class="card-body">
+                    <div id="coin-setup" class="coin-setup">
+                        <h6 class="text-center mb-2">Choose Your Theme</h6>
+                        <div class="row g-1">
+                            <div class="col-6">
+                                <button class="btn btn-outline-primary w-100 coin-theme-btn" data-theme="Raider">
+                                    <div class="theme-preview">
+                                        <img src="/web/Emojis/Coins/Pirate.png" class="emoji-preview" style="width: 24px; height: 24px; object-fit: contain;">
+                                        <small>Raider</small>
+                                    </div>
+                                </button>
+                            </div>
+                            <div class="col-6">
+                                <button class="btn btn-outline-primary w-100 coin-theme-btn" data-theme="Time">
+                                    <div class="theme-preview">
+                                        <img src="/web/Emojis/Coins/Future.png" class="emoji-preview" style="width: 24px; height: 24px; object-fit: contain;">
+                                        <small>Time</small>
+                                    </div>
+                                </button>
+                            </div>
+                            <div class="col-6">
+                                <button class="btn btn-outline-primary w-100 coin-theme-btn" data-theme="Battery">
+                                    <div class="theme-preview">
+                                        <img src="/web/Emojis/Coins/Full.png" class="emoji-preview" style="width: 24px; height: 24px; object-fit: contain;">
+                                        <small>Battery</small>
+                                    </div>
+                                </button>
+                            </div>
+                            <div class="col-6">
+                                <button class="btn btn-outline-primary w-100 coin-theme-btn" data-theme="Electric">
+                                    <div class="theme-preview">
+                                        <img src="/web/Emojis/Coins/Plug.png" class="emoji-preview" style="width: 24px; height: 24px; object-fit: contain;">
+                                        <small>Electric</small>
+                                    </div>
+                                </button>
+                            </div>
+                            <div class="col-6">
+                                <button class="btn btn-outline-primary w-100 coin-theme-btn" data-theme="Business">
+                                    <div class="theme-preview">
+                                        <img src="/web/Emojis/Coins/Open.png" class="emoji-preview" style="width: 24px; height: 24px; object-fit: contain;">
+                                        <small>Business</small>
+                                    </div>
+                                </button>
+                            </div>
+                            <div class="col-6">
+                                <button class="btn btn-outline-primary w-100 coin-theme-btn" data-theme="Sky">
+                                    <div class="theme-preview">
+                                        <img src="/web/Emojis/Coins/Day.png" class="emoji-preview" style="width: 24px; height: 24px; object-fit: contain;">
+                                        <small>Sky</small>
+                                    </div>
+                                </button>
+                            </div>
+                            <div class="col-12">
+                                <button class="btn btn-outline-primary w-100 coin-theme-btn" data-theme="Tempature">
+                                    <div class="theme-preview">
+                                        <img src="/web/Emojis/Coins/Heat.png" class="emoji-preview" style="width: 24px; height: 24px; object-fit: contain;">
+                                        <small>Temperature</small>
+                                    </div>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div id="coin-animation" class="coin-animation d-none">
+                        <div class="coin-container">
+                            <div class="coin" id="coin">
+                                <div class="coin-side coin-heads"></div>
+                                <div class="coin-side coin-tails"></div>
+                            </div>
+                        </div>
+                        <div class="coin-result text-center mt-2">
+                            <div id="coin-result-text" class="result-text"></div>
+                            <button id="coin-play-again" class="btn btn-primary mt-2">
+                                <i class="fas fa-redo"></i> Play Again
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Dice Roll Box -->
+        <div class="col-md-4">
+            <div class="card mb-4 fun-card">
+                <div class="card-header text-center">
+                    <h3>🎲 Dice Roll</h3>
+                </div>
+                <div class="card-body">
+                    <div id="dice-setup" class="dice-setup">
+                        <div class="mb-2">
+                            <label class="form-label mb-2">Dice Color</label>
+                            <div class="row g-1">
+                                <div class="col-4">
+                                    <button class="btn btn-outline-danger w-100 dice-color-btn" data-color="Red">
+                                        <div class="color-preview red"></div>
+                                        <small>Red</small>
+                                    </button>
+                                </div>
+                                <div class="col-4">
+                                    <button class="btn btn-outline-warning w-100 dice-color-btn" data-color="Orange">
+                                        <div class="color-preview orange"></div>
+                                        <small>Orange</small>
+                                    </button>
+                                </div>
+                                <div class="col-4">
+                                    <button class="btn btn-outline-primary w-100 dice-color-btn" data-color="Blue">
+                                        <div class="color-preview blue"></div>
+                                        <small>Blue</small>
+                                    </button>
+                                </div>
+                                <div class="col-4">
+                                    <button class="btn btn-outline-warning w-100 dice-color-btn" data-color="Yellow">
+                                        <div class="color-preview yellow"></div>
+                                        <small>Yellow</small>
+                                    </button>
+                                </div>
+                                <div class="col-4">
+                                    <button class="btn btn-outline-info w-100 dice-color-btn" data-color="Pink">
+                                        <div class="color-preview pink"></div>
+                                        <small>Pink</small>
+                                    </button>
+                                </div>
+                                <div class="col-4">
+                                    <button class="btn btn-outline-success w-100 dice-color-btn" data-color="Green">
+                                        <div class="color-preview green"></div>
+                                        <small>Green</small>
+                                    </button>
+                                </div>
+                                <div class="col-12">
+                                    <button class="btn btn-outline-secondary w-100 dice-color-btn" data-color="Purple">
+                                        <div class="color-preview purple"></div>
+                                        <small>Purple</small>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-2">
+                            <label class="form-label mb-2">Number of Dice</label>
+                            <div class="row g-1">
+                                <div class="col">
+                                    <button class="btn btn-outline-secondary w-100 dice-amount-btn" data-amount="1">1</button>
+                                </div>
+                                <div class="col">
+                                    <button class="btn btn-outline-secondary w-100 dice-amount-btn" data-amount="2">2</button>
+                                </div>
+                                <div class="col">
+                                    <button class="btn btn-outline-secondary w-100 dice-amount-btn" data-amount="3">3</button>
+                                </div>
+                                <div class="col">
+                                    <button class="btn btn-outline-secondary w-100 dice-amount-btn" data-amount="4">4</button>
+                                </div>
+                                <div class="col">
+                                    <button class="btn btn-outline-secondary w-100 dice-amount-btn" data-amount="5">5</button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <button id="roll-dice-btn" class="btn btn-primary w-100" disabled>
+                            Roll Dice
+                        </button>
+                    </div>
+                    
+                    <div id="dice-animation" class="dice-animation d-none">
+                        <div class="dice-container" id="dice-container">
+                            <!-- Dice will be added here -->
+                        </div>
+                        <div class="dice-result text-center mt-2">
+                            <div id="dice-result-text" class="result-text"></div>
+                            <button id="dice-play-again" class="btn btn-primary mt-2">
+                                <i class="fas fa-redo"></i> Play Again
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Card Draw Box -->
+        <div class="col-md-4">
+            <div class="card mb-4 fun-card">
+                <div class="card-header text-center">
+                    <h3>🃏 Card Draw</h3>
+                </div>
+                <div class="card-body">
+                    <div id="card-setup" class="card-setup">
+                        <h6 class="text-center mb-2">How many cards?</h6>
+                        <div class="row g-1 mb-2">
+                            <div class="col">
+                                <button class="btn btn-outline-secondary w-100 card-amount-btn" data-amount="1">1</button>
+                            </div>
+                            <div class="col">
+                                <button class="btn btn-outline-secondary w-100 card-amount-btn" data-amount="2">2</button>
+                            </div>
+                            <div class="col">
+                                <button class="btn btn-outline-secondary w-100 card-amount-btn" data-amount="3">3</button>
+                            </div>
+                            <div class="col">
+                                <button class="btn btn-outline-secondary w-100 card-amount-btn" data-amount="4">4</button>
+                            </div>
+                            <div class="col">
+                                <button class="btn btn-outline-secondary w-100 card-amount-btn" data-amount="5">5</button>
+                            </div>
+                        </div>
+                        
+                        <button id="draw-cards-btn" class="btn btn-primary w-100" disabled>
+                            Draw Cards
+                        </button>
+                    </div>
+                    
+                    <div id="card-animation" class="card-animation d-none">
+                        <div class="card-table">
+                            <div class="deck-area">
+                                <div class="card-deck" id="card-deck">
+                                    <div class="deck-card"></div>
+                                    <div class="deck-card"></div>
+                                    <div class="deck-card"></div>
+                                </div>
+                            </div>
+                            <div class="drawn-cards" id="drawn-cards">
+                                <!-- Drawn cards will appear here -->
+                            </div>
+                        </div>
+                        <div class="card-result text-center mt-2">
+                            <div id="card-result-text" class="result-text"></div>
+                            <button id="card-play-again" class="btn btn-primary mt-2">
+                                <i class="fas fa-redo"></i> Play Again
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+    </div>
+    
+    <!-- Rock Paper Scissors & Slots Row -->
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card mb-4 fun-card">
+                <div class="card-header text-center">
+                    <h3>✊ Rock Paper Scissors</h3>
+                </div>
+                <div class="card-body">
+                    <div id="rps-setup" class="rps-setup">
+                        <h6 class="text-center mb-2">Choose Your Theme</h6>
+                        <div class="row g-1 mb-2">
+                            <div class="col-4">
+                                <button class="btn btn-outline-primary w-100 rps-theme-btn" data-theme="Traditional">
+                                    <div class="theme-preview">
+                                        <img src="/web/Emojis/RPS/rock_1.png" class="emoji-preview" style="width: 24px; height: 24px; object-fit: contain;">
+                                        <small>Traditional</small>
+                                    </div>
+                                </button>
+                            </div>
+                            <div class="col-4">
+                                <button class="btn btn-outline-primary w-100 rps-theme-btn" data-theme="Fantasy">
+                                    <div class="theme-preview">
+                                        <img src="/web/Emojis/RPS/knights.png" class="emoji-preview" style="width: 24px; height: 24px; object-fit: contain;">
+                                        <small>Fantasy</small>
+                                    </div>
+                                </button>
+                            </div>
+                            <div class="col-4">
+                                <button class="btn btn-outline-primary w-100 rps-theme-btn" data-theme="War">
+                                    <div class="theme-preview">
+                                        <img src="/web/Emojis/RPS/tank.png" class="emoji-preview" style="width: 24px; height: 24px; object-fit: contain;">
+                                        <small>War</small>
+                                    </div>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <button id="start-rps-btn" class="btn btn-primary w-100" disabled>
+                            Start Playing vs AI
+                        </button>
+                    </div>
+                    
+                    <div id="rps-game" class="rps-game d-none">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <button id="change-theme-btn" class="btn btn-sm btn-outline-secondary">
+                                <i class="fas fa-palette"></i> Change Theme
+                            </button>
+                            <div id="rps-score" class="text-center">
+                                <span id="player-score">Player: 0</span> - 
+                                <span id="ai-score">AI: 0</span>
+                            </div>
+                            <button id="reset-game-btn" class="btn btn-sm btn-outline-danger">
+                                <i class="fas fa-redo"></i> Reset
+                            </button>
+                        </div>
+                        
+                        <div id="rps-choices-div" class="rps-choices text-center mb-3 d-none">
+                            <h6 class="mb-3">Choose your move:</h6>
+                            <div class="row g-2 justify-content-center">
+                                <div class="col-md-3 col-4">
+                                    <button class="btn btn-outline-primary w-100 rps-choice-btn" data-choice="rock_1">
+                                        <div class="choice-preview" id="rock-choice">
+                                            <img src="/web/Emojis/RPS/rock_1.png" style="width: 40px; height: 40px; object-fit: contain;">
+                                            <small>Rock</small>
+                                            <small class="beats-text"></small>
+                                        </div>
+                                    </button>
+                                </div>
+                                <div class="col-md-3 col-4">
+                                    <button class="btn btn-outline-primary w-100 rps-choice-btn" data-choice="paper">
+                                        <div class="choice-preview" id="paper-choice">
+                                            <img src="/web/Emojis/RPS/paper.png" style="width: 40px; height: 40px; object-fit: contain;">
+                                            <small>Paper</small>
+                                            <small class="beats-text"></small>
+                                        </div>
+                                    </button>
+                                </div>
+                                <div class="col-md-3 col-4">
+                                    <button class="btn btn-outline-primary w-100 rps-choice-btn" data-choice="scissor">
+                                        <div class="choice-preview" id="scissors-choice">
+                                            <img src="/web/Emojis/RPS/scissor.png" style="width: 40px; height: 40px; object-fit: contain;">
+                                            <small>Scissors</small>
+                                            <small class="beats-text"></small>
+                                        </div>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div id="rps-arena" class="rps-arena d-none">
+                            <div class="rps-player-choice-animation"></div>
+                            <div class="rps-ai-choice-animation"></div>
+                            <div id="rps-round-result" class="result-text"></div>
+                            <div id="rps-result-actions" class="rps-result-actions d-none">
+                                <button id="rps-play-again" class="btn btn-primary btn-sm">
+                                    <i class="fas fa-redo"></i> Play Again
+                                </button>
+                                <button id="rps-new-round" class="btn btn-outline-primary btn-sm">
+                                    <i class="fas fa-arrow-right"></i> Next Round
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Theme Selection (Hidden by default) -->
+                        <div id="rps-theme-selection" class="rps-theme-selection d-none mb-3">
+                            <h6 class="text-center mb-2">Choose New Theme</h6>
+                            <div class="row g-1">
+                                <div class="col-4">
+                                    <button class="btn btn-outline-primary w-100 rps-theme-change-btn" data-theme="Traditional">
+                                        <div class="theme-preview">
+                                            <img src="/web/Emojis/RPS/rock_1.png" class="emoji-preview" style="width: 20px; height: 20px; object-fit: contain;">
+                                            <small>Traditional</small>
+                                        </div>
+                                    </button>
+                                </div>
+                                <div class="col-4">
+                                    <button class="btn btn-outline-primary w-100 rps-theme-change-btn" data-theme="Fantasy">
+                                        <div class="theme-preview">
+                                            <img src="/web/Emojis/RPS/knights.png" class="emoji-preview" style="width: 20px; height: 20px; object-fit: contain;">
+                                            <small>Fantasy</small>
+                                        </div>
+                                    </button>
+                                </div>
+                                <div class="col-4">
+                                    <button class="btn btn-outline-primary w-100 rps-theme-change-btn" data-theme="War">
+                                        <div class="theme-preview">
+                                            <img src="/web/Emojis/RPS/tank.png" class="emoji-preview" style="width: 20px; height: 20px; object-fit: contain;">
+                                            <small>War</small>
+                                        </div>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="text-center mt-2">
+                                <button id="cancel-theme-change" class="btn btn-sm btn-outline-secondary">Cancel</button>
+                            </div>
+                        </div>
+                        
+
+                        
+
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slots Box -->
+        <div class="col-md-6">
+            <div class="card mb-4 fun-card">
+                <div class="card-header text-center">
+                    <h3>🎰 Slots</h3>
+                </div>
+            <div class="card-body">
+                <div id="slots-setup" class="slots-setup">
+                    <h6 class="text-center mb-2">Choose Your Theme</h6>
+                    <div id="slots-odds-info" class="text-center mb-2 small" style="color: var(--gold-primary); text-shadow: 0 0 5px var(--gold-glow);"></div>
+                    <div class="row g-1 mb-2">
+                        <div class="col-6">
+                            <button class="btn btn-outline-primary w-100 slots-theme-btn" data-theme="Very Easy">
+                                <small>Very Easy</small>
+                            </button>
+                        </div>
+                        <div class="col-6">
+                            <button class="btn btn-outline-primary w-100 slots-theme-btn" data-theme="Easy">
+                                <small>Easy</small>
+                            </button>
+                        </div>
+                        <div class="col-6">
+                            <button class="btn btn-outline-primary w-100 slots-theme-btn" data-theme="Medium">
+                                <small>Medium</small>
+                            </button>
+                        </div>
+                        <div class="col-6">
+                            <button class="btn btn-outline-primary w-100 slots-theme-btn" data-theme="Hard">
+                                <small>Hard</small>
+                            </button>
+                        </div>
+                        <div class="col-6">
+                            <button class="btn btn-outline-primary w-100 slots-theme-btn" data-theme="Very Hard">
+                                <small>Very Hard</small>
+                            </button>
+                        </div>
+                        <div class="col-6">
+                            <button class="btn btn-outline-primary w-100 slots-theme-btn" data-theme="Insanity">
+                                <small>Insanity</small>
+                            </button>
+                        </div>
+                    </div>
+                    <button id="start-slots-btn" class="btn btn-primary w-100" disabled>Start Playing</button>
+                </div>
+                
+                <div id="slots-game" class="slots-game d-none">
+                    <div class="slots-reels-container mb-3">
+                        <div class="slots-reel-container">
+                            <div class="slots-reel"></div>
+                        </div>
+                        <div class="slots-reel-container">
+                            <div class="slots-reel"></div>
+                        </div>
+                        <div class="slots-reel-container">
+                            <div class="slots-reel"></div>
+                        </div>
+                    </div>
+                    <div id="slots-result-text" class="result-text text-center mb-2"></div>
+                    <button id="spin-slots-btn" class="btn btn-primary w-100 mb-2">Start Spin</button>
+                    <button id="slots-play-again" class="btn btn-secondary w-100 d-none">Play Again</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    </div>
+</div>
+
+<style>
+:root {
+    --bg-primary: #0a0a0a;
+    --bg-secondary: #0f0f0f;
+    --bg-tertiary: #141414;
+    --gold-primary: #ffd700;
+    --gold-secondary: #ffed4e;
+    --gold-glow: rgba(255, 215, 0, 0.3);
+    --text-primary: #f0f0f0;
+    --text-secondary: #b9bbbe;
+    }
+        
+    .rps-theme-change-btn {
+        font-size: 0.7rem;
+        padding: 4px;
+    }
+    
+    .rps-theme-selection h6 {
+        font-size: 0.9rem;
+    }
+
+body {
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+}
+
+/* Fun Card Styling - Updated to match dashboard theme */
+.fun-card {
+    background-color: rgba(15, 15, 15, 0.85);
+    border: 2px solid var(--gold-primary);
+    box-shadow: 0 0 15px var(--gold-glow);
+    border-radius: 0.75rem;
+    transition: all 0.3s ease;
+    min-height: 400px;
+}
+
+.fun-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 0 20px var(--gold-glow);
+}
+
+.fun-card .card-header {
+    background: linear-gradient(135deg, rgba(20, 20, 20, 0.9), rgba(15, 15, 15, 0.9));
+    border-bottom: 2px solid var(--gold-primary);
+    color: var(--gold-primary);
+    font-weight: 700;
+    border-radius: 0.75rem 0.75rem 0 0 !important;
+}
+
+.fun-card .card-header h3 {
+    color: var(--gold-primary);
+    margin: 0;
+    font-size: 1.1rem;
+    text-shadow: 0 0 10px var(--gold-glow);
+}
+
+/* Lighten text in card bodies */
+.fun-card .card-body {
+    color: #f8f9fa;
+}
+
+.fun-card .card-body h5,
+.fun-card .card-body .form-label,
+.fun-card .card-body small {
+    color: #e9ecef;
+    font-weight: 500;
+}
+
+.fun-card .card-body .text-center {
+    color: #e9ecef;
+}
+
+/* Lighten result text and other dynamic content */
+.fun-card .result-text,
+.fun-card .coin-result,
+.fun-card .dice-result,
+.fun-card .card-result {
+    color: #f8f9f8;
+    text-shadow: 0 0 5px rgba(255, 255, 255, 0.3);
+}
+
+/* Lighten button text in card bodies */
+.fun-card .btn-outline-primary,
+.fun-card .btn-outline-secondary,
+.fun-card .btn-outline-danger,
+.fun-card .btn-outline-warning,
+.fun-card .btn-outline-info,
+.fun-card .btn-outline-success {
+    color: #e9ecef;
+    border-color: var(--gold-primary);
+}
+
+.fun-card .btn-outline-primary:hover,
+.fun-card .btn-outline-secondary:hover,
+.fun-card .btn-outline-danger:hover,
+.fun-card .btn-outline-warning:hover,
+.fun-card .btn-outline-info:hover,
+.fun-card .btn-outline-success:hover {
+    color: #ffffff;
+    background-color: var(--gold-primary);
+    border-color: var(--gold-primary);
+}
+
+/* Additional text lightening for better visibility */
+.fun-card .theme-preview small,
+.fun-card .color-preview + small {
+    color: #ffffff;
+    font-weight: 600;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+.fun-card .btn:disabled {
+    color: #6c757d;
+    border-color: #6c757d;
+}
+
+.fun-card .btn-primary {
+    color: #ffffff;
+    background-color: var(--gold-primary);
+    border-color: var(--gold-primary);
+}
+
+/* Coin Flip Styles */
+.coin-setup {
+    text-align: center;
+}
+
+.coin-theme-btn {
+    padding: 6px;
+    border-radius: 0.5rem;
+    transition: all 0.3s ease;
+    border: 2px solid var(--gold-primary);
+    background: rgba(20, 20, 20, 0.8);
+    color: var(--gold-primary);
+    font-size: 0.85rem;
+}
+
+.coin-theme-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 0 15px var(--gold-glow);
+    background: var(--gold-primary);
+    color: var(--bg-primary);
+}
+
+.coin-theme-btn.active {
+    background: var(--gold-primary);
+    color: var(--bg-primary);
+    border-color: var(--gold-primary);
+    box-shadow: 0 0 15px var(--gold-glow);
+}
+
+.theme-preview {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+}
+
+.emoji-preview {
+    font-size: 1.2rem;
+    display: inline-block;
+    vertical-align: middle;
+    width: 20px;
+    height: 20px;
+    object-fit: contain;
+}
+
+.coin-animation {
+    text-align: center;
+}
+
+.coin-container {
+    perspective: 1000px;
+    margin: 1rem 0;
+}
+
+.coin {
+    width: 100px;
+    height: 100px;
+    position: relative;
+    transform-style: preserve-3d;
+    margin: 0 auto;
+}
+
+.coin-side {
+    position: absolute;
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    backface-visibility: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2.5rem;
+    border: 4px solid var(--gold-primary);
+    box-shadow: 0 0 20px var(--gold-glow);
+}
+
+.coin-heads {
+    background: linear-gradient(135deg, var(--gold-primary), var(--gold-secondary));
+    color: var(--bg-primary);
+}
+
+.coin-tails {
+    background: linear-gradient(135deg, rgba(20, 20, 20, 0.9), rgba(15, 15, 15, 0.9));
+    color: var(--gold-primary);
+    transform: rotateY(180deg);
+}
+
+.coin.flipping {
+    animation: coinFlip 2s ease-in-out;
+}
+
+@keyframes coinFlip {
+    0% { transform: rotateY(0deg) scale(1); }
+    25% { transform: rotateY(900deg) scale(1.1); }
+    50% { transform: rotateY(1800deg) scale(1); }
+    75% { transform: rotateY(2700deg) scale(1.1); }
+    100% { transform: rotateY(3600deg) scale(1); }
+}
+
+.result-text {
+    font-size: 1.1rem;
+    font-weight: bold;
+    color: var(--gold-primary);
+    text-shadow: 0 0 10px var(--gold-glow);
+    background: rgba(20, 20, 20, 0.8);
+    padding: 0.75rem;
+    border-radius: 0.75rem;
+    border: 2px solid var(--gold-primary);
+    box-shadow: 0 0 15px var(--gold-glow);
+}
+
+/* Dice Styles */
+.dice-setup {
+    text-align: center;
+}
+
+.dice-color-btn {
+    padding: 6px;
+    border-radius: 0.5rem;
+    transition: all 0.3s ease;
+    border: 2px solid var(--gold-primary);
+    background: rgba(20, 20, 20, 0.8);
+    color: var(--gold-primary);
+    font-size: 0.85rem;
+}
+
+.dice-color-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 0 15px var(--gold-glow);
+    background: var(--gold-primary);
+    color: var(--bg-primary);
+}
+
+.dice-color-btn.active {
+    border-color: var(--gold-primary);
+    background: var(--gold-primary);
+    color: var(--bg-primary);
+    box-shadow: 0 0 15px var(--gold-glow);
+}
+
+.color-preview {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    margin: 0 auto 5px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+}
+
+.color-preview.red { background: linear-gradient(135deg, #dc3545, #c82333); }
+.color-preview.orange { background: linear-gradient(135deg, #fd7e14, #e55100); }
+.color-preview.blue { background: linear-gradient(135deg, #007bff, #0056b3); }
+.color-preview.yellow { background: linear-gradient(135deg, #ffc107, #e0a800); }
+.color-preview.pink { background: linear-gradient(135deg, #e83e8c, #d63384); }
+.color-preview.green { background: linear-gradient(135deg, #28a745, #1e7e34); }
+.color-preview.purple { background: linear-gradient(135deg, #6f42c1, #59359a); }
+
+.dice-amount-btn {
+    padding: 8px;
+    font-size: 1rem;
+    font-weight: bold;
+    border-radius: 0.5rem;
+    transition: all 0.3s ease;
+    background: rgba(20, 20, 20, 0.8);
+    color: var(--gold-primary);
+    border: 2px solid var(--gold-primary);
+}
+
+.dice-amount-btn.active {
+    background: var(--gold-primary);
+    color: var(--bg-primary);
+    border-color: var(--gold-primary);
+    box-shadow: 0 0 15px var(--gold-glow);
+}
+
+.dice-animation {
+    text-align: center;
+}
+
+.dice-container {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    flex-wrap: wrap;
+    margin: 1rem 0;
+    min-height: 120px;
+    align-items: center;
+    perspective: 1000px;
+}
+
+.dice {
+    width: 70px;
+    height: 70px;
+    position: relative;
+    transform-style: preserve-3d;
+    margin: 10px;
+    transition: transform 0.3s ease-out;
+}
+
+.dice:not(.rolling):hover {
+    transform: translateY(-5px) scale(1.05);
+    box-shadow: 0 8px 20px var(--gold-glow);
+}
+
+.dice-face {
+    position: absolute;
+    width: 70px;
+    height: 70px;
+    background: linear-gradient(135deg, rgba(20, 20, 20, 0.9), rgba(15, 15, 15, 0.9));
+    border: 3px solid var(--gold-primary);
+    border-radius: 0.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.8rem;
+    font-weight: bold;
+    color: var(--gold-primary);
+    box-shadow: 0 5px 15px var(--gold-glow);
+}
+
+.dice.rolling {
+    animation: diceRoll 1.5s ease-in-out;
+    filter: brightness(1.2) contrast(1.1);
+}
+
+.dice.rolling .dice-face {
+    animation: diceFaceFlicker 1.5s ease-in-out;
+}
+
+@keyframes diceFaceFlicker {
+    0%, 100% { opacity: 1; }
+    10% { opacity: 0.8; }
+    20% { opacity: 1; }
+    30% { opacity: 0.9; }
+    40% { opacity: 1; }
+    50% { opacity: 0.7; }
+    60% { opacity: 1; }
+    70% { opacity: 0.8; }
+    80% { opacity: 1; }
+    90% { opacity: 0.9; }
+}
+
+@keyframes diceRoll {
+    0% { 
+        transform: rotateX(0deg) rotateY(0deg) rotateZ(0deg) scale(1) translateY(0px);
+        box-shadow: 0 5px 15px var(--gold-glow);
+    }
+    10% { 
+        transform: rotateX(180deg) rotateY(90deg) rotateZ(45deg) scale(1.2) translateY(-20px);
+        box-shadow: 0 15px 30px var(--gold-glow);
+    }
+    20% { 
+        transform: rotateX(360deg) rotateY(180deg) rotateZ(90deg) scale(1.1) translateY(-10px);
+        box-shadow: 0 10px 25px var(--gold-glow);
+    }
+    30% { 
+        transform: rotateX(540deg) rotateY(270deg) rotateZ(135deg) scale(1.3) translateY(-30px);
+        box-shadow: 0 20px 40px var(--gold-glow);
+    }
+    40% { 
+        transform: rotateX(720deg) rotateY(360deg) rotateZ(180deg) scale(1.2) translateY(-15px);
+        box-shadow: 0 15px 35px var(--gold-glow);
+    }
+    50% { 
+        transform: rotateX(900deg) rotateY(450deg) rotateZ(225deg) scale(1.1) translateY(-5px);
+        box-shadow: 0 8px 20px var(--gold-glow);
+    }
+    60% { 
+        transform: rotateX(1080deg) rotateY(540deg) rotateZ(270deg) scale(1.2) translateY(-25px);
+        box-shadow: 0 18px 38px var(--gold-glow);
+    }
+    70% { 
+        transform: rotateX(1260deg) rotateY(630deg) rotateZ(315deg) scale(1.15) translateY(-10px);
+        box-shadow: 0 12px 28px var(--gold-glow);
+    }
+    80% { 
+        transform: rotateX(1440deg) rotateY(720deg) rotateZ(360deg) scale(1.05) translateY(-5px);
+        box-shadow: 0 6px 18px var(--gold-glow);
+    }
+    90% { 
+        transform: rotateX(1440deg) rotateY(720deg) rotateZ(360deg) scale(1.02) translateY(-2px);
+        box-shadow: 0 3px 12px var(--gold-glow);
+    }
+    100% { 
+        transform: rotateX(1440deg) rotateY(720deg) rotateZ(360deg) scale(1) translateY(0px);
+        box-shadow: 0 5px 15px var(--gold-glow);
+    }
+}
+
+/* Card Styles */
+.card-setup {
+    text-align: center;
+}
+
+.card-amount-btn {
+    padding: 12px;
+    font-size: 1.1rem;
+    font-weight: bold;
+    border-radius: 0.5rem;
+    transition: all 0.3s ease;
+    background: rgba(20, 20, 20, 0.8);
+    color: var(--gold-primary);
+    border: 2px solid var(--gold-primary);
+}
+
+.card-amount-btn.active {
+    background: var(--gold-primary);
+    color: var(--bg-primary);
+    border-color: var(--gold-primary);
+    box-shadow: 0 0 15px var(--gold-glow);
+}
+
+.card-animation {
+    text-align: center;
+}
+
+.card-table {
+    position: relative;
+    min-height: 160px;
+    margin: 1rem 0;
+    background: linear-gradient(135deg, rgba(255, 215, 0, 0.1), rgba(255, 215, 0, 0.05));
+    border-radius: 15px;
+    padding: 10px;
+}
+
+.deck-area {
+    position: absolute;
+    right: 20px;
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+.card-deck {
+    position: relative;
+    width: 60px;
+    height: 84px;
+}
+
+.deck-card {
+    position: absolute;
+    width: 50px;
+    height: 70px;
+    background: linear-gradient(135deg, rgba(20, 20, 20, 0.9), rgba(15, 15, 15, 0.9));
+    border: 2px solid var(--gold-primary);
+    border-radius: 0.75rem;
+    box-shadow: 0 3px 10px var(--gold-glow);
+}
+
+.deck-card:nth-child(1) { transform: rotate(-2deg); }
+.deck-card:nth-child(2) { transform: rotate(0deg); }
+.deck-card:nth-child(3) { transform: rotate(2deg); }
+
+.drawn-cards {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    min-height: 100px;
+    align-items: center;
+}
+
+.playing-card {
+    width: 50px;
+    height: 70px;
+    background: linear-gradient(135deg, rgba(20, 20, 20, 0.9), rgba(15, 15, 15, 0.9));
+    border: 2px solid var(--gold-primary);
+    border-radius: 0.75rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    font-weight: bold;
+    box-shadow: 0 5px 15px var(--gold-glow);
+    transition: all 0.3s ease;
+    color: var(--gold-primary);
+}
+
+.playing-card.red {
+    color: #dc3545;
+}
+
+.playing-card.black {
+    color: #000;
+}
+
+.playing-card.drawing {
+    animation: cardDraw 1s ease-out;
+}
+
+@keyframes cardDraw {
+    0% { 
+        transform: translateX(100px) rotateY(180deg); 
+        opacity: 0;
+    }
+    50% { 
+        transform: translateX(50px) rotateY(90deg); 
+        opacity: 0.5;
+    }
+    100% { 
+        transform: translateX(0) rotateY(0deg); 
+        opacity: 1;
+    }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .fun-card {
+        margin-bottom: 1rem;
+    }
+    
+    .coin-side, .coin-heads, .coin-tails {
+        width: 80px;
+        height: 80px;
+        font-size: 2rem;
+    }
+    
+    .dice {
+        width: 60px;
+        height: 60px;
+    }
+    
+    .dice-face {
+        width: 60px;
+        height: 60px;
+        font-size: 1.5rem;
+    }
+    
+    .playing-card {
+        width: 45px;
+        height: 63px;
+        font-size: 1rem;
+    }
+    
+    .rps-choice-btn {
+        height: 80px;
+        padding: 10px 5px;
+        font-size: 0.8rem;
+    }
+    
+    .rps-choice-btn img {
+        max-width: 28px;
+        max-height: 28px;
+    }
+    
+    .choice-preview small {
+        font-size: 0.75rem;
+    }
+    
+    #change-theme-btn, #reset-game-btn {
+        font-size: 0.75rem;
+        padding: 0.3rem 0.6rem;
+    }
+    
+    #rps-score {
+        font-size: 0.9rem;
+    }
+    
+    .slots-reels-container {
+        height: 100px;
+    }
+    
+    .slots-reel {
+        width: 60px;
+    }
+    
+    .slots-reel img {
+        width: 50px;
+        height: 50px;
+    }
+}
+
+/* Button States */
+.btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* Loading States */
+.loading {
+    opacity: 0.7;
+    pointer-events: none;
+}
+
+.spinner {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 3px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    border-top-color: var(--gold-primary);
+    animation: spin 1s ease-in-out infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Rock Paper Scissors Styles */
+.rps-setup {
+    text-align: center;
+}
+
+.rps-theme-btn {
+    padding: 8px;
+    border-radius: 0.5rem;
+    transition: all 0.3s ease;
+    border: 2px solid var(--gold-primary);
+    background: rgba(20, 20, 20, 0.8);
+    color: var(--gold-primary);
+    margin-bottom: 5px;
+    font-size: 0.9rem;
+}
+
+.rps-theme-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 0 15px var(--gold-glow);
+    background: var(--gold-primary);
+    color: var(--bg-primary);
+}
+
+.rps-theme-btn.active {
+    background: var(--gold-primary);
+    color: var(--bg-primary);
+    border-color: var(--gold-primary);
+    box-shadow: 0 0 15px var(--gold-glow);
+}
+
+.rps-rounds-btn {
+    padding: 15px;
+    font-size: 1.2rem;
+    font-weight: bold;
+    border-radius: 0.75rem;
+    transition: all 0.3s ease;
+    background: rgba(20, 20, 20, 0.8);
+    color: var(--gold-primary);
+    border: 2px solid var(--gold-primary);
+}
+
+.rps-rounds-btn.active {
+    background: var(--gold-primary);
+    color: var(--bg-primary);
+    border-color: var(--gold-primary);
+    box-shadow: 0 0 15px var(--gold-glow);
+}
+
+.rps-game {
+    text-align: center;
+}
+
+.rps-choices {
+    margin: 2rem 0;
+}
+
+.rps-choice-btn {
+    padding: 15px 8px;
+    border-radius: 0.5rem;
+    transition: all 0.3s ease;
+    border: 2px solid var(--gold-primary);
+    background: rgba(20, 20, 20, 0.8);
+    color: var(--gold-primary);
+    height: 100px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.9rem;
+}
+
+.rps-choice-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 0 15px var(--gold-glow);
+    background: var(--gold-primary);
+    color: var(--bg-primary);
+}
+
+.rps-choice-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+.rps-choice-btn:not(:disabled) {
+    pointer-events: auto;
+    cursor: pointer;
+    opacity: 1;
+}
+
+.choice-preview {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+    pointer-events: none; /* Allow clicks to pass through to button */
+}
+
+.choice-preview img {
+    max-width: 32px;
+    max-height: 32px;
+}
+
+.choice-preview small {
+    font-size: 0.8rem;
+    font-weight: bold;
+}
+
+.rps-result {
+    margin: 1.5rem 0;
+}
+
+#rps-score {
+    font-size: 1.1rem;
+    font-weight: bold;
+    color: var(--gold-primary);
+    text-shadow: 0 0 5px var(--gold-glow);
+}
+
+.rps-final-result {
+    margin-top: 2rem;
+}
+
+.rps-arena {
+    position: relative;
+    height: 150px;
+    margin: 1rem 0;
+    overflow: hidden;
+}
+
+.rps-player-choice-animation,
+.rps-ai-choice-animation {
+    position: absolute;
+    width: 80px;
+    height: 80px;
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+}
+
+.rps-player-choice-animation {
+    left: 0;
+    animation: run-to-center-left 1.2s ease-out;
+}
+
+.rps-ai-choice-animation {
+    right: 0;
+    animation: run-to-center-right 1.2s ease-out;
+}
+
+@keyframes run-to-center-left {
+    0% { 
+        transform: translateX(-100px) scale(0.3); 
+        opacity: 0;
+    }
+    15% { 
+        transform: translateX(-60px) scale(0.7) rotate(-5deg); 
+        opacity: 0.8;
+    }
+    30% { 
+        transform: translateX(-30px) scale(0.9) rotate(8deg); 
+    }
+    45% { 
+        transform: translateX(-10px) scale(1.0) rotate(-3deg); 
+    }
+    60% { 
+        transform: translateX(calc(50% - 60px)) scale(1.1) rotate(-15deg); 
+    }
+    75% { 
+        transform: translateX(calc(50% - 40px)) scale(1.2) rotate(-20deg); 
+    }
+    90% { 
+        transform: translateX(calc(50% - 40px)) scale(1.1) rotate(-10deg); 
+    }
+    100% { 
+        transform: translateX(calc(50% - 40px)) scale(1); 
+    }
+}
+
+@keyframes run-to-center-right {
+    0% { 
+        transform: translateX(100px) scale(0.3); 
+        opacity: 0;
+    }
+    15% { 
+        transform: translateX(60px) scale(0.7) rotate(5deg); 
+        opacity: 0.8;
+    }
+    30% { 
+        transform: translateX(30px) scale(0.9) rotate(-8deg); 
+    }
+    45% { 
+        transform: translateX(10px) scale(1.0) rotate(3deg); 
+    }
+    60% { 
+        transform: translateX(calc(-50% + 60px)) scale(1.1) rotate(15deg); 
+    }
+    75% { 
+        transform: translateX(calc(-50% + 40px)) scale(1.2) rotate(20deg); 
+    }
+    90% { 
+        transform: translateX(calc(-50% + 40px)) scale(1.1) rotate(10deg); 
+    }
+    100% { 
+        transform: translateX(calc(-50% + 40px)) scale(1); 
+    }
+}
+
+#rps-round-result {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 100%;
+    text-align: center;
+    opacity: 0;
+    transition: opacity 0.5s ease-in-out;
+}
+
+#rps-arena.show-result #rps-round-result {
+    opacity: 1;
+}
+
+
+.winner {
+    animation: winner-animation 1s 1s forwards;
+}
+
+.loser {
+    animation: loser-animation 1s 1s forwards;
+}
+
+.tie {
+    animation: tie-animation 1s 1s forwards;
+}
+
+@keyframes winner-animation {
+    0% { transform: scale(1) rotate(0deg); }
+    25% { transform: scale(1.2) rotate(-8deg); filter: drop-shadow(0 0 20px var(--gold-primary)); }
+    50% { transform: scale(1.3) rotate(8deg); filter: drop-shadow(0 0 25px var(--gold-primary)); }
+    75% { transform: scale(1.1) rotate(-4deg); filter: drop-shadow(0 0 15px var(--gold-primary)); }
+    100% { transform: scale(1.15) rotate(0deg); filter: drop-shadow(0 0 15px var(--gold-primary)); }
+}
+
+@keyframes winner-celebrate {
+    0%, 100% { transform: scale(1.15) rotate(0deg); }
+    25% { transform: scale(1.2) rotate(-5deg); }
+    50% { transform: scale(1.25) rotate(5deg); }
+    75% { transform: scale(1.2) rotate(-3deg); }
+}
+
+@keyframes loser-animation {
+    0% { transform: scale(1); }
+    10% { transform: scale(0.9) rotate(10deg); }
+    25% { transform: scale(0.7) rotate(-25deg) translateY(-15px); filter: blur(1px); }
+    40% { transform: scale(0.5) rotate(35deg) translateY(-30px) translateX(20px); opacity: 0.8; filter: blur(2px); }
+    60% { transform: scale(0.3) rotate(-50deg) translateY(-60px) translateX(80px); opacity: 0.6; filter: blur(3px); }
+    80% { transform: scale(0.15) rotate(70deg) translateY(-100px) translateX(200px); opacity: 0.3; filter: blur(4px); }
+    100% { transform: scale(0.05) rotate(90deg) translateY(-150px) translateX(350px); opacity: 0; filter: blur(5px); }
+}
+
+@keyframes tie-animation {
+    0% { transform: scale(1); }
+    25% { transform: scale(1.1) rotate(5deg); }
+    50% { transform: scale(1.2) rotate(-5deg); filter: drop-shadow(0 0 10px var(--gold-primary)); }
+    75% { transform: scale(1.1) rotate(3deg); }
+    100% { transform: scale(1) rotate(0deg); }
+}
+
+/* Enhanced winner/loser positioning */
+.rps-player-choice-animation.winner {
+    left: calc(50% - 40px);
+    animation: winner-animation 0.8s ease-out forwards, winner-celebrate 1s 0.8s ease-in-out infinite;
+}
+
+.rps-ai-choice-animation.winner {
+    right: calc(50% - 40px);
+    animation: winner-animation 0.8s ease-out forwards, winner-celebrate 1s 0.8s ease-in-out infinite;
+}
+
+.rps-player-choice-animation.loser {
+    left: calc(50% - 40px);
+    animation: collision-bounce-left 1.2s ease-out forwards;
+}
+
+.rps-ai-choice-animation.loser {
+    right: calc(50% - 40px);
+    animation: collision-bounce-right 1.2s ease-out forwards;
+}
+
+@keyframes winner-stay {
+    to { 
+        transform: scale(1.2); 
+        filter: drop-shadow(0 0 15px var(--gold-primary));
+    }
+}
+
+/* Enhanced battle impact effect */
+.rps-arena.battle-impact::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 100px;
+    height: 100px;
+    background: radial-gradient(circle, rgba(255,215,0,0.9) 0%, rgba(255,100,0,0.6) 30%, rgba(255,215,0,0) 70%);
+    border-radius: 50%;
+    opacity: 0;
+    animation: battle-impact 0.8s ease-out;
+    box-shadow: 0 0 30px rgba(255,215,0,0.5);
+}
+
+.rps-arena.battle-impact::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 40px;
+    height: 40px;
+    background: radial-gradient(circle, rgba(255,255,255,0.9) 0%, rgba(255,215,0,0.8) 50%, transparent 100%);
+    border-radius: 50%;
+    opacity: 0;
+    animation: battle-impact-core 0.6s ease-out 0.1s;
+}
+
+@keyframes battle-impact {
+    0% { transform: translate(-50%, -50%) scale(0); opacity: 1; }
+    30% { transform: translate(-50%, -50%) scale(1.8); opacity: 0.9; }
+    60% { transform: translate(-50%, -50%) scale(2.2); opacity: 0.7; }
+    100% { transform: translate(-50%, -50%) scale(3); opacity: 0; }
+}
+
+@keyframes battle-impact-core {
+    0% { transform: translate(-50%, -50%) scale(0.5); opacity: 1; }
+    50% { transform: translate(-50%, -50%) scale(1.2); opacity: 0.8; }
+    100% { transform: translate(-50%, -50%) scale(1.5); opacity: 0; }
+}
+
+/* Enhanced collision animations */
+@keyframes collision-bounce-left {
+    0% { transform: translateX(calc(50% - 40px)) scale(1); }
+    20% { transform: translateX(calc(50% - 20px)) scale(1.3) rotate(-25deg); }
+    40% { transform: translateX(calc(50% - 10px)) scale(1.4) rotate(-45deg); }
+    60% { transform: translateX(calc(50% + 30px)) scale(1.1) rotate(-90deg); }
+    80% { transform: translateX(calc(50% + 80px)) scale(0.8) rotate(-120deg); }
+    100% { transform: translateX(calc(50% + 150px)) scale(0.4) rotate(-180deg); opacity: 0; }
+}
+
+@keyframes collision-bounce-right {
+    0% { transform: translateX(calc(-50% + 40px)) scale(1); }
+    20% { transform: translateX(calc(-50% + 20px)) scale(1.3) rotate(25deg); }
+    40% { transform: translateX(calc(-50% + 10px)) scale(1.4) rotate(45deg); }
+    60% { transform: translateX(calc(-50% - 30px)) scale(1.1) rotate(90deg); }
+    80% { transform: translateX(calc(-50% - 80px)) scale(0.8) rotate(120deg); }
+    100% { transform: translateX(calc(-50% - 150px)) scale(0.4) rotate(180deg); opacity: 0; }
+}
+
+/* Result actions styling */
+.rps-result-actions {
+    position: absolute;
+    bottom: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 10px;
+    opacity: 0;
+    transition: opacity 0.5s ease-in-out;
+}
+
+#rps-arena.show-result .rps-result-actions {
+    opacity: 1;
+}
+
+/* Arena shake effect during collision */
+.rps-arena.battle-collision {
+    animation: arena-shake 0.5s ease-in-out;
+}
+
+@keyframes arena-shake {
+    0%, 100% { transform: translateX(0); }
+    10%, 30%, 50%, 70%, 90% { transform: translateX(-2px); }
+    20%, 40%, 60%, 80% { transform: translateX(2px); }
+}
+
+/* Additional RPS Styles for Compact Layout */
+.rps-theme-selection {
+    background: rgba(20, 20, 20, 0.6);
+    border-radius: 0.75rem;
+    padding: 1rem;
+    border: 1px solid var(--gold-primary);
+}
+
+.rps-theme-change-btn {
+    padding: 6px;
+    border-radius: 0.5rem;
+    transition: all 0.3s ease;
+    border: 2px solid var(--gold-primary);
+    background: rgba(20, 20, 20, 0.8);
+    color: var(--gold-primary);
+    font-size: 0.8rem;
+}
+
+.rps-theme-change-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 0 10px var(--gold-glow);
+    background: var(--gold-primary);
+    color: var(--bg-primary);
+}
+
+.rps-theme-change-btn.active {
+    background: var(--gold-primary);
+    color: var(--bg-primary);
+    border-color: var(--gold-primary);
+    box-shadow: 0 0 10px var(--gold-glow);
+}
+
+#change-theme-btn, #reset-game-btn {
+    font-size: 0.8rem;
+    padding: 0.4rem 0.8rem;
+}
+
+#rps-score {
+    font-size: 1rem;
+    font-weight: bold;
+    color: var(--gold-primary);
+    text-shadow: 0 0 5px var(--gold-glow);
+}
+.rps-theme-traditional .rps-choice-btn[data-choice="rock"] img {
+    content: url('/web/Emojis/RPS/rock_1.png');
+}
+
+.rps-theme-traditional .rps-choice-btn[data-choice="paper"] img {
+    content: url('/web/Emojis/RPS/paper.png');
+}
+
+.rps-theme-traditional .rps-choice-btn[data-choice="scissors"] img {
+    content: url('/web/Emojis/RPS/scissor.png');
+}
+
+.rps-theme-fantasy .rps-choice-btn[data-choice="rock"] img {
+    content: url('/web/Emojis/RPS/knights.png');
+}
+
+.rps-theme-fantasy .rps-choice-btn[data-choice="paper"] img {
+    content: url('/web/Emojis/RPS/archer.png');
+}
+
+.rps-theme-fantasy .rps-choice-btn[data-choice="scissors"] img {
+    content: url('/web/Emojis/RPS/necromancer.png');
+}
+
+.rps-theme-war .rps-choice-btn[data-choice="rock"] img {
+    content: url('/web/Emojis/RPS/tank.png');
+}
+
+.rps-theme-war .rps-choice-btn[data-choice="paper"] img {
+    content: url('/web/Emojis/RPS/jet.png');
+}
+
+.rps-theme-war .rps-choice-btn[data-choice="scissors"] img {
+    content: url('/web/Emojis/RPS/ship.png');
+}
+/* Slots Styles */
+.slots-setup {
+    text-align: center;
+}
+
+.slots-theme-btn {
+    padding: 8px;
+    border-radius: 0.5rem;
+    transition: all 0.3s ease;
+    border: 2px solid var(--gold-primary);
+    background: rgba(20, 20, 20, 0.8);
+    color: var(--gold-primary);
+    margin-bottom: 5px;
+    font-size: 0.9rem;
+}
+
+.slots-theme-btn.active {
+    background: var(--gold-primary);
+    color: var(--bg-primary);
+    border-color: var(--gold-primary);
+    box-shadow: 0 0 15px var(--gold-glow);
+}
+
+.slots-reels-container {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    background: rgba(0,0,0,0.3);
+    border-radius: 10px;
+    padding: 15px;
+    border: 2px solid var(--gold-primary);
+    box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
+    overflow: hidden;
+    height: 120px;
+}
+
+.slots-reel {
+    width: 80px;
+    transition: transform 1s ease-in-out;
+}
+
+.slots-reel-container {
+    width: 80px;
+    height: 80px;
+    overflow: hidden;
+    border-radius: 10px;
+    border: 2px solid var(--gold-primary);
+    box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
+}
+
+.slots-reel.spinning {
+    animation: spinReel 0.1s linear infinite;
+}
+
+@keyframes spinReel {
+    from {
+        transform: translateY(0);
+    }
+    to {
+        transform: translateY(-100%);
+    }
+}
+
+@keyframes spinReelWithDecision {
+    0% { transform: translateY(0); }
+    45% { transform: translateY(-50%); }
+    50% { transform: translateY(-45%); } /* Small bounce back */
+    55% { transform: translateY(-55%); } /* Forward again */
+    60% { transform: translateY(-50%); } /* Settle */
+    100% { transform: translateY(-100%); }
+}
+
+</style>
+
+<script>
+class FunFeatures {
+    constructor() {
+        this.emojiData = null;
+        this.coinTheme = null;
+        this.diceColor = null;
+        this.diceAmount = null;
+        this.cardAmount = null;
+        
+        // RPS properties
+        this.rpsTheme = null;
+        this.rpsPlayerScore = 0;
+        this.rpsAiScore = 0;
+        this.rpsPlayerHistory = [];
+        
+        // Slots properties
+        this.slotsTheme = null;
+        this.slotsReels = [];
+        this.slotsSpinning = false;
+        
+        this.coinThemes = {
+            'Raider': { heads: 'Pirate', tails: 'Poop', headsEmoji: '/web/Emojis/Coins/Pirate.png', tailsEmoji: '/web/Emojis/Coins/Poop.png' },
+            'Time': { heads: 'Future', tails: 'Retro', headsEmoji: '/web/Emojis/Coins/Future.png', tailsEmoji: '/web/Emojis/Coins/Retro.png' },
+            'Battery': { heads: 'Full', tails: 'Empty', headsEmoji: '/web/Emojis/Coins/Full.png', tailsEmoji: '/web/Emojis/Coins/Empty.png' },
+            'Electric': { heads: 'Plug', tails: 'Socket', headsEmoji: '/web/Emojis/Coins/Plug.png', tailsEmoji: '/web/Emojis/Coins/Socket.png' },
+            'Business': { heads: 'Open', tails: 'Close', headsEmoji: '/web/Emojis/Coins/Open.png', tailsEmoji: '/web/Emojis/Coins/Close.png' },
+            'Sky': { heads: 'Day', tails: 'Night', headsEmoji: '/web/Emojis/Coins/Day.png', tailsEmoji: '/web/Emojis/Coins/Night.png' },
+            'Tempature': { heads: 'Heat', tails: 'Cold', headsEmoji: '/web/Emojis/Coins/Hot.png', tailsEmoji: '/web/Emojis/Coins/Cold.png' }
+        };
+        
+        this.cardSuits = {
+            'Hearts': { cards: ['H1','H2','H3','H4','H5','H6','H7','H8','H9','H10','HJ','HQ','HK'], color: 'red', symbol: '♥️' },
+            'Diamonds': { cards: ['D1','D2','D3','D4','D5','D6','D7','D8','D9','D10','DJ','DQ','DK'], color: 'red', symbol: '♦️' },
+            'Clubs': { cards: ['C1','C2','C3','C4','C5','C6','C7','C8','C9','C10','CJ','CQ','CK'], color: 'black', symbol: '♣️' },
+            'Spades': { cards: ['S1','S2','S3','S4','S5','S6','S7','S8','S9','S10','SJ','SQ','SK'], color: 'black', symbol: '♠️' },
+            'Jokers': { cards: ['LJ','BJ'], color: 'red', symbol: '🃏' }
+        };
+        
+        this.setupEventListeners();
+    }
+
+    async init() {
+        await this.loadEmojiData();
+    }
+    
+    async loadEmojiData() {
+        try {
+            console.log('Loading emoji data from server...');
+            // Load emoji data from the server
+            const response = await fetch('/api/emoji-data');
+            if (response.ok) {
+                const data = await response.json();
+                console.log('API emoji data response:', data);
+                this.emojiData = data.emojis;
+                this.emojiCategories = data.categories;
+                console.log('Successfully loaded emoji data from API');
+            } else {
+                console.log(`API returned status ${response.status}, using fallback emoji data`);
+                // Fallback to hardcoded emoji IDs if API not available
+                this.emojiData = this.getFallbackEmojiData();
+                this.emojiCategories = this.getFallbackCategories();
+            }
+        } catch (error) {
+            console.log('Error loading emoji data from API, using fallback:', error.message);
+            this.emojiData = this.getFallbackEmojiData();
+            this.emojiCategories = this.getFallbackCategories();
+        }
+        
+        // Verify emoji data is loaded
+        if (this.emojiData) {
+            console.log(`Loaded ${Object.keys(this.emojiData).length} custom emojis`);
+            console.log('All available emojis:', Object.keys(this.emojiData).slice(0, 20));
+            // Test a few key emojis
+            console.log('Sample emojis loaded:', {
+                'Pirate': this.emojiData['Pirate'] || 'not found',
+                'Red1': this.emojiData['Red1'] || 'not found',
+                'H1': this.emojiData['H1'] || 'not found',
+                'D6': this.emojiData['D6'] || 'not found',
+                'Heat': this.emojiData['Heat'] || 'not found'
+            });
+        } else {
+            console.error('Failed to load any emoji data');
+        }
+    }
+    
+    getFallbackEmojiData() {
+        return {};
+    }
+    
+    getFallbackCategories() {
+        return {};
+    }
+    
+    setupEventListeners() {
+        // Coin Flip Event Listeners
+        document.querySelectorAll('.coin-theme-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                document.querySelectorAll('.coin-theme-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                this.coinTheme = btn.dataset.theme;
+                this.flipCoin();
+            });
+        });
+        
+        document.getElementById('coin-play-again').addEventListener('click', () => {
+            this.resetCoin();
+        });
+        
+        // Dice Roll Event Listeners
+        document.querySelectorAll('.dice-color-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                document.querySelectorAll('.dice-color-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                this.diceColor = btn.dataset.color;
+                this.checkDiceReady();
+            });
+        });
+        
+        document.querySelectorAll('.dice-amount-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                document.querySelectorAll('.dice-amount-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                this.diceAmount = parseInt(btn.dataset.amount);
+                this.checkDiceReady();
+            });
+        });
+        
+        document.getElementById('roll-dice-btn').addEventListener('click', () => {
+            this.rollDice();
+        });
+        
+        document.getElementById('dice-play-again').addEventListener('click', () => {
+            this.resetDice();
+        });
+        
+        // Card Draw Event Listeners
+        document.querySelectorAll('.card-amount-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                document.querySelectorAll('.card-amount-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                this.cardAmount = parseInt(btn.dataset.amount);
+                document.getElementById('draw-cards-btn').disabled = false;
+            });
+        });
+        
+        document.getElementById('draw-cards-btn').addEventListener('click', () => {
+            this.drawCards();
+        });
+        
+        document.getElementById('card-play-again').addEventListener('click', () => {
+            this.resetCards();
+        });
+        
+        // Rock Paper Scissors Event Listeners
+        document.querySelectorAll('.rps-theme-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                document.querySelectorAll('.rps-theme-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                this.rpsTheme = btn.dataset.theme;
+                this.updateRPSTheme();
+                this.checkRPSReady();
+            });
+        });
+        
+        document.getElementById('start-rps-btn').addEventListener('click', () => {
+            this.startRPSGame();
+        });
+        
+        document.getElementById('change-theme-btn').addEventListener('click', () => {
+            this.showThemeSelection();
+        });
+        
+        document.getElementById('cancel-theme-change').addEventListener('click', () => {
+            this.hideThemeSelection();
+        });
+        
+        document.querySelectorAll('.rps-theme-change-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                this.changeRPSTheme(btn.dataset.theme);
+            });
+        });
+
+        document.getElementById('reset-game-btn').addEventListener('click', () => {
+            this.resetRPS();
+        });
+        
+        document.querySelectorAll('.rps-choice-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                console.log('RPS choice button clicked:', btn.dataset.choice);
+                this.makeRPSMove(btn.dataset.choice);
+            });
+        });
+        
+        // New RPS result action buttons
+        document.getElementById('rps-play-again').addEventListener('click', () => {
+            this.resetRPSRound();
+        });
+        
+        document.getElementById('rps-new-round').addEventListener('click', () => {
+            this.nextRPSRound();
+        });
+        
+        // Slots Event Listeners
+        document.querySelectorAll('.slots-theme-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                document.querySelectorAll('.slots-theme-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                this.slotsTheme = btn.dataset.theme;
+                this.updateSlotsOdds(); // Update odds when theme changes
+                document.getElementById('start-slots-btn').disabled = false;
+            });
+        });
+        
+        this.loadSlotsOdds(); // Load odds on initialization
+        
+        document.getElementById('start-slots-btn').addEventListener('click', () => {
+            this.startSlotsGame();
+        });
+        
+        document.getElementById('spin-slots-btn').addEventListener('click', () => {
+            this.spinSlots();
+        });
+        
+        document.getElementById('slots-play-again').addEventListener('click', () => {
+            this.resetSlots();
+        });
+        
+
+    }
+    
+    // Coin Flip Methods
+    async flipCoin() {
+        const setup = document.getElementById('coin-setup');
+        const animation = document.getElementById('coin-animation');
+        const coin = document.getElementById('coin');
+        const resultText = document.getElementById('coin-result-text');
+        
+        setup.classList.add('d-none');
+        animation.classList.remove('d-none');
+        
+        const theme = this.coinThemes[this.coinTheme];
+        
+        // Set coin faces
+        const headsFace = coin.querySelector('.coin-heads');
+        const tailsFace = coin.querySelector('.coin-tails');
+        
+        console.log('Setting coin faces:', {
+            theme: theme,
+            emojiDataAvailable: !!this.emojiData,
+            headsEmoji: this.emojiData ? (this.emojiData[theme.heads] || theme.headsEmoji) : theme.headsEmoji,
+            tailsEmoji: this.emojiData ? (this.emojiData[theme.tails] || theme.tailsEmoji) : theme.tailsEmoji
+        });
+        
+        if (this.emojiData) {
+            const headsEmoji = this.emojiData[theme.heads] || `/web/Emojis/Coins/${theme.heads}.png`;
+        const tailsEmoji = this.emojiData[theme.tails] || `/web/Emojis/Coins/${theme.tails}.png`;
+            
+            // Check if it's an image URL (local or remote) or a Unicode emoji
+            // All emojis are now image paths from the Emojis directory
+            headsFace.innerHTML = `<img src="${headsEmoji}" style="width: 80px; height: 80px; object-fit: contain;">`;
+            tailsFace.innerHTML = `<img src="${tailsEmoji}" style="width: 80px; height: 80px; object-fit: contain;">`;
+        } else {
+            // Fallback to theme emojis (which are now image paths)
+            headsFace.innerHTML = `<img src="${theme.headsEmoji}" style="width: 80px; height: 80px; object-fit: contain;">`;
+            tailsFace.innerHTML = `<img src="${theme.tailsEmoji}" style="width: 80px; height: 80px; object-fit: contain;">`;
+        }
+        
+        // Animate coin flip
+        coin.classList.add('flipping');
+        
+        // Call API for actual flip result
+        try {
+            const response = await fetch(`/api/fun/coin-flip?theme=${encodeURIComponent(this.coinTheme)}`);
+            if (response.ok) {
+                const result = await response.json();
+                
+                setTimeout(() => {
+                    coin.classList.remove('flipping');
+                    
+                    // Show final result
+                    if (result.result === 'heads') {
+                        coin.style.transform = 'rotateY(0deg)';
+                    } else {
+                        coin.style.transform = 'rotateY(180deg)';
+                    }
+                    
+                    resultText.innerHTML = `It landed on <strong>${result.result.toUpperCase()}</strong>!`;
+                    resultText.classList.add('fade-in');
+                }, 2000);
+            } else {
+                throw new Error('API error');
+            }
+        } catch (error) {
+            console.error('Error calling coin flip API:', error);
+            // Fallback to client-side random
+            const isHeads = Math.random() < 0.5;
+            const result = isHeads ? 'heads' : 'tails';
+            
+            setTimeout(() => {
+                coin.classList.remove('flipping');
+                
+                // Show final result
+                if (isHeads) {
+                    coin.style.transform = 'rotateY(0deg)';
+                } else {
+                    coin.style.transform = 'rotateY(180deg)';
+                }
+                
+                resultText.innerHTML = `It landed on <strong>${result.toUpperCase()}</strong>!`;
+                resultText.classList.add('fade-in');
+            }, 2000);
+        }
+    }
+    
+    resetCoin() {
+        document.getElementById('coin-setup').classList.remove('d-none');
+        document.getElementById('coin-animation').classList.add('d-none');
+        document.getElementById('coin').style.transform = 'rotateY(0deg)';
+        document.getElementById('coin-result-text').classList.remove('fade-in');
+        this.coinTheme = null;
+        document.querySelectorAll('.coin-theme-btn').forEach(b => b.classList.remove('active'));
+    }
+    
+    // Helper method to get dice face content
+    getDiceFace(value, color) {
+        const emojiName = `${color}${value}`;
+        if (this.emojiData && this.emojiData[emojiName]) {
+            const emoji = this.emojiData[emojiName];
+            if (emoji.includes('.png') || emoji.includes('/')) {
+                return `<img src="${emoji}" style="width: 70px; height: 70px; object-fit: contain;">`;
+            } else {
+                return emoji;
+            }
+        } else {
+            return value;
+        }
+    }
+    
+    // Dice Roll Methods
+    checkDiceReady() {
+        if (this.diceColor && this.diceAmount) {
+            document.getElementById('roll-dice-btn').disabled = false;
+        }
+    }
+    
+    async rollDice() {
+        const setup = document.getElementById('dice-setup');
+        const animation = document.getElementById('dice-animation');
+        const container = document.getElementById('dice-container');
+        const resultText = document.getElementById('dice-result-text');
+        
+        setup.classList.add('d-none');
+        animation.classList.remove('d-none');
+        
+        container.innerHTML = '';
+        
+        // Call API for dice roll
+        try {
+            const response = await fetch(`/api/fun/dice-roll?color=${encodeURIComponent(this.diceColor)}&amount=${this.diceAmount}`);
+            if (response.ok) {
+                const result = await response.json();
+                
+                console.log('Dice API response:', result);
+                
+                // Create dice with API results
+                result.rolls.forEach((roll, index) => {
+                    console.log('Processing dice roll:', roll);
+                    const dice = document.createElement('div');
+                    dice.className = 'dice rolling';
+                    
+                    const face = document.createElement('div');
+                    face.className = 'dice-face';
+                    
+                    // Start with random face for rolling effect
+                    const startValue = Math.floor(Math.random() * 6) + 1;
+                    face.innerHTML = this.getDiceFace(startValue, this.diceColor);
+                    
+                    dice.appendChild(face);
+                    container.appendChild(dice);
+                    
+                    // Cycle through faces during rolling
+                    let rollCount = 0;
+                    const rollInterval = setInterval(() => {
+                        rollCount++;
+                        const currentValue = Math.floor(Math.random() * 6) + 1;
+                        face.innerHTML = this.getDiceFace(currentValue, this.diceColor);
+                        
+                        if (rollCount >= 8) { // Show 8 different faces during roll
+                            clearInterval(rollInterval);
+                            // Show final result
+                            if (roll.emoji) {
+                                if (roll.emoji.includes('.png') || roll.emoji.includes('/')) {
+                                    face.innerHTML = `<img src="${roll.emoji}" style="width: 70px; height: 70px; object-fit: contain;">`;
+                                } else {
+                                    face.innerHTML = roll.emoji;
+                                }
+                            } else {
+                                face.innerHTML = roll.value;
+                            }
+                        }
+                    }, 150);
+                    
+                    // Stagger animation - wait for face cycling to complete
+                setTimeout(() => {
+                    dice.classList.remove('rolling');
+                    // Add bounce effect
+                    dice.style.transform = 'scale(1.1)';
+                    setTimeout(() => {
+                        dice.style.transform = 'scale(0.95)';
+                        setTimeout(() => {
+                            dice.style.transform = 'scale(1)';
+                        }, 100);
+                    }, 100);
+                }, 1500 + (index * 200) + 1200); // Extra 1200ms for face cycling (8 * 150ms)
+                });
+                
+                // Show result after all dice have finished cycling faces
+                setTimeout(() => {
+                    const rollValues = result.rolls.map(r => r.value);
+                    resultText.innerHTML = `You rolled: ${rollValues.join(', ')}<br><strong>Total: ${result.total}</strong>`;
+                    resultText.classList.add('fade-in');
+                }, 1500 + (result.rolls.length * 200) + 1200); // Extra 1200ms for face cycling
+            } else {
+                throw new Error('API error');
+            }
+        } catch (error) {
+            console.error('Error calling dice roll API:', error);
+            console.log('Falling back to client-side dice roll with local emoji data');
+            // Fallback to client-side random
+            const rolls = [];
+            for (let i = 0; i < this.diceAmount; i++) {
+                const roll = Math.floor(Math.random() * 6) + 1;
+                rolls.push(roll);
+                
+                const dice = document.createElement('div');
+                dice.className = 'dice rolling';
+                
+                const face = document.createElement('div');
+                face.className = 'dice-face';
+                
+                // Start with random face for rolling effect
+                const startValue = Math.floor(Math.random() * 6) + 1;
+                face.innerHTML = this.getDiceFace(startValue, this.diceColor);
+                
+                dice.appendChild(face);
+                container.appendChild(dice);
+                
+                // Cycle through faces during rolling
+                let rollCount = 0;
+                const rollInterval = setInterval(() => {
+                    rollCount++;
+                    const currentValue = Math.floor(Math.random() * 6) + 1;
+                    face.innerHTML = this.getDiceFace(currentValue, this.diceColor);
+                    
+                    if (rollCount >= 8) { // Show 8 different faces during roll
+                        clearInterval(rollInterval);
+                        // Show final result
+                        face.innerHTML = this.getDiceFace(roll, this.diceColor);
+                    }
+                }, 150);
+                
+                // Stagger animation
+                setTimeout(() => {
+                    dice.classList.remove('rolling');
+                    // Add bounce effect
+                    dice.style.transform = 'scale(1.1)';
+                    setTimeout(() => {
+                        dice.style.transform = 'scale(0.95)';
+                        setTimeout(() => {
+                            dice.style.transform = 'scale(1)';
+                        }, 100);
+                    }, 100);
+                }, 1500 + (i * 200) + 1200); // Extra 1200ms for face cycling
+            }
+            
+            // Show result after all dice have finished cycling faces
+            setTimeout(() => {
+                const total = rolls.reduce((a, b) => a + b, 0);
+                resultText.innerHTML = `You rolled: ${rolls.join(', ')}<br><strong>Total: ${total}</strong>`;
+                resultText.classList.add('fade-in');
+            }, 1500 + (this.diceAmount * 200) + 1200); // Extra 1200ms for face cycling
+        }
+    }
+    
+    resetDice() {
+        document.getElementById('dice-setup').classList.remove('d-none');
+        document.getElementById('dice-animation').classList.add('d-none');
+        document.getElementById('dice-result-text').classList.remove('fade-in');
+        this.diceColor = null;
+        this.diceAmount = null;
+        document.getElementById('roll-dice-btn').disabled = true;
+        document.querySelectorAll('.dice-color-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.dice-amount-btn').forEach(b => b.classList.remove('active'));
+    }
+    
+    // Card Draw Methods
+    async drawCards() {
+        const setup = document.getElementById('card-setup');
+        const animation = document.getElementById('card-animation');
+        const drawnCards = document.getElementById('drawn-cards');
+        const resultText = document.getElementById('card-result-text');
+        
+        setup.classList.add('d-none');
+        animation.classList.remove('d-none');
+        
+        drawnCards.innerHTML = '';
+        
+        // Call API for card draw
+        try {
+            const response = await fetch(`/api/fun/card-draw?count=${this.cardAmount}`);
+            if (response.ok) {
+                const result = await response.json();
+                
+                // Draw cards with API results
+                result.cards.forEach((card, index) => {
+                    setTimeout(() => {
+                        console.log('Drawing card from API:', {
+                            card: card.card,
+                            suit: card.suit,
+                            emojiDataAvailable: !!this.emojiData,
+                            emojiFound: this.emojiData ? this.emojiData[card.card] : 'not found'
+                        });
+                        
+                        const cardElement = document.createElement('div');
+                        cardElement.className = `playing-card ${this.getCardColor(card.card)} drawing`;
+                        
+                        // Get card value
+                        let value = card.card.substring(1);
+                        if (value === 'J') value = 'J';
+                        else if (value === 'Q') value = 'Q';
+                        else if (value === 'K') value = 'K';
+                        else if (value === 'LJ') value = '🃏';
+                        else if (value === 'BJ') value = '🃏';
+                        
+                        // Get emoji if available
+                        if (this.emojiData && this.emojiData[card.card]) {
+                            const emoji = this.emojiData[card.card] || `/web/Emojis/Cards/${card.card}.png`;
+                            cardElement.innerHTML = `<img src="${emoji}" style="width: 50px; height: 50px; object-fit: contain;">`;
+                        } else {
+                            const symbol = this.getCardSymbol(card.suit);
+                            cardElement.innerHTML = `${value}<br><small>${symbol}</small>`;
+                        }
+                        
+                        drawnCards.appendChild(cardElement);
+                    }, index * 300);
+                });
+                
+                // Show result
+                setTimeout(() => {
+                    const cardNames = result.cards.map(card => {
+                        let name = card.card;
+                        if (name.startsWith('H')) return name.replace('H', '♥️');
+                        if (name.startsWith('D')) return name.replace('D', '♦️');
+                        if (name.startsWith('C')) return name.replace('C', '♣️');
+                        if (name.startsWith('S')) return name.replace('S', '♠️');
+                        return name;
+                    });
+                    
+                    resultText.innerHTML = `You drew ${this.cardAmount} card${this.cardAmount > 1 ? 's' : ''}:<br><strong>${cardNames.join(', ')}</strong>`;
+                    resultText.classList.add('fade-in');
+                }, result.cards.length * 300 + 500);
+            } else {
+                throw new Error('API error');
+            }
+        } catch (error) {
+            console.error('Error calling card draw API:', error);
+            console.log('Falling back to client-side card draw with local emoji data');
+            // Fallback to client-side random
+            this.drawCardsFallback();
+        }
+    }
+    
+    getCardColor(cardName) {
+        if (cardName.startsWith('H') || cardName.startsWith('D')) return 'red';
+        return 'black';
+    }
+    
+    getCardSymbol(suit) {
+        const symbols = {
+            'Hearts': '♥️',
+            'Diamonds': '♦️',
+            'Clubs': '♣️',
+            'Spades': '♠️',
+            'Jokers': '🃏'
+        };
+        return symbols[suit] || '';
+    }
+    
+    testEmojiData() {
+        console.log('Testing emoji data...');
+        console.log('Emoji data available:', !!this.emojiData);
+        if (this.emojiData) {
+            console.log('Testing dice emojis:');
+            ['Red', 'Blue', 'Green'].forEach(color => {
+                for (let i = 1; i <= 6; i++) {
+                    const emojiName = `${color}${i}`;
+                    const emoji = this.emojiData[emojiName];
+                    console.log(`${emojiName}:`, emoji || 'NOT FOUND');
+                }
+            });
+            
+            console.log('Testing card emojis:');
+            ['H1', 'D1', 'C1', 'S1', 'HJ', 'HQ', 'HK'].forEach(card => {
+                const emoji = this.emojiData[card];
+                console.log(`${card}:`, emoji || 'NOT FOUND');
+            });
+        }
+    }
+    
+    drawCardsFallback() {
+        const drawnCards = document.getElementById('drawn-cards');
+        const resultText = document.getElementById('card-result-text');
+        
+        // Get all available cards
+        const allCards = [];
+        Object.keys(this.cardSuits).forEach(suit => {
+            this.cardSuits[suit].cards.forEach(card => {
+                allCards.push({ card, suit, ...this.cardSuits[suit] });
+            });
+        });
+        
+        // Shuffle and draw
+        const shuffled = allCards.sort(() => 0.5 - Math.random());
+        const drawn = shuffled.slice(0, this.cardAmount);
+        
+        drawn.forEach((card, index) => {
+            setTimeout(() => {
+                console.log('Drawing fallback card:', {
+                    card: card.card,
+                    suit: card.suit,
+                    emojiDataAvailable: !!this.emojiData,
+                    emojiFound: this.emojiData ? this.emojiData[card.card] : 'not available'
+                });
+                
+                const cardElement = document.createElement('div');
+                cardElement.className = `playing-card ${card.color} drawing`;
+                
+                // Get card value
+                let value = card.card.substring(1);
+                if (value === 'J') value = 'J';
+                else if (value === 'Q') value = 'Q';
+                else if (value === 'K') value = 'K';
+                else if (value === 'LJ') value = '🃏';
+                else if (value === 'BJ') value = '🃏';
+                
+                // Get emoji if available
+                if (this.emojiData && this.emojiData[card.card]) {
+                    const emoji = this.emojiData[card.card];
+                    // All emojis are now image paths from the Emojis directory
+                    cardElement.innerHTML = `<img src="${emoji}" style="width: 40px; height: 40px; object-fit: contain;">`;
+                } else {
+                    cardElement.innerHTML = `${value}<br><small>${card.symbol}</small>`;
+                }
+                
+                drawnCards.appendChild(cardElement);
+            }, index * 300);
+        });
+        
+        // Show result
+        setTimeout(() => {
+            const cardNames = drawn.map(card => {
+                let name = card.card;
+                if (name.startsWith('H')) return name.replace('H', '♥️');
+                if (name.startsWith('D')) return name.replace('D', '♦️');
+                if (name.startsWith('C')) return name.replace('C', '♣️');
+                if (name.startsWith('S')) return name.replace('S', '♠️');
+                return name;
+            });
+            
+            resultText.innerHTML = `You drew ${this.cardAmount} card${this.cardAmount > 1 ? 's' : ''}:<br><strong>${cardNames.join(', ')}</strong>`;
+            resultText.classList.add('fade-in');
+        }, this.cardAmount * 300 + 500);
+    }
+    
+    resetCards() {
+        document.getElementById('card-setup').classList.remove('d-none');
+        document.getElementById('card-animation').classList.add('d-none');
+        document.getElementById('card-result-text').classList.remove('fade-in');
+        this.cardAmount = null;
+        document.getElementById('draw-cards-btn').disabled = true;
+        document.querySelectorAll('.card-amount-btn').forEach(b => b.classList.remove('active'));
+    }
+    
+    // Rock Paper Scissors Methods
+    showThemeSelection() {
+        document.getElementById('rps-choices-div').classList.add('d-none');
+        document.getElementById('rps-theme-selection').classList.remove('d-none');
+    }
+    
+    hideThemeSelection() {
+        document.getElementById('rps-theme-selection').classList.add('d-none');
+        document.getElementById('rps-choices-div').classList.remove('d-none');
+    }
+    
+    changeRPSTheme(newTheme) {
+        this.rpsTheme = newTheme;
+        this.updateRPSTheme();
+        this.hideThemeSelection();
+    }
+
+    updateRPSTheme() {
+        const gameDiv = document.getElementById('rps-game');
+        if (gameDiv) {
+            gameDiv.className = `rps-game rps-theme-${this.rpsTheme.toLowerCase()}`;
+        }
+
+        const choices = {
+            Traditional: [
+                { name: 'Rock', choice: 'rock_1', beats: 'Scissors', emoji: 'rock_1.png' },
+                { name: 'Paper', choice: 'paper', beats: 'Rock', emoji: 'paper.png' },
+                { name: 'Scissors', choice: 'scissor', beats: 'Paper', emoji: 'scissor.png' },
+            ],
+            Fantasy: [
+                { name: 'Knight', choice: 'knights', beats: 'Archer', emoji: 'knights.png' },
+                { name: 'Archer', choice: 'archer', beats: 'Necromancer', emoji: 'archer.png' },
+                { name: 'Necromancer', choice: 'necromancer', beats: 'Knight', emoji: 'necromancer.png' },
+            ],
+            War: [
+                { name: 'Tank', choice: 'tank', beats: 'Ship', emoji: 'tank.png' },
+                { name: 'Jet', choice: 'jet', beats: 'Tank', emoji: 'jet.png' },
+                { name: 'Ship', choice: 'ship', beats: 'Jet', emoji: 'ship.png' },
+            ],
+        };
+
+        const themeChoices = choices[this.rpsTheme];
+        if (themeChoices) {
+            const choiceButtons = document.querySelectorAll('.rps-choice-btn');
+            choiceButtons.forEach((btn, index) => {
+                if (index < themeChoices.length) {
+                    const choiceData = themeChoices[index];
+                    try {
+                        btn.dataset.choice = choiceData.choice;
+                        
+                        const nameElement = btn.querySelector('small');
+                        if (nameElement) nameElement.textContent = choiceData.name;
+                        
+                        const beatsElement = btn.querySelector('.beats-text');
+                        if (beatsElement) beatsElement.textContent = `Beats ${choiceData.beats}`;
+                        
+                        const imgElement = btn.querySelector('img');
+                        if (imgElement) imgElement.src = `/web/Emojis/RPS/${choiceData.emoji}`;
+                        
+                        // Enable the button
+                        btn.disabled = false;
+                        btn.style.pointerEvents = 'auto';
+                        btn.style.opacity = '1';
+                    } catch (error) {
+                        console.error('Error updating choice button:', error);
+                    }
+                }
+            });
+        }
+    }
+    
+    checkRPSReady() {
+        if (this.rpsTheme) {
+            document.getElementById('start-rps-btn').disabled = false;
+        }
+    }
+    
+    startRPSGame() {
+        this.rpsPlayerScore = 0;
+        this.rpsAiScore = 0;
+        this.rpsPlayerHistory = [];
+        
+        document.getElementById('rps-setup').classList.add('d-none');
+        document.getElementById('rps-game').classList.remove('d-none');
+        
+        // Ensure theme is applied
+        this.updateRPSTheme();
+        
+        this.updateRPSScore();
+        this.nextRPSRound();
+    }
+    
+    nextRPSRound() {
+        document.getElementById('rps-round-result').innerHTML = `Choose your move!`;
+        
+        // Show choices div
+        document.getElementById('rps-choices-div').classList.remove('d-none');
+
+        // Enable choice buttons and ensure they're clickable
+        document.querySelectorAll('.rps-choice-btn').forEach((btn, index) => {
+            btn.disabled = false;
+            btn.style.pointerEvents = 'auto';
+            btn.style.opacity = '1';
+            btn.style.cursor = 'pointer';
+            console.log(`Choice button ${index} enabled with choice:`, btn.dataset.choice);
+        });
+        
+        // Hide arena and reset animations
+        const arena = document.getElementById('rps-arena');
+        arena.classList.add('d-none');
+        arena.classList.remove('show-result', 'battle-impact', 'battle-collision');
+        
+        // Clear winner/loser classes
+        const playerAnimation = document.querySelector('.rps-player-choice-animation');
+        const aiAnimation = document.querySelector('.rps-ai-choice-animation');
+        playerAnimation.classList.remove('winner', 'loser', 'tie');
+        aiAnimation.classList.remove('winner', 'loser', 'tie');
+        
+        // Hide action buttons
+        document.getElementById('rps-result-actions').classList.add('d-none');
+        
+        console.log('RPS round started, buttons should be clickable');
+    }
+    
+    resetRPSRound() {
+        console.log('Resetting current RPS round');
+        
+        // Clear the current round result but keep scores
+        this.nextRPSRound();
+    }
+    
+    async makeRPSMove(playerChoice) {
+        console.log('makeRPSMove called with choice:', playerChoice);
+
+        document.getElementById('rps-choices-div').classList.add('d-none');
+
+        document.querySelectorAll('.rps-choice-btn').forEach(btn => {
+            btn.disabled = true;
+        });
+
+        const arena = document.getElementById('rps-arena');
+        const playerAnimation = document.querySelector('.rps-player-choice-animation');
+        const aiAnimation = document.querySelector('.rps-ai-choice-animation');
+
+        playerAnimation.style.backgroundImage = `url(/web/Emojis/RPS/${this.getChoiceEmoji(playerChoice)})`;
+        arena.classList.remove('d-none');
+
+        try {
+            const response = await fetch('/api/fun/rps-play', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    theme: this.rpsTheme,
+                    playerChoice: playerChoice,
+                    playerHistory: this.rpsPlayerHistory
+                })
+            });
+
+            if (response.ok) {
+                const result = await response.json();
+                aiAnimation.style.backgroundImage = `url(/web/Emojis/RPS/${this.getChoiceEmoji(result.aiChoice)})`;
+                this.processRPSResult(result, playerChoice, playerAnimation, aiAnimation);
+            } else {
+                throw new Error('API error');
+            }
+        } catch (error) {
+            console.error('Error calling RPS API:', error);
+            this.processRPSResultFallback(playerChoice);
+        }
+    }
+
+    processRPSResult(result, playerChoice, playerAnimation, aiAnimation) {
+        this.rpsPlayerHistory.push(playerChoice);
+
+        setTimeout(() => {
+            let resultText = '';
+            const arena = document.getElementById('rps-arena');
+            
+            if (result.winner === 'player') {
+                this.rpsPlayerScore++;
+                resultText = `You win! ${playerChoice} beats ${result.aiChoice}`;
+                playerAnimation.classList.add('winner');
+                aiAnimation.classList.add('loser');
+            } else if (result.winner === 'ai') {
+                this.rpsAiScore++;
+                resultText = `AI wins! ${result.aiChoice} beats ${playerChoice}`;
+                aiAnimation.classList.add('winner');
+                playerAnimation.classList.add('loser');
+            } else {
+                resultText = `It's a tie!`;
+                playerAnimation.classList.add('tie');
+                aiAnimation.classList.add('tie');
+            }
+
+            // Add battle impact and collision effects
+            arena.classList.add('battle-impact', 'battle-collision');
+            
+            document.getElementById('rps-round-result').innerHTML = resultText;
+            this.updateRPSScore();
+
+            // Show result text and action buttons
+            arena.classList.add('show-result');
+            
+            // Show action buttons
+            document.getElementById('rps-result-actions').classList.remove('d-none');
+
+            // Don't automatically continue - wait for user action
+            // The winner will stay in the center until Play Again or Reset is clicked
+        }, 1800); // Wait for dancing and collision animation to complete
+    }
+    
+    processRPSResultFallback(playerChoice) {
+        // Simple fallback logic
+        const choices = this.getRPSChoices();
+        const aiChoice = choices[Math.floor(Math.random() * choices.length)];
+        
+        this.rpsPlayerHistory.push(playerChoice);
+        
+        let result = this.getRPSWinner(playerChoice, aiChoice);
+        let resultText = '';
+        
+        const arena = document.getElementById('rps-arena');
+        const playerAnimation = document.querySelector('.rps-player-choice-animation');
+        const aiAnimation = document.querySelector('.rps-ai-choice-animation');
+        
+        // Set AI choice image for animation
+        aiAnimation.style.backgroundImage = `url(/web/Emojis/RPS/${this.getChoiceEmoji(aiChoice)})`;
+        
+        if (result === 'player') {
+            this.rpsPlayerScore++;
+            resultText = `You win this round! ${playerChoice} beats ${aiChoice}`;
+            playerAnimation.classList.add('winner');
+            aiAnimation.classList.add('loser');
+        } else if (result === 'ai') {
+            this.rpsAiScore++;
+            resultText = `AI wins this round! ${aiChoice} beats ${playerChoice}`;
+            aiAnimation.classList.add('winner');
+            playerAnimation.classList.add('loser');
+        } else {
+            resultText = `It's a tie! Both chose ${playerChoice}`;
+            playerAnimation.classList.add('tie');
+            aiAnimation.classList.add('tie');
+        }
+        
+        // Add battle impact and collision effects
+        arena.classList.add('battle-impact', 'battle-collision');
+        
+        document.getElementById('rps-round-result').innerHTML = resultText;
+        this.updateRPSScore();
+        
+        // Show result text and action buttons
+        arena.classList.add('show-result');
+        
+        // Show action buttons
+        document.getElementById('rps-result-actions').classList.remove('d-none');
+        
+        // Don't automatically continue - wait for user action
+    }
+    
+    getRPSChoices() {
+        const themes = {
+            'Traditional': ['rock', 'paper', 'scissors'],
+            'Fantasy': ['knights', 'archer', 'necromancer'],
+            'War': ['tank', 'jet', 'ship']
+        };
+        return themes[this.rpsTheme] || ['rock', 'paper', 'scissors'];
+    }
+    
+    getRPSWinner(player, ai) {
+        if (player === ai) return 'tie';
+        
+        const beats = {
+            'rock': 'scissors',
+            'paper': 'rock',
+            'scissors': 'paper',
+            'knights': 'archer',
+            'archer': 'necromancer',
+            'necromancer': 'knights',
+            'tank': 'ship',
+            'jet': 'tank',
+            'ship': 'jet'
+        };
+        
+        return beats[player] === ai ? 'player' : 'ai';
+    }
+
+    getChoiceEmoji(choice) {
+        const choices = {
+            rock_1: 'rock_1.png',
+            paper: 'paper.png',
+            scissor: 'scissor.png',
+            knights: 'knights.png',
+            archer: 'archer.png',
+            necromancer: 'necromancer.png',
+            tank: 'tank.png',
+            jet: 'jet.png',
+            ship: 'ship.png',
+        };
+        return choices[choice] || '';
+    }
+    
+    updateRPSScore() {
+        document.getElementById('player-score').textContent = `Player: ${this.rpsPlayerScore}`;
+        document.getElementById('ai-score').textContent = `AI: ${this.rpsAiScore}`;
+    }
+    
+
+    
+    resetRPS() {
+        document.getElementById('rps-setup').classList.remove('d-none');
+        document.getElementById('rps-game').classList.add('d-none');
+        
+        this.rpsTheme = null;
+        this.rpsPlayerScore = 0;
+        this.rpsAiScore = 0;
+        this.rpsPlayerHistory = [];
+        
+        document.getElementById('start-rps-btn').disabled = true;
+        document.querySelectorAll('.rps-theme-btn').forEach(b => b.classList.remove('active'));
+        
+        // Clear any remaining animation states
+        const arena = document.getElementById('rps-arena');
+        arena.classList.add('d-none');
+        arena.classList.remove('show-result', 'battle-impact', 'battle-collision');
+        
+        const playerAnimation = document.querySelector('.rps-player-choice-animation');
+        const aiAnimation = document.querySelector('.rps-ai-choice-animation');
+        if (playerAnimation) playerAnimation.classList.remove('winner', 'loser', 'tie');
+        if (aiAnimation) aiAnimation.classList.remove('winner', 'loser', 'tie');
+        
+        document.getElementById('rps-result-actions').classList.add('d-none');
+    }
+    
+    // Slots Methods
+    startSlotsGame() {
+        document.getElementById('slots-setup').classList.add('d-none');
+        document.getElementById('slots-game').classList.remove('d-none');
+        this.prepareSlots();
+    }
+    
+    prepareSlots() {
+        const reels = document.querySelectorAll('.slots-reel');
+        const theme = this.slotsTheme.replace(/ /g, '');
+        const emojiCategory = this.getEmojiCategoryForTheme(theme);
+        let emojis = [];
+        
+        // For Insanity theme, combine all emojis from all categories
+        if (emojiCategory === 'All') {
+            // Combine all emojis from all categories
+            for (const category in this.emojiCategories) {
+                if (category !== 'All') { // Avoid infinite recursion
+                    emojis = emojis.concat(this.emojiCategories[category]);
+                }
+            }
+        } else {
+            emojis = this.emojiCategories[emojiCategory] || [];
+        }
+        
+        if (emojis.length === 0) {
+            console.error(`No emojis found for category: ${emojiCategory}`);
+            return;
+        }
+
+        reels.forEach(reel => {
+            let reelHtml = '';
+            for (let i = 0; i < 20; i++) { // Populate with 20 emojis for a good visual
+                const randomEmojiName = emojis[Math.floor(Math.random() * emojis.length)];
+                let emojiUrl = this.emojiData[randomEmojiName];
+                    if (!emojiUrl) {
+                        // Determine the correct path based on emoji type
+                        let basePath = '/web/Emojis/Pets/';
+                        if (this.slotsTheme === 'Easy') {
+                            basePath = '/web/Emojis/Military/';
+                        } else if (this.slotsTheme === 'Very Easy' || this.slotsTheme === 'Medium' || this.slotsTheme === 'Hard') {
+                            basePath = '/web/Emojis/Pets/Deco/';
+                        } else if (['soldier', 'tank', 'jet', 'ship'].includes(randomEmojiName)) {
+                            basePath = '/web/Emojis/Military/'; // Military units
+                        }
+                        emojiUrl = `${basePath}${randomEmojiName}.png`;
+                    }
+                reelHtml += `<img src="${emojiUrl}" style="width: 70px; height: 70px; object-fit: contain; display: block; margin-bottom: 10px;">`;
+            }
+            reel.innerHTML = reelHtml;
+        });
+    }
+
+    getEmojiCategoryForTheme(theme) {
+        const themeMap = {
+            'VeryEasy': 'Pet Type',
+            'Easy': 'Units',
+            'Medium': 'Stats',
+            'Hard': 'Elements',
+            'VeryHard': 'Pets',
+            'Insanity': 'All'  // Special case for Insanity theme
+        };
+        return themeMap[theme];
+    }
+
+    async spinSlots() {
+        if (this.slotsSpinning) {
+            // Stop the spinning with decision animation
+            this.stopSpinningWithDecision();
+            return;
+        }
+        
+        this.slotsSpinning = true;
+        const spinBtn = document.getElementById('spin-slots-btn');
+        spinBtn.textContent = 'Stop Spin';
+        spinBtn.classList.remove('btn-primary');
+        spinBtn.classList.add('btn-danger');
+
+        const reels = document.querySelectorAll('.slots-reel');
+        const resultText = document.getElementById('slots-result-text');
+        resultText.innerHTML = '';
+
+        // Start spinning animation
+        reels.forEach((reel, index) => {
+            setTimeout(() => {
+                reel.classList.add('spinning');
+            }, index * 200);
+        });
+
+        // Store the spin result for when user stops
+        try {
+            const response = await fetch('/api/fun/slots-spin', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ theme: this.slotsTheme })
+            });
+
+            if (response.ok) {
+                this.pendingResult = await response.json();
+            } else {
+                throw new Error('API error');
+            }
+        } catch (error) {
+            console.error('Error calling slots API:', error);
+            // Fallback to client-side random
+            this.pendingResult = null;
+        }
+    }
+    
+    stopSpinningWithDecision() {
+        if (!this.slotsSpinning) return;
+        
+        const spinBtn = document.getElementById('spin-slots-btn');
+        spinBtn.textContent = 'Start Spin';
+        spinBtn.classList.remove('btn-danger');
+        spinBtn.classList.add('btn-primary');
+        
+        this.stopSlotsWithDecision(this.pendingResult);
+    }
+    
+    stopSlotsWithDecision(result) {
+        const reels = document.querySelectorAll('.slots-reel');
+        const finalPositions = [];
+        const finalReels = result ? result.reels : [];
+
+        reels.forEach((reel, index) => {
+            setTimeout(() => {
+                reel.classList.remove('spinning');
+                const children = Array.from(reel.children);
+                let finalEmojiData = finalReels[index] || null;
+                let finalIndex = -1;
+
+                if (finalEmojiData) {
+                    const emojiPath = finalEmojiData.path;
+                    finalIndex = children.findIndex(child => child.src.includes(emojiPath));
+                }
+
+                if (finalIndex === -1) {
+                    finalIndex = Math.floor(Math.random() * children.length);
+                }
+
+                const target = children[finalIndex];
+                const reelContainer = reel.parentElement;
+                const reelContainerHeight = reelContainer.clientHeight;
+                const emojiHeight = target.clientHeight;
+                
+                // Calculate the exact position to center the emoji
+                const targetTop = target.offsetTop;
+                const centerPosition = (reelContainerHeight / 2) - (emojiHeight / 2);
+                const finalPosition = targetTop - centerPosition;
+
+                // Create decision animation - back and forth before settling
+                const decisionAnimation = () => {
+                    // First, overshoot slightly
+                    reel.style.transition = 'transform 0.3s ease-out';
+                    reel.style.transform = `translateY(-${finalPosition - 10}px)`;
+                    
+                    setTimeout(() => {
+                        // Then go back a bit
+                        reel.style.transform = `translateY(-${finalPosition + 5}px)`;
+                        
+                        setTimeout(() => {
+                            // Finally settle in the center
+                            reel.style.transition = 'transform 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55)';
+                            reel.style.transform = `translateY(-${finalPosition}px)`;
+                            
+                            // Add a small bounce effect after landing
+                            setTimeout(() => {
+                                reel.style.transition = 'transform 0.2s ease-out';
+                                reel.style.transform = `translateY(-${finalPosition - 3}px)`;
+                                setTimeout(() => {
+                                    reel.style.transform = `translateY(-${finalPosition}px)`;
+                                }, 200);
+                            }, 400);
+                        }, 300);
+                    }, 300);
+                };
+                
+                // Start the decision animation
+                decisionAnimation();
+                
+                finalPositions.push(children[finalIndex].src);
+
+                if (index === reels.length - 1) {
+                    this.checkSlotsResult(result, finalPositions);
+                }
+            }, index * 600); // Slightly longer delay for decision animation
+        });
+    }
+    
+    stopSpinning() {
+        if (!this.slotsSpinning) return;
+        
+        const spinBtn = document.getElementById('spin-slots-btn');
+        spinBtn.textContent = 'Start Spin';
+        spinBtn.classList.remove('btn-danger');
+        spinBtn.classList.add('btn-primary');
+        
+        this.stopSlots(this.pendingResult);
+    }
+
+    stopSlots(result) {
+        const reels = document.querySelectorAll('.slots-reel');
+        const finalPositions = [];
+        const finalReels = result ? result.reels : [];
+
+        reels.forEach((reel, index) => {
+            setTimeout(() => {
+                reel.classList.remove('spinning');
+                const children = Array.from(reel.children);
+                let finalEmojiData = finalReels[index] || null;
+                let finalIndex = -1;
+
+                if (finalEmojiData) {
+                    const emojiPath = finalEmojiData.path;
+                    finalIndex = children.findIndex(child => child.src.includes(emojiPath));
+                }
+
+                if (finalIndex === -1) {
+                    finalIndex = Math.floor(Math.random() * children.length);
+                }
+
+                const target = children[finalIndex];
+                const reelContainer = reel.parentElement;
+                const reelContainerHeight = reelContainer.clientHeight;
+                const emojiHeight = target.clientHeight;
+                
+                // Calculate the exact position to center the emoji
+                const targetTop = target.offsetTop;
+                const centerPosition = (reelContainerHeight / 2) - (emojiHeight / 2);
+                const finalPosition = targetTop - centerPosition;
+
+                // Add a subtle bounce animation when stopping
+                reel.style.transition = 'transform 0.8s cubic-bezier(0.68, -0.55, 0.265, 1.55)';
+                reel.style.transform = `translateY(-${finalPosition}px)`;
+                
+                // Add a small bounce effect after landing
+                setTimeout(() => {
+                    reel.style.transition = 'transform 0.2s ease-out';
+                    reel.style.transform = `translateY(-${finalPosition - 5}px)`;
+                    setTimeout(() => {
+                        reel.style.transform = `translateY(-${finalPosition}px)`;
+                    }, 200);
+                }, 800);
+                
+                finalPositions.push(children[finalIndex].src);
+
+                if (index === reels.length - 1) {
+                    this.checkSlotsResult(result, finalPositions);
+                }
+            }, index * 500);
+        });
+    }
+
+    checkSlotsResult(result, finalPositions) {
+        const resultText = document.getElementById('slots-result-text');
+        
+        if (result) {
+            resultText.innerHTML = `<strong>${result.result_text}</strong>`;
+        } else {
+            const allSame = finalPositions.every(val => val === finalPositions[0]);
+            const twoSame = new Set(finalPositions).size === 2;
+
+            if (allSame) {
+                resultText.innerHTML = '<strong>JACKPOT! 3 in a row!</strong>';
+            } else if (twoSame) {
+                resultText.innerHTML = '<strong>WIN! 2 in a row!</strong>';
+            } else {
+                resultText.innerHTML = 'Better luck next time!';
+            }
+        }
+
+        // Show final combination odds if available
+        if (this.slotsOdds && this.slotsTheme) {
+            const odds = this.slotsOdds[this.slotsTheme];
+            if (odds) {
+                setTimeout(() => {
+                    resultText.innerHTML += `<br><small class="text-muted" style="opacity: 0.8;">Odds: ${odds.three_match_odds} (3-match) | ${odds.two_match_odds} (2-match)</small>`;
+                }, 1000);
+            }
+        }
+
+        document.getElementById('spin-slots-btn').classList.add('d-none');
+        document.getElementById('slots-play-again').classList.remove('d-none');
+        this.slotsSpinning = false;
+    }
+
+    resetSlots() {
+        document.getElementById('slots-setup').classList.remove('d-none');
+        document.getElementById('slots-game').classList.add('d-none');
+        
+        const spinBtn = document.getElementById('spin-slots-btn');
+        spinBtn.classList.remove('d-none');
+        spinBtn.textContent = 'Start Spin';
+        spinBtn.classList.remove('btn-danger');
+        spinBtn.classList.add('btn-primary');
+
+        document.getElementById('slots-play-again').classList.add('d-none');
+        document.getElementById('slots-result-text').innerHTML = '';
+        this.slotsTheme = null;
+        this.slotsSpinning = false;
+        this.pendingResult = null;
+        document.querySelectorAll('.slots-theme-btn').forEach(b => b.classList.remove('active'));
+        document.getElementById('start-slots-btn').disabled = true;
+    }
+
+    // Slots odds methods
+    async loadSlotsOdds() {
+        try {
+            const response = await fetch('/api/fun/slots-odds');
+            if (response.ok) {
+                this.slotsOdds = await response.json();
+            }
+        } catch (error) {
+            console.error('Error loading slots odds:', error);
+            // Fallback odds
+            this.slotsOdds = {
+                "Very Easy": {"total_emojis": 3, "three_match_odds": "1 in 9", "two_match_odds": "1 in 3"},
+                "Easy": {"total_emojis": 4, "three_match_odds": "1 in 16", "two_match_odds": "1 in 4"},
+                "Medium": {"total_emojis": 6, "three_match_odds": "1 in 36", "two_match_odds": "1 in 6"},
+                "Hard": {"total_emojis": 13, "three_match_odds": "1 in 169", "two_match_odds": "1 in 13"},
+                "Very Hard": {"total_emojis": 95, "three_match_odds": "1 in 9,025", "two_match_odds": "1 in 95"},
+                "Insanity": {"total_emojis": "100+", "three_match_odds": "1 in 10,000+", "two_match_odds": "1 in 100+"}
+            };
+        }
+    }
+
+    updateSlotsOdds() {
+        if (!this.slotsOdds || !this.slotsTheme) return;
+        
+        const odds = this.slotsOdds[this.slotsTheme];
+        if (odds) {
+            const oddsInfo = document.getElementById('slots-odds-info');
+            oddsInfo.innerHTML = `Odds: ${odds.three_match_odds} (3-match) | ${odds.two_match_odds} (2-match)`;
+        }
+    }
+}
+
+// This function will be called from the main dashboard
+window.initializeFun = async () => {
+    if (!window.funFeaturesInstance) {
+        console.log("Initializing Fun page features...");
+        window.funFeaturesInstance = new FunFeatures();
+        await window.funFeaturesInstance.init();
+        console.log("Fun page features initialized with emoji data.");
+    } else {
+        console.log("Fun page features already initialized.");
+    }
+};
+
+// Self-initialize if the page is loaded directly
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', window.initializeFun);
+} else {
+    // If loaded dynamically, dashboard.html will call initializeFun()
+    window.initializeFun();
+}
+</script>

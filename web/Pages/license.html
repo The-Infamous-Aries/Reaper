@@ -1,0 +1,178 @@
+<div class="container-fluid">
+    <!-- License Information Section -->
+    <h2 class="display-5 text-center mb-4">⚖️ License Information</h2>
+    <div class="row">
+        <div class="col-12">
+            <div class="card bg-dark text-white">
+                <div class="card-header">
+                    <h3>License Information</h3>
+                </div>
+                <div class="card-body">
+                    <div class="license-content" id="license-text">
+                        Loading license content...
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+:root {
+    --bg-primary: #0a0a0a;
+    --bg-secondary: #0f0f0f;
+    --bg-tertiary: #141414;
+    --gold-primary: #ffd700;
+    --gold-secondary: #ffed4e;
+    --gold-glow: rgba(255, 215, 0, 0.3);
+    --text-primary: #f0f0f0;
+    --text-secondary: #b9bbbe;
+}
+
+body {
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+}
+
+.card {
+    background-color: var(--bg-secondary);
+    border: 2px solid var(--gold-primary);
+    box-shadow: 0 0 15px var(--gold-glow);
+    border-radius: 0.75rem;
+}
+
+.card-header {
+    background: linear-gradient(135deg, var(--bg-tertiary), var(--bg-secondary));
+    border-bottom: 2px solid var(--gold-primary);
+    color: var(--gold-primary);
+    font-weight: 700;
+}
+
+/* License content styling */
+.license-content {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-size: 0.95rem;
+    line-height: 1.7;
+    background-color: var(--bg-secondary);
+    border: 2px solid var(--gold-primary);
+    box-shadow: 0 0 15px var(--gold-glow);
+    border-radius: 0.5rem;
+    padding: 1.5rem;
+    color: var(--text-primary);
+}
+
+.license-content h1 {
+    color: var(--gold-primary);
+    font-size: 1.8rem;
+    font-weight: 700;
+    margin-top: 2rem;
+    margin-bottom: 1rem;
+    text-shadow: 0 0 10px var(--gold-glow);
+    border-bottom: 2px solid var(--gold-primary);
+    padding-bottom: 0.5rem;
+}
+
+.license-content h2 {
+    color: var(--gold-secondary);
+    font-size: 1.4rem;
+    font-weight: 600;
+    margin-top: 1.5rem;
+    margin-bottom: 0.8rem;
+    text-shadow: 0 0 8px var(--gold-glow);
+}
+
+.license-content h3 {
+    color: var(--gold-primary);
+    font-size: 1.2rem;
+    font-weight: 600;
+    margin-top: 1.2rem;
+    margin-bottom: 0.6rem;
+    text-shadow: 0 0 6px var(--gold-glow);
+}
+
+.license-content strong {
+    color: var(--gold-secondary);
+    font-weight: 700;
+    text-shadow: 0 0 5px var(--gold-glow);
+}
+
+.license-content hr {
+    border: none;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--gold-primary), transparent);
+    margin: 1.5rem 0;
+    box-shadow: 0 0 10px var(--gold-glow);
+}
+
+.license-content li {
+    margin: 0.5rem 0;
+    padding-left: 1rem;
+    position: relative;
+}
+
+.license-content li::before {
+    content: "⚖️";
+    position: absolute;
+    left: 0;
+    color: var(--gold-primary);
+}
+
+.license-content br {
+    display: block;
+    margin: 0.3rem 0;
+}
+</style>
+
+<script>
+// Function to convert Discord markdown to HTML
+function discordMarkdownToHtml(text) {
+    // Convert headers (# ## ###)
+    text = text.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+    text = text.replace(/^## (.+)$/gm, '<h2>$1</h2>');
+    text = text.replace(/^# (.+)$/gm, '<h1>$1</h1>');
+    
+    // Convert bold text (**text**)
+    text = text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    
+    // Convert horizontal rules (---)
+    text = text.replace(/^---+$/gm, '<hr>');
+    
+    // Convert numbered lists (1. 2. 3.)
+    text = text.replace(/^\d+\. (.+)$/gm, '<li>$1</li>');
+    
+    // Convert bullet points (* text) - but not if they're already part of numbered lists
+    text = text.replace(/^\* ([^\d].+)$/gm, '<li>$1</li>');
+    
+    // Wrap consecutive list items in <ol> or <ul> tags
+    text = text.replace(/(<li>\d+\. .+<\/li>\s*)+/g, function(match) {
+        return '<ol>' + match.replace(/<li>(\d+\.)?\s*(.+)<\/li>/g, '<li>$2</li>') + '</ol>';
+    });
+    
+    text = text.replace(/(<li>[^<]+<\/li>\s*)+/g, function(match) {
+        if (!match.includes('<ol>')) {
+            return '<ul>' + match + '</ul>';
+        }
+        return match;
+    });
+    
+    // Convert line breaks to <br> tags for better formatting, but not inside HTML tags
+    text = text.replace(/(?<!<[^>]*)\n/g, '<br>');
+    
+    return text;
+}
+
+// Load the LICENSE.txt content from the API endpoint
+fetch('/api/license')
+    .then(response => response.json())
+    .then(data => {
+        if (data.content) {
+            const formattedContent = discordMarkdownToHtml(data.content);
+            document.getElementById('license-text').innerHTML = formattedContent;
+        } else {
+            document.getElementById('license-text').textContent = 'Error: ' + (data.error || 'Unknown error');
+        }
+    })
+    .catch(error => {
+        document.getElementById('license-text').textContent = 'Error loading license content: ' + error.message;
+    });
+</script>

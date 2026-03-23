@@ -1,0 +1,244 @@
+
+<div class="graph-viewer-container">
+    <div class="graph-viewer-header">
+        <h1 class="graph-title" id="graph-title">Loading Graph...</h1>
+        <div class="graph-controls">
+            <!-- This button will be handled by the main dashboard's navigation script -->
+            <button class="btn btn-secondary-gold" data-page="graphs">← Back to Graph Selection</button>
+            <button id="btn-refresh" class="btn btn-gold" style="display: none;">🔄 Refresh</button>
+        </div>
+    </div>
+    
+    <div class="graph-content" id="graph-content">
+        <div class="loading-container" id="loading-container">
+            <div class="spinner-border text-primary mb-3" role="status" style="width: 3rem; height: 3rem;">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <h4 class="text-primary mb-2">Loading Graph Data</h4>
+            <p class="text-muted" id="loading-text">Initializing graph generation...</p>
+            <div class="progress-custom">
+                <div class="progress-bar-custom" id="progress-bar"></div>
+            </div>
+        </div>
+        
+        <div class="error-container" id="error-container" style="display: none;">
+            <div class="alert alert-danger" role="alert">
+                <h5 class="alert-heading">Failed to Load Graph</h5>
+                <p id="error-message"></p>
+                <hr>
+                <p class="mb-0">You can try:</p>
+                <ul class="mb-0">
+                    <li>Checking your input parameters</li>
+                    <li>Refreshing the page</li>
+                    <li>Returning to graph selection and trying again</li>
+                </ul>
+                <div class="mt-3">
+                    <button onclick="window.location.reload()" class="btn btn-primary btn-sm">🔄 Retry</button>
+                    <button class="btn btn-secondary btn-sm ms-2" data-page="graphs">← Back to Selection</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // This script runs within the context of the main dashboard.html page
+
+    // Parse URL parameters from the main window's URL
+    function getUrlParams() {
+        const params = new URLSearchParams(window.location.search);
+        const result = {};
+        for (const [key, value] of params) {
+            result[key] = value;
+        }
+        return result;
+    }
+
+    // Get graph type from URL parameters
+    const urlParams = getUrlParams();
+    // The 'page' param is for navigation, the actual graph type is in 'type'
+    const graphType = urlParams.type || urlParams.graph_type;
+    
+    // Set graph title based on type
+    function getGraphTitle(type) {
+        const titles = {
+            'war': 'Wars Cost Breakdown',
+            'warnet': 'Wars Net Breakdown', 
+            'compare': 'Alliance Comparison',
+            'treaty': 'Treaty Universe',
+            'stocks': 'Stock Market Trends'
+        };
+        return titles[type] || 'Unknown Graph Type';
+    }
+    
+    // Update loading text based on graph type
+    function updateLoadingText(type) {
+        const loadingTexts = {
+            'war': 'Fetching war data from Politics & War API...',
+            'warnet': 'Calculating war net breakdown...',
+            'compare': 'Comparing alliance statistics...',
+            'treaty': 'Building treaty universe map...',
+            'stocks': 'Loading stock market data...'
+        };
+        
+        const loadingElement = document.getElementById('loading-text');
+        if (loadingElement && loadingTexts[type]) {
+            loadingElement.textContent = loadingTexts[type];
+        }
+    }
+    
+    // Load the graph
+    async function loadGraph() {
+        const loadingContainer = document.getElementById('loading-container');
+        const errorContainer = document.getElementById('error-container');
+        const graphContent = document.getElementById('graph-content');
+        const graphTitle = document.getElementById('graph-title');
+        const btnRefresh = document.getElementById('btn-refresh');
+        
+        if (!graphType) {
+            showError('No graph type specified. Please go back and select a graph type.');
+            return;
+        }
+        
+        // Set title and loading text
+        graphTitle.textContent = getGraphTitle(graphType);
+        updateLoadingText(graphType);
+        
+        try {
+            // Build API URL from parameters
+            const apiUrl = buildApiUrl(graphType, urlParams);
+            
+            // Show loading state
+            graphContent.innerHTML = document.getElementById('loading-container').outerHTML;
+            document.getElementById('loading-container').style.display = 'block';
+            
+            // Simulate progress for better UX
+            simulateProgress();
+            
+            // Fetch graph data
+            const response = await fetch(apiUrl);
+            
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`Failed to load graph: ${errorText}`);
+            }
+            
+            const graphData = await response.text();
+            
+            // Display the graph
+            displayGraph(graphType, graphData);
+            
+            // Show refresh button
+            btnRefresh.style.display = 'inline-block';
+            
+        } catch (error) {
+            console.error('Error loading graph:', error);
+            showError(error.message);
+        }
+    }
+    
+    // Build API URL from parameters
+    function buildApiUrl(type, params) {
+        // Create a copy to avoid modifying the original
+        const apiParams = { ...params };
+        // Remove params used for dashboard navigation
+        delete apiParams.page;
+        delete apiParams.type; 
+        
+        const queryString = new URLSearchParams(apiParams).toString();
+        return `/api/graph/${type}?${queryString}`;
+    }
+    
+    // Display graph based on type
+    function displayGraph(type, graphData) {
+        const graphContent = document.getElementById('graph-content');
+        
+        if (type === 'stocks') {
+            const img = document.createElement('img');
+            img.src = `data:image/png;base64,${graphData}`;
+            img.className = 'graph-image';
+            img.alt = 'Stock Market Graph';
+            
+            if (graphData.includes('<html') || graphData.includes('<!DOCTYPE')) {
+                displayHtmlGraph(graphData);
+            } else {
+                graphContent.innerHTML = '';
+                graphContent.appendChild(img);
+            }
+        } else {
+            displayHtmlGraph(graphData);
+        }
+    }
+    
+    // Display HTML graph content in an iframe
+    function displayHtmlGraph(htmlContent) {
+        const graphContent = document.getElementById('graph-content');
+        const iframe = document.createElement('iframe');
+        iframe.className = 'graph-iframe';
+        iframe.srcdoc = htmlContent;
+        iframe.style.backgroundColor = '#ffffff';
+        
+        graphContent.innerHTML = '';
+        graphContent.appendChild(iframe);
+        
+        iframe.onload = function() {
+            try {
+                const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+                const height = iframeDoc.body.scrollHeight || iframeDoc.documentElement.scrollHeight;
+                if (height > 500) {
+                    iframe.style.height = Math.min(height + 50, window.innerHeight * 0.7) + 'px';
+                }
+            } catch (e) {
+                console.warn('Could not auto-adjust iframe height due to security restrictions.');
+            }
+        };
+    }
+    
+    // Show error message
+    function showError(message) {
+        const graphContent = document.getElementById('graph-content');
+        const errorContainer = document.getElementById('error-container');
+        if (graphContent && errorContainer) {
+            const errorMessage = errorContainer.querySelector('#error-message');
+            errorMessage.textContent = message;
+            graphContent.innerHTML = errorContainer.innerHTML;
+        }
+    }
+    
+    // Simulate progress animation
+    function simulateProgress() {
+        const progressBar = document.querySelector('#graph-content .progress-bar-custom');
+        const loadingText = document.querySelector('#graph-content #loading-text');
+        
+        if (!progressBar || !loadingText) return;
+
+        const progressSteps = [
+            { progress: 20, text: 'Connecting to Politics & War API...' },
+            { progress: 40, text: 'Fetching data...' },
+            { progress: 60, text: 'Processing information...' },
+            { progress: 80, text: 'Generating graph...' },
+            { progress: 95, text: 'Finalizing display...' }
+        ];
+        
+        let currentStep = 0;
+        const interval = setInterval(() => {
+            if (currentStep < progressSteps.length) {
+                const step = progressSteps[currentStep];
+                progressBar.style.width = step.progress + '%';
+                loadingText.textContent = step.text;
+                currentStep++;
+            } else {
+                clearInterval(interval);
+            }
+        }, 800);
+    }
+    
+    // Refresh button functionality
+    document.getElementById('btn-refresh').addEventListener('click', function() {
+        loadGraph();
+    });
+    
+    // Initial load
+    loadGraph();
+
+</script>

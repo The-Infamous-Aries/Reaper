@@ -1,0 +1,217 @@
+<div class="container-fluid">
+    <!-- Project Documentation Section -->
+    <h2 class="display-5 text-center mb-4">📖 Project Documentation</h2>
+    <div class="row">
+        <div class="col-12">
+            <div class="card bg-dark text-white">
+                <div class="card-header">
+                    <h3>README Documentation</h3>
+                </div>
+                <div class="card-body">
+                    <div id="readme-content" class="readme-content">
+                        Loading README content...
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+:root {
+    --bg-primary: #0a0a0a;
+    --bg-secondary: #0f0f0f;
+    --bg-tertiary: #141414;
+    --gold-primary: #ffd700;
+    --gold-secondary: #ffed4e;
+    --gold-glow: rgba(255, 215, 0, 0.3);
+    --text-primary: #f0f0f0;
+    --text-secondary: #b9bbbe;
+}
+
+.readme-content {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-size: 0.95rem;
+    line-height: 1.7;
+    background-color: var(--bg-secondary);
+    border: 2px solid var(--gold-primary);
+    box-shadow: 0 0 15px var(--gold-glow);
+    border-radius: 0.5rem;
+    padding: 1.5rem;
+    color: var(--text-primary);
+}
+
+.readme-content h1 {
+    color: var(--gold-primary);
+    font-size: 1.8rem;
+    font-weight: 700;
+    margin-top: 2rem;
+    margin-bottom: 1rem;
+    text-shadow: 0 0 10px var(--gold-glow);
+    border-bottom: 2px solid var(--gold-primary);
+    padding-bottom: 0.5rem;
+}
+
+.readme-content h2 {
+    color: var(--gold-secondary);
+    font-size: 1.4rem;
+    font-weight: 600;
+    margin-top: 1.5rem;
+    margin-bottom: 0.8rem;
+    text-shadow: 0 0 8px var(--gold-glow);
+}
+
+.readme-content h3 {
+    color: var(--gold-primary);
+    font-size: 1.2rem;
+    font-weight: 600;
+    margin-top: 1.2rem;
+    margin-bottom: 0.6rem;
+    text-shadow: 0 0 6px var(--gold-glow);
+}
+
+.readme-content h4 {
+    color: var(--gold-secondary);
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-top: 1rem;
+    margin-bottom: 0.5rem;
+    text-shadow: 0 0 5px var(--gold-glow);
+}
+
+.readme-content strong {
+    color: var(--gold-secondary);
+    font-weight: 700;
+    text-shadow: 0 0 5px var(--gold-glow);
+}
+
+.readme-content a {
+    color: var(--gold-secondary);
+    text-decoration: none;
+    border-bottom: 1px solid var(--gold-primary);
+}
+
+.readme-content a:hover {
+    color: var(--gold-primary);
+    text-shadow: 0 0 5px var(--gold-glow);
+}
+
+.readme-content hr {
+    border: none;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--gold-primary), transparent);
+    margin: 1.5rem 0;
+    box-shadow: 0 0 10px var(--gold-glow);
+}
+
+.readme-content ul, .readme-content ol {
+    padding-left: 2rem;
+    margin-bottom: 1rem;
+}
+
+.readme-content li {
+    margin-bottom: 0.5rem;
+    position: relative;
+}
+
+.readme-content li::before {
+    content: "📋";
+    position: absolute;
+    left: -1.5rem;
+    color: var(--gold-primary);
+}
+
+.readme-content code {
+    background-color: var(--bg-tertiary);
+    padding: 0.2rem 0.4rem;
+    border-radius: 0.25rem;
+    color: var(--gold-secondary);
+    border: 1px solid var(--gold-primary);
+    box-shadow: 0 0 5px var(--gold-glow);
+    font-family: 'Courier New', monospace;
+}
+
+.readme-content pre {
+    background-color: var(--bg-tertiary);
+    padding: 1rem;
+    border-radius: 0.5rem;
+    overflow-x: auto;
+    border: 2px solid var(--gold-primary);
+    box-shadow: 0 0 15px var(--gold-glow);
+    font-family: 'Courier New', monospace;
+}
+
+.readme-content blockquote {
+    border-left: 3px solid var(--gold-primary);
+    padding-left: 1rem;
+    margin-left: 0;
+    color: var(--text-secondary);
+    font-style: italic;
+    background-color: rgba(255, 215, 0, 0.1);
+    padding: 1rem;
+    border-radius: 0.5rem;
+}
+
+.readme-content table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1rem 0;
+    background-color: var(--bg-tertiary);
+    border: 2px solid var(--gold-primary);
+    box-shadow: 0 0 15px var(--gold-glow);
+    border-radius: 0.5rem;
+}
+
+.readme-content th, .readme-content td {
+    padding: 0.75rem;
+    text-align: left;
+    border-bottom: 1px solid var(--gold-primary);
+}
+
+.readme-content th {
+    background-color: var(--bg-secondary);
+    color: var(--gold-primary);
+    font-weight: 700;
+    text-shadow: 0 0 5px var(--gold-glow);
+}
+
+.readme-content tr:hover {
+    background-color: rgba(255, 215, 0, 0.1);
+}
+
+/* Scrollbar styling */
+.readme-content::-webkit-scrollbar {
+    width: 8px;
+}
+
+.readme-content::-webkit-scrollbar-track {
+    background: var(--bg-tertiary);
+    border-radius: 4px;
+}
+
+.readme-content::-webkit-scrollbar-thumb {
+    background: var(--gold-primary);
+    border-radius: 4px;
+    box-shadow: 0 0 5px var(--gold-glow);
+}
+
+.readme-content::-webkit-scrollbar-thumb:hover {
+    background: var(--gold-secondary);
+}
+</style>
+
+<script>
+// Load the README content from the API endpoint
+fetch('/api/readme')
+    .then(response => response.json())
+    .then(data => {
+        if (data.content) {
+            document.getElementById('readme-content').innerHTML = data.content;
+        } else {
+            document.getElementById('readme-content').textContent = 'Error: ' + (data.error || 'Unknown error');
+        }
+    })
+    .catch(error => {
+        document.getElementById('readme-content').textContent = 'Error loading README content: ' + error.message;
+    });
+</script>
