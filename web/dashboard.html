@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reaper Bot Dashboard</title>
+    <link rel="icon" href="/favicon.ico" type="image/x-icon">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0a0a0a;
+            --bg-secondary: #0f0f0f;
+            --bg-tertiary: #141414;
+            --gold-primary: #ffd700;
+            --gold-secondary: #ffed4e;
+            --gold-glow: rgba(255, 215, 0, 0.3);
+            --text-primary: #f0f0f0;
+            --text-secondary: #b9bbbe;
+        }
+        
+        body {
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            font-family: 'Roboto', sans-serif;
+            background-image: url('/web/background.jpg');
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            background-repeat: no-repeat;
+            min-height: 100vh;
+        }
+        .sidebar {
+            background: linear-gradient(180deg, rgba(15, 15, 15, 0.85), rgba(20, 20, 20, 0.85));
+            border-left: 2px solid var(--gold-primary);
+            box-shadow: 0 0 20px var(--gold-glow);
+            padding: 0;
+            position: fixed;
+            top: 0;
+            right: 0;
+            height: 100vh;
+            width: 202px;
+            z-index: 1000;
+            overflow-y: auto;
+            border-radius: 1rem 0 0 1rem;
+            scrollbar-width: thin;
+            scrollbar-color: var(--gold-primary) var(--bg-tertiary);
+        }
+        
+        .sidebar::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        .sidebar::-webkit-scrollbar-track {
+            background: var(--bg-tertiary);
+            border-radius: 3px;
+        }
+        
+        .sidebar::-webkit-scrollbar-thumb {
+            background: var(--gold-primary);
+            border-radius: 3px;
+        }
+        
+        .sidebar::-webkit-scrollbar-thumb:hover {
+            background: var(--gold-secondary);
+        }
+        .bot-info {
+            text-align: center;
+            padding: 1rem 1rem 0.5rem;
+            position: relative;
+            margin-top: 0;
+        }
+        .bot-avatar {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            border: 2px solid var(--gold-primary);
+            box-shadow: 0 0 10px var(--gold-glow), 0 0 20px var(--gold-glow);
+            transition: all 0.3s ease;
+            background: transparent;
+        }
+        .bot-avatar:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 20px var(--gold-glow), 0 0 40px var(--gold-glow);
+        }
+        .bot-name {
+            margin-top: 0.3rem;
+            font-weight: 700;
+            font-size: 1rem;
+            color: var(--gold-primary);
+            text-shadow: 0 0 8px var(--gold-glow);
+        }
+        .nav-pills .nav-link {
+            color: var(--text-secondary);
+            margin: 0.25rem 0.5rem;
+            border-radius: 0.5rem;
+            transition: all 0.2s ease-in-out;
+            border: 1px solid transparent;
+            padding: 0.4rem 1rem;
+            font-size: 0.9rem;
+        }
+        .nav-pills .nav-link:hover {
+            background-color: var(--bg-tertiary);
+            color: var(--gold-primary);
+            border: 1px solid var(--gold-primary);
+            box-shadow: 0 0 10px var(--gold-glow);
+        }
+        .nav-pills .nav-link.active, .nav-pills .show > .nav-link {
+            background: linear-gradient(135deg, var(--gold-primary), var(--gold-secondary));
+            color: var(--bg-primary);
+            font-weight: 700;
+            border: 2px solid var(--gold-primary);
+            box-shadow: 0 0 15px var(--gold-glow), 0 0 30px var(--gold-glow);
+            margin: 0.25rem 0.5rem;
+            padding: 0.4rem 1rem;
+        }
+        main {
+            padding-top: 2rem;
+            margin-right: 202px;
+            min-height: 100vh;
+            position: relative;
+        }
+        
+        main::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 202px;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.1);
+            pointer-events: none;
+            z-index: 1;
+        }
+        
+        .content-wrapper {
+            position: relative;
+            z-index: 2;
+        }
+        
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 160px;
+            }
+            main {
+                margin-right: 160px;
+            }
+        }
+        
+        @media (max-width: 576px) {
+            .sidebar {
+                width: 100%;
+                border-radius: 0;
+            }
+            main {
+                margin-right: 0;
+            }
+        }
+        .banner {
+            background-size: cover;
+            background-position: center;
+            opacity: 0.3;
+            transition: opacity 0.3s ease;
+            border-radius: 1rem 0 0 0;
+            height: 120px;
+        }
+        .banner:hover {
+            opacity: 0.5;
+        }
+        .card {
+            background-color: rgba(15, 15, 15, 0.85);
+            border: 2px solid var(--gold-primary);
+            box-shadow: 0 0 15px var(--gold-glow);
+            border-radius: 0.75rem;
+        }
+        .card-header {
+            background: linear-gradient(135deg, rgba(20, 20, 20, 0.9), rgba(15, 15, 15, 0.9));
+            border-bottom: 2px solid var(--gold-primary);
+            color: var(--gold-primary);
+            font-weight: 700;
+        }
+        .btn {
+            border: 2px solid var(--gold-primary);
+            background: rgba(20, 20, 20, 0.8);
+            color: var(--gold-primary);
+            transition: all 0.3s ease;
+        }
+        .btn:hover {
+            background: var(--gold-primary);
+            color: var(--bg-primary);
+            box-shadow: 0 0 15px var(--gold-glow);
+            transform: translateY(-2px);
+        }
+        .form-control, .form-select {
+            background-color: rgba(20, 20, 20, 0.8);
+            border: 2px solid var(--gold-primary);
+            color: var(--text-primary);
+            box-shadow: 0 0 10px var(--gold-glow);
+        }
+        .form-control:focus, .form-select:focus {
+            background-color: var(--bg-tertiary);
+            border-color: var(--gold-secondary);
+            box-shadow: 0 0 20px var(--gold-glow);
+            color: var(--gold-primary);
+        }
+        .text-primary { color: var(--gold-primary) !important; }
+        .text-info { color: var(--gold-secondary) !important; }
+        .badge {
+            border: 1px solid var(--gold-primary);
+            box-shadow: 0 0 5px var(--gold-glow);
+        }
+        .alert {
+            background-color: rgba(20, 20, 20, 0.85);
+            border: 2px solid var(--gold-primary);
+            color: var(--text-primary);
+            box-shadow: 0 0 15px var(--gold-glow);
+        }
+        hr {
+            border-color: var(--gold-primary);
+            box-shadow: 0 0 10px var(--gold-glow);
+        }
+        .sidebar-divider {
+            border: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--gold-primary), transparent);
+            margin: 0.4rem 1rem;
+            box-shadow: 0 0 5px var(--gold-glow);
+        }
+        code {
+            background-color: rgba(20, 20, 20, 0.8);
+            border: 1px solid var(--gold-primary);
+            color: var(--gold-secondary);
+            box-shadow: 0 0 5px var(--gold-glow);
+        }
+        pre {
+            background-color: rgba(15, 15, 15, 0.8);
+            border: 2px solid var(--gold-primary);
+            box-shadow: 0 0 15px var(--gold-glow);
+            border-radius: 0.5rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="row">
+            <main role="main" class="col-md-9 col-lg-10 px-md-4 order-first">
+                <div class="content-wrapper">
+                    <div id="content"></div>
+                </div>
+            </main>
+
+            <nav class="col-md-2 d-none d-md-block sidebar order-last">
+                <div class="position-relative">
+                        <div id="banner" class="banner position-absolute top-0 start-0 w-100" style="z-index: 0; height: 120px; border-radius: 1rem 0 0 0;"></div>
+                        <div class="bot-info position-relative" style="z-index: 1;">
+                            <img id="bot-avatar" src="" alt="Bot Avatar" class="bot-avatar mb-2">
+                            <h4 id="bot-name" class="bot-name">Reaper Bot</h4>
+                        </div>
+                        <hr class="sidebar-divider" style="position: relative; z-index: 1;">
+                    </div>
+                    <ul class="nav flex-column nav-pills mt-2 px-1">
+                        <li class="nav-item">
+                            <a class="nav-link active" href="#" data-page="directory">🧭 Directory</a>
+                        </li>
+                    <hr class="sidebar-divider">
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" data-page="graphs">📊 PnW Graphs</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" data-page="cost_calc">🧮 PnW Calculators</a>
+                    </li>
+                    <hr class="sidebar-divider">
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" data-page="what_are_pets">❔ What Are Pets?</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" data-page="pets">🐾 Pets</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" data-page="pets_item">🎒 Pets Items</a>
+                    </li>
+                    <hr class="sidebar-divider">
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" data-page="tarot">🔮 Tarot</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" data-page="astrology">⭐ Astrology</a>
+                    </li>
+                    <hr class="sidebar-divider">
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" data-page="fun">🎲 Fun</a>
+                    </li>
+                    <hr class="sidebar-divider">
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" data-page="readme">📖 Documentation</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" data-page="license">⚖️ License</a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        const contentDiv = document.getElementById('content');
+        const navLinks = document.querySelectorAll('.nav-link');
+        const botAvatar = document.getElementById('bot-avatar');
+        const botName = document.getElementById('bot-name');
+        const banner = document.getElementById('banner');
+
+        function fetchBotInfo() {
+            fetch('/api/bot-info')
+                .then(response => response.json())
+                .then(data => {
+                    console.log('Bot info response:', data);
+                    
+                    if (data.avatar_url) {
+                        botAvatar.src = data.avatar_url;
+                        console.log('Avatar URL set:', data.avatar_url);
+                    }
+                    
+                    if (data.banner_url) {
+                        console.log('Setting banner URL:', data.banner_url);
+                        banner.style.backgroundImage = `url(${data.banner_url})`;
+                        banner.style.backgroundSize = 'cover';
+                        banner.style.backgroundPosition = 'center';
+                        banner.style.backgroundRepeat = 'no-repeat';
+                    } else {
+                        console.log('No banner URL available');
+                        // Set a default gradient background if no banner
+                        banner.style.background = 'linear-gradient(135deg, var(--bg-secondary), var(--bg-tertiary))';
+                    }
+                    
+                    // Store bot info globally for other pages to use
+                    window.botInfo = data;
+                    
+                    // Log successful fetch
+                    console.log('Bot info loaded:', {
+                        name: data.name,
+                        description: data.description,
+                        license: data.license,
+                        hasAvatar: !!data.avatar_url,
+                        hasBanner: !!data.banner_url
+                    });
+                })
+                .catch(error => {
+                    console.warn('Error fetching bot info:', error);
+                    // Fallback bot info
+                    window.botInfo = {
+                        name: 'Reaper Bot',
+                        description: 'A comprehensive Discord bot featuring advanced Pet systems, Politics & War tools, and interactive entertainment.',
+                        license: 'Custom EULA',
+                        avatar_url: null,
+                        banner_url: null
+                    };
+                    
+                    // Set fallback banner background
+                    banner.style.background = 'linear-gradient(135deg, var(--bg-secondary), var(--bg-tertiary))';
+                });
+        }
+
+        function loadPage(page) {
+            let pageFile = page.split('?')[0];
+            if (!pageFile.endsWith('.html')) {
+                pageFile += '.html';
+            }
+
+            // Add a cache-busting query parameter
+            const cacheBuster = `?v=${new Date().getTime()}`;
+            fetch(`Pages/${pageFile}${cacheBuster}`)                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.text();
+                })
+                .then(html => {
+                    contentDiv.innerHTML = html;
+                    
+                    // Small delay to ensure DOM is ready before executing scripts
+                    setTimeout(() => {
+                        const scripts = contentDiv.querySelectorAll("script");
+                        scripts.forEach(script => {
+                            const newScript = document.createElement("script");
+                            if (script.src) {
+                                newScript.src = script.src;
+                            } else {
+                                newScript.textContent = script.textContent;
+                            }
+                            Array.from(script.attributes).forEach(attr => {
+                                newScript.setAttribute(attr.name, attr.value);
+                            });
+                            script.parentNode.replaceChild(newScript, script);
+                        });
+                        
+                        // Dispatch custom event to notify page scripts that loading is complete
+                        const pageLoadedEvent = new CustomEvent('dashboardPageLoaded', {
+                            detail: { page: pageFile }
+                        });
+                        document.dispatchEvent(pageLoadedEvent);
+                        console.log(`Dashboard page loaded event dispatched for: ${pageFile}`);
+                    }, 50);
+                })
+                .catch(error => {
+                    console.warn(`Error loading page: ${pageFile}`, error);
+                    contentDiv.innerHTML = `<div class="alert alert-danger">Error loading page: ${pageFile}</div>`;
+                });
+        }
+
+        function navigateTo(page, params = {}) {
+            const url = new URL(window.location);
+            url.searchParams.set('page', page);
+
+            const oldParams = Array.from(url.searchParams.keys());
+            oldParams.forEach(key => {
+                if(key !== 'page') url.searchParams.delete(key);
+            });
+            for(const [key, value] of Object.entries(params)){
+                url.searchParams.set(key, value);
+            }
+
+            history.pushState({page: page, params: params}, "", url.toString());
+            
+            navLinks.forEach(l => l.classList.remove('active'));
+            const activeLink = document.querySelector(`.nav-link[data-page='${page}']`);
+            if (activeLink) {
+                activeLink.classList.add('active');
+            }
+            
+            loadPage(page);
+        }
+
+        navLinks.forEach(link => {
+            link.addEventListener('click', function (e) {
+                e.preventDefault();
+                const page = this.getAttribute('data-page');
+                navigateTo(page);
+            });
+        });
+
+        window.addEventListener('popstate', (event) => {
+            const params = new URLSearchParams(window.location.search);
+            const page = params.get('page') || 'directory';
+            loadPage(page);
+            
+            navLinks.forEach(l => l.classList.remove('active'));
+            const activeLink = document.querySelector(`.nav-link[data-page='${page}']`);
+            if (activeLink) {
+                activeLink.classList.add('active');
+            }
+        });
+
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchBotInfo();
+            const params = new URLSearchParams(window.location.search);
+            const page = params.get('page') || 'directory';
+            
+            loadPage(page);
+
+            navLinks.forEach(l => l.classList.remove('active'));
+            const activeLink = document.querySelector(`.nav-link[data-page='${page}']`);
+            if (activeLink) {
+                activeLink.classList.add('active');
+            }
+        });
+
+        // Listen for custom navigation events from iframes (if any)
+        window.addEventListener("message", (event) => {
+            if (event.data && event.data.type === 'navigate') {
+                navigateTo(event.data.page);
+            }
+        });
+
+        // Make navigateTo globally available for child pages
+        window.navigateTo = navigateTo;
+    </script>
+</body>
+</html>
