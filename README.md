@@ -10,7 +10,7 @@
 - [⚙️ Configuration & Environment](#️-configuration--environment)
   - [💀 Runtime Bootstrapping & Event Handling](#️-runtime-bootstrapping--event-handling-reaperpy)
 - [✨ Major Features](#-major-features)
-  - [� Web Interface](#-web-interface)
+  - [🌐 Web Interface](#-web-interface)
   - [🌌 Astrology System](#-astrology-system)
     - [reading.py](#readingpy)
     - [signs.py](#signspy)
