@@ -10,6 +10,7 @@
 - [⚙️ Configuration & Environment](#️-configuration--environment)
   - [💀 Runtime Bootstrapping & Event Handling](#️-runtime-bootstrapping--event-handling-reaperpy)
 - [✨ Major Features](#-major-features)
+  - [� Web Interface](#-web-interface)
   - [🌌 Astrology System](#-astrology-system)
     - [reading.py](#readingpy)
     - [signs.py](#signspy)
@@ -132,7 +133,7 @@ Whether commanding military alliances, nurturing digital companions, exploring m
 
 ## ⚙️ Configuration & Environment
 
-The bot uses [`Systems/Functions/config.py`](Systems/Functions/config.py) to load environment variables from a `.env` file. Ensure your `.env` file or system environment variables are set.
+The bot uses `Systems/Functions/config.py` to load environment variables from a `.env` file. Ensure your `.env` file or system environment variables are set.
 
 | Variable | Description | Required |
 |:---|:---|:---|
@@ -205,6 +206,126 @@ python reaper.py
 
 ## ✨ Major Features
 
+### 🌐 Web Interface
+**Directory:** `web/`
+
+A comprehensive, feature-rich web dashboard that provides a graphical interface for many of the bot's features, including data visualization, interactive guides, and system-specific pages.
+
+#### dashboard.html
+**File:** `web/dashboard.html`
+
+The main entry point for the web interface. It features a sidebar for navigating between different pages and dynamically loads content.
+
+**Core Features:**
+- **Dynamic Page Loading**: Asynchronously loads and displays different pages without requiring a full page reload.
+- **Bot Information Display**: Fetches and displays the bot's avatar and name.
+- **Responsive Design**: Adapts to different screen sizes for a seamless experience on desktop and mobile devices.
+
+#### Pages
+**Directory:** `web/Pages/`
+
+Contains the HTML files for the different pages of the web interface. Each page is dedicated to a specific feature or system of the bot.
+
+- **about.html**: Displays information about the ReaperBot project.
+- **astrology.html**: Provides a web interface for the Astrology system, allowing users to explore zodiac profiles and horoscopes.
+- **cost_calc.html**: An interface for the PnW cost calculators, allowing users to estimate costs for various in-game actions.
+- **directory.html**: A high-level overview and directory of the bot's features, organized by category.
+- **fun.html**: A portal to the bot's various fun games and features.
+- **graph-viewer.html**: A dedicated page for displaying and interacting with complex graphs and visualizations.
+- **graphs.html**: Displays various graphs and visualizations for the PnW system.
+- **library.html**: A digital library of guides, articles, and documentation related to the bot and its features.
+- **pets.html**: A detailed view of a user's pets, including their stats, inventory, and other information.
+- **tarot.html**: An interactive tarot reading page that complements the bot's tarot reading feature.
+- **what_are_pets.html**: An introductory page that explains the Pets system to new users.
+
+##### Pages/Animations
+**Directory:** `web/Pages/Animations/`
+
+Contains CSS and JavaScript files responsible for creating dynamic and engaging animations on various web pages, enhancing the user experience.
+
+- **fun_views.css**: Styles for the fun system's animations.
+- **fun_views.js**: JavaScript logic for the fun system's animations.
+- **library.css**: Custom styles for the library page.
+
+##### Pages/Library
+**Directory:** `web/Pages/Library/`
+
+Houses a collection of Markdown files that serve as guides and documentation for various aspects of the bot and the games it supports.
+
+- **Basic Building Guide.md**: A guide for new players on how to build their nation in PnW.
+- **Beige Cycle Guide.md**: A guide on the "Beige Cycle" in PnW.
+- **FAFO Doctrine.md**: Explains the "FAFO" (Fuck Around and Find Out) doctrine.
+- **Snipe.md**: A guide on how to snipe in PnW.
+- **Weapon Efficiency Guide.md**: A guide on weapon efficiency in PnW.
+
+#### Wars
+**Directory:** `web/Wars/`
+
+Contains generated HTML files that provide detailed reports and analysis of wars in Politics & War.
+
+- **warbd_Nights_Watch_03-23-2026.html**: An example of a detailed war report.
+
+#### api
+**Directory:** `web/api/`
+
+Contains the server-side logic for the web interface, built with FastAPI. These endpoints provide data to the frontend, allowing for dynamic content and interactivity.
+
+- **bot_info.py**: An endpoint to fetch basic information about the bot.
+- **docs.py**: Serves the API documentation for the web interface.
+- **fun_slots.py**: A FastAPI router that handles the logic for the web-based slots game.
+- **library.py**: An endpoint for library-related requests, such as fetching articles.
+
+#### css
+**Directory:** `web/css/`
+
+Contains the main stylesheets for the web interface, including the Bootstrap framework and custom styles.
+
+- **bootstrap.min.css**: The minified Bootstrap CSS for a responsive layout.
+- **bootstrap.min.css.map**: The source map for the Bootstrap CSS.
+- **main.css**: Custom stylesheets for the web interface.
+
+#### js
+**Directory:** `web/js/`
+
+Contains the main JavaScript files that provide functionality and interactivity to the web interface.
+
+- **MotionPathPlugin.min.js**: A GSAP plugin for animating motion paths.
+- **OrbitControls.js**: A Three.js addon for camera controls.
+- **gsap.min.js**: The GreenSock Animation Platform for creating high-performance animations.
+- **three-globe.min.js**: A Three.js library for creating 3D globe visualizations.
+
+#### static
+**Directory:** `web/static/`
+
+Contains all static assets for the web interface, such as images, emojis, and third-party JavaScript libraries.
+
+- **404.html**: The page displayed when a requested page is not found.
+- **500.html**: The page displayed in case of a server error.
+
+##### static/Emojis
+**Directory:** `web/static/Emojis/`
+
+A vast collection of images used as emojis throughout the web interface and the bot, organized into categories such as Cards, Coins, Dice, Military, Pets, and RPS.
+
+##### static/Images
+**Directory:** `web/static/Images/`
+
+Contains general-purpose images used in the web interface, such as backgrounds and logos.
+
+- **FAFO.png**: Image for the FAFO Doctrine.
+- **background.jpg**: The background image for the web interface.
+- **reaper.png**: The logo for ReaperBot.
+
+##### static/js
+**Directory:** `web/static/js/`
+
+Contains static third-party JavaScript libraries used in the web interface.
+
+- **MotionPathPlugin.min.js**: A GSAP plugin for animating motion paths.
+- **OrbitControls.js**: A Three.js addon for camera controls.
+- **gsap.min.js**: The GreenSock Animation Platform.
+- **three-globe.min.js**: A Three.js library for 3D globe visualizations.
+- **three.min.js**: The core Three.js library for 3D graphics.
 
 ### 🌌 Astrology System
 **Directory:** `Systems/Astrology/`
@@ -212,7 +333,7 @@ python reaper.py
 A comprehensive astrological suite featuring professional tarot readings and a complete triple-zodiac profiling system, powered by AI and external APIs for dynamic content generation.
 
 #### reading.py
-**File:** [`Systems/Astrology/reading.py`](Systems/Astrology/reading.py)
+**File:** `Systems/Astrology/reading.py`
 
 The professional tarot reading engine that combines AI-powered interpretations with visual card manipulation for immersive fortune-telling experiences.
 
@@ -235,10 +356,10 @@ The professional tarot reading engine that combines AI-powered interpretations w
 - **Dynamic Prompt Generation**: Creates contextual AI prompts based on spread type and card positions
 - **Energy Threshold Analysis**: Determines dominant elemental forces using mathematical thresholds
 - **Session Persistence**: Maintains reading context across Discord interaction timeouts
-- **Error Recovery**: Graceful degradation when AI services are unavailable
+-- **Error Recovery**: Graceful degradation when AI services are unavailable
 
 #### signs.py
-**File:** [`Systems/Astrology/signs.py`](Systems/Astrology/signs.py)
+**File:** `Systems/Astrology/signs.py`
 
 The triple-zodiac profiling system that combines Western, Chinese, and Primal astrology for comprehensive, AI-enhanced personality analysis.
 
@@ -269,7 +390,7 @@ The triple-zodiac profiling system that combines Western, Chinese, and Primal as
 A collection of engaging and interactive games and commands designed to entertain users, from AI-powered competitions to text-based adventures.
 
 #### compete.py
-**File:** [`Systems/Fun/compete.py`](Systems/Fun/compete.py)
+**File:** `Systems/Fun/compete.py`
 
 A competitive Rock-Paper-Scissors game with multiple themes and an AI opponent, plus dice and card drawing features.
 
@@ -288,7 +409,7 @@ A competitive Rock-Paper-Scissors game with multiple themes and an AI opponent, 
 - **Responsive UI**: Real-time embed updates and button state management
 
 #### fun_system.py
-**File:** [`Systems/Fun/fun_system.py`](Systems/Fun/fun_system.py)
+**File:** `Systems/Fun/fun_system.py`
 
 A collection of fun commands, including a coin flip, a sniper training game, and Tic-Tac-Toe.
 
@@ -305,7 +426,7 @@ A collection of fun commands, including a coin flip, a sniper training game, and
 - **Data Persistence**: Stores user stats and game records using the `UserDataManager`
 
 #### goodevil.py
-**File:** [`Systems/Fun/goodevil.py`](Systems/Fun/goodevil.py)
+**File:** `Systems/Fun/goodevil.py`
 
 An AI-powered roast and compliment generator with customizable intensity levels, plus a crow image fetcher.
 
@@ -323,7 +444,7 @@ An AI-powered roast and compliment generator with customizable intensity levels,
 - **Content Moderation**: Implements theme-specific content guidelines and fallback systems
 
 #### walktru.py
-**File:** [`Systems/Fun/walktru.py`](Systems/Fun/walktru.py)
+**File:** `Systems/Fun/walktru.py`
 
 A text-based adventure game with multiple storylines and branching paths.
 
@@ -339,7 +460,7 @@ A text-based adventure game with multiple storylines and branching paths.
 - **State Management**: Tracks the player's progress and mechanic values throughout the adventure
 
 #### zombie.py
-**File:** [`Systems/Fun/zombie.py`](Systems/Fun/zombie.py)
+**File:** `Systems/Fun/zombie.py`
 
 An AI-driven, ongoing zombie survival simulation.
 
@@ -362,7 +483,7 @@ An AI-driven, ongoing zombie survival simulation.
 A comprehensive virtual pet system featuring customizable pets, a robust combat engine, and a wide array of interactive games and activities.
 
 #### pets_system.py
-**File:** [`Systems/Pets/pets_system.py`](Systems/Pets/pets_system.py)
+**File:** `Systems/Pets/pets_system.py`
 
 The core of the pet system, managing pet data, interactions, and core mechanics.
 
@@ -373,7 +494,7 @@ The core of the pet system, managing pet data, interactions, and core mechanics.
 - **Experience & Leveling**: Manages experience gain and leveling up, including sending level up/down embeds.
 
 #### pets_commands.py
-**File:** [`Systems/Pets/pets_commands.py`](Systems/Pets/pets_commands.py)
+**File:** `Systems/Pets/pets_commands.py`
 
 Defines all pet-related commands, from basic interactions to complex games.
 
@@ -389,7 +510,7 @@ Defines all pet-related commands, from basic interactions to complex games.
 This directory contains the core logic for the pet system, including stat calculation, combat mechanics, and image generation.
 
 #### pet_brain.py
-**File:** [`Systems/Pets/Logic/pet_brain.py`](Systems/Pets/Logic/pet_brain.py)
+**File:** `Systems/Pets/Logic/pet_brain.py`
 
 The brain of the pet system, handling all calculations and game logic.
 
@@ -401,7 +522,7 @@ The brain of the pet system, handling all calculations and game logic.
 - **NPC Brain**: A decision-making AI for monster opponents in PvE battles.
 
 #### pet_badge.py
-**File:** [`Systems/Pets/Logic/pet_badge.py`](Systems/Pets/Logic/pet_badge.py)
+**File:** `Systems/Pets/Logic/pet_badge.py`
 
 Generates custom pet badges that visually represent a pet's type, elements, and species.
 
@@ -416,7 +537,7 @@ Generates custom pet badges that visually represent a pet's type, elements, and 
 A suite of engaging and competitive games for pets, from classic casino games to a full-fledged battle royale.
 
 #### battle_system.py
-**File:** [`Systems/Pets/PetGames/battle_system.py`](Systems/Pets/PetGames/battle_system.py)
+**File:** `Systems/Pets/PetGames/battle_system.py`
 
 A comprehensive PvE battle system with team-based combat, loot drops, and boss battles.
 
@@ -427,7 +548,7 @@ A comprehensive PvE battle system with team-based combat, loot drops, and boss b
 - **Boss Battles**: Special boss battles with unique mechanics and rewards.
 
 #### pvp_system.py
-**File:** [`Systems/Pets/PetGames/pvp_system.py`](Systems/Pets/PetGames/pvp_system.py)
+**File:** `Systems/Pets/PetGames/pvp_system.py`
 
 A PvP combat system for 1v1 duels and free-for-all battles.
 
@@ -438,7 +559,7 @@ A PvP combat system for 1v1 duels and free-for-all battles.
 - **NPC Integration**: Supports NPC opponents in PvP battles.
 
 #### tournament.py
-**File:** [`Systems/Pets/PetGames/tournament.py`](Systems/Pets/PetGames/tournament.py)
+**File:** `Systems/Pets/PetGames/tournament.py`
 
 Manages automated, bracket-style pet tournaments with registration, auto-fill, and battle progression.
 
@@ -450,7 +571,7 @@ Manages automated, bracket-style pet tournaments with registration, auto-fill, a
 - **Champion Rewards**: Awards bonus XP and loot to the tournament winner.
 
 #### blackjack.py
-**File:** [`Systems/Pets/PetGames/blackjack.py`](Systems/Pets/PetGames/blackjack.py)
+**File:** `Systems/Pets/PetGames/blackjack.py`
 
 A full-featured blackjack game with support for up to 4 players, betting, and an AI opponent.
 
@@ -461,7 +582,7 @@ A full-featured blackjack game with support for up to 4 players, betting, and an
 - **AI Opponent**: Features an AI opponent that makes strategic decisions based on the game state.
 
 #### craps.py
-**File:** [`Systems/Pets/PetGames/craps.py`](Systems/Pets/PetGames/craps.py)
+**File:** `Systems/Pets/PetGames/craps.py`
 
 A full-featured craps game with support for multiple players and a wide range of betting options.
 
@@ -472,7 +593,7 @@ A full-featured craps game with support for multiple players and a wide range of
 - **Shooter Rotation**: The dice automatically pass to the next player on a seven out.
 
 #### holdem.py
-**File:** [`Systems/Pets/PetGames/holdem.py`](Systems/Pets/PetGames/holdem.py)
+**File:** `Systems/Pets/PetGames/holdem.py`
 
 A Texas Hold'em poker game with support for multiple players, betting, and an AI opponent.
 
@@ -483,7 +604,7 @@ A Texas Hold'em poker game with support for multiple players, betting, and an AI
 - **AI Opponent**: Features an AI opponent that makes strategic decisions based on hand strength and game state.
 
 #### races.py
-**File:** [`Systems/Pets/PetGames/races.py`](Systems/Pets/PetGames/races.py)
+**File:** `Systems/Pets/PetGames/races.py`
 
 A pet racing game where players can bet on the outcome.
 
@@ -494,7 +615,7 @@ A pet racing game where players can bet on the outcome.
 - **Win Streaks**: Winning consecutive races increases the payout multiplier and awards bonus keys.
 
 #### slots.py
-**File:** [`Systems/Pets/PetGames/slots.py`](Systems/Pets/PetGames/slots.py)
+**File:** `Systems/Pets/PetGames/slots.py`
 
 A slot machine game with multiple difficulty levels and a betting system.
 
@@ -505,7 +626,7 @@ A slot machine game with multiple difficulty levels and a betting system.
 - **Insanity Mode**: A special mode with dual reels and pet-matched payouts for massive jackpots.
 
 #### pet_ss.py
-**File:** [`Systems/Pets/PetGames/pet_ss.py`](Systems/Pets/PetGames/pet_ss.py)
+**File:** `Systems/Pets/PetGames/pet_ss.py`
 
 A "Survivor" style game where pets compete in a series of challenges until only one remains.
 
@@ -517,7 +638,7 @@ A "Survivor" style game where pets compete in a series of challenges until only 
 - **Champions**: Official games record the winner in a hall of fame.
 
 #### game_map.py
-**File:** [`Systems/Pets/PetGames/game_map.py`](Systems/Pets/PetGames/game_map.py)
+**File:** `Systems/Pets/PetGames/game_map.py`
 
 Generates the procedural map for the Pet Survivor Series.
 
@@ -528,7 +649,7 @@ Generates the procedural map for the Pet Survivor Series.
 - **Visual Effects**: Includes terrain shading, coastlines, and decorative elements for a polished look.
 
 #### quests.py
-**File:** [`Systems/Pets/PetGames/quests.py`](Systems/Pets/PetGames/quests.py)
+**File:** `Systems/Pets/PetGames/quests.py`
 
 An AI-powered quest generation system that creates unique, multi-stage adventures for pets.
 
@@ -545,7 +666,7 @@ An AI-powered quest generation system that creates unique, multi-stage adventure
 A comprehensive Politics & War (PnW) system that provides economic, military, and diplomatic analysis tools for the online nation simulation game.
 
 #### pnwhopper.py
-**File:** [`Systems/PnW/pnwhopper.py`](Systems/PnW/pnwhopper.py)
+**File:** `Systems/PnW/pnwhopper.py`
 
 The central loader and dependency injector for all PnW system components. Acts as a "hopper" that systematically loads and configures all PnW cogs with proper shared instances.
 
@@ -562,7 +683,7 @@ The central loader and dependency injector for all PnW system components. Acts a
 Handles all economic-related commands and analysis for the PnW system.
 
 #### EA/colors.py
-**File:** [`Systems/PnW/EA/colors.py`](Systems/PnW/EA/colors.py)
+**File:** `Systems/PnW/EA/colors.py`
 
 Provides information about in-game color bloc bonuses and global game stats, including a dynamically generated radiation pie chart.
 
@@ -572,7 +693,7 @@ Provides information about in-game color bloc bonuses and global game stats, inc
 - **Radiation Pie Chart**: Generates a dynamic pie chart visualizing radiation distribution across all continents.
 
 #### EA/resource.py
-**File:** [`Systems/PnW/EA/resource.py`](Systems/PnW/EA/resource.py)
+**File:** `Systems/PnW/EA/resource.py`
 
 Tracks and visualizes historical game resource data, and provides tools for analyzing trade values and converting resource units to monetary value.
 
@@ -582,7 +703,7 @@ Tracks and visualizes historical game resource data, and provides tools for anal
 - **Resource Conversion**: Converts specified units of resources into their monetary value based on current market prices.
 
 #### EA/rev.py
-**File:** [`Systems/PnW/EA/rev.py`](Systems/PnW/EA/rev.py)
+**File:** `Systems/PnW/EA/rev.py`
 
 Calculates detailed revenue breakdowns for individual nations and entire alliances, factoring in all in-game modifiers.
 
@@ -593,7 +714,7 @@ Calculates detailed revenue breakdowns for individual nations and entire allianc
 - **Top Earner Ranking**: For alliances, it ranks the top 5 nations by turn revenue.
 
 #### EA/stocks.py
-**File:** [`Systems/PnW/EA/stocks.py`](Systems/PnW/EA/stocks.py)
+**File:** `Systems/PnW/EA/stocks.py`
 
 A live market data tracker that displays real-time resource prices and historical trends with interactive graphs.
 
@@ -609,7 +730,7 @@ A live market data tracker that displays real-time resource prices and historica
 Manages diplomatic and foreign relations data, including treaty analysis and alliance comparisons.
 
 #### FA/compare.py
-**File:** [`Systems/PnW/FA/compare.py`](Systems/PnW/FA/compare.py)
+**File:** `Systems/PnW/FA/compare.py`
 
 Compares two groups of alliances (Home vs. Away) across a wide range of metrics, including military strength, economic power, and nation distribution.
 
@@ -619,7 +740,7 @@ Compares two groups of alliances (Home vs. Away) across a wide range of metrics,
 - **Interactive Web View**: Generates a comprehensive, interactive HTML page with detailed drill-downs for each alliance and serves it via a local web server with ngrok for public access.
 
 #### FA/treaties.py
-**File:** [`Systems/PnW/FA/treaties.py`](Systems/PnW/FA/treaties.py)
+**File:** `Systems/PnW/FA/treaties.py`
 
 Visualizes an alliance's treaty network with a dynamically generated image, and provides a detailed breakdown of all treaties by type.
 
@@ -630,7 +751,7 @@ Visualizes an alliance's treaty network with a dynamically generated image, and 
 - **Interactive Refresh**: Includes a refresh button on treaty embeds for on-demand updates.
 
 #### FA/universe.py
-**File:** [`Systems/PnW/FA/universe.py`](Systems/PnW/FA/universe.py)
+**File:** `Systems/PnW/FA/universe.py`
 
 Generates a massive, high-resolution PIL image of the entire PnW treaty universe, with alliances grouped into blocs and connected by treaty-colored lines, plus an interactive web version.
 
@@ -647,7 +768,7 @@ Generates a massive, high-resolution PIL image of the entire PnW treaty universe
 Provides tools for internal alliance management, including comprehensive data analysis, auditing, and cost calculation.
 
 #### IA/alliance.py
-**File:** [`Systems/PnW/IA/alliance.py`](Systems/PnW/IA/alliance.py)
+**File:** `Systems/PnW/IA/alliance.py`
 
 Provides a comprehensive, multi-faceted analysis of an alliance, with interactive views for military strength, improvements, project totals, and resource management.
 
@@ -659,7 +780,7 @@ Provides a comprehensive, multi-faceted analysis of an alliance, with interactiv
 - **Resource & Inactivity Tracking**: For the default alliance, it shows total resources held; for all alliances, it tracks inactive and grey/beige nations.
 
 #### IA/audit.py
-**File:** [`Systems/PnW/IA/audit.py`](Systems/PnW/IA/audit.py)
+**File:** `Systems/PnW/IA/audit.py`
 
 Provides a comprehensive alliance audit tool that identifies and categorizes member issues, including resource levels, inactivity, color compliance, and military build standards.
 
@@ -670,7 +791,7 @@ Provides a comprehensive alliance audit tool that identifies and categorizes mem
 - **Color & MMR Compliance**: Audits members for correct color bloc and adherence to military build standards, with a paginated view for MMR offenders.
 
 #### IA/costs.py
-**File:** [`Systems/PnW/IA/costs.py`](Systems/PnW/IA/costs.py)
+**File:** `Systems/PnW/IA/costs.py`
 
 Calculates the costs for infrastructure, land, cities, and projects, factoring in all relevant domestic policies and existing project discounts for accurate financial planning.
 
@@ -681,7 +802,7 @@ Calculates the costs for infrastructure, land, cities, and projects, factoring i
 - **Resource Value Estimation**: For projects, it estimates the total monetary value of required resources based on current market prices.
 
 #### IA/show.py
-**File:** [`Systems/PnW/IA/show.py`](Systems/PnW/IA/show.py)
+**File:** `Systems/PnW/IA/show.py`
 
 Provides a comprehensive, multi-view display of any nation's data, including detailed statistics, military analysis, and a full improvements breakdown.
 
@@ -692,7 +813,7 @@ Provides a comprehensive, multi-view display of any nation's data, including det
 - **Detailed Military & Improvements**: Provides in-depth analysis of a nation's military capacity, production, and a full list of all improvements by category.
 
 #### IA/guide.py
-**File:** [`Systems/PnW/IA/guide.py`](Systems/PnW/IA/guide.py)
+**File:** `Systems/PnW/IA/guide.py`
 
 Provides a comprehensive, in-character guide to beige sniping, raiding, and advanced warfare mechanics, delivered through a series of interactive commands.
 
@@ -707,7 +828,7 @@ Provides a comprehensive, in-character guide to beige sniping, raiding, and adva
 Provides tools for military planning and analysis, including war simulations and target identification.
 
 #### MA/destroy.py
-**File:** [`Systems/PnW/MA/destroy.py`](Systems/PnW/MA/destroy.py)
+**File:** `Systems/PnW/MA/destroy.py`
 
 Identifies optimal attackers for a given target by analyzing military strength, war range, and strategic positioning, and provides a detailed breakdown of both the target and potential attackers.
 
@@ -718,7 +839,7 @@ Identifies optimal attackers for a given target by analyzing military strength, 
 - **Exclusion of Unoptimal Targets**: Can optionally exclude nations with high infrastructure or zero military units to focus on viable targets.
 
 #### MA/finder.py
-**File:** [`Systems/PnW/MA/finder.py`](Systems/PnW/MA/finder.py)
+**File:** `Systems/PnW/MA/finder.py`
 
 Searches for bounties and treasures with advanced filtering and sorting, and tracks recently canceled treasure trades to identify potential buyers.
 
@@ -729,7 +850,7 @@ Searches for bounties and treasures with advanced filtering and sorting, and tra
 - **Paginated Results**: Displays results in a clean, paginated embed for easy navigation.
 
 #### MA/wars.py
-**File:** [`Systems/PnW/MA/wars.py`](Systems/PnW/MA/wars.py)
+**File:** `Systems/PnW/MA/wars.py`
 
 Provides a comprehensive war analysis tool that calculates the costs and outcomes of wars between specified teams, with detailed breakdowns, interactive graphs, and PDF reports.
 
@@ -740,7 +861,7 @@ Provides a comprehensive war analysis tool that calculates the costs and outcome
 - **Detailed PDF Reports**: For large-scale wars, it generates a comprehensive PDF report with a detailed breakdown of every individual war, including costs, winners, and net outcomes.
 
 #### MA/war_costs_bd.py
-**File:** [`Systems/PnW/MA/war_costs_bd.py`](Systems/PnW/MA/war_costs_bd.py)
+**File:** `Systems/PnW/MA/war_costs_bd.py`
 
 Provides a comprehensive, interactive war breakdown for an entire alliance, with detailed cost analysis, member-specific contributions, and a live, interactive web view.
 
@@ -749,7 +870,7 @@ Provides a comprehensive, interactive war breakdown for an entire alliance, with
 - **Interactive Web View**: Creates a dynamic, interactive HTML page with drill-down charts and tables, served via a local web server with ngrok for public access.
 
 #### MA/war_net_bd.py
-**File:** [`Systems/PnW/MA/war_net_bd.py`](Systems/PnW/MA/war_net_bd.py)
+**File:** `Systems/PnW/MA/war_net_bd.py`
 
 Provides a comprehensive, interactive war breakdown for an entire alliance, with detailed net damage analysis, member-specific contributions, and a live, interactive web view.
 
@@ -765,7 +886,7 @@ Provides a comprehensive, interactive war breakdown for an entire alliance, with
 A collection of miscellaneous and fun commands related to PnW.
 
 #### Other/baseball.py
-**File:** [`Systems/PnW/Other/baseball.py`](Systems/PnW/Other/baseball.py)
+**File:** `Systems/PnW/Other/baseball.py`
 
 Fetches and displays detailed statistics for a nation's baseball team, including stadium details, win/loss records, and career statistics.
 
@@ -776,7 +897,7 @@ Fetches and displays detailed statistics for a nation's baseball team, including
 - **Flexible Search**: Can find a team using the nation name, leader name, or nation ID.
 
 #### Other/loot.py
-**File:** [`Systems/PnW/Other/loot.py`](Systems/PnW/Other/loot.py)
+**File:** `Systems/PnW/Other/loot.py`
 
 Automatically parses PnW war messages to calculate and display projected and actual loot values, factoring in different policy combinations.
 
@@ -792,7 +913,7 @@ Automatically parses PnW war messages to calculate and display projected and act
 Core utilities and helper functions for the PnW system.
 
 #### Util/calc.py
-**File:** [`Systems/PnW/Util/calc.py`](Systems/PnW/Util/calc.py)
+**File:** `Systems/PnW/Util/calc.py`
 
 A comprehensive, multi-threaded calculation engine that provides detailed statistical analysis for nations and alliances, including military capacity, economic output, and war potential.
 
@@ -804,7 +925,7 @@ A comprehensive, multi-threaded calculation engine that provides detailed statis
 - **War Range & Compatibility**: Determines valid war ranges for individual nations and entire parties, and calculates infrastructure compatibility between nations.
 
 #### Util/query.py
-**File:** [`Systems/PnW/Util/query.py`](Systems/PnW/Util/query.py)
+**File:** `Systems/PnW/Util/query.py`
 
 A centralized, high-performance GraphQL query engine for the PnW API, featuring asynchronous requests, intelligent caching, and automatic pagination.
 
@@ -816,7 +937,7 @@ A centralized, high-performance GraphQL query engine for the PnW API, featuring 
 - **Entity Resolution**: A powerful resolver that can find nations and alliances using their name, ID, leader name, or even a P&W link.
 
 #### Util/rev_calc.py
-**File:** [`Systems/PnW/Util/rev_calc.py`](Systems/PnW/Util/rev_calc.py)
+**File:** `Systems/PnW/Util/rev_calc.py`
 
 A comprehensive revenue calculation engine that factors in domestic policies, color bonuses, alliance tax brackets, military upkeep, and resource market prices to determine a nation's true net income.
 
@@ -828,7 +949,7 @@ A comprehensive revenue calculation engine that factors in domestic policies, co
 - **Asynchronous API Integration**: Works with the query system to fetch real-time data, including market prices and tax brackets.
 
 #### Util/war_calc.py
-**File:** [`Systems/PnW/Util/war_calc.py`](Systems/PnW/Util/war_calc.py)
+**File:** `Systems/PnW/Util/war_calc.py`
 
 A comprehensive war calculation engine that processes raw war data to determine the total financial costs for each side, including units lost, infrastructure destroyed, and resources consumed.
 
@@ -844,7 +965,7 @@ A comprehensive war calculation engine that processes raw war data to determine 
 Handles the generation of graphs and visualizations for the PnW system.
 
 #### Util/Graphs/treaty_graph.py
-**File:** [`Systems/PnW/Util/Graphs/treaty_graph.py`](Systems/PnW/Util/Graphs/treaty_graph.py)
+**File:** `Systems/PnW/Util/Graphs/treaty_graph.py`
 
 Generates a dynamic, interactive 3D graph of the entire PnW treaty universe, with advanced bloc detection, hierarchical layout, and a feature-rich web interface.
 
@@ -856,7 +977,7 @@ Generates a dynamic, interactive 3D graph of the entire PnW treaty universe, wit
 - **Full Web Interface**: Generates a self-contained HTML file with a sidebar for filtering alliances and blocs, and custom JavaScript for a rich user experience.
 
 #### Util/Graphs/compare_graph.py
-**File:** [`Systems/PnW/Util/Graphs/compare_graph.py`](Systems/PnW/Util/Graphs/compare_graph.py)
+**File:** `Systems/PnW/Util/Graphs/compare_graph.py`
 
 Generates a comprehensive, interactive comparison page for two sets of alliances, with detailed breakdowns of military strength and nation distribution.
 
@@ -868,7 +989,7 @@ Generates a comprehensive, interactive comparison page for two sets of alliances
 - **Persistent Hover Details**: On-click, it can display persistent, detailed breakdowns of contributions for any given metric, allowing for in-depth analysis.
 
 #### Util/Graphs/war_graph.py
-**File:** [`Systems/PnW/Util/Graphs/war_graph.py`](Systems/PnW/Util/Graphs/war_graph.py)
+**File:** `Systems/PnW/Util/Graphs/war_graph.py`
 
 Generates a highly interactive, multi-level sunburst chart for war breakdowns, with dynamic nation toggles, cost component drill-downs, and a polished web interface.
 
@@ -885,7 +1006,7 @@ Generates a highly interactive, multi-level sunburst chart for war breakdowns, w
 Core functions and utilities that are shared across the entire bot.
 
 #### utils.py
-**File:** [`Systems/Functions/utils.py`](Systems/Functions/utils.py)
+**File:** `Systems/Functions/utils.py`
 
 A centralized port management system for handling multiple web servers across different cogs without port conflicts.
 
@@ -896,7 +1017,7 @@ A centralized port management system for handling multiple web servers across di
 - **Proper Resource Management**: Allocates ports on bot startup and cleans them up on shutdown.
 
 #### config.py
-**File:** [`Systems/Functions/config.py`](Systems/Functions/config.py)
+**File:** `Systems/Functions/config.py`
 
 Loads all environment variables and configuration settings for the bot, including API keys, the command prefix, and other critical parameters.
 
@@ -906,7 +1027,7 @@ Loads all environment variables and configuration settings for the bot, includin
 - **Secure API Key Management**: Keeps all API keys and sensitive information out of the codebase.
 
 #### emoji.py
-**File:** [`Systems/Functions/emoji.py`](Systems/Functions/emoji.py)
+**File:** `Systems/Functions/emoji.py`
 
 A centralized registry for all custom emojis used throughout the bot.
 
@@ -916,7 +1037,7 @@ A centralized registry for all custom emojis used throughout the bot.
 - **Thematic Emojis**: Includes a wide variety of emojis for different themes and games.
 
 #### user_data_manager.py
-**File:** [`Systems/Functions/user_data_manager.py`](Systems/Functions/user_data_manager.py)
+**File:** `Systems/Functions/user_data_manager.py`
 
 A comprehensive, asynchronous user data management system with an in-memory cache, background flushing, and atomic file operations to ensure data integrity.
 
@@ -928,7 +1049,7 @@ A comprehensive, asynchronous user data management system with an in-memory cach
 - **Data Migration**: Includes a robust data migration system to seamlessly update user data structures across different versions.
 
 #### optimal_file_manager.py
-**File:** [`Systems/Functions/optimal_file_manager.py`](Systems/Functions/optimal_file_manager.py)
+**File:** `Systems/Functions/optimal_file_manager.py`
 
 An optimized file manager for handling JSON data, with specialized preloading for the Pets system and general-purpose load/save functionality for other files.
 
@@ -939,7 +1060,7 @@ An optimized file manager for handling JSON data, with specialized preloading fo
 - **Fine-Grained File Locking**: Uses file-level locks to prevent race conditions during read/write operations.
 
 #### json_database.py
-**File:** [`Systems/Functions/json_database.py`](Systems/Functions/json_database.py)
+**File:** `Systems/Functions/json_database.py`
 
 A simple, file-based JSON database for storing and retrieving data.
 
@@ -950,7 +1071,7 @@ A simple, file-based JSON database for storing and retrieving data.
 - **Live Message Tracking**: Includes functionality for tracking and managing live dashboard messages.
 
 #### ai_brain.py
-**File:** [`Systems/Functions/ai_brain.py`](Systems/Functions/ai_brain.py)
+**File:** `Systems/Functions/ai_brain.py`
 
 A strategic AI for the Rock-Paper-Scissors game that analyzes the player's move history to make intelligent choices.
 
@@ -960,7 +1081,7 @@ A strategic AI for the Rock-Paper-Scissors game that analyzes the player's move 
 - **Thematic Choices**: Supports different themes, including Traditional, Fantasy, and War.
 
 #### ai_gambling.py
-**File:** [`Systems/Functions/ai_gambling.py`](Systems/Functions/ai_gambling.py)
+**File:** `Systems/Functions/ai_gambling.py`
 
 An advanced AI for the Texas Hold'em and Blackjack games that makes strategic decisions based on hand strength, pot odds, and game state.
 
@@ -976,7 +1097,7 @@ An advanced AI for the Texas Hold'em and Blackjack games that makes strategic de
 A comprehensive, feature-rich web dashboard that provides a graphical interface for many of the bot's features.
 
 #### dashboard.html
-**File:** [`web/dashboard.html`](web/dashboard.html)
+**File:** `web/dashboard.html`
 
 The main entry point for the web interface. It features a sidebar for navigating between different pages and dynamically loads content.
 
@@ -995,22 +1116,22 @@ Contains the HTML files for the different pages of the web interface.
 - **cost_calc.html**: Provides calculators for PnW related costs.
 - **what_are_pets.html**: An introduction to the Pets system.
 - **pets.html**: A detailed view of the user's pets.
-- **pets_item.html**: A view of the user's pet items.
 - **tarot.html**: An interactive tarot reading page.
 - **astrology.html**: Displays astrology information.
 - **fun.html**: Provides access to fun commands and games.
-- **readme.html**: Displays the bot's README file.
-- **license.html**: Displays the bot's license.
 
 #### api
 **Directory:** `web/api/`
 
 Contains the server-side logic for the web interface.
 
+- **bot_info.py**: Fetches bot information.
+- **docs.py**: Serves the API documentation.
 - **fun_slots.py**: A FastAPI router that handles the logic for a slots game.
+- **library.py**: Handles library-related requests.
 
 #### Emojis
-**Directory:** `web/Emojis/`
+**Directory:** `web/static/Emojis/`
 
 A vast collection of images used throughout the web interface and the bot, organized into categories such as Cards, Coins, Dice, Military, Pets, and RPS.
 
@@ -1197,11 +1318,17 @@ Reaper/
 │   │       └── war_calc.py    # War cost calculations
 │   └── info.py                # System information
 ├── web/                      # Web interface
-│   ├── api/                  # Server-side logic
-│   │   └── fun_slots.py      # Slots game API
-│   ├── Emojis/               # Image assets
-│   ├── Pages/                # HTML pages
-│   └── Wars/                 # War reports
+│   ├── Pages/                # HTML pages for the dashboard
+│   │   ├── Animations/       # CSS and JS for animations
+│   │   └── Library/          # Markdown guides
+│   ├── Wars/                 # HTML reports for PnW wars
+│   ├── api/                  # Server-side API endpoints
+│   ├── css/                  # Main CSS files
+│   ├── js/                   # Main JavaScript files
+│   └── static/               # Static assets
+│       ├── Emojis/           # Image assets for emojis
+│       ├── Images/           # General images
+│       └── js/               # Static JavaScript libraries
 ├── .gitignore                  # Git ignore rules
 ├── LICENSE.txt                 # Project license
 ├── README.md                   # This file
