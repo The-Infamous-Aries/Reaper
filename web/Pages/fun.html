@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fun Features</title>
+    
+    <!-- External CSS -->
+    <link rel="stylesheet" href="/web/Pages/Animations/fun_views.css">
+    
+    <!-- GSAP Library -->
+    <script src="/node_modules/gsap/dist/gsap.min.js"></script>
+    <script src="/node_modules/gsap/dist/MotionPathPlugin.min.js"></script>
+    
+    <!-- External JavaScript -->
+    <script src="/web/Pages/Animations/fun_views.js?v=20250325" defer></script>
+</head>
+<body>
+
+<div class="container-fluid">
+    </div>
+    <br>
+    <!-- Fun Features Section -->
+    <div class="row">
+        <!-- Coin Flip Box -->
+        <div class="col-md-4">
+            <div class="card mb-3 fun-card">
+                <div class="card-header text-center">
+                    <h3>🔄 Coin Flip</h3>
+                </div>
+                <div class="card-body">
+                    <div id="coin-setup" class="coin-setup">
+                        <h6 class="text-center mb-2">Choose Your Theme</h6>
+                        <div class="row g-1">
+                            <div class="col-6">
+                                <button class="btn btn-outline-primary w-100 coin-theme-btn" data-theme="Raider">
+                                    <div class="theme-preview">
+                                        <img src="/static/Emojis/Coins/Pirate.png" class="emoji-preview" style="width: 24px; height: 24px; object-fit: contain;">
+                                        <small>Raider</small>
+                                    </div>
+                                </button>
+                            </div>
+                            <div class="col-6">
+                                <button class="btn btn-outline-primary w-100 coin-theme-btn" data-theme="Time">
+                                    <div class="theme-preview">
+                                        <img src="/static/Emojis/Coins/Future.png" class="emoji-preview" style="width: 24px; height: 24px; object-fit: contain;">
+                                        <small>Time</small>
+                                    </div>
+                                </button>
+                            </div>
+                            <div class="col-6">
+                                <button class="btn btn-outline-primary w-100 coin-theme-btn" data-theme="Battery">
+                                    <div class="theme-preview">
+                                        <img src="/static/Emojis/Coins/Full.png" class="emoji-preview" style="width: 24px; height: 24px; object-fit: contain;">
+                                        <small>Battery</small>
+                                    </div>
+                                </button>
+                            </div>
+                            <div class="col-6">
+                                <button class="btn btn-outline-primary w-100 coin-theme-btn" data-theme="Electric">
+                                    <div class="theme-preview">
+                                        <img src="/static/Emojis/Coins/Plug.png" class="emoji-preview" style="width: 24px; height: 24px; object-fit: contain;">
+                                        <small>Electric</small>
+                                    </div>
+                                </button>
+                            </div>
+                            <div class="col-6">
+                                <button class="btn btn-outline-primary w-100 coin-theme-btn" data-theme="Business">
+                                    <div class="theme-preview">
+                                        <img src="/static/Emojis/Coins/Open.png" class="emoji-preview" style="width: 24px; height: 24px; object-fit: contain;">
+                                        <small>Business</small>
+                                    </div>
+                                </button>
+                            </div>
+                            <div class="col-6">
+                                <button class="btn btn-outline-primary w-100 coin-theme-btn" data-theme="Sky">
+                                    <div class="theme-preview">
+                                        <img src="/static/Emojis/Coins/Day.png" class="emoji-preview" style="width: 24px; height: 24px; object-fit: contain;">
+                                        <small>Sky</small>
+                                    </div>
+                                </button>
+                            </div>
+                            <div class="col-12">
+                                <button class="btn btn-outline-primary w-100 coin-theme-btn" data-theme="Tempature">
+                                    <div class="theme-preview">
+                                        <img src="/static/Emojis/Coins/Heat.png" class="emoji-preview" style="width: 24px; height: 24px; object-fit: contain;">
+                                        <small>Temperature</small>
+                                    </div>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div id="coin-animation" class="coin-animation d-none">
+                        <div class="coin-container">
+                            <div class="coin" id="coin">
+                                <div class="coin-side coin-heads"></div>
+                                <div class="coin-side coin-tails"></div>
+                            </div>
+                        </div>
+                        <div class="coin-result text-center mt-2">
+                            <div id="coin-result-text" class="result-text"></div>
+                            <button id="coin-play-again" class="btn btn-primary mt-2">
+                                <i class="fas fa-redo"></i> Play Again
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Dice Roll Box -->
+        <div class="col-md-4">
+            <div class="card mb-4 fun-card">
+                <div class="card-header text-center">
+                    <h3>🎲 Dice Roll</h3>
+                </div>
+                <div class="card-body">
+                    <div id="dice-setup" class="dice-setup">
+                        <div class="mb-2">
+                            <label class="form-label mb-2">Dice Color</label>
+                            <div class="row g-1">
+                                <div class="col-4">
+                                    <button class="btn btn-outline-danger w-100 dice-color-btn" data-color="Red">
+                                        <div class="color-preview red"></div>
+                                        <small>Red</small>
+                                    </button>
+                                </div>
+                                <div class="col-4">
+                                    <button class="btn btn-outline-warning w-100 dice-color-btn" data-color="Orange">
+                                        <div class="color-preview orange"></div>
+                                        <small>Orange</small>
+                                    </button>
+                                </div>
+                                <div class="col-4">
+                                    <button class="btn btn-outline-primary w-100 dice-color-btn" data-color="Blue">
+                                        <div class="color-preview blue"></div>
+                                        <small>Blue</small>
+                                    </button>
+                                </div>
+                                <div class="col-4">
+                                    <button class="btn btn-outline-warning w-100 dice-color-btn" data-color="Yellow">
+                                        <div class="color-preview yellow"></div>
+                                        <small>Yellow</small>
+                                    </button>
+                                </div>
+                                <div class="col-4">
+                                    <button class="btn btn-outline-info w-100 dice-color-btn" data-color="Pink">
+                                        <div class="color-preview pink"></div>
+                                        <small>Pink</small>
+                                    </button>
+                                </div>
+                                <div class="col-4">
+                                    <button class="btn btn-outline-success w-100 dice-color-btn" data-color="Green">
+                                        <div class="color-preview green"></div>
+                                        <small>Green</small>
+                                    </button>
+                                </div>
+                                <div class="col-12">
+                                    <button class="btn btn-outline-secondary w-100 dice-color-btn" data-color="Purple">
+                                        <div class="color-preview purple"></div>
+                                        <small>Purple</small>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-2">
+                            <label class="form-label mb-2">Number of Dice</label>
+                            <div class="row g-1">
+                                <div class="col">
+                                    <button class="btn btn-outline-secondary w-100 dice-amount-btn" data-amount="1">1</button>
+                                </div>
+                                <div class="col">
+                                    <button class="btn btn-outline-secondary w-100 dice-amount-btn" data-amount="2">2</button>
+                                </div>
+                                <div class="col">
+                                    <button class="btn btn-outline-secondary w-100 dice-amount-btn" data-amount="3">3</button>
+                                </div>
+                                <div class="col">
+                                    <button class="btn btn-outline-secondary w-100 dice-amount-btn" data-amount="4">4</button>
+                                </div>
+                                <div class="col">
+                                    <button class="btn btn-outline-secondary w-100 dice-amount-btn" data-amount="5">5</button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <button id="roll-dice-btn" class="btn btn-primary w-100" disabled>
+                            Roll Dice
+                        </button>
+                    </div>
+                    
+                    <div id="dice-animation" class="dice-animation d-none">
+                        <div class="dice-container" id="dice-container">
+                            <!-- Dice will be added here -->
+                        </div>
+                        <div class="dice-result text-center mt-2">
+                            <div id="dice-result-text" class="result-text"></div>
+                            <button id="dice-play-again" class="btn btn-primary mt-2">
+                                <i class="fas fa-redo"></i> Play Again
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Card Draw Box -->
+        <div class="col-md-4">
+            <div class="card mb-4 fun-card">
+                <div class="card-header text-center">
+                    <h3>🃏 Card Draw</h3>
+                </div>
+                <div class="card-body">
+                    <div id="card-setup" class="card-setup">
+                        <h6 class="text-center mb-2">How many cards?</h6>
+                        <div class="row g-1 mb-2">
+                            <div class="col">
+                                <button class="btn btn-outline-secondary w-100 card-amount-btn" data-amount="1">1</button>
+                            </div>
+                            <div class="col">
+                                <button class="btn btn-outline-secondary w-100 card-amount-btn" data-amount="2">2</button>
+                            </div>
+                            <div class="col">
+                                <button class="btn btn-outline-secondary w-100 card-amount-btn" data-amount="3">3</button>
+                            </div>
+                            <div class="col">
+                                <button class="btn btn-outline-secondary w-100 card-amount-btn" data-amount="4">4</button>
+                            </div>
+                            <div class="col">
+                                <button class="btn btn-outline-secondary w-100 card-amount-btn" data-amount="5">5</button>
+                            </div>
+                        </div>
+                        
+                        <button id="draw-cards-btn" class="btn btn-primary w-100" disabled>
+                            Draw Cards
+                        </button>
+                    </div>
+                    
+                    <div id="card-animation" class="card-animation d-none">
+                        <div class="card-table">
+                            <div class="deck-area">
+                                <div class="card-deck" id="card-deck">
+                                    <div class="deck-card"></div>
+                                    <div class="deck-card"></div>
+                                    <div class="deck-card"></div>
+                                </div>
+                            </div>
+                            <div class="drawn-cards" id="drawn-cards">
+                                <!-- Drawn cards will appear here -->
+                            </div>
+                        </div>
+                        <div class="card-result text-center mt-2">
+                            <div id="card-result-text" class="result-text"></div>
+                            <button id="card-play-again" class="btn btn-primary mt-2">
+                                <i class="fas fa-redo"></i> Play Again
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+    </div>
+    
+    <!-- Rock Paper Scissors & Slots Row -->
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card mb-4 fun-card">
+                <div class="card-header text-center">
+                    <h3>✊ Rock Paper Scissors</h3>
+                </div>
+                <div class="card-body">
+                    <div id="rps-setup" class="rps-setup">
+                        <h6 class="text-center mb-2">Choose Your Theme</h6>
+                        <div class="row g-1 mb-2">
+                            <div class="col-4">
+                                <button class="btn btn-outline-primary w-100 rps-theme-btn" data-theme="Traditional">
+                                    <div class="theme-preview">
+                                        <img src="/static/Emojis/RPS/rock_1.png" class="emoji-preview" style="width: 24px; height: 24px; object-fit: contain;">
+                                        <small>Traditional</small>
+                                    </div>
+                                </button>
+                            </div>
+                            <div class="col-4">
+                                <button class="btn btn-outline-primary w-100 rps-theme-btn" data-theme="Fantasy">
+                                    <div class="theme-preview">
+                                        <img src="/static/Emojis/RPS/knights.png" class="emoji-preview" style="width: 24px; height: 24px; object-fit: contain;">
+                                        <small>Fantasy</small>
+                                    </div>
+                                </button>
+                            </div>
+                            <div class="col-4">
+                                <button class="btn btn-outline-primary w-100 rps-theme-btn" data-theme="War">
+                                    <div class="theme-preview">
+                                        <img src="/static/Emojis/RPS/tank.png" class="emoji-preview" style="width: 24px; height: 24px; object-fit: contain;">
+                                        <small>War</small>
+                                    </div>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <button id="start-rps-btn" class="btn btn-primary w-100" disabled>
+                            Start Playing vs AI
+                        </button>
+                    </div>
+                    
+                    <div id="rps-game" class="rps-game d-none">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <button id="change-theme-btn" class="btn btn-sm btn-outline-secondary">
+                                <i class="fas fa-palette"></i> Change Theme
+                            </button>
+                            <div id="rps-score" class="text-center">
+                                <span id="player-score">Player: 0</span> - 
+                                <span id="ai-score">AI: 0</span>
+                            </div>
+                            <button id="reset-game-btn" class="btn btn-sm btn-outline-danger">
+                                <i class="fas fa-redo"></i> Reset
+                            </button>
+                        </div>
+                        
+                        <div id="rps-choices-div" class="rps-choices text-center mb-3 d-none">
+                            <h6 class="mb-3">Choose your move:</h6>
+                            <div class="row g-2 justify-content-center">
+                                <div class="col-md-3 col-4">
+                                    <button class="btn btn-outline-primary w-100 rps-choice-btn" data-choice="rock_1">
+                                        <div class="choice-preview" id="rock-choice">
+                                            <img src="/static/Emojis/RPS/rock_1.png" style="width: 40px; height: 40px; object-fit: contain;">
+                                            <small>Rock</small>
+                                            <small class="beats-text"></small>
+                                        </div>
+                                    </button>
+                                </div>
+                                <div class="col-md-3 col-4">
+                                    <button class="btn btn-outline-primary w-100 rps-choice-btn" data-choice="paper">
+                                        <div class="choice-preview" id="paper-choice">
+                                            <img src="/static/Emojis/RPS/paper.png" style="width: 40px; height: 40px; object-fit: contain;">
+                                            <small>Paper</small>
+                                            <small class="beats-text"></small>
+                                        </div>
+                                    </button>
+                                </div>
+                                <div class="col-md-3 col-4">
+                                    <button class="btn btn-outline-primary w-100 rps-choice-btn" data-choice="scissor">
+                                        <div class="choice-preview" id="scissors-choice">
+                                            <img src="/static/Emojis/RPS/scissor.png" style="width: 40px; height: 40px; object-fit: contain;">
+                                            <small>Scissors</small>
+                                            <small class="beats-text"></small>
+                                        </div>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div id="rps-arena" class="rps-arena d-none">
+                            <div class="rps-player-choice-animation"></div>
+                            <div class="rps-ai-choice-animation"></div>
+                            <div id="rps-round-result" class="result-text"></div>
+                            <div id="rps-result-actions" class="rps-result-actions d-none">
+                                <button id="rps-play-again" class="btn btn-primary btn-sm">
+                                    <i class="fas fa-redo"></i> Play Again
+                                </button>
+                                <button id="rps-new-round" class="btn btn-outline-primary btn-sm">
+                                    <i class="fas fa-arrow-right"></i> Next Round
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Theme Selection (Hidden by default) -->
+                        <div id="rps-theme-selection" class="rps-theme-selection d-none mb-3">
+                            <h6 class="text-center mb-2">Choose New Theme</h6>
+                            <div class="row g-1">
+                                <div class="col-4">
+                                    <button class="btn btn-outline-primary w-100 rps-theme-change-btn" data-theme="Traditional">
+                                        <div class="theme-preview">
+                                            <img src="/static/Emojis/RPS/rock_1.png" class="emoji-preview" style="width: 20px; height: 20px; object-fit: contain;">
+                                            <small>Traditional</small>
+                                        </div>
+                                    </button>
+                                </div>
+                                <div class="col-4">
+                                    <button class="btn btn-outline-primary w-100 rps-theme-change-btn" data-theme="Fantasy">
+                                        <div class="theme-preview">
+                                            <img src="/static/Emojis/RPS/knights.png" class="emoji-preview" style="width: 20px; height: 20px; object-fit: contain;">
+                                            <small>Fantasy</small>
+                                        </div>
+                                    </button>
+                                </div>
+                                <div class="col-4">
+                                    <button class="btn btn-outline-primary w-100 rps-theme-change-btn" data-theme="War">
+                                        <div class="theme-preview">
+                                            <img src="/static/Emojis/RPS/tank.png" class="emoji-preview" style="width: 20px; height: 20px; object-fit: contain;">
+                                            <small>War</small>
+                                        </div>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="text-center mt-2">
+                                <button id="cancel-theme-change" class="btn btn-sm btn-outline-secondary">Cancel</button>
+                            </div>
+                        </div>
+                        
+
+
+
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slots Box -->
+        <div class="col-md-6">
+            <div class="card mb-4 fun-card">
+                <div class="card-header text-center">
+                    <h3>🎰 Slots</h3>
+                </div>
+            <div class="card-body">
+                <div id="slots-setup" class="slots-setup">
+                    <h6 class="text-center mb-2">Choose Your Theme</h6>
+                    <div id="slots-odds-info" class="text-center mb-2 small" style="color: var(--gold-primary); text-shadow: 0 0 5px var(--gold-glow);"></div>
+                    <div class="row g-1 mb-2">
+                        <div class="col-6">
+                            <button class="btn btn-outline-primary w-100 slots-theme-btn" data-theme="Very Easy">
+                                <small>Very Easy</small>
+                            </button>
+                        </div>
+                        <div class="col-6">
+                            <button class="btn btn-outline-primary w-100 slots-theme-btn" data-theme="Easy">
+                                <small>Easy</small>
+                            </button>
+                        </div>
+                        <div class="col-6">
+                            <button class="btn btn-outline-primary w-100 slots-theme-btn" data-theme="Medium">
+                                <small>Medium</small>
+                            </button>
+                        </div>
+                        <div class="col-6">
+                            <button class="btn btn-outline-primary w-100 slots-theme-btn" data-theme="Hard">
+                                <small>Hard</small>
+                            </button>
+                        </div>
+                        <div class="col-6">
+                            <button class="btn btn-outline-primary w-100 slots-theme-btn" data-theme="Very Hard">
+                                <small>Very Hard</small>
+                            </button>
+                        </div>
+                        <div class="col-6">
+                            <button class="btn btn-outline-primary w-100 slots-theme-btn" data-theme="Insanity">
+                                <small>Insanity</small>
+                            </button>
+                        </div>
+                    </div>
+                    <button id="start-slots-btn" class="btn btn-primary w-100" disabled>Start Playing</button>
+                </div>
+                
+                <div id="slots-game" class="slots-game d-none">
+                    <div class="slots-reels-container mb-3">
+                        <div class="slots-reel-container">
+                            <div class="slots-reel"></div>
+                        </div>
+                        <div class="slots-reel-container">
+                            <div class="slots-reel"></div>
+                        </div>
+                        <div class="slots-reel-container">
+                            <div class="slots-reel"></div>
+                        </div>
+                    </div>
+                    <div id="slots-result-text" class="result-text text-center mb-2"></div>
+                    <button id="spin-slots-btn" class="btn btn-primary w-100 mb-2">Start Spin</button>
+                    <button id="slots-play-again" class="btn btn-secondary w-100 d-none">Play Again</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    </div>
+</div>
+
+</body>
+</html>

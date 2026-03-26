@@ -1,0 +1,247 @@
+
+<link rel="stylesheet" href="/web/Pages/Animations/library.css">
+
+<div class="container-fluid library-container">
+    <div class="row">
+        <nav class="col-md-3 col-lg-2 d-none d-md-block library-sidebar">
+            <div class="sidebar-content">
+                <div class="sidebar-header">
+                    <h2 class="sidebar-title">Scriptorium</h2>
+                    <hr class="sidebar-divider">
+                </div>
+                <div id="docs" class="scroll-menu mt-2 px-1">
+                    <div class="scroll-item" data-doc="FAFO Doctrine">
+                        <span class="scroll-text">The FAFO</span>
+                        <div class="scroll-seal"><i class="fa-solid fa-skull"></i></div>
+                    </div>
+                    <hr class="sidebar-divider">
+                    <div class="scroll-item" data-doc="Basic Building Guide">
+                        <span class="scroll-text">Building</span>
+                        <div class="scroll-seal"><i class="fa-solid fa-house"></i></div>
+                    </div>
+                    <div class="scroll-item" data-doc="Beige Cycle Guide">
+                        <span class="scroll-text">Cycling</span>
+                        <div class="scroll-seal"><i class="fa-solid fa-infinity"></i></div>
+                    </div>
+                    <div class="scroll-item" data-doc="Weapon Efficiency Guide">
+                        <span class="scroll-text">WMD</span>
+                        <div class="scroll-seal"><i class="fa-solid fa-radiation"></i></div>
+                    </div>
+                    <div class="scroll-item" data-doc="Snipe">
+                        <span class="scroll-text">Sniping</span>
+                        <div class="scroll-seal"><i class="fa-solid fa-crosshairs"></i></div>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <main class="col-md-9 col-lg-10 ms-sm-auto library-main-content">
+            <div class="library-content-wrapper">
+                <div class="large-scroll-container" id="large-scroll-container">
+                    <div class="large-scroll" id="large-scroll">
+                        <div class="large-scroll-header">
+                            <h2 class="large-scroll-title">📜 Ancient Knowledge</h2>
+                            <div class="large-scroll-seal"><i class="fa-solid fa-scroll"></i></div>
+                        </div>
+                        <div class="large-scroll-content" id="large-scroll-content">
+                            <div class="scroll-placeholder">
+                                <div class="scroll-icon-large"><i class="fa-solid fa-scroll"></i></div>
+                                <h3>Select a Scroll</h3>
+                                <p>Choose a scroll from the sidebar to reveal its contents here</p>
+                            </div>
+                        </div>
+                        <div class="large-scroll-status-indicator" id="scroll-indicator">
+                            <div class="scroll-status"><i class="fa-solid fa-scroll"></i><span>Select a scroll to reveal</span></div>
+                            <div class="scroll-decoration"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script>
+    document.addEventListener('dashboardPageLoaded', function(event) {
+        if (event.detail.page !== 'library.html') {
+            return; // Only run on the library page
+        }
+
+        console.log("Library page script executing...");
+
+        // Global animation functions
+        window.revealLargeScroll = function() {
+            const largeScroll = document.getElementById('large-scroll');
+            const largeScrollContent = document.getElementById('large-scroll-content');
+            const largeScrollContainer = document.getElementById('large-scroll-container');
+            if (!largeScroll || !largeScrollContent || !largeScrollContainer) return;
+
+            const contentHeight = Math.max(largeScrollContent.scrollHeight + 100, 600);
+            
+            largeScroll.classList.remove('rolling-up');
+            largeScroll.classList.add('unrolling', 'revealed');
+            largeScrollContainer.classList.add('unroll-active');
+            
+            largeScroll.style.height = contentHeight + 'px';
+            largeScroll.style.minHeight = contentHeight + 'px';
+        };
+
+        window.closeLargeScroll = function() {
+            const largeScroll = document.getElementById('large-scroll');
+            const largeScrollContainer = document.getElementById('large-scroll-container');
+            if (!largeScroll || !largeScrollContainer) return;
+
+            largeScroll.classList.remove('unrolling', 'revealed');
+            largeScroll.classList.add('rolling-up');
+            largeScrollContainer.classList.remove('unroll-active');
+            largeScroll.style.height = '400px';
+            largeScroll.style.minHeight = '400px';
+
+            setTimeout(() => {
+                largeScroll.classList.remove('rolling-up');
+            }, 800);
+        };
+
+        let currentlyOpenDoc = null;
+        let isAnimating = false;
+
+        document.querySelectorAll('#docs .scroll-item').forEach(item => {
+            item.addEventListener('click', async (e) => {
+                e.preventDefault();
+                if (isAnimating) return;
+                
+                const docName = item.dataset.doc;
+
+                if (currentlyOpenDoc === docName) {
+                    isAnimating = true;
+                    window.closeLargeScroll();
+                    currentlyOpenDoc = null;
+                    item.classList.remove('opened');
+                    setTimeout(() => { isAnimating = false; }, 800);
+                    return;
+                }
+
+                if (currentlyOpenDoc && currentlyOpenDoc !== docName) {
+                    window.closeLargeScroll();
+                    document.querySelectorAll('.scroll-item.opened').forEach(i => i.classList.remove('opened'));
+                    setTimeout(async () => {
+                        await openDocument(item, docName);
+                    }, 400);
+                    return;
+                }
+
+                await openDocument(item, docName);
+            });
+        });
+
+        async function openDocument(item, docName) {
+            isAnimating = true;
+            
+            const largeScrollContent = document.getElementById('large-scroll-content');
+            largeScrollContent.innerHTML = '<div class="loading"><h3><i class="fa-solid fa-spinner fa-spin"></i> Unrolling scroll...</h3></div>';
+
+            try {
+                item.classList.add('opened');
+                
+                const response = await fetch(`/api/library/${encodeURIComponent(docName)}`);
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                const markdown = await response.text();
+                
+                const parsedContent = marked.parse(markdown);
+                
+                let sealIcon = getStampIcon(docName);
+                
+                const officialSection = `
+                    <div class="scroll-official-section">
+                        <div class="scroll-signature">
+                            <div class="signature-title">Keeper of the Reaper</div>
+                            <div class="signature-name">Aries</div>
+                        </div>
+                        <div class="wax-seal">
+                            <i class="fa-solid ${sealIcon} wax-seal-icon"></i>
+                        </div>
+                    </div>
+                `;
+                
+                largeScrollContent.innerHTML = parsedContent + officialSection;
+                document.querySelector('.large-scroll-title').textContent = `📜 ${docName}`;
+                
+                window.revealLargeScroll();
+                currentlyOpenDoc = docName;
+                
+            } catch (error) {
+                largeScrollContent.innerHTML = `<div class="error"><h3><i class="fa-solid fa-exclamation-triangle"></i> Error</h3><p>${error.message}</p></div>`;
+                item.classList.remove('opened');
+            } finally {
+                setTimeout(() => { isAnimating = false; }, 800);
+            }
+        }
+
+        // Function to get the appropriate stamp icon for a document
+        function getStampIcon(docName) {
+            const docNameLower = docName.toLowerCase();
+            
+            // Death/FAFO related documents
+            if (docNameLower.includes('fafo') || docNameLower.includes('death') || docNameLower.includes('dead') || 
+                docNameLower.includes('kill') || docNameLower.includes('murder') || docNameLower.includes('assassin')) {
+                return 'fa-skull';
+            }
+            // Building/Construction/Home related documents  
+            else if (docNameLower.includes('building') || docNameLower.includes('construction') || 
+                     docNameLower.includes('house') || docNameLower.includes('home') || 
+                     docNameLower.includes('base') || docNameLower.includes('shelter')) {
+                return 'fa-house';
+            }
+            // Cycling/Loop/Infinity related documents
+            else if (docNameLower.includes('cycling') || docNameLower.includes('cycle') || 
+                     docNameLower.includes('loop') || docNameLower.includes('infinite') || 
+                     docNameLower.includes('endless') || docNameLower.includes('perpetual')) {
+                return 'fa-infinity';
+            }
+            // Weapon/WMD/Combat related documents
+            else if (docNameLower.includes('weapon') || docNameLower.includes('wmd') || 
+                     docNameLower.includes('war') || docNameLower.includes('combat') || 
+                     docNameLower.includes('battle') || docNameLower.includes('military') ||
+                     docNameLower.includes('explosive') || docNameLower.includes('bomb')) {
+                return 'fa-radiation';
+            }
+            // Sniping/Targeting/Ranged combat documents
+            else if (docNameLower.includes('snipe') || docNameLower.includes('sniper') || 
+                     docNameLower.includes('target') || docNameLower.includes('aim') || 
+                     docNameLower.includes('scope') || docNameLower.includes('precision') ||
+                     docNameLower.includes('rifle') || docNameLower.includes('shoot')) {
+                return 'fa-crosshairs';
+            }
+            // Default scroll for any other documents
+            else {
+                return 'fa-scroll';
+            }
+        }
+
+        // Update sidebar stamps to match the enhanced logic
+        document.querySelectorAll('#docs .scroll-item').forEach(item => {
+            const docName = item.dataset.doc;
+            const correctIcon = getStampIcon(docName);
+            const sealElement = item.querySelector('.scroll-seal i');
+            
+            if (sealElement && sealElement.classList.length > 0) {
+                // Remove existing icon classes and add the correct one
+                sealElement.className = '';
+                sealElement.classList.add('fa-solid', correctIcon);
+            }
+            
+            item.addEventListener('mouseenter', function() {
+                if (!this.classList.contains('opened')) {
+                    this.style.transform = 'translateY(-3px) scale(1.03)';
+                }
+            });
+            
+            item.addEventListener('mouseleave', function() {
+                if (!this.classList.contains('opened')) {
+                    this.style.transform = '';
+                }
+            });
+        });
+    });
+</script>

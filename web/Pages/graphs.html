@@ -1,0 +1,345 @@
+ <div class="container-fluid">
+    </div>
+    <br>
+    <div class="row">
+        <!-- War Breakdown Graph Card -->
+        <div class="col-md-4 mb-4">
+            <div class="card h-100 graph-card" data-graph-type="war" style="background-color: #1a1a1a; border: 1px solid #333;">
+                <div class="card-body">
+                    <h5 class="card-title" style="color: #ffffff; font-weight: bold; text-shadow: 0 0 10px rgba(255,255,255,0.5);">Wars Cost Breakdown</h5>
+                    <p class="card-text" style="color: #cccccc;">Interactive sunburst chart showing the cost breakdown of wars, including units lost, infrastructure destroyed, and loot.</p>
+                    <button class="btn btn-primary btn-select-graph">Configure</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Wars Net Breakdown Graph Card -->
+        <div class="col-md-4 mb-4">
+            <div class="card h-100 graph-card" data-graph-type="warnet" style="background-color: #1a1a1a; border: 1px solid #333;">
+                <div class="card-body">
+                    <h5 class="card-title" style="color: #ffffff; font-weight: bold; text-shadow: 0 0 10px rgba(255,255,255,0.5);">Wars Net Breakdown</h5>
+                    <p class="card-text" style="color: #cccccc;">Interactive sunburst chart showing war net breakdown with enemy nation relationships and detailed net damage analysis.</p>
+                    <button class="btn btn-primary btn-select-graph">Configure</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Alliance Comparison Graph Card -->
+        <div class="col-md-4 mb-4">
+            <div class="card h-100 graph-card" data-graph-type="compare" style="background-color: #1a1a1a; border: 1px solid #333;">
+                <div class="card-body">
+                    <h5 class="card-title" style="color: #ffffff; font-weight: bold; text-shadow: 0 0 10px rgba(255,255,255,0.5);">Alliance Comparison</h5>
+                    <p class="card-text" style="color: #cccccc;">Compare military strength and nation counts between two alliances or groups of alliances with interactive toggles.</p>
+                    <button class="btn btn-primary btn-select-graph">Select</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Treaty Universe Graph Card -->
+        <div class="col-md-4 mb-4">
+            <div class="card h-100 graph-card" data-graph-type="treaty" style="background-color: #1a1a1a; border: 1px solid #333;">
+                <div class="card-body">
+                    <h5 class="card-title" style="color: #ffffff; font-weight: bold; text-shadow: 0 0 10px rgba(255,255,255,0.5);">Treaty Universe</h5>
+                    <p class="card-text" style="color: #cccccc;">A 3D interactive map of alliance treaties, showing blocs and relationships. Click alliances to pin details.</p>
+                    <button class="btn btn-primary btn-select-graph">Select</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stock Market Graph Card -->
+    </div>
+</div>
+
+    <!-- Graph Input Forms -->
+    <div id="graph-input-area" class="mt-4" style="display: none;">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span id="selected-graph-title">Configure Graph</span>
+                <button id="btn-deselect-graph" class="btn btn-sm btn-secondary">&times;</button>
+            </div>
+            <div class="card-body" id="graph-form-container">
+                <!-- Forms will be dynamically inserted here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Graph Viewer Modal -->
+    <div class="modal fade" id="graph-viewer-modal" tabindex="-1" aria-labelledby="graphViewerModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-centered">
+            <div class="modal-content" style="background-color: #1a1a1a; border: 1px solid #333; color: #ffffff;">
+                <div class="modal-header" style="border-bottom: 1px solid #333;">
+                    <h5 class="modal-title" id="graphViewerModalLabel">Graph Viewer</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" id="graph-viewer-modal-body" style="min-height: 70vh; display: flex; justify-content: center; align-items: center;">
+                    <!-- Graph content will be loaded here -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+const graphForms = {
+    war: `
+        <form id="war-graph-form">
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label for="war-alliance-name" class="form-label">Alliance Name or ID</label>
+                        <input type="text" class="form-control" id="war-alliance-name" name="alliance_name" placeholder="e.g., The Knights Radiant or 1234" required>
+                        <div class="form-text">The name or ID of the alliance to analyze for the war breakdown.</div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label for="war-time-range" class="form-label">Time Range</label>
+                        <input type="text" class="form-control" id="war-time-range" name="time" placeholder="e.g., 2d, 3w, 1m" required>
+                        <div class="form-text">Time range for wars (d=days, w=weeks, m=months). Example: '2d' for last 2 days.</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="war-force-refresh" name="force_refresh">
+                            <label class="form-check-label" for="war-force-refresh">
+                                Force Refresh Data
+                            </label>
+                        </div>
+                        <div class="form-text">Bypass cache and fetch fresh data from the game API.</div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="war-opps-view" name="opps_view">
+                            <label class="form-check-label" for="war-opps-view">
+                                Opponent's Perspective
+                            </label>
+                        </div>
+                        <div class="form-text">View breakdown from the opponent's perspective.</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="alert alert-info" id="war-status-message" style="display: none;">
+                <div class="spinner-border spinner-border-sm" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <span id="war-status-text">Connecting to Politics & War API...</span>
+            </div>
+            
+            <button type="submit" class="btn btn-success">
+                <span id="war-submit-text">Generate Graph</span>
+                <span id="war-loading-spinner" class="spinner-border spinner-border-sm ms-2" style="display: none;" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </span>
+            </button>
+        </form>
+    `,
+    warnet: `
+        <form id="warnet-graph-form">
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label for="warnet-alliance-name" class="form-label">Alliance Name or ID</label>
+                        <input type="text" class="form-control" id="warnet-alliance-name" name="alliance_name" placeholder="e.g., The Knights Radiant or 1234" required>
+                        <div class="form-text">The name or ID of the alliance to analyze for the war net breakdown.</div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label for="warnet-time-range" class="form-label">Time Range</label>
+                        <input type="text" class="form-control" id="warnet-time-range" name="time" placeholder="e.g., 2d, 3w, 1m" required>
+                        <div class="form-text">Time range for wars (d=days, w=weeks, m=months). Example: '2d' for last 2 days.</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="warnet-force-refresh" name="force_refresh">
+                            <label class="form-check-label" for="warnet-force-refresh">
+                                Force Refresh Data
+                            </label>
+                        </div>
+                        <div class="form-text">Bypass cache and fetch fresh data from the game API.</div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="warnet-opps-view" name="opps_view">
+                            <label class="form-check-label" for="warnet-opps-view">
+                                Opponent's Perspective
+                            </label>
+                        </div>
+                        <div class="form-text">View breakdown from the opponent's perspective.</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="alert alert-info" id="warnet-status-message" style="display: none;">
+                <div class="spinner-border spinner-border-sm" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <span id="warnet-status-text">Connecting to Politics & War API...</span>
+            </div>
+            
+            <button type="submit" class="btn btn-success">
+                <span id="warnet-submit-text">Generate Graph</span>
+                <span id="warnet-loading-spinner" class="spinner-border spinner-border-sm ms-2" style="display: none;" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </span>
+            </button>
+        </form>
+    `,
+    compare: `
+        <form id="compare-graph-form">
+            <div class="row">
+                <div class="col-md-6">
+                    <h5>Home Alliance(s)</h5>
+                    <div class="mb-3">
+                        <label for="home-alliance-ids" class="form-label">Alliance IDs (comma-separated)</label>
+                        <input type="text" class="form-control" id="home-alliance-ids" name="home_alliance_ids" placeholder="e.g., 1234, 5678" required>
+                        <div class="form-text">The IDs of the alliances on the 'Home' side.</div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <h5>Away Alliance(s)</h5>
+                    <div class="mb-3">
+                        <label for="away-alliance-ids" class="form-label">Alliance IDs (comma-separated)</label>
+                        <input type="text" class="form-control" id="away-alliance-ids" name="away_alliance_ids" placeholder="e.g., 9012, 3456" required>
+                        <div class="form-text">The IDs of the alliances on the 'Away' side.</div>
+                    </div>
+                </div>
+            </div>
+            <button type="submit" class="btn btn-success">Generate Alliance Comparison Graph</button>
+        </form>
+    `,
+    treaty: `
+        <form id="treaty-graph-form">
+            <div class="mb-3">
+                <label for="treaty-alliance-ids" class="form-label">Alliance IDs (optional)</label>
+                <input type="text" class="form-control" id="treaty-alliance-ids" name="alliance_ids" placeholder="e.g., 1234, 5678 (leave blank for all)">
+                <div class="form-text">Comma-separated list of alliance IDs to focus the map on. Leave blank to show the entire treaty universe.</div>
+            </div>
+            <button type="submit" class="btn btn-success">Generate Treaty Universe Graph</button>
+        </form>
+    `
+};
+
+let selectedGraphType = null;
+
+function showGraphInput(graphType) {
+    selectedGraphType = graphType;
+    const inputArea = document.getElementById('graph-input-area');
+    const formContainer = document.getElementById('graph-form-container');
+    const titleSpan = document.getElementById('selected-graph-title');
+
+    // Update UI
+    document.querySelectorAll('.graph-card').forEach(card => card.classList.remove('border-primary', 'shadow-lg'));
+    document.querySelector(`[data-graph-type="${graphType}"]`).classList.add('border-primary', 'shadow-lg');
+
+    inputArea.style.display = 'block';
+    formContainer.innerHTML = graphForms[graphType];
+
+    switch(graphType) {
+        case 'war':
+            titleSpan.textContent = 'Configure Wars Cost Breakdown Graph';
+            break;
+        case 'warnet':
+            titleSpan.textContent = 'Configure Wars Net Breakdown Graph';
+            break;
+        case 'compare':
+            titleSpan.textContent = 'Configure Alliance Comparison Graph';
+            break;
+        case 'treaty':
+            titleSpan.textContent = 'Configure Treaty Universe Graph';
+            break;
+    }
+}
+
+function hideGraphInput() {
+    selectedGraphType = null;
+    document.querySelectorAll('.graph-card').forEach(card => card.classList.remove('border-primary', 'shadow-lg'));
+    document.getElementById('graph-input-area').style.display = 'none';
+    document.getElementById('graph-output-area').style.display = 'none';
+}
+
+// Event Listeners
+
+    // Graph card selection
+    document.querySelectorAll('.btn-select-graph').forEach(button => {
+        button.addEventListener('click', function() {
+            const card = this.closest('.graph-card');
+            const graphType = card.getAttribute('data-graph-type');
+            showGraphInput(graphType);
+        });
+    });
+
+    // Deselect button
+    document.getElementById('btn-deselect-graph').addEventListener('click', hideGraphInput);
+
+    // Form submissions (using event delegation)
+    document.getElementById('graph-form-container').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const form = e.target;
+        const formData = new FormData(form);
+        const params = Object.fromEntries(formData.entries());
+        
+        // Add the graph type
+        params.type = selectedGraphType;
+
+        const graphModal = new bootstrap.Modal(document.getElementById('graph-viewer-modal'));
+        const modalBody = document.getElementById('graph-viewer-modal-body');
+        const modalTitle = document.getElementById('graphViewerModalLabel');
+
+        // Set title and show loading state
+        modalTitle.textContent = document.getElementById('selected-graph-title').textContent;
+        modalBody.innerHTML = `
+            <div class="text-center">
+                <div class="spinner-border text-primary" style="width: 3rem; height: 3rem;" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <h4 class="mt-3">Generating Graph...</h4>
+            </div>`;
+        graphModal.show();
+
+        try {
+            // Build API URL
+            const queryString = new URLSearchParams(params).toString();
+            const apiUrl = `/api/graph/${selectedGraphType}?${queryString}`;
+
+            const response = await fetch(apiUrl);
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`Failed to load graph: ${errorText || response.statusText}`);
+            }
+
+            const graphData = await response.text();
+
+            // Display the graph
+            if (graphData.includes('<html') || graphData.includes('<!DOCTYPE')) {
+                 modalBody.innerHTML = `<iframe srcdoc="${graphData.replace(/"/g, '&quot;')}" style="width: 100%; height: 70vh; border: none;"></iframe>`;
+            } else {
+                // Assuming it's a base64 image string for non-html responses
+                modalBody.innerHTML = `<img src="data:image/png;base64,${graphData}" class="img-fluid" alt="Generated Graph">`;
+            }
+
+        } catch (error) {
+            console.error('Error generating graph:', error);
+            modalBody.innerHTML = `
+                <div class="alert alert-danger">
+                    <h5>Error Generating Graph</h5>
+                    <p>${error.message}</p>
+                </div>`;
+        }
+    });
+</script>

@@ -1,0 +1,532 @@
+<style>
+    /* Lighten text on horoscope cards */
+    .text-muted {
+        color: #adb5bd !important; /* Lighter gray than default Bootstrap text-muted */
+    }
+    
+    /* Make small text even lighter */
+    .small.text-muted {
+        color: #ced4da !important; /* Very light gray */
+    }
+    
+    /* Lighten the lead text in horoscope results */
+    .lead.text-muted {
+        color: #e9ecef !important; /* Very light gray, almost white */
+    }
+    
+    /* Lighten form labels */
+    .form-label.text-muted {
+        color: #dee2e6 !important; /* Light gray */
+    }
+    
+    /* Gold glow effect for sign names */
+    .sign-name-gold {
+        color: #FFD700 !important; /* Gold color */
+        text-shadow: 
+            0 0 5px #FFD700,
+            0 0 10px #FFD700,
+            0 0 15px #FFD700,
+            0 0 20px #FFA500,
+            0 0 25px #FFA500,
+            0 0 30px #FFA500,
+            0 0 35px #FF8C00,
+            0 0 40px #FF8C00;
+        font-weight: bold;
+        font-size: 1.2em;
+        transition: all 0.3s ease;
+        animation: goldGlow 2s ease-in-out infinite alternate;
+    }
+    
+    @keyframes goldGlow {
+        from {
+            text-shadow: 
+                0 0 5px #FFD700,
+                0 0 10px #FFD700,
+                0 0 15px #FFD700,
+                0 0 20px #FFA500,
+                0 0 25px #FFA500,
+                0 0 30px #FFA500;
+        }
+        to {
+            text-shadow: 
+                0 0 10px #FFD700,
+                0 0 20px #FFD700,
+                0 0 30px #FFD700,
+                0 0 40px #FFA500,
+                0 0 50px #FFA500,
+                0 0 60px #FFA500,
+                0 0 70px #FF8C00,
+                0 0 80px #FF8C00;
+        }
+    }
+    
+    .sign-name-gold:hover {
+        color: #FFF !important;
+        transform: scale(1.05);
+        animation: none;
+        text-shadow: 
+            0 0 15px #FFD700,
+            0 0 30px #FFD700,
+            0 0 45px #FFD700,
+            0 0 60px #FFA500,
+            0 0 75px #FFA500,
+            0 0 90px #FFA500,
+            0 0 105px #FF8C00,
+            0 0 120px #FF8C00;
+    }
+</style>
+
+<div class="container-fluid">
+    <!-- Western & Eastern Signs & Spirit Animal Section -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h3>⭐ Learn your Western & Eastern Horoscope Signs & Spirit Animal</h3>
+        </div>
+        <div class="card-body">
+            <p class="text-muted">Discover your complete cosmic profile including Western Zodiac, Chinese Zodiac, and Spirit Animal!</p>
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label for="birth-month" class="form-label text-muted">Birth Month</label>
+                        <select id="birth-month" class="form-select">
+                            <option value="">Select Month</option>
+                            <option value="1">January</option>
+                            <option value="2">February</option>
+                            <option value="3">March</option>
+                            <option value="4">April</option>
+                            <option value="5">May</option>
+                            <option value="6">June</option>
+                            <option value="7">July</option>
+                            <option value="8">August</option>
+                            <option value="9">September</option>
+                            <option value="10">October</option>
+                            <option value="11">November</option>
+                            <option value="12">December</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label for="birth-day" class="form-label text-muted">Birth Day</label>
+                        <select id="birth-day" class="form-select">
+                            <option value="">Select Day</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label for="birth-year" class="form-label text-muted">Birth Year</label>
+                        <select id="birth-year" class="form-select">
+                            <option value="">Select Year</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <button id="get-signs-btn" class="btn btn-warning">Get Signs & Spirit Animal</button>
+            <div id="signs-result" class="mt-4"></div>
+        </div>
+    </div>
+
+    <!-- Daily Horoscope Section -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h3>🔮 Daily Horoscope</h3>
+        </div>
+        <div class="card-body">
+            <p>Get your daily horoscope for any zodiac sign!</p>
+            <div class="row">
+                <div class="col-12">
+                    <div class="d-flex flex-wrap justify-content-center gap-2 mb-3">
+                        <button class="btn btn-outline-primary horoscope-btn" data-sign="Aries" data-emoji="♈">♈ Aries</button>
+                        <button class="btn btn-outline-primary horoscope-btn" data-sign="Taurus" data-emoji="♉">♉ Taurus</button>
+                        <button class="btn btn-outline-primary horoscope-btn" data-sign="Gemini" data-emoji="♊">♊ Gemini</button>
+                        <button class="btn btn-outline-primary horoscope-btn" data-sign="Cancer" data-emoji="♋">♋ Cancer</button>
+                        <button class="btn btn-outline-primary horoscope-btn" data-sign="Leo" data-emoji="♌">♌ Leo</button>
+                        <button class="btn btn-outline-primary horoscope-btn" data-sign="Virgo" data-emoji="♍">♍ Virgo</button>
+                        <button class="btn btn-outline-primary horoscope-btn" data-sign="Libra" data-emoji="♎">♎ Libra</button>
+                        <button class="btn btn-outline-primary horoscope-btn" data-sign="Scorpio" data-emoji="♏">♏ Scorpio</button>
+                        <button class="btn btn-outline-primary horoscope-btn" data-sign="Sagittarius" data-emoji="♐">♐ Sagittarius</button>
+                        <button class="btn btn-outline-primary horoscope-btn" data-sign="Capricorn" data-emoji="♑">♑ Capricorn</button>
+                        <button class="btn btn-outline-primary horoscope-btn" data-sign="Aquarius" data-emoji="♒">♒ Aquarius</button>
+                        <button class="btn btn-outline-primary horoscope-btn" data-sign="Pisces" data-emoji="♓">♓ Pisces</button>
+                    </div>
+                    <div class="d-flex justify-content-center gap-2 mb-3">
+                        <button class="btn btn-sm btn-outline-secondary horoscope-day" data-day="yesterday">Yesterday</button>
+                        <button class="btn btn-sm btn-outline-secondary horoscope-day active" data-day="today">Today</button>
+                        <button class="btn btn-sm btn-outline-secondary horoscope-day" data-day="tomorrow">Tomorrow</button>
+                    </div>
+                </div>
+            </div>
+            <div id="horoscope-result" class="mt-3"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Astrology page initialization function
+function initializeAstrology() {
+    console.log('Initializing astrology page...');
+    
+    // --- DOM Elements ---
+    const monthSelect = document.getElementById('birth-month');
+    const daySelect = document.getElementById('birth-day');
+    const yearSelect = document.getElementById('birth-year');
+    const getSignsBtn = document.getElementById('get-signs-btn');
+    const signsResultDiv = document.getElementById('signs-result');
+    const horoscopeResultDiv = document.getElementById('horoscope-result');
+    const horoscopeSignBtns = document.querySelectorAll('.horoscope-btn');
+    const horoscopeDayBtns = document.querySelectorAll('.horoscope-day');
+    
+    // Check if all elements exist
+    if (!monthSelect || !daySelect || !yearSelect || !getSignsBtn) {
+        console.error('❌ ERROR: Missing required astrology elements:', {
+            monthSelect: !!monthSelect,
+            daySelect: !!daySelect,
+            yearSelect: !!yearSelect,
+            getSignsBtn: !!getSignsBtn
+        });
+        return;
+    }
+    
+    console.log('✅ All required elements found');
+
+    // --- State ---
+    let currentHoroscopeSign = null;
+    let currentHoroscopeEmoji = null;
+    let currentHoroscopeDay = 'today';
+
+    // --- Functions ---
+
+    // Populate year dropdown
+    function populateYears() {
+        const selectedYear = yearSelect.value; // Store current selection
+        const currentYear = new Date().getFullYear();
+        const startYear = currentYear - 100;
+        
+        yearSelect.innerHTML = '<option value="">Select Year</option>';
+        for (let year = currentYear; year >= startYear; year--) {
+            const option = document.createElement('option');
+            option.value = year;
+            option.textContent = year;
+            yearSelect.appendChild(option);
+        }
+        
+        // Restore previously selected year if it exists
+        if (selectedYear && selectedYear !== '') {
+            yearSelect.value = selectedYear;
+        }
+        
+        console.log(`Year dropdown populated, selected year preserved: ${yearSelect.value}`);
+    }
+
+    // Populate day dropdown
+    function populateDays() {
+        try {
+            const selectedDay = daySelect.value; // Store current selection
+            const month = parseInt(monthSelect.value);
+            const year = parseInt(yearSelect.value) || new Date().getFullYear();
+            
+            let daysInMonth;
+            
+            if (!month) {
+                // If no month selected, show days 1-31 as default
+                daysInMonth = 31;
+            } else {
+                // Calculate days in the selected month
+                daysInMonth = new Date(year, month, 0).getDate();
+            }
+            
+            // Clear and rebuild dropdown
+            daySelect.innerHTML = '<option value="">Select Day</option>';
+            
+            for (let day = 1; day <= daysInMonth; day++) {
+                const option = document.createElement('option');
+                option.value = day;
+                option.textContent = day;
+                daySelect.appendChild(option);
+            }
+            
+            // Restore previously selected day if it's valid for the new month/year
+            if (selectedDay && selectedDay !== '') {
+                const dayNum = parseInt(selectedDay);
+                if (dayNum <= daysInMonth) {
+                    daySelect.value = selectedDay;
+                } else {
+                    // If the selected day is invalid for this month, reset to empty
+                    daySelect.value = '';
+                }
+            }
+            
+            console.log(`Day dropdown populated with ${daysInMonth} days, selected day preserved: ${daySelect.value}`);
+            
+        } catch (error) {
+            console.error('Error populating days:', error);
+            daySelect.innerHTML = '<option value="">Select Day</option>';
+        }
+    }
+
+    // Get and display all signs
+    async function getSignsAndSpiritAnimal() {
+        const month = monthSelect.value;
+        const day = daySelect.value;
+        const year = yearSelect.value;
+        
+        if (!month || !day || !year) {
+            signsResultDiv.innerHTML = '<div class="alert alert-warning">Please fill in all birth date fields.</div>';
+            return;
+        }
+        
+        signsResultDiv.innerHTML = '<div class="text-center"><div class="spinner-border text-warning" role="status"><span class="visually-hidden">Loading...</span></div><p class="mt-2 text-muted">Getting your cosmic profile...</p></div>';
+        
+        try {
+            const response = await fetch('/api/astrology/signs', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    month: parseInt(month),
+                    day: parseInt(day),
+                    year: parseInt(year)
+                })
+            });
+            
+            // Check if response is JSON
+            const contentType = response.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+                const text = await response.text();
+                console.error('Non-JSON response:', text);
+                throw new Error(`Server returned non-JSON response. Status: ${response.status}, Content: ${text.substring(0, 200)}`);
+            }
+            
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || 'Failed to get astrology data');
+            
+            displaySignsResults(data);
+            
+        } catch (error) {
+            console.error('Error in getSignsAndSpiritAnimal:', error);
+            signsResultDiv.innerHTML = `<div class="alert alert-danger">Error: ${error.message}</div>`;
+        }
+    }
+
+    // Display signs results
+    function displaySignsResults(data) {
+        try {
+            console.log('Displaying signs results:', data);
+            
+            // Validate data structure
+            if (!data) {
+                signsResultDiv.innerHTML = '<div class="alert alert-warning">No astrology data received.</div>';
+                return;
+            }
+            
+            let html = '<div class="row">';
+            // Western Zodiac
+            if (data.western) {
+            html += `
+                <div class="col-md-4 mb-3">
+                    <div class="card h-100 border-primary">
+                        <div class="card-header bg-primary text-white"><h5 class="mb-0">Western Zodiac</h5></div>
+                        <div class="card-body">
+                            <h6 class="sign-name-gold">${data.western.emoji} ${data.western.name}</h6>
+                            <p class="small text-muted">${data.western.description}</p>
+                            <div class="small text-muted">
+                                <strong>Element:</strong> ${data.western.element}<br>
+                                <strong>Modality:</strong> ${data.western.modality}<br>
+                                <strong>Planet:</strong> ${data.western.ruling_planet}<br>
+                                <strong>House:</strong> ${data.western.house}<br>
+                                ${data.western.stones && data.western.stones.length ? `<strong>Stones:</strong> ${data.western.stones.join(', ')}<br>` : ''}
+                                ${data.western.traits && data.western.traits.length ? `<strong>Traits:</strong> ${data.western.traits.join(', ')}<br>` : ''}
+                                ${data.western.compatibility && data.western.compatibility.length ? `<strong>Compatibility:</strong> ${data.western.compatibility.join(', ')}<br>` : ''}
+                                ${data.western.lucky_numbers && data.western.lucky_numbers.length ? `<strong>Lucky Numbers:</strong> ${data.western.lucky_numbers.join(', ')}<br>` : ''}
+                                ${data.western.lucky_colors && data.western.lucky_colors.length ? `<strong>Lucky Colors:</strong> ${data.western.lucky_colors.join(', ')}<br>` : ''}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        // Eastern Zodiac
+        if (data.chinese) {
+            html += `
+                <div class="col-md-4 mb-3">
+                    <div class="card h-100 border-success">
+                        <div class="card-header bg-success text-white"><h5 class="mb-0">Eastern Zodiac</h5></div>
+                        <div class="card-body">
+                            <h6 class="sign-name-gold">${data.chinese.Emoji} ${data.chinese.Name}</h6>
+                            <p class="small text-muted">${data.chinese.Description}</p>
+                            <div class="small text-muted">
+                                <strong>Polarity:</strong> ${data.chinese.Yin_Yang}<br>
+                                <strong>Element:</strong> ${data.chinese.Fixed_Element}<br>
+                                <strong>Trine:</strong> ${data.chinese.Trine}<br>
+                                <strong>Hours:</strong> ${data.chinese.Hours}<br>
+                                ${data.chinese.Lucky_Numbers && data.chinese.Lucky_Numbers.length ? `<strong>Lucky Numbers:</strong> ${data.chinese.Lucky_Numbers.join(', ')}<br>` : ''}
+                                ${data.chinese.Lucky_Colors && data.chinese.Lucky_Colors.length ? `<strong>Lucky Colors:</strong> ${data.chinese.Lucky_Colors.join(', ')}<br>` : ''}
+                                ${data.chinese.Lucky_Flowers && data.chinese.Lucky_Flowers.length ? `<strong>Lucky Flowers:</strong> ${data.chinese.Lucky_Flowers.join(', ')}<br>` : ''}
+                                ${data.chinese.Traits && data.chinese.Traits.length ? `<strong>Traits:</strong> ${data.chinese.Traits.join(', ')}<br>` : ''}
+                                ${data.chinese.Compatibility ? `<strong>Compatibility:</strong> ${data.chinese.Compatibility}<br>` : ''}
+                                ${data.chinese.Incompatible ? `<strong>Incompatible:</strong> ${data.chinese.Incompatible}<br>` : ''}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        // Spirit Animal
+        if (data.spirit) {
+            html += `
+                <div class="col-md-4 mb-3">
+                    <div class="card h-100 border-secondary">
+                        <div class="card-header bg-secondary text-white"><h5 class="mb-0">Spirit Animal</h5></div>
+                        <div class="card-body">
+                            <h6 class="sign-name-gold">${data.spirit.Name}</h6>
+                            <p class="small text-muted">${data.spirit.Description}</p>
+                            <div class="small text-muted">
+                                ${data.spirit.Traits ? `<strong>Traits:</strong> ${Array.isArray(data.spirit.Traits) ? data.spirit.Traits.join(', ') : data.spirit.Traits}<br>` : ''}
+                                ${data.spirit.Career ? `<strong>Career:</strong> ${data.spirit.Career}<br>` : ''}
+                                ${data.spirit.Relationships ? `<strong>Relationships:</strong> ${data.spirit.Relationships}<br>` : ''}
+                                ${data.spirit.Compatibility ? `<strong>Compatibility:</strong> ${data.spirit.Compatibility}<br>` : ''}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        html += '</div>';
+        signsResultDiv.innerHTML = html;
+        
+        } catch (error) {
+            console.error('Error displaying signs results:', error);
+            signsResultDiv.innerHTML = `<div class="alert alert-danger">Error displaying results: ${error.message}</div>`;
+        }
+    }
+
+    // Get and display horoscope
+    async function updateHoroscope() {
+        if (!currentHoroscopeSign) {
+            horoscopeResultDiv.innerHTML = '';
+            return;
+        }
+        horoscopeResultDiv.innerHTML = '<div class="text-center"><div class="spinner-border text-primary" role="status"></div><p class="mt-2 text-muted">Getting horoscope...</p></div>';
+        try {
+            // Use the new local proxy endpoint to avoid CORS issues
+            const response = await fetch(`/api/horoscope-proxy?sign=${encodeURIComponent(currentHoroscopeSign)}&day=${encodeURIComponent(currentHoroscopeDay)}`);
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || 'Failed to get horoscope');
+            displayHoroscopeResult(data, currentHoroscopeSign, currentHoroscopeEmoji);
+        } catch (error) {
+            horoscopeResultDiv.innerHTML = `<div class="alert alert-danger">Error: ${error.message}</div>`;
+        }
+    }
+
+    // Display horoscope result
+    function displayHoroscopeResult(data, sign, emoji) {
+        try {
+            console.log('Displaying horoscope result:', data);
+            
+            if (!data || !data.horoscope) {
+                horoscopeResultDiv.innerHTML = '<div class="alert alert-warning">No horoscope data available.</div>';
+                return;
+            }
+            
+            // Extract the main horoscope text
+            const horoscopeText = data.horoscope.split('Astro Profile')[0].trim();
+            
+            let html = `
+                <div class="card border-info">
+                    <div class="card-header bg-info text-white">
+                        <h5 class="mb-0">${emoji} ${sign} Daily Horoscope</h5>
+                    </div>
+                    <div class="card-body">
+                        <p class="lead text-muted">${horoscopeText}</p>
+            `;
+            
+            // Add just the date since the new API doesn't provide detailed stats
+            html += `
+                <hr>
+                <div class="row text-muted">
+                    <div class="col-md-12 mb-2"><strong>🗓️ Date:</strong> ${data.date}</div>
+                </div>
+            `;
+            
+            html += '</div></div>';
+            horoscopeResultDiv.innerHTML = html;
+        
+        } catch (error) {
+            console.error('Error displaying horoscope result:', error);
+            horoscopeResultDiv.innerHTML = `<div class="alert alert-danger">Error displaying horoscope: ${error.message}</div>`;
+        }
+    }
+
+    // --- Event Listeners ---
+    monthSelect.addEventListener('change', function() {
+        console.log('Month changed to:', monthSelect.value);
+        populateDays();
+        // Clear any previous results when date changes
+        signsResultDiv.innerHTML = '';
+    });
+    
+    yearSelect.addEventListener('change', function() {
+        console.log('Year changed to:', yearSelect.value);
+        populateDays();
+        // Clear any previous results when date changes
+        signsResultDiv.innerHTML = '';
+    });
+    
+    getSignsBtn.addEventListener('click', getSignsAndSpiritAnimal);
+
+    horoscopeSignBtns.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            horoscopeSignBtns.forEach(b => b.classList.remove('active'));
+            e.currentTarget.classList.add('active');
+            currentHoroscopeSign = e.currentTarget.dataset.sign;
+            currentHoroscopeEmoji = e.currentTarget.dataset.emoji;
+            updateHoroscope();
+        });
+    });
+
+    horoscopeDayBtns.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            horoscopeDayBtns.forEach(b => b.classList.remove('active'));
+            e.currentTarget.classList.add('active');
+            currentHoroscopeDay = e.currentTarget.dataset.day;
+            updateHoroscope();
+        });
+    });
+
+    // --- Initial Population ---
+    // Initialize dropdowns in proper order
+    function initializeDropdowns() {
+        console.log('Populating dropdowns...');
+        populateYears();
+        populateDays();
+        
+        // Add debugging to verify dropdowns are populated
+        console.log('Year dropdown populated with', yearSelect.options.length, 'options');
+        console.log('Day dropdown populated with', daySelect.options.length, 'options');
+        
+        // Verify dropdowns have been populated correctly
+        if (yearSelect.options.length <= 1) {
+            console.warn('⚠️  Year dropdown may not be populated correctly');
+        }
+        if (daySelect.options.length <= 1) {
+            console.warn('⚠️  Day dropdown may not be populated correctly');
+        }
+    }
+    
+    // Initialize immediately and also ensure DOM is ready
+    try {
+        initializeDropdowns();
+        console.log('✅ Astrology page initialization complete');
+    } catch (error) {
+        console.error('❌ Error during astrology initialization:', error);
+    }
+}
+
+// Initialize when DOM is ready or when loaded dynamically
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeAstrology);
+} else {
+    // DOM is already loaded, add a small delay to ensure everything is settled
+    setTimeout(initializeAstrology, 50);
+}
+</script>

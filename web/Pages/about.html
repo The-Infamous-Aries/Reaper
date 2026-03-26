@@ -1,0 +1,782 @@
+<div class="container-fluid">
+    
+    <!-- Toggle Buttons -->
+    <div class="row mb-4">
+        <div class="col-12 text-center">
+            <div class="btn-group" role="group" aria-label="Content Toggle">
+                <button type="button" class="btn btn-toggle active" id="readme-toggle" onclick="showContent('readme')">
+                    📖 README
+                </button>
+                <button type="button" class="btn btn-toggle" id="license-toggle" onclick="showContent('license')">
+                    ⚖️ License
+                </button>
+                <button type="button" class="btn btn-toggle" id="python-deps-toggle" onclick="showContent('python-deps')">
+                    🐍 Python Deps
+                </button>
+                <button type="button" class="btn btn-toggle" id="js-modules-toggle" onclick="showContent('js-modules')">
+                    📦 JS Modules
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Content Container -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card bg-dark text-white">
+                <div class="card-header">
+                    <h3 id="content-title">README Documentation</h3>
+                </div>
+                <div class="card-body">
+                    <!-- README Content -->
+                    <div id="readme-content" class="content-section readme-content">
+                        Loading README content...
+                    </div>
+                    
+                    <!-- License Content -->
+                    <div id="license-content" class="content-section license-content" style="display: none;">
+                        Loading license content...
+                    </div>
+                    
+                    <!-- Python Dependencies Content -->
+                    <div id="python-deps-content" class="content-section python-deps-content" style="display: none;">
+                        Loading Python dependencies...
+                    </div>
+                    
+                    <!-- JavaScript Modules Content -->
+                    <div id="js-modules-content" class="content-section js-modules-content" style="display: none;">
+                        Loading JavaScript modules...
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+:root {
+    --bg-primary: #0a0a0a;
+    --bg-secondary: #0f0f0f;
+    --bg-tertiary: #141414;
+    --gold-primary: #ffd700;
+    --gold-secondary: #ffed4e;
+    --gold-glow: rgba(255, 215, 0, 0.3);
+    --text-primary: #f0f0f0;
+    --text-secondary: #b9bbbe;
+}
+
+body {
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+}
+
+/* Toggle Button Styles */
+.btn-group {
+    box-shadow: 0 0 15px var(--gold-glow);
+    border-radius: 0.5rem;
+    overflow: hidden;
+}
+
+.btn-toggle {
+    background: linear-gradient(135deg, var(--bg-secondary), var(--bg-tertiary));
+    color: var(--text-secondary);
+    border: 2px solid var(--gold-primary);
+    padding: 0.75rem 1.5rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    text-shadow: 0 0 5px var(--gold-glow);
+}
+
+.btn-toggle:hover {
+    background: linear-gradient(135deg, var(--bg-tertiary), var(--bg-secondary));
+    color: var(--gold-secondary);
+    box-shadow: 0 0 10px var(--gold-glow);
+}
+
+.btn-toggle.active {
+    background: linear-gradient(135deg, var(--gold-primary), var(--gold-secondary));
+    color: var(--bg-primary);
+    box-shadow: 0 0 15px var(--gold-glow);
+    text-shadow: none;
+}
+
+.btn-toggle:first-child {
+    border-right: 1px solid var(--gold-primary);
+}
+
+.btn-toggle:last-child {
+    border-left: 1px solid var(--gold-primary);
+}
+
+/* Card Styles */
+.card {
+    background-color: var(--bg-secondary);
+    border: 2px solid var(--gold-primary);
+    box-shadow: 0 0 15px var(--gold-glow);
+    border-radius: 0.75rem;
+}
+
+.card-header {
+    background: linear-gradient(135deg, var(--bg-tertiary), var(--bg-secondary));
+    border-bottom: 2px solid var(--gold-primary);
+    color: var(--gold-primary);
+    font-weight: 700;
+}
+
+/* Content Section Styles */
+.content-section {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-size: 0.95rem;
+    line-height: 1.7;
+    background-color: var(--bg-secondary);
+    border-radius: 0.5rem;
+    padding: 1.5rem;
+    color: var(--text-primary);
+    min-height: 200px;
+}
+
+/* README Content Styles (same as original) */
+.readme-content h1 {
+    color: var(--gold-primary);
+    font-size: 1.8rem;
+    font-weight: 700;
+    margin-top: 2rem;
+    margin-bottom: 1rem;
+    text-shadow: 0 0 10px var(--gold-glow);
+    border-bottom: 2px solid var(--gold-primary);
+    padding-bottom: 0.5rem;
+}
+
+.readme-content h2 {
+    color: var(--gold-secondary);
+    font-size: 1.4rem;
+    font-weight: 600;
+    margin-top: 1.5rem;
+    margin-bottom: 0.8rem;
+    text-shadow: 0 0 8px var(--gold-glow);
+}
+
+.readme-content h3 {
+    color: var(--gold-primary);
+    font-size: 1.2rem;
+    font-weight: 600;
+    margin-top: 1.2rem;
+    margin-bottom: 0.6rem;
+    text-shadow: 0 0 6px var(--gold-glow);
+}
+
+.readme-content h4 {
+    color: var(--gold-secondary);
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-top: 1rem;
+    margin-bottom: 0.5rem;
+    text-shadow: 0 0 5px var(--gold-glow);
+}
+
+.readme-content strong {
+    color: var(--gold-secondary);
+    font-weight: 700;
+    text-shadow: 0 0 5px var(--gold-glow);
+}
+
+.readme-content a {
+    color: var(--gold-secondary);
+    text-decoration: none;
+    border-bottom: 1px solid var(--gold-primary);
+}
+
+.readme-content a:hover {
+    color: var(--gold-primary);
+    text-shadow: 0 0 5px var(--gold-glow);
+}
+
+.readme-content hr {
+    border: none;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--gold-primary), transparent);
+    margin: 1.5rem 0;
+    box-shadow: 0 0 10px var(--gold-glow);
+}
+
+.readme-content ul, .readme-content ol {
+    padding-left: 2rem;
+    margin-bottom: 1rem;
+}
+
+.readme-content li {
+    margin-bottom: 0.5rem;
+    position: relative;
+}
+
+.readme-content li::before {
+    content: "📋";
+    position: absolute;
+    left: -1.5rem;
+    color: var(--gold-primary);
+}
+
+.readme-content code {
+    background-color: var(--bg-tertiary);
+    padding: 0.2rem 0.4rem;
+    border-radius: 0.25rem;
+    color: var(--gold-secondary);
+    border: 1px solid var(--gold-primary);
+    box-shadow: 0 0 5px var(--gold-glow);
+    font-family: 'Courier New', monospace;
+}
+
+.readme-content pre {
+    background-color: var(--bg-tertiary);
+    padding: 1rem;
+    border-radius: 0.5rem;
+    overflow-x: auto;
+    border: 2px solid var(--gold-primary);
+    box-shadow: 0 0 15px var(--gold-glow);
+    font-family: 'Courier New', monospace;
+}
+
+.readme-content blockquote {
+    border-left: 3px solid var(--gold-primary);
+    padding-left: 1rem;
+    margin-left: 0;
+    color: var(--text-secondary);
+    font-style: italic;
+    background-color: rgba(255, 215, 0, 0.1);
+    padding: 1rem;
+    border-radius: 0.5rem;
+}
+
+.readme-content table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1rem 0;
+    background-color: var(--bg-tertiary);
+    border: 2px solid var(--gold-primary);
+    box-shadow: 0 0 15px var(--gold-glow);
+    border-radius: 0.5rem;
+}
+
+.readme-content th, .readme-content td {
+    padding: 0.75rem;
+    text-align: left;
+    border-bottom: 1px solid var(--gold-primary);
+}
+
+.readme-content th {
+    background-color: var(--bg-secondary);
+    color: var(--gold-primary);
+    font-weight: 700;
+    text-shadow: 0 0 5px var(--gold-glow);
+}
+
+.readme-content tr:hover {
+    background-color: rgba(255, 215, 0, 0.1);
+}
+
+/* License Content Styles (same as original) */
+.license-content h1 {
+    color: var(--gold-primary);
+    font-size: 1.8rem;
+    font-weight: 700;
+    margin-top: 2rem;
+    margin-bottom: 1rem;
+    text-shadow: 0 0 10px var(--gold-glow);
+    border-bottom: 2px solid var(--gold-primary);
+    padding-bottom: 0.5rem;
+}
+
+.license-content h2 {
+    color: var(--gold-secondary);
+    font-size: 1.4rem;
+    font-weight: 600;
+    margin-top: 1.5rem;
+    margin-bottom: 0.8rem;
+    text-shadow: 0 0 8px var(--gold-glow);
+}
+
+.license-content h3 {
+    color: var(--gold-primary);
+    font-size: 1.2rem;
+    font-weight: 600;
+    margin-top: 1.2rem;
+    margin-bottom: 0.6rem;
+    text-shadow: 0 0 6px var(--gold-glow);
+}
+
+.license-content strong {
+    color: var(--gold-secondary);
+    font-weight: 700;
+    text-shadow: 0 0 5px var(--gold-glow);
+}
+
+.license-content hr {
+    border: none;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--gold-primary), transparent);
+    margin: 1.5rem 0;
+    box-shadow: 0 0 10px var(--gold-glow);
+}
+
+.license-content li {
+    margin: 0.5rem 0;
+    padding-left: 1rem;
+    position: relative;
+}
+
+.license-content li::before {
+    content: "⚖️";
+    position: absolute;
+    left: 0;
+    color: var(--gold-primary);
+}
+
+.license-content br {
+    display: block;
+    margin: 0.3rem 0;
+}
+
+/* Dependencies Content Styles */
+.dependencies-content h1 {
+    color: var(--gold-primary);
+    font-size: 1.8rem;
+    font-weight: 700;
+    margin-top: 2rem;
+    margin-bottom: 1rem;
+    text-shadow: 0 0 10px var(--gold-glow);
+    border-bottom: 2px solid var(--gold-primary);
+    padding-bottom: 0.5rem;
+}
+
+.dependencies-content h2 {
+    color: var(--gold-secondary);
+    font-size: 1.4rem;
+    font-weight: 600;
+    margin-top: 1.5rem;
+    margin-bottom: 0.8rem;
+    text-shadow: 0 0 8px var(--gold-glow);
+}
+
+.dependencies-content h3 {
+    color: var(--gold-primary);
+    font-size: 1.2rem;
+    font-weight: 600;
+    margin-top: 1.2rem;
+    margin-bottom: 0.6rem;
+    text-shadow: 0 0 6px var(--gold-glow);
+}
+
+.dependencies-content strong {
+    color: var(--gold-secondary);
+    font-weight: 700;
+    text-shadow: 0 0 5px var(--gold-glow);
+}
+
+.dependencies-content hr {
+    border: none;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--gold-primary), transparent);
+    margin: 1.5rem 0;
+    box-shadow: 0 0 10px var(--gold-glow);
+}
+
+.dependencies-content .category-section {
+    margin-bottom: 2rem;
+    background-color: var(--bg-tertiary);
+    border: 1px solid var(--gold-primary);
+    border-radius: 0.5rem;
+    padding: 1rem;
+    box-shadow: 0 0 10px var(--gold-glow);
+}
+
+.dependencies-content .package-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.dependencies-content .package-item {
+    margin: 0.25rem 0;
+    padding: 0.5rem;
+    background-color: rgba(255, 215, 0, 0.05);
+    border-left: 3px solid var(--gold-primary);
+    border-radius: 0.25rem;
+    font-family: 'Courier New', monospace;
+    font-size: 0.9rem;
+    color: var(--gold-secondary);
+    text-shadow: 0 0 3px var(--gold-glow);
+}
+
+.dependencies-content .package-item:hover {
+    background-color: rgba(255, 215, 0, 0.1);
+    transform: translateX(5px);
+    transition: all 0.2s ease;
+}
+
+/* Python Dependencies Content Styles */
+.python-deps-content h1 {
+    color: var(--gold-primary);
+    font-size: 1.8rem;
+    font-weight: 700;
+    margin-top: 2rem;
+    margin-bottom: 1rem;
+    text-shadow: 0 0 10px var(--gold-glow);
+    border-bottom: 2px solid var(--gold-primary);
+    padding-bottom: 0.5rem;
+}
+
+.python-deps-content h2 {
+    color: var(--gold-secondary);
+    font-size: 1.4rem;
+    font-weight: 600;
+    margin-top: 1.5rem;
+    margin-bottom: 0.8rem;
+    text-shadow: 0 0 8px var(--gold-glow);
+}
+
+.python-deps-content h3 {
+    color: var(--gold-primary);
+    font-size: 1.2rem;
+    font-weight: 600;
+    margin-top: 1.2rem;
+    margin-bottom: 0.6rem;
+    text-shadow: 0 0 6px var(--gold-glow);
+}
+
+.python-deps-content strong {
+    color: var(--gold-secondary);
+    font-weight: 700;
+    text-shadow: 0 0 5px var(--gold-glow);
+}
+
+.python-deps-content hr {
+    border: none;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--gold-primary), transparent);
+    margin: 1.5rem 0;
+    box-shadow: 0 0 10px var(--gold-glow);
+}
+
+.python-deps-content .category-section {
+    margin-bottom: 2rem;
+    background-color: var(--bg-tertiary);
+    border: 1px solid var(--gold-primary);
+    border-radius: 0.5rem;
+    padding: 1rem;
+    box-shadow: 0 0 10px var(--gold-glow);
+}
+
+.python-deps-content .package-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.python-deps-content .package-item {
+    margin: 0.25rem 0;
+    padding: 0.5rem;
+    background-color: rgba(255, 215, 0, 0.05);
+    border-left: 3px solid var(--gold-primary);
+    border-radius: 0.25rem;
+    font-family: 'Courier New', monospace;
+    font-size: 0.9rem;
+    color: var(--gold-secondary);
+    text-shadow: 0 0 3px var(--gold-glow);
+}
+
+.python-deps-content .package-item:hover {
+    background-color: rgba(255, 215, 0, 0.1);
+    transform: translateX(5px);
+    transition: all 0.2s ease;
+}
+
+/* JavaScript Modules Content Styles */
+.js-modules-content h1 {
+    color: var(--gold-primary);
+    font-size: 1.8rem;
+    font-weight: 700;
+    margin-top: 2rem;
+    margin-bottom: 1rem;
+    text-shadow: 0 0 10px var(--gold-glow);
+    border-bottom: 2px solid var(--gold-primary);
+    padding-bottom: 0.5rem;
+}
+
+.js-modules-content h2 {
+    color: var(--gold-secondary);
+    font-size: 1.4rem;
+    font-weight: 600;
+    margin-top: 1.5rem;
+    margin-bottom: 0.8rem;
+    text-shadow: 0 0 8px var(--gold-glow);
+}
+
+.js-modules-content h3 {
+    color: var(--gold-primary);
+    font-size: 1.2rem;
+    font-weight: 600;
+    margin-top: 1.2rem;
+    margin-bottom: 0.6rem;
+    text-shadow: 0 0 6px var(--gold-glow);
+}
+
+.js-modules-content strong {
+    color: var(--gold-secondary);
+    font-weight: 700;
+    text-shadow: 0 0 5px var(--gold-glow);
+}
+
+.js-modules-content hr {
+    border: none;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--gold-primary), transparent);
+    margin: 1.5rem 0;
+    box-shadow: 0 0 10px var(--gold-glow);
+}
+
+.js-modules-content .category-section {
+    margin-bottom: 2rem;
+    background-color: var(--bg-tertiary);
+    border: 1px solid var(--gold-primary);
+    border-radius: 0.5rem;
+    padding: 1rem;
+    box-shadow: 0 0 10px var(--gold-glow);
+}
+
+.js-modules-content .package-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.js-modules-content .package-item {
+    margin: 0.25rem 0;
+    padding: 0.5rem;
+    background-color: rgba(255, 215, 0, 0.05);
+    border-left: 3px solid var(--gold-primary);
+    border-radius: 0.25rem;
+    font-family: 'Courier New', monospace;
+    font-size: 0.9rem;
+    color: var(--gold-secondary);
+    text-shadow: 0 0 3px var(--gold-glow);
+}
+
+.js-modules-content .package-item:hover {
+    background-color: rgba(255, 215, 0, 0.1);
+    transform: translateX(5px);
+    transition: all 0.2s ease;
+}
+
+/* Scrollbar styling */
+.content-section::-webkit-scrollbar {
+    width: 8px;
+}
+
+.content-section::-webkit-scrollbar-track {
+    background: var(--bg-tertiary);
+    border-radius: 4px;
+}
+
+.content-section::-webkit-scrollbar-thumb {
+    background: var(--gold-primary);
+    border-radius: 4px;
+    box-shadow: 0 0 5px var(--gold-glow);
+}
+
+.content-section::-webkit-scrollbar-thumb:hover {
+    background: var(--gold-secondary);
+}
+</style>
+
+<script>
+// Function to convert Discord markdown to HTML (from license.html)
+function discordMarkdownToHtml(text) {
+    // Convert headers (# ## ###)
+    text = text.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+    text = text.replace(/^## (.+)$/gm, '<h2>$1</h2>');
+    text = text.replace(/^# (.+)$/gm, '<h1>$1</h1>');
+    
+    // Convert bold text (**text**)
+    text = text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    
+    // Convert horizontal rules (---)
+    text = text.replace(/^---+$/gm, '<hr>');
+    
+    // Convert numbered lists (1. 2. 3.)
+    text = text.replace(/^\d+\. (.+)$/gm, '<li>$1</li>');
+    
+    // Convert bullet points (* text) - but not if they're already part of numbered lists
+    text = text.replace(/^\* ([^\d].+)$/gm, '<li>$1</li>');
+    
+    // Wrap consecutive list items in <ol> or <ul> tags
+    text = text.replace(/(<li>\d+\. .+<\/li>\s*)+/g, function(match) {
+        return '<ol>' + match.replace(/<li>(\d+\.)?\s*(.+)<\/li>/g, '<li>$2</li>') + '</ol>';
+    });
+    
+    text = text.replace(/(<li>[^<]+<\/li>\s*)+/g, function(match) {
+        if (!match.includes('<ol>')) {
+            return '<ul>' + match + '</ul>';
+        }
+        return match;
+    });
+    
+    // Convert line breaks to <br> tags for better formatting, but not inside HTML tags
+    text = text.replace(/(?<!<[^>]*)\n/g, '<br>');
+    
+    return text;
+}
+
+// Toggle functionality
+function showContent(type) {
+    const readmeContent = document.getElementById('readme-content');
+    const licenseContent = document.getElementById('license-content');
+    const pythonDepsContent = document.getElementById('python-deps-content');
+    const jsModulesContent = document.getElementById('js-modules-content');
+    const readmeToggle = document.getElementById('readme-toggle');
+    const licenseToggle = document.getElementById('license-toggle');
+    const pythonDepsToggle = document.getElementById('python-deps-toggle');
+    const jsModulesToggle = document.getElementById('js-modules-toggle');
+    const contentTitle = document.getElementById('content-title');
+    
+    // Hide all content sections
+    readmeContent.style.display = 'none';
+    licenseContent.style.display = 'none';
+    pythonDepsContent.style.display = 'none';
+    jsModulesContent.style.display = 'none';
+    
+    // Remove active class from all toggles
+    readmeToggle.classList.remove('active');
+    licenseToggle.classList.remove('active');
+    pythonDepsToggle.classList.remove('active');
+    jsModulesToggle.classList.remove('active');
+    
+    if (type === 'readme') {
+        readmeContent.style.display = 'block';
+        readmeToggle.classList.add('active');
+        contentTitle.textContent = 'README Documentation';
+    } else if (type === 'license') {
+        licenseContent.style.display = 'block';
+        licenseToggle.classList.add('active');
+        contentTitle.textContent = 'License Information';
+    } else if (type === 'python-deps') {
+        pythonDepsContent.style.display = 'block';
+        pythonDepsToggle.classList.add('active');
+        contentTitle.textContent = 'Python Dependencies';
+    } else if (type === 'js-modules') {
+        jsModulesContent.style.display = 'block';
+        jsModulesToggle.classList.add('active');
+        contentTitle.textContent = 'JavaScript Modules';
+    }
+}
+
+// Load README content
+fetch('/api/readme')
+    .then(response => response.json())
+    .then(data => {
+        if (data.content) {
+            document.getElementById('readme-content').innerHTML = data.content;
+        } else {
+            document.getElementById('readme-content').textContent = 'Error: ' + (data.error || 'Unknown error');
+        }
+    })
+    .catch(error => {
+        document.getElementById('readme-content').textContent = 'Error loading README content: ' + error.message;
+    });
+
+// Load License content
+fetch('/api/license')
+    .then(response => response.json())
+    .then(data => {
+        if (data.content) {
+            const formattedContent = discordMarkdownToHtml(data.content);
+            document.getElementById('license-content').innerHTML = formattedContent;
+        } else {
+            document.getElementById('license-content').textContent = 'Error: ' + (data.error || 'Unknown error');
+        }
+    })
+    .catch(error => {
+        document.getElementById('license-content').textContent = 'Error loading license content: ' + error.message;
+    });
+
+// Load Python Dependencies content
+fetch('/api/dependencies')
+    .then(response => response.json())
+    .then(data => {
+        console.log('Python deps API response:', data);
+        if (data.categories) {
+            displayPythonDependencies(data.categories);
+        } else {
+            document.getElementById('python-deps-content').textContent = 'Error: ' + (data.error || 'Unknown error');
+        }
+    })
+    .catch(error => {
+        console.error('Python deps error:', error);
+        document.getElementById('python-deps-content').textContent = 'Error loading Python dependencies: ' + error.message;
+    });
+
+// Load JavaScript Modules content
+fetch('/api/package-json')
+    .then(response => response.json())
+    .then(data => {
+        console.log('JS modules API response:', data);
+        if (data.categories) {
+            displayJSModules(data.categories);
+        } else {
+            document.getElementById('js-modules-content').textContent = 'Error: ' + (data.error || 'Unknown error');
+        }
+    })
+    .catch(error => {
+        console.error('JS modules error:', error);
+        document.getElementById('js-modules-content').textContent = 'Error loading JavaScript modules: ' + error.message;
+    });
+
+// Function to display Python dependencies
+function displayPythonDependencies(categories) {
+    console.log('displayPythonDependencies called with:', categories);
+    const pythonDepsContent = document.getElementById('python-deps-content');
+    let html = '<h1>🐍 Python Dependencies</h1>';
+    
+    for (const [category, packages] of Object.entries(categories)) {
+        if (packages.length > 0) {
+            html += `<div class="category-section">`;
+            html += `<h2>${category}</h2>`;
+            html += `<ul class="package-list">`;
+            
+            packages.forEach(pkg => {
+                html += `<li class="package-item">${pkg}</li>`;
+            });
+            
+            html += `</ul>`;
+            html += `</div>`;
+        }
+    }
+    
+    console.log('Python deps HTML:', html);
+    pythonDepsContent.innerHTML = html;
+}
+
+// Function to display JavaScript modules
+function displayJSModules(categories) {
+    console.log('displayJSModules called with:', categories);
+    const jsModulesContent = document.getElementById('js-modules-content');
+    let html = '<h1>📦 JavaScript Modules</h1>';
+    
+    for (const [category, packages] of Object.entries(categories)) {
+        if (packages.length > 0) {
+            html += `<div class="category-section">`;
+            html += `<h2>${category}</h2>`;
+            html += `<ul class="package-list">`;
+            
+            packages.forEach(pkg => {
+                html += `<li class="package-item">${pkg}</li>`;
+            });
+            
+            html += `</ul>`;
+            html += `</div>`;
+        }
+    }
+    
+    console.log('JS modules HTML:', html);
+    jsModulesContent.innerHTML = html;
+}
+</script>

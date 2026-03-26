@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+
+        .info-card {
+            background: linear-gradient(145deg, rgba(20, 20, 20, 0.85), rgba(40, 40, 40, 0.85));
+            border: 2px solid var(--gold-primary);
+            box-shadow: 0 8px 32px 0 var(--gold-glow);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border-radius: 1rem;
+            margin-bottom: 2rem;
+            padding: 2rem;
+            animation: fadeIn 0.5s ease-in-out;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .info-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 40px 0 var(--gold-glow);
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .info-card h3 {
+            color: var(--gold-primary);
+            border-bottom: 3px solid var(--gold-primary);
+            padding-bottom: 0.75rem;
+            margin-bottom: 1.25rem;
+            text-shadow: 0 0 10px var(--gold-glow);
+        }
+        .info-card p, .info-card ul {
+            color: var(--text-primary);
+            font-size: 1.1rem;
+            line-height: 1.6;
+        }
+        .info-card ul {
+            padding-left: 1.5rem;
+        }
+        .info-card li {
+            margin-bottom: 0.75rem;
+        }
+        .info-card code {
+            background-color: rgba(15, 15, 15, 0.8);
+            border: 1px solid var(--gold-primary);
+            color: var(--gold-secondary);
+            padding: 0.3rem 0.6rem;
+            border-radius: 0.3rem;
+            font-size: 1rem;
+        }
+        .table {
+            border-collapse: separate;
+            border-spacing: 0;
+        }
+        .table thead th {
+            background-color: rgba(10, 10, 10, 0.9);
+            color: var(--gold-primary);
+            font-size: 1.1rem;
+            text-transform: uppercase;
+        }
+        .table thead th:first-child { border-top-left-radius: 0.75rem; }
+        .table thead th:last-child { border-top-right-radius: 0.75rem; }
+        .table tbody tr:last-child td:first-child { border-bottom-left-radius: 0.75rem; }
+        .table tbody tr:last-child td:last-child { border-bottom-right-radius: 0.75rem; }
+
+        .table tbody tr {
+            transition: background-color 0.3s ease, transform 0.3s ease;
+        }
+        .table tbody tr:hover {
+            background-color: rgba(50, 50, 50, 0.9);
+            transform: scale(1.02);
+            position: relative;
+            z-index: 10;
+        }
+        .table img {
+            transition: transform 0.3s ease;
+        }
+        .table tbody tr:hover img {
+            transform: scale(1.2);
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        </div>
+        <br>
+        <div class="info-card">
+            <h3>Your Digital Companion</h3>
+            <p>Pets are digital companions that you can adopt, train, and battle with on Discord. There are 103 unique pet species to discover, each with its own strengths and characteristics. When you adopt a pet, you choose its type from one of three categories: <strong>Flying</strong>, <strong>Land</strong>, or <strong>Swimming</strong>.</p>
+            <p>You can also customize your pet with elemental powers. There are 12 elements to choose from (excluding the 'basic' element). Your pet can have either one or two elements, creating a total of <strong>78</strong> possible elemental combinations (12 single-element and 66 dual-element combinations).</p>
+        </div>
+
+        <div class="info-card">
+            <h3>Type and Element Advantages</h3>
+            <p>Pets have types and elements that give them advantages in battles. Understanding these is key to victory! The bonuses from Type and Element advantages are multiplicative. For example, if a pet has both a Type advantage (15%) and an Element advantage (10%), the total damage bonus would be <strong>26.5%</strong> (1.15 * 1.10 = 1.265).</p>
+            <br>
+            <p>Each pet has one <strong>Type</strong> (either Land, Swimming, or Flying) and can have one or two <strong>Elements</strong>. Pets with the <code>Basic</code> element are an exception; they can only have that single element and do not receive a second one. While normal elements grant a 10% damage bonus when they have an advantage, the <code>Basic</code> element is neutral and has a slight 10% damage <em>disadvantage</em> against all other elements, making it a challenging choice.</p>
+            <p>Excluding the Basic element, you can create a pet from <strong>3</strong> Types and <strong>12</strong> Elements. A pet can have one element (creating 36 unique combinations when combined with the 3 types) or two different elements (creating 198 unique combinations), leading to a total of <strong>234</strong> unique Type and Element combinations!</p>
+            <br>
+            <h4>Type Advantages (15% bonus)</h4>
+            <table class="table table-bordered table-dark" style="background-color: rgba(30, 30, 30, 0.85);">
+                <thead>
+                    <tr>
+                        <th>Attacker</th>
+                        <th>Advantage</th>
+                        <th>Defender</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><img src="/static/Emojis/Pets/Deco/Flying.png" style="width: 24px; height: 24px; vertical-align: middle;"> Flying</td>
+                        <td class="text-center">&gt;</td>
+                        <td><img src="/static/Emojis/Pets/Deco/Land.png" style="width: 24px; height: 24px; vertical-align: middle;"> Land</td>
+                    </tr>
+                    <tr>
+                        <td><img src="/static/Emojis/Pets/Deco/Land.png" style="width: 24px; height: 24px; vertical-align: middle;"> Land</td>
+                        <td class="text-center">&gt;</td>
+                        <td><img src="/static/Emojis/Pets/Deco/Swimming.png" style="width: 24px; height: 24px; vertical-align: middle;"> Swimming</td>
+                    </tr>
+                    <tr>
+                        <td><img src="/static/Emojis/Pets/Deco/Swimming.png" style="width: 24px; height: 24px; vertical-align: middle;"> Swimming</td>
+                        <td class="text-center">&gt;</td>
+                        <td><img src="/static/Emojis/Pets/Deco/Flying.png" style="width: 24px; height: 24px; vertical-align: middle;"> Flying</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h4>Element Advantages (10% bonus)</h4>
+            <table class="table table-bordered table-dark" style="background-color: rgba(30, 30, 30, 0.85);">
+                <thead>
+                    <tr>
+                        <th>Attacker</th>
+                        <th>Strong Against</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><img src="/static/Emojis/Pets/Deco/Basic.png" style="width: 24px; height: 24px; vertical-align: middle;"> Basic</td>
+                        <td>None. Basic has a 10% damage disadvantage against all elements.</td>
+                    </tr>
+                    <tr>
+                        <td><img src="/static/Emojis/Pets/Deco/Fire.png" style="width: 24px; height: 24px; vertical-align: middle;"> Fire</td>
+                        <td><img src="/static/Emojis/Pets/Deco/Ice.png" style="width: 24px; height: 24px; vertical-align: middle;"> Ice, <img src="/static/Emojis/Pets/Deco/Plant.png" style="width: 24px; height: 24px; vertical-align: middle;"> Plant, <img src="/static/Emojis/Pets/Deco/Necro.png" style="width: 24px; height: 24px; vertical-align: middle;"> Necro</td>
+                    </tr>
+                    <tr>
+                        <td><img src="/static/Emojis/Pets/Deco/Electric.png" style="width: 24px; height: 24px; vertical-align: middle;"> Electric</td>
+                        <td><img src="/static/Emojis/Pets/Deco/Water.png" style="width: 24px; height: 24px; vertical-align: middle;"> Water, <img src="/static/Emojis/Pets/Deco/Plant.png" style="width: 24px; height: 24px; vertical-align: middle;"> Plant, <img src="/static/Emojis/Pets/Deco/Fighting.png" style="width: 24px; height: 24px; vertical-align: middle;"> Fighting</td>
+                    </tr>
+                    <tr>
+                        <td><img src="/static/Emojis/Pets/Deco/Air.png" style="width: 24px; height: 24px; vertical-align: middle;"> Air</td>
+                        <td><img src="/static/Emojis/Pets/Deco/Rock.png" style="width: 24px; height: 24px; vertical-align: middle;"> Rock, <img src="/static/Emojis/Pets/Deco/Fighting.png" style="width: 24px; height: 24px; vertical-align: middle;"> Fighting, <img src="/static/Emojis/Pets/Deco/Electric.png" style="width: 24px; height: 24px; vertical-align: middle;"> Electric</td>
+                    </tr>
+                    <tr>
+                        <td><img src="/static/Emojis/Pets/Deco/Ice.png" style="width: 24px; height: 24px; vertical-align: middle;"> Ice</td>
+                        <td><img src="/static/Emojis/Pets/Deco/Air.png" style="width: 24px; height: 24px; vertical-align: middle;"> Air, <img src="/static/Emojis/Pets/Deco/Electric.png" style="width: 24px; height: 24px; vertical-align: middle;"> Electric, <img src="/static/Emojis/Pets/Deco/Water.png" style="width: 24px; height: 24px; vertical-align: middle;"> Water</td>
+                    </tr>
+                    <tr>
+                        <td><img src="/static/Emojis/Pets/Deco/Water.png" style="width: 24px; height: 24px; vertical-align: middle;"> Water</td>
+                        <td><img src="/static/Emojis/Pets/Deco/Fire.png" style="width: 24px; height: 24px; vertical-align: middle;"> Fire, <img src="/static/Emojis/Pets/Deco/Rock.png" style="width: 24px; height: 24px; vertical-align: middle;"> Rock, <img src="/static/Emojis/Pets/Deco/Air.png" style="width: 24px; height: 24px; vertical-align: middle;"> Air</td>
+                    </tr>
+                    <tr>
+                        <td><img src="/static/Emojis/Pets/Deco/Plant.png" style="width: 24px; height: 24px; vertical-align: middle;"> Plant</td>
+                        <td><img src="/static/Emojis/Pets/Deco/Water.png" style="width: 24px; height: 24px; vertical-align: middle;"> Water, <img src="/static/Emojis/Pets/Deco/Air.png" style="width: 24px; height: 24px; vertical-align: middle;"> Air, <img src="/static/Emojis/Pets/Deco/Psychic.png" style="width: 24px; height: 24px; vertical-align: middle;"> Psychic</td>
+                    </tr>
+                    <tr>
+                        <td><img src="/static/Emojis/Pets/Deco/Rock.png" style="width: 24px; height: 24px; vertical-align: middle;"> Rock</td>
+                        <td><img src="/static/Emojis/Pets/Deco/Electric.png" style="width: 24px; height: 24px; vertical-align: middle;"> Electric, <img src="/static/Emojis/Pets/Deco/Fire.png" style="width: 24px; height: 24px; vertical-align: middle;"> Fire, <img src="/static/Emojis/Pets/Deco/Ice.png" style="width: 24px; height: 24px; vertical-align: middle;"> Ice</td>
+                    </tr>
+                    <tr>
+                        <td><img src="/static/Emojis/Pets/Deco/Fighting.png" style="width: 24px; height: 24px; vertical-align: middle;"> Fighting</td>
+                        <td><img src="/static/Emojis/Pets/Deco/Ice.png" style="width: 24px; height: 24px; vertical-align: middle;"> Ice, <img src="/static/Emojis/Pets/Deco/Psychic.png" style="width: 24px; height: 24px; vertical-align: middle;"> Psychic, <img src="/static/Emojis/Pets/Deco/Holy.png" style="width: 24px; height: 24px; vertical-align: middle;"> Holy</td>
+                    </tr>
+                    <tr>
+                        <td><img src="/static/Emojis/Pets/Deco/Psychic.png" style="width: 24px; height: 24px; vertical-align: middle;"> Psychic</td>
+                        <td><img src="/static/Emojis/Pets/Deco/Holy.png" style="width: 24px; height: 24px; vertical-align: middle;"> Holy, <img src="/static/Emojis/Pets/Deco/Necro.png" style="width: 24px; height: 24px; vertical-align: middle;"> Necro, <img src="/static/Emojis/Pets/Deco/Magic.png" style="width: 24px; height: 24px; vertical-align: middle;"> Magic</td>
+                    </tr>
+                    <tr>
+                        <td><img src="/static/Emojis/Pets/Deco/Magic.png" style="width: 24px; height: 24px; vertical-align: middle;"> Magic</td>
+                        <td><img src="/static/Emojis/Pets/Deco/Psychic.png" style="width: 24px; height: 24px; vertical-align: middle;"> Psychic, <img src="/static/Emojis/Pets/Deco/Fighting.png" style="width: 24px; height: 24px; vertical-align: middle;"> Fighting, <img src="/static/Emojis/Pets/Deco/Fire.png" style="width: 24px; height: 24px; vertical-align: middle;"> Fire</td>
+                    </tr>
+                    <tr>
+                        <td><img src="/static/Emojis/Pets/Deco/Holy.png" style="width: 24px; height: 24px; vertical-align: middle;"> Holy</td>
+                        <td><img src="/static/Emojis/Pets/Deco/Necro.png" style="width: 24px; height: 24px; vertical-align: middle;"> Necro, <img src="/static/Emojis/Pets/Deco/Magic.png" style="width: 24px; height: 24px; vertical-align: middle;"> Magic, <img src="/static/Emojis/Pets/Deco/Rock.png" style="width: 24px; height: 24px; vertical-align: middle;"> Rock</td>
+                    </tr>
+                    <tr>
+                        <td><img src="/static/Emojis/Pets/Deco/Necro.png" style="width: 24px; height: 24px; vertical-align: middle;"> Necro</td>
+                        <td><img src="/static/Emojis/Pets/Deco/Holy.png" style="width: 24px; height: 24px; vertical-align: middle;"> Holy, <img src="/static/Emojis/Pets/Deco/Magic.png" style="width: 24px; height: 24px; vertical-align: middle;"> Magic, <img src="/static/Emojis/Pets/Deco/Plant.png" style="width: 24px; height: 24px; vertical-align: middle;"> Plant</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="info-card">
+            <h3>XP & Equipment</h3>
+            <p>Your pet grows stronger by leveling up, finding loot, and equipping powerful items. Here's how it works:</p>
+            <ul>
+                <li><strong>Leveling Up:</strong> Pets gain experience (XP) from activities like missions, training, and battles. The XP needed to level up follows the formula: <code>200 * (1.03 ^ (level - 1))</code>. Each time your pet levels up, they gain 5 stat points that are randomly distributed across their stats.</li>
+                <li><strong>Loot & Tiers:</strong> You can find items like Materials, Gems, Monsters, Potions, and Hats. These items come in five rarity tiers: <code>Common</code>, <code>Uncommon</code>, <code>Rare</code>, <code>Epic</code>, and <code>Mythic</code>. You can find loot by completing activities or opening chests.</li>
+                <li><strong>Inventory Limits:</strong> Your pet can only carry a limited number of items. The limit is 16 for each type of Potion and 5 for all other items (Hats, Materials, etc.). If you find an item but your inventory is full, it will be automatically converted into XP.</li>
+                <li><strong>Equipment Slots:</strong> Your pet has 7 equipment slots: 1 Hat, 2 Materials, 2 Gems, and 2 Monsters. The layout is: Monster, Gem, Material, Hat, Material, Gem, Monster.</li>
+                <li><strong>Equipment Multipliers:</strong>
+                    <ul>
+                        <li><strong>Level Milestone Bonus:</strong> For every 50 levels, the stats from all equipped items are increased. At level 50, stats are multiplied by 2x, at level 100 by 3x, and so on.</li>
+                        <li><strong>Duplication Bonus:</strong> If you equip two of the exact same item (e.g., two "Dirt" Materials), the stat bonuses from that pair of items are doubled.</li>
+                    </ul>
+                </li>
+            </ul>
+            <br>
+            <h4>Chests</h4>
+            <p>Keys are frequently looted from most winning encounters and commands. These keys are used to open chests in the loot market, each offering different amounts of loot.</p>
+            <table class="table table-bordered table-dark" style="background-color: rgba(30, 30, 30, 0.85);">
+                <thead>
+                    <tr>
+                        <th>Chest</th>
+                        <th>Level</th>
+                        <th>Keys Required</th>
+                        <th>Loot</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><img src="/static/Emojis/Pets/Equipment/chest1.png" width="32"></td>
+                        <td>1</td>
+                        <td>1 x <img src="/static/Emojis/Pets/Equipment/Key1.png" width="32"></td>
+                        <td>1 random item</td>
+                    </tr>
+                    <tr>
+                        <td><img src="/static/Emojis/Pets/Equipment/chest2.png" width="32"></td>
+                        <td>2</td>
+                        <td>1 x <img src="/static/Emojis/Pets/Equipment/Key2.png" width="32"></td>
+                        <td>2 random items</td>
+                    </tr>
+                    <tr>
+                        <td><img src="/static/Emojis/Pets/Equipment/chest3.png" width="32"></td>
+                        <td>3</td>
+                        <td>1 x <img src="/static/Emojis/Pets/Equipment/Key3.png" width="32"></td>
+                        <td>3 random items</td>
+                    </tr>
+                    <tr>
+                        <td><img src="/static/Emojis/Pets/Equipment/chest4.png" width="32"></td>
+                        <td>4</td>
+                        <td>1 x <img src="/static/Emojis/Pets/Equipment/Key1.png" width="32"> <br> 1 x <img src="/static/Emojis/Pets/Equipment/Key2.png" width="32"> <br> 1 x <img src="/static/Emojis/Pets/Equipment/Key3.png" width="32"></td>
+                        <td>1 selected item type + 3 random items</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="info-card">
+            <h3>Pet Interactions</h3>
+            <p>There are many ways to interact with your pet and earn rewards. Below is a summary of the main activities.</p>
+            <table class="table table-bordered table-dark" style="background-color: rgba(30, 30, 30, 0.85);">
+                <thead>
+                    <tr>
+                        <th>Activity</th>
+                        <th>Command</th>
+                        <th>Description</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>Pet Shop</strong></td>
+                        <td><code>/pet_shop</code></td>
+                        <td>Visit the shop to adopt a new pet.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Pet Status</strong></td>
+                        <td><code>/pet</code></td>
+                        <td>View your pet's status and stats.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Rename</strong></td>
+                        <td><code>/rename</code></td>
+                        <td>Change your pet's name or its action labels.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Equip Item</strong></td>
+                        <td><code>/equip</code></td>
+                        <td>Equip items to your pet.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Unequip Item</strong></td>
+                        <td><code>/unequip</code></td>
+                        <td>Remove an item from your pet.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Use Item</strong></td>
+                        <td><code>/use</code></td>
+                        <td>Use a consumable item like a potion.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Inventory</strong></td>
+                        <td><code>/inventory</code></td>
+                        <td>View your pet's inventory.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Loot Market</strong></td>
+                        <td><code>/loot market</code></td>
+                        <td>Access the loot market to open chests.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Delete Pet</strong></td>
+                        <td><code>/kill</code></td>
+                        <td>Permanently delete your pet.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Pet Badge</strong></td>
+                        <td><code>/pet_badge</code></td>
+                        <td>Generate a shareable badge for your pet.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Play</strong></td>
+                        <td><code>/play</code></td>
+                        <td>A simple, low-risk activity to earn a small amount of XP and find keys. The outcome is influenced by your pet's elements and the location you choose to play in. There is a small chance of a boss encounter.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Train</strong></td>
+                        <td><code>/train</code></td>
+                        <td>A training session with a decent chance of success for a moderate XP gain. Failure might provoke a battle with a wild pet. This activity has a short cooldown.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Mission</strong></td>
+                        <td><code>/mission</code></td>
+                        <td>A risky but rewarding activity. It has a lower success rate than training but offers much greater XP rewards and a better chance for keys. You can gamble your own XP for a bigger payout on success, but you'll lose it on failure. Failure can also trigger a wild pet encounter. This activity has a medium cooldown.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Quest</strong></td>
+                        <td><code>/quest</code></td>
+                        <td>Embark on a story-driven, multi-stage adventure. Your choices, tested against your pet's stats (like ATT, INT, DEX), determine the outcome, rewards, and the path of the story.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>PvE Battle</strong></td>
+                        <td><code>/battle</code></td>
+                        <td>Fight against a randomly generated monster. You can choose from Easy, Medium, or Hard difficulty.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>PvP Battle</strong></td>
+                        <td><code>/pvp</code></td>
+                        <td>Challenge other players to a duel! You can start a 1v1 fight or a Free-For-All (FFA) lobby with up to 9 other players.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Tournament</strong></td>
+                        <td><code>/tournament</code></td>
+                        <td>Create or join a tournament with 4, 8, or 16 players to see who is the ultimate pet master.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Races</strong></td>
+                        <td><code>/race</code></td>
+                        <td>Bet on your pet in a race against others. A pet's speed is determined by its stats (DEX, ENE, HAP).</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Slots</strong></td>
+                        <td><code>/slots</code></td>
+                        <td>Spin the slot machine to match emojis. Higher difficulties offer bigger rewards. The 'Insanity' mode provides a unique challenge based on your pet's attributes.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Blackjack</strong></td>
+                        <td><code>/blackjack</code></td>
+                        <td>The classic card game where the goal is to get a hand value as close to 21 as possible without exceeding it, beating the dealer's hand.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Craps</strong></td>
+                        <td><code>/craps</code></td>
+                        <td>A dice game with various betting options on the outcome of a roll. Players bet on the 'shooter' to win or lose.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Hold'em</strong></td>
+                        <td><code>/holdem</code></td>
+                        <td>The classic Texas Hold'em poker game. Make the best five-card hand using your two private cards and five community cards.</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</body>
+</html>
