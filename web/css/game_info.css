@@ -1,0 +1,489 @@
+/* Game Info Page Styles - Extracted from game_info.html */
+
+/* Themed Card Styles from commands.html */
+.card {
+    background: linear-gradient(135deg, rgba(15, 15, 15, 0.9), rgba(20, 20, 20, 0.9));
+    border: 2px solid transparent;
+    border-image: linear-gradient(45deg, var(--gold-primary), #8B4513, var(--gold-primary)) 1;
+    clip-path: polygon(
+        0 15px, 15px 0, 
+        calc(100% - 15px) 0, 100% 15px, 
+        100% calc(100% - 15px), calc(100% - 15px) 100%, 
+        15px 100%, 0 calc(100% - 15px)
+    );
+    transition: all 0.3s ease;
+    position: relative;
+    padding: 1.5rem;
+}
+
+.card:hover {
+    background: linear-gradient(135deg, rgba(25, 25, 25, 0.9), rgba(30, 30, 30, 0.9));
+    border-image: linear-gradient(45deg, #FFD700, #B8860B, #FFD700) 1;
+    transform: translateY(-2px);
+}
+
+.card-body {
+    background: transparent !important;
+    padding: 0;
+}
+
+.card-header {
+    background: transparent !important;
+    border-bottom: 1px solid rgba(255, 215, 0, 0.2);
+    padding: 0 0 1rem 0;
+    margin-bottom: 1rem;
+}
+
+/* Compact Row & Hover Effects */
+.resource-row {
+    padding: 0.8rem 0.75rem !important;
+    margin-bottom: 0.5rem !important;
+    transition: background 0.2s ease, filter 0.2s ease;
+    min-height: 40px; /* Increased for larger sparklines */
+}
+.resource-row:hover {
+    filter: brightness(1.2);
+}
+
+/* Asset-style Icons */
+.home-card-icon-sm {
+    width: 24px !important;
+    height: 24px !important;
+    border-radius: 6px;
+    padding: 2px;
+    background: rgba(255, 255, 255, 0.05);
+    box-shadow: 2px 2px 5px rgba(0,0,0,0.5), inset 1px 1px 2px rgba(255,255,255,0.1);
+}
+
+/* Ticker Typography */
+.fw-bold-mono {
+    font-family: 'JetBrains Mono', 'Courier New', monospace;
+    letter-spacing: -0.5px;
+}
+
+/* Sparkline Specifics */
+.sparkline-wrapper {
+    width: 300px;
+    height: 40px;
+    margin: 0 10px;
+}
+.sparkline-path {
+    fill: none;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+/* General Text Styles */
+.text-success {
+    color: #28a745 !important;
+    text-shadow: 0 0 5px rgba(40, 167, 69, 0.4);
+}
+.text-danger {
+    color: #dc3545 !important;
+    text-shadow: 0 0 5px rgba(220, 53, 69, 0.4);
+}
+.text-info {
+    color: #17a2b8 !important;
+    text-shadow: 0 0 5px rgba(23, 162, 184, 0.4);
+}
+
+/* --- Leaderboard Styles --- */
+#turn-bonuses-container {
+    font-family: 'JetBrains Mono', monospace;
+    padding: 20px 0;
+}
+
+.leaderboard-top-3 {
+    display: flex;
+    justify-content: center;
+    align-items: flex-end;
+    gap: 15px;
+    margin-bottom: 30px;
+}
+
+.leaderboard-player {
+    background: linear-gradient(145deg, #1e1e22, #1a1a1e);
+    border: 1px solid #333;
+    border-radius: 12px;
+    padding: 15px;
+    text-align: center;
+    transition: all 0.3s ease;
+    width: 200px; /* Further increased base width */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+}
+
+.leaderboard-player:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.5);
+}
+
+.leaderboard-player.rank-1 {
+    width: 240px; /* Further increased width for rank 1 */
+    height: 250px; /* Tallest height */
+    padding-top: 25px;
+    order: 2;
+    border-color: #ffd700;
+}
+
+.leaderboard-player.rank-2 {
+    order: 1;
+    height: 220px; /* Medium height */
+}
+
+.leaderboard-player.rank-3 {
+    order: 3;
+    height: 220px; /* Medium height */
+}
+
+.lb-rank {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #888;
+}
+
+.rank-1 .lb-rank { font-size: 2rem; color: #ffd700; }
+.rank-2 .lb-rank { color: #c0c0c0; }
+.rank-3 .lb-rank { color: #cd7f32; }
+
+.lb-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    margin: 10px 0;
+    border: 3px solid #444;
+    padding: 3px;
+    background: #111;
+}
+
+.rank-1 .lb-icon { width: 80px; height: 80px; }
+
+.lb-name {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #e0e0e0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    width: 100%;
+}
+
+.lb-bonus {
+    font-size: 1.1rem;
+    color: #ffd700;
+    margin-top: 5px;
+}
+
+.rank-1 .lb-bonus { font-size: 1.4rem; }
+
+.leaderboard-list {
+    max-width: 800px;
+    margin: 0 auto;
+    background: linear-gradient(145deg, #1a1a1e, #16161a);
+    border-radius: 12px;
+    border: 1px solid #333;
+    overflow: hidden;
+}
+
+.leaderboard-item {
+    display: flex;
+    align-items: center;
+    padding: 10px 15px;
+    border-bottom: 1px solid #2a2a2e;
+    transition: background 0.2s ease;
+}
+
+.leaderboard-item:last-child { border-bottom: none; }
+
+.leaderboard-item:hover {
+    background: rgba(255,255,255,0.03);
+}
+
+.lb-list-rank {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #888;
+    width: 40px;
+    text-align: center;
+}
+
+.lb-list-icon {
+    width: 32px;
+    height: 32px;
+    margin: 0 15px;
+}
+
+.lb-list-name {
+    flex-grow: 1;
+    font-size: 0.95rem;
+    color: #e0e0e0;
+}
+
+.lb-list-bonus {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #ffd700;
+    min-width: 100px;
+    text-align: right;
+}
+
+/* --- Ticker Styles --- */
+.leaderboard-ticker {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: transparent;
+    border-radius: 0;
+    border: none;
+    display: flex;
+    align-items: center;
+}
+
+.lb-ticker-track {
+    display: inline-block;
+    white-space: nowrap;
+    animation: ticker-scroll 60s linear infinite;
+}
+
+.lb-ticker-track:hover {
+    animation-play-state: paused;
+}
+
+.lb-ticker-item {
+    display: inline-flex;
+    align-items: center;
+    background: rgba(0,0,0,0.2);
+    padding: 5px 15px;
+    margin: 0 10px;
+    border-radius: 6px;
+    color: #ccc;
+}
+
+.lb-ticker-rank {
+    font-weight: 700;
+    color: #888;
+    margin-right: 8px;
+}
+
+.lb-ticker-icon {
+    width: 20px;
+    height: 20px;
+    margin-right: 8px;
+}
+
+.lb-ticker-name {
+    font-size: 0.9rem;
+}
+
+@keyframes ticker-scroll {
+    0% {
+        transform: translateX(0%);
+    }
+    100% {
+        transform: translateX(-50%);
+    }
+}
+
+.resource-ticker {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: transparent;
+    border-radius: 0;
+    border: none;
+    display: flex;
+    align-items: center;
+}
+
+.resource-ticker-item {
+    display: inline-flex;
+    align-items: center;
+    background: rgba(0,0,0,0.2);
+    padding: 5px 15px;
+    margin: 0 10px;
+    border-radius: 6px;
+    color: #ccc;
+    border-left: 2px solid #555;
+}
+
+.rt-value {
+    color: #fff;
+    font-weight: 700;
+    margin-left: 8px;
+}
+
+.rt-margin {
+    font-weight: 700;
+    margin-left: 8px;
+    padding: 2px 6px;
+    border-radius: 4px;
+}
+
+.rt-margin.positive {
+    color: #4caf50;
+    background: rgba(76,175,80,0.1);
+}
+
+.rt-margin.negative {
+    color: #f44336;
+    background: rgba(244,67,54,0.1);
+}
+
+/* Content sections */
+.info-content-section {
+    display: none;
+}
+
+.info-content-section.active {
+    display: block;
+}
+
+.resource-details {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.85rem;
+    line-height: 1.4;
+}
+
+.resource-details .text-uppercase {
+    font-size: 1rem;
+    letter-spacing: 0.5px;
+}
+
+/* --- Visually Rich Resource Cards --- */
+.resource-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    gap: 20px;
+    padding: 10px;
+}
+
+.resource-card-link {
+    display: block;
+    text-decoration: none;
+    color: inherit;
+    border-radius: 12px;
+}
+
+.resource-card-link:hover .resource-card {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.5);
+}
+
+.resource-card {
+    background: linear-gradient(145deg, #1f1f23, #1a1a1e);
+    border: 1px solid #333;
+    border-radius: 12px;
+    font-family: 'JetBrains Mono', monospace;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    height: 100%;
+}
+
+/* Header */
+.rc-header {
+    display: flex;
+    align-items: center;
+    padding: 12px 15px;
+    background: rgba(0,0,0,0.2);
+    border-bottom: 1px solid #444;
+    min-height: 60px;
+}
+.rc-icon {
+    width: 28px;
+    height: 28px;
+    margin-right: 12px;
+    flex-shrink: 0;
+}
+.rc-name {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #e0e0e0;
+    letter-spacing: 0.5px;
+    line-height: 1.2;
+}
+
+/* Body */
+.rc-body {
+    padding: 15px;
+    flex-grow: 1;
+}
+
+.rc-price-main {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 10px;
+}
+.rc-price-avg {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #fff;
+}
+.rc-price-change {
+    font-size: 1rem;
+    font-weight: 700;
+    padding: 4px 8px;
+    border-radius: 6px;
+}
+.rc-price-change.positive { color: #4caf50; background: rgba(76,175,80,0.1); }
+.rc-price-change.negative { color: #f44336; background: rgba(244,67,54,0.1); }
+.rc-price-change.neutral { color: #9e9e9e; background: rgba(158,158,158,0.1); }
+
+/* Chart */
+.rc-chart-container {
+    width: 100%;
+    height: 120px;
+    margin: 0 auto;
+}
+.advanced-chart {
+    width: 100%;
+    height: 100%;
+}
+.chart-placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: #666;
+    font-size: 0.9rem;
+    background: rgba(0,0,0,0.1);
+    border-radius: 8px;
+    border: 1px dashed #444;
+    font-family: 'JetBrains Mono', monospace;
+}
+
+/* Footer */
+.rc-footer {
+    display: flex;
+    justify-content: space-around;
+    padding: 10px;
+    background: rgba(0,0,0,0.2);
+    border-top: 1px solid #444;
+    font-size: 0.9rem;
+}
+.rc-footer-item {
+    text-align: center;
+}
+.rc-label {
+    display: block;
+    font-size: 0.75rem;
+    color: #888;
+    margin-bottom: 2px;
+}
+.rc-value {
+    color: #ddd;
+    font-weight: 700;
+}
+.rc-value.positive { color: #4caf50; }
+.rc-value.negative { color: #f44336; }
+
+/* Trend-based Border Colors */
+.resource-card.positive { border-left: 4px solid #4caf50; }
+.resource-card.negative { border-left: 4px solid #f44336; }
+.resource-card.neutral { border-left: 4px solid #9e9e9e; }

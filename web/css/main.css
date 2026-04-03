@@ -1,0 +1,25 @@
+:root {
+    --bg-primary: #0a0a0a;
+    --bg-secondary: #0f0f0f;
+    --bg-tertiary: #141414;
+    --gold-primary: #ffd700;
+    --gold-secondary: #ffed4e;
+    --gold-glow: rgba(255, 215, 0, 0.3);
+    --text-primary: #f0f0f0;
+    --text-secondary: #b9bbbe;
+}
+
+body {
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    font-family: 'Roboto', sans-serif;
+    background-image: url('/static/Images/background.jpg');
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
+    background-repeat: no-repeat;
+    min-height: 100vh;
+    margin: 0;
+    padding: 0;
+    overflow-x: hidden;
+}

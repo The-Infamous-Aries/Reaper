@@ -1,0 +1,59 @@
+<link rel="stylesheet" href="/css/homepage.css">
+<link rel="stylesheet" href="/css/pnw_graph.css">
+<link rel="stylesheet" href="/css/game_info.css">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+
+<div class="container-fluid">
+    <br>
+    
+    <!-- Info Selection Buttons - Exact match to graphs.html styling -->
+    <div class="container-fluid mb-4">
+        <div class="row">
+            <div class="col-12 d-flex justify-content-center align-items-center gap-4">
+                <div class="graph-emoji-button active" data-info-type="resources" data-bs-toggle="tooltip" data-bs-placement="top" title="Market Resources" onclick="switchInfoSection('resources')">
+                    <img src="/static/Emojis/Info/stock.png" alt="Resources" class="button-icon">
+                </div>
+                <div class="graph-emoji-button" data-info-type="bonuses" data-bs-toggle="tooltip" data-bs-placement="top" title="Turn Bonuses" onclick="switchInfoSection('bonuses')">
+                    <img src="/static/Emojis/Info/bonus.png" alt="Bonuses" class="button-icon">
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Info Content Sections -->
+<div class="info-content-section active" id="resources-section">
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-md-12 mb-4">
+                <div class="card border-warning">
+                    <div class="card-header bg-transparent border-warning" id="resources-ticker-container" style="padding: 0; min-height: 48px;">
+                        <!-- Ticker will be injected here -->
+                    </div>
+                    <div class="card-body">
+                        <div id="market-prices"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="info-content-section" id="bonuses-section">
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-md-12 mb-4">
+                <div class="card border-warning">
+                    <div class="card-header bg-transparent border-warning" id="bonuses-ticker-container" style="padding: 0; min-height: 48px;">
+                        <!-- Ticker will be injected here -->
+                    </div>
+                    <div class="card-body">
+                        <div id="turn-bonuses-content"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="/js/game_info.js"></script>

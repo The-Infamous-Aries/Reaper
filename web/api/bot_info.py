@@ -26,7 +26,7 @@ async def get_bot_info():
     try:
         bot_data = {}
         
-        if bot_instance and bot_instance.user:
+        if bot_instance and bot_instance.user and hasattr(bot_instance.user, 'avatar'):
             # Get actual bot data from Discord
             try:
                 # Fetch the bot's user object to get the latest profile data, including the banner
@@ -56,7 +56,7 @@ async def get_bot_info():
             
             # Use local fallback if no valid avatar URL
             if not avatar_url:
-                avatar_url = "/web/Images/reaper.png"
+                avatar_url = "/static/Images/reaper.png"
                 logger.info("Using local fallback avatar image")
             
             bot_data.update({
@@ -75,7 +75,7 @@ async def get_bot_info():
                 "name": "Reaper Bot",
                 "description": "A comprehensive Discord bot featuring advanced Pet systems, Politics & War tools, and interactive entertainment.",
                 "license": "Custom EULA",
-                "avatar_url": "/web/Images/reaper.png",  # Use local image as fallback
+                "avatar_url": "/static/Images/reaper.png",  # Use local image as fallback
                 "banner_url": None,
                 "groq_api_available": False,
                 "groq_api_key": ""

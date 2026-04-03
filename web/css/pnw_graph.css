@@ -1,0 +1,440 @@
+/* Politics & War Graph Styles - Updated to match dashboard theme */
+
+/* CSS Variables for seal styling */
+:root {
+    --seal-red: #8B0000;
+    --gold-glow: rgba(255, 215, 0, 0.5);
+    --gold-primary: #FFD700;
+    --gold-secondary: #FFA500;
+    --bg-primary: #0f0f0f;
+    --text-primary: #e0e0e0;
+}
+
+/* Rich Emoji Image Buttons - Similar to library seals */
+.graph-emoji-button {
+    position: relative;
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    border: 3px solid #4a0101;
+    box-shadow: 
+        0 4px 8px rgba(0,0,0,0.5),
+        inset 0 2px 0 rgba(255,255,255,0.2),
+        inset 0 -2px 0 rgba(0,0,0,0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    cursor: pointer;
+    background: #f5eeda;
+    margin: 0 0.5rem;
+    overflow: hidden;
+}
+
+.graph-emoji-button::before {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    right: 2px;
+    bottom: 2px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 25% 25%, rgba(255,255,255,0.3) 0%, transparent 50%);
+    z-index: 1;
+}
+
+.graph-emoji-button .button-icon {
+    width: 32px;
+    height: 32px;
+    object-fit: contain;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+    transition: all 0.4s ease;
+    z-index: 2;
+    position: relative;
+}
+
+.graph-emoji-button:hover {
+    transform: rotate(20deg) scale(1.15);
+    box-shadow: 
+        0 8px 16px rgba(0,0,0,0.6),
+        inset 0 3px 0 rgba(255,255,255,0.3),
+        inset 0 -3px 0 rgba(0,0,0,0.2),
+        0 0 20px var(--gold-glow);
+    background: var(--seal-red);
+}
+
+.graph-emoji-button:hover .button-icon {
+    filter: drop-shadow(0 0 8px var(--gold-primary)) brightness(1.2);
+    transform: scale(1.1);
+}
+
+.graph-emoji-button.active {
+    border-color: var(--gold-primary);
+    border-width: 3px;
+    transform: scale(1.2);
+    box-shadow: 
+        0 8px 16px rgba(0,0,0,0.6),
+        inset 0 3px 0 rgba(255,255,255,0.4),
+        inset 0 -3px 0 rgba(0,0,0,0.1),
+        0 0 25px var(--gold-glow);
+    background: var(--gold-primary);
+    pointer-events: none;
+}
+
+.graph-emoji-button.active .button-icon {
+    filter: drop-shadow(0 0 12px var(--gold-primary)) brightness(1.3);
+    transform: scale(1.05);
+}
+
+/* Legacy button styles (remove when confirmed working) */
+.graph-button {
+    display: none;
+}
+
+.graph-nav .nav-link::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, 
+        transparent, 
+        rgba(255, 215, 0, 0.1), 
+        transparent
+    );
+    transition: left 0.6s ease;
+}
+
+.graph-nav .nav-link:hover {
+    background: linear-gradient(135deg, rgba(20, 20, 20, 0.95), rgba(25, 25, 25, 0.95));
+    color: var(--gold-primary);
+    transform: translateX(8px) scale(1.05);
+    border-image: linear-gradient(45deg, #FFD700, #FFA500, #FFD700) 1;
+    box-shadow: 
+        0 0 20px var(--gold-glow),
+        0 0 40px rgba(255, 215, 0, 0.2),
+        8px 0 15px rgba(0, 0, 0, 0.3);
+    z-index: 10;
+}
+
+.graph-nav .nav-link:hover::before {
+    opacity: 1;
+    animation: gothicGlow 2s ease-in-out infinite;
+}
+
+.graph-nav .nav-link:hover::after {
+    left: 100%;
+}
+
+.graph-nav .nav-link.active {
+    background: linear-gradient(135deg, rgba(25, 25, 25, 0.98), rgba(30, 30, 30, 0.98));
+    color: var(--gold-primary);
+    transform: translateX(12px) scale(1.08);
+    border-image: linear-gradient(45deg, #FFD700, #FFA500, #FF8C00, #FFD700) 1;
+    box-shadow: 
+        0 0 25px var(--gold-glow),
+        0 0 50px rgba(255, 215, 0, 0.3),
+        12px 0 20px rgba(0, 0, 0, 0.4),
+        inset 0 0 15px rgba(255, 215, 0, 0.1);
+    z-index: 50;
+    font-weight: 600;
+    letter-spacing: 0.8px;
+    pointer-events: none;
+}
+
+.graph-nav .nav-link.active::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, 
+        transparent, 
+        rgba(255, 215, 0, 0.1), 
+        transparent
+    );
+    animation: activeShimmer 6s ease-in-out infinite;
+}
+
+.graph-nav .nav-link.active::after {
+    content: '';
+    position: absolute;
+    top: -2px;
+    left: -2px;
+    right: -2px;
+    bottom: -2px;
+    background: linear-gradient(45deg, 
+        var(--gold-primary), 
+        #FFA500, 
+        var(--gold-primary), 
+        #FFD700
+    );
+    z-index: -1;
+    animation: activeBorder 4s linear infinite;
+    clip-path: inherit;
+}
+
+.graph-nav .nav-link img {
+    filter: drop-shadow(0 0 3px rgba(255, 215, 0, 0.5));
+    transition: all 0.4s ease;
+    transform-origin: center;
+    margin-right: 12px !important;
+    width: 20px;
+    height: 20px;
+}
+
+.graph-nav .nav-link:hover img {
+    filter: drop-shadow(0 0 8px var(--gold-primary));
+    transform: scale(1.2) rotate(5deg);
+}
+
+/* Graph Content Area */
+.graph-content {
+    min-height: 400px;
+    position: relative;
+}
+
+.loading-container {
+    text-align: center;
+    padding: 3rem;
+}
+
+.error-container {
+    margin: 2rem 0;
+}
+
+.welcome-state {
+    text-align: center;
+    padding: 2rem 0;
+}
+
+.welcome-content {
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.welcome-icon {
+    color: var(--gold-primary);
+    margin-bottom: 1.5rem;
+}
+
+.graph-types-preview {
+    margin-top: 2rem;
+}
+
+.preview-item {
+    text-align: center;
+    padding: 1rem;
+}
+
+.preview-item i {
+    color: var(--gold-primary);
+    margin-bottom: 0.5rem;
+}
+
+.preview-item div {
+    color: var(--text-primary);
+    font-weight: 500;
+}
+
+/* Graph Configuration Panel */
+.graph-config-panel {
+    background: rgba(20, 20, 20, 0.9);
+    border: 2px solid var(--gold-primary);
+    border-radius: 0.75rem;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 0 15px var(--gold-glow);
+}
+
+.config-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--gold-primary);
+}
+
+.btn-close-config {
+    background: none;
+    border: none;
+    color: var(--gold-primary);
+    font-size: 1.5rem;
+    cursor: pointer;
+    padding: 0;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: all 0.3s ease;
+}
+
+.btn-close-config:hover {
+    background: rgba(255, 215, 0, 0.1);
+    transform: rotate(90deg);
+}
+
+/* Graph Display Area */
+.graph-display-area {
+    background: rgba(15, 15, 15, 0.9);
+    border: 2px solid var(--gold-primary);
+    border-radius: 0.75rem;
+    padding: 1.5rem;
+    box-shadow: 0 0 15px var(--gold-glow);
+}
+
+.graph-display-header {
+    border-bottom: 1px solid var(--gold-primary);
+    padding-bottom: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.graph-display-controls .btn {
+    margin-left: 0.5rem;
+}
+
+/* Graph Display Styles */
+.graph-iframe {
+    width: 100%;
+    height: 800px;
+    border: none;
+    border-radius: 0.5rem;
+    background: white;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+}
+
+.graph-image {
+    max-width: 100%;
+    height: auto;
+    border-radius: 0.5rem;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+}
+
+.graph-content {
+    min-height: 400px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Progress Bar */
+.progress-custom {
+    background: rgba(20, 20, 20, 0.8);
+    border: 1px solid var(--gold-primary);
+    border-radius: 10px;
+    height: 8px;
+    overflow: hidden;
+    margin: 1rem auto;
+    max-width: 300px;
+}
+
+.progress-bar-custom {
+    background: linear-gradient(90deg, var(--gold-primary), var(--gold-secondary));
+    height: 100%;
+    border-radius: 10px;
+    transition: width 0.3s ease;
+    box-shadow: 0 0 10px var(--gold-glow);
+}
+
+/* Graph Result */
+.graph-result {
+    min-height: 300px;
+    background: rgba(20, 20, 20, 0.5);
+    border: 1px solid var(--gold-primary);
+    border-radius: 0.5rem;
+    padding: 1rem;
+}
+
+/* Animations */
+@keyframes gothicGlow {
+    0%, 100% { opacity: 0.3; }
+    50% { opacity: 0.8; }
+}
+
+@keyframes activeShimmer {
+    0% { left: -100%; }
+    100% { left: 100%; }
+}
+
+@keyframes activeBorder {
+    0% { filter: hue-rotate(0deg); }
+    100% { filter: hue-rotate(360deg); }
+}
+
+@keyframes emojiPulse {
+    0%, 100% { transform: scale(1.05) rotate(1deg); }
+    50% { transform: scale(1.08) rotate(2deg); }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .graph-emoji-button {
+        width: 50px;
+        height: 50px;
+        margin: 0 0.3rem;
+    }
+    
+    .graph-emoji-button .button-icon {
+        width: 28px;
+        height: 28px;
+    }
+    
+    /* Legacy responsive styles (remove when confirmed working) */
+    .graph-buttons-container {
+        gap: 1rem;
+        padding: 1rem;
+        flex-wrap: wrap;
+    }
+    
+    .graph-button {
+        display: none; /* Hide legacy buttons */
+    }
+    
+    .graph-config-panel,
+    .graph-display-area {
+        padding: 1rem;
+    }
+    
+    .config-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .btn-close-config {
+        align-self: flex-end;
+        margin-top: -2rem;
+    }
+    
+    .graph-display-header {
+        flex-direction: column;
+        align-items: flex-start !important;
+    }
+    
+    .graph-display-controls {
+        margin-top: 1rem;
+    }
+    
+    .graph-display-controls .btn {
+        margin-left: 0;
+        margin-right: 0.5rem;
+    }
+}
+
+@media (max-width: 576px) {
+    .welcome-content {
+        padding: 1rem;
+    }
+    
+    .graph-types-preview .preview-item {
+        padding: 0.5rem;
+    }
+    
+    .loading-container {
+        padding: 2rem 1rem;
+    }
+}

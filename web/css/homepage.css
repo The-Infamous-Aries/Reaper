@@ -1,0 +1,257 @@
+.main-title {
+    font-family: 'Orbitron', sans-serif;
+    font-weight: 900;
+    font-size: 2.5rem;
+    color: black;
+    text-shadow: 0 0 20px var(--gold-glow), 0 0 40px rgba(255, 215, 0, 0.5);
+    margin-bottom: 1rem;
+    text-align: center;
+    position: relative;
+    animation: pulseTextGlow 3s ease-in-out infinite;
+}
+
+.bot-avatar-title {
+    transition: all 0.3s ease;
+    background: transparent;
+    object-fit: cover;
+    display: block;
+    filter: none;
+    border-radius: 0 !important;
+    border: none !important;
+    outline: none !important;
+    box-shadow: none !important;
+    clip-path: none !important;
+}
+
+.bot-avatar-title:hover {
+    transform: scale(1.05);
+    filter: drop-shadow(0 0 15px var(--gold-glow));
+}
+
+.subtitle {
+    font-family: 'Roboto', sans-serif;
+    font-size: 1.2rem;
+    color: var(--text-secondary);
+    text-align: center;
+    margin-bottom: 3rem;
+    text-shadow: 0 0 10px rgba(255, 215, 0, 0.2);
+}
+
+.home-card {
+    position: relative;
+    background: linear-gradient(135deg, rgba(15, 15, 15, 0.9), rgba(20, 20, 20, 0.9));
+    border: 2px solid transparent;
+    border-image: linear-gradient(45deg, var(--gold-primary), #8B4513, var(--gold-primary)) 1;
+    clip-path: polygon(
+        0 15px, 15px 0, 
+        calc(100% - 15px) 0, 100% 15px, 
+        100% calc(100% - 15px), calc(100% - 15px) 100%, 
+        15px 100%, 0 calc(100% - 15px)
+    );
+    transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    transform-origin: center;
+    margin-bottom: 2rem;
+    padding: 2rem;
+    animation: fadeIn 0.5s ease-in-out, cardPulseGlow 3s ease-in-out infinite;
+    height: 100%;
+    overflow: hidden;
+}
+
+@keyframes cardPulseGlow {
+    0% {
+        box-shadow: 0 0 20px var(--gold-glow);
+    }
+    50% {
+        box-shadow: 0 0 35px rgba(255, 0, 0, 0.4), 0 0 25px var(--gold-glow);
+    }
+    100% {
+        box-shadow: 0 0 20px var(--gold-glow);
+    }
+}
+
+.home-card:hover {
+    background: linear-gradient(135deg, rgba(20, 20, 20, 0.95), rgba(25, 25, 25, 0.95));
+    transform: translateY(-8px) scale(1.02);
+    border-image: linear-gradient(45deg, #FFD700, #FFA500, #FFD700) 1;
+    box-shadow: 
+        0 0 25px var(--gold-glow),
+        0 0 50px rgba(255, 215, 0, 0.2),
+        0 8px 20px rgba(0, 0, 0, 0.3);
+    z-index: 10;
+    animation: none; /* Stop pulsing on hover */
+}
+
+.home-card::before {
+    content: '';
+    position: absolute;
+    top: -2px;
+    left: -2px;
+    right: -2px;
+    bottom: -2px;
+    background: linear-gradient(45deg, 
+        transparent 30%, 
+        var(--gold-glow) 50%, 
+        transparent 70%
+    );
+    opacity: 0;
+    transition: opacity 0.4s ease;
+    z-index: -1;
+    clip-path: inherit;
+}
+
+.home-card::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, 
+        transparent, 
+        rgba(255, 215, 0, 0.1), 
+        transparent
+    );
+    transition: left 0.6s ease;
+}
+
+.home-card:hover::before {
+    opacity: 1;
+    animation: gothicGlow 2s ease-in-out infinite;
+}
+
+.home-card:hover::after {
+    left: 100%;
+}
+
+@keyframes gothicGlow {
+    0%, 100% { opacity: 0.3; }
+    50% { opacity: 0.8; }
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.home-card h4 {
+    color: var(--gold-primary);
+    font-family: 'Orbitron', sans-serif;
+    font-weight: 700;
+    font-size: 1.3rem;
+    margin-bottom: 1.5rem;
+    text-shadow: 0 0 10px var(--gold-glow);
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    position: relative;
+    padding-bottom: 0.5rem;
+}
+
+.home-card h4::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    background: linear-gradient(90deg, var(--gold-primary), transparent);
+    border-radius: 1px;
+}
+
+.home-card p {
+    color: var(--text-primary);
+    font-size: 1rem;
+    line-height: 1.6;
+    text-shadow: 0 0 3px rgba(0, 0, 0, 0.5);
+}
+
+.home-card-icon {
+    width: 32px;
+    height: 32px;
+    filter: drop-shadow(0 0 5px var(--gold-glow));
+    transition: all 0.4s ease;
+}
+
+.home-card:hover .home-card-icon {
+    filter: drop-shadow(0 0 8px var(--gold-primary));
+    transform: scale(1.2) rotate(5deg);
+}
+
+.welcome-section {
+    background-image: url('/static/Images/reaper_victims.jpg');
+    background-size: cover;
+    background-position: center;
+    border: 2px solid var(--gold-primary);
+    border-radius: 20px;
+    padding: 1.5rem 2rem;
+    margin-bottom: 2rem;
+    box-shadow: 
+        0 0 30px var(--gold-glow),
+        inset 0 0 20px rgba(255, 215, 0, 0.1);
+    backdrop-filter: blur(10px);
+    position: relative;
+    overflow: hidden;
+    animation: pulseGlow 4s ease-in-out infinite;
+}
+
+@keyframes pulseGlow {
+    0% {
+        box-shadow: 0 0 40px var(--gold-glow), inset 0 0 30px rgba(255, 215, 0, 0.2);
+    }
+    50% {
+        box-shadow: 0 0 60px rgba(255, 0, 0, 0.7), inset 0 0 35px rgba(255, 0, 0, 0.3);
+    }
+    100% {
+        box-shadow: 0 0 40px var(--gold-glow), inset 0 0 30px rgba(255, 215, 0, 0.2);
+    }
+}
+
+@keyframes pulseTextGlow {
+    0% {
+        text-shadow: 0 0 20px var(--gold-glow), 0 0 30px rgba(255, 215, 0, 0.4);
+    }
+    50% {
+        text-shadow: 0 0 30px rgba(255, 0, 0, 0.6), 0 0 40px rgba(255, 0, 0, 0.4);
+    }
+    100% {
+        text-shadow: 0 0 20px var(--gold-glow), 0 0 30px rgba(255, 215, 0, 0.4);
+    }
+}
+
+.title-break {
+    border: none;
+    height: 2px;
+    background: linear-gradient(90deg, 
+        transparent, 
+        var(--gold-primary), 
+        transparent
+    );
+    margin: 1.5rem 0;
+    position: relative;
+    overflow: visible;
+}
+
+.title-break::before,
+.title-break::after {
+    content: '✠';
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--gold-primary);
+    font-size: 1rem;
+    text-shadow: 0 0 5px var(--gold-glow);
+}
+
+.title-break::before {
+    left: 10%;
+}
+
+.title-break::after {
+    right: 10%;
+}

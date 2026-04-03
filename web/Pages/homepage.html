@@ -1,0 +1,154 @@
+<link href="/css/homepage.css" rel="stylesheet">
+<div class="container-fluid py-2">
+    <div class="row">
+        <div class="col-12">
+            <div class="welcome-section">
+                <div class="d-flex align-items-center justify-content-center mb-1">
+                    <a href="https://discord.com/oauth2/authorize?client_id=1345073131550801984&permissions=380373429328&integration_type=0&scope=bot+applications.commands" target="_blank" rel="noopener noreferrer" class="me-3">
+                        <img id="bot-avatar" src="/static/Images/avatar.png" alt="Bot Avatar" class="bot-avatar-title" style="width: 240px; height: 240px; object-view-box: cover;">
+                    </a>
+                </div>
+
+<script>
+// Load bot avatar on homepage
+document.addEventListener('DOMContentLoaded', function() {
+    const botAvatar = document.getElementById('bot-avatar');
+    if (botAvatar) {
+        console.log('Fetching bot info...');
+        
+        // Create an AbortController for timeout
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000);
+        
+        fetch('/api/bot-info', { signal: controller.signal })
+            .then(response => {
+                clearTimeout(timeoutId);
+                console.log('Bot info response status:', response.status);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('Bot info data received:', data);
+                if (data.avatar_url) {
+                    console.log('Setting avatar URL:', data.avatar_url);
+                    // Add error handling for avatar loading
+                    botAvatar.onerror = function() {
+                        console.warn('Failed to load avatar from Discord, using fallback');
+                        this.src = '/static/Images/reaper.png'; // Use local fallback image
+                        this.onerror = null; // Prevent infinite loop
+                    };
+                    botAvatar.src = data.avatar_url + '?t=' + Date.now(); // Add cache buster
+                } else {
+                    console.log('No avatar URL provided, using fallback');
+                    // Use fallback if no avatar URL provided
+                    botAvatar.src = '/static/Images/reaper.png';
+                }
+            })
+            .catch(error => {
+                clearTimeout(timeoutId);
+                console.error('Error fetching bot info:', error);
+                // Use fallback on error
+                if (botAvatar) {
+                    console.log('Using fallback due to error');
+                    botAvatar.src = '/static/Images/reaper.png';
+                }
+            });
+    } else {
+        console.error('Bot avatar element not found');
+    }
+});
+</script>
+            </div>
+        </div>
+    </div>
+    <div class="row">
+        <!-- PnW Graphs -->
+        <div class="col-md-4 mb-4">
+            <div class="home-card" onclick="loadPage('graphs')" style="cursor: pointer;">
+                <h4><img src="/static/Emojis/Menu/graph.png" class="home-card-icon"> PnW Graphs</h4>
+                <p>Behold, data so beautiful it'll make a grown spreadsheet weep. Dive into interactive graphs for war costs, alliance comparisons, and market trends. It's like a crystal ball for your virtual empire.</p>
+            </div>
+        </div>
+        <!-- PnW Calculators -->
+        <div class="col-md-4 mb-4">
+            <div class="home-card" onclick="loadPage('cost_calc')" style="cursor: pointer;">
+                <h4><img src="/static/Emojis/Menu/calculator.png" class="home-card-icon"> PnW Calculators</h4>
+                <p>Planning your next move in Politics & War? Use these calculators to figure out the cost of your ambitions. Whether it's a new city or a full-scale invasion, we'll tell you how broke you're about to be.</p>
+            </div>
+        </div>
+        <!-- Game Info -->
+        <div class="col-md-4 mb-4">
+            <div class="home-card" onclick="loadPage('game_info')" style="cursor: pointer;">
+                <h4><img src="/static/Emojis/Menu/game_info.png" class="home-card-icon"> Game Info</h4>
+                <p>Real-time market intelligence and strategic data. Track resource prices, monitor turn bonuses, and stay ahead of the game with live market analytics and color alliance rankings.</p>
+            </div>
+        </div>
+        <!-- Scriptorium -->
+        <div class="col-md-4 mb-4">
+            <div class="home-card" onclick="loadPage('library')" style="cursor: pointer;">
+                <h4><img src="/static/Emojis/Menu/script.png" class="home-card-icon"> Scriptorium</h4>
+                <p>Enter the library of forbidden knowledge. Here you'll find ancient scrolls and guides on everything from the "FAFO Doctrine" to advanced building techniques. Read up, and conquer.</p>
+            </div>
+        </div>
+        <!-- What Are Pets? -->
+        <div class="col-md-4 mb-4">
+            <div class="home-card" onclick="loadPage('what_are_pets')" style="cursor: pointer;">
+                <h4><img src="/static/Emojis/Menu/what_pets.png" class="home-card-icon"> What Are Pets?</h4>
+                <p>New to the world of digital companions? This is your starting guide. Learn about pet types, elements, leveling, and how to turn your cute little friend into a battle-hardened monster.</p>
+            </div>
+        </div>
+        <!-- Pets & Items -->
+        <div class="col-md-4 mb-4">
+            <div class="home-card" onclick="loadPage('pets')" style="cursor: pointer;">
+                <h4><img src="/static/Emojis/Menu/pets.png" class="home-card-icon"> Pets & Items</h4>
+                <p>The ultimate bestiary and item compendium. Browse every pet, monster, gem, and hat our twisted world has to offer. It's like a Pokedex, but with more existential dread.</p>
+            </div>
+        </div>
+        <!-- Tarot -->
+        <div class="col-md-4 mb-4">
+            <div class="home-card" onclick="loadPage('tarot')" style="cursor: pointer;">
+                <h4><img src="/static/Emojis/Menu/tarot.png" class="home-card-icon"> Tarot</h4>
+                <p>What does the future hold? Let our slightly sarcastic AI dealer pull some cards for you. Get readings that are probably more accurate than your financial advisor's.</p>
+            </div>
+        </div>
+        <!-- Astrology -->
+        <div class="col-md-4 mb-4">
+            <div class="home-card" onclick="loadPage('astrology')" style="cursor: pointer;">
+                <h4><img src="/static/Emojis/Menu/astrology.png" class="home-card-icon"> Astrology</h4>
+                <p>Discover your cosmic destiny! Find your Western and Chinese zodiac signs, your spirit animal, and get a daily horoscope that's vaguely specific enough to feel real.</p>
+            </div>
+        </div>
+        <!-- Fun -->
+        <div class="col-md-4 mb-4">
+            <div class="home-card" onclick="loadPage('fun')" style="cursor: pointer;">
+                <h4><img src="/static/Emojis/Menu/fun.png" class="home-card-icon"> Fun</h4>
+                <p>Sometimes you just want to flip a coin or play Rock Paper Scissors. This is the place for simple, pointless fun. No strategy required, just pure, unadulterated chance.</p>
+            </div>
+        </div>
+        <!-- Commands -->
+        <div class="col-md-4 mb-4">
+            <div class="home-card" onclick="loadPage('commands')" style="cursor: pointer;">
+                <h4><img src="/static/Emojis/Menu/discord.png" class="home-card-icon"> Commands</h4>
+                <p>The grand grimoire of incantations. A complete list of all the slash commands you can use to bend the bot to your will. Wield them wisely, or don't. It's more fun that way.</p>
+            </div>
+        </div>
+        <!-- Contact -->
+        <div class="col-md-4 mb-4">
+            <div class="home-card" onclick="loadPage('contact')" style="cursor: pointer;">
+                <h4><img src="/static/Emojis/Menu/contact.png" class="home-card-icon"> Contact</h4>
+                <p>Have a bug to report, a feature to request, or just want to tell the creator he's a genius? Here's how to summon him. Please, try not to.</p>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script>
+// Function to load pages - redirects to dashboard with the selected page
+function loadPage(pageName) {
+    // Redirect to dashboard with the page parameter
+    window.location.href = `dashboard.html?page=${pageName}`;
+}
+</script>

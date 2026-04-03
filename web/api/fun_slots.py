@@ -38,31 +38,106 @@ EMOJI_CATEGORIES = {
     ]
 }
 
-# Create a mapping of all emojis to their subdirectories
-ALL_EMOJIS = {}
-for category, emojis in EMOJI_CATEGORIES.items():
-    if category == 'Pets':
-        for emoji in emojis:
-            ALL_EMOJIS[emoji] = 'Pets'
-    elif category == 'Units':
-        for emoji in emojis:
-            ALL_EMOJIS[emoji] = 'Military'
-    elif category == 'RPS':
-        for emoji in emojis:
-            ALL_EMOJIS[emoji] = 'RPS'
-    elif category == 'Equipment':
-        for emoji in emojis:
-            ALL_EMOJIS[emoji] = 'Pets/Equipment'
-    else:  # Default to Pets/Deco
-        for emoji in emojis:
-            ALL_EMOJIS[emoji] = 'Pets/Deco'
-
 def get_emoji_file_path(emoji_name):
     """Return the correct file path for an emoji based on its category"""
-    subdirectory = ALL_EMOJIS.get(emoji_name, 'Pets/Deco')  # Default to Deco
-    return f"/static/Emojis/{subdirectory}/{emoji_name}.png"
+    for category, emojis in EMOJI_CATEGORIES.items():
+        if emoji_name in emojis:
+            if category == 'Pets':
+                return f"/static/Emojis/Pets/{emoji_name}.png"
+            elif category == 'Units':
+                return f"/static/Emojis/Military/{emoji_name}.png"
+            elif category == 'RPS':
+                return f"/static/Emojis/RPS/{emoji_name}.png"
+            elif category == 'Equipment':
+                return f"/static/Emojis/Pets/Equipment/{emoji_name}.png"
+            else:
+                return f"/static/Emojis/Pets/Deco/{emoji_name}.png"
+    return f"/static/Emojis/Pets/Deco/{emoji_name}.png" # Default
 
-@fun_slots_api.get('/api/fun/slots-odds')
+@fun_slots_api.get('/fun/slots-emojis/{theme}')
+def get_slots_emojis(theme: str):
+    """Return emojis for a given theme"""
+    theme_map = {
+        'Very Easy': 'Pet Type',
+        'Easy': 'Units',
+        'Medium': 'Stats',
+        'Hard': 'Elements',
+        'Very Hard': 'Pets',
+        'Insanity': ['Pets', 'Pet Type', 'Units', 'Stats', 'Elements']
+    }
+
+    emoji_category = theme_map.get(theme)
+    emojis = []
+
+    if isinstance(emoji_category, list):
+        for category in emoji_category:
+            emojis.extend(EMOJI_CATEGORIES.get(category, []))
+    elif emoji_category:
+        emojis = EMOJI_CATEGORIES.get(emoji_category, [])
+
+    if not emojis:
+        return JSONResponse(content={'error': f'No emojis found for theme {theme}'}, status_code=400)
+
+    response_emojis = [
+        {'name': e, 'path': get_emoji_file_path(e)} for e in emojis
+    ]
+
+    return JSONResponse(content={'emojis': response_emojis})
+
+
+@fun_slots_api.get('/fun/slots-odds')
 def get_slots_odds():
     """Return odds information for all themes"""
     return JSONResponse(content=ODDS_INFO)
+
+@fun_slots_api.post('/fun/slots-spin')
+async def spin_slots(request: Request):
+    """Simulate a slots spin based on the selected theme"""
+    data = await request.json()
+    theme = data.get('theme')
+
+    theme_map = {
+        'Very Easy': 'Pet Type',
+        'Easy': 'Units',
+        'Medium': 'Stats',
+        'Hard': 'Elements',
+        'Very Hard': 'Pets',
+        'Insanity': ['Pets', 'Pet Type', 'Units', 'Stats', 'Elements']
+    }
+
+    emoji_category = theme_map.get(theme)
+    emojis = []
+
+    if isinstance(emoji_category, list):
+        for category in emoji_category:
+            emojis.extend(EMOJI_CATEGORIES.get(category, []))
+    elif emoji_category:
+        emojis = EMOJI_CATEGORIES.get(emoji_category, [])
+
+    if not emojis:
+        return JSONResponse(content={'error': f'No emojis found for theme {theme}'}, status_code=400)
+
+    # Spin the reels
+    reel1 = random.choice(emojis)
+    reel2 = random.choice(emojis)
+    reel3 = random.choice(emojis)
+
+    reels_result = [reel1, reel2, reel3]
+
+    # Check for wins
+    if reel1 == reel2 == reel3:
+        result_text = 'JACKPOT! 3 in a row!'
+    elif reel1 == reel2 or reel1 == reel3 or reel2 == reel3:
+        result_text = 'WIN! 2 in a row!'
+    else:
+        result_text = 'Better luck next time!'
+
+    # Prepare response
+    response_reels = [
+        {'name': r, 'path': get_emoji_file_path(r)} for r in reels_result
+    ]
+
+    return JSONResponse(content={
+        'reels': response_reels,
+        'result_text': result_text
+    })

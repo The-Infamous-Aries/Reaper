@@ -1,0 +1,282 @@
+:root {
+    --bg-primary: #0a0a0a;
+    --bg-secondary: #0f0f0f;
+    --bg-tertiary: #141414;
+    --gold-primary: #ffd700;
+    --gold-secondary: #ffed4e;
+    --gold-glow: rgba(255, 215, 0, 0.3);
+    --text-primary: #f0f0f0;
+    --text-secondary: #b9bbbe;
+}
+
+/* Commands page container */
+.commands-container {
+    padding: 2rem;
+    min-height: 100vh;
+    background: rgba(10, 10, 10, 0.7);
+    border-radius: 1rem;
+    margin: 1rem;
+    backdrop-filter: blur(10px);
+    border: 1px solid var(--gold-glow);
+    box-shadow: 0 0 30px var(--gold-glow);
+}
+
+/* Header section */
+.commands-header {
+    margin-bottom: 3rem;
+    padding: 2rem;
+    background: linear-gradient(135deg, rgba(15, 15, 15, 0.9), rgba(20, 20, 20, 0.9));
+    border-radius: 1rem;
+    border: 2px solid var(--gold-primary);
+    box-shadow: 0 0 20px var(--gold-glow);
+}
+
+.commands-title {
+    font-family: 'MedievalSharp', cursive;
+    font-size: 3rem;
+    font-weight: 700;
+    color: var(--gold-primary);
+    text-shadow: 0 0 10px var(--gold-primary), 0 0 20px var(--gold-primary), 0 0 30px var(--gold-primary);
+    margin-bottom: 1rem;
+    animation: titleGlow 3s ease-in-out infinite alternate;
+}
+
+.commands-subtitle {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 1.2rem;
+    color: var(--gold-secondary);
+    text-shadow: 0 0 5px var(--gold-glow);
+    margin: 0;
+}
+
+/* Loading state */
+.loading-container {
+    text-align: center;
+    padding: 4rem 2rem;
+}
+
+.loading-text {
+    font-family: 'MedievalSharp', cursive;
+    font-size: 1.5rem;
+    color: var(--gold-primary);
+    text-shadow: 0 0 10px var(--gold-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+}
+
+.loading-text i {
+    animation: spin 2s linear infinite;
+}
+
+/* Commands grid */
+.commands-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+    gap: 2rem;
+    margin-bottom: 2rem;
+}
+
+/* Command category cards */
+.command-category-card {
+    background: linear-gradient(135deg, rgba(15, 15, 15, 0.9), rgba(20, 20, 20, 0.9));
+    border: 2px solid var(--gold-primary);
+    border-radius: 1rem;
+    padding: 2rem;
+    box-shadow: 0 0 20px var(--gold-glow);
+    transition: all 0.3s ease;
+    backdrop-filter: blur(5px);
+}
+
+.command-category-card:hover {
+    transform: translateY(-5px) scale(1.02);
+    box-shadow: 0 0 30px var(--gold-primary);
+    border-color: var(--gold-secondary);
+}
+
+.category-header {
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid var(--gold-primary);
+}
+
+.category-title {
+    font-family: 'MedievalSharp', cursive;
+    font-size: 1.8rem;
+    color: var(--gold-primary);
+    text-shadow: 0 0 10px var(--gold-primary);
+    margin: 0;
+    text-align: center;
+}
+
+/* Command items */
+.command-item {
+    margin-bottom: 1.5rem;
+    padding: 1rem;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 0.5rem;
+    border-left: 4px solid var(--gold-primary);
+    transition: all 0.3s ease;
+}
+
+.command-item:hover {
+    background: rgba(255, 215, 0, 0.1);
+    border-left-color: var(--gold-secondary);
+    transform: translateX(5px);
+}
+
+.command-item:last-child {
+    margin-bottom: 0;
+}
+
+.command-header {
+    margin-bottom: 0.5rem;
+}
+
+.command-name {
+    font-family: 'Orbitron', monospace;
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--gold-secondary);
+    text-shadow: 0 0 5px var(--gold-glow);
+    background: rgba(255, 215, 0, 0.1);
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    display: inline-block;
+    border: 1px solid var(--gold-primary);
+}
+
+.command-body {
+    padding-left: 1rem;
+}
+
+.command-description {
+    font-size: 1rem;
+    color: var(--text-primary);
+    margin-bottom: 0.5rem;
+    line-height: 1.5;
+}
+
+.command-usage {
+    margin-bottom: 0.5rem;
+}
+
+.command-usage code {
+    font-family: 'Orbitron', monospace;
+    background: rgba(255, 215, 0, 0.1);
+    padding: 0.5rem;
+    border-radius: 0.3rem;
+    color: var(--gold-primary);
+    font-size: 0.9rem;
+    border: 1px solid var(--gold-glow);
+    display: block;
+    overflow-x: auto;
+}
+
+.command-params {
+    margin-top: 0.5rem;
+    padding: 0.5rem;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 0.3rem;
+    border-left: 3px solid var(--gold-primary);
+}
+
+.command-params strong {
+    color: var(--gold-secondary);
+    font-family: 'Orbitron', sans-serif;
+}
+
+.command-params ul {
+    margin: 0.5rem 0;
+    padding-left: 1.5rem;
+}
+
+.command-params li {
+    color: var(--text-secondary);
+    margin-bottom: 0.3rem;
+    font-size: 0.9rem;
+}
+
+/* Footer */
+.commands-footer {
+    margin-top: 3rem;
+    padding: 2rem;
+    background: linear-gradient(135deg, rgba(15, 15, 15, 0.9), rgba(20, 20, 20, 0.9));
+    border-radius: 1rem;
+    border: 1px solid var(--gold-glow);
+}
+
+.footer-text {
+    font-family: 'Metamorphous', serif;
+    color: var(--gold-secondary);
+    font-size: 1.1rem;
+    text-shadow: 0 0 5px var(--gold-glow);
+    margin: 0;
+}
+
+/* Animations */
+@keyframes titleGlow {
+    0%, 100% {
+        text-shadow: 0 0 10px var(--gold-primary), 0 0 20px var(--gold-primary), 0 0 30px var(--gold-primary);
+    }
+    50% {
+        text-shadow: 0 0 15px var(--gold-primary), 0 0 25px var(--gold-primary), 0 0 35px var(--gold-primary), 0 0 40px var(--gold-secondary);
+    }
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+    .commands-container {
+        margin: 0.5rem;
+        padding: 1rem;
+    }
+    
+    .commands-title {
+        font-size: 2rem;
+    }
+    
+    .commands-subtitle {
+        font-size: 1rem;
+    }
+    
+    .commands-grid {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+    
+    .command-category-card {
+        padding: 1rem;
+    }
+    
+    .category-title {
+        font-size: 1.5rem;
+    }
+    
+    .command-name {
+        font-size: 1rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .commands-header {
+        padding: 1rem;
+    }
+    
+    .commands-title {
+        font-size: 1.5rem;
+    }
+    
+    .command-item {
+        padding: 0.5rem;
+    }
+    
+    .command-body {
+        padding-left: 0.5rem;
+    }
+}

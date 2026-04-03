@@ -1,0 +1,277 @@
+<link href="/css/homepage.css" rel="stylesheet">
+
+<style>
+/* Custom styling for commands page */
+.commands-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+    gap: 1rem;
+    padding: 1rem 0;
+}
+
+.command-card {
+    background: linear-gradient(135deg, rgba(15, 15, 15, 0.9), rgba(20, 20, 20, 0.9));
+    border: 2px solid transparent;
+    border-image: linear-gradient(45deg, var(--gold-primary), #8B4513, var(--gold-primary)) 1;
+    clip-path: polygon(
+        0 15px, 15px 0, 
+        calc(100% - 15px) 0, 100% 15px, 
+        100% calc(100% - 15px), calc(100% - 15px) 100%, 
+        15px 100%, 0 calc(100% - 15px)
+    );
+    padding: 1.5rem;
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+.command-card:hover {
+    background: linear-gradient(135deg, rgba(25, 25, 25, 0.9), rgba(30, 30, 30, 0.9));
+    border-image: linear-gradient(45deg, #FFD700, #B8860B, #FFD700) 1;
+    transform: translateY(-2px);
+}
+
+.command-card .command-header {
+    margin-bottom: 0.75rem;
+}
+
+.command-card .command-name {
+    font-size: 1.2rem;
+    font-weight: bold;
+    color: var(--gold-primary);
+    font-family: 'Orbitron', sans-serif;
+    text-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
+}
+
+.command-card .command-description {
+    margin-bottom: 0.5rem;
+    color: var(--text-secondary);
+    line-height: 1.4;
+}
+
+.command-card .command-usage {
+    margin-bottom: 0.5rem;
+}
+
+.command-card .command-usage code {
+    background: rgba(255, 215, 0, 0.1);
+    padding: 0.25rem 0.5rem;
+    border-radius: 3px;
+    font-family: 'Courier New', monospace;
+    color: var(--gold-primary);
+    font-size: 0.9rem;
+    border: 1px solid rgba(255, 215, 0, 0.3);
+}
+
+.command-card .command-params {
+    margin-top: 0.75rem;
+    padding-top: 0.5rem;
+    border-top: 1px solid rgba(255, 215, 0, 0.2);
+}
+
+.command-card .command-params strong {
+    color: var(--gold-primary);
+    font-size: 0.9rem;
+}
+
+.command-card .command-params ul {
+    margin: 0.5rem 0 0 0;
+    padding-left: 1rem;
+}
+
+.command-card .command-params li {
+    margin-bottom: 0.25rem;
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+}
+
+@media (max-width: 768px) {
+    .commands-grid {
+        grid-template-columns: 1fr;
+        gap: 0.75rem;
+    }
+    
+    .command-card {
+        padding: 1rem;
+    }
+    
+    .command-card .command-name {
+        font-size: 1.1rem;
+    }
+}
+</style>
+
+<div class="container-fluid py-2">
+    <div class="row">
+        <div class="col-12">
+
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-12">
+            <div id="commands-container">
+                <div class="loading-container">
+                    <div class="loading-text">
+                        <i class="fas fa-scroll fa-spin"></i>
+                        Summoning the ancient scrolls of command...
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-12">
+            <div class="text-center mt-4">
+                <p class="footer-text">Use these powers wisely, lest you unleash untold chaos... or just have a really good time.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('dashboardPageLoaded', function(event) {
+    if (event.detail.page !== 'commands.html') {
+        return; // Only run on the commands page
+    }
+
+    console.log('Commands page loaded, fetching commands...');
+    fetchCommands();
+});
+
+async function fetchCommands() {
+    const container = document.getElementById('commands-container');
+    
+    // Add timeout to fetch
+    const fetchWithTimeout = async (url, timeout = 10000) => {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), timeout);
+        
+        try {
+            const response = await fetch(url, { signal: controller.signal });
+            clearTimeout(timeoutId);
+            return response;
+        } catch (error) {
+            clearTimeout(timeoutId);
+            throw error;
+        }
+    };
+    
+    try {
+        console.log('Fetching commands from /api/commands...');
+        // Use current host and port for API call
+        const baseUrl = `${window.location.protocol}//${window.location.host}`;
+        const apiUrl = `${baseUrl}/api/commands`;
+        console.log('API URL:', apiUrl);
+        const response = await fetchWithTimeout(apiUrl, 30000); // 30 second timeout
+        console.log('Response status:', response.status);
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('API Error Response:', errorText);
+            throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+        }
+        
+        const commands = await response.json();
+        console.log('Received commands:', commands);
+
+        // Handle different response formats
+        let commandList = [];
+        if (Array.isArray(commands)) {
+            commandList = commands;
+        } else if (commands.commands && Array.isArray(commands.commands)) {
+            commandList = commands.commands;
+        } else if (commands.data && Array.isArray(commands.data)) {
+            commandList = commands.data;
+        } else if (commands.error) {
+            throw new Error(commands.error);
+        }
+
+        if (!commandList || commandList.length === 0) {
+            // Show demo commands for testing when API returns empty
+            const demoCommands = [
+                {
+                    name: "help",
+                    description: "Show available commands",
+                    usage: "/help",
+                    category: "General",
+                    params: []
+                },
+                {
+                    name: "ping",
+                    description: "Test bot responsiveness",
+                    usage: "/ping",
+                    category: "General", 
+                    params: []
+                },
+                {
+                    name: "info",
+                    description: "Get bot information",
+                    usage: "/info",
+                    category: "General",
+                    params: []
+                }
+            ];
+            
+            // Use demo commands if no real commands found
+            commandList = demoCommands;
+        }
+
+        // Don't group by category, just create individual command cards
+        container.innerHTML = ''; // Clear loading text
+
+        // Check if we have any commands
+        if (!commandList || commandList.length === 0) {
+            container.innerHTML = '<div class="loading-text">The grimoire is empty. No commands found.</div>';
+            return;
+        }
+
+        // Create a grid container for individual command cards
+        const commandsGrid = document.createElement('div');
+        commandsGrid.className = 'commands-grid';
+        container.appendChild(commandsGrid);
+
+        // Create individual command cards
+        commandList.forEach(command => {
+            const commandCard = document.createElement('div');
+            commandCard.className = 'command-card';
+
+            let paramsInfo = '';
+                if (command.params && command.params.length > 0) {
+                    paramsInfo = '<div class="command-params"><strong>Arguments:</strong><ul>' + 
+                        command.params.map(p => {
+                            let p_info = `<li><strong>${p.name}</strong>: ${p.description}`;
+                            if (!p.required) p_info += ` (Optional, default: ${p.default})`;
+                            if (p.choices) p_info += `<br>Choices: ${p.choices.join(', ')}`;
+                            return p_info + '</li>';
+                        }).join('') + '</ul></div>';
+                }
+
+                let commandHTML = `
+                    <div class="command-header">
+                        <span class="command-name">/${command.name}</span>
+                    </div>
+                    <div class="command-body">
+                        <p class="command-description">${command.description}</p>
+                        <div class="command-usage">
+                            <code>${command.usage}</code>
+                        </div>
+                        ${paramsInfo}
+                    </div>
+                `;
+
+                commandCard.innerHTML = commandHTML;
+                commandsGrid.appendChild(commandCard);
+            });
+        } catch (error) {
+        console.error('Failed to fetch commands:', error);
+        let errorMessage = 'Failed to summon the ancient scrolls. The spirits are angry';
+        if (error.name === 'AbortError') {
+            errorMessage += ': Request timed out after 30 seconds';
+        } else {
+            errorMessage += ': ' + error.message;
+        }
+        container.innerHTML = '<div class="loading-text">' + errorMessage + '</div>';
+    }
+}
+</script>

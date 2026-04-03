@@ -4,34 +4,42 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Reaper Bot Dashboard</title>
-    <link rel="icon" href="/favicon.ico" type="image/x-icon">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="icon" href="/static/Images/reaper.png" type="image/png">
+    <link href="css/bootstrap.min.css?v=20250327" rel="stylesheet">
+    <link href="css/main.css?v=20250327" rel="stylesheet">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&family=Orbitron:wght@400;700;900&family=Comic+Sans+MS:wght@400;700&family=Papyrus:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" integrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2PkPKZ5QiAj6Ta86w+fsb2TkcmfRyVX3pBnMFcV7oQPJkl9QevSCWr3W6A==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <meta property="og:title" content="The Reaper's Domain" />
+    <meta property="og:description" content="I've come for your souls... and to provide top-tier Discord bot services. But mostly the souls." />
+    <meta property="og:image" content="/static/Images/333.jpg" />
+    <meta property="og:url" content="https://reaper.qzz.io/" />
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="theme-color" content="#ff0000">
+    <script src="/node_modules/gsap/dist/gsap.min.js" defer></script>
+    <script src="/node_modules/gsap/dist/MotionPathPlugin.min.js" defer></script>
     <style>
-        :root {
-            --bg-primary: #0a0a0a;
-            --bg-secondary: #0f0f0f;
-            --bg-tertiary: #141414;
-            --gold-primary: #ffd700;
-            --gold-secondary: #ffed4e;
-            --gold-glow: rgba(255, 215, 0, 0.3);
-            --text-primary: #f0f0f0;
-            --text-secondary: #b9bbbe;
+        /* Updated: 2025-03-27 - Avatar styling fix */
+        body {
+            background-color: #000000 !important;
+            color: #FFD700 !important;
+        }
+
+        h1, h2, h3, h4, h5, h6 {
+            text-shadow: 0 0 5px #FFD700;
         }
         
-        body {
-            background-color: var(--bg-primary);
-            color: var(--text-primary);
-            font-family: 'Roboto', sans-serif;
-            background-image: url('/web/background.jpg');
-            background-size: cover;
-            background-position: center;
-            background-attachment: fixed;
-            background-repeat: no-repeat;
+        /* Main content area */
+        .main-content {
+            padding: 2rem 2rem 2rem 2rem;
             min-height: 100vh;
+            position: relative;
+            z-index: 1;
+            transition: padding-right 0.3s ease;
         }
+        
+        /* Sidebar styles */
         .sidebar {
             background: linear-gradient(180deg, rgba(15, 15, 15, 0.85), rgba(20, 20, 20, 0.85));
             border-left: 2px solid var(--gold-primary);
@@ -41,13 +49,34 @@
             top: 0;
             right: 0;
             height: 100vh;
-            width: 202px;
+            width: 280px;
             z-index: 1000;
             overflow-y: auto;
             border-radius: 1rem 0 0 1rem;
             scrollbar-width: thin;
             scrollbar-color: var(--gold-primary) var(--bg-tertiary);
+            transform: translateX(0);
+            transition: transform 0.3s ease;
         }
+        
+
+        
+        .sidebar.mobile-hidden {
+            transform: translateX(100%);
+        }
+        
+        .sidebar-content {
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .sidebar-header {
+            position: relative;
+            flex-shrink: 0;
+        }
+        
+        /* Removed bot avatar and banner styles - not needed */
         
         .sidebar::-webkit-scrollbar {
             width: 6px;
@@ -66,109 +95,396 @@
         .sidebar::-webkit-scrollbar-thumb:hover {
             background: var(--gold-secondary);
         }
-        .bot-info {
-            text-align: center;
-            padding: 1rem 1rem 0.5rem;
-            position: relative;
-            margin-top: 0;
-        }
-        .bot-avatar {
-            width: 60px;
-            height: 60px;
-            border-radius: 50%;
-            border: 2px solid var(--gold-primary);
-            box-shadow: 0 0 10px var(--gold-glow), 0 0 20px var(--gold-glow);
-            transition: all 0.3s ease;
-            background: transparent;
-        }
-        .bot-avatar:hover {
-            transform: scale(1.05);
-            box-shadow: 0 0 20px var(--gold-glow), 0 0 40px var(--gold-glow);
-        }
-        .bot-name {
-            margin-top: 0.3rem;
-            font-weight: 700;
-            font-size: 1rem;
-            color: var(--gold-primary);
-            text-shadow: 0 0 8px var(--gold-glow);
-        }
+
+        /* Removed bot avatar styling - not needed */
+
+        /* Gothic Ornate Menu Enhancements */
         .nav-pills .nav-link {
-            color: var(--text-secondary);
-            margin: 0.25rem 0.5rem;
-            border-radius: 0.5rem;
-            transition: all 0.2s ease-in-out;
-            border: 1px solid transparent;
-            padding: 0.4rem 1rem;
-            font-size: 0.9rem;
-        }
-        .nav-pills .nav-link:hover {
-            background-color: var(--bg-tertiary);
-            color: var(--gold-primary);
-            border: 1px solid var(--gold-primary);
-            box-shadow: 0 0 10px var(--gold-glow);
-        }
-        .nav-pills .nav-link.active, .nav-pills .show > .nav-link {
-            background: linear-gradient(135deg, var(--gold-primary), var(--gold-secondary));
-            color: var(--bg-primary);
-            font-weight: 700;
-            border: 2px solid var(--gold-primary);
-            box-shadow: 0 0 15px var(--gold-glow), 0 0 30px var(--gold-glow);
-            margin: 0.25rem 0.5rem;
-            padding: 0.4rem 1rem;
-        }
-        main {
-            padding-top: 2rem;
-            margin-right: 202px;
-            min-height: 100vh;
             position: relative;
+            background: transparent;
+            border: none;
+            border-radius: 0;
+            transition: all 0.2s ease;
+            margin: 0;
+            padding: 0.4rem 1.5rem;
+            font-weight: 400;
+            letter-spacing: 0.3px;
+            display: flex;
+            align-items: center;
+            border-bottom: 1px solid rgba(184, 134, 11, 0.1);
         }
         
-        main::before {
-            content: '';
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 202px;
-            bottom: 0;
-            background: rgba(0, 0, 0, 0.1);
-            pointer-events: none;
+        /* Removed pseudo-elements for cleaner list style */
+        
+        .nav-pills .nav-link:hover {
+            background: rgba(184, 134, 11, 0.1);
+            color: var(--gold-primary);
+            box-shadow: inset 0 0 15px rgba(184, 134, 11, 0.2);
+        }
+        
+        /* Removed hover pseudo-element effects */
+        
+        .nav-pills .nav-item {
+            margin: 0;
+            padding: 0;
+        }
+        
+        /* Removed unused animations */
+        
+        .nav-pills .nav-link img {
+            filter: none;
+            transition: all 0.2s ease;
+            margin-right: 12px;
+            opacity: 0.8;
+        }
+        
+        .nav-pills .nav-link:hover img {
+            filter: drop-shadow(0 0 8px rgba(184, 134, 11, 0.6));
+            transform: scale(1.1);
+            opacity: 1;
+        }
+        
+        .nav-pills .nav-link.active img {
+            filter: drop-shadow(0 0 10px rgba(184, 134, 11, 0.8));
+            transform: scale(1.1);
+            opacity: 1;
+        }
+        
+        /* Removed emoji pulse animation */
+        .nav-pills .nav-link.active,
+        .nav-pills .show > .nav-link {
+            background: rgba(184, 134, 11, 0.1);
+            color: var(--gold-primary);
+            border-bottom: 1px solid rgba(184, 134, 11, 0.5);
+            box-shadow: inset 4px 0 0 rgba(184, 134, 11, 0.8);
+            font-weight: 500;
+        }
+
+        .nav-pills .nav-link.active {
+            pointer-events: none; /* Prevent clicking on the active link */
+        }
+        
+        /* Removed active button pseudo-elements for cleaner look */
+        /* Clean list layout styling */
+        .nav-pills {
+            background: rgba(15, 15, 15, 0.3);
+            border-radius: 8px;
+            padding: 0;
+            margin: 0;
+            overflow: hidden;
+        }
+        
+        .nav-pills .nav-item {
+            margin: 0;
+            padding: 0;
+            border-bottom: 1px solid rgba(184, 134, 11, 0.1);
+        }
+        
+        .nav-pills .nav-item:last-child {
+            border-bottom: none;
+        }
+        .nav-pills {
+            position: relative;
             z-index: 1;
+        }
+        
+        .nav-pills .nav-item {
+            position: relative;
+            margin: 0.5rem 0;
+            z-index: 1;
+            transition: z-index 0.3s ease;
+        }
+        
+        .nav-pills .nav-item:hover {
+            z-index: 100;
+        }
+        
+        /* Removed adjacent item animations */
+        
+        /* Enhanced glow effects */
+
+        
+        /* Removed gothic architectural elements for clean list style */
+        
+        /* Clean icon styling */
+        .nav-pills .nav-link img {
+            filter: none;
+            transition: all 0.2s ease;
+            margin-right: 12px;
+            opacity: 0.8;
+        }
+        
+        .nav-pills .nav-link:hover img {
+            filter: drop-shadow(0 0 8px rgba(184, 134, 11, 0.6));
+            transform: scale(1.1);
+            opacity: 1;
+        }
+        
+        .nav-pills .nav-link.active img {
+            filter: drop-shadow(0 0 10px rgba(184, 134, 11, 0.8));
+            transform: scale(1.1);
+            opacity: 1;
+        }
+        
+        .nav-pills .nav-link::first-letter {
+            font-size: 1.3em;
+            font-weight: 700;
+            text-shadow: 0 0 8px var(--gold-primary);
+        }
+        
+
+        .sidebar-divider {
+            border: none;
+            height: 2px;
+            background: linear-gradient(90deg, 
+                transparent, 
+                var(--gold-primary), 
+                transparent
+            );
+            margin: 1.5rem 0.5rem;
+            position: relative;
+            overflow: visible;
+        }
+        
+        .sidebar-divider::before,
+        .sidebar-divider::after {
+            content: '✠';
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--gold-primary);
+            font-size: 1rem;
+            text-shadow: 0 0 5px var(--gold-glow);
+        }
+        
+        .sidebar-divider::before {
+            left: 10%;
+        }
+        
+        .sidebar-divider::after {
+            right: 10%;
         }
         
         .content-wrapper {
             position: relative;
             z-index: 2;
+            max-width: 100%;
         }
         
         @media (max-width: 768px) {
-            .sidebar {
-                width: 160px;
+            .main-content {
+                padding: 4rem 1rem 2rem;
+                padding-right: 1rem;
             }
-            main {
-                margin-right: 160px;
+            
+            .sidebar {
+                width: 350px;
+                right: 0;
+                left: auto;
+                z-index: 1002;
+            }
+            
+            .sidebar.mobile-hidden {
+                transform: translateX(100%);
+            }
+            
+            .sidebar.collapsed {
+                transform: translateX(100%); /* Fully hidden on mobile */
+                width: 320px;
+            }
+            
+            .sidebar-toggle {
+                display: block; /* Show toggle button on mobile */
+            }
+            
+            .bot-info {
+                padding: 1rem 0.5rem 0.5rem;
+            }
+            
+            .bot-avatar {
+                width: 90px;
+                height: 90px;
+                border-radius: 0 !important;
+                border: none !important;
+                outline: none !important;
+            }
+
+            
+            .card {
+                margin-bottom: 1.5rem;
+            }
+            
+            /* Adjust navigation for smaller sidebar */
+            .nav-pills .nav-link {
+                font-size: 0.85rem;
+                padding: 0.35rem 0.8rem;
+                margin: 0.2rem 0.4rem;
+            }
+            
+            .bot-info {
+                padding: 1rem 0.5rem 0.5rem;
+            }
+            
+            .bot-avatar {
+                width: 80px;
+                height: 80px;
+                border-radius: 0 !important;
+                border: none !important;
+                outline: none !important;
+            }
+
+            
+            .card {
+                margin-bottom: 1.5rem;
+            }
+            
+            /* Adjust navigation for smaller sidebar */
+            .nav-pills .nav-link {
+                font-size: 0.85rem;
+                padding: 0.35rem 0.8rem;
+                margin: 0.2rem 0.4rem;
             }
         }
         
         @media (max-width: 576px) {
+            .main-content {
+                padding: 4rem 0.5rem 1rem;
+            }
+            
             .sidebar {
                 width: 100%;
                 border-radius: 0;
             }
-            main {
-                margin-right: 0;
+            
+            .sidebar-toggle {
+                top: 0.5rem;
+                right: 0.5rem;
             }
+            
+            /* Mobile-friendly card adjustments */
+            .card {
+                margin-bottom: 1rem;
+            }
+            
+            .card-body {
+                padding: 1rem;
+            }
+            
+
+            
+            /* Smaller navigation text */
+            .nav-pills .nav-link {
+                font-size: 0.85rem;
+                padding: 0.3rem 0.8rem;
+                margin: 0.2rem 0.3rem;
+            }
+            
+            /* Better button sizing */
+            .btn {
+                font-size: 0.9rem;
+                padding: 0.4rem 0.8rem;
+            }
+            
+            /* Form control improvements */
+        .form-control, .form-select {
+            font-size: 16px; /* Prevents zoom on iOS */
         }
-        .banner {
-            background-size: cover;
-            background-position: center;
-            opacity: 0.3;
-            transition: opacity 0.3s ease;
-            border-radius: 1rem 0 0 0;
-            height: 120px;
+        
+        /* Ensure proper scrolling on mobile */
+        body.mobile-menu-open {
+            overflow: hidden;
+            position: fixed;
+            width: 100%;
         }
-        .banner:hover {
-            opacity: 0.5;
+        
+        .main-content {
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
         }
+        
+        /* Ensure sidebar content is scrollable */
+        .sidebar-content {
+            height: 100vh;
+            overflow-y: auto;
+            padding-bottom: 2rem; /* Add some bottom padding */
+        }
+        
+        /* Improve navigation item spacing on mobile */
+        .nav-pills .nav-link {
+            margin: 0.25rem 0.5rem;
+            padding: 0.6rem 1rem;
+            font-size: 0.95rem;
+        }
+        
+        /* Better touch targets for mobile */
+        .mobile-menu-toggle {
+            min-width: 44px;
+            min-height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        /* Desktop sidebar collapse button */
+        .sidebar-collapse-toggle {
+            position: fixed;
+            top: 1rem;
+            right: calc(202px + 1rem);
+            z-index: 1003;
+            background: linear-gradient(135deg, var(--gold-primary), var(--gold-secondary));
+            color: var(--bg-primary);
+            border: 2px solid var(--gold-primary);
+            border-radius: 0.5rem;
+            padding: 0.5rem;
+            font-size: 1.2rem;
+            box-shadow: 0 0 15px var(--gold-glow);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            min-width: 44px;
+            min-height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .sidebar-collapse-toggle:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 0 20px var(--gold-glow);
+        }
+        
+        /* Collapsed sidebar state */
+        .sidebar.collapsed {
+            transform: translateX(calc(100% - 50px)); /* Show just the toggle button edge */
+            width: 50px;
+        }
+        
+        .sidebar.collapsed .sidebar-content {
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+        
+        .sidebar.collapsed ~ .main-content {
+            padding-right: 4rem; /* Make room for toggle button */
+        }
+        
+        /* Toggle button position when sidebar is collapsed */
+        .sidebar.collapsed ~ .sidebar-toggle {
+            right: 1rem; /* Move button to edge when collapsed */
+            transform: rotate(180deg); /* Rotate icon when collapsed */
+        }
+    }
+        /* Removed banner styling - not needed */
+        
+        .bot-avatar-section {
+            position: relative;
+            z-index: 10;
+            width: 100px;
+            height: 100px;
+            margin: -50px auto 1rem auto;
+            display: block;
+        }
+        /* Removed banner hover styling - not needed */
         .card {
             background-color: rgba(15, 15, 15, 0.85);
             border: 2px solid var(--gold-primary);
@@ -243,228 +559,321 @@
     </style>
 </head>
 <body>
+
     <div class="container-fluid">
         <div class="row">
-            <main role="main" class="col-md-9 col-lg-10 px-md-4 order-first">
+            <main role="main" class="col-md-10 col-lg-10 px-md-4 order-first">
                 <div class="content-wrapper">
                     <div id="content"></div>
                 </div>
             </main>
-
             <nav class="col-md-2 d-none d-md-block sidebar order-last">
-                <div class="position-relative">
-                        <div id="banner" class="banner position-absolute top-0 start-0 w-100" style="z-index: 0; height: 120px; border-radius: 1rem 0 0 0;"></div>
-                        <div class="bot-info position-relative" style="z-index: 1;">
-                            <img id="bot-avatar" src="" alt="Bot Avatar" class="bot-avatar mb-2">
-                            <h4 id="bot-name" class="bot-name">Reaper Bot</h4>
-                        </div>
-                        <hr class="sidebar-divider" style="position: relative; z-index: 1;">
-                    </div>
-                    <ul class="nav flex-column nav-pills mt-2 px-1">
-                        <li class="nav-item">
-                            <a class="nav-link active" href="#" data-page="directory">🧭 Directory</a>
-                        </li>
-                    <hr class="sidebar-divider">
+
+                <ul class="nav flex-column nav-pills mt-2 px-1">
                     <li class="nav-item">
-                        <a class="nav-link" href="#" data-page="graphs">📊 PnW Graphs</a>
+                        <a class="nav-link" href="#" data-page="homepage">
+                            <img src="/static/Emojis/Menu/reaper.png" alt="Homepage" style="width: 20px; height: 20px; margin-right: 8px;">
+                            Homepage
+                        </a>
+                    </li>
+
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" data-page="graphs">
+                            <img src="/static/Emojis/Menu/graph.png" alt="PnW Graphs" style="width: 20px; height: 20px; margin-right: 8px;">
+                            PnW Graphs
+                        </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="#" data-page="cost_calc">🧮 PnW Calculators</a>
-                    </li>
-                    <hr class="sidebar-divider">
-                    <li class="nav-item">
-                        <a class="nav-link" href="#" data-page="what_are_pets">❔ What Are Pets?</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="#" data-page="pets">🐾 Pets</a>
+                        <a class="nav-link" href="#" data-page="cost_calc">
+                            <img src="/static/Emojis/Menu/calculator.png" alt="PnW Calculators" style="width: 20px; height: 20px; margin-right: 8px;">
+                            Calculators
+                        </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="#" data-page="pets_item">🎒 Pets Items</a>
-                    </li>
-                    <hr class="sidebar-divider">
-                    <li class="nav-item">
-                        <a class="nav-link" href="#" data-page="tarot">🔮 Tarot</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="#" data-page="astrology">⭐ Astrology</a>
-                    </li>
-                    <hr class="sidebar-divider">
-                    <li class="nav-item">
-                        <a class="nav-link" href="#" data-page="fun">🎲 Fun</a>
-                    </li>
-                    <hr class="sidebar-divider">
-                    <li class="nav-item">
-                        <a class="nav-link" href="#" data-page="readme">📖 Documentation</a>
+                        <a class="nav-link" href="#" data-page="game_info">
+                            <img src="/static/Emojis/Menu/game_info.png" alt="Game Info" style="width: 20px; height: 20px; margin-right: 8px;">
+                            Game Info
+                        </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="#" data-page="license">⚖️ License</a>
+                        <a class="nav-link" href="#" data-page="library">
+                            <img src="/static/Emojis/Menu/script.png" alt="Scriptorium" style="width: 20px; height: 20px; margin-right: 8px;">
+                            Scriptorium
+                        </a>
                     </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" data-page="what_are_pets">
+                            <img src="/static/Emojis/Menu/what_pets.png" alt="What Are Pets?" style="width: 20px; height: 20px; margin-right: 8px;">
+                            What Are Pets?
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" data-page="pets">
+                            <img src="/static/Emojis/Menu/pets.png" alt="Pets & Items" style="width: 20px; height: 20px; margin-right: 8px;">
+                            Pets & Items
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" data-page="tarot">
+                            <img src="/static/Emojis/Menu/tarot.png" alt="Tarot" style="width: 20px; height: 20px; margin-right: 8px;">
+                            Tarot
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" data-page="astrology">
+                            <img src="/static/Emojis/Menu/astrology.png" alt="Astrology" style="width: 20px; height: 20px; margin-right: 8px;">
+                            Astrology
+                        </a>
+                    </li>
+
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" data-page="fun" data-script="/js/fun_views.js?v=20250325">
+                            <img src="/static/Emojis/Menu/fun.png" alt="Fun" style="width: 20px; height: 20px; margin-right: 8px;">
+                            Fun
+                        </a>
+                    </li>
+                        <a class="nav-link" href="#" data-page="commands" data-css="/css/commands.css?v=20250327">
+                            <img src="/static/Emojis/Menu/discord.png" alt="Commands" style="width: 20px; height: 20px; margin-right: 8px;">
+                            Commands
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" data-page="contact">
+                            <img src="/static/Emojis/Menu/contact.png" alt="Contact" style="width: 20px; height: 20px; margin-right: 8px;">
+                            Contact
+                        </a>
+                    </li>
+
                 </ul>
-            </nav>
+            </div>
+        </div>
+    </nav>
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Mobile Sidebar Overlay -->
+    <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+    <script src="/js/page_loader.js?v=20250327" defer></script>
+    <script>
+        // Block Cloudflare analytics and other unwanted scripts
+        (function() {
+            const originalAppendChild = Element.prototype.appendChild;
+            const originalInsertBefore = Node.prototype.insertBefore;
+            
+            function blockAnalyticsScript(element) {
+                if (element.tagName === 'SCRIPT') {
+                    const src = element.src || '';
+                    const content = element.textContent || '';
+                    
+                    // Block Cloudflare Insights and other analytics
+                    if (src.includes('cloudflareinsights.com') || 
+                        src.includes('beacon.min.js') ||
+                        content.includes('cloudflareinsights') ||
+                        content.includes('__cfBeacon')) {
+                        console.log('Blocked analytics script:', src || 'inline script');
+                        return true;
+                    }
+                }
+                return false;
+            }
+            
+            Element.prototype.appendChild = function(element) {
+                if (blockAnalyticsScript(element)) {
+                    return element; // Return the element but don't actually append it
+                }
+                return originalAppendChild.call(this, element);
+            };
+            
+            Node.prototype.insertBefore = function(newNode, referenceNode) {
+                if (blockAnalyticsScript(newNode)) {
+                    return newNode; // Return the element but don't actually insert it
+                }
+                return originalInsertBefore.call(this, newNode, referenceNode);
+            };
+            
+            console.log('Analytics blocking initialized');
+        })();
+    </script>
     <script>
         const contentDiv = document.getElementById('content');
         const navLinks = document.querySelectorAll('.nav-link');
-        const botAvatar = document.getElementById('bot-avatar');
-        const botName = document.getElementById('bot-name');
-        const banner = document.getElementById('banner');
 
-        function fetchBotInfo() {
-            fetch('/api/bot-info')
-                .then(response => response.json())
-                .then(data => {
-                    console.log('Bot info response:', data);
-                    
-                    if (data.avatar_url) {
-                        botAvatar.src = data.avatar_url;
-                        console.log('Avatar URL set:', data.avatar_url);
+        // Removed fetchBotInfo function - bot avatar/banner no longer displayed on dashboard
+
+        function initializeSidebar() {
+            const sidebar = document.querySelector('.sidebar');
+            const sidebarToggle = document.querySelector('.sidebar-toggle');
+            const sidebarCollapseToggle = document.querySelector('.sidebar-collapse-toggle');
+            const sidebarOverlay = document.getElementById('sidebar-overlay');
+            
+            if (!sidebar) return;
+            
+            // Mobile sidebar toggle
+            if (sidebarToggle) {
+                sidebarToggle.addEventListener('click', () => {
+                    sidebar.classList.toggle('mobile-hidden');
+                    if (sidebarOverlay) {
+                        sidebarOverlay.classList.toggle('active');
                     }
-                    
-                    if (data.banner_url) {
-                        console.log('Setting banner URL:', data.banner_url);
-                        banner.style.backgroundImage = `url(${data.banner_url})`;
-                        banner.style.backgroundSize = 'cover';
-                        banner.style.backgroundPosition = 'center';
-                        banner.style.backgroundRepeat = 'no-repeat';
-                    } else {
-                        console.log('No banner URL available');
-                        // Set a default gradient background if no banner
-                        banner.style.background = 'linear-gradient(135deg, var(--bg-secondary), var(--bg-tertiary))';
-                    }
-                    
-                    // Store bot info globally for other pages to use
-                    window.botInfo = data;
-                    
-                    // Log successful fetch
-                    console.log('Bot info loaded:', {
-                        name: data.name,
-                        description: data.description,
-                        license: data.license,
-                        hasAvatar: !!data.avatar_url,
-                        hasBanner: !!data.banner_url
-                    });
-                })
-                .catch(error => {
-                    console.warn('Error fetching bot info:', error);
-                    // Fallback bot info
-                    window.botInfo = {
-                        name: 'Reaper Bot',
-                        description: 'A comprehensive Discord bot featuring advanced Pet systems, Politics & War tools, and interactive entertainment.',
-                        license: 'Custom EULA',
-                        avatar_url: null,
-                        banner_url: null
-                    };
-                    
-                    // Set fallback banner background
-                    banner.style.background = 'linear-gradient(135deg, var(--bg-secondary), var(--bg-tertiary))';
                 });
+            }
+            
+            // Desktop sidebar collapse
+            if (sidebarCollapseToggle) {
+                sidebarCollapseToggle.addEventListener('click', () => {
+                    sidebar.classList.toggle('collapsed');
+                    localStorage.setItem('sidebarCollapsed', sidebar.classList.contains('collapsed'));
+                });
+                
+                // Restore collapsed state from localStorage
+                if (localStorage.getItem('sidebarCollapsed') === 'true') {
+                    sidebar.classList.add('collapsed');
+                }
+            }
+            
+            // Overlay click to close mobile sidebar
+            if (sidebarOverlay) {
+                sidebarOverlay.addEventListener('click', () => {
+                    sidebar.classList.add('mobile-hidden');
+                    sidebarOverlay.classList.remove('active');
+                });
+            }
+            
+            console.log('Sidebar initialized successfully');
         }
 
-        function loadPage(page) {
+        let currentLoadedPage = null;
+
+        function loadPage(page, scriptPath, scriptType, cssPath) {
             let pageFile = page.split('?')[0];
             if (!pageFile.endsWith('.html')) {
                 pageFile += '.html';
             }
 
-            // Add a cache-busting query parameter
+            if (currentLoadedPage === pageFile) {
+                return;
+            }
+            
+            currentLoadedPage = pageFile;
+
+            if (typeof scriptManager !== 'undefined') {
+                scriptManager.unloadAll();
+            }
+
+            if (cssPath && typeof scriptManager !== 'undefined') {
+                scriptManager.loadCSS(cssPath);
+            }
+
             const cacheBuster = `?v=${new Date().getTime()}`;
-            fetch(`Pages/${pageFile}${cacheBuster}`)                .then(response => {
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`);
-                    }
+            fetch(`Pages/${pageFile}${cacheBuster}`)
+                .then(response => {
+                    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
                     return response.text();
                 })
                 .then(html => {
                     contentDiv.innerHTML = html;
-                    
-                    // Small delay to ensure DOM is ready before executing scripts
-                    setTimeout(() => {
-                        const scripts = contentDiv.querySelectorAll("script");
-                        scripts.forEach(script => {
-                            const newScript = document.createElement("script");
-                            if (script.src) {
-                                newScript.src = script.src;
-                            } else {
-                                newScript.textContent = script.textContent;
-                            }
-                            Array.from(script.attributes).forEach(attr => {
-                                newScript.setAttribute(attr.name, attr.value);
-                            });
-                            script.parentNode.replaceChild(newScript, script);
-                        });
-                        
-                        // Dispatch custom event to notify page scripts that loading is complete
+
+                    const dispatchPageLoadedEvent = () => {
                         const pageLoadedEvent = new CustomEvent('dashboardPageLoaded', {
                             detail: { page: pageFile }
                         });
                         document.dispatchEvent(pageLoadedEvent);
-                        console.log(`Dashboard page loaded event dispatched for: ${pageFile}`);
-                    }, 50);
+                        console.log(`Dispatched dashboardPageLoaded for ${pageFile}`);
+                    };
+
+                    function runInlineScripts(callback) {
+                        const scripts = Array.from(contentDiv.querySelectorAll("script"));
+                        function runNext(index) {
+                            if (index >= scripts.length) {
+                                if (callback) callback();
+                                return;
+                            }
+                            const oldScript = scripts[index];
+                            const newScript = document.createElement("script");
+                            Array.from(oldScript.attributes).forEach(attr => newScript.setAttribute(attr.name, attr.value));
+                            newScript.textContent = oldScript.textContent;
+                            oldScript.parentNode.replaceChild(newScript, oldScript);
+                            runNext(index + 1);
+                        }
+                        runNext(0);
+                    }
+
+                    runInlineScripts(() => {
+                        if (scriptPath && typeof scriptManager !== 'undefined') {
+                            scriptManager.loadScript(scriptPath, scriptType, dispatchPageLoadedEvent);
+                        } else {
+                            dispatchPageLoadedEvent();
+                        }
+                    });
                 })
                 .catch(error => {
                     console.warn(`Error loading page: ${pageFile}`, error);
                     contentDiv.innerHTML = `<div class="alert alert-danger">Error loading page: ${pageFile}</div>`;
+                    currentLoadedपीage = null;
                 });
         }
 
-        function navigateTo(page, params = {}) {
-            const url = new URL(window.location);
-            url.searchParams.set('page', page);
+        function navigateTo(page, params = {}, pushState = true) {
+            if (pushState) {
+                const url = new URL(window.location);
+                url.searchParams.set('page', page);
 
-            const oldParams = Array.from(url.searchParams.keys());
-            oldParams.forEach(key => {
-                if(key !== 'page') url.searchParams.delete(key);
-            });
-            for(const [key, value] of Object.entries(params)){
-                url.searchParams.set(key, value);
+                // Clean up old params and add new ones
+                const oldParams = Array.from(url.searchParams.keys());
+                oldParams.forEach(key => {
+                    if(key !== 'page') url.searchParams.delete(key);
+                });
+                for(const [key, value] of Object.entries(params)){
+                    url.searchParams.set(key, value);
+                }
+                history.pushState({page: page, params: params}, "", url.toString());
             }
-
-            history.pushState({page: page, params: params}, "", url.toString());
             
+            // Update active link and get the script path
             navLinks.forEach(l => l.classList.remove('active'));
             const activeLink = document.querySelector(`.nav-link[data-page='${page}']`);
+            let scriptPath = null;
+            let scriptType = 'script'; // Default to 'script'
             if (activeLink) {
                 activeLink.classList.add('active');
+                scriptPath = activeLink.getAttribute('data-script'); // Can be null
+                scriptType = activeLink.getAttribute('data-script-type') || 'script';
             }
             
-            loadPage(page);
+            const cssPath = activeLink ? activeLink.dataset.css : null;
+            loadPage(page, scriptPath, scriptType, cssPath);
         }
 
+        // Handle navigation link clicks
         navLinks.forEach(link => {
             link.addEventListener('click', function (e) {
                 e.preventDefault();
                 const page = this.getAttribute('data-page');
+                
+                // Check if this page is already active
+                if (this.classList.contains('active')) {
+                    return; // Don't navigate if already on this page
+                }
+                
                 navigateTo(page);
             });
         });
 
+        // Handle browser back/forward buttons
         window.addEventListener('popstate', (event) => {
             const params = new URLSearchParams(window.location.search);
-            const page = params.get('page') || 'directory';
-            loadPage(page);
-            
-            navLinks.forEach(l => l.classList.remove('active'));
-            const activeLink = document.querySelector(`.nav-link[data-page='${page}']`);
-            if (activeLink) {
-                activeLink.classList.add('active');
-            }
+            const page = params.get('page') || 'homepage';
+            navigateTo(page, {}, false); // Don't push state on popstate
         });
 
+        // Initial page load on DOMContentLoaded
         document.addEventListener('DOMContentLoaded', () => {
-            fetchBotInfo();
             const params = new URLSearchParams(window.location.search);
-            const page = params.get('page') || 'directory';
-            
-            loadPage(page);
-
-            navLinks.forEach(l => l.classList.remove('active'));
-            const activeLink = document.querySelector(`.nav-link[data-page='${page}']`);
-            if (activeLink) {
-                activeLink.classList.add('active');
-            }
+            const page = params.get('page') || 'homepage';
+            navigateTo(page, {}, false); // Initial load doesn't need to push state
+            initializeSidebar();
         });
 
         // Listen for custom navigation events from iframes (if any)

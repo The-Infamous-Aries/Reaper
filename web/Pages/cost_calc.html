@@ -139,6 +139,8 @@
 
     <script>
         const calculatorToggle = document.getElementById('calculator-toggle');
+        if (calculatorToggle && !calculatorToggle.hasAttribute('data-initialized')) {
+            calculatorToggle.setAttribute('data-initialized', 'true');
         const buildingCalculator = document.getElementById('building-calculator');
         const militaryCalculator = document.getElementById('military-calculator');
         const calculateBtn = document.getElementById('calculate-btn');
@@ -443,4 +445,5 @@
 
             return { base_costs: raw_costs, final_costs: final_cost };
         }
+    }
     </script>

@@ -1,122 +1,4 @@
-<link rel="stylesheet" href="/css/pnw_graph.css">
-<br>
-<!-- Graph Buttons Container - Rich emoji image buttons like library -->
-<div class="container-fluid mb-4">
-    <div class="row">
-        <div class="col-12 d-flex justify-content-center align-items-center gap-4">
-            <div class="graph-emoji-button" data-graph-type="war" data-bs-toggle="tooltip" data-bs-placement="top" title="War Cost Breakdown">
-                <img src="/static/Emojis/PnW Menu/cost.png" alt="War Cost" class="button-icon">
-            </div>
-            <div class="graph-emoji-button" data-graph-type="warnet" data-bs-toggle="tooltip" data-bs-placement="top" title="War Net Analysis">
-                <img src="/static/Emojis/PnW Menu/net.png" alt="War Net" class="button-icon">
-            </div>
-            <div class="graph-emoji-button" data-graph-type="compare" data-bs-toggle="tooltip" data-bs-placement="top" title="Alliance Comparison">
-                <img src="/static/Emojis/PnW Menu/comparison.png" alt="Compare Alliances" class="button-icon">
-            </div>
-            <div class="graph-emoji-button" data-graph-type="treaty" data-bs-toggle="tooltip" data-bs-placement="top" title="Treaty Universe">
-                <img src="/static/Emojis/PnW Menu/universe.png" alt="Treaty Universe" class="button-icon">
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Graphs Page Content -->
-<div class="container-fluid">
-    <div class="row">
-        <!-- Main Content Area -->
-        <div class="col-12">
-            <div class="card">
-                <div class="card-header text-center">
-                    <h3>📊 Politics & War Graph Analytics</h3>
-                    <p class="mb-0">Select a graph type above to begin analysis</p>
-                </div>
-                <div class="card-body">
-                    <!-- Graph Configuration Panel -->
-                    <div class="graph-config-panel" id="graph-config-panel" style="display: none;">
-                        <div class="config-header">
-                            <h4 id="config-title">Configure Graph</h4>
-                            <button class="btn-close-config" id="btn-close-config">&times;</button>
-                        </div>
-                        <div class="config-body" id="config-body">
-                            <!-- Configuration forms will be inserted here -->
-                        </div>
-                    </div>
-
-                    <!-- Graph Display Area -->
-                    <div class="graph-display-area" id="graph-display-area" style="display: none;">
-                        <div class="graph-display-header d-flex justify-content-between align-items-center mb-3">
-                            <h4 id="graph-display-title">Generating Graph...</h4>
-                            <div class="graph-display-controls">
-                                <button class="btn btn-primary btn-sm me-2" id="btn-regenerate">
-                                    <i class="fas fa-redo"></i>
-                                    Regenerate
-                                </button>
-                                <button class="btn btn-secondary btn-sm" id="btn-configure">
-                                    <i class="fas fa-cog"></i>
-                                    Configure
-                                </button>
-                            </div>
-                        </div>
-                        <div class="graph-content" id="graph-content">
-                            <div class="loading-container" id="graph-loading">
-                                <div class="spinner-border text-primary mb-3" role="status" style="width: 3rem; height: 3rem;">
-                                    <span class="visually-hidden">Loading...</span>
-                                </div>
-                                <h4 class="text-primary mb-2">Generating Graph...</h4>
-                                <p class="text-muted" id="loading-text">Initializing graph generation...</p>
-                                <div class="progress-custom">
-                                    <div class="progress-bar-custom" id="progress-bar"></div>
-                                </div>
-                            </div>
-                            <div class="error-container" id="graph-error" style="display: none;">
-                                <div class="alert alert-danger" role="alert">
-                                    <h5 class="alert-heading">Failed to Load Graph</h5>
-                                    <p id="error-message"></p>
-                                    <hr>
-                                    <div class="mt-3">
-                                        <button onclick="location.reload()" class="btn btn-primary btn-sm">🔄 Retry</button>
-                                        <button class="btn btn-secondary btn-sm ms-2" id="btn-back-to-config">Back to Configuration</button>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="graph-result" id="graph-result" style="display: none;">
-                                <!-- Graph will be displayed here -->
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Welcome/Empty State -->
-                    <div class="welcome-state" id="welcome-state">
-                        <div class="welcome-content text-center py-5">
-                            <div class="welcome-icon mb-4">
-                                <i class="fas fa-chart-line fa-3x text-primary"></i>
-                            </div>
-                            <h2>Welcome to Graph Analytics</h2>
-                            <p class="mb-4">Select a graph type from the left sidebar to begin analyzing Politics & War data</p>
-                            <div class="graph-types-preview row justify-content-center">
-                                <div class="preview-item col-md-3 mb-3">
-                                    <i class="fas fa-crosshairs fa-2x text-primary mb-2"></i>
-                                    <div>War Cost Analysis</div>
-                                </div>
-                                <div class="preview-item col-md-3 mb-3">
-                                    <i class="fas fa-balance-scale fa-2x text-primary mb-2"></i>
-                                    <div>Alliance Comparisons</div>
-                                </div>
-                                <div class="preview-item col-md-3 mb-3">
-                                    <i class="fas fa-handshake fa-2x text-primary mb-2"></i>
-                                    <div>Treaty Networks</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<script>
-// Politics & War Graph JavaScript - Inline version for dashboard compatibility
+// Politics & War Graph JavaScript
 
 class PNWGraphManager {
     constructor() {
@@ -126,7 +8,8 @@ class PNWGraphManager {
             war: this.createWarForm(),
             warnet: this.createWarNetForm(),
             compare: this.createCompareForm(),
-            treaty: this.createTreatyForm()
+            treaty: this.createTreatyForm(),
+            stocks: this.createStocksForm()
         };
         
         this.init();
@@ -279,27 +162,9 @@ class PNWGraphManager {
         // Show loading state
         this.showLoadingState();
 
-        // Build API URL - use the correct endpoints based on graph type
+        // Build API URL
         const queryString = new URLSearchParams(this.currentGraphParams).toString();
-        let apiUrl;
-        
-        switch (this.currentGraphType) {
-            case 'war':
-                apiUrl = `/api/pnw/war_costs?${queryString}`;
-                break;
-            case 'warnet':
-                apiUrl = `/api/pnw/war_net?${queryString}`;
-                break;
-            case 'compare':
-                apiUrl = `/api/pnw/compare?${queryString}`;
-                break;
-            case 'treaty':
-                apiUrl = `/api/pnw/universe?${queryString}`;
-                break;
-            default:
-                this.showError('Unknown graph type: ' + this.currentGraphType);
-                return;
-        }
+        const apiUrl = `/api/graph/${this.currentGraphType}?${queryString}`;
 
         // Simulate progress for better UX
         this.simulateProgress();
@@ -318,8 +183,7 @@ class PNWGraphManager {
                 this.displayGraph(graphData);
             })
             .catch(error => {
-                console.error('Graph generation error:', error);
-                this.showError(error.message || 'Failed to generate graph. Please try again.');
+                this.showError(error.message);
             });
     }
 
@@ -369,19 +233,15 @@ class PNWGraphManager {
         document.getElementById('graph-display-title').textContent = 
             this.getGraphTitle(this.currentGraphType);
 
-        // Display the graph - the API now returns the full HTML content directly
-        if (graphData && graphData.length > 0) {
-            // Create a blob URL for the HTML content to display in an iframe
-            const blob = new Blob([graphData], { type: 'text/html' });
-            const url = URL.createObjectURL(blob);
-            
+        // Display the graph
+        if (graphData.includes('<html') || graphData.includes('<!DOCTYPE')) {
+            // HTML content (Plotly graphs)
             resultContainer.innerHTML = 
-                `<iframe src="${url}" class="graph-iframe" sandbox="allow-scripts allow-same-origin"></iframe>`;
-            
-            // Clean up the blob URL after a delay to prevent memory leaks
-            setTimeout(() => URL.revokeObjectURL(url), 60000);
+                `<iframe srcdoc="${graphData.replace(/"/g, '&quot;')}" class="graph-iframe"></iframe>`;
         } else {
-            this.showError('No graph data received from server');
+            // Image data (base64)
+            resultContainer.innerHTML = 
+                `<img src="data:image/png;base64,${graphData}" class="graph-image" alt="Generated Graph">`;
         }
     }
 
@@ -398,7 +258,7 @@ class PNWGraphManager {
         // Update page title (with null check)
         const pageSubtitle = document.querySelector('.page-subtitle');
         if (pageSubtitle) {
-            pageSubtitle.textContent = 'Select a graph type from the left menu to begin analyzing Politics & War data';
+            pageSubtitle.textContent = 'Select a graph type from the left menu to begin analysis';
         }
     }
 
@@ -420,8 +280,8 @@ class PNWGraphManager {
                 <div class="row">
                     <div class="col-md-6">
                         <div class="mb-3">
-                            <label for="alliance" class="form-label">Alliance Name or ID</label>
-                            <input type="text" class="form-control" id="alliance" name="alliance" 
+                            <label for="alliance_name" class="form-label">Alliance Name or ID</label>
+                            <input type="text" class="form-control" id="alliance_name" name="alliance_name" 
                                    placeholder="e.g., The Knights Radiant or 1234" required>
                             <div class="form-text">Enter the alliance name or ID to analyze</div>
                         </div>
@@ -472,8 +332,8 @@ class PNWGraphManager {
                 <div class="row">
                     <div class="col-md-6">
                         <div class="mb-3">
-                            <label for="alliance" class="form-label">Alliance Name or ID</label>
-                            <input type="text" class="form-control" id="alliance" name="alliance" 
+                            <label for="alliance_name" class="form-label">Alliance Name or ID</label>
+                            <input type="text" class="form-control" id="alliance_name" name="alliance_name" 
                                    placeholder="e.g., The Knights Radiant or 1234" required>
                             <div class="form-text">Enter the alliance name or ID to analyze</div>
                         </div>
@@ -576,7 +436,22 @@ class PNWGraphManager {
         `;
     }
 
-
+    createStocksForm() {
+        return `
+            <form id="stocks-form" class="graph-form">
+                <div class="alert alert-info">
+                    <h5><i class="fas fa-info-circle"></i> Stock Market Analysis</h5>
+                    <p>This graph shows trends for Politics & War stock market resources including Steel, Aluminum, Gasoline, Munitions, and Food.</p>
+                </div>
+                
+                <div class="text-center">
+                    <button type="submit" class="btn btn-gold">
+                        <i class="fas fa-chart-line"></i> Generate Stock Trends
+                    </button>
+                </div>
+            </form>
+        `;
+    }
 
     // Utility methods
     getGraphTitle(type) {
@@ -584,7 +459,8 @@ class PNWGraphManager {
             war: 'War Cost Breakdown',
             warnet: 'War Net Analysis',
             compare: 'Alliance Comparison',
-            treaty: 'Treaty Universe'
+            treaty: 'Treaty Universe',
+            stocks: 'Stock Market Trends'
         };
         return titles[type] || 'Unknown Graph';
     }
@@ -618,19 +494,23 @@ class PNWGraphManager {
                 { progress: 60, text: 'Mapping relationships...' },
                 { progress: 80, text: 'Creating 3D visualization...' },
                 { progress: 95, text: 'Rendering universe...' }
+            ],
+            stocks: [
+                { progress: 25, text: 'Loading market data...' },
+                { progress: 50, text: 'Analyzing trends...' },
+                { progress: 75, text: 'Creating charts...' },
+                { progress: 95, text: 'Finalizing display...' }
             ]
         };
         return steps[type] || steps.war;
     }
 }
 
-// Initialize when dashboard page is loaded
-document.addEventListener('dashboardPageLoaded', function(event) {
-    if (event.detail.page !== 'graphs.html') {
-        return; // Only run on the graphs page
+// Initialize the graph manager when the dashboard page is loaded
+document.addEventListener('dashboardPageLoaded', (event) => {
+    console.log('Dashboard page loaded event:', event.detail);
+    if (event.detail.page === 'graphs.html') {
+        console.log('Initializing PNWGraphManager for graphs page');
+        window.pnwGraphManager = new PNWGraphManager();
     }
-
-    console.log('Graphs page script executing...');
-    window.pnwGraphManager = new PNWGraphManager();
 });
-</script>
