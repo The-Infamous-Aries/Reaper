@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Night's Watch - Leaderboard</title>
+    <link rel="stylesheet" href="/css/main.css">
+    <style>
+        .lb-shell { display: grid; gap: 1.25rem; }
+
+        .lb-period-tabs {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+        .lb-tab {
+            padding: 0.5rem 1.1rem;
+            border-radius: 999px;
+            border: 1px solid rgba(255, 215, 0, 0.3);
+            background: rgba(14, 11, 5, 0.92);
+            color: var(--gold-secondary);
+            font-size: 0.82rem;
+            font-weight: 700;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: all 0.18s ease;
+        }
+        .lb-tab:hover { color: var(--gold-primary); border-color: rgba(255,215,0,0.55); }
+        .lb-tab.active {
+            background: linear-gradient(45deg, #ffd700, #ffed4e);
+            color: #1a1a1a;
+            border-color: transparent;
+            box-shadow: 0 0 14px rgba(255,215,0,0.3);
+        }
+
+        .lb-period-label {
+            margin: 0;
+            color: var(--text-secondary);
+            font-size: 0.8rem;
+        }
+        .lb-period-value {
+            margin: 0.2rem 0 0;
+            color: var(--gold-primary);
+            font-size: 0.95rem;
+            font-weight: 700;
+        }
+
+        .lb-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 1rem;
+        }
+
+        .lb-card {
+            border-radius: 1rem;
+            border: 1px solid rgba(255, 215, 0, 0.18);
+            background: linear-gradient(160deg, rgba(22, 17, 6, 0.96), rgba(10, 10, 10, 0.96));
+            overflow: hidden;
+        }
+        .lb-card-header {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid rgba(255, 215, 0, 0.12);
+            background: linear-gradient(90deg, rgba(30, 23, 8, 0.9), rgba(14, 11, 5, 0.9));
+        }
+        .lb-card-icon {
+            width: 1.3rem;
+            height: 1.3rem;
+            object-fit: contain;
+            filter: drop-shadow(0 0 4px rgba(255,215,0,0.3));
+        }
+        .lb-card-title {
+            margin: 0;
+            color: var(--gold-primary);
+            font-size: 0.82rem;
+            font-weight: 700;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+        }
+
+        .lb-podium {
+            padding: 0.6rem 0.75rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.35rem;
+        }
+        .lb-row {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            padding: 0.45rem 0.5rem;
+            border-radius: 0.6rem;
+            transition: background 0.15s ease;
+        }
+        .lb-row:hover { background: rgba(255,215,0,0.06); }
+        .lb-rank-img {
+            width: 1.6rem;
+            height: 1.6rem;
+            object-fit: contain;
+            flex-shrink: 0;
+        }
+        .lb-nation {
+            flex: 1;
+            min-width: 0;
+            color: var(--text-primary);
+            font-weight: 600;
+            font-size: 0.9rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .lb-value {
+            color: var(--gold-secondary);
+            font-size: 0.82rem;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+        .lb-empty {
+            padding: 1rem;
+            color: var(--text-secondary);
+            font-size: 0.82rem;
+            text-align: center;
+        }
+
+        #lb-status {
+            margin: 0;
+            padding: 0.85rem 1rem;
+            border: 1px solid rgba(255, 215, 0, 0.24);
+            border-radius: 0.75rem;
+            display: none;
+            background: rgba(15, 15, 15, 0.78);
+            color: var(--text-primary);
+        }
+        #lb-status.is-error {
+            border-color: #b00020;
+            color: #b00020;
+            background: rgba(176, 0, 32, 0.08);
+        }
+
+        .lb-tab-group {
+            position: relative;
+        }
+        .lb-tab-group .lb-sub-menu {
+            display: none;
+            position: absolute;
+            top: calc(100% + 0.4rem);
+            left: 0;
+            z-index: 50;
+            min-width: 180px;
+            background: rgba(14, 11, 5, 0.97);
+            border: 1px solid rgba(255, 215, 0, 0.3);
+            border-radius: 0.6rem;
+            padding: 0.3rem 0;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+        }
+        .lb-tab-group.open .lb-sub-menu { display: block; }
+        .lb-sub-item {
+            display: block;
+            width: 100%;
+            padding: 0.45rem 1rem;
+            background: none;
+            border: none;
+            color: var(--gold-secondary);
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-align: left;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: background 0.12s;
+        }
+        .lb-sub-item:hover { background: rgba(255,215,0,0.08); color: var(--gold-primary); }
+        .lb-sub-item.active { color: #1a1a1a; background: linear-gradient(45deg,#ffd700,#ffed4e); }
+        .lb-tab .lb-caret {
+            display: inline-block;
+            margin-left: 0.3em;
+            font-size: 0.65em;
+            transition: transform 0.15s;
+        }
+        .lb-tab-group.open .lb-tab .lb-caret { transform: rotate(180deg); }
+
+        .lb-custom-range {
+            display: none;
+            align-items: center;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            padding: 0.6rem 0.75rem;
+            border: 1px solid rgba(255, 215, 0, 0.25);
+            border-radius: 0.75rem;
+            background: rgba(14, 11, 5, 0.92);
+            margin-top: 0.5rem;
+        }
+        .lb-custom-range.visible { display: flex; }
+        .lb-custom-range label {
+            color: var(--text-secondary);
+            font-size: 0.78rem;
+            font-weight: 600;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+        }
+        .lb-date-input {
+            padding: 0.35rem 0.6rem;
+            border-radius: 0.45rem;
+            border: 1px solid rgba(255, 215, 0, 0.3);
+            background: rgba(10, 10, 10, 0.9);
+            color: var(--gold-primary);
+            font-size: 0.82rem;
+            font-family: inherit;
+            cursor: pointer;
+            outline: none;
+        }
+        .lb-date-input:focus { border-color: rgba(255, 215, 0, 0.6); }
+        .lb-date-input::-webkit-calendar-picker-indicator { filter: invert(0.8) sepia(1) saturate(3) hue-rotate(5deg); cursor: pointer; }
+        .lb-apply-btn {
+            padding: 0.35rem 0.9rem;
+            border-radius: 999px;
+            border: none;
+            background: linear-gradient(45deg, #ffd700, #ffed4e);
+            color: #1a1a1a;
+            font-size: 0.78rem;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: opacity 0.15s;
+        }
+        .lb-apply-btn:hover { opacity: 0.85; }
+        .lb-date-sep { color: var(--text-secondary); font-size: 0.8rem; }
+
+        .lb-loading-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 1rem;
+        }
+        .lb-skeleton {
+            height: 160px;
+            border-radius: 1rem;
+            background: linear-gradient(90deg, rgba(255,215,0,0.04) 25%, rgba(255,215,0,0.08) 50%, rgba(255,215,0,0.04) 75%);
+            background-size: 200% 100%;
+            animation: lb-shimmer 1.4s infinite;
+        }
+        @keyframes lb-shimmer {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+    </style>
+</head>
+<body>
+    <div class="lb-shell">
+        <div class="card">
+            <div class="card-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;">
+                <div>
+                    <p style="margin:0; color:var(--gold-secondary); font-size:0.82rem; letter-spacing:0.08em; text-transform:uppercase;">Night Watch Ledger</p>
+                    <p style="margin:0.2rem 0 0; color:var(--gold-primary); font-size:1.1rem; font-weight:700;"><img src="/static/Emojis/Menu/leaderboard.png" style="width:1.2rem;height:1.2rem;object-fit:contain;vertical-align:middle;margin-right:0.4rem;">Leaderboards</p>
+                </div>
+                <div class="lb-period-tabs">
+                    <button class="lb-tab active" data-period="this_month">This Month</button>
+                    <button class="lb-tab" data-period="this_week">This Week</button>
+                    <div class="lb-tab-group" id="prev-months-group">
+                        <button class="lb-tab" id="prev-months-btn">Previous Months <span class="lb-caret">▼</span></button>
+                        <div class="lb-sub-menu" id="prev-months-menu"><div class="lb-sub-item" style="color:var(--text-secondary);cursor:default;">Loading…</div></div>
+                    </div>
+                    <div class="lb-tab-group" id="prev-weeks-group">
+                        <button class="lb-tab" id="prev-weeks-btn">Previous Weeks <span class="lb-caret">▼</span></button>
+                        <div class="lb-sub-menu" id="prev-weeks-menu"><div class="lb-sub-item" style="color:var(--text-secondary);cursor:default;">Loading…</div></div>
+                    </div>
+                    <button class="lb-tab" id="custom-range-btn">Custom Range</button>
+                </div>
+            </div>
+            <div class="lb-custom-range" id="lb-custom-range">
+                <label for="lb-start-date">From</label>
+                <input type="date" id="lb-start-date" class="lb-date-input">
+                <span class="lb-date-sep">→</span>
+                <label for="lb-end-date">To</label>
+                <input type="date" id="lb-end-date" class="lb-date-input">
+                <button class="lb-apply-btn" id="lb-apply-range">Apply</button>
+            </div>
+            <div class="card-body" style="padding-top:0.5rem;">
+                <div style="display:flex; gap:1.5rem; flex-wrap:wrap;">
+                    <div>
+                        <p class="lb-period-label">Period</p>
+                        <p class="lb-period-value" id="lb-period-display">—</p>
+                    </div>
+                    <div>
+                        <p class="lb-period-label">Wars in Range</p>
+                        <p class="lb-period-value" id="lb-war-count">—</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="lb-status" role="status" aria-live="polite"></div>
+
+        <div id="lb-loading" class="lb-loading-grid">
+            <div class="lb-skeleton"></div><div class="lb-skeleton"></div>
+            <div class="lb-skeleton"></div><div class="lb-skeleton"></div>
+            <div class="lb-skeleton"></div><div class="lb-skeleton"></div>
+        </div>
+
+        <div id="lb-grid" class="lb-grid" style="display:none;"></div>
+    </div>
+
+    <script>
+    (() => {
+        // ── Category definitions ──────────────────────────────────────────────
+        // field: key in nation data | fmt: value formatter | emoji prefix (c/m/r/a)
+        const CATEGORIES = [
+            { id: 'lowest_cost',           label: 'Lowest Cost',                      field: 'gross_cost',              fmt: fmtMoney,  prefix: 'c', asc: true  },
+            { id: 'highest_cost',          label: 'Highest Cost',                     field: 'gross_cost',              fmt: fmtMoney,  prefix: 'c', asc: false },
+            { id: 'best_net',              label: 'Best Net',                         field: 'net_damage',              fmt: fmtMoney,  prefix: 'n', asc: true, allowNeg: true },
+            { id: 'most_damage',           label: 'Most Damage Dealt',                field: 'total_damages',           fmt: fmtMoney,  prefix: 'n', asc: false },
+            { id: 'most_wins',             label: 'Most Wins',                        field: 'wins_count',              fmt: fmtInt,    prefix: 'd', asc: false },
+            { id: 'most_losses',           label: 'Most Losses',                      field: 'losses_count',            fmt: fmtInt,    prefix: 'p', asc: false },
+            { id: 'most_draws',            label: 'Most Draws',                       field: 'draws_count',             fmt: fmtInt,    prefix: 'd', asc: false },
+            { id: 'most_peace',            label: 'Most Peace',                       field: 'peace_count',             fmt: fmtInt,    prefix: 'p', asc: false },
+            { id: 'most_off_wars',         label: 'Most Offensive Wars',              field: 'offense_wars_count',      fmt: fmtInt,    prefix: 'c', asc: false },
+            { id: 'most_def_wars',         label: 'Most Defensive Wars',              field: 'defense_wars_count',      fmt: fmtInt,    prefix: 'c', asc: false },
+            { id: 'most_raid_wars',        label: 'Most Raid Wars',                   field: 'raid_wars_count',         fmt: fmtInt,    prefix: 'w', asc: false },
+            { id: 'most_attrition_wars',   label: 'Most Attrition Wars',              field: 'attrition_wars_count',    fmt: fmtInt,    prefix: 'w', asc: false },
+            { id: 'most_money_loot',       label: 'Most Money Looted/Stolen',         field: 'gains_cash',              fmt: fmtMoney,  prefix: 'm', asc: false },
+            { id: 'most_res_loot',         label: 'Most Resource Value Looted',       field: 'gains_res_total',         fmt: fmtMoney,  prefix: 'm', asc: false },
+            { id: 'most_infra_lvl',        label: 'Most Infra Levels Destroyed',      field: 'enemy_infra_destroyed',   fmt: fmtNum,    prefix: 'r', asc: false },
+            { id: 'most_infra_val',        label: 'Most Infra Value Destroyed',       field: 'enemy_infra_destroyed_value', fmt: fmtMoney, prefix: 'r', asc: false },
+            { id: 'most_soldiers_killed',  label: 'Most Soldiers Killed',             field: 'enemy_soldiers_killed',   fmt: fmtInt,    prefix: 'k', asc: false },
+            { id: 'most_tanks_killed',     label: 'Most Tanks Killed',                field: 'enemy_tanks_killed',      fmt: fmtInt,    prefix: 'k', asc: false },
+            { id: 'most_aircraft_killed',  label: 'Most Aircraft Killed',             field: 'enemy_aircraft_killed',   fmt: fmtInt,    prefix: 'k', asc: false },
+            { id: 'most_ships_killed',     label: 'Most Ships Killed',                field: 'enemy_ships_killed',      fmt: fmtInt,    prefix: 'k', asc: false },
+            { id: 'most_soldiers_lost',    label: 'Most Soldiers Lost',               field: 'soldiers_lost',           fmt: fmtInt,    prefix: 'l', asc: false },
+            { id: 'most_tanks_lost',       label: 'Most Tanks Lost',                  field: 'tanks_lost',              fmt: fmtInt,    prefix: 'l', asc: false },
+            { id: 'most_aircraft_lost',    label: 'Most Aircraft Lost',               field: 'aircraft_lost',           fmt: fmtInt,    prefix: 'l', asc: false },
+            { id: 'most_ships_lost',       label: 'Most Ships Lost',                  field: 'ships_lost',              fmt: fmtInt,    prefix: 'l', asc: false },
+            { id: 'most_missiles_sent',    label: 'Most Missiles Sent',               field: 'missiles_hit',            fmt: fmtInt,    prefix: 'a', asc: false },
+            { id: 'most_missiles_miss',    label: 'Most Missiles Missed',             field: 'missiles_missed',         fmt: fmtInt,    prefix: 'a', asc: false },
+            { id: 'most_missiles_eat',     label: 'Most Missiles Eaten',              field: 'missiles_eaten',          fmt: fmtInt,    prefix: 'a', asc: false },
+            { id: 'most_missiles_blk',     label: 'Most Missiles Blocked',            field: 'missiles_blocked',        fmt: fmtInt,    prefix: 'a', asc: false },
+            { id: 'most_nukes_sent',       label: 'Most Nukes Sent',                  field: 'nukes_hit',               fmt: fmtInt,    prefix: 'a', asc: false },
+            { id: 'most_nukes_miss',       label: 'Most Nukes Missed',                field: 'nukes_missed',            fmt: fmtInt,    prefix: 'a', asc: false },
+            { id: 'most_nukes_eat',        label: 'Most Nukes Eaten',                 field: 'nukes_eaten',             fmt: fmtInt,    prefix: 'a', asc: false },
+            { id: 'most_nukes_blk',        label: 'Most Nukes Blocked',               field: 'nukes_blocked',           fmt: fmtInt,    prefix: 'a', asc: false },
+        ];
+
+        // Category icons (Watcher emojis for card headers)
+        const CAT_ICONS = {
+            lowest_cost:           '/static/Emojis/Watcher/cost.png',
+            highest_cost:          '/static/Emojis/Watcher/cost.png',
+            best_net:              '/static/Emojis/Watcher/net.png',
+            most_damage:           '/static/Emojis/Watcher/damages.png',
+            most_off_wars:         '/static/Emojis/Watcher/off.png',
+            most_def_wars:         '/static/Emojis/Watcher/def.png',
+            most_raid_wars:        '/static/Emojis/Military/raid.png',
+            most_attrition_wars:   '/static/Emojis/Military/attrition.png',
+            most_wins:             '/static/Emojis/Military/win.png',
+            most_losses:           '/static/Emojis/Military/lose.png',
+            most_draws:            '/static/Emojis/Military/draw.png',
+            most_peace:            '/static/Emojis/Military/peace.png',
+            most_money_loot:       '/static/Emojis/Watcher/loot.png',
+            most_res_loot:         '/static/Emojis/Watcher/loot.png',
+            most_infra_lvl:        '/static/Emojis/Watcher/infra.png',
+            most_infra_val:        '/static/Emojis/Watcher/infra.png',
+            most_soldiers_killed:  '/static/Emojis/Watcher/soldier.png',
+            most_tanks_killed:     '/static/Emojis/Watcher/tank.png',
+            most_aircraft_killed:  '/static/Emojis/Watcher/jet.png',
+            most_ships_killed:     '/static/Emojis/Watcher/ship.png',
+            most_soldiers_lost:    '/static/Emojis/Watcher/soldier.png',
+            most_tanks_lost:       '/static/Emojis/Watcher/tank.png',
+            most_aircraft_lost:    '/static/Emojis/Watcher/jet.png',
+            most_ships_lost:       '/static/Emojis/Watcher/ship.png',
+            most_missiles_sent:    '/static/Emojis/Watcher/missile.png',
+            most_missiles_miss:    '/static/Emojis/Watcher/missile.png',
+            most_missiles_eat:     '/static/Emojis/Watcher/missile.png',
+            most_missiles_blk:     '/static/Emojis/Watcher/missile.png',
+            most_nukes_sent:       '/static/Emojis/Watcher/bomb.png',
+            most_nukes_miss:       '/static/Emojis/Watcher/bomb.png',
+            most_nukes_eat:        '/static/Emojis/Watcher/bomb.png',
+            most_nukes_blk:        '/static/Emojis/Watcher/bomb.png',
+        };
+
+        // ── Formatters ────────────────────────────────────────────────────────
+        function fmtMoney(v) {
+            if (v === null || v === undefined) return '—';
+            const abs = Math.abs(v);
+            if (abs >= 1e9) return '$' + (v / 1e9).toFixed(2) + 'B';
+            if (abs >= 1e6) return '$' + (v / 1e6).toFixed(2) + 'M';
+            if (abs >= 1e3) return '$' + (v / 1e3).toFixed(1) + 'K';
+            return '$' + v.toFixed(0);
+        }
+        function fmtNum(v) {
+            if (v === null || v === undefined) return '—';
+            if (Math.abs(v) >= 1e6) return (v / 1e6).toFixed(2) + 'M';
+            if (Math.abs(v) >= 1e3) return (v / 1e3).toFixed(1) + 'K';
+            return Number(v).toLocaleString(undefined, { maximumFractionDigits: 2 });
+        }
+        function fmtInt(v) {
+            if (v === null || v === undefined) return '—';
+            return Math.round(v).toLocaleString();
+        }
+
+        // ── Date helpers ──────────────────────────────────────────────────────
+        function toISO(d) {
+            return d.toISOString().slice(0, 10);
+        }
+        function getPeriodRange(period) {
+            const now = new Date();
+            const y = now.getFullYear(), m = now.getMonth(), d = now.getDay();
+            // week starts Monday
+            const dayOfWeek = (d === 0) ? 6 : d - 1;
+
+            if (period === 'this_month') {
+                const start = new Date(y, m, 1);
+                const end = new Date(y, m + 1, 0);
+                return { start: toISO(start), end: toISO(end), label: start.toLocaleDateString(undefined, { month: 'long', year: 'numeric' }) };
+            }
+            if (period === 'last_month') {
+                const start = new Date(y, m - 1, 1);
+                const end = new Date(y, m, 0);
+                return { start: toISO(start), end: toISO(end), label: start.toLocaleDateString(undefined, { month: 'long', year: 'numeric' }) };
+            }
+            if (period === 'this_week') {
+                const start = new Date(now); start.setDate(now.getDate() - dayOfWeek); start.setHours(0,0,0,0);
+                const end = new Date(start); end.setDate(start.getDate() + 6);
+                return { start: toISO(start), end: toISO(end), label: `${start.toLocaleDateString(undefined,{month:'short',day:'numeric'})} – ${end.toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'})}` };
+            }
+            if (period === 'last_week') {
+                const start = new Date(now); start.setDate(now.getDate() - dayOfWeek - 7); start.setHours(0,0,0,0);
+                const end = new Date(start); end.setDate(start.getDate() + 6);
+                return { start: toISO(start), end: toISO(end), label: `${start.toLocaleDateString(undefined,{month:'short',day:'numeric'})} – ${end.toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'})}` };
+            }
+            return null;
+        }
+
+        // ── Data enrichment ───────────────────────────────────────────────────
+        function enrichNation(n) {
+            // gains_cash and gains_res_* live inside loot_breakdown (same as watch.html)
+            const lb = n.loot_breakdown || {};
+            n.gains_cash = lb.cash || 0;
+            const LOOT_RES = ['coal','oil','uranium','iron','bauxite','lead','gasoline','munitions','steel','aluminum','food'];
+            LOOT_RES.forEach(r => {
+                n[`gains_res_${r}`] = (lb.resources || {})[r]?.value || 0;
+            });
+            n.gains_res_total = LOOT_RES.reduce((s, r) => s + (n[`gains_res_${r}`] || 0), 0);
+
+            // missiles_lost = missiles the nation fired (consumed on launch = "sent")
+            // missiles_eaten = enemy missiles that successfully hit us (infra_destroyed > 0)
+            // missiles_blocked = enemy missiles we blocked (infra_destroyed == 0)
+            // missiles_missed = our missiles that enemy blocked (infra_destroyed == 0)
+            n.missiles_used = n.missiles_lost ?? null;
+            n.nukes_used = n.nukes_lost ?? null;
+            // blocked/missed/eaten fields come directly from the API — ensure they exist
+            n.missiles_blocked = n.missiles_blocked ?? 0;
+            n.nukes_blocked    = n.nukes_blocked    ?? 0;
+            n.missiles_missed  = n.missiles_missed  ?? 0;
+            n.nukes_missed     = n.nukes_missed     ?? 0;
+            n.missiles_eaten   = n.missiles_eaten   ?? 0;
+            n.nukes_eaten      = n.nukes_eaten      ?? 0;
+            n.missiles_hit     = n.missiles_hit     ?? 0;
+            n.nukes_hit        = n.nukes_hit        ?? 0;
+            // enemy unit kills
+            n.enemy_soldiers_killed = n.enemy_soldiers_killed ?? 0;
+            n.enemy_tanks_killed    = n.enemy_tanks_killed    ?? 0;
+            n.enemy_aircraft_killed = n.enemy_aircraft_killed ?? 0;
+            n.enemy_ships_killed    = n.enemy_ships_killed    ?? 0;
+            return n;
+        }
+
+        // ── Ranking ───────────────────────────────────────────────────────────
+        function rankNations(nations, field, asc, allowNeg) {
+            const list = Object.values(nations)
+                .map(n => enrichNation({ ...n }))
+                .filter(n => {
+                    const v = n[field];
+                    if (v === null || v === undefined || isNaN(v)) return false;
+                    if (!allowNeg && v === 0) return false;
+                    return true;
+                });
+            list.sort((a, b) => asc ? a[field] - b[field] : b[field] - a[field]);
+            return list.slice(0, 3);
+        }
+
+        // ── Render ────────────────────────────────────────────────────────────
+        function rankImg(rank, prefix) {
+            return `/static/Emojis/Leaderboards/${rank}${prefix}.png`;
+        }
+
+        function renderCard(cat, nations) {
+            const top3 = rankNations(nations, cat.field, cat.asc, cat.allowNeg);
+            const icon = CAT_ICONS[cat.id] || '/static/Emojis/Watcher/war.png';
+
+            const rows = top3.length === 0
+                ? `<div class="lb-empty">No data for this period</div>`
+                : top3.map((n, i) => {
+                    const rank = i + 1;
+                    const val = n[cat.field];
+                    return `<div class="lb-row">
+                        <img class="lb-rank-img" src="${rankImg(rank, cat.prefix)}" alt="${rank}">
+                        <span class="lb-nation" title="${escHtml(n.name)}">${escHtml(n.name)}</span>
+                        <span class="lb-value">${cat.fmt(val)}</span>
+                    </div>`;
+                }).join('');
+
+            return `<div class="lb-card">
+                <div class="lb-card-header">
+                    <img class="lb-card-icon" src="${icon}" alt="">
+                    <p class="lb-card-title">${escHtml(cat.label)}</p>
+                </div>
+                <div class="lb-podium">${rows}</div>
+            </div>`;
+        }
+
+        function escHtml(s) {
+            return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+        }
+
+        function setStatus(msg, isError) {
+            const el = document.getElementById('lb-status');
+            el.textContent = msg;
+            el.style.display = msg ? 'block' : 'none';
+            el.classList.toggle('is-error', !!isError);
+        }
+
+        // ── Fetch & render ────────────────────────────────────────────────────
+        let activePeriod = 'this_month';
+        let fetchToken = 0;
+
+        async function load(period) {
+            const token = ++fetchToken;
+            const range = getPeriodRange(period);
+            if (!range) return;
+
+            document.getElementById('lb-period-display').textContent = range.label;
+            document.getElementById('lb-war-count').textContent = '…';
+            document.getElementById('lb-loading').style.display = 'grid';
+            document.getElementById('lb-grid').style.display = 'none';
+            setStatus('');
+
+            try {
+                const url = `/api/watch/wars?start_date=${range.start}&end_date=${range.end}`;
+                const res = await fetch(url);
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const data = await res.json();
+                if (token !== fetchToken) return;
+
+                if (data.error) {
+                    setStatus(data.error, true);
+                    document.getElementById('lb-loading').style.display = 'none';
+                    return;
+                }
+
+                const nations = data.nations || {};
+                const warCount = data.meta?.war_count ?? Object.keys(nations).length;
+                document.getElementById('lb-war-count').textContent = warCount.toLocaleString();
+
+                const grid = document.getElementById('lb-grid');
+                grid.innerHTML = CATEGORIES.map(cat => renderCard(cat, nations)).join('');
+                document.getElementById('lb-loading').style.display = 'none';
+                grid.style.display = 'grid';
+            } catch (err) {
+                if (token !== fetchToken) return;
+                setStatus('Failed to load leaderboard data.', true);
+                document.getElementById('lb-loading').style.display = 'none';
+            }
+        }
+
+        // ── Tab switching ─────────────────────────────────────────────────────
+        // Simple tabs (this_month, this_week)
+        document.querySelectorAll('.lb-tab[data-period]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                setActiveTab(null);
+                btn.classList.add('active');
+                activePeriod = btn.dataset.period;
+                load(activePeriod);
+            });
+        });
+
+        // Dropdown groups
+        function setActiveTab(subItem) {
+            document.querySelectorAll('.lb-tab').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.lb-sub-item').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.lb-tab-group').forEach(g => g.classList.remove('open'));
+            document.getElementById('lb-custom-range').classList.remove('visible');
+            if (subItem) subItem.classList.add('active');
+        }
+
+        function setupDropdown(groupId, btnId) {
+            const group = document.getElementById(groupId);
+            const btn = document.getElementById(btnId);
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const isOpen = group.classList.contains('open');
+                document.querySelectorAll('.lb-tab-group').forEach(g => g.classList.remove('open'));
+                if (!isOpen) group.classList.add('open');
+            });
+        }
+        setupDropdown('prev-months-group', 'prev-months-btn');
+        setupDropdown('prev-weeks-group', 'prev-weeks-btn');
+
+        // Custom range picker
+        const customBtn = document.getElementById('custom-range-btn');
+        const customPanel = document.getElementById('lb-custom-range');
+        const startInput = document.getElementById('lb-start-date');
+        const endInput = document.getElementById('lb-end-date');
+
+        let validDates = []; // sorted ASC, populated from /api/watch/periods
+
+        function applyDateConstraints(dates) {
+            if (!dates || !dates.length) return;
+            validDates = dates;
+            startInput.min = dates[0];
+            startInput.max = dates[dates.length - 1];
+            endInput.min = dates[0];
+            endInput.max = dates[dates.length - 1];
+            startInput.value = dates[0];
+            endInput.value = dates[dates.length - 1];
+        }
+
+        function snapToValid(value, snapBack) {
+            if (!validDates.length || validDates.includes(value)) return value;
+            // snapBack=true → find nearest date <= value; false → nearest >= value
+            if (snapBack) return [...validDates].reverse().find(d => d <= value) || validDates[0];
+            return validDates.find(d => d >= value) || validDates[validDates.length - 1];
+        }
+
+        startInput.addEventListener('change', () => {
+            startInput.value = snapToValid(startInput.value, true);
+            if (endInput.value < startInput.value) endInput.value = startInput.value;
+        });
+        endInput.addEventListener('change', () => {
+            endInput.value = snapToValid(endInput.value, false);
+            if (startInput.value > endInput.value) startInput.value = endInput.value;
+        });
+
+        customBtn.addEventListener('click', () => {
+            const isOpen = customPanel.classList.contains('visible');
+            if (!isOpen) {
+                setActiveTab(null);
+                customBtn.classList.add('active');
+                document.querySelectorAll('.lb-tab-group').forEach(g => g.classList.remove('open'));
+            }
+            customPanel.classList.toggle('visible', !isOpen);
+            if (isOpen) customBtn.classList.remove('active');
+        });
+
+        document.getElementById('lb-apply-range').addEventListener('click', () => {
+            const start = startInput.value;
+            const end = endInput.value;
+            if (!start || !end) return;
+            if (end < start) { setStatus('End date must be after start date.', true); return; }
+            setStatus('');
+            const label = `${start} – ${end}`;
+            activePeriod = { start, end, label };
+            loadCustomRange(activePeriod);
+        });
+
+        document.addEventListener('click', () => {
+            document.querySelectorAll('.lb-tab-group').forEach(g => g.classList.remove('open'));
+        });
+
+        // ── Load available periods from API ───────────────────────────────────
+        async function loadPeriods() {
+            try {
+                const res = await fetch('/api/watch/periods');
+                if (!res.ok) return;
+                const data = await res.json();
+
+                // Constrain custom date pickers to dates that exist in the DB
+                if (data.dates && data.dates.length) applyDateConstraints(data.dates);
+
+                const monthsMenu = document.getElementById('prev-months-menu');
+                const weeksMenu = document.getElementById('prev-weeks-menu');
+
+                // Skip the current month (first entry) since "This Month" tab covers it
+                const now = new Date();
+                const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+
+                const months = (data.months || []).filter(m => m.key !== currentMonthKey);
+                if (months.length === 0) {
+                    monthsMenu.innerHTML = '<div class="lb-sub-item" style="color:var(--text-secondary);cursor:default;">No data</div>';
+                } else {
+                    monthsMenu.innerHTML = months.map(m =>
+                        `<button class="lb-sub-item" data-start="${m.start}" data-end="${m.end}" data-label="${m.label}">${m.label}</button>`
+                    ).join('');
+                }
+
+                // Skip the current week
+                const dayOfWeek = now.getDay() === 0 ? 6 : now.getDay() - 1;
+                const weekStart = new Date(now); weekStart.setDate(now.getDate() - dayOfWeek); weekStart.setHours(0,0,0,0);
+                const currentWeekStart = weekStart.toISOString().slice(0,10);
+
+                const weeks = (data.weeks || []).filter(w => w.start !== currentWeekStart);
+                if (weeks.length === 0) {
+                    weeksMenu.innerHTML = '<div class="lb-sub-item" style="color:var(--text-secondary);cursor:default;">No data</div>';
+                } else {
+                    weeksMenu.innerHTML = weeks.map(w =>
+                        `<button class="lb-sub-item" data-start="${w.start}" data-end="${w.end}" data-label="${w.label}">${w.label}</button>`
+                    ).join('');
+                }
+
+                // Attach click handlers to sub-items
+                document.querySelectorAll('.lb-sub-item[data-start]').forEach(item => {
+                    item.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        setActiveTab(item);
+                        document.querySelectorAll('.lb-tab-group').forEach(g => g.classList.remove('open'));
+                        activePeriod = { start: item.dataset.start, end: item.dataset.end, label: item.dataset.label };
+                        loadCustomRange(activePeriod);
+                    });
+                });
+            } catch (e) {
+                console.warn('Could not load periods:', e);
+            }
+        }
+
+        async function loadCustomRange(range) {
+            const token = ++fetchToken;
+            document.getElementById('lb-period-display').textContent = range.label;
+            document.getElementById('lb-war-count').textContent = '…';
+            document.getElementById('lb-loading').style.display = 'grid';
+            document.getElementById('lb-grid').style.display = 'none';
+            setStatus('');
+            try {
+                const url = `/api/watch/wars?start_date=${range.start}&end_date=${range.end}`;
+                const res = await fetch(url);
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const data = await res.json();
+                if (token !== fetchToken) return;
+                if (data.error) { setStatus(data.error, true); document.getElementById('lb-loading').style.display = 'none'; return; }
+                const nations = data.nations || {};
+                document.getElementById('lb-war-count').textContent = (data.meta?.war_count ?? Object.keys(nations).length).toLocaleString();
+                const grid = document.getElementById('lb-grid');
+                grid.innerHTML = CATEGORIES.map(cat => renderCard(cat, nations)).join('');
+                document.getElementById('lb-loading').style.display = 'none';
+                grid.style.display = 'grid';
+            } catch (err) {
+                if (token !== fetchToken) return;
+                setStatus('Failed to load leaderboard data.', true);
+                document.getElementById('lb-loading').style.display = 'none';
+            }
+        }
+
+        // ── Init ──────────────────────────────────────────────────────────────
+        loadPeriods();
+        load(activePeriod);
+    })();
+    </script>
+</body>
+</html>

@@ -1,4 +1,4 @@
-<link href="/css/homepage.css" rel="stylesheet">
+<link href="css/homepage.css" rel="stylesheet">
 <div class="container-fluid py-2">
     <div class="row">
         <div class="col-12">
@@ -63,85 +63,138 @@ document.addEventListener('DOMContentLoaded', function() {
             </div>
         </div>
     </div>
+
+    <!-- Information Category -->
     <div class="row">
-        <!-- PnW Graphs -->
-        <div class="col-md-4 mb-4">
-            <div class="home-card" onclick="loadPage('graphs')" style="cursor: pointer;">
-                <h4><img src="/static/Emojis/Menu/graph.png" class="home-card-icon"> PnW Graphs</h4>
-                <p>Behold, data so beautiful it'll make a grown spreadsheet weep. Dive into interactive graphs for war costs, alliance comparisons, and market trends. It's like a crystal ball for your virtual empire.</p>
-            </div>
+        <div class="col-12">
+            <h3 class="category-header text-center mb-3" style="color: var(--gold-secondary); font-size: 1.2rem; letter-spacing: 2px;">INFORMATION</h3>
         </div>
-        <!-- PnW Calculators -->
+        <!-- Homepage -->
         <div class="col-md-4 mb-4">
-            <div class="home-card" onclick="loadPage('cost_calc')" style="cursor: pointer;">
-                <h4><img src="/static/Emojis/Menu/calculator.png" class="home-card-icon"> PnW Calculators</h4>
-                <p>Planning your next move in Politics & War? Use these calculators to figure out the cost of your ambitions. Whether it's a new city or a full-scale invasion, we'll tell you how broke you're about to be.</p>
-            </div>
-        </div>
-        <!-- Game Info -->
-        <div class="col-md-4 mb-4">
-            <div class="home-card" onclick="loadPage('game_info')" style="cursor: pointer;">
-                <h4><img src="/static/Emojis/Menu/game_info.png" class="home-card-icon"> Game Info</h4>
-                <p>Real-time market intelligence and strategic data. Track resource prices, monitor turn bonuses, and stay ahead of the game with live market analytics and color alliance rankings.</p>
-            </div>
-        </div>
-        <!-- Scriptorium -->
-        <div class="col-md-4 mb-4">
-            <div class="home-card" onclick="loadPage('library')" style="cursor: pointer;">
-                <h4><img src="/static/Emojis/Menu/script.png" class="home-card-icon"> Scriptorium</h4>
-                <p>Enter the library of forbidden knowledge. Here you'll find ancient scrolls and guides on everything from the "FAFO Doctrine" to advanced building techniques. Read up, and conquer.</p>
-            </div>
-        </div>
-        <!-- What Are Pets? -->
-        <div class="col-md-4 mb-4">
-            <div class="home-card" onclick="loadPage('what_are_pets')" style="cursor: pointer;">
-                <h4><img src="/static/Emojis/Menu/what_pets.png" class="home-card-icon"> What Are Pets?</h4>
-                <p>New to the world of digital companions? This is your starting guide. Learn about pet types, elements, leveling, and how to turn your cute little friend into a battle-hardened monster.</p>
-            </div>
-        </div>
-        <!-- Pets & Items -->
-        <div class="col-md-4 mb-4">
-            <div class="home-card" onclick="loadPage('pets')" style="cursor: pointer;">
-                <h4><img src="/static/Emojis/Menu/pets.png" class="home-card-icon"> Pets & Items</h4>
-                <p>The ultimate bestiary and item compendium. Browse every pet, monster, gem, and hat our twisted world has to offer. It's like a Pokedex, but with more existential dread.</p>
-            </div>
-        </div>
-        <!-- Tarot -->
-        <div class="col-md-4 mb-4">
-            <div class="home-card" onclick="loadPage('tarot')" style="cursor: pointer;">
-                <h4><img src="/static/Emojis/Menu/tarot.png" class="home-card-icon"> Tarot</h4>
-                <p>What does the future hold? Let our slightly sarcastic AI dealer pull some cards for you. Get readings that are probably more accurate than your financial advisor's.</p>
-            </div>
-        </div>
-        <!-- Astrology -->
-        <div class="col-md-4 mb-4">
-            <div class="home-card" onclick="loadPage('astrology')" style="cursor: pointer;">
-                <h4><img src="/static/Emojis/Menu/astrology.png" class="home-card-icon"> Astrology</h4>
-                <p>Discover your cosmic destiny! Find your Western and Chinese zodiac signs, your spirit animal, and get a daily horoscope that's vaguely specific enough to feel real.</p>
-            </div>
-        </div>
-        <!-- Fun -->
-        <div class="col-md-4 mb-4">
-            <div class="home-card" onclick="loadPage('fun')" style="cursor: pointer;">
-                <h4><img src="/static/Emojis/Menu/fun.png" class="home-card-icon"> Fun</h4>
-                <p>Sometimes you just want to flip a coin or play Rock Paper Scissors. This is the place for simple, pointless fun. No strategy required, just pure, unadulterated chance.</p>
+            <div class="home-card" onclick="loadPage('homepage')" style="cursor: pointer;">
+                <h4><img src="/static/Emojis/Menu/reaper.png" class="home-card-icon"> Homepage</h4>
+                <p>You're literally here right now. Reading the card that describes the page you're already on. Peak efficiency. If you click it, you'll reload this exact page and feel nothing.</p>
             </div>
         </div>
         <!-- Commands -->
         <div class="col-md-4 mb-4">
             <div class="home-card" onclick="loadPage('commands')" style="cursor: pointer;">
                 <h4><img src="/static/Emojis/Menu/discord.png" class="home-card-icon"> Commands</h4>
-                <p>The grand grimoire of incantations. A complete list of all the slash commands you can use to bend the bot to your will. Wield them wisely, or don't. It's more fun that way.</p>
+                <p>Every slash command, its arguments, and what it actually does — pulled live from the bot. The sacred grimoire of digital servitude. Use them wisely, or at least entertainingly.</p>
             </div>
         </div>
         <!-- Contact -->
         <div class="col-md-4 mb-4">
             <div class="home-card" onclick="loadPage('contact')" style="cursor: pointer;">
                 <h4><img src="/static/Emojis/Menu/contact.png" class="home-card-icon"> Contact</h4>
-                <p>Have a bug to report, a feature to request, or just want to tell the creator he's a genius? Here's how to summon him. Please, try not to.</p>
+                <p>GitHub, PnW nation, email — all the ways to reach the Reaper. Includes a legally binding warning about acceptable reasons to summon him and an estimated response time of "eventually."</p>
             </div>
         </div>
+    </div>
 
+    <!-- Politics & War Category -->
+    <div class="row">
+        <div class="col-12">
+            <h3 class="category-header text-center mb-3" style="color: var(--gold-secondary); font-size: 1.2rem; letter-spacing: 2px;">POLITICS & WAR</h3>
+        </div>
+        <!-- Game Info -->
+        <div class="col-md-4 mb-4">
+            <div class="home-card" onclick="loadPage('game_info')" style="cursor: pointer;">
+                <h4><img src="/static/Emojis/Menu/game_info.png" class="home-card-icon"> Game Info</h4>
+                <p>Live market prices and turn bonuses, because buying steel at peak hours is a war crime. Watch the ticker, feel smart, then buy at the wrong time anyway.</p>
+            </div>
+        </div>
+        <!-- Night Watch -->
+        <div class="col-md-4 mb-4">
+            <div class="home-card" onclick="loadPage('watch')" style="cursor: pointer;">
+                <h4><img src="/static/Emojis/Menu/war.png" class="home-card-icon"> Night Watch</h4>
+                <p>The alliance war ledger that names names. See who's actually fighting, who's burning infra, who's looting, and who's just vibing while everyone else bleeds. Sortable by everything.</p>
+            </div>
+        </div>
+        <!-- Leaderboards -->
+        <div class="col-md-4 mb-4">
+            <div class="home-card" onclick="loadPage('leaderboard')" style="cursor: pointer;">
+                <h4><img src="/static/Emojis/Menu/leaderboard.png" class="home-card-icon"> Leaderboards</h4>
+                <p>Who dealt the most damage? Who looted the most? Who ate the most missiles like a champ? The monthly and weekly hall of fame — or shame — depending on which side of the war you're on.</p>
+            </div>
+        </div>
+        <!-- Calculators -->
+        <div class="col-md-4 mb-4">
+            <div class="home-card" onclick="loadPage('cost_calc')" style="cursor: pointer;">
+                <h4><img src="/static/Emojis/Menu/calculator.png" class="home-card-icon"> Calculators</h4>
+                <p>Find out exactly how broke you'll be after that city upgrade, or how many soldiers you need to send to their doom. Spoiler: it's always more than you think.</p>
+            </div>
+        </div>
+        <!-- Graphs -->
+        <div class="col-md-4 mb-4">
+            <div class="home-card" onclick="loadPage('graphs')" style="cursor: pointer;">
+                <h4><img src="/static/Emojis/Menu/graph.png" class="home-card-icon"> Graphs</h4>
+                <p>War costs, net damage, alliance comparisons, and the full treaty universe rendered in glorious interactive charts. Data so pretty it'll make your enemies cry.</p>
+            </div>
+        </div>
+        <!-- Scriptorium -->
+        <div class="col-md-4 mb-4">
+            <div class="home-card" onclick="loadPage('library')" style="cursor: pointer;">
+                <h4><img src="/static/Emojis/Menu/script.png" class="home-card-icon"> Scriptorium</h4>
+                <p>Five ancient scrolls of forbidden knowledge: the FAFO Doctrine, Basic Building, Beige Cycling, Weapon Efficiency, and Sniping. Click a wax seal, read the scroll, stop being a filthy casual.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pets Category -->
+    <div class="row">
+        <div class="col-12">
+            <h3 class="category-header text-center mb-3" style="color: var(--gold-secondary); font-size: 1.2rem; letter-spacing: 2px;">PETS</h3>
+        </div>
+        <!-- My Pet -->
+        <div class="col-md-4 mb-4">
+            <div class="home-card" onclick="loadPage('mypet')" style="cursor: pointer;">
+                <h4><img src="/static/Emojis/Menu/pets.png" class="home-card-icon"> My Pet</h4>
+                <p>Your personal digital companion's full profile — stats, inventory, casino history, and the 7-slot equipment loadout you've been agonizing over. Yes, the hat matters.</p>
+            </div>
+        </div>
+        <!-- Breakdown -->
+        <div class="col-md-4 mb-4">
+            <div class="home-card" onclick="loadPage('what_are_pets')" style="cursor: pointer;">
+                <h4><img src="/static/Emojis/Menu/what_pets.png" class="home-card-icon"> Breakdown</h4>
+                <p>103 species, 12 elements, 3 types, 78 elemental combos, and a type chart that makes Pokémon look simple. Also: XP formulas, chest tiers, and every activity from /play to /tournament.</p>
+            </div>
+        </div>
+        <!-- Types & Items -->
+        <div class="col-md-4 mb-4">
+            <div class="home-card" onclick="loadPage('pets')" style="cursor: pointer;">
+                <h4><img src="/static/Emojis/Menu/pets.png" class="home-card-icon"> Types & Items</h4>
+                <p>The full database: every pet, material, gem, monster, hat, and potion — sortable by any stat. Browse in cards or list view. It's the Pokédex we deserved but with more existential dread.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Misc Category -->
+    <div class="row">
+        <div class="col-12">
+            <h3 class="category-header text-center mb-3" style="color: var(--gold-secondary); font-size: 1.2rem; letter-spacing: 2px;">MISC</h3>
+        </div>
+        <!-- Astrology -->
+        <div class="col-md-4 mb-4">
+            <div class="home-card" onclick="loadPage('astrology')" style="cursor: pointer;">
+                <h4><img src="/static/Emojis/Menu/astrology.png" class="home-card-icon"> Astrology</h4>
+                <p>Enter your birthday and get your Western zodiac, Chinese zodiac, and spirit animal in one shot. Then grab a daily horoscope for any sign — yesterday, today, or tomorrow if you're feeling bold.</p>
+            </div>
+        </div>
+        <!-- Tarot -->
+        <div class="col-md-4 mb-4">
+            <div class="home-card" onclick="loadPage('tarot')" style="cursor: pointer;">
+                <h4><img src="/static/Emojis/Menu/tarot.png" class="home-card-icon"> Tarot</h4>
+                <p>A crystal ball, a sarcastic AI dealer, and your choice of 1-card, 3-card, or 5-card spread. The universe will speak. Whether you like what it says is your problem.</p>
+            </div>
+        </div>
+        <!-- Fun -->
+        <div class="col-md-4 mb-4">
+            <div class="home-card" onclick="loadPage('fun')" style="cursor: pointer;">
+                <h4><img src="/static/Emojis/Menu/fun.png" class="home-card-icon"> Fun</h4>
+                <p>Coin flip with 7 themes, colored dice up to 5 at once, card draws, Rock Paper Scissors vs AI in Traditional/Fantasy/War themes, and slots from Very Easy to Insanity. You've been warned.</p>
+            </div>
+        </div>
     </div>
 </div>
 

@@ -159,10 +159,12 @@ async function loadPetsData() {
             totalStats: Object.values(pet.Stats).reduce((a, b) => a + b, 0)
         }));
         
+        // Only touch the DOM if we're still on the pets page (not mypet page)
+        if (!document.getElementById('pets-section')) return;
+
         // Hide the loading spinner in petContainer after data is loaded
         const petContainer = document.getElementById('petContainer');
         if (petContainer && petContainer.innerHTML.includes('spinner-border')) {
-            // Clear the loading spinner
             petContainer.innerHTML = '';
         }
         
@@ -170,6 +172,7 @@ async function loadPetsData() {
         updateSortButtons('pets');
     } catch (error) {
         console.error('Error loading pets data:', error);
+        if (!document.getElementById('pets-section')) return;
         document.getElementById('petContainer').innerHTML = 
             '<div class="col-12"><div class="alert alert-danger">Error loading pet data. Please try again later.</div></div>';
     }
@@ -248,6 +251,7 @@ function getRarityColor(rarity) {
 
 // Render Pets
 function renderPets() {
+    if (!document.getElementById('pets-section')) return;
     const container = document.getElementById('petContainer');
     const sort = currentSort.pets;
     

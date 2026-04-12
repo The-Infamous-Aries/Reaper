@@ -1,0 +1,1592 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Night's Watch - War Stats</title>
+    <link rel="stylesheet" href="/css/main.css">
+    <style>
+        .watch-shell {
+            display: grid;
+            gap: 1rem;
+        }
+        .watch-controls.card,
+        .watch-table-card.card {
+            overflow: hidden;
+        }
+        .watch-controls .card-header,
+        .watch-table-card .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+        .watch-kicker {
+            margin: 0;
+            color: var(--gold-secondary);
+            font-size: 0.82rem;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+        .watch-range-panel {
+            width: 100%;
+            display: grid;
+            gap: 1rem;
+            padding: 0.25rem 0;
+        }
+        .watch-range-topline {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+        .watch-range-title {
+            margin: 0.2rem 0 0;
+            color: var(--gold-primary);
+            font-size: 1.1rem;
+        }
+        .watch-range-count {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.45rem;
+            padding: 0.55rem 0.8rem;
+            border-radius: 999px;
+            border: 1px solid rgba(255, 215, 0, 0.28);
+            background: linear-gradient(135deg, rgba(34, 27, 9, 0.96), rgba(11, 11, 11, 0.92));
+            color: var(--gold-primary);
+            font-weight: 700;
+            white-space: nowrap;
+        }
+        .watch-range-labels {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 0.75rem;
+        }
+        .watch-range-chip {
+            padding: 0.8rem 0.9rem;
+            border-radius: 0.9rem;
+            border: 1px solid rgba(255, 215, 0, 0.2);
+            background: linear-gradient(180deg, rgba(28, 22, 8, 0.88), rgba(12, 12, 12, 0.9));
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+        }
+        .watch-range-chip-label {
+            margin: 0;
+            color: var(--gold-secondary);
+            font-size: 0.72rem;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+        .watch-range-chip-value {
+            margin: 0.35rem 0 0;
+            color: var(--text-primary);
+            font-size: 1rem;
+            font-weight: 700;
+        }
+        .watch-slider-shell {
+            position: relative;
+            padding: 0.9rem 0 0.3rem;
+        }
+        .watch-slider-track,
+        .watch-slider-range {
+            position: absolute;
+            top: 1.65rem;
+            height: 0.45rem;
+            border-radius: 999px;
+        }
+        .watch-slider-track {
+            left: 0;
+            right: 0;
+            background: linear-gradient(90deg, rgba(80, 65, 17, 0.55), rgba(44, 34, 10, 0.8));
+        }
+        .watch-slider-range {
+            background: linear-gradient(90deg, #b8860b, #ffd700, #ffef94);
+            box-shadow: 0 0 18px rgba(255, 215, 0, 0.35);
+        }
+        .watch-slider-input {
+            position: absolute;
+            left: 0;
+            top: 0.7rem;
+            width: 100%;
+            margin: 0;
+            background: none;
+            pointer-events: none;
+            -webkit-appearance: none;
+            appearance: none;
+        }
+        .watch-slider-input::-webkit-slider-runnable-track {
+            height: 0.45rem;
+            background: transparent;
+        }
+        .watch-slider-input::-moz-range-track {
+            height: 0.45rem;
+            background: transparent;
+        }
+        .watch-slider-input::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 1.15rem;
+            height: 1.15rem;
+            border-radius: 50%;
+            border: 2px solid #1a1a1a;
+            background: radial-gradient(circle at 30% 30%, #fff6bf 0%, #ffd700 55%, #c08c00 100%);
+            box-shadow: 0 0 0 3px rgba(255, 215, 0, 0.18), 0 0 20px rgba(255, 215, 0, 0.4);
+            cursor: pointer;
+            pointer-events: auto;
+        }
+        .watch-slider-input::-moz-range-thumb {
+            width: 1.15rem;
+            height: 1.15rem;
+            border-radius: 50%;
+            border: 2px solid #1a1a1a;
+            background: radial-gradient(circle at 30% 30%, #fff6bf 0%, #ffd700 55%, #c08c00 100%);
+            box-shadow: 0 0 0 3px rgba(255, 215, 0, 0.18), 0 0 20px rgba(255, 215, 0, 0.4);
+            cursor: pointer;
+            pointer-events: auto;
+        }
+        .watch-slider-scale {
+            display: flex;
+            justify-content: space-between;
+            gap: 1rem;
+            margin-top: 1.8rem;
+            color: var(--text-secondary);
+            font-size: 0.8rem;
+        }
+        .watch-units-header {
+            cursor: default;
+        }
+        .watch-units-header:hover {
+            color: var(--gold-primary);
+        }
+        .watch-units-sort {
+            position: relative;
+            display: flex;
+            align-items: stretch;
+            min-width: 180px;
+            border: 1px solid rgba(255, 215, 0, 0.3);
+            border-radius: 999px;
+            overflow: visible;
+            background: rgba(14, 11, 5, 0.92);
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+        }
+        .watch-units-sort.is-active {
+            box-shadow: 0 0 0 1px rgba(255, 215, 0, 0.35), 0 0 20px rgba(255, 215, 0, 0.15);
+        }
+        .watch-units-select,
+        .watch-units-direction {
+            appearance: none;
+            border: 0;
+            background: transparent;
+            color: inherit;
+            font: inherit;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+        }
+        .watch-units-select {
+            flex: 1;
+            padding: 0.55rem 0.85rem;
+            text-align: left;
+            cursor: pointer;
+            color: var(--gold-primary);
+        }
+        .watch-sort-icon,
+        .watch-units-icon {
+            width: 1rem;
+            height: 1rem;
+            object-fit: contain;
+            filter: drop-shadow(0 0 4px rgba(255, 215, 0, 0.28));
+        }
+        .watch-units-select-wrap {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            gap: 0.45rem;
+            padding-left: 0.75rem;
+        }
+        .watch-units-select-wrap .watch-units-select {
+            padding-left: 0;
+        }
+        .watch-units-direction {
+            min-width: 2.9rem;
+            border-left: 1px solid rgba(255, 215, 0, 0.24);
+            cursor: pointer;
+            font-size: 0.95rem;
+            font-weight: 700;
+            color: #1a1a1a;
+            background: linear-gradient(45deg, #ffd700, #ffed4e);
+        }
+        .watch-units-direction:hover,
+        .watch-units-select:hover {
+            filter: brightness(1.05);
+        }
+        #watch-status {
+            margin: 0;
+            padding: 0.85rem 1rem;
+            border: 1px solid rgba(255, 215, 0, 0.24);
+            border-radius: 0.75rem;
+            display: none;
+            background: rgba(15, 15, 15, 0.78);
+            color: var(--text-primary);
+        }
+        #watch-status.is-error {
+            border-color: #b00020;
+            color: #b00020;
+            background: rgba(176, 0, 32, 0.08);
+        }
+        .watch-table-wrap {
+            overflow-x: auto;
+            border-radius: 0.75rem;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 1100px;
+            background: rgba(8, 8, 8, 0.8);
+        }
+        th, td {
+            border: 1px solid rgba(255, 215, 0, 0.14);
+            padding: 0.8rem 0.85rem;
+            text-align: left;
+        }
+        th {
+            cursor: pointer;
+            position: sticky;
+            top: 0;
+            z-index: 1;
+            background: linear-gradient(180deg, rgba(33, 26, 10, 0.98), rgba(17, 14, 7, 0.98));
+            color: var(--gold-primary);
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            font-size: 0.78rem;
+            white-space: nowrap;
+            transition: background 0.2s ease, color 0.2s ease;
+        }
+        th:hover {
+            background: linear-gradient(180deg, rgba(58, 45, 15, 0.98), rgba(28, 21, 7, 0.98));
+            color: #ffed4e;
+        }
+        th.active-sort {
+            color: #1a1a1a;
+            background: linear-gradient(45deg, #ffd700, #ffed4e);
+        }
+        th .th-label {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.45rem;
+        }
+        th .th-arrow {
+            font-size: 0.8rem;
+            opacity: 0.8;
+        }
+        tbody tr:nth-child(odd) {
+            background: rgba(255, 215, 0, 0.035);
+        }
+        tbody tr:hover {
+            background: rgba(255, 215, 0, 0.08);
+        }
+        tbody tr.my-nation-row {
+            box-shadow: inset 0 0 0 1px rgba(255, 215, 0, 0.35), 0 0 10px rgba(255, 215, 0, 0.18);
+            background: rgba(255, 215, 0, 0.07);
+        }
+        tbody tr.my-nation-row:hover {
+            background: rgba(255, 215, 0, 0.13);
+        }
+        td {
+            color: var(--text-primary);
+        }
+        td:first-child {
+            color: var(--gold-primary);
+            font-weight: 700;
+        }
+        .watch-units-cell {
+            display: flex;
+            flex-direction: column;
+            gap: 0.15rem;
+        }
+        .watch-units-cell-main {
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+        .watch-units-cell-sub {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+        @media (max-width: 900px) {
+            .watch-controls .card-header,
+            .watch-table-card .card-header {
+                align-items: flex-start;
+            }
+            .watch-range-labels {
+                grid-template-columns: 1fr;
+            }
+            .watch-range-count {
+                width: 100%;
+                justify-content: center;
+            }
+            .watch-units-sort {
+                min-width: 150px;
+            }
+        }
+        .loot-tooltip {
+            position: fixed;
+            z-index: 9999;
+            pointer-events: none;
+            min-width: 220px;
+            max-width: 300px;
+            padding: 0.75rem 0.9rem;
+            border-radius: 0.85rem;
+            border: 1px solid rgba(255, 215, 0, 0.3);
+            background: linear-gradient(160deg, rgba(28, 22, 8, 0.98), rgba(10, 10, 10, 0.98));
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 215, 0, 0.08);
+            color: var(--text-primary);
+            font-size: 0.82rem;
+            opacity: 0;
+            transition: opacity 0.12s ease;
+        }
+        .loot-tooltip.is-visible {
+            opacity: 1;
+        }
+        .loot-tooltip-title {
+            margin: 0 0 0.5rem;
+            color: var(--gold-primary);
+            font-size: 0.72rem;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+        .loot-tooltip-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.6rem;
+            padding: 0.2rem 0;
+            border-bottom: 1px solid rgba(255, 215, 0, 0.07);
+        }
+        .loot-tooltip-row:last-child {
+            border-bottom: none;
+        }
+        .loot-tooltip-label {
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+            color: var(--text-secondary);
+        }
+        .loot-tooltip-label img {
+            width: 0.95rem;
+            height: 0.95rem;
+            object-fit: contain;
+        }
+        .loot-tooltip-value {
+            font-weight: 700;
+            color: var(--text-primary);
+            white-space: nowrap;
+        }
+        .loot-tooltip-total {
+            margin-top: 0.45rem;
+            padding-top: 0.45rem;
+            border-top: 1px solid rgba(255, 215, 0, 0.2);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: var(--gold-primary);
+            font-weight: 700;
+        }
+    </style>
+</head>
+<body>
+    <div id="loot-tooltip" class="loot-tooltip" role="tooltip" aria-hidden="true"></div>
+    <div class="watch-shell">
+        <div class="card watch-controls">
+            <div class="card-header">
+                <div class="watch-range-panel">
+                    <div class="watch-range-topline">
+                        <div>
+                            <p class="watch-kicker">Night Watch Ledger</p>
+                            <p class="watch-range-title">Slide the two markers to choose the war date window.</p>
+                        </div>
+                        <div class="watch-range-count">
+                            <span id="watch-war-count">0</span>
+                            <span>Wars in Range</span>
+                        </div>
+                    </div>
+                    <div class="watch-range-labels">
+                        <div class="watch-range-chip">
+                            <p class="watch-range-chip-label">Available Data</p>
+                            <p class="watch-range-chip-value" id="watch-available-range">Loading...</p>
+                        </div>
+                        <div class="watch-range-chip">
+                            <p class="watch-range-chip-label">Selected Start</p>
+                            <p class="watch-range-chip-value" id="watch-selected-start">Loading...</p>
+                        </div>
+                        <div class="watch-range-chip">
+                            <p class="watch-range-chip-label">Selected End</p>
+                            <p class="watch-range-chip-value" id="watch-selected-end">Loading...</p>
+                        </div>
+                    </div>
+                    <div class="watch-slider-shell">
+                        <div class="watch-slider-track"></div>
+                        <div class="watch-slider-range" id="watch-slider-range"></div>
+                        <input id="watch-start-slider" class="watch-slider-input" type="range" min="0" max="0" value="0" step="1" aria-label="Watch start date">
+                        <input id="watch-end-slider" class="watch-slider-input" type="range" min="0" max="0" value="0" step="1" aria-label="Watch end date">
+                        <div class="watch-slider-scale">
+                            <span id="watch-scale-start">-</span>
+                            <span id="watch-scale-end">-</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div id="watch-status" role="status" aria-live="polite"></div>
+        <div class="card watch-table-card">
+            <div class="card-header">
+                <span>Alliance Breakdown</span>
+                <span id="watch-sort-summary">Sorted by Gross Cost (descending)</span>
+            </div>
+            <div class="card-body">
+                <div class="watch-table-wrap">
+                    <table id="war-stats-table">
+                        <thead>
+                            <tr>
+                                <th data-sort="name"><span class="th-label">Nation <span class="th-arrow"></span></span></th>
+                                <th data-sort="cost_metric" class="watch-units-header">
+                                    <div id="watch-cost-sort" class="watch-units-sort">
+                                        <div class="watch-units-select-wrap">
+                                            <img id="watch-cost-icon" class="watch-units-icon" src="/static/Emojis/Watcher/cost.png" alt="">
+                                            <select id="watch-cost-select" class="watch-units-select" aria-label="Select cost metric">
+                                                <option value="gross_cost">Gross Cost</option>
+                                                <option value="net_damage">Net Costs</option>
+                                            </select>
+                                        </div>
+                                        <button id="watch-cost-direction" class="watch-units-direction" type="button" aria-label="Toggle cost sort direction">&#8595;</button>
+                                    </div>
+                                </th>
+                                <th data-sort="gains_metric" class="watch-units-header">
+                                    <div id="watch-gains-sort" class="watch-units-sort">
+                                        <div class="watch-units-select-wrap">
+                                            <img id="watch-gains-icon" class="watch-units-icon" src="/static/Emojis/Watcher/loot.png" alt="">
+                                            <select id="watch-gains-select" class="watch-units-select" aria-label="Select gains metric">
+                                                <option value="total_gains">Total Gains</option>
+                                                <option value="gains_cash">Cash</option>
+                                                <option value="gains_res_coal">Coal</option>
+                                                <option value="gains_res_oil">Oil</option>
+                                                <option value="gains_res_uranium">Uranium</option>
+                                                <option value="gains_res_iron">Iron</option>
+                                                <option value="gains_res_bauxite">Bauxite</option>
+                                                <option value="gains_res_lead">Lead</option>
+                                                <option value="gains_res_gasoline">Gasoline</option>
+                                                <option value="gains_res_munitions">Munitions</option>
+                                                <option value="gains_res_steel">Steel</option>
+                                                <option value="gains_res_aluminum">Aluminum</option>
+                                                <option value="gains_res_food">Food</option>
+                                            </select>
+                                        </div>
+                                        <button id="watch-gains-direction" class="watch-units-direction" type="button" aria-label="Toggle gains sort direction">&#8595;</button>
+                                    </div>
+                                </th>
+                                <th data-sort="units_metric" class="watch-units-header">
+                                    <div id="watch-units-sort" class="watch-units-sort">
+                                        <div class="watch-units-select-wrap">
+                                            <img id="watch-units-icon" class="watch-units-icon" src="/static/Emojis/Watcher/cost.png" alt="">
+                                            <select id="watch-units-select" class="watch-units-select" aria-label="Select unit metric">
+                                                <option value="units_net">All Units</option>
+                                                <option value="soldiers_lost">Soldiers</option>
+                                                <option value="tanks_lost">Tanks</option>
+                                                <option value="aircraft_lost">Aircraft</option>
+                                                <option value="ships_lost">Ships</option>
+                                                <option value="missiles_lost">Missiles</option>
+                                                <option value="nukes_lost">Nukes</option>
+                                            </select>
+                                        </div>
+                                        <button id="watch-units-direction" class="watch-units-direction" type="button" aria-label="Toggle units sort direction">&#8595;</button>
+                                    </div>
+                                </th>
+                                <th data-sort="consumption_metric" class="watch-units-header">
+                                    <div id="watch-consumption-sort" class="watch-units-sort">
+                                        <div class="watch-units-select-wrap">
+                                            <img id="watch-consumption-icon" class="watch-units-icon" src="/static/Emojis/Watcher/consumption.png" alt="">
+                                            <select id="watch-consumption-select" class="watch-units-select" aria-label="Select consumption metric">
+                                                <option value="consumption">Consumption</option>
+                                                <option value="gasoline_sell_value">Gasoline</option>
+                                                <option value="munitions_sell_value">Munitions</option>
+                                            </select>
+                                        </div>
+                                        <button id="watch-consumption-direction" class="watch-units-direction" type="button" aria-label="Toggle consumption sort direction">&#8595;</button>
+                                    </div>
+                                </th>
+                                <th data-sort="destruction_metric" class="watch-units-header">
+                                    <div id="watch-destruction-sort" class="watch-units-sort">
+                                        <div class="watch-units-select-wrap">
+                                            <img id="watch-destruction-icon" class="watch-units-icon" src="/static/Emojis/Watcher/infra.png" alt="">
+                                            <select id="watch-destruction-select" class="watch-units-select" aria-label="Select destruction metric">
+                                                <option value="destruction_total">Destruction</option>
+                                                <option value="infra_net">Infrastructure</option>
+                                                <option value="improvements">Improvements</option>
+                                            </select>
+                                        </div>
+                                        <button id="watch-destruction-direction" class="watch-units-direction" type="button" aria-label="Toggle destruction sort direction">&#8595;</button>
+                                    </div>
+                                </th>
+                                <th data-sort="wars_metric" class="watch-units-header">
+                                    <div id="watch-wars-sort" class="watch-units-sort">
+                                        <div class="watch-units-select-wrap">
+                                            <img id="watch-wars-icon" class="watch-units-icon" src="/static/Emojis/Watcher/war.png" alt="">
+                                            <select id="watch-wars-select" class="watch-units-select" aria-label="Select wars metric">
+                                                <option value="wars_total">Wars</option>
+                                                <option value="offense_wars_count">Offensive</option>
+                                                <option value="defense_wars_count">Defensive</option>
+                                            </select>
+                                        </div>
+                                        <button id="watch-wars-direction" class="watch-units-direction" type="button" aria-label="Toggle wars sort direction">&#8595;</button>
+                                    </div>
+                                </th>
+                                <th data-sort="damages"><span class="th-label"><img class="watch-sort-icon" src="/static/Emojis/Watcher/damages.png" alt=""> Damages <span class="th-arrow"></span></span></th>
+                            </tr>
+                        </thead>
+                        <tbody id="war-stats-body">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let watchPageInitialized = false;
+        let currentSortKey = "cost_metric";
+        let currentSortDirection = "desc";
+        let watchFetchToken = 0;
+        let watchFetchTimer = null;
+        let currentUnitsMetric = "units_net";
+        const UNITS_METRIC_LABELS = {
+            units_net: "All Units",
+            soldiers_lost: "Soldiers",
+            tanks_lost: "Tanks",
+            aircraft_lost: "Aircraft",
+            ships_lost: "Ships",
+            missiles_lost: "Missiles",
+            nukes_lost: "Nukes",
+        };
+        const UNITS_METRIC_ICONS = {
+            units_net: "/static/Emojis/Watcher/cost.png",
+            soldiers_lost: "/static/Emojis/Watcher/soldier.png",
+            tanks_lost: "/static/Emojis/Watcher/tank.png",
+            aircraft_lost: "/static/Emojis/Watcher/jet.png",
+            ships_lost: "/static/Emojis/Watcher/ship.png",
+            missiles_lost: "/static/Emojis/Watcher/missile.png",
+            nukes_lost: "/static/Emojis/Watcher/bomb.png",
+        };
+        let currentCostMetric = "gross_cost";
+        const COST_METRIC_LABELS = {
+            gross_cost: "Gross Cost",
+            net_damage: "Net Costs",
+        };
+        const COST_METRIC_ICONS = {
+            gross_cost: "/static/Emojis/Watcher/cost.png",
+            net_damage: "/static/Emojis/Watcher/net.png",
+        };
+        let currentConsumptionMetric = "consumption";
+        const CONSUMPTION_METRIC_LABELS = {
+            consumption: "Consumption",
+            gasoline_sell_value: "Gasoline",
+            munitions_sell_value: "Munitions",
+        };
+        const CONSUMPTION_METRIC_ICONS = {
+            consumption: "/static/Emojis/Watcher/consumption.png",
+            gasoline_sell_value: "/static/Emojis/Resources/gasoline.png",
+            munitions_sell_value: "/static/Emojis/Resources/munitions.png",
+        };
+        let currentDestructionMetric = "destruction_total";
+        const DESTRUCTION_METRIC_LABELS = {
+            destruction_total: "Destruction",
+            infra_net: "Infrastructure",
+            improvements: "Improvements",
+        };
+        const DESTRUCTION_METRIC_ICONS = {
+            destruction_total: "/static/Emojis/Watcher/infra.png",
+            infra_net: "/static/Emojis/Watcher/infra.png",
+            improvements: "/static/Emojis/Watcher/improvement.png",
+        };
+        let currentWarsMetric = "wars_total";
+        const WARS_METRIC_LABELS = {
+            wars_total: "Wars",
+            offense_wars_count: "Offensive",
+            defense_wars_count: "Defensive",
+        };
+        const WARS_METRIC_ICONS = {
+            wars_total: "/static/Emojis/Watcher/war.png",
+            offense_wars_count: "/static/Emojis/Watcher/off.png",
+            defense_wars_count: "/static/Emojis/Watcher/def.png",
+        };
+        let currentGainsMetric = "total_gains";
+        const GAINS_METRIC_LABELS = {
+            total_gains: "Total Gains",
+            gains_cash: "Cash",
+            gains_res_coal: "Coal",
+            gains_res_oil: "Oil",
+            gains_res_uranium: "Uranium",
+            gains_res_iron: "Iron",
+            gains_res_bauxite: "Bauxite",
+            gains_res_lead: "Lead",
+            gains_res_gasoline: "Gasoline",
+            gains_res_munitions: "Munitions",
+            gains_res_steel: "Steel",
+            gains_res_aluminum: "Aluminum",
+            gains_res_food: "Food",
+        };
+        const GAINS_METRIC_ICONS = {
+            total_gains: "/static/Emojis/Watcher/loot.png",
+            gains_cash: "/static/Emojis/Resources/credit.png",
+            gains_res_coal: "/static/Emojis/Resources/coal.png",
+            gains_res_oil: "/static/Emojis/Resources/oil.png",
+            gains_res_uranium: "/static/Emojis/Resources/uranium.png",
+            gains_res_iron: "/static/Emojis/Resources/iron.png",
+            gains_res_bauxite: "/static/Emojis/Resources/bauxite.png",
+            gains_res_lead: "/static/Emojis/Resources/lead.png",
+            gains_res_gasoline: "/static/Emojis/Resources/gasoline.png",
+            gains_res_munitions: "/static/Emojis/Resources/munitions.png",
+            gains_res_steel: "/static/Emojis/Resources/steel.png",
+            gains_res_aluminum: "/static/Emojis/Resources/aluminum.png",
+            gains_res_food: "/static/Emojis/Resources/food.png",
+        };
+        const watchRangeState = {
+            availableStartDate: null,
+            availableEndDate: null,
+            selectedStartDate: null,
+            selectedEndDate: null,
+        };
+
+        function parseIsoDate(dateString) {
+            if (!dateString) {
+                return null;
+            }
+            const parsed = new Date(`${dateString}T00:00:00`);
+            return Number.isNaN(parsed.getTime()) ? null : parsed;
+        }
+
+        function formatDateLabel(dateString) {
+            const parsed = parseIsoDate(dateString);
+            if (!parsed) {
+                return "Unavailable";
+            }
+            return parsed.toLocaleDateString(undefined, {
+                month: "short",
+                day: "numeric",
+                year: "numeric",
+            });
+        }
+
+        function daysBetween(startDate, endDate) {
+            if (!startDate || !endDate) {
+                return 0;
+            }
+            const millisecondsPerDay = 24 * 60 * 60 * 1000;
+            return Math.round((endDate.getTime() - startDate.getTime()) / millisecondsPerDay);
+        }
+
+        function addDays(dateString, dayOffset) {
+            const baseDate = parseIsoDate(dateString);
+            if (!baseDate) {
+                return null;
+            }
+            const nextDate = new Date(baseDate.getTime());
+            nextDate.setDate(nextDate.getDate() + dayOffset);
+            return nextDate.toISOString().slice(0, 10);
+        }
+
+        function formatNumber(value) {
+            const number = Number(value);
+            if (!Number.isFinite(number)) {
+                return "0";
+            }
+            return number.toLocaleString();
+        }
+
+        function getUnitsMetricLabel(metric = currentUnitsMetric) {
+            return UNITS_METRIC_LABELS[metric] || "Units";
+        }
+
+        function getUnitsMetricIcon(metric = currentUnitsMetric) {
+            return UNITS_METRIC_ICONS[metric] || UNITS_METRIC_ICONS.units_net;
+        }
+
+        function formatCurrency(value) {
+            const number = Number(value);
+            if (!Number.isFinite(number)) {
+                return "$0";
+            }
+            return `$${number.toLocaleString()}`;
+        }
+
+        function getSliderElements() {
+            return {
+                startSlider: document.getElementById("watch-start-slider"),
+                endSlider: document.getElementById("watch-end-slider"),
+                rangeFill: document.getElementById("watch-slider-range"),
+            };
+        }
+
+        function updateRangeLabels(meta = {}) {
+            document.getElementById("watch-available-range").textContent =
+                meta.available_start_date && meta.available_end_date
+                    ? `${formatDateLabel(meta.available_start_date)} - ${formatDateLabel(meta.available_end_date)}`
+                    : "No data";
+            document.getElementById("watch-selected-start").textContent = formatDateLabel(watchRangeState.selectedStartDate);
+            document.getElementById("watch-selected-end").textContent = formatDateLabel(watchRangeState.selectedEndDate);
+            document.getElementById("watch-scale-start").textContent = formatDateLabel(meta.available_start_date);
+            document.getElementById("watch-scale-end").textContent = formatDateLabel(meta.available_end_date);
+            document.getElementById("watch-war-count").textContent = formatNumber(meta.war_count || 0);
+        }
+
+        function syncSliderUI() {
+            const { startSlider, endSlider, rangeFill } = getSliderElements();
+            const availableStart = parseIsoDate(watchRangeState.availableStartDate);
+            const availableEnd = parseIsoDate(watchRangeState.availableEndDate);
+
+            if (!availableStart || !availableEnd) {
+                startSlider.disabled = true;
+                endSlider.disabled = true;
+                rangeFill.style.left = "0%";
+                rangeFill.style.width = "0%";
+                return;
+            }
+
+            const maxOffset = Math.max(daysBetween(availableStart, availableEnd), 0);
+            const selectedStart = parseIsoDate(watchRangeState.selectedStartDate) || availableStart;
+            const selectedEnd = parseIsoDate(watchRangeState.selectedEndDate) || availableEnd;
+            const startOffset = Math.max(daysBetween(availableStart, selectedStart), 0);
+            const endOffset = Math.max(daysBetween(availableStart, selectedEnd), 0);
+
+            startSlider.disabled = false;
+            endSlider.disabled = false;
+            startSlider.max = String(maxOffset);
+            endSlider.max = String(maxOffset);
+            startSlider.value = String(Math.min(startOffset, endOffset));
+            endSlider.value = String(Math.max(startOffset, endOffset));
+
+            const denominator = maxOffset || 1;
+            const startPercent = (Number(startSlider.value) / denominator) * 100;
+            const endPercent = (Number(endSlider.value) / denominator) * 100;
+            rangeFill.style.left = `${startPercent}%`;
+            rangeFill.style.width = `${Math.max(endPercent - startPercent, 0)}%`;
+        }
+
+        function applyMeta(meta = {}) {
+            watchRangeState.availableStartDate = meta.available_start_date || null;
+            watchRangeState.availableEndDate = meta.available_end_date || null;
+            watchRangeState.selectedStartDate = meta.selected_start_date || meta.available_start_date || null;
+            watchRangeState.selectedEndDate = meta.selected_end_date || meta.available_end_date || null;
+            updateRangeLabels(meta);
+            syncSliderUI();
+        }
+
+        function queueDateWindowFetch() {
+            if (watchFetchTimer) {
+                clearTimeout(watchFetchTimer);
+            }
+            watchFetchTimer = setTimeout(() => {
+                watchFetchTimer = null;
+                fetchData();
+            }, 120);
+        }
+
+        function setStatus(message, isError = false) {
+            const status = document.getElementById("watch-status");
+            const table = document.getElementById("war-stats-table");
+
+            if (!message) {
+                status.style.display = "none";
+                status.textContent = "";
+                status.classList.remove("is-error");
+                table.style.display = "";
+                return;
+            }
+
+            status.style.display = "block";
+            status.textContent = message;
+            status.classList.toggle("is-error", isError);
+            table.style.display = isError ? "none" : "";
+        }
+
+        function getResolvedSortKey(sortKey) {
+            if (sortKey === "cost_metric") {
+                return currentCostMetric;
+            }
+            if (sortKey === "units_metric") {
+                return currentUnitsMetric === "units_net" ? "units_total_cost" : currentUnitsMetric;
+            }
+            if (sortKey === "consumption_metric") {
+                return currentConsumptionMetric;
+            }
+            if (sortKey === "destruction_metric") {
+                return currentDestructionMetric === "destruction_total" ? "infra_net" : currentDestructionMetric;
+            }
+            if (sortKey === "wars_metric") {
+                return currentWarsMetric;
+            }
+            if (sortKey === "gains_metric") {
+                return currentGainsMetric;
+            }
+            return sortKey;
+        }
+
+        function sortRows(sortKey, direction) {
+            const resolvedSortKey = getResolvedSortKey(sortKey);
+            const tbody = document.getElementById("war-stats-body");
+            Array.from(tbody.querySelectorAll("tr")).sort((a, b) => {
+                const aCell = a.querySelector(`td[data-key='${resolvedSortKey}']`);
+                const bCell = b.querySelector(`td[data-key='${resolvedSortKey}']`);
+
+                if (!aCell || !bCell) {
+                    return 0;
+                }
+
+                const aText = aCell.textContent;
+                const bText = bCell.textContent;
+                const aSortValue = aCell.dataset.sortValue ?? aText;
+                const bSortValue = bCell.dataset.sortValue ?? bText;
+                const aClean = aSortValue.replace(/[,$]/g, "");
+                const bClean = bSortValue.replace(/[,$]/g, "");
+                const aValue = parseFloat(aClean);
+                const bValue = parseFloat(bClean);
+
+                if (Number.isNaN(aValue) || Number.isNaN(bValue)) {
+                    return direction === "asc" ? aSortValue.localeCompare(bSortValue) : bSortValue.localeCompare(aSortValue);
+                }
+
+                return direction === "asc" ? aValue - bValue : bValue - aValue;
+            }).forEach((row) => {
+                tbody.appendChild(row);
+            });
+        }
+
+        function updateUnitsCells() {
+            document.querySelectorAll("#war-stats-body tr").forEach((row) => {
+                const metricCell = row.querySelector("td[data-key='units_metric']");
+                if (!metricCell) {
+                    return;
+                }
+
+                if (currentUnitsMetric === "units_net") {
+                    const countCell = row.querySelector("td[data-key='units_net']");
+                    const costCell = row.querySelector("td[data-key='units_total_cost']");
+                    if (!countCell || !costCell) {
+                        return;
+                    }
+                    metricCell.innerHTML = buildAllUnitsDisplay(countCell.dataset.sortValue ?? 0, costCell.dataset.sortValue ?? 0);
+                    metricCell.dataset.sortValue = costCell.dataset.sortValue ?? "0";
+                    return;
+                }
+
+                const sourceCell = row.querySelector(`td[data-key='${currentUnitsMetric}']`);
+                const costCell = row.querySelector(`td[data-key='${currentUnitsMetric}_cost']`);
+                if (!sourceCell) {
+                    return;
+                }
+                if (costCell) {
+                    metricCell.innerHTML = buildAllUnitsDisplay(sourceCell.dataset.sortValue ?? 0, costCell.dataset.sortValue ?? 0);
+                    metricCell.dataset.sortValue = costCell.dataset.sortValue ?? "0";
+                    return;
+                }
+                metricCell.textContent = sourceCell.textContent;
+                metricCell.dataset.sortValue = sourceCell.dataset.sortValue ?? sourceCell.textContent;
+            });
+        }
+
+        function updateCostCells() {
+            document.querySelectorAll("#war-stats-body tr").forEach((row) => {
+                const metricCell = row.querySelector("td[data-key='cost_metric']");
+                if (!metricCell) return;
+                const grossCell = row.querySelector("td[data-key='gross_cost']");
+                const netCell = row.querySelector("td[data-key='net_damage']");
+                metricCell.innerHTML = buildCostDisplay(grossCell?.dataset.sortValue ?? 0, netCell?.dataset.sortValue ?? 0);
+                metricCell.dataset.sortValue = currentCostMetric === "net_damage"
+                    ? (netCell?.dataset.sortValue ?? "0")
+                    : (grossCell?.dataset.sortValue ?? "0");
+            });
+        }
+
+        function updateConsumptionCells() {
+            document.querySelectorAll("#war-stats-body tr").forEach((row) => {
+                const metricCell = row.querySelector("td[data-key='consumption_metric']");
+                if (!metricCell) return;
+                const gasUsedCell = row.querySelector("td[data-key='gas_used']");
+                const gasValCell = row.querySelector("td[data-key='gasoline_sell_value']");
+                const munUsedCell = row.querySelector("td[data-key='mun_used']");
+                const munValCell = row.querySelector("td[data-key='munitions_sell_value']");
+                if (currentConsumptionMetric === "consumption") {
+                    metricCell.innerHTML = buildConsumptionDisplay(
+                        gasUsedCell?.dataset.sortValue ?? 0, gasValCell?.dataset.sortValue ?? 0,
+                        munUsedCell?.dataset.sortValue ?? 0, munValCell?.dataset.sortValue ?? 0
+                    );
+                    const total = (Number(gasValCell?.dataset.sortValue) || 0) + (Number(munValCell?.dataset.sortValue) || 0);
+                    metricCell.dataset.sortValue = String(total);
+                } else if (currentConsumptionMetric === "gasoline_sell_value") {
+                    metricCell.innerHTML = buildConsumptionDisplay(
+                        gasUsedCell?.dataset.sortValue ?? 0, gasValCell?.dataset.sortValue ?? 0, 0, 0
+                    );
+                    metricCell.dataset.sortValue = gasValCell?.dataset.sortValue ?? "0";
+                } else {
+                    metricCell.innerHTML = buildConsumptionDisplay(
+                        0, 0, munUsedCell?.dataset.sortValue ?? 0, munValCell?.dataset.sortValue ?? 0
+                    );
+                    metricCell.dataset.sortValue = munValCell?.dataset.sortValue ?? "0";
+                }
+            });
+        }
+
+        function updateDestructionCells() {
+            document.querySelectorAll("#war-stats-body tr").forEach((row) => {
+                const metricCell = row.querySelector("td[data-key='destruction_metric']");
+                if (!metricCell) return;
+                const infraLevelsCell = row.querySelector("td[data-key='infra_levels_lost']");
+                const infraValCell = row.querySelector("td[data-key='infra_net']");
+                const impCountCell = row.querySelector("td[data-key='improvements_count']");
+                const impValCell = row.querySelector("td[data-key='improvements']");
+                if (currentDestructionMetric === "destruction_total" || currentDestructionMetric === "infra_net") {
+                    metricCell.innerHTML = buildDestructionDisplay(
+                        infraLevelsCell?.dataset.sortValue ?? 0, infraValCell?.dataset.sortValue ?? 0,
+                        impCountCell?.dataset.sortValue ?? 0, impValCell?.dataset.sortValue ?? 0
+                    );
+                    const sortVal = currentDestructionMetric === "improvements"
+                        ? (impValCell?.dataset.sortValue ?? "0")
+                        : (infraValCell?.dataset.sortValue ?? "0");
+                    metricCell.dataset.sortValue = sortVal;
+                } else {
+                    metricCell.innerHTML = buildDestructionDisplay(0, 0, impCountCell?.dataset.sortValue ?? 0, impValCell?.dataset.sortValue ?? 0);
+                    metricCell.dataset.sortValue = impValCell?.dataset.sortValue ?? "0";
+                }
+            });
+        }
+
+        function updateWarsCells() {
+            document.querySelectorAll("#war-stats-body tr").forEach((row) => {
+                const metricCell = row.querySelector("td[data-key='wars_metric']");
+                if (!metricCell) return;
+                const offCell = row.querySelector("td[data-key='offense_wars_count']");
+                const defCell = row.querySelector("td[data-key='defense_wars_count']");
+                const off = Number(offCell?.dataset.sortValue) || 0;
+                const def = Number(defCell?.dataset.sortValue) || 0;
+                metricCell.innerHTML = buildWarsDisplay(off, def);
+                if (currentWarsMetric === "offense_wars_count") {
+                    metricCell.dataset.sortValue = String(off);
+                } else if (currentWarsMetric === "defense_wars_count") {
+                    metricCell.dataset.sortValue = String(def);
+                } else {
+                    metricCell.dataset.sortValue = String(off + def);
+                }
+            });
+        }
+
+        function updateGainsCells() {
+            document.querySelectorAll("#war-stats-body tr").forEach((row) => {
+                const metricCell = row.querySelector("td[data-key='gains_metric']");
+                if (!metricCell) return;
+                // preserve the loot-breakdown attribute
+                const breakdown = metricCell.dataset.lootBreakdown;
+                let sortVal = 0;
+                if (currentGainsMetric === "total_gains") {
+                    const src = row.querySelector("td[data-key='total_gains']");
+                    sortVal = Number(src?.dataset.sortValue) || 0;
+                } else if (currentGainsMetric === "gains_cash") {
+                    const src = row.querySelector("td[data-key='gains_cash']");
+                    sortVal = Number(src?.dataset.sortValue) || 0;
+                } else {
+                    const src = row.querySelector(`td[data-key='${currentGainsMetric}']`);
+                    sortVal = Number(src?.dataset.sortValue) || 0;
+                }
+                metricCell.dataset.sortValue = String(sortVal);
+            });
+        }
+
+        function updateSortUI(sortKey, direction) {
+            currentSortKey = sortKey;
+            currentSortDirection = direction;
+            const arrow = direction === "asc" ? "\u2191" : "\u2193";
+
+            document.querySelectorAll("th[data-sort]").forEach((header) => {
+                const isActive = header.dataset.sort === sortKey;
+                header.dataset.direction = isActive ? direction : "";
+                header.classList.toggle("active-sort", isActive);
+                const arrowEl = header.querySelector(".th-arrow");
+                if (arrowEl) {
+                    arrowEl.textContent = isActive ? arrow : "";
+                }
+            });
+
+            const costSort = document.getElementById("watch-cost-sort");
+            const costDirection = document.getElementById("watch-cost-direction");
+            const costSelect = document.getElementById("watch-cost-select");
+            const costIcon = document.getElementById("watch-cost-icon");
+            costSort.classList.toggle("is-active", sortKey === "cost_metric");
+            costDirection.textContent = sortKey === "cost_metric" ? arrow : "\u2195";
+            costSelect.value = currentCostMetric;
+            costIcon.src = COST_METRIC_ICONS[currentCostMetric] || COST_METRIC_ICONS.gross_cost;
+            costIcon.alt = COST_METRIC_LABELS[currentCostMetric] || "Cost";
+
+            const unitsSort = document.getElementById("watch-units-sort");
+            const unitsDirection = document.getElementById("watch-units-direction");
+            const unitsSelect = document.getElementById("watch-units-select");
+            const unitsIcon = document.getElementById("watch-units-icon");
+            unitsSort.classList.toggle("is-active", sortKey === "units_metric");
+            unitsDirection.textContent = sortKey === "units_metric" ? arrow : "\u2195";
+            unitsSelect.value = currentUnitsMetric;
+            unitsIcon.src = UNITS_METRIC_ICONS[currentUnitsMetric] || UNITS_METRIC_ICONS.units_net;
+            unitsIcon.alt = UNITS_METRIC_LABELS[currentUnitsMetric] || "Units";
+
+            const consumptionSort = document.getElementById("watch-consumption-sort");
+            const consumptionDirection = document.getElementById("watch-consumption-direction");
+            const consumptionSelect = document.getElementById("watch-consumption-select");
+            const consumptionIcon = document.getElementById("watch-consumption-icon");
+            consumptionSort.classList.toggle("is-active", sortKey === "consumption_metric");
+            consumptionDirection.textContent = sortKey === "consumption_metric" ? arrow : "\u2195";
+            consumptionSelect.value = currentConsumptionMetric;
+            consumptionIcon.src = CONSUMPTION_METRIC_ICONS[currentConsumptionMetric] || CONSUMPTION_METRIC_ICONS.consumption;
+            consumptionIcon.alt = CONSUMPTION_METRIC_LABELS[currentConsumptionMetric] || "Consumption";
+
+            const destructionSort = document.getElementById("watch-destruction-sort");
+            const destructionDirection = document.getElementById("watch-destruction-direction");
+            const destructionSelect = document.getElementById("watch-destruction-select");
+            const destructionIcon = document.getElementById("watch-destruction-icon");
+            destructionSort.classList.toggle("is-active", sortKey === "destruction_metric");
+            destructionDirection.textContent = sortKey === "destruction_metric" ? arrow : "\u2195";
+            destructionSelect.value = currentDestructionMetric;
+            destructionIcon.src = DESTRUCTION_METRIC_ICONS[currentDestructionMetric] || DESTRUCTION_METRIC_ICONS.destruction_total;
+            destructionIcon.alt = DESTRUCTION_METRIC_LABELS[currentDestructionMetric] || "Destruction";
+
+            const warsSort = document.getElementById("watch-wars-sort");
+            const warsDirection = document.getElementById("watch-wars-direction");
+            const warsSelect = document.getElementById("watch-wars-select");
+            const warsIcon = document.getElementById("watch-wars-icon");
+            warsSort.classList.toggle("is-active", sortKey === "wars_metric");
+            warsDirection.textContent = sortKey === "wars_metric" ? arrow : "\u2195";
+            warsSelect.value = currentWarsMetric;
+            warsIcon.src = WARS_METRIC_ICONS[currentWarsMetric] || WARS_METRIC_ICONS.wars_total;
+            warsIcon.alt = WARS_METRIC_LABELS[currentWarsMetric] || "Wars";
+
+            const gainsSort = document.getElementById("watch-gains-sort");
+            const gainsDirection = document.getElementById("watch-gains-direction");
+            const gainsSelect = document.getElementById("watch-gains-select");
+            const gainsIcon = document.getElementById("watch-gains-icon");
+            gainsSort.classList.toggle("is-active", sortKey === "gains_metric");
+            gainsDirection.textContent = sortKey === "gains_metric" ? arrow : "\u2195";
+            gainsSelect.value = currentGainsMetric;
+            gainsIcon.src = GAINS_METRIC_ICONS[currentGainsMetric] || GAINS_METRIC_ICONS.total_gains;
+            gainsIcon.alt = GAINS_METRIC_LABELS[currentGainsMetric] || "Total Gains";
+
+            const isDropdownSort = ["cost_metric", "units_metric", "consumption_metric", "destruction_metric", "wars_metric", "gains_metric"].includes(sortKey);
+            const activeLabel = isDropdownSort
+                ? ({
+                    cost_metric: COST_METRIC_LABELS[currentCostMetric] || "Cost",
+                    units_metric: UNITS_METRIC_LABELS[currentUnitsMetric] || "Units",
+                    consumption_metric: CONSUMPTION_METRIC_LABELS[currentConsumptionMetric] || "Consumption",
+                    destruction_metric: DESTRUCTION_METRIC_LABELS[currentDestructionMetric] || "Destruction",
+                    wars_metric: WARS_METRIC_LABELS[currentWarsMetric] || "Wars",
+                    gains_metric: GAINS_METRIC_LABELS[currentGainsMetric] || "Total Gains",
+                  }[sortKey])
+                : (document.querySelector(`th[data-sort="${sortKey}"] .th-label`)?.textContent.replace(/[\u2191\u2193]/g, "").trim() || sortKey);
+            const selectedStart = formatDateLabel(watchRangeState.selectedStartDate);
+            const selectedEnd = formatDateLabel(watchRangeState.selectedEndDate);
+            document.getElementById("watch-sort-summary").textContent = `Sorted by ${activeLabel} (${direction === "asc" ? "ascending" : "descending"}) | ${selectedStart} - ${selectedEnd}`;
+        }
+
+        function applySort(sortKey, direction) {
+            if (sortKey === "cost_metric") {
+                updateCostCells();
+            } else if (sortKey === "units_metric") {
+                updateUnitsCells();
+            } else if (sortKey === "consumption_metric") {
+                updateConsumptionCells();
+            } else if (sortKey === "destruction_metric") {
+                updateDestructionCells();
+            } else if (sortKey === "wars_metric") {
+                updateWarsCells();
+            } else if (sortKey === "gains_metric") {
+                updateGainsCells();
+            }
+            sortRows(sortKey, direction);
+            updateSortUI(sortKey, direction);
+        }
+
+        function buildRowCell(key, value, displayValue = value, hidden = false, extraAttrs = {}) {
+            const safeSortValue = String(value ?? 0).replace(/"/g, "&quot;");
+            const hiddenStyle = hidden ? ' style="display:none"' : "";
+            const extraStr = Object.entries(extraAttrs).map(([k, v]) => ` ${k}="${String(v).replace(/"/g, "&quot;")}"`).join("");
+            return `<td data-key="${key}" data-sort-value="${safeSortValue}"${hiddenStyle}${extraStr}>${displayValue}</td>`;
+        }
+
+        function buildCostDisplay(grossCost, netCost) {
+            return `
+                <div class="watch-units-cell">
+                    <span class="watch-units-cell-main"><img class="watch-sort-icon" src="/static/Emojis/Watcher/cost.png" alt=""> ${formatCurrency(grossCost)}</span>
+                    <span class="watch-units-cell-sub"><img class="watch-sort-icon" src="/static/Emojis/Watcher/net.png" alt=""> ${formatCurrency(netCost)}</span>
+                </div>
+            `;
+        }
+
+        function buildAllUnitsDisplay(unitsCount, unitsCost) {
+            return `
+                <div class="watch-units-cell">
+                    <span class="watch-units-cell-main">${formatNumber(unitsCount)}</span>
+                    <span class="watch-units-cell-sub">${formatCurrency(unitsCost)}</span>
+                </div>
+            `;
+        }
+
+        function buildDestructionDisplay(infraLevels, infraValue, improvementsCount, improvementsValue) {
+            return `
+                <div class="watch-units-cell">
+                    <span class="watch-units-cell-main">${formatNumber(infraLevels)} infra levels</span>
+                    <span class="watch-units-cell-sub">${formatCurrency(infraValue)}</span>
+                    <span class="watch-units-cell-main">${formatNumber(improvementsCount)} improvements</span>
+                    <span class="watch-units-cell-sub">${formatCurrency(improvementsValue)}</span>
+                </div>
+            `;
+        }
+
+        function buildConsumptionDisplay(gasUsed, gasValue, munUsed, munValue) {
+            return `
+                <div class="watch-units-cell">
+                    <span class="watch-units-cell-main"><img class="watch-sort-icon" src="/static/Emojis/Resources/gasoline.png" alt=""> ${formatNumber(gasUsed)}</span>
+                    <span class="watch-units-cell-sub">${formatCurrency(gasValue)}</span>
+                    <span class="watch-units-cell-main"><img class="watch-sort-icon" src="/static/Emojis/Resources/munitions.png" alt=""> ${formatNumber(munUsed)}</span>
+                    <span class="watch-units-cell-sub">${formatCurrency(munValue)}</span>
+                </div>
+            `;
+        }
+
+        function buildWarsDisplay(offenseWars, defenseWars) {
+            const total = (Number(offenseWars) || 0) + (Number(defenseWars) || 0);
+            return `
+                <div class="watch-units-cell">
+                    <span class="watch-units-cell-main"><img class="watch-sort-icon" src="/static/Emojis/Watcher/war.png" alt=""> ${formatNumber(total)} total</span>
+                    <span class="watch-units-cell-sub"><img class="watch-sort-icon" src="/static/Emojis/Watcher/off.png" alt=""> ${formatNumber(offenseWars)} &nbsp; <img class="watch-sort-icon" src="/static/Emojis/Watcher/def.png" alt=""> ${formatNumber(defenseWars)}</span>
+                </div>
+            `;
+        }
+
+        async function fetchData() {
+            const tableBody = document.getElementById("war-stats-body");
+            const requestToken = ++watchFetchToken;
+            tableBody.innerHTML = "";
+
+            let linkedNationId = null;
+            try {
+                const linkedRes = await fetch("/api/discord/linked-nation");
+                if (linkedRes.ok) {
+                    const linkedData = await linkedRes.json();
+                    if (linkedData.linked && linkedData.nation_id) {
+                        linkedNationId = String(linkedData.nation_id);
+                    }
+                }
+            } catch (_) { /* not linked or unavailable, no problem */ }
+
+            try {
+                const params = new URLSearchParams();
+                if (watchRangeState.selectedStartDate) {
+                    params.set("start_date", watchRangeState.selectedStartDate);
+                }
+                if (watchRangeState.selectedEndDate) {
+                    params.set("end_date", watchRangeState.selectedEndDate);
+                }
+
+                const response = await fetch(`/api/watch/wars${params.toString() ? `?${params.toString()}` : ""}`);
+                const data = await response.json();
+
+                if (requestToken !== watchFetchToken) {
+                    return;
+                }
+
+                if (!response.ok) {
+                    throw new Error(data.error || `Request failed with status ${response.status}`);
+                }
+
+                const meta = data && data.meta ? data.meta : {};
+                applyMeta(meta);
+
+                const nations = data && data.nations ? data.nations : {};
+                const nationIds = Object.keys(nations);
+
+                if (data.error) {
+                    setStatus(data.error, nationIds.length === 0);
+                } else {
+                    setStatus("");
+                }
+
+                if (nationIds.length === 0) {
+                    setStatus(data.error || "No Night Watch wars were found in the selected date range.");
+                    updateSortUI(currentSortKey, currentSortDirection);
+                    return;
+                }
+
+                for (const nationId of nationIds) {
+                    const nation = nations[nationId] || {};
+                    const nationName = nation.name || `Unknown ${nationId}`;
+                    const currentUnitsValue = currentUnitsMetric === "units_net"
+                        ? Number(nation.units_total_cost) || 0
+                        : Number(nation[currentUnitsMetric]) || 0;
+                    const row = document.createElement("tr");
+                    if (linkedNationId && nationId === linkedNationId) {
+                        row.classList.add("my-nation-row");
+                    }
+
+                    row.innerHTML = [
+                        buildRowCell("name", nationName, nationName),
+                        buildRowCell("cost_metric", Number(nation.gross_cost) || 0, buildCostDisplay(nation.gross_cost, nation.net_damage)),
+                        buildRowCell("gains_metric", Number(nation.total_gains) || 0,
+                            `<span style="cursor:default">${formatCurrency(nation.total_gains)}</span>`,
+                            false,
+                            { "data-loot-breakdown": JSON.stringify(nation.loot_breakdown || {}) }
+                        ),
+                        buildRowCell("total_gains", Number(nation.total_gains) || 0, "", true),
+                        buildRowCell("gains_cash", Number((nation.loot_breakdown || {}).cash) || 0, "", true),
+                        ...Object.entries(RESOURCE_ICONS).map(([res]) => {
+                            const resData = ((nation.loot_breakdown || {}).resources || {})[res];
+                            return buildRowCell(`gains_res_${res}`, Number(resData?.value) || 0, "", true);
+                        }),
+                        buildRowCell("gross_cost", Number(nation.gross_cost) || 0, formatCurrency(nation.gross_cost), true),
+                        buildRowCell("net_damage", Number(nation.net_damage) || 0, formatCurrency(nation.net_damage), true),
+                        buildRowCell("units_metric", currentUnitsValue, currentUnitsMetric === "units_net"
+                            ? buildAllUnitsDisplay(nation.units_net, nation.units_total_cost)
+                            : buildAllUnitsDisplay(
+                                nation[currentUnitsMetric],
+                                nation[`${currentUnitsMetric}_cost`]
+                            )),
+                        buildRowCell("consumption_metric", Number(nation.consumption) || 0, buildConsumptionDisplay(
+                            nation.gas_used,
+                            nation.gasoline_sell_value,
+                            nation.mun_used,
+                            nation.munitions_sell_value
+                        )),
+                        buildRowCell("destruction_metric", Number(nation.infra_net) || 0, buildDestructionDisplay(
+                            nation.infra_levels_lost,
+                            nation.infra_net,
+                            nation.improvements_count,
+                            nation.improvements
+                        )),
+                        (() => {
+                            const offWars = Number(nation.offense_wars_count) || 0;
+                            const defWars = Number(nation.defense_wars_count) || 0;
+                            const total = offWars + defWars;
+                            return buildRowCell("wars_metric", total, buildWarsDisplay(offWars, defWars));
+                        })(),
+                        buildRowCell("damages", Number(nation.damages) || 0, formatCurrency(nation.damages)),
+                        buildRowCell("units_net", Number(nation.units_net) || 0, formatNumber(nation.units_net), true),
+                        buildRowCell("units_total_cost", Number(nation.units_total_cost) || 0, formatCurrency(nation.units_total_cost), true),
+                        buildRowCell("soldiers_lost", Number(nation.soldiers_lost) || 0, formatNumber(nation.soldiers_lost), true),
+                        buildRowCell("soldiers_lost_cost", Number(nation.soldiers_lost_cost) || 0, formatCurrency(nation.soldiers_lost_cost), true),
+                        buildRowCell("tanks_lost", Number(nation.tanks_lost) || 0, formatNumber(nation.tanks_lost), true),
+                        buildRowCell("tanks_lost_cost", Number(nation.tanks_lost_cost) || 0, formatCurrency(nation.tanks_lost_cost), true),
+                        buildRowCell("aircraft_lost", Number(nation.aircraft_lost) || 0, formatNumber(nation.aircraft_lost), true),
+                        buildRowCell("aircraft_lost_cost", Number(nation.aircraft_lost_cost) || 0, formatCurrency(nation.aircraft_lost_cost), true),
+                        buildRowCell("ships_lost", Number(nation.ships_lost) || 0, formatNumber(nation.ships_lost), true),
+                        buildRowCell("ships_lost_cost", Number(nation.ships_lost_cost) || 0, formatCurrency(nation.ships_lost_cost), true),
+                        buildRowCell("missiles_lost", Number(nation.missiles_lost) || 0, formatNumber(nation.missiles_lost), true),
+                        buildRowCell("missiles_lost_cost", Number(nation.missiles_lost_cost) || 0, formatCurrency(nation.missiles_lost_cost), true),
+                        buildRowCell("nukes_lost", Number(nation.nukes_lost) || 0, formatNumber(nation.nukes_lost), true),
+                        buildRowCell("nukes_lost_cost", Number(nation.nukes_lost_cost) || 0, formatCurrency(nation.nukes_lost_cost), true),
+                        buildRowCell("infra_levels_lost", Number(nation.infra_levels_lost) || 0, formatNumber(nation.infra_levels_lost), true),
+                        buildRowCell("infra_net", Number(nation.infra_net) || 0, formatCurrency(nation.infra_net), true),
+                        buildRowCell("improvements", Number(nation.improvements) || 0, formatCurrency(nation.improvements), true),
+                        buildRowCell("consumption", Number(nation.consumption) || 0, formatCurrency(nation.consumption), true),
+                        buildRowCell("gas_used", Number(nation.gas_used) || 0, formatNumber(nation.gas_used), true),
+                        buildRowCell("mun_used", Number(nation.mun_used) || 0, formatNumber(nation.mun_used), true),
+                        buildRowCell("gasoline_sell_value", Number(nation.gasoline_sell_value) || 0, formatCurrency(nation.gasoline_sell_value), true),
+                        buildRowCell("munitions_sell_value", Number(nation.munitions_sell_value) || 0, formatCurrency(nation.munitions_sell_value), true),
+                        buildRowCell("improvements_count", Number(nation.improvements_count) || 0, formatNumber(nation.improvements_count), true),
+                        buildRowCell("offense_wars_count", Number(nation.offense_wars_count) || 0, formatNumber(nation.offense_wars_count), true),
+                        buildRowCell("defense_wars_count", Number(nation.defense_wars_count) || 0, formatNumber(nation.defense_wars_count), true),
+                    ].join("");
+                    tableBody.appendChild(row);
+                }
+
+                applySort(currentSortKey, currentSortDirection);
+            } catch (error) {
+                console.error("Error fetching war data:", error);
+                setStatus("Night Watch data could not be loaded right now.", true);
+            }
+        }
+
+        // --- Loot tooltip ---
+        const lootTooltipEl = document.getElementById("loot-tooltip");
+        let lootTooltipTarget = null;
+
+        const RESOURCE_ICONS = {
+            coal: "/static/Emojis/Resources/coal.png",
+            oil: "/static/Emojis/Resources/oil.png",
+            uranium: "/static/Emojis/Resources/uranium.png",
+            iron: "/static/Emojis/Resources/iron.png",
+            bauxite: "/static/Emojis/Resources/bauxite.png",
+            lead: "/static/Emojis/Resources/lead.png",
+            gasoline: "/static/Emojis/Resources/gasoline.png",
+            munitions: "/static/Emojis/Resources/munitions.png",
+            steel: "/static/Emojis/Resources/steel.png",
+            aluminum: "/static/Emojis/Resources/aluminum.png",
+            food: "/static/Emojis/Resources/food.png",
+        };
+
+        function positionTooltip(x, y) {
+            const pad = 14;
+            const tw = lootTooltipEl.offsetWidth || 240;
+            const th = lootTooltipEl.offsetHeight || 200;
+            let left = x + pad;
+            let top = y + pad;
+            if (left + tw > window.innerWidth - pad) left = x - tw - pad;
+            if (top + th > window.innerHeight - pad) top = y - th - pad;
+            lootTooltipEl.style.left = `${left}px`;
+            lootTooltipEl.style.top = `${top}px`;
+        }
+
+        function showLootTooltip(cell, x, y) {
+            let breakdown;
+            try { breakdown = JSON.parse(cell.dataset.lootBreakdown || "null"); } catch { breakdown = null; }
+            if (!breakdown) return;
+
+            const cash = Number(breakdown.cash) || 0;
+            const resources = breakdown.resources || {};
+            const resourceTotal = Object.values(resources).reduce((s, r) => s + (Number(r.value) || 0), 0);
+            const grandTotal = cash + resourceTotal;
+
+            let html = `<p class="loot-tooltip-title">Total Gains Breakdown</p>`;
+
+            html += `<div class="loot-tooltip-row">
+                <span class="loot-tooltip-label">💰 Cash Looted</span>
+                <span class="loot-tooltip-value">${formatCurrency(cash)}</span>
+            </div>`;
+
+            for (const [res, data] of Object.entries(resources)) {
+                const icon = RESOURCE_ICONS[res] || "";
+                const label = res.charAt(0).toUpperCase() + res.slice(1);
+                const iconHtml = icon ? `<img src="${icon}" alt="${label}">` : "";
+                html += `<div class="loot-tooltip-row">
+                    <span class="loot-tooltip-label">${iconHtml} ${formatNumber(data.amount)} ${label}</span>
+                    <span class="loot-tooltip-value">${formatCurrency(data.value)}</span>
+                </div>`;
+            }
+
+            html += `<div class="loot-tooltip-total">
+                <span>Total</span>
+                <span>${formatCurrency(grandTotal)}</span>
+            </div>`;
+
+            lootTooltipEl.innerHTML = html;
+            lootTooltipEl.setAttribute("aria-hidden", "false");
+            positionTooltip(x, y);
+            lootTooltipEl.classList.add("is-visible");
+        }
+
+        function hideLootTooltip() {
+            lootTooltipEl.classList.remove("is-visible");
+            lootTooltipEl.setAttribute("aria-hidden", "true");
+            lootTooltipTarget = null;
+        }
+
+        document.addEventListener("mouseover", (e) => {
+            const cell = e.target.closest("td[data-loot-breakdown]");
+            if (!cell) return;
+            lootTooltipTarget = cell;
+            showLootTooltip(cell, e.clientX, e.clientY);
+        });
+
+        document.addEventListener("mousemove", (e) => {
+            if (!lootTooltipTarget) return;
+            positionTooltip(e.clientX, e.clientY);
+        });
+
+        document.addEventListener("mouseout", (e) => {
+            if (!lootTooltipTarget) return;
+            const cell = e.target.closest("td[data-loot-breakdown]");
+            if (cell && !cell.contains(e.relatedTarget)) hideLootTooltip();
+            else if (!cell) hideLootTooltip();
+        });
+        // --- End loot tooltip ---
+
+        function initializeWatchPage() {
+            if (watchPageInitialized) {
+                return;
+            }
+            watchPageInitialized = true;
+
+            document.querySelectorAll("th[data-sort]").forEach((header) => {
+                if (header.dataset.watchInit === "true" || header.dataset.sort === "units_metric") {
+                    return;
+                }
+                header.dataset.watchInit = "true";
+                header.addEventListener("click", () => {
+                    const sortKey = header.dataset.sort;
+                    const direction = currentSortKey === sortKey && currentSortDirection === "asc" ? "desc" : "asc";
+                    applySort(sortKey, direction);
+                });
+            });
+
+            const { startSlider, endSlider } = getSliderElements();
+            const unitsSelect = document.getElementById("watch-units-select");
+            const unitsDirection = document.getElementById("watch-units-direction");
+            const costSelect = document.getElementById("watch-cost-select");
+            const costDirection = document.getElementById("watch-cost-direction");
+            const consumptionSelect = document.getElementById("watch-consumption-select");
+            const consumptionDirection = document.getElementById("watch-consumption-direction");
+            const destructionSelect = document.getElementById("watch-destruction-select");
+            const destructionDirection = document.getElementById("watch-destruction-direction");
+            const warsSelect = document.getElementById("watch-wars-select");
+            const warsDirection = document.getElementById("watch-wars-direction");
+            const gainsSelect = document.getElementById("watch-gains-select");
+            const gainsDirection = document.getElementById("watch-gains-direction");
+
+            if (startSlider.dataset.watchInit !== "true") {
+                startSlider.dataset.watchInit = "true";
+                startSlider.addEventListener("input", () => {
+                    if (Number(startSlider.value) > Number(endSlider.value)) {
+                        startSlider.value = endSlider.value;
+                    }
+                    watchRangeState.selectedStartDate = addDays(watchRangeState.availableStartDate, Number(startSlider.value));
+                    updateRangeLabels({
+                        available_start_date: watchRangeState.availableStartDate,
+                        available_end_date: watchRangeState.availableEndDate,
+                        war_count: document.getElementById("watch-war-count").textContent,
+                    });
+                    syncSliderUI();
+                    updateSortUI(currentSortKey, currentSortDirection);
+                });
+                startSlider.addEventListener("change", queueDateWindowFetch);
+            }
+
+            if (endSlider.dataset.watchInit !== "true") {
+                endSlider.dataset.watchInit = "true";
+                endSlider.addEventListener("input", () => {
+                    if (Number(endSlider.value) < Number(startSlider.value)) {
+                        endSlider.value = startSlider.value;
+                    }
+                    watchRangeState.selectedEndDate = addDays(watchRangeState.availableStartDate, Number(endSlider.value));
+                    updateRangeLabels({
+                        available_start_date: watchRangeState.availableStartDate,
+                        available_end_date: watchRangeState.availableEndDate,
+                        war_count: document.getElementById("watch-war-count").textContent,
+                    });
+                    syncSliderUI();
+                    updateSortUI(currentSortKey, currentSortDirection);
+                });
+                endSlider.addEventListener("change", queueDateWindowFetch);
+            }
+
+            if (unitsSelect.dataset.watchInit !== "true") {
+                unitsSelect.dataset.watchInit = "true";
+                unitsSelect.addEventListener("change", () => {
+                    currentUnitsMetric = unitsSelect.value;
+                    applySort("units_metric", currentSortKey === "units_metric" ? currentSortDirection : "desc");
+                });
+            }
+
+            if (unitsDirection.dataset.watchInit !== "true") {
+                unitsDirection.dataset.watchInit = "true";
+                unitsDirection.addEventListener("click", (event) => {
+                    event.stopPropagation();
+                    const nextDirection = currentSortKey === "units_metric" && currentSortDirection === "asc" ? "desc" : "asc";
+                    applySort("units_metric", nextDirection);
+                });
+            }
+
+            if (consumptionSelect.dataset.watchInit !== "true") {
+                consumptionSelect.dataset.watchInit = "true";
+                consumptionSelect.addEventListener("change", () => {
+                    currentConsumptionMetric = consumptionSelect.value;
+                    applySort("consumption_metric", currentSortKey === "consumption_metric" ? currentSortDirection : "desc");
+                });
+            }
+
+            if (costSelect.dataset.watchInit !== "true") {
+                costSelect.dataset.watchInit = "true";
+                costSelect.addEventListener("change", () => {
+                    currentCostMetric = costSelect.value;
+                    applySort("cost_metric", currentSortKey === "cost_metric" ? currentSortDirection : "desc");
+                });
+            }
+
+            if (costDirection.dataset.watchInit !== "true") {
+                costDirection.dataset.watchInit = "true";
+                costDirection.addEventListener("click", (event) => {
+                    event.stopPropagation();
+                    const nextDirection = currentSortKey === "cost_metric" && currentSortDirection === "asc" ? "desc" : "asc";
+                    applySort("cost_metric", nextDirection);
+                });
+            }
+
+            if (consumptionDirection.dataset.watchInit !== "true") {
+                consumptionDirection.dataset.watchInit = "true";
+                consumptionDirection.addEventListener("click", (event) => {
+                    event.stopPropagation();
+                    const nextDirection = currentSortKey === "consumption_metric" && currentSortDirection === "asc" ? "desc" : "asc";
+                    applySort("consumption_metric", nextDirection);
+                });
+            }
+
+            if (destructionSelect.dataset.watchInit !== "true") {
+                destructionSelect.dataset.watchInit = "true";
+                destructionSelect.addEventListener("change", () => {
+                    currentDestructionMetric = destructionSelect.value;
+                    applySort("destruction_metric", currentSortKey === "destruction_metric" ? currentSortDirection : "desc");
+                });
+            }
+
+            if (destructionDirection.dataset.watchInit !== "true") {
+                destructionDirection.dataset.watchInit = "true";
+                destructionDirection.addEventListener("click", (event) => {
+                    event.stopPropagation();
+                    const nextDirection = currentSortKey === "destruction_metric" && currentSortDirection === "asc" ? "desc" : "asc";
+                    applySort("destruction_metric", nextDirection);
+                });
+            }
+
+            if (warsSelect.dataset.watchInit !== "true") {
+                warsSelect.dataset.watchInit = "true";
+                warsSelect.addEventListener("change", () => {
+                    currentWarsMetric = warsSelect.value;
+                    applySort("wars_metric", currentSortKey === "wars_metric" ? currentSortDirection : "desc");
+                });
+            }
+
+            if (warsDirection.dataset.watchInit !== "true") {
+                warsDirection.dataset.watchInit = "true";
+                warsDirection.addEventListener("click", (event) => {
+                    event.stopPropagation();
+                    const nextDirection = currentSortKey === "wars_metric" && currentSortDirection === "asc" ? "desc" : "asc";
+                    applySort("wars_metric", nextDirection);
+                });
+            }
+
+            if (gainsSelect.dataset.watchInit !== "true") {
+                gainsSelect.dataset.watchInit = "true";
+                gainsSelect.addEventListener("change", () => {
+                    currentGainsMetric = gainsSelect.value;
+                    applySort("gains_metric", currentSortKey === "gains_metric" ? currentSortDirection : "desc");
+                });
+            }
+
+            if (gainsDirection.dataset.watchInit !== "true") {
+                gainsDirection.dataset.watchInit = "true";
+                gainsDirection.addEventListener("click", (event) => {
+                    event.stopPropagation();
+                    const nextDirection = currentSortKey === "gains_metric" && currentSortDirection === "asc" ? "desc" : "asc";
+                    applySort("gains_metric", nextDirection);
+                });
+            }
+
+            updateSortUI(currentSortKey, currentSortDirection);
+            syncSliderUI();
+            fetchData();
+        }
+
+        if (document.readyState === "loading") {
+            document.addEventListener("DOMContentLoaded", initializeWatchPage, { once: true });
+        } else {
+            initializeWatchPage();
+        }
+
+        document.addEventListener("dashboardPageLoaded", (event) => {
+            if (event.detail && event.detail.page === "watch.html") {
+                initializeWatchPage();
+            }
+        });
+    </script>
+</body>
+</html>

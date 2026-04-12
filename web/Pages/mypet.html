@@ -1,0 +1,59 @@
+<link rel="stylesheet" href="/css/mypet.css">
+
+<div class="container-fluid" id="mypet-root">
+
+    <!-- No-pet state -->
+    <div id="mypet-empty" style="display:none;">
+        <div class="row justify-content-center mt-5">
+            <div class="col-lg-6 text-center">
+                <div class="mp-card">
+                    <div class="mp-card-header"><h5>🐾 My Pet</h5></div>
+                    <div class="mp-card-body py-5">
+                        <p class="text-muted mb-4">You don't have a pet yet. Adopt one to get started!</p>
+                        <button class="mp-adopt-btn" id="open-adopt-btn">+ Adopt a Pet</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pet display -->
+    <div id="mypet-display" style="display:none;">
+        <hr class="mp-divider">
+        <div class="row g-3">
+            <!-- LEFT: Pet card -->
+            <div class="col-xl-3 col-lg-4 mb-3">
+                <div class="mp-card h-100">
+                    <div class="mp-card-header text-center" id="my-pet-header"></div>
+                    <div class="mp-card-body" id="my-pet-body"></div>
+                </div>
+            </div>
+
+            <!-- RIGHT: Interactions panel -->
+            <div class="col-xl-9 col-lg-8">
+                <hr class="mp-divider d-lg-none">
+                <div class="mp-card">
+                    <div class="mp-card-header">
+                        <h5>⚙️ Interactions</h5>
+                    </div>
+                    <div class="mp-card-body" id="pet-tab-content"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading -->
+    <div id="mypet-loading" class="text-center py-5">
+        <div class="spinner-border" style="color:var(--gold-primary)" role="status"></div>
+        <p class="mt-2" style="color:var(--text-secondary)">Loading your pet...</p>
+    </div>
+
+    <!-- Error -->
+    <div id="mypet-error" style="display:none;" class="row justify-content-center mt-5">
+        <div class="col-lg-6">
+            <div class="mp-card mp-card-body" id="mypet-error-msg" style="color:var(--text-primary)"></div>
+        </div>
+    </div>
+</div>
+
+<script src="/js/mypet.js"></script>

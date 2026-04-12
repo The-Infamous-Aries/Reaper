@@ -190,10 +190,47 @@
     transform: scale(1.2) rotate(5deg);
 }
 
+/* Button Styles */
+.btn-gold {
+    background: linear-gradient(135deg, var(--gold-primary), var(--gold-secondary));
+    border: 2px solid var(--gold-primary);
+    color: #000;
+    font-weight: 600;
+    padding: 0.5rem 1.5rem;
+    border-radius: 0.5rem;
+    transition: all 0.3s ease;
+    text-decoration: none;
+    display: inline-block;
+}
+
+.btn-gold:hover {
+    background: linear-gradient(135deg, var(--gold-secondary), var(--gold-primary));
+    box-shadow: 0 0 15px var(--gold-glow);
+    transform: translateY(-2px);
+    color: #000;
+}
+
+.btn-gold:active {
+    transform: translateY(0);
+}
+
+/* Fade-in animation */
+.fade-in {
+    animation: fadeIn 0.3s ease-in;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
 /* Graph Content Area */
 .graph-content {
-    min-height: 400px;
     position: relative;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
 }
 
 .loading-container {
@@ -284,8 +321,32 @@
     background: rgba(15, 15, 15, 0.9);
     border: 2px solid var(--gold-primary);
     border-radius: 0.75rem;
-    padding: 1.5rem;
+    padding: 0;
     box-shadow: 0 0 15px var(--gold-glow);
+    flex-direction: column;
+    height: calc(100vh - 160px);
+    min-height: 800px;
+    position: relative;
+}
+
+.graph-close-btn {
+    position: absolute;
+    top: 0.6rem;
+    right: 0.75rem;
+    z-index: 10;
+    background: none;
+    border: none;
+    color: var(--gold-primary);
+    font-size: 1.6rem;
+    line-height: 1;
+    cursor: pointer;
+    opacity: 0.7;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.graph-close-btn:hover {
+    opacity: 1;
+    transform: scale(1.2);
 }
 
 .graph-display-header {
@@ -301,11 +362,10 @@
 /* Graph Display Styles */
 .graph-iframe {
     width: 100%;
-    height: 800px;
+    height: 100%;
     border: none;
-    border-radius: 0.5rem;
-    background: white;
-    box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+    border-radius: 0.75rem;
+    display: block;
 }
 
 .graph-image {
@@ -315,12 +375,7 @@
     box-shadow: 0 4px 8px rgba(0,0,0,0.3);
 }
 
-.graph-content {
-    min-height: 400px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
+/* (graph-content defined above) */
 
 /* Progress Bar */
 .progress-custom {
@@ -343,11 +398,11 @@
 
 /* Graph Result */
 .graph-result {
-    min-height: 300px;
-    background: rgba(20, 20, 20, 0.5);
-    border: 1px solid var(--gold-primary);
-    border-radius: 0.5rem;
-    padding: 1rem;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border-radius: 0.75rem;
 }
 
 /* Animations */

@@ -1,0 +1,399 @@
+/* ── My Pet Page — matches homepage theme ──────────────────────────────────── */
+
+/* Section divider matching homepage title-break */
+.mp-divider {
+    border: none;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--gold-primary), transparent);
+    margin: 1.2rem 0;
+    position: relative;
+    overflow: visible;
+}
+.mp-divider::before, .mp-divider::after {
+    content: '✠';
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--gold-primary);
+    font-size: 0.85rem;
+    text-shadow: 0 0 5px var(--gold-glow);
+}
+.mp-divider::before { left: 8%; }
+.mp-divider::after  { right: 8%; }
+
+/* Pet card — homepage home-card style */
+.mp-card {
+    position: relative;
+    background: linear-gradient(135deg, rgba(15,15,15,0.9), rgba(20,20,20,0.9));
+    border: 2px solid transparent;
+    border-image: linear-gradient(45deg, var(--gold-primary), #8B4513, var(--gold-primary)) 1;
+    clip-path: polygon(0 12px, 12px 0, calc(100% - 12px) 0, 100% 12px, 100% calc(100% - 12px), calc(100% - 12px) 100%, 12px 100%, 0 calc(100% - 12px));
+    animation: mpCardGlow 3s ease-in-out infinite;
+    overflow: hidden;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+.mp-card:hover {
+    transform: translateY(-3px);
+    animation: none;
+    box-shadow: 0 0 30px var(--gold-glow), 0 0 50px rgba(255,215,0,0.15);
+}
+@keyframes mpCardGlow {
+    0%,100% { box-shadow: 0 0 18px var(--gold-glow); }
+    50%      { box-shadow: 0 0 28px rgba(255,0,0,0.35), 0 0 20px var(--gold-glow); }
+}
+
+/* Card header */
+.mp-card-header {
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid rgba(255,215,0,0.25);
+    background: linear-gradient(135deg, rgba(20,20,20,0.95), rgba(15,15,15,0.95));
+}
+.mp-card-header h5, .mp-card-header h6 {
+    font-family: 'Orbitron', sans-serif;
+    color: var(--gold-primary);
+    text-shadow: 0 0 8px var(--gold-glow);
+    margin: 0;
+}
+
+/* Card body */
+.mp-card-body { padding: 1rem; }
+
+/* Pet image */
+.mp-pet-img {
+    width: 56px;
+    height: 56px;
+    object-fit: contain;
+    filter: drop-shadow(0 0 8px var(--gold-glow));
+    transition: transform 0.3s ease;
+}
+.mp-pet-img:hover { transform: scale(1.1); }
+
+/* Stat rows */
+.mp-stat-row {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.92rem;
+    color: var(--text-primary);
+    margin-bottom: 5px;
+}
+.mp-stat-row img {
+    width: 22px;
+    height: 22px;
+    object-fit: contain;
+    flex-shrink: 0;
+}
+
+/* Glowing specialisation stat */
+.stat-special {
+    color: var(--gold-secondary) !important;
+    font-weight: 700;
+    animation: statGlow 2s ease-in-out infinite alternate;
+}
+@keyframes statGlow {
+    from { text-shadow: 0 0 5px var(--gold-primary); }
+    to   { text-shadow: 0 0 12px var(--gold-primary), 0 0 18px var(--gold-glow); }
+}
+
+/* XP bar */
+.mp-xp-bar-wrap {
+    background: rgba(0,0,0,0.4);
+    border: 1px solid rgba(255,215,0,0.3);
+    border-radius: 20px;
+    overflow: hidden;
+    height: 14px;
+}
+.mp-xp-bar {
+    height: 100%;
+    background: linear-gradient(90deg, var(--gold-primary), var(--gold-secondary));
+    border-radius: 20px;
+    transition: width 0.6s ease;
+}
+
+/* Equipment slots */
+.mp-equip-slot {
+    width: 48px;
+    height: 48px;
+    border: 1px solid rgba(255,215,0,0.3);
+    border-radius: 6px;
+    background: rgba(0,0,0,0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    position: relative;
+}
+.mp-equip-slot:hover { border-color: var(--gold-primary); box-shadow: 0 0 8px var(--gold-glow); }
+.mp-equip-slot img { width: 38px; height: 38px; object-fit: contain; }
+.mp-equip-slot.empty img { opacity: 0.25; }
+.mp-equip-slot .mp-slot-label {
+    position: absolute;
+    bottom: -15px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 0.5rem;
+    color: var(--text-secondary);
+    white-space: nowrap;
+}
+
+/* Section headers inside the right panel */
+.mp-section-title {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.7rem;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--gold-secondary);
+    text-shadow: 0 0 6px var(--gold-glow);
+    margin-bottom: 0.5rem;
+    padding-bottom: 4px;
+    border-bottom: 1px solid rgba(255,215,0,0.2);
+}
+
+/* Inventory item cards */
+.mp-inv-item {
+    background: rgba(0,0,0,0.35);
+    border: 1px solid rgba(255,215,0,0.15);
+    border-radius: 6px;
+    padding: 6px 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: border-color 0.2s;
+    font-size: 0.78rem;
+}
+.mp-inv-item:hover { border-color: var(--gold-primary); }
+.mp-inv-item img { width: 28px; height: 28px; object-fit: contain; flex-shrink: 0; }
+
+/* Battle record mini-cards */
+.mp-battle-card {
+    background: rgba(0,0,0,0.35);
+    border: 1px solid rgba(255,215,0,0.15);
+    border-radius: 6px;
+    padding: 6px 10px;
+    text-align: center;
+    font-size: 0.75rem;
+}
+
+/* Casino game cards */
+.mp-casino-card {
+    background: rgba(0,0,0,0.35);
+    border-radius: 6px;
+    padding: 8px 10px;
+    font-size: 0.75rem;
+}
+
+/* Rarity colours */
+.rc-common   { color: #9e9e9e; }
+.rc-uncommon { color: #4caf50; }
+.rc-rare     { color: #2196f3; }
+.rc-epic     { color: #9c27b0; }
+.rc-mythic   { color: #ff9800; }
+
+/* Empty state */
+.mp-empty-state {
+    text-align: center;
+    padding: 2rem;
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+}
+
+/* Adopt button */
+.mp-adopt-btn {
+    background: linear-gradient(135deg, var(--gold-primary), var(--gold-secondary));
+    color: #000;
+    font-family: 'Orbitron', sans-serif;
+    font-weight: 700;
+    font-size: 0.9rem;
+    border: none;
+    padding: 0.6rem 1.8rem;
+    clip-path: polygon(0 8px, 8px 0, calc(100% - 8px) 0, 100% 8px, 100% calc(100% - 8px), calc(100% - 8px) 100%, 8px 100%, 0 calc(100% - 8px));
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+.mp-adopt-btn:hover {
+    box-shadow: 0 0 20px var(--gold-glow);
+    transform: translateY(-2px);
+}
+
+/* ── Custom species picker ─────────────────────────────────────────────────── */
+.sp-picker { position: relative; }
+.sp-trigger {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    background: rgba(15,15,15,0.9);
+    border: 1px solid var(--gold-primary);
+    border-radius: 6px;
+    cursor: pointer;
+    user-select: none;
+    transition: box-shadow 0.2s;
+}
+.sp-trigger:hover { box-shadow: 0 0 8px var(--gold-glow); }
+.sp-trigger img { width: 36px; height: 36px; object-fit: contain; flex-shrink: 0; }
+.sp-trigger .sp-name { font-weight: 600; flex: 1; color: var(--text-primary); }
+.sp-trigger .sp-arrow { margin-left: auto; opacity: 0.6; color: var(--gold-primary); }
+
+.sp-dropdown {
+    display: none;
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0; right: 0;
+    background: rgba(12,12,12,0.98);
+    border: 1px solid var(--gold-primary);
+    border-radius: 6px;
+    z-index: 9999;
+    max-height: 380px;
+    overflow: hidden;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.8), 0 0 20px var(--gold-glow);
+    flex-direction: column;
+}
+.sp-dropdown.open { display: flex; }
+.sp-search { padding: 8px; border-bottom: 1px solid rgba(255,215,0,0.2); flex-shrink: 0; }
+.sp-search input {
+    width: 100%;
+    background: rgba(20,20,20,0.9);
+    border: 1px solid var(--gold-primary);
+    border-radius: 4px;
+    color: var(--text-primary);
+    padding: 6px 10px;
+    font-size: 0.82rem;
+}
+.sp-search input:focus { outline: none; box-shadow: 0 0 6px var(--gold-glow); }
+.sp-list { overflow-y: auto; flex: 1; }
+.sp-list::-webkit-scrollbar { width: 5px; }
+.sp-list::-webkit-scrollbar-thumb { background: var(--gold-primary); border-radius: 3px; }
+.sp-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 7px 12px;
+    cursor: pointer;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    transition: background 0.15s;
+}
+.sp-item:hover, .sp-item.selected { background: rgba(255,215,0,0.07); }
+.sp-item img { width: 38px; height: 38px; object-fit: contain; flex-shrink: 0; margin-top: 2px; }
+.sp-item-info { flex: 1; min-width: 0; }
+.sp-item-name { font-weight: 600; font-size: 0.85rem; color: var(--text-primary); }
+.sp-item-meta { font-size: 0.7rem; color: var(--text-secondary); margin-top: 1px; }
+.sp-item-stats { font-size: 0.68rem; color: var(--text-secondary); margin-top: 2px; }
+.sp-item-actions { font-size: 0.68rem; color: var(--gold-secondary); margin-top: 3px; }
+.sp-item-spec { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 3px; }
+.sp-item-spec .badge {
+    font-size: 0.6rem;
+    background: linear-gradient(135deg, var(--gold-primary), var(--gold-secondary));
+    color: #000;
+    font-weight: 700;
+}
+
+/* spec badge used in pet card too */
+.spec-badge {
+    background: linear-gradient(135deg, var(--gold-primary), var(--gold-secondary));
+    color: #000;
+    font-weight: 700;
+    font-size: 0.65rem;
+    box-shadow: 0 0 6px var(--gold-glow);
+}
+
+/* ── Compact combat row on pet card ───────────────────────────────────────── */
+.mp-combat-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 4px;
+    margin-top: 8px;
+    padding: 6px 8px;
+    background: rgba(0,0,0,0.35);
+    border: 1px solid rgba(255,215,0,0.2);
+    border-radius: 6px;
+}
+.mp-combat-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex: 1;
+}
+.mp-combat-label {
+    font-size: 0.62rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+.mp-combat-val {
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: var(--gold-secondary);
+    text-shadow: 0 0 6px var(--gold-glow);
+}
+
+/* ── Mini stat cards (battle record + casino on pet card) ─────────────────── */
+.mp-mini-stat-card {
+    background: rgba(0,0,0,0.35);
+    border: 1px solid rgba(255,215,0,0.15);
+    border-radius: 6px;
+    padding: 5px 8px;
+    text-align: center;
+    min-width: 58px;
+    flex: 1;
+}
+.mp-mini-label {
+    font-size: 0.62rem;
+    color: var(--gold-secondary);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    margin-bottom: 2px;
+}
+
+/* ── Interactions panel ───────────────────────────────────────────────────── */
+.mp-action-tab {
+    background: rgba(0,0,0,0.4);
+    border: 1px solid rgba(255,215,0,0.3);
+    border-radius: 6px;
+    color: var(--text-secondary);
+    font-size: 0.82rem;
+    font-weight: 600;
+    padding: 6px 16px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.mp-action-tab:hover {
+    border-color: var(--gold-primary);
+    color: var(--gold-secondary);
+}
+.mp-action-tab.active {
+    background: linear-gradient(135deg, rgba(255,215,0,0.15), rgba(255,215,0,0.05));
+    border-color: var(--gold-primary);
+    color: var(--gold-primary);
+    box-shadow: 0 0 8px var(--gold-glow);
+}
+
+.mp-input {
+    background: rgba(10,10,10,0.8) !important;
+    border: 1px solid rgba(255,215,0,0.3) !important;
+    color: var(--text-primary) !important;
+    font-size: 0.85rem;
+    border-radius: 6px;
+}
+.mp-input:focus {
+    border-color: var(--gold-primary) !important;
+    box-shadow: 0 0 6px var(--gold-glow) !important;
+    outline: none;
+}
+.mp-input.is-invalid {
+    border-color: #e74c3c !important;
+}
+
+/* ── Clickable inventory items ────────────────────────────────────────────── */
+.mp-inv-clickable {
+    cursor: pointer;
+    transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s;
+}
+.mp-inv-clickable:hover {
+    border-color: var(--gold-primary) !important;
+    box-shadow: 0 0 8px var(--gold-glow);
+    transform: translateY(-1px);
+}
+.mp-inv-clickable:active {
+    transform: scale(0.97);
+}

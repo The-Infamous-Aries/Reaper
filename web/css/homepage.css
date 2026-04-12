@@ -54,7 +54,26 @@
     padding: 2rem;
     animation: fadeIn 0.5s ease-in-out, cardPulseGlow 3s ease-in-out infinite;
     height: 100%;
+    min-height: 220px;
     overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Make every Bootstrap column that holds a home-card a flex container
+   so height:100% on the card stretches to match its tallest sibling */
+[class*="col-"] > .home-card {
+    height: 100%;
+}
+
+[class*="col-"]:has(.home-card) {
+    display: flex;
+    flex-direction: column;
+}
+
+/* Rows containing cards stretch all columns to equal height */
+.row:has(.home-card) {
+    align-items: stretch;
 }
 
 @keyframes cardPulseGlow {
@@ -169,6 +188,7 @@
     font-size: 1rem;
     line-height: 1.6;
     text-shadow: 0 0 3px rgba(0, 0, 0, 0.5);
+    flex: 1;
 }
 
 .home-card-icon {

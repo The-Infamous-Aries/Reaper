@@ -44,19 +44,7 @@
 
                     <!-- Graph Display Area -->
                     <div class="graph-display-area" id="graph-display-area" style="display: none;">
-                        <div class="graph-display-header d-flex justify-content-between align-items-center mb-3">
-                            <h4 id="graph-display-title">Generating Graph...</h4>
-                            <div class="graph-display-controls">
-                                <button class="btn btn-primary btn-sm me-2" id="btn-regenerate">
-                                    <i class="fas fa-redo"></i>
-                                    Regenerate
-                                </button>
-                                <button class="btn btn-secondary btn-sm" id="btn-configure">
-                                    <i class="fas fa-cog"></i>
-                                    Configure
-                                </button>
-                            </div>
-                        </div>
+                        <button class="graph-close-btn" id="btn-close-graph" title="Close graph">&times;</button>
                         <div class="graph-content" id="graph-content">
                             <div class="loading-container" id="graph-loading">
                                 <div class="spinner-border text-primary mb-3" role="status" style="width: 3rem; height: 3rem;">
@@ -146,9 +134,9 @@ class PNWGraphManager {
         document.querySelectorAll('.graph-emoji-button').forEach(button => {
             console.log('Found button:', button);
             button.addEventListener('click', (e) => {
-                console.log('Button clicked:', e.target);
+                console.log('Button clicked:', e.currentTarget);
                 e.preventDefault();
-                const graphType = e.target.closest('.graph-emoji-button').dataset.graphType;
+                const graphType = e.currentTarget.dataset.graphType;
                 console.log('Graph type selected:', graphType);
                 if (graphType) {
                     this.selectGraphType(graphType);
@@ -173,17 +161,9 @@ class PNWGraphManager {
             this.hideConfiguration();
         });
 
-        // Graph display controls
-        document.getElementById('btn-regenerate').addEventListener('click', () => {
-            this.generateGraph();
-        });
-
-        document.getElementById('btn-configure').addEventListener('click', () => {
-            this.showConfiguration();
-        });
-
-        document.getElementById('btn-back-to-config').addEventListener('click', () => {
-            this.showConfiguration();
+        // Close graph button
+        document.getElementById('btn-close-graph').addEventListener('click', () => {
+            this.showWelcomeState();
         });
 
         // Form submission handling (delegated)
@@ -256,21 +236,60 @@ class PNWGraphManager {
     }
 
     handleFormSubmission(form) {
+        console.log('Form submitted:', form);
         const formData = new FormData(form);
         const params = Object.fromEntries(formData.entries());
+        
+        console.log('Form parameters:', params);
         
         // Add the graph type
         params.type = this.currentGraphType;
 
+        // Validate required fields based on graph type
+        let isValid = true;
+        let errorMessage = '';
+
+        switch (this.currentGraphType) {
+            case 'war':
+            case 'warnet':
+                if (!params.alliance || !params.time) {
+                    isValid = false;
+                    errorMessage = 'Alliance and time range are required.';
+                }
+                break;
+            case 'compare':
+                if (!params.home_alliance_ids || !params.away_alliance_ids) {
+                    isValid = false;
+                    errorMessage = 'Both home and away alliance IDs are required.';
+                }
+                break;
+            case 'treaty':
+                if (!params.alliance) {
+                    isValid = false;
+                    errorMessage = 'Alliance name or ID is required.';
+                }
+                break;
+        }
+
+        if (!isValid) {
+            alert(errorMessage);
+            return;
+        }
+
         // Store parameters for regeneration
         this.currentGraphParams = params;
+
+        console.log('Generating graph with params:', this.currentGraphParams);
 
         // Generate the graph
         this.generateGraph();
     }
 
     generateGraph() {
-        if (!this.currentGraphType || !this.currentGraphParams) return;
+        if (!this.currentGraphType || !this.currentGraphParams) {
+            console.error('Missing graph type or parameters');
+            return;
+        }
 
         // Hide configuration and show display area
         this.hideAllStates();
@@ -295,11 +314,12 @@ class PNWGraphManager {
                 break;
             case 'treaty':
                 apiUrl = `/api/pnw/universe?${queryString}`;
-                break;
-            default:
+                break;            default:
                 this.showError('Unknown graph type: ' + this.currentGraphType);
                 return;
         }
+
+        console.log('Fetching graph from:', apiUrl);
 
         // Simulate progress for better UX
         this.simulateProgress();
@@ -307,14 +327,16 @@ class PNWGraphManager {
         // Fetch graph data
         fetch(apiUrl)
             .then(response => {
+                console.log('Response status:', response.status);
                 if (!response.ok) {
                     return response.text().then(text => {
-                        throw new Error(`Failed to load graph: ${text || response.statusText}`);
+                        throw new Error(`Failed to load graph (${response.status}): ${text || response.statusText}`);
                     });
                 }
                 return response.text();
             })
             .then(graphData => {
+                console.log('Graph data received, length:', graphData.length);
                 this.displayGraph(graphData);
             })
             .catch(error => {
@@ -327,10 +349,6 @@ class PNWGraphManager {
         const displayArea = document.getElementById('graph-display-area');
         displayArea.style.display = 'flex';
         displayArea.classList.add('fade-in');
-
-        // Update title
-        document.getElementById('graph-display-title').textContent = 
-            `Generating ${this.getGraphTitle(this.currentGraphType)}...`;
     }
 
     showLoadingState() {
@@ -365,21 +383,14 @@ class PNWGraphManager {
         loadingContainer.style.display = 'none';
         resultContainer.style.display = 'block';
 
-        // Update title
-        document.getElementById('graph-display-title').textContent = 
-            this.getGraphTitle(this.currentGraphType);
-
-        // Display the graph - the API now returns the full HTML content directly
+        // Use srcdoc to avoid blob: URL CSP violations
         if (graphData && graphData.length > 0) {
-            // Create a blob URL for the HTML content to display in an iframe
-            const blob = new Blob([graphData], { type: 'text/html' });
-            const url = URL.createObjectURL(blob);
-            
-            resultContainer.innerHTML = 
-                `<iframe src="${url}" class="graph-iframe" sandbox="allow-scripts allow-same-origin"></iframe>`;
-            
-            // Clean up the blob URL after a delay to prevent memory leaks
-            setTimeout(() => URL.revokeObjectURL(url), 60000);
+            const iframe = document.createElement('iframe');
+            iframe.className = 'graph-iframe';
+            iframe.setAttribute('sandbox', 'allow-scripts');
+            iframe.srcdoc = graphData;
+            resultContainer.innerHTML = '';
+            resultContainer.appendChild(iframe);
         } else {
             this.showError('No graph data received from server');
         }
@@ -559,11 +570,11 @@ class PNWGraphManager {
         return `
             <form id="treaty-form" class="graph-form">
                 <div class="mb-3">
-                    <label for="alliance_ids" class="form-label">Alliance IDs (Optional)</label>
-                    <input type="text" class="form-control" id="alliance_ids" name="alliance_ids" 
-                           placeholder="e.g., 1234, 5678 (leave blank for all)">
+                    <label for="alliance" class="form-label">Alliance Name or ID</label>
+                    <input type="text" class="form-control" id="alliance" name="alliance"
+                           placeholder="e.g., The Knights Radiant or 1234" required>
                     <div class="form-text">
-                        Focus on specific alliances or leave blank to show the entire treaty universe
+                        Enter an alliance to map its treaty network (direct partners + their connections)
                     </div>
                 </div>
                 
