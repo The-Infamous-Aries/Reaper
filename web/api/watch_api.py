@@ -6,7 +6,7 @@ import re
 from datetime import date
 
 from Systems.PnW.MA.night_watch_wars_db import NightWatchWarsDB
-from Systems.PnW.Util.war_calc import get_resource_prices, calculate_unit_cost
+from Systems.PnW.Util.war_calc import get_resource_prices, calculate_unit_cost, calculate_war_costs
 from Systems.PnW.MA.war_net_bd import WarsNetBD
 
 router = APIRouter()
@@ -90,9 +90,31 @@ def _build_watch_response(
             },
         }
 
+        # Build wars_with: list of opponents this nation fought, with per-opponent stats
+        per_opp = nation_data.get("_per_opp", {})
+        wars_with = []
+        seen_opps: set = set()
+        for w in nation_data.get("_nation_wars", []):
+            nid_str = str(nation_id)
+            if str(w.get("att_id")) == nid_str:
+                opp_id = str(w.get("def_id", ""))
+                role = "attacker"
+            else:
+                opp_id = str(w.get("att_id", ""))
+                role = "defender"
+            if opp_id and opp_id not in seen_opps:
+                seen_opps.add(opp_id)
+                stats = per_opp.get(opp_id, {})
+                wars_with.append({
+                    "id": opp_id,
+                    "name": stats.get("name", f"Nation {opp_id}"),
+                    "stats": stats,
+                })
+
         normalized_nations[str(nation_id)] = {
-            **nation_data,
+            **{k: v for k, v in nation_data.items() if k not in ("_nation_wars", "_per_opp")},
             "name": nation_data.get("name") or f"Unknown {nation_id}",
+            "wars_with": wars_with,
             "gross_cost": gross_cost,
             "net_damage": net_damage,
             "total_damages": _as_number(nation_data.get("total_damages")),
@@ -322,6 +344,113 @@ async def get_watch_wars_data(start_date: str | None = None, end_date: str | Non
         # 2. Get the breakdown from the "correct" logic in WarsNetBD
         war_net_bd_cog = WarsNetBD(bot=None)
         nation_breakdown = await war_net_bd_cog._get_nation_breakdown(unique_wars, str(WATCH_ALLIANCE_ID), False, resource_prices)
+
+        # Attach the raw wars list to each nation so _build_watch_response can build wars_with
+        for nation_id, nation_data in nation_breakdown.items():
+            nation_wars = [
+                w for w in unique_wars
+                if str(w.get("att_id")) == str(nation_id) or str(w.get("def_id")) == str(nation_id)
+            ]
+            # Compute per-opponent stats
+            opp_stats: Dict[str, Any] = {}
+            opp_names: Dict[str, str] = {}
+            for w in nation_wars:
+                nid_str = str(nation_id)
+                if str(w.get("att_id")) == nid_str:
+                    opp_id = str(w.get("def_id", ""))
+                    opp_name = (w.get("defender") or {}).get("nation_name") or w.get("def_nation_name") or f"Nation {opp_id}"
+                else:
+                    opp_id = str(w.get("att_id", ""))
+                    opp_name = (w.get("attacker") or {}).get("nation_name") or w.get("att_nation_name") or f"Nation {opp_id}"
+                if opp_id:
+                    opp_names[opp_id] = opp_name
+                    opp_stats.setdefault(opp_id, []).append(w)
+
+            per_opp: Dict[str, Any] = {}
+            for opp_id, opp_wars in opp_stats.items():
+                try:
+                    c = await calculate_war_costs(opp_wars, resource_prices, team1_id_set={int(nation_id)})
+                    t1 = c.get("team1", {})  # alliance nation's costs/gains
+                    t2 = c.get("team2", {})  # opponent's costs/gains
+                    sp = resource_prices.get("sell", {})
+                    bp = resource_prices.get("buy", {})
+
+                    # What WE (alliance nation) looted FROM the opponent
+                    we_looted_cash = _as_number(t1.get("loot_received"))
+                    we_looted_res: Dict[str, Any] = {}
+                    for res, val in t1.get("resource_loot", {}).items():
+                        price = sp.get(res, 0)
+                        we_looted_res[res] = {"amount": val / price if price else 0, "value": val}
+
+                    # What THEY (opponent) looted FROM us
+                    they_looted_cash = _as_number(t2.get("loot_received"))
+                    they_looted_res: Dict[str, Any] = {}
+                    for res, val in t2.get("resource_loot", {}).items():
+                        price = sp.get(res, 0)
+                        they_looted_res[res] = {"amount": val / price if price else 0, "value": val}
+                    they_looted_total = they_looted_cash + sum(t2.get("resource_loot", {}).values())
+
+                    # Opponent's actual stats (t2 perspective)
+                    opp_gross = _as_number(t2.get("gross"))
+                    opp_gas_u = _as_number(t2.get("consumption", {}).get("gasoline"))
+                    opp_mun_u = _as_number(t2.get("consumption", {}).get("munitions"))
+                    opp_salvage = (t2.get("salvage", {}).get("aluminum", 0) * bp.get("aluminum", 0) +
+                                   t2.get("salvage", {}).get("steel", 0) * bp.get("steel", 0))
+                    # Opponent net = their gross cost - what they looted from us - their salvage
+                    # Positive = they spent more than they gained = good for us
+                    # Negative = they looted more than they spent = bad for us
+                    opp_net = opp_gross - they_looted_total - opp_salvage
+
+                    off_count = sum(1 for w in opp_wars if str(w.get("att_id")) == str(nation_id))
+                    def_count = len(opp_wars) - off_count
+                    per_opp[opp_id] = {
+                        "name": opp_names[opp_id],
+                        "offense_wars_count": off_count,
+                        "defense_wars_count": def_count,
+                        "gross_cost": opp_gross,
+                        "net_damage": opp_net,
+                        "total_gains": they_looted_total,
+                        "damages": _as_number(t1.get("gross")),  # damage they dealt to us = our gross cost
+                        "soldiers_lost": t2.get("units", {}).get("soldiers", {}).get("lost", 0),
+                        "tanks_lost": t2.get("units", {}).get("tanks", {}).get("lost", 0),
+                        "aircraft_lost": t2.get("units", {}).get("aircraft", {}).get("lost", 0),
+                        "ships_lost": t2.get("units", {}).get("ships", {}).get("lost", 0),
+                        "missiles_lost": t2.get("units", {}).get("missiles", {}).get("lost", 0),
+                        "nukes_lost": t2.get("units", {}).get("nukes", {}).get("lost", 0),
+                        "units_net": sum(t2.get("units", {}).get(u, {}).get("lost", 0) for u in ("soldiers","tanks","aircraft","ships","missiles","nukes")),
+                        "units_total_cost": sum(t2.get("units", {}).get(u, {}).get("cost", 0) for u in ("soldiers","tanks","aircraft","ships","missiles","nukes")),
+                        "gas_used": opp_gas_u,
+                        "mun_used": opp_mun_u,
+                        "gasoline_sell_value": opp_gas_u * sp.get("gasoline", 0),
+                        "munitions_sell_value": opp_mun_u * sp.get("munitions", 0),
+                        "consumption": opp_gas_u * sp.get("gasoline", 0) + opp_mun_u * sp.get("munitions", 0),
+                        "infra_net": _as_number(t2.get("infra_lost_value")),
+                        "infra_levels_lost": _as_number(t2.get("infra_destroyed")),
+                        "improvements": _as_number(t2.get("improvements_lost")),
+                        "improvements_count": _sum_numeric_mapping_values(t2.get("improvements_destroyed", {})),
+                        "soldiers_lost_cost": t2.get("units", {}).get("soldiers", {}).get("cost", 0),
+                        "tanks_lost_cost": t2.get("units", {}).get("tanks", {}).get("cost", 0),
+                        "aircraft_lost_cost": t2.get("units", {}).get("aircraft", {}).get("cost", 0),
+                        "ships_lost_cost": t2.get("units", {}).get("ships", {}).get("cost", 0),
+                        "missiles_lost_cost": t2.get("units", {}).get("missiles", {}).get("cost", 0),
+                        "nukes_lost_cost": t2.get("units", {}).get("nukes", {}).get("cost", 0),
+                        # loot_breakdown = what THEY looted from us (shown in gains cell, red = bad for us)
+                        "loot_breakdown": {
+                            "cash": they_looted_cash,
+                            "resources": they_looted_res,
+                        },
+                        # opp_loot_breakdown = what WE looted from them (shown in gains cell, green = good for us)
+                        "opp_loot_breakdown": {
+                            "cash": we_looted_cash,
+                            "resources": we_looted_res,
+                        },
+                    }
+                except Exception as opp_err:
+                    logger.warning("per-opp stats error nation=%s opp=%s: %s", nation_id, opp_id, opp_err)
+                    per_opp[opp_id] = {"name": opp_names[opp_id]}
+
+            nation_data["_nation_wars"] = nation_wars
+            nation_data["_per_opp"] = per_opp
 
         return {
             **_build_watch_response(nation_breakdown, resource_prices=resource_prices),
@@ -644,3 +773,122 @@ async def get_available_periods():
     except Exception as e:
         logger.error(f"Error fetching available periods: {e}")
         return {"weeks": [], "months": [], "error": str(e)}
+
+
+# ── Nations DB endpoints ──────────────────────────────────────────────────────
+
+NATIONS_DB_PATH = "c:\\Users\\codyr\\DiscordBots\\Reaper\\Databases\\NightWatchNations.db"
+
+@router.get("/watch/nations")
+async def get_watch_nations():
+    """Return all nations from the NightWatchNations DB with their city aggregates."""
+    try:
+        from Systems.PnW.MA.night_watch_nations_db import NightWatchNationsDB
+        import sqlite3
+
+        db = NightWatchNationsDB(NATIONS_DB_PATH)
+        nations = await db.get_all_nations()
+
+        # Aggregate city improvements per nation
+        async with db._lock:
+            with sqlite3.connect(NATIONS_DB_PATH) as conn:
+                conn.row_factory = sqlite3.Row
+                city_rows = conn.execute("""
+                    SELECT nation_id,
+                        COUNT(*) as city_count,
+                        SUM(infrastructure) as total_infra,
+                        AVG(infrastructure) as avg_infra,
+                        SUM(land) as total_land,
+                        AVG(land) as avg_land,
+                        SUM(coal_power+oil_power+nuclear_power+wind_power) as total_power,
+                        SUM(coal_mine+oil_well+uranium_mine+lead_mine+iron_mine+bauxite_mine+farm) as raw_resources,
+                        SUM(oil_refinery+aluminum_refinery+steel_mill+munitions_factory+factory) as manufacturing,
+                        SUM(police_station+hospital+recycling_center+subway) as civil,
+                        SUM(supermarket+bank+shopping_mall+stadium) as commerce,
+                        SUM(barracks+hangar+drydock) as mil_buildings,
+                        SUM(barracks) as barracks,
+                        AVG(barracks) as avg_barracks,
+                        SUM(hangar) as hangars,
+                        AVG(hangar) as avg_hangars,
+                        SUM(drydock) as drydocks,
+                        AVG(drydock) as avg_drydocks,
+                        SUM(factory) as factories,
+                        AVG(factory) as avg_factories,
+                        SUM(barracks+hangar+drydock+factory+oil_refinery+aluminum_refinery+steel_mill+munitions_factory+coal_power+oil_power+nuclear_power+wind_power+coal_mine+oil_well+uranium_mine+lead_mine+iron_mine+bauxite_mine+farm+police_station+hospital+recycling_center+subway+supermarket+bank+shopping_mall+stadium) as total_improvements
+                    FROM cities GROUP BY nation_id
+                """).fetchall()
+
+        city_map = {r["nation_id"]: dict(r) for r in city_rows}
+
+        result = []
+        for n in nations:
+            nid = n["id"]
+            agg = city_map.get(nid, {})
+            # Calculate MMR: avg barracks/factories/hangars/drydocks per city, rounded to 1dp
+            city_count = agg.get("city_count") or 1
+            avg_b = round((agg.get('barracks') or 0)/city_count, 1)
+            avg_f = round((agg.get('factories') or 0)/city_count, 1)
+            avg_h = round((agg.get('hangars') or 0)/city_count, 1)
+            avg_d = round((agg.get('drydocks') or 0)/city_count, 1)
+            mmr = f"{avg_b:g}/{avg_f:g}/{avg_h:g}/{avg_d:g}"
+            # MMR score: distance from full MMR (5/5/5/3) — lower = closer to full
+            # Use sum of deficits so 0 = perfect full MMR
+            FULL_MMR = (5, 5, 5, 3)
+            mmr_deficit = (
+                max(0, FULL_MMR[0] - avg_b) +
+                max(0, FULL_MMR[1] - avg_f) +
+                max(0, FULL_MMR[2] - avg_h) +
+                max(0, FULL_MMR[3] - avg_d)
+            )
+            # Count owned projects
+            project_fields = [
+                'iron_dome','vital_defense_system','missile_launch_pad','nuclear_research_facility',
+                'nuclear_launch_facility','propaganda_bureau','military_research_center','space_program',
+                'spy_satellite','surveillance_network','guiding_satellite','telecommunications_satellite',
+                'central_intelligence_agency','fallout_shelter','military_doctrine','military_salvage',
+                'pirate_economy','advanced_pirate_economy','arms_stockpile','bauxite_works','iron_works',
+                'emergency_gasoline_reserve','uranium_enrichment_program','green_technologies',
+                'recycling_initiative','mass_irrigation','arable_land_agency','international_trade_center',
+                'clinical_research_center','specialized_police_training_program','bureau_of_domestic_affairs',
+                'government_support_agency','center_for_civil_engineering','advanced_engineering_corps',
+                'activity_center','research_and_development_center','moon_landing','mars_landing',
+            ]
+            total_projects = sum(1 for f in project_fields if n.get(f))
+            avg_improvements = round((agg.get("total_improvements") or 0) / city_count, 1) if city_count else 0
+            # Status sort order: 0=Active, 1=Beige, 2=VM, 3=Grey, 4=Applicant
+            color = (n.get("color") or "").lower()
+            if (n.get("alliance_position") or "").upper() == "APPLICANT":
+                status_order = 4
+            elif (n.get("vacation_mode_turns") or 0) > 0:
+                status_order = 2
+            elif (n.get("beige_turns") or 0) > 0:
+                status_order = 1
+            elif color in ("gray", "grey"):
+                status_order = 3
+            else:
+                status_order = 0
+            result.append({**n, "city_agg": {**agg, "mmr": mmr, "mmr_deficit": mmr_deficit, "avg_improvements": avg_improvements}, "total_projects": total_projects, "status_order": status_order})
+
+        return {"nations": result, "count": len(result)}
+
+    except Exception as e:
+        logger.error(f"get_watch_nations error: {e}", exc_info=True)
+        return {"nations": [], "count": 0, "error": str(e)}
+
+
+@router.get("/watch/nations/{nation_id}")
+async def get_watch_nation_detail(nation_id: int):
+    """Return full nation detail including all cities."""
+    try:
+        from Systems.PnW.MA.night_watch_nations_db import NightWatchNationsDB
+
+        db = NightWatchNationsDB(NATIONS_DB_PATH)
+        nation = await db.get_nation(nation_id)
+        if not nation:
+            return {"error": "Nation not found"}
+        cities = await db.get_cities_for_nation(nation_id)
+        return {"nation": nation, "cities": cities}
+
+    except Exception as e:
+        logger.error(f"get_watch_nation_detail({nation_id}) error: {e}", exc_info=True)
+        return {"error": str(e)}

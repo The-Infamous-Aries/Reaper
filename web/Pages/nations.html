@@ -1,0 +1,659 @@
+<link rel="stylesheet" href="/css/nations.css">
+
+<div class="nat-shell">
+
+  <!-- Controls -->
+  <div class="card nat-controls">
+    <div class="card-header">
+      <div>
+        <p class="nat-kicker">Night's Watch</p>
+        <p class="nat-title">Alliance Members</p>
+      </div>
+      <div class="nat-header-right">
+        <!-- View toggle tabs -->
+        <div class="nat-view-tabs">
+          <button class="nat-view-tab active" id="tab-nations" data-view="nations">
+            <img src="/static/Emojis/Activity/total.png" class="nat-icon-sm" alt="">
+            <span id="nat-count">—</span> Nations
+          </button>
+          <button class="nat-view-tab" id="tab-overview" data-view="overview">
+            📊 Overview
+          </button>
+        </div>
+        <input type="text" id="nat-search" class="nat-search" placeholder="Search nation or leader…">
+        <button id="nat-refresh" class="btn btn-gold btn-sm">↻ Refresh</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="nat-status" class="nat-status" style="display:none"></div>
+
+  <!-- Nations view (table) -->
+  <div id="view-nations" class="card nat-table-card">
+    <div class="card-header">
+      <span>Member Roster</span>
+      <span id="nat-sort-summary" class="nat-sort-summary">Sorted by Score ↓</span>
+    </div>
+    <div class="card-body p-0">
+      <div class="nat-table-wrap">
+        <table id="nat-table">
+          <thead>
+            <tr>
+              <th style="width:1.5rem"></th>
+              <th data-col="nation_name">Nation</th>
+              <th data-col="score" class="nat-sort-active">Score ↓</th>
+              <th data-col="num_cities">Cities</th>
+              <th data-col="soldiers"><img src="/static/Emojis/Military/soldier.png" class="nat-icon-sm" alt=""> Soldiers</th>
+              <th data-col="tanks"><img src="/static/Emojis/Military/tank.png" class="nat-icon-sm" alt=""> Tanks</th>
+              <th data-col="aircraft"><img src="/static/Emojis/Military/jet.png" class="nat-icon-sm" alt=""> Aircraft</th>
+              <th data-col="ships"><img src="/static/Emojis/Military/ship.png" class="nat-icon-sm" alt=""> Ships</th>
+              <th data-col="missiles"><img src="/static/Emojis/Military/missile.png" class="nat-icon-sm" alt=""> Missiles</th>
+              <th data-col="nukes"><img src="/static/Emojis/Military/bomb.png" class="nat-icon-sm" alt=""> Nukes</th>
+              <!-- MMR — sortable by deficit from 5/5/5/3 -->
+              <th data-col="city_agg.mmr_deficit">MMR</th>
+              <!-- Infra dropdown sort -->
+              <th class="nat-dropdown-th" data-group="infra">
+                <div class="nat-sort-ctrl" id="infra-ctrl">
+                  <select id="infra-select" class="nat-sort-select">
+                    <option value="city_agg.avg_infra">Avg Infra</option>
+                    <option value="city_agg.total_infra">Total Infra</option>
+                  </select>
+                  <button class="nat-sort-dir" data-group="infra">↓</button>
+                </div>
+              </th>
+              <!-- Land dropdown sort -->
+              <th class="nat-dropdown-th" data-group="land">
+                <div class="nat-sort-ctrl" id="land-ctrl">
+                  <select id="land-select" class="nat-sort-select">
+                    <option value="city_agg.avg_land">Avg Land</option>
+                    <option value="city_agg.total_land">Total Land</option>
+                  </select>
+                  <button class="nat-sort-dir" data-group="land">↓</button>
+                </div>
+              </th>
+              <!-- Wars dropdown sort -->
+              <th class="nat-dropdown-th" data-group="wars">
+                <div class="nat-sort-ctrl" id="wars-ctrl">
+                  <select id="wars-select" class="nat-sort-select">
+                    <option value="wars_won">Wars Won</option>
+                    <option value="wars_lost">Wars Lost</option>
+                  </select>
+                  <button class="nat-sort-dir" data-group="wars">↓</button>
+                </div>
+              </th>
+              <!-- Improvements dropdown sort -->
+              <th class="nat-dropdown-th" data-group="imps">
+                <div class="nat-sort-ctrl" id="imps-ctrl">
+                  <select id="imps-select" class="nat-sort-select">
+                    <option value="city_agg.total_improvements">Total Imps</option>
+                    <option value="city_agg.avg_improvements">Avg Imps</option>
+                  </select>
+                  <button class="nat-sort-dir" data-group="imps">↓</button>
+                </div>
+              </th>
+              <!-- Projects -->
+              <th data-col="total_projects">Projects</th>
+              <!-- Status sortable -->
+              <th data-col="status_order">Status</th>
+            </tr>
+          </thead>
+          <tbody id="nat-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Overview view -->
+  <div id="view-overview" style="display:none">
+    <div id="nat-overview-content"></div>
+  </div>
+
+</div>
+
+<script>
+(function () {
+  const fmt  = n => Number(n||0).toLocaleString();
+  const fmtF = (n,d=1) => Number(n||0).toLocaleString(undefined,{minimumFractionDigits:d,maximumFractionDigits:d});
+  const get  = (obj, path) => path.split('.').reduce((o,k)=>o?.[k], obj);
+
+  function positionBadge(pos) {
+    const p = (pos||'').toUpperCase();
+    const map = {LEADER:'nat-pos-leader',HEIR:'nat-pos-heir',OFFICER:'nat-pos-officer',MEMBER:'nat-pos-member',APPLICANT:'nat-pos-app'};
+    return `<span class="nat-pos-badge ${map[p]||'nat-pos-member'}">${pos||'—'}</span>`;
+  }
+  function statusBadge(n) {
+    if ((n.vacation_mode_turns||0) > 0) return '<span class="nat-status-badge nat-vm">VM</span>';
+    if ((n.beige_turns||0) > 0)         return '<span class="nat-status-badge nat-beige">Beige</span>';
+    const c = (n.color||'').toLowerCase();
+    if (c==='gray'||c==='grey') return '<span class="nat-status-badge nat-grey">Grey</span>';
+    return '<span class="nat-status-badge nat-active">Active</span>';
+  }
+  function pnwLink(id, text) {
+    return `<a href="https://politicsandwar.com/nation/id=${id}" target="_blank" class="nat-pnw-link" onclick="event.stopPropagation()">${text}</a>`;
+  }
+
+  // ── state ─────────────────────────────────────────────────────────────────
+  let _nations = [], _sortCol = 'score', _sortAsc = false, _search = '';
+  let _expandedId = null, _detailCache = {};
+
+  // Dropdown sort groups: group → current col
+  const _dropdowns = {
+    infra: 'city_agg.avg_infra',
+    land:  'city_agg.avg_land',
+    wars:  'wars_won',
+    imps:  'city_agg.total_improvements',
+  };
+  const _dropdownAsc = { infra: false, land: false, wars: false, imps: false };
+
+  function sortedFiltered() {
+    return _nations
+      .filter(n => {
+        if (!_search) return true;
+        const q = _search.toLowerCase();
+        return (n.nation_name||'').toLowerCase().includes(q) ||
+               (n.leader_name||'').toLowerCase().includes(q);
+      })
+      .sort((a,b) => {
+        const av = get(a,_sortCol) ?? -Infinity;
+        const bv = get(b,_sortCol) ?? -Infinity;
+        if (typeof av === 'string') return _sortAsc ? av.localeCompare(bv) : bv.localeCompare(av);
+        return _sortAsc ? av - bv : bv - av;
+      });
+  }
+
+  const COL_COUNT = 18;
+
+  function renderTable() {
+    const list = sortedFiltered();
+    document.getElementById('nat-count').textContent = list.length;
+    const tbody = document.getElementById('nat-body');
+    const rows = [];
+    for (const n of list) {
+      const agg = n.city_agg || {};
+      const isOpen = _expandedId === n.id;
+
+      rows.push(`<tr class="nat-row${isOpen?' nat-row-open':''}" data-id="${n.id}">
+        <td class="nat-chevron">${isOpen?'▼':'▶'}</td>
+        <td class="nat-name-cell">
+          ${n.flag?`<img src="${n.flag}" class="nat-flag" alt="">`:''}
+          <div>
+            <span>${pnwLink(n.id, n.nation_name||'Unknown')}</span>
+            <small class="nat-leader">${n.leader_name||''}</small>
+          </div>
+        </td>
+        <td>${fmt(Math.round(n.score||0))}</td>
+        <td>${n.num_cities||0}</td>
+        <td>${fmt(n.soldiers||0)}</td>
+        <td>${fmt(n.tanks||0)}</td>
+        <td>${fmt(n.aircraft||0)}</td>
+        <td>${fmt(n.ships||0)}</td>
+        <td>${n.missiles||0}</td>
+        <td>${n.nukes||0}</td>
+        <td class="nat-mmr">${agg.mmr||'—'}</td>
+        <td>${fmtF(get(n,_dropdowns.infra)||0)}</td>
+        <td>${fmtF(get(n,_dropdowns.land)||0)}</td>
+        <td>${fmt(get(n,_dropdowns.wars)||0)}</td>
+        <td>${fmt(get(n,_dropdowns.imps)||0)}</td>
+        <td>${n.total_projects||0}</td>
+        <td>${statusBadge(n)}</td>
+      </tr>`);
+
+      rows.push(`<tr class="nat-expand-row${isOpen?' nat-expand-open':''}" data-expand-id="${n.id}">
+        <td colspan="${COL_COUNT}" class="nat-expand-cell">
+          <div class="nat-expand-inner" id="nat-expand-${n.id}">
+            ${isOpen && _detailCache[n.id]
+              ? buildDetailHTML(_detailCache[n.id].nation, _detailCache[n.id].cities)
+              : '<div class="nat-loading">Loading…</div>'}
+          </div>
+        </td>
+      </tr>`);
+    }
+    tbody.innerHTML = rows.join('');
+    tbody.querySelectorAll('.nat-row').forEach(row =>
+      row.addEventListener('click', () => toggleDetail(parseInt(row.dataset.id)))
+    );
+  }
+
+  // ── toggle expand ─────────────────────────────────────────────────────────
+  async function toggleDetail(nationId) {
+    if (_expandedId === nationId) { _expandedId = null; renderTable(); return; }
+    _expandedId = nationId;
+    renderTable();
+    if (!_detailCache[nationId]) {
+      try {
+        const res = await fetch(`/api/watch/nations/${nationId}`);
+        const data = await res.json();
+        if (data.error) throw new Error(data.error);
+        _detailCache[nationId] = { nation: data.nation, cities: data.cities||[] };
+      } catch(e) {
+        _detailCache[nationId] = { error: e.message };
+      }
+    }
+    renderTable();
+  }
+
+  // ── sort headers ──────────────────────────────────────────────────────────
+  function updateSortHeaders() {
+    document.querySelectorAll('#nat-table th[data-col]').forEach(th => {
+      th.classList.remove('nat-sort-active');
+      th.innerHTML = th.innerHTML.replace(/\s*[↑↓]$/,'');
+      if (th.dataset.col === _sortCol) {
+        th.classList.add('nat-sort-active');
+        th.innerHTML += _sortAsc ? ' ↑' : ' ↓';
+      }
+    });
+    // Highlight active dropdown group
+    document.querySelectorAll('.nat-dropdown-th').forEach(th => {
+      const g = th.dataset.group;
+      th.classList.toggle('nat-sort-active', _dropdowns[g] === _sortCol);
+    });
+    document.getElementById('nat-sort-summary').textContent =
+      `Sorted by ${_sortCol.replace('city_agg.','').replace(/_/g,' ')} ${_sortAsc?'↑':'↓'}`;
+  }
+
+  // ── fetch ─────────────────────────────────────────────────────────────────
+  async function fetchNations() {
+    const status = document.getElementById('nat-status');
+    status.style.display = 'block'; status.className = 'nat-status';
+    status.textContent = 'Loading nations…';
+    try {
+      const res = await fetch('/api/watch/nations');
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      _nations = data.nations||[];
+      _detailCache = {}; _expandedId = null;
+      status.style.display = 'none';
+      renderTable();
+      if (_currentView === 'overview') {
+        document.getElementById('nat-overview-content').innerHTML = buildOverviewHTML(_nations);
+      }
+    } catch(e) {
+      status.className = 'nat-status nat-status-error';
+      status.textContent = `Error: ${e.message}`;
+    }
+  }
+
+  // ── detail HTML ───────────────────────────────────────────────────────────
+  function buildDetailHTML(n, cities) {
+    if (!n) return '<div class="nat-status nat-status-error">No data</div>';
+    const agg = {};
+    ['coal_power','oil_power','nuclear_power','wind_power',
+     'coal_mine','oil_well','uranium_mine','lead_mine','iron_mine','bauxite_mine',
+     'oil_refinery','aluminum_refinery','steel_mill','munitions_factory','factory','farm',
+     'police_station','hospital','recycling_center','subway',
+     'supermarket','bank','shopping_mall','stadium','barracks','hangar','drydock']
+      .forEach(k => agg[k] = cities.reduce((s,c)=>s+(c[k]||0),0));
+    const totalInfra = cities.reduce((s,c)=>s+(c.infrastructure||0),0);
+    const totalLand  = cities.reduce((s,c)=>s+(c.land||0),0);
+    const nc = cities.length || 1;
+
+    const projects = [
+      ['⚔️ War',[
+        ['Missile Launch Pad','missile_launch_pad'],['Nuclear Research Facility','nuclear_research_facility'],
+        ['Nuclear Launch Facility','nuclear_launch_facility'],['Vital Defense System','vital_defense_system'],
+        ['Iron Dome','iron_dome'],['Propaganda Bureau','propaganda_bureau'],
+        ['Military Research Center','military_research_center'],['Space Program','space_program'],
+        ['Spy Satellite','spy_satellite'],['Surveillance Network','surveillance_network'],
+        ['Guiding Satellite','guiding_satellite'],['Fallout Shelter','fallout_shelter'],
+        ['Military Doctrine','military_doctrine'],['Military Salvage','military_salvage'],
+        ['Pirate Economy','pirate_economy'],['Advanced Pirate Economy','advanced_pirate_economy'],
+        ['Central Intelligence Agency','central_intelligence_agency'],
+      ]],
+      ['🏭 Industry',[
+        ['Arms Stockpile','arms_stockpile'],['Bauxite Works','bauxite_works'],
+        ['Iron Works','iron_works'],['Emergency Gasoline Reserve','emergency_gasoline_reserve'],
+        ['Uranium Enrichment Program','uranium_enrichment_program'],['Green Technologies','green_technologies'],
+        ['Recycling Initiative','recycling_initiative'],['Mass Irrigation','mass_irrigation'],
+        ['International Trade Center','international_trade_center'],
+        ['Clinical Research Center','clinical_research_center'],
+        ['Specialized Police Training Program','specialized_police_training_program'],
+        ['Telecommunications Satellite','telecommunications_satellite'],
+      ]],
+      ['🏛️ Government',[
+        ['Activity Center','activity_center'],['Advanced Engineering Corps','advanced_engineering_corps'],
+        ['Arable Land Agency','arable_land_agency'],['Bureau of Domestic Affairs','bureau_of_domestic_affairs'],
+        ['Center for Civil Engineering','center_for_civil_engineering'],
+        ['Government Support Agency','government_support_agency'],
+        ['Research & Development Center','research_and_development_center'],
+      ]],
+      ['👽 Alien',[['Moon Landing','moon_landing'],['Mars Landing','mars_landing']]],
+    ];
+    const ownedProjects = projects.map(([cat,items])=>{
+      const owned = items.filter(([,k])=>n[k]);
+      return owned.length ? `<div class="nat-proj-cat"><span class="nat-proj-cat-title">${cat}</span>${owned.map(([l])=>`<span class="nat-proj-tag">${l}</span>`).join('')}</div>` : '';
+    }).join('');
+
+    const impGroups = [
+      ['⚡ Power',['coal_power','oil_power','nuclear_power','wind_power'],['Coal Power','Oil Power','Nuclear Power','Wind Power']],
+      ['⛏️ Resources',['coal_mine','oil_well','uranium_mine','lead_mine','iron_mine','bauxite_mine','farm'],['Coal Mine','Oil Well','Uranium Mine','Lead Mine','Iron Mine','Bauxite Mine','Farm']],
+      ['🏭 Manufacturing',['oil_refinery','aluminum_refinery','steel_mill','munitions_factory','factory'],['Gas Refinery','Aluminum Refinery','Steel Mill','Munitions Factory','Factory']],
+      ['🏛️ Civil',['police_station','hospital','recycling_center','subway'],['Police Station','Hospital','Recycling Center','Subway']],
+      ['💰 Commerce',['supermarket','bank','shopping_mall','stadium'],['Supermarket','Bank','Shopping Mall','Stadium']],
+      ['⚔️ Military',['barracks','hangar','drydock'],['Barracks','Hangar','Drydock']],
+    ];
+    const impHTML = impGroups.map(([title,keys,labels])=>{
+      const rows = keys.map((k,i)=>agg[k]?`<div class="nat-imp-row"><span>${labels[i]}</span><strong>${fmt(agg[k])}</strong></div>`:'').join('');
+      return rows ? `<div class="nat-imp-group"><div class="nat-imp-group-title">${title}</div>${rows}</div>` : '';
+    }).join('');
+
+    const mmr = `${(agg.barracks/nc).toFixed(1)}/${(agg.factory/nc).toFixed(1)}/${(agg.hangar/nc).toFixed(1)}/${(agg.drydock/nc).toFixed(1)}`;
+
+    return `<div class="nat-detail-inner">
+      <div class="nat-detail-header">
+        ${n.flag?`<img src="${n.flag}" class="nat-detail-flag" alt="">`:''}
+        <div>
+          <h3 class="nat-detail-name">${pnwLink(n.id, n.nation_name||'Unknown')}</h3>
+          <p class="nat-detail-leader">Leader: ${n.leader_name||'—'}</p>
+          <div class="nat-detail-badges">
+            ${positionBadge(n.alliance_position)} ${statusBadge(n)}
+            <span class="nat-detail-badge">${n.color||'—'}</span>
+            <span class="nat-detail-badge">${n.continent||'—'}</span>
+          </div>
+        </div>
+      </div>
+      <div class="nat-detail-grid">
+        <div class="nat-detail-section">
+          <div class="nat-detail-section-title">📊 Overview</div>
+          <div class="nat-kv-grid">
+            <div class="nat-kv"><span>Score</span><strong>${fmt(Math.round(n.score||0))}</strong></div>
+            <div class="nat-kv"><span>Cities</span><strong>${n.num_cities||0}</strong></div>
+            <div class="nat-kv"><span>Total Infra</span><strong>${fmtF(totalInfra)}</strong></div>
+            <div class="nat-kv"><span>Avg Infra</span><strong>${fmtF(totalInfra/nc)}</strong></div>
+            <div class="nat-kv"><span>Total Land</span><strong>${fmtF(totalLand)}</strong></div>
+            <div class="nat-kv"><span>Avg Land</span><strong>${fmtF(totalLand/nc)}</strong></div>
+            <div class="nat-kv"><span>Population</span><strong>${fmt(n.population||0)}</strong></div>
+            <div class="nat-kv"><span>War Policy</span><strong>${n.war_policy||'—'}</strong></div>
+            <div class="nat-kv"><span>Dom. Policy</span><strong>${n.domestic_policy||'—'}</strong></div>
+            <div class="nat-kv"><span>Beige Turns</span><strong>${n.beige_turns||0}</strong></div>
+          </div>
+        </div>
+        <div class="nat-detail-section">
+          <div class="nat-detail-section-title">⚔️ Military</div>
+          <div class="nat-kv-grid">
+            <div class="nat-kv"><img src="/static/Emojis/Military/soldier.png" class="nat-icon-sm" alt=""><span>Soldiers</span><strong>${fmt(n.soldiers||0)}</strong></div>
+            <div class="nat-kv"><img src="/static/Emojis/Military/tank.png" class="nat-icon-sm" alt=""><span>Tanks</span><strong>${fmt(n.tanks||0)}</strong></div>
+            <div class="nat-kv"><img src="/static/Emojis/Military/jet.png" class="nat-icon-sm" alt=""><span>Aircraft</span><strong>${fmt(n.aircraft||0)}</strong></div>
+            <div class="nat-kv"><img src="/static/Emojis/Military/ship.png" class="nat-icon-sm" alt=""><span>Ships</span><strong>${fmt(n.ships||0)}</strong></div>
+            <div class="nat-kv"><img src="/static/Emojis/Military/missile.png" class="nat-icon-sm" alt=""><span>Missiles</span><strong>${n.missiles||0}</strong></div>
+            <div class="nat-kv"><img src="/static/Emojis/Military/bomb.png" class="nat-icon-sm" alt=""><span>Nukes</span><strong>${n.nukes||0}</strong></div>
+            <div class="nat-kv"><img src="/static/Emojis/Military/spy.png" class="nat-icon-sm" alt=""><span>Spies</span><strong>${n.spies||0}</strong></div>
+            <div class="nat-kv"><span>MMR</span><strong class="nat-mmr">${mmr}</strong></div>
+            <div class="nat-kv"><span>Wars Won</span><strong>${n.wars_won||0}</strong></div>
+            <div class="nat-kv"><span>Wars Lost</span><strong>${n.wars_lost||0}</strong></div>
+            <div class="nat-kv"><span>Off. Wars</span><strong>${n.offensive_wars_count||0}</strong></div>
+            <div class="nat-kv"><span>Def. Wars</span><strong>${n.defensive_wars_count||0}</strong></div>
+          </div>
+        </div>
+        <div class="nat-detail-section">
+          <div class="nat-detail-section-title">🏗️ Improvements</div>
+          <div class="nat-imp-wrap">${impHTML||'<p class="nat-no-data">No city data</p>'}</div>
+        </div>
+        <div class="nat-detail-section">
+          <div class="nat-detail-section-title">🔬 Projects</div>
+          <div class="nat-proj-wrap">${ownedProjects||'<p class="nat-no-data">No projects</p>'}</div>
+        </div>
+        ${cities.length?`
+        <div class="nat-detail-section nat-detail-section-full">
+          <div class="nat-detail-section-title">🏙️ Cities (${cities.length})</div>
+          <div class="nat-cities-wrap">
+            ${cities.map(c=>`
+              <div class="nat-city-card">
+                <div class="nat-city-name">${c.name||`City ${c.id}`}</div>
+                <div class="nat-city-stats">
+                  <span>Infra: <strong>${fmtF(c.infrastructure||0)}</strong></span>
+                  <span>Land: <strong>${fmtF(c.land||0)}</strong></span>
+                  <span class="${c.powered?'nat-powered':'nat-unpowered'}">${c.powered?'⚡':'⚠️'}</span>
+                </div>
+                <div class="nat-city-imps">
+                  ${[['Barracks',c.barracks],['Hangar',c.hangar],['Drydock',c.drydock],
+                     ['Factory',c.factory],['Gas Ref.',c.oil_refinery],['Steel Mill',c.steel_mill],
+                     ['Alum. Ref.',c.aluminum_refinery],['Mun. Fac.',c.munitions_factory],
+                     ['Hospital',c.hospital],['Police',c.police_station],['Subway',c.subway],
+                     ['Recycling',c.recycling_center],['Bank',c.bank],['Stadium',c.stadium],
+                     ['Supermarket',c.supermarket],['Mall',c.shopping_mall],['Farm',c.farm]]
+                    .filter(([,v])=>v>0).map(([l,v])=>`<span class="nat-city-imp">${l}: ${v}</span>`).join('')}
+                </div>
+              </div>`).join('')}
+          </div>
+        </div>`:''}
+      </div>
+    </div>`;
+  }
+
+  // ── view switching ────────────────────────────────────────────────────────
+  let _currentView = 'nations';
+
+  function switchView(view) {
+    _currentView = view;
+    document.getElementById('view-nations').style.display  = view === 'nations'  ? '' : 'none';
+    document.getElementById('view-overview').style.display = view === 'overview' ? '' : 'none';
+    document.getElementById('nat-search').style.display    = view === 'nations'  ? '' : 'none';
+    document.querySelectorAll('.nat-view-tab').forEach(t => t.classList.toggle('active', t.dataset.view === view));
+    if (view === 'overview' && _nations.length) {
+      document.getElementById('nat-overview-content').innerHTML = buildOverviewHTML(_nations);
+    }
+  }
+
+  // ── overview builder ──────────────────────────────────────────────────────
+  function buildOverviewHTML(nations) {
+    const active  = nations.filter(n => !(n.vacation_mode_turns > 0) && (n.alliance_position||'').toUpperCase() !== 'APPLICANT');
+    const vm      = nations.filter(n => (n.vacation_mode_turns||0) > 0);
+    const apps    = nations.filter(n => (n.alliance_position||'').toUpperCase() === 'APPLICANT');
+    const grey    = active.filter(n => ['gray','grey'].includes((n.color||'').toLowerCase()));
+    const beige   = active.filter(n => (n.color||'').toLowerCase() === 'beige');
+
+    const sum  = (arr, k) => arr.reduce((s,n) => s + (Number(n[k])||0), 0);
+    const sumA = (arr, k) => arr.reduce((s,n) => s + (Number((n.city_agg||{})[k])||0), 0);
+    const avg  = (total, count) => count ? (total/count) : 0;
+
+    const totalScore    = sum(active, 'score');
+    const totalCities   = sum(active, 'num_cities');
+    const totalSoldiers = sum(active, 'soldiers');
+    const totalTanks    = sum(active, 'tanks');
+    const totalAircraft = sum(active, 'aircraft');
+    const totalShips    = sum(active, 'ships');
+    const totalMissiles = sum(active, 'missiles');
+    const totalNukes    = sum(active, 'nukes');
+    const totalInfra    = sumA(active, 'total_infra');
+    const totalLand     = sumA(active, 'total_land');
+    const totalImps     = sumA(active, 'total_improvements');
+    const totalBarracks = sumA(active, 'barracks');
+    const totalFactories= sumA(active, 'factories');
+    const totalHangars  = sumA(active, 'hangars');
+    const totalDrydocks = sumA(active, 'drydocks');
+    const totalWarsWon  = sum(active, 'wars_won');
+    const totalWarsLost = sum(active, 'wars_lost');
+    const totalProjects = active.reduce((s,n) => s + (n.total_projects||0), 0);
+
+    // Project totals
+    const projectFields = [
+      ['⚔️ War',[
+        ['Missile Launch Pad','missile_launch_pad'],['Nuclear Research Facility','nuclear_research_facility'],
+        ['Nuclear Launch Facility','nuclear_launch_facility'],['Vital Defense System','vital_defense_system'],
+        ['Iron Dome','iron_dome'],['Propaganda Bureau','propaganda_bureau'],
+        ['Military Research Center','military_research_center'],['Space Program','space_program'],
+        ['Spy Satellite','spy_satellite'],['Surveillance Network','surveillance_network'],
+        ['Guiding Satellite','guiding_satellite'],['Fallout Shelter','fallout_shelter'],
+        ['Military Doctrine','military_doctrine'],['Military Salvage','military_salvage'],
+        ['Pirate Economy','pirate_economy'],['Advanced Pirate Economy','advanced_pirate_economy'],
+        ['Central Intelligence Agency','central_intelligence_agency'],
+      ]],
+      ['🏭 Industry',[
+        ['Arms Stockpile','arms_stockpile'],['Bauxite Works','bauxite_works'],
+        ['Iron Works','iron_works'],['Emergency Gasoline Reserve','emergency_gasoline_reserve'],
+        ['Uranium Enrichment Program','uranium_enrichment_program'],['Green Technologies','green_technologies'],
+        ['Recycling Initiative','recycling_initiative'],['Mass Irrigation','mass_irrigation'],
+        ['International Trade Center','international_trade_center'],
+        ['Clinical Research Center','clinical_research_center'],
+        ['Specialized Police Training Program','specialized_police_training_program'],
+        ['Telecommunications Satellite','telecommunications_satellite'],
+      ]],
+      ['🏛️ Government',[
+        ['Activity Center','activity_center'],['Advanced Engineering Corps','advanced_engineering_corps'],
+        ['Arable Land Agency','arable_land_agency'],['Bureau of Domestic Affairs','bureau_of_domestic_affairs'],
+        ['Center for Civil Engineering','center_for_civil_engineering'],
+        ['Government Support Agency','government_support_agency'],
+        ['Research & Development Center','research_and_development_center'],
+      ]],
+      ['👽 Alien',[['Moon Landing','moon_landing'],['Mars Landing','mars_landing']]],
+    ];
+
+    const projHTML = projectFields.map(([cat, items]) => {
+      const rows = items.map(([label, field]) => {
+        const count = active.filter(n => n[field]).length;
+        const pct   = active.length ? ((count/active.length)*100).toFixed(0) : 0;
+        const barW  = pct;
+        return `<div class="ov-proj-row">
+          <span class="ov-proj-label">${label}</span>
+          <div class="ov-proj-bar-wrap">
+            <div class="ov-proj-bar" style="width:${barW}%"></div>
+          </div>
+          <span class="ov-proj-count">${count} <span class="ov-proj-pct">(${pct}%)</span></span>
+        </div>`;
+      }).join('');
+      return `<div class="ov-proj-group"><div class="ov-proj-group-title">${cat}</div>${rows}</div>`;
+    }).join('');
+
+    // City distribution
+    const cityBuckets = {};
+    active.forEach(n => {
+      const c = n.num_cities || 0;
+      const bucket = c <= 10 ? '1-10' : c <= 15 ? '11-15' : c <= 20 ? '16-20' :
+                     c <= 25 ? '21-25' : c <= 30 ? '26-30' : c <= 35 ? '31-35' : '36+';
+      cityBuckets[bucket] = (cityBuckets[bucket]||0) + 1;
+    });
+    const bucketOrder = ['1-10','11-15','16-20','21-25','26-30','31-35','36+'];
+    const maxBucket = Math.max(...Object.values(cityBuckets), 1);
+    const cityDistHTML = bucketOrder.map(b => {
+      const count = cityBuckets[b] || 0;
+      if (!count) return '';
+      return `<div class="ov-dist-row">
+        <span class="ov-dist-label">${b} cities</span>
+        <div class="ov-dist-bar-wrap">
+          <div class="ov-dist-bar" style="width:${(count/maxBucket*100).toFixed(0)}%"></div>
+        </div>
+        <span class="ov-dist-count">${count}</span>
+      </div>`;
+    }).join('');
+
+    const nc = active.length || 1;
+
+    return `<div class="ov-grid">
+
+      <!-- Nation Status -->
+      <div class="ov-card">
+        <div class="ov-card-title">🌍 Nation Status</div>
+        <div class="ov-kv-grid">
+          <div class="ov-kv"><span>Total Members</span><strong>${nations.length}</strong></div>
+          <div class="ov-kv"><span>Active</span><strong>${active.length}</strong></div>
+          <div class="ov-kv"><span>Applicants</span><strong>${apps.length}</strong></div>
+          <div class="ov-kv"><span>Vacation Mode</span><strong>${vm.length}</strong></div>
+          <div class="ov-kv"><span>Grey</span><strong>${grey.length}</strong></div>
+          <div class="ov-kv"><span>Beige</span><strong>${beige.length}</strong></div>
+          <div class="ov-kv"><span>Total Score</span><strong>${fmt(Math.round(totalScore))}</strong></div>
+          <div class="ov-kv"><span>Avg Score</span><strong>${fmt(Math.round(avg(totalScore,nc)))}</strong></div>
+          <div class="ov-kv"><span>Total Cities</span><strong>${fmt(totalCities)}</strong></div>
+          <div class="ov-kv"><span>Avg Cities</span><strong>${fmtF(avg(totalCities,nc))}</strong></div>
+        </div>
+      </div>
+
+      <!-- Military -->
+      <div class="ov-card">
+        <div class="ov-card-title">⚔️ Military Totals</div>
+        <div class="ov-kv-grid">
+          <div class="ov-kv"><img src="/static/Emojis/Military/soldier.png" class="nat-icon-sm" alt=""><span>Soldiers</span><strong>${fmt(totalSoldiers)}</strong></div>
+          <div class="ov-kv"><img src="/static/Emojis/Military/tank.png" class="nat-icon-sm" alt=""><span>Tanks</span><strong>${fmt(totalTanks)}</strong></div>
+          <div class="ov-kv"><img src="/static/Emojis/Military/jet.png" class="nat-icon-sm" alt=""><span>Aircraft</span><strong>${fmt(totalAircraft)}</strong></div>
+          <div class="ov-kv"><img src="/static/Emojis/Military/ship.png" class="nat-icon-sm" alt=""><span>Ships</span><strong>${fmt(totalShips)}</strong></div>
+          <div class="ov-kv"><img src="/static/Emojis/Military/missile.png" class="nat-icon-sm" alt=""><span>Missiles</span><strong>${fmt(totalMissiles)}</strong></div>
+          <div class="ov-kv"><img src="/static/Emojis/Military/bomb.png" class="nat-icon-sm" alt=""><span>Nukes</span><strong>${fmt(totalNukes)}</strong></div>
+          <div class="ov-kv"><span>Wars Won</span><strong>${fmt(totalWarsWon)}</strong></div>
+          <div class="ov-kv"><span>Wars Lost</span><strong>${fmt(totalWarsLost)}</strong></div>
+          <div class="ov-kv"><span>W/L Ratio</span><strong>${totalWarsLost ? (totalWarsWon/totalWarsLost).toFixed(2) : '∞'}</strong></div>
+        </div>
+      </div>
+
+      <!-- Infrastructure -->
+      <div class="ov-card">
+        <div class="ov-card-title">🏗️ Infrastructure & Land</div>
+        <div class="ov-kv-grid">
+          <div class="ov-kv"><span>Total Infra</span><strong>${fmtF(totalInfra)}</strong></div>
+          <div class="ov-kv"><span>Avg Infra/City</span><strong>${fmtF(avg(totalInfra, totalCities))}</strong></div>
+          <div class="ov-kv"><span>Total Land</span><strong>${fmtF(totalLand)}</strong></div>
+          <div class="ov-kv"><span>Avg Land/City</span><strong>${fmtF(avg(totalLand, totalCities))}</strong></div>
+          <div class="ov-kv"><span>Total Improvements</span><strong>${fmt(Math.round(totalImps))}</strong></div>
+          <div class="ov-kv"><span>Avg Imps/City</span><strong>${fmtF(avg(totalImps, totalCities))}</strong></div>
+          <div class="ov-kv"><span>Total Barracks</span><strong>${fmt(totalBarracks)}</strong></div>
+          <div class="ov-kv"><span>Total Factories</span><strong>${fmt(totalFactories)}</strong></div>
+          <div class="ov-kv"><span>Total Hangars</span><strong>${fmt(totalHangars)}</strong></div>
+          <div class="ov-kv"><span>Total Drydocks</span><strong>${fmt(totalDrydocks)}</strong></div>
+          <div class="ov-kv"><span>Total Projects</span><strong>${fmt(totalProjects)}</strong></div>
+          <div class="ov-kv"><span>Avg Projects</span><strong>${fmtF(avg(totalProjects,nc))}</strong></div>
+        </div>
+      </div>
+
+      <!-- City Distribution -->
+      <div class="ov-card">
+        <div class="ov-card-title">🏙️ City Distribution</div>
+        <div class="ov-dist">${cityDistHTML}</div>
+      </div>
+
+      <!-- Projects (full width) -->
+      <div class="ov-card ov-card-full">
+        <div class="ov-card-title">🔬 Project Counts (active members)</div>
+        <div class="ov-proj-grid">${projHTML}</div>
+      </div>
+
+    </div>`;
+  }
+
+  // ── init ──────────────────────────────────────────────────────────────────
+  document.addEventListener('dashboardPageLoaded', function(e) {
+    if (e.detail.page !== 'nations.html') return;
+
+    fetchNations();
+    document.getElementById('nat-refresh').addEventListener('click', fetchNations);
+    document.getElementById('nat-search').addEventListener('input', function() { _search=this.value; renderTable(); });
+
+    // View tabs
+    document.querySelectorAll('.nat-view-tab').forEach(btn => {
+      btn.addEventListener('click', () => switchView(btn.dataset.view));
+    });
+
+    // Simple column sort — MMR sorts ascending (0 deficit = full MMR first)
+    document.querySelectorAll('#nat-table th[data-col]').forEach(th => {
+      th.addEventListener('click', () => {
+        const col = th.dataset.col;
+        if (_sortCol===col) _sortAsc=!_sortAsc;
+        else { _sortCol=col; _sortAsc = col === 'city_agg.mmr_deficit'; }
+        updateSortHeaders(); renderTable();
+      });
+    });
+
+    // Dropdown sort groups
+    ['infra','land','wars','imps'].forEach(group => {
+      const sel = document.getElementById(`${group}-select`);
+      const btn = document.querySelector(`.nat-sort-dir[data-group="${group}"]`);
+      sel.addEventListener('change', () => {
+        _dropdowns[group] = sel.value;
+        _sortCol = sel.value; _sortAsc = _dropdownAsc[group];
+        updateSortHeaders(); renderTable();
+      });
+      btn.addEventListener('click', (ev) => {
+        ev.stopPropagation();
+        _dropdownAsc[group] = !_dropdownAsc[group];
+        btn.textContent = _dropdownAsc[group] ? '↑' : '↓';
+        _sortCol = _dropdowns[group]; _sortAsc = _dropdownAsc[group];
+        updateSortHeaders(); renderTable();
+      });
+      // Clicking the th also activates this group's sort
+      document.querySelector(`.nat-dropdown-th[data-group="${group}"]`).addEventListener('click', (ev) => {
+        if (ev.target.tagName === 'SELECT' || ev.target.tagName === 'BUTTON') return;
+        _sortCol = _dropdowns[group]; _sortAsc = _dropdownAsc[group];
+        updateSortHeaders(); renderTable();
+      });
+    });
+  });
+})();
+</script>

@@ -365,10 +365,14 @@ async def run_mission(request: Request, data: Dict[str, Any] = Body(...)):
             result = {"success": True, "outcome": "\n".join(outcome_lines), "xp": xp, "level_up": level_up}
         else:
             outcome_lines.append("❌ Mission failed.")
+            level_down = None
             if gamble_xp > 0:
                 _, res = await LootCalculator.apply_xp_change(int(user_id), -gamble_xp, "mission_fail")
                 outcome_lines.append(f"Lost {gamble_xp} XP.")
-            result = {"success": False, "outcome": "\n".join(outcome_lines), "xp": -gamble_xp, "level_up": None}
+                if res and res.get("new_level", 0) < res.get("old_level", 0):
+                    level_down = res
+                    outcome_lines.append(f"📉 Level Down! Now level {res['new_level']}.")
+            result = {"success": False, "outcome": "\n".join(outcome_lines), "xp": -gamble_xp, "level_up": None, "level_down": level_down}
 
         result["pet"] = await user_data_manager.get_pet_data_async(user_id)
         return JSONResponse(content=result)
@@ -913,3 +917,547 @@ async def use_potion(request: Request, data: Dict[str, Any] = Body(...)):
     except Exception as e:
         logger.error(f"use_potion error: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Potion use failed.")
+
+
+# ── Unequip ───────────────────────────────────────────────────────────────────
+
+@router.post("/pets/unequip")
+async def unequip_item(request: Request, data: Dict[str, Any] = Body(...)):
+    user = request.session.get("discord_user")
+    if not user:
+        return JSONResponse(content={"error": "Not logged in"}, status_code=401)
+    user_id = str(user.get("id"))
+
+    try:
+        slot = (data.get("slot") or "").strip()
+        if slot not in ("Material", "Gems", "Monsters", "Hat"):
+            raise HTTPException(status_code=400, detail=f"Invalid slot: {slot}")
+
+        from Systems.Pets.Logic.pet_brain import LootCalculator
+        success, msg = await LootCalculator.unequip_items(user_id, slot)
+        refreshed = await user_data_manager.get_pet_data_async(user_id)
+        return JSONResponse(content={"success": success, "message": msg, "pet": refreshed})
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"unequip_item error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Unequip failed.")
+
+
+# ── NPC Battle ────────────────────────────────────────────────────────────────
+
+@router.post("/pets/battle/npc")
+async def battle_npc(request: Request, data: Dict[str, Any] = Body(...)):
+    user = request.session.get("discord_user")
+    if not user:
+        return JSONResponse(content={"error": "Not logged in"}, status_code=401)
+    user_id = str(user.get("id"))
+
+    try:
+        import random as _random
+        from Systems.Pets.Logic.pet_brain import StatsCalculator, DamageCalculator, LootCalculator, NPCBrain
+        from Systems.Pets.pets_system import add_experience
+
+        pet = await user_data_manager.get_pet_data_async(user_id)
+        if not pet:
+            raise HTTPException(status_code=404, detail="No pet found")
+
+        difficulty = (data.get("difficulty") or "easy").lower()
+        if difficulty not in ("easy", "average", "hard"):
+            raise HTTPException(status_code=400, detail="Invalid difficulty")
+
+        # ── Compute player stats ──────────────────────────────────────────────
+        stats = StatsCalculator.calculate_pet_stats(pet)
+        p_atk  = int(stats.get("attack",  10))
+        p_def  = int(stats.get("defense",  5))
+        p_hp   = int(stats.get("max_health", 500))
+        p_type = str(pet.get("category", "land")).lower()
+        p_elem = str(pet.get("element",  "basic")).lower()
+        p_elem2= str(pet.get("element2", "") or "").lower() or None
+        p_spec = str(pet.get("species",  "")).strip()
+
+        # ── Generate enemy scaled to player ──────────────────────────────────
+        scale = {"easy": (0.70, 0.70, 0.85), "average": (1.10, 1.10, 1.10), "hard": (1.50, 1.50, 1.35)}
+        s_atk, s_def, s_hp = scale[difficulty]
+        e_atk  = max(1, int(p_atk * s_atk * _random.uniform(0.9, 1.1)))
+        e_def  = max(1, int(p_def * s_def * _random.uniform(0.9, 1.1)))
+        e_hp   = max(50, int(p_hp  * s_hp  * _random.uniform(0.95, 1.15)))
+        # Cap attack so it can't one-shot
+        e_atk  = min(e_atk, max(10, p_hp // 12))
+
+        # Pick enemy type/element based on difficulty
+        all_types    = list(DamageCalculator.CATEGORY_ADVANTAGES.keys())
+        all_elements = list(DamageCalculator.ELEMENT_EFFECTIVENESS.keys())
+        if difficulty == "easy":
+            cand_types = [t for t in all_types if DamageCalculator.compute_type_bonus(p_type, t) > 1.0] or all_types
+            cand_elems = [e for e in all_elements if DamageCalculator.compute_element_bonus(p_elem, e) > 1.0] or all_elements
+        elif difficulty == "hard":
+            cand_types = [t for t in all_types if DamageCalculator.compute_type_bonus(t, p_type) > 1.0] or all_types
+            cand_elems = [e for e in all_elements if DamageCalculator.compute_element_bonus(e, p_elem) > 1.0] or all_elements
+        else:
+            cand_types = all_types
+            cand_elems = all_elements
+
+        e_type = _random.choice(cand_types)
+        e_elem = _random.choice(cand_elems)
+
+        # Build a readable enemy name
+        try:
+            from Systems.Functions.optimal_file_manager import OptimalFileManager
+            _base = OptimalFileManager().get_data("base")
+            adj  = _random.choice(_base.get("element_bases", {}).get(e_elem, ["Mysterious"]))
+            noun = _random.choice(_base.get("category_bases", {}).get(e_type, ["Creature"]))
+            enemy_name = f"{adj} {noun}"
+        except Exception:
+            enemy_name = f"{e_elem.title()} {e_type.title()} Foe"
+
+        # ── Battle simulation ─────────────────────────────────────────────────
+        npc_brain   = NPCBrain()
+        MAX_TURNS   = 30
+        turns       = []
+
+        cur_p_hp = p_hp
+        cur_e_hp = e_hp
+        p_charge = 1.0
+        e_charge = 1.0
+        p_last_action = None
+        e_last_action = None
+
+        # Action labels for the player's pet
+        action_labels = DamageCalculator.get_action_labels(p_type, p_elem, p_spec)
+
+        for turn_num in range(1, MAX_TURNS + 1):
+            if cur_p_hp <= 0 or cur_e_hp <= 0:
+                break
+
+            # ── Player action (from request, or default attack on turn 1) ────
+            # The client sends one action per call; for simulation we use the
+            # submitted action for turn 1 and let the NPC brain drive the enemy.
+            # For a full auto-sim we just pick "attack" for the player each turn.
+            p_action = (data.get("action") or "attack").lower()
+            if p_action not in ("attack", "defend", "charge"):
+                p_action = "attack"
+
+            # ── NPC decides ──────────────────────────────────────────────────
+            monster_state = {
+                "hp": cur_e_hp, "max_hp": e_hp, "prev_hp": cur_e_hp,
+                "charge_multiplier": e_charge, "last_action": e_last_action,
+                "attack_stat": float(e_atk), "defense_stat": float(e_def),
+                "seed": turn_num
+            }
+            player_state = [{
+                "alive": cur_p_hp > 0, "hp": cur_p_hp, "max_hp": p_hp,
+                "charging": p_action == "charge"
+            }]
+            e_decision  = npc_brain.decide_action(monster_state, player_state)
+            e_action    = e_decision.get("action", "attack")
+
+            # ── Charge accumulation ──────────────────────────────────────────
+            if p_action == "charge":
+                p_charge = DamageCalculator.get_next_charge_multiplier(p_charge)
+            if e_action == "charge":
+                e_charge = DamageCalculator.get_next_charge_multiplier(e_charge)
+
+            # ── Player attacks enemy ─────────────────────────────────────────
+            p_result = DamageCalculator.calculate_battle_action(
+                attacker_attack=p_atk, target_defense=e_def,
+                charge_multiplier=p_charge if p_action == "attack" else 1.0,
+                target_charge_multiplier=e_charge if e_action == "defend" else 1.0,
+                attacker_action_type=p_action, target_action_type=e_action,
+                attacker_type=p_type, attacker_element=p_elem, attacker_element2=p_elem2,
+                defender_type=e_type, defender_element=e_elem,
+                attacker_species=p_spec
+            )
+
+            # ── Enemy attacks player ─────────────────────────────────────────
+            e_result = DamageCalculator.calculate_battle_action(
+                attacker_attack=e_atk, target_defense=p_def,
+                charge_multiplier=e_charge if e_action == "attack" else 1.0,
+                target_charge_multiplier=p_charge if p_action == "defend" else 1.0,
+                attacker_action_type=e_action, target_action_type=p_action,
+                attacker_type=e_type, attacker_element=e_elem,
+                defender_type=p_type, defender_element=p_elem, defender_element2=p_elem2,
+                defender_species=p_spec
+            )
+
+            # ── Apply damage ─────────────────────────────────────────────────
+            p_dmg_dealt  = p_result["final_damage"]
+            e_dmg_dealt  = e_result["final_damage"]
+            p_parry      = p_result["parry_damage"]   # enemy takes parry if player defends
+            e_parry      = e_result["parry_damage"]   # player takes parry if enemy defends
+
+            cur_e_hp = max(0, cur_e_hp - p_dmg_dealt - e_parry)
+            cur_p_hp = max(0, cur_p_hp - e_dmg_dealt - p_parry)
+
+            # Reset charge after use
+            if p_action == "attack":
+                p_charge = 1.0
+            if e_action == "attack":
+                e_charge = 1.0
+
+            p_last_action = p_action
+            e_last_action = e_action
+
+            # ── Build turn log entry ─────────────────────────────────────────
+            p_action_label = action_labels.get(p_action, p_action.title())
+            e_action_label = e_action.title()
+
+            turn_lines = []
+            if p_action == "charge":
+                turn_lines.append(f"⚡ {pet['name']} charges up! (x{p_charge:.0f})")
+            elif p_dmg_dealt > 0:
+                bonus = ""
+                mult = p_result.get("type_element_bonus_mult_attack", 1.0)
+                if mult > 1.0: bonus = " 🔥 Super effective!"
+                elif mult < 1.0: bonus = " 💨 Not very effective..."
+                turn_lines.append(f"⚔️ {pet['name']} uses {p_action_label} → {p_dmg_dealt} dmg{bonus}")
+            elif p_action == "defend":
+                if e_parry > 0:
+                    turn_lines.append(f"🛡️ {pet['name']} defends and parries {e_parry} dmg back!")
+                else:
+                    turn_lines.append(f"🛡️ {pet['name']} defends.")
+
+            if e_action == "charge":
+                turn_lines.append(f"⚡ {enemy_name} charges up! (x{e_charge:.0f})")
+            elif e_dmg_dealt > 0:
+                turn_lines.append(f"💥 {enemy_name} attacks → {e_dmg_dealt} dmg")
+            elif e_action == "defend":
+                if p_parry > 0:
+                    turn_lines.append(f"🛡️ {enemy_name} defends and parries {p_parry} dmg back!")
+                else:
+                    turn_lines.append(f"🛡️ {enemy_name} defends.")
+
+            turns.append({
+                "turn": turn_num,
+                "lines": turn_lines,
+                "player_hp": cur_p_hp,
+                "player_max_hp": p_hp,
+                "enemy_hp": cur_e_hp,
+                "enemy_max_hp": e_hp,
+                "player_action": p_action,
+                "enemy_action": e_action,
+            })
+
+            if cur_p_hp <= 0 or cur_e_hp <= 0:
+                break
+
+        # ── Determine outcome ─────────────────────────────────────────────────
+        player_won = cur_p_hp > 0 and cur_e_hp <= 0
+
+        # ── Apply XP and loot via LootCalculator ─────────────────────────────
+        loot_result = await LootCalculator.calculate_loot(
+            user_id=int(user_id),
+            pet_data=pet,
+            source="battle",
+            difficulty=difficulty,
+            winner_level=int(pet.get("level", 1)),
+            is_winner=player_won
+        )
+
+        # ── Update battle_stats ───────────────────────────────────────────────
+        total_dealt = sum(
+            t["player_max_hp"] - t["enemy_hp"] for t in turns[:1]
+        )
+        # Simpler: just count from turns
+        total_p_dealt = sum(
+            max(0, (turns[i-1]["enemy_hp"] if i > 0 else e_hp) - t["enemy_hp"])
+            for i, t in enumerate(turns)
+        )
+        total_e_dealt = sum(
+            max(0, (turns[i-1]["player_hp"] if i > 0 else p_hp) - t["player_hp"])
+            for i, t in enumerate(turns)
+        )
+
+        await user_data_manager.update_pet_battle_stats(
+            user_id, "npc",
+            wins=1 if player_won else 0,
+            losses=0 if player_won else 1,
+            xp_earned=loot_result["xp_gained"],
+            damage_dealt=total_p_dealt,
+            damage_taken=total_e_dealt
+        )
+
+        # ── Level change data for popup ───────────────────────────────────────
+        level_change = None
+        for msg in loot_result.get("messages", []):
+            pass  # messages already contain level info
+        # Re-fetch to get updated pet
+        refreshed = await user_data_manager.get_pet_data_async(user_id)
+        old_level = int(pet.get("level", 1))
+        new_level = int(refreshed.get("level", 1)) if refreshed else old_level
+        if new_level != old_level:
+            level_change = {"old_level": old_level, "new_level": new_level, "gains": {}}
+
+        return JSONResponse(content={
+            "success": True,
+            "won": player_won,
+            "turns": turns,
+            "enemy": {
+                "name": enemy_name,
+                "type": e_type,
+                "element": e_elem,
+                "max_hp": e_hp,
+                "attack": e_atk,
+                "defense": e_def,
+            },
+            "player": {
+                "name": pet["name"],
+                "max_hp": p_hp,
+                "attack": p_atk,
+                "defense": p_def,
+            },
+            "xp_gained": loot_result["xp_gained"],
+            "messages": loot_result["messages"],
+            "level_change": level_change,
+            "pet": refreshed,
+        })
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"battle_npc error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Battle failed.")
+
+
+# ── Shared battle simulation helpers (used by arena_api) ─────────────────────
+
+async def _run_npc_battle_sim(user_id: str, difficulty: str) -> dict:
+    """
+    Runs a full NPC battle simulation for the given user and returns the result dict.
+    Extracted so arena_api can reuse it without duplicating logic.
+    """
+    import random as _random
+    from Systems.Pets.Logic.pet_brain import StatsCalculator, DamageCalculator, LootCalculator, NPCBrain
+    from Systems.Functions.optimal_file_manager import OptimalFileManager
+
+    pet = await user_data_manager.get_pet_data_async(user_id)
+    if not pet:
+        raise ValueError("No pet found")
+
+    stats  = StatsCalculator.calculate_pet_stats(pet)
+    p_atk  = int(stats.get("attack",  10))
+    p_def  = int(stats.get("defense",  5))
+    p_hp   = int(stats.get("max_health", 500))
+    p_type = str(pet.get("category", "land")).lower()
+    p_elem = str(pet.get("element",  "basic")).lower()
+    p_elem2= str(pet.get("element2", "") or "").lower() or None
+    p_spec = str(pet.get("species",  "")).strip()
+
+    scale = {"easy": (0.70, 0.70, 0.85), "average": (1.10, 1.10, 1.10), "hard": (1.50, 1.50, 1.35)}
+    s_atk, s_def, s_hp = scale.get(difficulty, scale["easy"])
+    e_atk  = max(1, int(p_atk * s_atk * _random.uniform(0.9, 1.1)))
+    e_def  = max(1, int(p_def * s_def * _random.uniform(0.9, 1.1)))
+    e_hp   = max(50, int(p_hp  * s_hp  * _random.uniform(0.95, 1.15)))
+    e_atk  = min(e_atk, max(10, p_hp // 12))
+
+    all_types    = list(DamageCalculator.CATEGORY_ADVANTAGES.keys())
+    all_elements = list(DamageCalculator.ELEMENT_EFFECTIVENESS.keys())
+    if difficulty == "easy":
+        cand_types = [t for t in all_types if DamageCalculator.compute_type_bonus(p_type, t) > 1.0] or all_types
+        cand_elems = [e for e in all_elements if DamageCalculator.compute_element_bonus(p_elem, e) > 1.0] or all_elements
+    elif difficulty == "hard":
+        cand_types = [t for t in all_types if DamageCalculator.compute_type_bonus(t, p_type) > 1.0] or all_types
+        cand_elems = [e for e in all_elements if DamageCalculator.compute_element_bonus(e, p_elem) > 1.0] or all_elements
+    else:
+        cand_types, cand_elems = all_types, all_elements
+
+    e_type = _random.choice(cand_types)
+    e_elem = _random.choice(cand_elems)
+
+    try:
+        _base = OptimalFileManager().get_data("base")
+        adj  = _random.choice(_base.get("element_bases", {}).get(e_elem, ["Mysterious"]))
+        noun = _random.choice(_base.get("category_bases", {}).get(e_type, ["Creature"]))
+        enemy_name = f"{adj} {noun}"
+    except Exception:
+        enemy_name = f"{e_elem.title()} {e_type.title()} Foe"
+
+    npc_brain = NPCBrain()
+    MAX_TURNS = 30
+    turns: list = []
+    cur_p_hp, cur_e_hp = p_hp, e_hp
+    p_charge, e_charge = 1.0, 1.0
+    p_last_action = e_last_action = None
+    action_labels = DamageCalculator.get_action_labels(p_type, p_elem, p_spec)
+
+    for turn_num in range(1, MAX_TURNS + 1):
+        if cur_p_hp <= 0 or cur_e_hp <= 0:
+            break
+        p_action = "attack"
+        monster_state = {
+            "hp": cur_e_hp, "max_hp": e_hp, "prev_hp": cur_e_hp,
+            "charge_multiplier": e_charge, "last_action": e_last_action,
+            "attack_stat": float(e_atk), "defense_stat": float(e_def), "seed": turn_num,
+        }
+        e_decision = npc_brain.decide_action(monster_state, [{"alive": cur_p_hp > 0, "hp": cur_p_hp, "max_hp": p_hp, "charging": False}])
+        e_action   = e_decision.get("action", "attack")
+
+        if p_action == "charge": p_charge = DamageCalculator.get_next_charge_multiplier(p_charge)
+        if e_action == "charge": e_charge = DamageCalculator.get_next_charge_multiplier(e_charge)
+
+        p_result = DamageCalculator.calculate_battle_action(
+            attacker_attack=p_atk, target_defense=e_def,
+            charge_multiplier=p_charge if p_action == "attack" else 1.0,
+            target_charge_multiplier=e_charge if e_action == "defend" else 1.0,
+            attacker_action_type=p_action, target_action_type=e_action,
+            attacker_type=p_type, attacker_element=p_elem, attacker_element2=p_elem2,
+            defender_type=e_type, defender_element=e_elem, attacker_species=p_spec,
+        )
+        e_result = DamageCalculator.calculate_battle_action(
+            attacker_attack=e_atk, target_defense=p_def,
+            charge_multiplier=e_charge if e_action == "attack" else 1.0,
+            target_charge_multiplier=p_charge if p_action == "defend" else 1.0,
+            attacker_action_type=e_action, target_action_type=p_action,
+            attacker_type=e_type, attacker_element=e_elem,
+            defender_type=p_type, defender_element=p_elem, defender_element2=p_elem2, defender_species=p_spec,
+        )
+
+        p_dmg_dealt = p_result["final_damage"]
+        e_dmg_dealt = e_result["final_damage"]
+        e_parry     = p_result["parry_damage"]
+        p_parry     = e_result["parry_damage"]
+        cur_e_hp    = max(0, cur_e_hp - p_dmg_dealt - e_parry)
+        cur_p_hp    = max(0, cur_p_hp - e_dmg_dealt - p_parry)
+        if p_action == "attack": p_charge = 1.0
+        if e_action == "attack": e_charge = 1.0
+        p_last_action = p_action
+        e_last_action = e_action
+
+        p_action_label = action_labels.get(p_action, p_action.title())
+        turn_lines = []
+        if p_dmg_dealt > 0:
+            mult = p_result.get("type_element_bonus_mult_attack", 1.0)
+            bonus = " 🔥" if mult > 1.0 else (" 💨" if mult < 1.0 else "")
+            turn_lines.append(f"⚔️ {pet['name']} {p_action_label} → {p_dmg_dealt} dmg{bonus}")
+        elif p_action == "defend":
+            turn_lines.append(f"🛡️ {pet['name']} defends" + (f" — parries {e_parry}!" if e_parry else ""))
+        elif p_action == "charge":
+            turn_lines.append(f"⚡ {pet['name']} charges (x{p_charge:.0f})")
+        if e_dmg_dealt > 0:
+            turn_lines.append(f"💥 {enemy_name} attacks → {e_dmg_dealt} dmg")
+        elif e_action == "defend":
+            turn_lines.append(f"🛡️ {enemy_name} defends" + (f" — parries {p_parry}!" if p_parry else ""))
+        elif e_action == "charge":
+            turn_lines.append(f"⚡ {enemy_name} charges (x{e_charge:.0f})")
+
+        turns.append({
+            "turn": turn_num, "lines": turn_lines,
+            "player_hp": cur_p_hp, "player_max_hp": p_hp,
+            "enemy_hp": cur_e_hp,  "enemy_max_hp": e_hp,
+            "player_action": p_action, "enemy_action": e_action,
+        })
+        if cur_p_hp <= 0 or cur_e_hp <= 0:
+            break
+
+    player_won = cur_p_hp > 0 and cur_e_hp <= 0
+    loot_result = await LootCalculator.calculate_loot(
+        user_id=int(user_id), pet_data=pet, source="battle",
+        difficulty=difficulty, winner_level=int(pet.get("level", 1)), is_winner=player_won,
+    )
+    await user_data_manager.update_pet_battle_stats(
+        user_id, "npc",
+        wins=1 if player_won else 0, losses=0 if player_won else 1,
+        xp_earned=loot_result["xp_gained"], damage_dealt=0, damage_taken=0,
+    )
+    refreshed = await user_data_manager.get_pet_data_async(user_id)
+    old_level  = int(pet.get("level", 1))
+    new_level  = int(refreshed.get("level", 1)) if refreshed else old_level
+    level_change = {"old_level": old_level, "new_level": new_level} if new_level != old_level else None
+
+    return {
+        "won": player_won, "turns": turns,
+        "enemy":  {"name": enemy_name, "type": e_type, "element": e_elem, "max_hp": e_hp, "attack": e_atk, "defense": e_def},
+        "player": {"name": pet["name"], "max_hp": p_hp, "attack": p_atk, "defense": p_def},
+        "xp_gained": loot_result["xp_gained"],
+        "messages":  loot_result["messages"],
+        "level_change": level_change,
+        "pet": refreshed,
+    }
+
+
+async def _run_pvp_battle_sim(user_id: str, challenger_id: str) -> dict:
+    """Simple PvP simulation between two users' pets."""
+    import random as _random
+    from Systems.Pets.Logic.pet_brain import StatsCalculator, DamageCalculator, LootCalculator
+
+    pet_a = await user_data_manager.get_pet_data_async(user_id)
+    pet_b = await user_data_manager.get_pet_data_async(challenger_id)
+    if not pet_a or not pet_b:
+        raise ValueError("One or both users have no pet")
+
+    def _stats(pet):
+        s = StatsCalculator.calculate_pet_stats(pet)
+        return {
+            "atk": int(s.get("attack", 10)), "def": int(s.get("defense", 5)),
+            "hp":  int(s.get("max_health", 500)),
+            "type": str(pet.get("category", "land")).lower(),
+            "elem": str(pet.get("element", "basic")).lower(),
+            "elem2": str(pet.get("element2", "") or "").lower() or None,
+            "spec": str(pet.get("species", "")),
+        }
+
+    sa, sb = _stats(pet_a), _stats(pet_b)
+    hp_a, hp_b = sa["hp"], sb["hp"]
+    charge_a = charge_b = 1.0
+    turns: list = []
+    log: list = []
+
+    for turn_num in range(1, 31):
+        if hp_a <= 0 or hp_b <= 0:
+            break
+        act_a = _random.choice(["attack", "attack", "attack", "defend", "charge"])
+        act_b = _random.choice(["attack", "attack", "attack", "defend", "charge"])
+
+        if act_a == "charge": charge_a = DamageCalculator.get_next_charge_multiplier(charge_a)
+        if act_b == "charge": charge_b = DamageCalculator.get_next_charge_multiplier(charge_b)
+
+        r_a = DamageCalculator.calculate_battle_action(
+            attacker_attack=sa["atk"], target_defense=sb["def"],
+            charge_multiplier=charge_a if act_a == "attack" else 1.0,
+            target_charge_multiplier=charge_b if act_b == "defend" else 1.0,
+            attacker_action_type=act_a, target_action_type=act_b,
+            attacker_type=sa["type"], attacker_element=sa["elem"], attacker_element2=sa["elem2"],
+            defender_type=sb["type"], defender_element=sb["elem"], defender_element2=sb["elem2"],
+            attacker_species=sa["spec"],
+        )
+        r_b = DamageCalculator.calculate_battle_action(
+            attacker_attack=sb["atk"], target_defense=sa["def"],
+            charge_multiplier=charge_b if act_b == "attack" else 1.0,
+            target_charge_multiplier=charge_a if act_a == "defend" else 1.0,
+            attacker_action_type=act_b, target_action_type=act_a,
+            attacker_type=sb["type"], attacker_element=sb["elem"], attacker_element2=sb["elem2"],
+            defender_type=sa["type"], defender_element=sa["elem"], defender_element2=sa["elem2"],
+            attacker_species=sb["spec"],
+        )
+
+        hp_b = max(0, hp_b - r_a["final_damage"] - r_b["parry_damage"])
+        hp_a = max(0, hp_a - r_b["final_damage"] - r_a["parry_damage"])
+        if act_a == "attack": charge_a = 1.0
+        if act_b == "attack": charge_b = 1.0
+
+        lines = []
+        if r_a["final_damage"] > 0: lines.append(f"⚔️ {pet_a['name']} → {r_a['final_damage']} dmg")
+        if r_b["final_damage"] > 0: lines.append(f"⚔️ {pet_b['name']} → {r_b['final_damage']} dmg")
+        turns.append({"turn": turn_num, "lines": lines, "hp_a": hp_a, "hp_b": hp_b})
+        log.extend(lines)
+        if hp_a <= 0 or hp_b <= 0:
+            break
+
+    winner_id   = user_id if hp_a > 0 else challenger_id
+    loser_id    = challenger_id if hp_a > 0 else user_id
+    winner_pet  = pet_a if hp_a > 0 else pet_b
+    loser_pet   = pet_b if hp_a > 0 else pet_a
+
+    win_loot  = await LootCalculator.calculate_loot(int(winner_id), winner_pet, "pvp", "normal", int(winner_pet.get("level",1)), int(loser_pet.get("level",1)), True)
+    loss_loot = await LootCalculator.calculate_loot(int(loser_id),  loser_pet,  "pvp", "normal", int(winner_pet.get("level",1)), int(loser_pet.get("level",1)), False)
+
+    log.append(f"🏆 {winner_pet['name']} wins! +{win_loot['xp_gained']} XP")
+    log.append(f"💀 {loser_pet['name']} defeated. +{loss_loot['xp_gained']} XP")
+
+    return {
+        "winner_id": winner_id, "loser_id": loser_id,
+        "winner_name": winner_pet["name"], "loser_name": loser_pet["name"],
+        "turns": turns, "log": log,
+        "winner_xp": win_loot["xp_gained"], "loser_xp": loss_loot["xp_gained"],
+    }

@@ -1,0 +1,61 @@
+<link rel="stylesheet" href="/css/arena.css">
+
+<div class="container-fluid" id="arena-root">
+
+    <!-- Header -->
+    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-1">
+        <div>
+            <div class="arena-title">⚔️ The Arena</div>
+            <div class="arena-subtitle">Watch live battles · Join a room · Challenge others</div>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+            <span class="arena-live-badge"><span class="arena-live-dot"></span>LIVE</span>
+            <span class="arena-spectators" id="arena-online">— online</span>
+        </div>
+    </div>
+
+    <hr class="arena-divider">
+
+    <!-- Loading -->
+    <div id="arena-loading" class="text-center py-5">
+        <div class="spinner-border" style="color:var(--gold-primary)" role="status"></div>
+        <p class="mt-2" style="color:var(--text-secondary);font-size:0.82rem">Connecting to Arena...</p>
+    </div>
+
+    <!-- Login prompt -->
+    <div id="arena-login-prompt" style="display:none" class="text-center py-5">
+        <div style="font-size:2rem;margin-bottom:8px">🔒</div>
+        <div style="color:var(--text-secondary);font-size:0.9rem">Sign in with Discord to join the Arena.</div>
+    </div>
+
+    <!-- Main arena layout -->
+    <div id="arena-main" style="display:none">
+        <div class="row g-3">
+
+            <!-- LEFT: Room grid -->
+            <div class="col-lg-7 col-xl-8">
+                <div style="font-size:0.72rem;color:var(--text-secondary);margin-bottom:8px;letter-spacing:0.5px;text-transform:uppercase">
+                    Rooms — click an empty room to enter, click an occupied room to spectate
+                </div>
+                <div class="arena-grid" id="arena-grid"></div>
+            </div>
+
+            <!-- RIGHT: Action / spectator panel -->
+            <div class="col-lg-5 col-xl-4">
+                <div id="arena-panel-area">
+                    <!-- Filled dynamically -->
+                    <div class="arena-panel" style="text-align:center;padding:32px 18px">
+                        <div style="font-size:2rem;opacity:0.3">⚔️</div>
+                        <div style="color:var(--text-secondary);font-size:0.82rem;margin-top:8px">
+                            Select a room to get started.
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+</div>
+
+<script src="/js/arena.js"></script>

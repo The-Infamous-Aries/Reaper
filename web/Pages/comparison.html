@@ -1,0 +1,389 @@
+<link rel="stylesheet" href="/css/comparison.css">
+
+<div class="cmp-page">
+  <div class="cmp-card mb-4">
+    <div class="row g-2 align-items-end">
+      <div class="col-md-5">
+        <label class="cmp-label">Home Alliance(s)</label>
+        <input type="text" id="cmp-home" class="form-control cmp-input"
+               placeholder="Name, ID, or comma-separated" value="Night's Watch">
+        <div class="cmp-hint">Pre-filled with Night's Watch — edit freely</div>
+      </div>
+      <div class="col-md-1 text-center cmp-vs-big">VS</div>
+      <div class="col-md-5">
+        <label class="cmp-label">Away Alliance(s)</label>
+        <input type="text" id="cmp-away" class="form-control cmp-input"
+               placeholder="Name, ID, or comma-separated">
+      </div>
+      <div class="col-md-1">
+        <button id="cmp-run" class="btn btn-gold w-100">Compare</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="cmp-loading" style="display:none; text-align:center; padding:3rem 0">
+    <div class="spinner-border text-warning mb-3" style="width:3rem;height:3rem" role="status"></div>
+    <p class="text-warning" id="cmp-loading-text">Fetching alliance data...</p>
+  </div>
+  <div id="cmp-error" class="alert alert-danger" style="display:none" role="alert">
+    <strong>Error:</strong> <span id="cmp-error-msg"></span>
+  </div>
+
+  <div id="cmp-results" style="display:none">
+    <div class="row g-3 mb-3" id="cmp-scorecards"></div>
+    <ul class="nav cmp-tabs mb-0" id="cmpTabs">
+      <li class="nav-item"><button class="nav-link active" data-tab="military">Military</button></li>
+      <li class="nav-item"><button class="nav-link" data-tab="production">Production</button></li>
+      <li class="nav-item"><button class="nav-link" data-tab="nations">Nations</button></li>
+      <li class="nav-item"><button class="nav-link" data-tab="projects">Projects</button></li>
+      <li class="nav-item"><button class="nav-link" data-tab="improvements">Improvements</button></li>
+      <li class="nav-item"><button class="nav-link" data-tab="cities">Cities</button></li>
+    </ul>
+    <div class="cmp-card cmp-tab-card">
+      <div id="cmp-tab-content"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  // Military emoji images
+  const E = {
+    soldier: '<img src="/static/Emojis/Military/soldier.png" class="cmp-emoji" alt="soldier">',
+    tank:    '<img src="/static/Emojis/Military/tank.png"    class="cmp-emoji" alt="tank">',
+    jet:     '<img src="/static/Emojis/Military/jet.png"     class="cmp-emoji" alt="aircraft">',
+    ship:    '<img src="/static/Emojis/Military/ship.png"    class="cmp-emoji" alt="ship">',
+    missile: '<img src="/static/Emojis/Military/missile.png" class="cmp-emoji" alt="missile">',
+    nuke:    '<img src="/static/Emojis/Military/bomb.png"    class="cmp-emoji" alt="nuke">',
+  };
+  const IMP = n => `<img src="/static/Emojis/Improvements/${n}.png" class="cmp-emoji" alt="${n}">`;
+  const RES = n => `<img src="/static/Emojis/Resources/${n}.png"    class="cmp-emoji" alt="${n}">`;
+
+  // Helpers
+  const fmt   = n => Number(n||0).toLocaleString();
+  const pct   = (a,b) => b ? ((a/b)*100).toFixed(1)+'%' : '—';
+  const ratio = (a,b) => { if(!b&&!a) return '1:1'; if(!a) return '1:∞'; if(!b) return '∞:1'; const r=a/b; return r>=1?r.toFixed(2)+':1':'1:'+(1/r).toFixed(2); };
+  const adv   = (h,a) => h>a?'<span class="adv-h">▲ Home</span>':a>h?'<span class="adv-a">▲ Away</span>':'<span class="adv-t">—</span>';
+  const sum   = (arr,key) => arr.reduce((s,x)=>{ let v=x; for(const p of key.split('.')) v=v?.[p]; return s+(Number(v)||0); },0);
+
+  // Center-origin bar row
+  function barRow(icon, label, hv, av) {
+    const max = Math.max(hv,av,1);
+    const hp = Math.min((hv/max)*100,100).toFixed(1);
+    const ap = Math.min((av/max)*100,100).toFixed(1);
+    return `<div class="cmp-row">
+      <div class="cmp-row-label">${icon||''}<span>${label}</span></div>
+      <div class="cmp-row-bars">
+        <div class="cmp-half home"><span class="cmp-val home">${fmt(hv)}</span><div class="cmp-track home"><div class="cmp-bar home" style="width:${hp}%"></div></div></div>
+        <div class="cmp-center-div"></div>
+        <div class="cmp-half away"><div class="cmp-track away"><div class="cmp-bar away" style="width:${ap}%"></div></div><span class="cmp-val away">${fmt(av)}</span></div>
+      </div>
+      <div class="cmp-row-adv">${adv(hv,av)}</div>
+    </div>`;
+  }
+
+  const barHeader = `<div class="cmp-row cmp-header-row">
+    <div class="cmp-row-label"></div>
+    <div class="cmp-row-bars">
+      <div class="cmp-half home" style="justify-content:flex-end"><span class="cmp-side-label home">◀ HOME</span></div>
+      <div class="cmp-center-div"></div>
+      <div class="cmp-half away"><span class="cmp-side-label away">AWAY ▶</span></div>
+    </div>
+    <div class="cmp-row-adv"></div>
+  </div>`;
+
+  const section = (title, body) => `<div class="cmp-section"><div class="cmp-section-title">${title}</div>${body}</div>`;
+
+  // ── SCORECARDS ────────────────────────────────────────────────────────────
+  function buildScorecards(home, away) {
+    const hScore=sum(home,'total_score'), aScore=sum(away,'total_score');
+    const hN=sum(home,'total_nations'),   aN=sum(away,'total_nations');
+    const hC=sum(home,'total_cities'),    aC=sum(away,'total_cities');
+    const hA=sum(home,'active_nations'),  aA=sum(away,'active_nations');
+    return `
+      <div class="col-md-5"><div class="cmp-scorecard home-sc">
+        <div class="cmp-sc-name"><img src="/static/Emojis/Activity/home.png" class="cmp-sc-icon"> ${home.map(a=>a.name).join(' + ')}</div>
+        <div class="cmp-sc-grid">
+          <div class="cmp-sc-stat"><span>Score</span><strong>${fmt(Math.round(hScore))}</strong></div>
+          <div class="cmp-sc-stat"><span>Nations</span><strong>${fmt(hN)}</strong></div>
+          <div class="cmp-sc-stat"><span>Active</span><strong>${fmt(hA)}</strong></div>
+          <div class="cmp-sc-stat"><span>Cities</span><strong>${fmt(hC)}</strong></div>
+        </div>
+      </div></div>
+      <div class="col-md-2 d-flex align-items-center justify-content-center">
+        <div class="cmp-vs-badge">
+          <div class="cmp-vs-num">${ratio(hScore,aScore)}</div><div class="cmp-vs-sub">Score Ratio</div>
+          <div style="border-top:1px solid rgba(184,134,11,0.3);margin:0.4rem 0"></div>
+          <div class="cmp-vs-num" style="font-size:1rem">${ratio(hN,aN)}</div><div class="cmp-vs-sub">Nation Ratio</div>
+        </div>
+      </div>
+      <div class="col-md-5"><div class="cmp-scorecard away-sc">
+        <div class="cmp-sc-name"><img src="/static/Emojis/Activity/away.png" class="cmp-sc-icon"> ${away.map(a=>a.name).join(' + ')}</div>
+        <div class="cmp-sc-grid">
+          <div class="cmp-sc-stat"><span>Score</span><strong>${fmt(Math.round(aScore))}</strong></div>
+          <div class="cmp-sc-stat"><span>Nations</span><strong>${fmt(aN)}</strong></div>
+          <div class="cmp-sc-stat"><span>Active</span><strong>${fmt(aA)}</strong></div>
+          <div class="cmp-sc-stat"><span>Cities</span><strong>${fmt(aC)}</strong></div>
+        </div>
+      </div></div>`;
+  }
+
+  // ── MILITARY ──────────────────────────────────────────────────────────────
+  function buildMilitary(home, away) {
+    const units = [
+      [E.soldier,'Soldiers', 'military.current_soldiers','military.max_soldiers', 'military.soldier_gap'],
+      [E.tank,   'Tanks',    'military.current_tanks',   'military.max_tanks',    'military.tank_gap'],
+      [E.jet,    'Aircraft', 'military.current_aircraft','military.max_aircraft', 'military.aircraft_gap'],
+      [E.ship,   'Ships',    'military.current_ships',   'military.max_ships',    'military.ship_gap'],
+      [E.missile,'Missiles', 'military.current_missiles',null,null],
+      [E.nuke,   'Nukes',    'military.current_nukes',   null,null],
+    ];
+    let rows = barHeader;
+    for (const [icon,label,cur] of units) rows += barRow(icon,label,sum(home,cur),sum(away,cur));
+    let tRows = '';
+    for (const [icon,label,cur,maxKey,gapKey] of units) {
+      const hC=sum(home,cur),aC=sum(away,cur),hM=maxKey?sum(home,maxKey):null,aM=maxKey?sum(away,maxKey):null,hG=gapKey?sum(home,gapKey):null,aG=gapKey?sum(away,gapKey):null;
+      tRows += `<tr><td>${icon} ${label}</td><td class="th">${fmt(hC)}${hM!==null?` <span class="sub">/ ${fmt(hM)}</span>`:''}</td><td class="ta">${fmt(aC)}${aM!==null?` <span class="sub">/ ${fmt(aM)}</span>`:''}</td><td>${ratio(hC,aC)}</td><td>${adv(hC,aC)}</td>${hG!==null?`<td class="th">${fmt(hG)}</td><td class="ta">${fmt(aG)}</td>`:'<td colspan="2" class="sub">—</td>'}</tr>`;
+    }
+    return section('Current Military (current / max)', rows) +
+      section('Detail', `<div class="table-responsive"><table class="table cmp-table"><thead><tr><th>Unit</th><th class="th">Home</th><th class="ta">Away</th><th>Ratio</th><th>Adv.</th><th class="th">Home Gap</th><th class="ta">Away Gap</th></tr></thead><tbody>${tRows}</tbody></table></div>`);
+  }
+
+  // ── PRODUCTION ────────────────────────────────────────────────────────────
+  function buildProduction(home, away) {
+    const fields = [
+      [E.soldier,'Daily Soldiers','production.daily_soldiers'],
+      [E.tank,   'Daily Tanks',   'production.daily_tanks'],
+      [E.jet,    'Daily Aircraft','production.daily_aircraft'],
+      [E.ship,   'Daily Ships',   'production.daily_ships'],
+      [E.missile,'Daily Missiles','production.daily_missiles'],
+      [E.nuke,   'Daily Nukes',   'production.daily_nukes'],
+    ];
+    let rows = barHeader;
+    for (const [icon,label,key] of fields) rows += barRow(icon,label,sum(home,key),sum(away,key));
+    let tRows = '';
+    for (const [icon,label,key] of fields) { const hv=sum(home,key),av=sum(away,key); tRows+=`<tr><td>${icon} ${label}</td><td class="th">${fmt(hv)}</td><td class="ta">${fmt(av)}</td><td>${ratio(hv,av)}</td><td>${adv(hv,av)}</td></tr>`; }
+    return section('Daily Production', rows) +
+      section('Table', `<div class="table-responsive"><table class="table cmp-table"><thead><tr><th>Unit</th><th class="th">Home/day</th><th class="ta">Away/day</th><th>Ratio</th><th>Adv.</th></tr></thead><tbody>${tRows}</tbody></table></div>`);
+  }
+
+  // Activity & color emoji helpers
+  const ACT  = n => `<img src="/static/Emojis/Activity/${n}.png" class="cmp-emoji" alt="${n}">`;
+  const COL  = n => `<img src="/static/Emojis/Colors/${n}.png"   class="cmp-emoji" alt="${n}">`;
+
+  // ── NATIONS ───────────────────────────────────────────────────────────────
+  function buildNations(home, away) {
+    const fields = [
+      [ACT('total'),     'Total Nations',  'total_nations'],
+      [ACT('active'),    'Active',         'active_nations'],
+      [ACT('applicant'), 'Applicants',     'applicant_nations'],
+      [ACT('vacation'),  'Vacation Mode',  'vacation_nations'],
+      [COL('gray'),      'Grey',           'grey_nations'],
+      [COL('beige'),     'Beige',          'beige_nations'],
+      [ACT('7d'),        'Inactive 7-13d', 'inactive_7_days'],
+      [ACT('14d'),       'Inactive 14d+',  'inactive_14_days'],
+    ];
+    let rows = barHeader;
+    for (const [icon,label,key] of fields) rows += barRow(icon,label,sum(home,key),sum(away,key));
+    let breakdown = '';
+    if (home.length>1||away.length>1) {
+      let bRows='';
+      for (const a of home) bRows+=`<tr><td>${a.name}</td><td><span class="badge-h">Home</span></td><td>${fmt(a.total_nations)}</td><td>${fmt(a.active_nations)}</td><td>${fmt(Math.round(a.total_score))}</td><td>${fmt(a.total_cities)}</td><td>${(a.avg_cities||0).toFixed(1)}</td></tr>`;
+      for (const a of away) bRows+=`<tr><td>${a.name}</td><td><span class="badge-a">Away</span></td><td>${fmt(a.total_nations)}</td><td>${fmt(a.active_nations)}</td><td>${fmt(Math.round(a.total_score))}</td><td>${fmt(a.total_cities)}</td><td>${(a.avg_cities||0).toFixed(1)}</td></tr>`;
+      breakdown = section('Per-Alliance', `<div class="table-responsive"><table class="table cmp-table"><thead><tr><th>Alliance</th><th>Side</th><th>Nations</th><th>Active</th><th>Score</th><th>Cities</th><th>Avg Cities</th></tr></thead><tbody>${bRows}</tbody></table></div>`);
+    }
+    return section('Nation Status', rows) + breakdown;
+  }
+
+  // ── PROJECTS — exact categories/order from Discord embed, acronym badges ──
+  function buildProjects(home, away) {
+    // [acronym, full name, data key]
+    const projects = [
+      ['⚔️ War', [
+        ['APE',  'Advanced Pirate Economy',        'projects.advanced_pirate_economy'],
+        ['CIA',  'Central Intelligence Agency',    'projects.central_intelligence_agency'],
+        ['FS',   'Fallout Shelter',                'projects.fallout_shelter'],
+        ['GS',   'Guiding Satellite',              'projects.guiding_satellite'],
+        ['ID',   'Iron Dome',                      'projects.iron_dome'],
+        ['MD',   'Military Doctrine',              'projects.military_doctrine'],
+        ['MRC',  'Military Research Center',       'projects.military_research_center'],
+        ['MS',   'Military Salvage',               'projects.military_salvage'],
+        ['MLP',  'Missile Launch Pad',             'projects.missile_launch_pad'],
+        ['NLF',  'Nuclear Launch Facility',        'projects.nuclear_launch_facility'],
+        ['NRF',  'Nuclear Research Facility',      'projects.nuclear_research_facility'],
+        ['PE',   'Pirate Economy',                 'projects.pirate_economy'],
+        ['PB',   'Propaganda Bureau',              'projects.propaganda_bureau'],
+        ['SP',   'Space Program',                  'projects.space_program'],
+        ['SS',   'Spy Satellite',                  'projects.spy_satellite'],
+        ['SN',   'Surveillance Network',           'projects.surveillance_network'],
+        ['VDS',  'Vital Defense System',           'projects.vital_defense_system'],
+      ]],
+      ['🏭 Industry', [
+        ['AS',   'Arms Stockpile',                 'projects.arms_stockpile'],
+        ['BW',   'Bauxite Works',                  'projects.bauxite_works'],
+        ['CRC',  'Clinical Research Center',       'projects.clinical_research_center'],
+        ['EGR',  'Emergency Gasoline Reserve',     'projects.emergency_gasoline_reserve'],
+        ['GT',   'Green Technologies',             'projects.green_technologies'],
+        ['ITC',  'International Trade Center',     'projects.international_trade_center'],
+        ['IW',   'Iron Works',                     'projects.iron_works'],
+        ['MI',   'Mass Irrigation',                'projects.mass_irrigation'],
+        ['RI',   'Recycling Initiative',           'projects.recycling_initiative'],
+        ['SPTP', 'Specialized Police Training Program', 'projects.specialized_police_training_program'],
+        ['TS',   'Telecommunications Satellite',   'projects.telecommunications_satellite'],
+        ['UEP',  'Uranium Enrichment Program',     'projects.uranium_enrichment_program'],
+      ]],
+      ['🏛️ Government', [
+        ['AC',   'Activity Center',                'projects.activity_center'],
+        ['AEC',  'Advanced Engineering Corps',     'projects.advanced_engineering_corps'],
+        ['ALA',  'Arable Land Agency',             'projects.arable_land_agency'],
+        ['BDA',  'Bureau of Domestic Affairs',     'projects.bureau_of_domestic_affairs'],
+        ['CCE',  'Center for Civil Engineering',   'projects.center_for_civil_engineering'],
+        ['GSA',  'Government Support Agency',      'projects.government_support_agency'],
+        ['RDC',  'Research & Development Center',  'projects.research_and_development_center'],
+      ]],
+      ['👽 Alien', [
+        ['ML',   'Mars Landing',                   'projects.mars_landing'],
+        ['MnL',  'Moon Landing',                   'projects.moon_landing'],
+      ]],
+    ];
+
+    const hN = Math.max(sum(home,'active_nations'),1);
+    const aN = Math.max(sum(away,'active_nations'),1);
+    let html = '';
+    for (const [groupTitle, items] of projects) {
+      let rows = barHeader;
+      let tRows = '';
+      for (const [acr, label, key] of items) {
+        const hv=sum(home,key), av=sum(away,key);
+        const badge = `<strong class="cmp-acr">${acr}</strong>`;
+        rows += barRow(badge, label, hv, av);
+        tRows += `<tr><td>${badge} ${label}</td><td class="th">${fmt(hv)} <span class="sub">(${pct(hv,hN)})</span></td><td class="ta">${fmt(av)} <span class="sub">(${pct(av,aN)})</span></td><td>${ratio(hv/hN,av/aN)}</td><td>${adv(hv/hN,av/aN)}</td></tr>`;
+      }
+      html += section(groupTitle, rows +
+        `<div class="table-responsive"><table class="table cmp-table"><thead><tr><th>Project</th><th class="th">Home (count/%)</th><th class="ta">Away (count/%)</th><th>Ratio</th><th>Adv.</th></tr></thead><tbody>${tRows}</tbody></table></div>`);
+    }
+    return html;
+  }
+
+  // ── IMPROVEMENTS ──────────────────────────────────────────────────────────
+  function buildImprovements(home, away) {
+    const groups = [
+      ['⚡ Power Plants', [
+        [RES('coal'),    'Coal Power Plant',    'improvements.coalpower'],
+        [RES('oil'),     'Oil Power Plant',     'improvements.oilpower'],
+        [RES('uranium'), 'Nuclear Power Plant', 'improvements.nuclearpower'],
+        [IMP('windmill'),'Wind Power Plant',    'improvements.windpower'],
+      ]],
+      ['⛏️ Raw Resources', [
+        [RES('oil'),     'Oil Well',     'improvements.oilwell'],
+        [RES('coal'),    'Coal Mine',    'improvements.coalmine'],
+        [RES('uranium'), 'Uranium Mine', 'improvements.uramine'],
+        [RES('iron'),    'Iron Mine',    'improvements.ironmine'],
+        [RES('bauxite'), 'Bauxite Mine', 'improvements.bauxitemine'],
+        [RES('lead'),    'Lead Mine',    'improvements.leadmine'],
+        [RES('food'),    'Farm',         'improvements.farm'],
+      ]],
+      ['🏭 Manufacturing', [
+        [RES('gasoline'),  'Gas Refinery',      'improvements.gasrefinery'],
+        [RES('steel'),     'Steel Mill',        'improvements.steelmill'],
+        [RES('aluminum'),  'Aluminum Refinery', 'improvements.aluminumrefinery'],
+        [RES('munitions'), 'Munitions Factory', 'improvements.munitionsfactory'],
+      ]],
+      ['🏛️ Civil', [
+        [IMP('police'),  'Police Station',   'improvements.policestation'],
+        [IMP('hospital'),'Hospital',         'improvements.hospital'],
+        [IMP('subway'),  'Subway',           'improvements.subway'],
+        [IMP('recycle'), 'Recycling Center', 'improvements.recyclingcenter'],
+      ]],
+      ['💰 Commerce', [
+        [IMP('bank'),        'Bank',          'improvements.bank'],
+        [IMP('supermarket'), 'Supermarket',   'improvements.supermarket'],
+        [IMP('stadium'),     'Stadium',       'improvements.stadium'],
+        [IMP('market'),      'Shopping Mall', 'improvements.shopping_mall'],
+      ]],
+      ['⚔️ Military', [
+        [E.soldier, 'Barracks', 'improvements.barracks'],
+        [E.tank,    'Factory',  'improvements.factory'],
+        [E.jet,     'Hangar',   'improvements.hangar'],
+        [E.ship,    'Drydock',  'improvements.drydock'],
+      ]],
+    ];
+    let html = '';
+    for (const [groupTitle, items] of groups) {
+      let rows = barHeader;
+      for (const [icon,label,key] of items) rows += barRow(icon,label,sum(home,key),sum(away,key));
+      html += section(groupTitle, rows);
+    }
+    const hCities=sum(home,'improvements.total_cities'), aCities=sum(away,'improvements.total_cities');
+    const hAvg=home.reduce((s,a)=>s+(a.improvements?.avg_per_city||0),0)/Math.max(home.length,1);
+    const aAvg=away.reduce((s,a)=>s+(a.improvements?.avg_per_city||0),0)/Math.max(away.length,1);
+    html += section('📊 Summary', `<div class="row g-3">
+      <div class="col-md-6"><div class="cmp-info-card home-ic">
+        <div class="cmp-info-title"><img src="/static/Emojis/Activity/home.png" class="cmp-sc-icon"> Home</div>
+        <div class="cmp-info-row"><span>Total Cities:</span><strong>${fmt(hCities)}</strong></div>
+        <div class="cmp-info-row"><span>Avg Improvements/City:</span><strong>${hAvg.toFixed(2)}</strong></div>
+      </div></div>
+      <div class="col-md-6"><div class="cmp-info-card away-ic">
+        <div class="cmp-info-title"><img src="/static/Emojis/Activity/away.png" class="cmp-sc-icon"> Away</div>
+        <div class="cmp-info-row"><span>Total Cities:</span><strong>${fmt(aCities)}</strong></div>
+        <div class="cmp-info-row"><span>Avg Improvements/City:</span><strong>${aAvg.toFixed(2)}</strong></div>
+      </div></div>
+    </div>`);
+    return html;
+  }
+
+  // ── CITIES ────────────────────────────────────────────────────────────────
+  function buildCities(home, away) {
+    const allKeys = new Set();
+    [...home,...away].forEach(a=>Object.keys(a.city_distribution||{}).forEach(k=>allKeys.add(k)));
+    const sorted = [...allKeys].sort((a,b)=>parseInt(a)-parseInt(b));
+    if (!sorted.length) return '<p class="text-muted p-3">No city distribution data.</p>';
+    let rows=barHeader, tRows='';
+    for (const k of sorted) {
+      const hv=home.reduce((s,a)=>s+(a.city_distribution?.[k]||0),0);
+      const av=away.reduce((s,a)=>s+(a.city_distribution?.[k]||0),0);
+      rows += barRow('🏙️',`${k} cities`,hv,av);
+      tRows += `<tr><td>${k}</td><td class="th">${fmt(hv)}</td><td class="ta">${fmt(av)}</td><td>${ratio(hv,av)}</td><td>${adv(hv,av)}</td></tr>`;
+    }
+    return section('Nations by City Range', rows) +
+      section('Table', `<div class="table-responsive"><table class="table cmp-table"><thead><tr><th>Range</th><th class="th">Home</th><th class="ta">Away</th><th>Ratio</th><th>Adv.</th></tr></thead><tbody>${tRows}</tbody></table></div>`);
+  }
+
+  // ── routing ───────────────────────────────────────────────────────────────
+  let _home=[], _away=[];
+  const builders = {military:buildMilitary,production:buildProduction,nations:buildNations,projects:buildProjects,improvements:buildImprovements,cities:buildCities};
+
+  function renderTab(tab) { const el=document.getElementById('cmp-tab-content'); if(el) el.innerHTML=builders[tab]?.(_home,_away)||''; }
+
+  function showLoading(msg) { document.getElementById('cmp-loading').style.display='block'; document.getElementById('cmp-loading-text').textContent=msg; document.getElementById('cmp-error').style.display='none'; document.getElementById('cmp-results').style.display='none'; }
+  function showError(msg)   { document.getElementById('cmp-loading').style.display='none'; document.getElementById('cmp-error').style.display='block'; document.getElementById('cmp-error-msg').textContent=msg; }
+  function showResults()    { document.getElementById('cmp-loading').style.display='none'; document.getElementById('cmp-results').style.display='block'; }
+
+  async function runComparison() {
+    const hv=document.getElementById('cmp-home').value.trim(), av=document.getElementById('cmp-away').value.trim();
+    if (!hv||!av) { showError('Fill in both Home and Away fields.'); return; }
+    showLoading('Querying PnW API for alliance member data...');
+    try {
+      const res = await fetch(`/api/pnw/compare_data?${new URLSearchParams({home_alliance_ids:hv,away_alliance_ids:av})}`);
+      if (!res.ok) { const e=await res.json().catch(()=>({detail:res.statusText})); throw new Error(e.detail||`HTTP ${res.status}`); }
+      const data = await res.json();
+      _home=data.home; _away=data.away;
+      document.getElementById('cmp-scorecards').innerHTML = buildScorecards(_home,_away);
+      document.querySelectorAll('#cmpTabs .nav-link').forEach(b=>b.classList.remove('active'));
+      document.querySelector('#cmpTabs .nav-link[data-tab="military"]').classList.add('active');
+      renderTab('military');
+      showResults();
+    } catch(e) { showError(e.message||'Unknown error.'); }
+  }
+
+  document.addEventListener('dashboardPageLoaded', function(e) {
+    if (e.detail.page !== 'comparison.html') return;
+    document.getElementById('cmp-run').addEventListener('click', runComparison);
+    ['cmp-home','cmp-away'].forEach(id=>document.getElementById(id).addEventListener('keydown',ev=>{if(ev.key==='Enter')runComparison();}));
+    document.querySelectorAll('#cmpTabs .nav-link').forEach(btn=>btn.addEventListener('click',function(){
+      document.querySelectorAll('#cmpTabs .nav-link').forEach(b=>b.classList.remove('active'));
+      this.classList.add('active'); renderTab(this.dataset.tab);
+    }));
+  });
+})();
+</script>

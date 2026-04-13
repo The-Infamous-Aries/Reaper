@@ -68,14 +68,32 @@ def _fetch_discord_user(access_token: str) -> dict | None:
         return None
 
 
+OAUTH_SCOPES = "identify email guilds"
+
+def _build_oauth_params() -> str:
+    """Return the query string shared by both the web and deep-link OAuth URLs."""
+    from urllib.parse import urlencode
+    return urlencode({
+        "client_id": DISCORD_CLIENT_ID,
+        "redirect_uri": DISCORD_REDIRECT_URI,
+        "response_type": "code",
+        "scope": OAUTH_SCOPES,
+    })
+
+@router.get("/discord/oauth-url")
+async def discord_oauth_url():
+    """Returns the OAuth URLs so the frontend can attempt deep linking."""
+    params = _build_oauth_params()
+    return JSONResponse({
+        "web_url":  f"https://discord.com/api/oauth2/authorize?{params}",
+        "deep_url": f"discord://-/oauth2/authorize?{params}",
+    })
+
 @router.get("/discord/login")
 async def discord_login():
-    """Redirects the user to Discord's authorization page."""
-    scopes = "identify email guilds"
-    return RedirectResponse(
-        f"https://discord.com/api/oauth2/authorize?client_id={DISCORD_CLIENT_ID}"
-        f"&redirect_uri={DISCORD_REDIRECT_URI}&response_type=code&scope={scopes}"
-    )
+    """Redirects the user to Discord's authorization page (web fallback)."""
+    params = _build_oauth_params()
+    return RedirectResponse(f"https://discord.com/api/oauth2/authorize?{params}")
 
 @router.get("/discord/callback")
 async def discord_callback(request: Request, code: str):

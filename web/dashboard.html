@@ -5,1204 +5,284 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Reaper Bot Dashboard</title>
     <link rel="icon" href="/static/Images/reaper.png" type="image/png">
+
+    <!-- Core styles -->
     <link href="/css/bootstrap.min.css?v=20250327" rel="stylesheet">
     <link href="/css/main.css?v=20250327" rel="stylesheet">
     <link href="/css/fonts.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" integrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2PkPKZ5QiAj6Ta86w+fsb2TkcmfRyVX3pBnMFcV7oQPJkl9QevSCWr3W6A==" crossorigin="anonymous" referrerpolicy="no-referrer" />
-    <meta property="og:title" content="The Reaper's Domain" />
-    <meta property="og:description" content="I've come for your souls... and to provide top-tier Discord bot services. But mostly the souls." />
-    <meta property="og:image" content="/static/Images/333.jpg" />
-    <meta property="og:url" content="https://reaper.qzz.io/" />
-    <meta name="twitter:card" content="summary_large_image">
-    <meta name="theme-color" content="#ff0000">
+    <link href="/css/dashboard.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
+          integrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2PkPKZ5QiAj6Ta86w+fsb2TkcmfRyVX3pBnMFcV7oQPJkl9QevSCWr3W6A=="
+          crossorigin="anonymous" referrerpolicy="no-referrer">
+
+    <!-- Open Graph / Twitter -->
+    <meta property="og:title"       content="The Reaper's Domain">
+    <meta property="og:description" content="I've come for your souls... and to provide top-tier Discord bot services. But mostly the souls.">
+    <meta property="og:image"       content="/static/Images/333.jpg">
+    <meta property="og:url"         content="https://reaper.qzz.io/">
+    <meta name="twitter:card"       content="summary_large_image">
+    <meta name="theme-color"        content="#ff0000">
+
     <script src="/node_modules/gsap/dist/gsap.min.js" defer></script>
     <script src="/node_modules/gsap/dist/MotionPathPlugin.min.js" defer></script>
-    <style>
-        /* Updated: 2025-03-27 - Avatar styling fix */
-        body {
-            background-color: #000000 !important;
-            color: #FFD700 !important;
-        }
-
-        h1, h2, h3, h4, h5, h6 {
-            text-shadow: 0 0 5px #FFD700;
-        }
-        
-        /* Main content area */
-        .main-content {
-            padding: 2rem 2rem 2rem 2rem;
-            min-height: 100vh;
-            position: relative;
-            z-index: 1;
-            transition: padding-right 0.3s ease;
-        }
-        
-        /* Sidebar styles */
-        .sidebar {
-            background: linear-gradient(180deg, rgba(15, 15, 15, 0.85), rgba(20, 20, 20, 0.85));
-            border-left: 2px solid var(--gold-primary);
-            box-shadow: 0 0 20px var(--gold-glow);
-            padding: 0;
-            position: fixed;
-            top: 0;
-            right: 0;
-            height: 100vh;
-            width: 280px;
-            z-index: 1000;
-            overflow-y: auto;
-            border-radius: 1rem 0 0 1rem;
-            scrollbar-width: thin;
-            scrollbar-color: var(--gold-primary) var(--bg-tertiary);
-            transform: translateX(0);
-            transition: transform 0.3s ease;
-        }
-        
-
-        
-        .sidebar.mobile-hidden {
-            transform: translateX(100%);
-        }
-        
-        .sidebar-content {
-            height: 100%;
-            display: flex;
-            flex-direction: column;
-        }
-        
-        .sidebar-header {
-            position: relative;
-            flex-shrink: 0;
-        }
-        
-        /* Removed bot avatar and banner styles - not needed */
-        
-        .sidebar::-webkit-scrollbar {
-            width: 6px;
-        }
-        
-        .sidebar::-webkit-scrollbar-track {
-            background: var(--bg-tertiary);
-            border-radius: 3px;
-        }
-        
-        .sidebar::-webkit-scrollbar-thumb {
-            background: var(--gold-primary);
-            border-radius: 3px;
-        }
-        
-        .sidebar::-webkit-scrollbar-thumb:hover {
-            background: var(--gold-secondary);
-        }
-
-        /* Removed bot avatar styling - not needed */
-
-        /* Gothic Ornate Menu Enhancements */
-        .nav-pills .nav-link {
-            position: relative;
-            background: transparent;
-            border: none;
-            border-radius: 0;
-            transition: all 0.2s ease;
-            margin: 0;
-            padding: 0.4rem 1.5rem;
-            font-weight: 400;
-            letter-spacing: 0.3px;
-            display: flex;
-            align-items: center;
-            border-bottom: 1px solid rgba(184, 134, 11, 0.1);
-        }
-        
-        /* Removed pseudo-elements for cleaner list style */
-        
-        .nav-pills .nav-link:hover {
-            background: rgba(184, 134, 11, 0.4); /* Brighter inside on hover */
-            color: var(--gold-primary);
-            box-shadow: inset 0 0 25px rgba(184, 134, 11, 0.6); /* Removed outer glow */
-        }
-        
-        /* Removed hover pseudo-element effects */
-        
-        .nav-pills .nav-item {
-            margin: 0;
-            padding: 0;
-        }
-        
-        /* Removed unused animations */
-        
-        .nav-pills .nav-link img {
-            filter: none;
-            transition: all 0.2s ease;
-            margin-right: 12px;
-            opacity: 0.8;
-        }
-        
-        .nav-pills .nav-link:hover img {
-            filter: drop-shadow(0 0 12px rgba(184, 134, 11, 0.8));
-            transform: scale(1.1);
-            opacity: 1;
-        }
-        
-        .nav-pills .nav-link.active img {
-            filter: drop-shadow(0 0 15px rgba(184, 134, 11, 1));
-            transform: scale(1.1);
-            opacity: 1;
-        }
-        
-        /* Removed emoji pulse animation */
-        .nav-pills .nav-link.active,
-        .nav-pills .show > .nav-link {
-            background: rgba(184, 134, 11, 0.5); /* Brighter inside when active */
-            color: var(--gold-primary);
-            border-bottom: 1px solid rgba(184, 134, 11, 0.7);
-            box-shadow: inset 4px 0 0 rgba(184, 134, 11, 1), inset 0 0 30px rgba(184, 134, 11, 0.7); /* Removed outer glow */
-            font-weight: 500;
-        }
-
-        .nav-pills .nav-link.active {
-            pointer-events: none; /* Prevent clicking on the active link */
-        }
-        
-        /* Removed active button pseudo-elements for cleaner look */
-        /* Clean list layout styling */
-        .nav-pills {
-            background: rgba(15, 15, 15, 0.3);
-            border-radius: 8px;
-            padding: 0;
-            margin: 0;
-            overflow: hidden;
-        }
-        
-        .nav-pills .nav-item {
-            margin: 0;
-            padding: 0;
-            border-bottom: 1px solid rgba(184, 134, 11, 0.1);
-        }
-        
-        .nav-pills .nav-item:last-child {
-            border-bottom: none;
-        }
-        .nav-pills {
-            position: relative;
-            z-index: 1;
-        }
-        
-        .nav-pills .nav-item {
-            position: relative;
-            margin: 0.1rem 0; /* Items closer together */
-            z-index: 1;
-            transition: z-index 0.3s ease;
-        }
-        
-        .nav-pills .nav-item:hover {
-            z-index: 100;
-        }
-        
-        /* Removed adjacent item animations */
-        
-        /* Enhanced glow effects */
-
-        
-        /* Removed gothic architectural elements for clean list style */
-        
-        /* Clean icon styling */
-        .nav-pills .nav-link img {
-            filter: none;
-            transition: all 0.2s ease;
-            margin-right: 12px;
-            opacity: 0.8;
-        }
-        
-        .nav-pills .nav-link:hover img {
-            filter: drop-shadow(0 0 8px rgba(184, 134, 11, 0.6));
-            transform: scale(1.1);
-            opacity: 1;
-        }
-        
-        .nav-pills .nav-link.active img {
-            filter: drop-shadow(0 0 10px rgba(184, 134, 11, 0.8));
-            transform: scale(1.1);
-            opacity: 1;
-        }
-        
-        .nav-pills .nav-link::first-letter {
-            font-size: 1.3em;
-            font-weight: 700;
-            text-shadow: 0 0 8px var(--gold-primary);
-        }
-        
-        /* Custom navigation text colors - white default, black on hover/selected */
-        .nav-pills .nav-link {
-            color: var(--text-primary) !important;
-        }
-        
-        .nav-pills .nav-link:hover {
-            color: #000000 !important;
-        }
-        
-        .nav-pills .nav-link.active,
-        .nav-pills .show > .nav-link {
-            color: #000000 !important;
-        }
-        
-
-        .sidebar-divider {
-            border: none;
-            height: 2px;
-            background: linear-gradient(90deg, 
-                transparent, 
-                var(--gold-primary), 
-                transparent
-            );
-            margin: 1.5rem 0.5rem;
-            position: relative;
-            overflow: visible;
-        }
-        
-        .sidebar-divider::before,
-        .sidebar-divider::after {
-            content: '?';
-            position: absolute;
-            top: 50%;
-            transform: translateY(-50%);
-            color: var(--gold-primary);
-            font-size: 1rem;
-            text-shadow: 0 0 5px var(--gold-glow);
-        }
-        
-        .sidebar-divider::before {
-            left: 10%;
-        }
-        
-        .sidebar-divider::after {
-            right: 10%;
-        }
-        
-        .content-wrapper {
-            position: relative;
-            z-index: 2;
-            max-width: 100%;
-        }
-        
-        @media (max-width: 768px) {
-            .main-content {
-                padding: 4rem 1rem 2rem;
-                padding-right: 1rem;
-            }
-            
-            .sidebar {
-                width: 350px;
-                right: 0;
-                left: auto;
-                z-index: 1002;
-            }
-            
-            .sidebar.mobile-hidden {
-                transform: translateX(100%);
-            }
-            
-            .sidebar.collapsed {
-                transform: translateX(100%); /* Fully hidden on mobile */
-                width: 320px;
-            }
-            
-            .sidebar-toggle {
-                display: block; /* Show toggle button on mobile */
-            }
-            
-            .bot-info {
-                padding: 1rem 0.5rem 0.5rem;
-            }
-            
-            .bot-avatar {
-                width: 90px;
-                height: 90px;
-                border-radius: 0 !important;
-                border: none !important;
-                outline: none !important;
-            }
-
-            
-            .card {
-                margin-bottom: 1.5rem;
-            }
-            
-            /* Adjust navigation for smaller sidebar */
-            .nav-pills .nav-link {
-                font-size: 0.85rem;
-                padding: 0.35rem 0.8rem;
-                margin: 0.2rem 0.4rem;
-            }
-            
-            .bot-info {
-                padding: 1rem 0.5rem 0.5rem;
-            }
-            
-            .bot-avatar {
-                width: 80px;
-                height: 80px;
-                border-radius: 0 !important;
-                border: none !important;
-                outline: none !important;
-            }
-
-            
-            .card {
-                margin-bottom: 1.5rem;
-            }
-            
-            /* Adjust navigation for smaller sidebar */
-            .nav-pills .nav-link {
-                font-size: 0.85rem;
-                padding: 0.35rem 0.8rem;
-                margin: 0.2rem 0.4rem;
-            }
-        }
-        
-        @media (max-width: 576px) {
-            .main-content {
-                padding: 4rem 0.5rem 1rem;
-            }
-            
-            .sidebar {
-                width: 100%;
-                border-radius: 0;
-            }
-            
-            .sidebar-toggle {
-                top: 0.5rem;
-                right: 0.5rem;
-            }
-            
-            /* Mobile-friendly card adjustments */
-            .card {
-                margin-bottom: 1rem;
-            }
-            
-            .card-body {
-                padding: 1rem;
-            }
-            
-
-            
-            /* Smaller navigation text */
-            .nav-pills .nav-link {
-                font-size: 0.85rem;
-                padding: 0.3rem 0.8rem;
-                margin: 0.2rem 0.3rem;
-            }
-            
-            /* Better button sizing */
-            .btn {
-                font-size: 0.9rem;
-                padding: 0.4rem 0.8rem;
-            }
-            
-            /* Form control improvements */
-        .form-control, .form-select {
-            font-size: 16px; /* Prevents zoom on iOS */
-        }
-        
-        /* Ensure proper scrolling on mobile */
-        body.mobile-menu-open {
-            overflow: hidden;
-            position: fixed;
-            width: 100%;
-        }
-        
-        .main-content {
-            overflow-y: auto;
-            -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
-        }
-        
-        /* Ensure sidebar content is scrollable */
-        .sidebar-content {
-            height: 100vh;
-            overflow-y: auto;
-            padding-bottom: 2rem; /* Add some bottom padding */
-        }
-        
-        /* Improve navigation item spacing on mobile */
-        .nav-pills .nav-link {
-            margin: 0.25rem 0.5rem;
-            padding: 0.6rem 1rem;
-            font-size: 0.95rem;
-        }
-        
-        /* Better touch targets for mobile */
-        .mobile-menu-toggle {
-            min-width: 44px;
-            min-height: 44px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        
-        /* Desktop sidebar collapse button */
-        .sidebar-collapse-toggle {
-            position: fixed;
-            top: 1rem;
-            right: calc(202px + 1rem);
-            z-index: 1003;
-            background: linear-gradient(135deg, var(--gold-primary), var(--gold-secondary));
-            color: var(--bg-primary);
-            border: 2px solid var(--gold-primary);
-            border-radius: 0.5rem;
-            padding: 0.5rem;
-            font-size: 1.2rem;
-            box-shadow: 0 0 15px var(--gold-glow);
-            cursor: pointer;
-            transition: all 0.3s ease;
-            min-width: 44px;
-            min-height: 44px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        
-        .sidebar-collapse-toggle:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 0 20px var(--gold-glow);
-        }
-        
-        /* Collapsed sidebar state */
-        .sidebar.collapsed {
-            transform: translateX(calc(100% - 50px)); /* Show just the toggle button edge */
-            width: 50px;
-        }
-        
-        .sidebar.collapsed .sidebar-content {
-            opacity: 0;
-            visibility: hidden;
-            transition: opacity 0.3s ease, visibility 0.3s ease;
-        }
-        
-        .sidebar.collapsed ~ .main-content {
-            padding-right: 4rem; /* Make room for toggle button */
-        }
-        
-        /* Toggle button position when sidebar is collapsed */
-        .sidebar.collapsed ~ .sidebar-toggle {
-            right: 1rem; /* Move button to edge when collapsed */
-            transform: rotate(180deg); /* Rotate icon when collapsed */
-        }
-    }
-        /* Removed banner styling - not needed */
-        
-        .bot-avatar-section {
-            position: relative;
-            z-index: 10;
-            width: 100px;
-            height: 100px;
-            margin: -50px auto 1rem auto;
-            display: block;
-        }
-        /* Removed banner hover styling - not needed */
-        .card {
-            background-color: rgba(15, 15, 15, 0.85);
-            border: 2px solid var(--gold-primary);
-            box-shadow: 0 0 15px var(--gold-glow);
-            border-radius: 0.75rem;
-        }
-        .card-header {
-            background: linear-gradient(135deg, rgba(20, 20, 20, 0.9), rgba(15, 15, 15, 0.9));
-            border-bottom: 2px solid var(--gold-primary);
-            color: var(--gold-primary);
-            font-weight: 700;
-        }
-        .btn {
-            border: 2px solid var(--gold-primary);
-            background: rgba(20, 20, 20, 0.8);
-            color: var(--gold-primary);
-            transition: all 0.3s ease;
-        }
-        .btn:hover {
-            background: var(--gold-primary);
-            color: var(--bg-primary);
-            box-shadow: 0 0 15px var(--gold-glow);
-            transform: translateY(-2px);
-        }
-        .form-control, .form-select {
-            background-color: rgba(20, 20, 20, 0.8);
-            border: 2px solid var(--gold-primary);
-            color: var(--text-primary);
-            box-shadow: 0 0 10px var(--gold-glow);
-        }
-        .form-control:focus, .form-select:focus {
-            background-color: var(--bg-tertiary);
-            border-color: var(--gold-secondary);
-            box-shadow: 0 0 20px var(--gold-glow);
-            color: var(--gold-primary);
-        }
-        .text-primary { color: var(--gold-primary) !important; }
-        .text-info { color: var(--gold-secondary) !important; }
-        .badge {
-            border: 1px solid var(--gold-primary);
-            box-shadow: 0 0 5px var(--gold-glow);
-        }
-        .alert {
-            background-color: rgba(20, 20, 20, 0.85);
-            border: 2px solid var(--gold-primary);
-            color: var(--text-primary);
-            box-shadow: 0 0 15px var(--gold-glow);
-        }
-        hr {
-            border-color: var(--gold-primary);
-            box-shadow: 0 0 10px var(--gold-glow);
-        }
-        .sidebar-divider {
-            border: 0;
-            height: 1px;
-            background: linear-gradient(90deg, transparent, var(--gold-primary), transparent);
-            margin: 0.4rem 1rem;
-            box-shadow: 0 0 5px var(--gold-glow);
-        }
-        /* Nation link bar */
-        .nation-link-bar {
-            padding: 0.5rem 0.75rem;
-            border-bottom: 1px solid rgba(184, 134, 11, 0.2);
-        }
-        .nation-link-bar form {
-            display: flex;
-            gap: 0.35rem;
-        }
-        .nation-link-bar input {
-            flex: 1;
-            min-width: 0;
-            padding: 0.3rem 0.5rem;
-            font-size: 0.78rem;
-            background: rgba(20, 20, 20, 0.8);
-            border: 1px solid rgba(184, 134, 11, 0.4);
-            border-radius: 0.4rem;
-            color: var(--text-primary);
-        }
-        .nation-link-bar input:focus {
-            outline: none;
-            border-color: var(--gold-primary);
-            box-shadow: 0 0 8px var(--gold-glow);
-        }
-        .nation-link-bar input::placeholder { color: rgba(255,255,255,0.3); }
-        .nation-link-bar button {
-            padding: 0.3rem 0.55rem;
-            font-size: 0.75rem;
-            background: linear-gradient(135deg, var(--gold-primary), var(--gold-secondary));
-            color: #000;
-            border: none;
-            border-radius: 0.4rem;
-            cursor: pointer;
-            font-weight: 700;
-            white-space: nowrap;
-            transition: opacity 0.2s;
-        }
-        .nation-link-bar button:hover { opacity: 0.85; }
-        .nation-link-bar .nation-linked-display {
-            display: flex;
-            align-items: center;
-            gap: 0.55rem;
-            width: 100%;
-        }
-        .nation-link-bar .nation-flag {
-            width: 48px;
-            height: 32px;
-            object-fit: cover;
-            border-radius: 3px;
-            border: 1px solid rgba(184,134,11,0.4);
-            flex-shrink: 0;
-            image-rendering: auto;
-        }
-        .nation-link-bar .nation-linked-name {
-            flex: 1;
-            min-width: 0;
-            font-size: 0.8rem;
-            font-weight: 600;
-            color: var(--gold-primary);
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-        .nation-link-bar .nation-unlink-btn {
-            background: none;
-            border: none;
-            color: rgba(255,255,255,0.35);
-            cursor: pointer;
-            font-size: 0.9rem;
-            padding: 0;
-            line-height: 1;
-            flex-shrink: 0;
-            transition: color 0.2s;
-        }
-        .nation-link-bar .nation-unlink-btn:hover { color: #e74c3c; }
-        /* Rank ticker */
-        .nation-rank-ticker {
-            margin-top: 0.4rem;
-            min-height: 1.4rem;
-            font-size: 0.7rem;
-            color: var(--text-secondary);
-            overflow: hidden;
-            position: relative;
-            width: 100%;
-        }
-        .nation-rank-ticker .rank-slide {
-            display: flex;
-            align-items: center;
-            gap: 0.3rem;
-            opacity: 0;
-            transform: translateY(6px);
-            transition: opacity 0.4s ease, transform 0.4s ease;
-            position: absolute;
-            width: 100%;
-        }
-        .nation-rank-ticker .rank-slide.visible {
-            opacity: 1;
-            transform: translateY(0);
-            position: relative;
-        }
-        .nation-rank-ticker .rank-period {
-            color: var(--gold-secondary);
-            font-weight: 700;
-            white-space: nowrap;
-        }
-        .nation-rank-ticker .rank-label {
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-        .nation-rank-ticker .rank-pos {
-            color: var(--gold-primary);
-            font-weight: 700;
-            white-space: nowrap;
-            flex-shrink: 0;
-        }
-        .nation-link-bar .nation-link-error {
-            font-size: 0.72rem;
-            color: #e74c3c;
-            margin-top: 0.25rem;
-        }
-        code {
-            background-color: rgba(20, 20, 20, 0.8);
-            border: 1px solid var(--gold-primary);
-            color: var(--gold-secondary);
-            box-shadow: 0 0 5px var(--gold-glow);
-        }
-        pre {
-            background-color: rgba(15, 15, 15, 0.8);
-            border: 2px solid var(--gold-primary);
-            box-shadow: 0 0 15px var(--gold-glow);
-            border-radius: 0.5rem;
-        }
-    </style>
 </head>
 <body>
 
-    <div class="container-fluid">
-        <div class="row">
-            <main role="main" class="col-md-10 col-lg-10 px-md-4 order-first">
-                <div class="content-wrapper">
-                    <div id="content"></div>
-                </div>
-            </main>
-            <nav class="col-md-2 d-none d-md-block sidebar order-last">
+<!-- Mobile top bar -->
+<div class="mobile-topbar d-md-none">
+    <div class="topbar-rank-ticker" id="topbar-rank-ticker" style="display:none"></div>
+    <button class="sidebar-toggle" id="sidebar-toggle" aria-label="Open menu">
+        <i class="fas fa-bars"></i>
+    </button>
+</div>
 
-                                <ul class="nav flex-column nav-pills mt-2 px-1"><!-- User Account Items --><li class="nav-item" id="user-profile" style="display: none;"><a class="nav-link" href="#"><img id="user-avatar" src="" alt="User Avatar" style="width: 32px; height: 32px; border-radius: 50%; margin-right: 8px; object-fit: cover; border: 1px solid rgba(255,215,0,0.4);"><span id="user-name"></span></a></li><li class="nav-item" id="login-button"><a class="nav-link" id="discord-login-link" href="/api/discord/login"><i class="fab fa-discord" style="width: 20px; height: 20px; margin-right: 8px;"></i>Sign In with Discord</a></li><li class="nav-item" id="logout-button" style="display: none;"><a class="nav-link" href="/api/discord/logout"><i class="fas fa-sign-out-alt" style="width: 20px; height: 20px; margin-right: 8px;"></i>Logout</a></li><li class="nav-item nation-link-bar" id="nation-link-bar"><div id="nation-linked-view" style="display:none"><div class="nation-linked-display"><img id="nation-flag-img" class="nation-flag" src="" alt=""><span id="nation-linked-name" class="nation-linked-name"></span><button class="nation-unlink-btn" id="nation-unlink-btn" title="Unlink nation">✕</button></div><div class="nation-rank-ticker" id="nation-rank-ticker" style="display:none"></div></div><div id="nation-input-view"><form id="nation-link-form" autocomplete="off"><input type="text" id="nation-id-input" placeholder="PnW Nation ID" maxlength="12" pattern="[0-9]*" inputmode="numeric"><button type="submit">Link</button></form><div id="nation-link-error" class="nation-link-error" style="display:none"></div></div></li><!-- Information Category --><li class="nav-item"><h6 class="px-3 mt-2 mb-1 text-uppercase fw-bold" style="font-size: 0.7rem; letter-spacing: 1px; color: var(--gold-secondary);">Information</h6></li><li class="nav-item"><a class="nav-link" href="#" data-page="homepage"><img src="/static/Emojis/Menu/reaper.png" alt="Homepage" style="width: 20px; height: 20px; margin-right: 8px;">Homepage</a></li><li class="nav-item"><a class="nav-link" href="#" data-page="commands" data-css="/css/commands.css?v=20250327"><img src="/static/Emojis/Menu/discord.png" alt="Commands" style="width: 20px; height: 20px; margin-right: 8px;">Commands</a></li><li class="nav-item"><a class="nav-link" href="#" data-page="contact"><img src="/static/Emojis/Menu/contact.png" alt="Contact" style="width: 20px; height: 20px; margin-right: 8px;">Contact</a></li><!-- Politics & War Category --><li class="nav-item"><h6 class="px-3 mt-2 mb-1 text-uppercase fw-bold" style="font-size: 0.7rem; letter-spacing: 1px; color: var(--gold-secondary);">Politics & War</h6></li><li class="nav-item"><a class="nav-link" href="#" data-page="game_info"><img src="/static/Emojis/Menu/game_info.png" alt="Game Info" style="width: 20px; height: 20px; margin-right: 8px;">Game Info</a></li><li class="nav-item"><a class="nav-link" href="#" data-page="watch"><img src="/static/Emojis/Menu/war.png" alt="The Watch" style="width: 20px; height: 20px; margin-right: 8px;">The Watch</a></li><li class="nav-item"><a class="nav-link" href="#" data-page="leaderboard"><img src="/static/Emojis/Menu/leaderboard.png" alt="Leaderboards" style="width: 20px; height: 20px; margin-right: 8px;">Leaderboards</a></li><li class="nav-item"><a class="nav-link" href="#" data-page="cost_calc"><img src="/static/Emojis/Menu/calculator.png" alt="PnW Calculators" style="width: 20px; height: 20px; margin-right: 8px;">Calculators</a></li><li class="nav-item"><a class="nav-link" href="#" data-page="graphs"><img src="/static/Emojis/Menu/graph.png" alt="Graphs" style="width: 20px; height: 20px; margin-right: 8px;">Graphs</a></li><li class="nav-item"><a class="nav-link" href="#" data-page="library"><img src="/static/Emojis/Menu/script.png" alt="Scriptorium" style="width: 20px; height: 20px; margin-right: 8px;">Scriptorium</a></li>
-                    <!-- Pets Category --><li class="nav-item"><h6 class="px-3 mt-2 mb-1 text-uppercase fw-bold" style="font-size: 0.7rem; letter-spacing: 1px; color: var(--gold-secondary);">Pets</h6></li><li class="nav-item" id="my-pet-link"><a class="nav-link" href="#" data-page="mypet" data-css="/css/mypet.css" data-script="/js/mypet.js"><img src="/static/Emojis/Menu/pets.png" alt="My Pet" style="width: 20px; height: 20px; margin-right: 8px;">My Pet</a></li><li class="nav-item"><a class="nav-link" href="#" data-page="what_are_pets"><img src="/static/Emojis/Menu/what_pets.png" alt="Breakdown" style="width: 20px; height: 20px; margin-right: 8px;">Breakdown</a></li><li class="nav-item"><a class="nav-link" href="#" data-page="pets"><img src="/static/Emojis/Menu/pets.png" alt="Types & Items" style="width: 20px; height: 20px; margin-right: 8px;">Types & Items</a></li><!-- Misc Category --><li class="nav-item"><h6 class="px-3 mt-2 mb-1 text-uppercase fw-bold" style="font-size: 0.7rem; letter-spacing: 1px; color: var(--gold-secondary);">Misc</h6></li><li class="nav-item"><a class="nav-link" href="#" data-page="astrology"><img src="/static/Emojis/Menu/astrology.png" alt="Astrology" style="width: 20px; height: 20px; margin-right: 8px;">Astrology</a></li><li class="nav-item"><a class="nav-link" href="#" data-page="tarot"><img src="/static/Emojis/Menu/tarot.png" alt="Tarot" style="width: 20px; height: 20px; margin-right: 8px;">Tarot</a></li><li class="nav-item"><a class="nav-link" href="#" data-page="fun" data-script="/js/fun_views.js?v=20250325"><img src="/static/Emojis/Menu/fun.png" alt="Fun" style="width: 20px; height: 20px; margin-right: 8px;">Fun</a></li></ul>
+<div class="container-fluid">
+    <div class="row">
+
+        <!-- ── Main content ──────────────────────────────────────────────── -->
+        <main role="main" class="main-content col-12 px-3 px-md-4 order-first">
+            <div class="content-wrapper">
+                <div id="content"></div>
             </div>
-        </div>
-    </nav>
-        </div>
+        </main>
+
+        <!-- ── Sidebar nav ───────────────────────────────────────────────── -->
+        <nav class="sidebar order-last" id="main-sidebar">
+
+            <div class="sidebar-nav-content">
+            <ul class="nav flex-column nav-pills mt-2 px-1">
+
+                <!-- ── Account ─────────────────────────────────────────── -->
+                <li class="nav-item" id="user-profile" style="display:none">
+                    <a class="nav-link" href="#">
+                        <img id="user-avatar" src="" alt="User Avatar"
+                             style="width:32px;height:32px;border-radius:50%;margin-right:8px;object-fit:cover;border:1px solid rgba(255,215,0,0.4);">
+                        <span id="user-name"></span>
+                    </a>
+                </li>
+                <li class="nav-item" id="login-button">
+                    <a class="nav-link" id="discord-login-link" href="/api/discord/login"
+                       onclick="discordDeepLinkLogin(event)">
+                        <i class="fab fa-discord" style="width:20px;height:20px;margin-right:8px;"></i>
+                        Sign In with Discord
+                    </a>
+                </li>
+                <li class="nav-item" id="logout-button" style="display:none">
+                    <a class="nav-link" href="/api/discord/logout">
+                        <i class="fas fa-sign-out-alt" style="width:20px;height:20px;margin-right:8px;"></i>
+                        Logout
+                    </a>
+                </li>
+
+                <!-- Nation link bar -->
+                <li class="nav-item nation-link-bar" id="nation-link-bar">
+                    <div id="nation-linked-view" style="display:none">
+                        <div class="nation-linked-display">
+                            <img id="nation-flag-img" class="nation-flag" src="" alt="">
+                            <span id="nation-linked-name" class="nation-linked-name"></span>
+                            <button class="nation-unlink-btn" id="nation-unlink-btn" title="Unlink nation">✕</button>
+                        </div>
+                        <div class="nation-rank-ticker" id="nation-rank-ticker" style="display:none"></div>
+                    </div>
+                    <div id="nation-input-view">
+                        <form id="nation-link-form" autocomplete="off">
+                            <input type="text" id="nation-id-input" placeholder="PnW Nation ID"
+                                   maxlength="12" pattern="[0-9]*" inputmode="numeric">
+                            <button type="submit">Link</button>
+                        </form>
+                        <div id="nation-link-error" class="nation-link-error" style="display:none"></div>
+                    </div>
+                </li>
+
+                <!-- ── Politics & War ───────────────────────────────────── -->
+                <li class="nav-item">
+                    <h6 class="px-3 mt-2 mb-1 text-uppercase fw-bold"
+                        style="font-size:0.7rem;letter-spacing:1px;color:var(--gold-secondary);">
+                        Politics &amp; War
+                    </h6>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="#" data-page="game_info">
+                        <img src="/static/Emojis/Menu/game_info.png" alt="Game Info" style="width:20px;height:20px;margin-right:8px;">
+                        Game Info
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="#" data-page="nations">
+                        <img src="/static/Emojis/Menu/crow.png" alt="Nations" style="width:20px;height:20px;margin-right:8px;">
+                        The Watch
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="#" data-page="watch">
+                        <img src="/static/Emojis/Menu/wars.png" alt="War Stats" style="width:20px;height:20px;margin-right:8px;">
+                        War Stats
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="#" data-page="leaderboard">
+                        <img src="/static/Emojis/Menu/leaderboard.png" alt="Leaderboards" style="width:20px;height:20px;margin-right:8px;">
+                        Leaderboards
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="#" data-page="cost_calc">
+                        <img src="/static/Emojis/Menu/calculator.png" alt="Calculators" style="width:20px;height:20px;margin-right:8px;">
+                        Calculators
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="#" data-page="comparison">
+                        <img src="/static/Emojis/Menu/comparison.png" alt="Comparison" style="width:20px;height:20px;margin-right:8px;">
+                        Comparison
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="#" data-page="library">
+                        <img src="/static/Emojis/Menu/script.png" alt="Scriptorium" style="width:20px;height:20px;margin-right:8px;">
+                        Scriptorium
+                    </a>
+                </li>
+
+                <!-- ── Pets ─────────────────────────────────────────────── -->
+                <li class="nav-item">
+                    <h6 class="px-3 mt-2 mb-1 text-uppercase fw-bold"
+                        style="font-size:0.7rem;letter-spacing:1px;color:var(--gold-secondary);">
+                        Pets
+                    </h6>
+                </li>
+                <li class="nav-item" id="my-pet-link">
+                    <a class="nav-link" href="#" data-page="mypet" data-css="/css/mypet.css" data-script="/js/mypet.js">
+                        <img src="/static/Emojis/Menu/pets.png" alt="My Pet" style="width:20px;height:20px;margin-right:8px;">
+                        My Pet
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="#" data-page="arena" data-css="/css/arena.css" data-script="/js/arena.js">
+                        <img src="/static/Emojis/Menu/arena.png" alt="Arena" style="width:20px;height:20px;margin-right:8px;">
+                        ⚔️ Arena
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="#" data-page="casino" data-css="/css/casino.css" data-script="/js/casino.js">
+                        <img src="/static/Emojis/Menu/casino.png" alt="Casino" style="width:20px;height:20px;margin-right:8px;">
+                        🎰 Casino
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="#" data-page="what_are_pets">
+                        <img src="/static/Emojis/Menu/what_pets.png" alt="Breakdown" style="width:20px;height:20px;margin-right:8px;">
+                        Breakdown
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="#" data-page="pets">
+                        <img src="/static/Emojis/Menu/pets.png" alt="Types &amp; Items" style="width:20px;height:20px;margin-right:8px;">
+                        Types &amp; Items
+                    </a>
+                </li>
+
+                <!-- ── Misc ─────────────────────────────────────────────── -->
+                <li class="nav-item">
+                    <h6 class="px-3 mt-2 mb-1 text-uppercase fw-bold"
+                        style="font-size:0.7rem;letter-spacing:1px;color:var(--gold-secondary);">
+                        Misc
+                    </h6>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="#" data-page="astrology">
+                        <img src="/static/Emojis/Menu/astrology.png" alt="Astrology" style="width:20px;height:20px;margin-right:8px;">
+                        Astrology
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="#" data-page="tarot">
+                        <img src="/static/Emojis/Menu/tarot.png" alt="Tarot" style="width:20px;height:20px;margin-right:8px;">
+                        Tarot
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="#" data-page="fun" data-script="/js/fun_views.js?v=20250325">
+                        <img src="/static/Emojis/Menu/fun.png" alt="Fun" style="width:20px;height:20px;margin-right:8px;">
+                        Fun
+                    </a>
+                </li>
+
+                <!-- ── Footer links ─────────────────────────────────────── -->
+                <li class="nav-item">
+                    <hr class="sidebar-divider">
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link nav-link-footer" href="#" data-page="homepage">
+                        <img src="/static/Emojis/Menu/reaper.png" alt="Homepage" style="width:14px;height:14px;margin-right:6px;opacity:0.6;">
+                        Homepage
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link nav-link-footer" href="#" data-page="commands" data-css="/css/commands.css?v=20250327">
+                        <img src="/static/Emojis/Menu/discord.png" alt="Commands" style="width:14px;height:14px;margin-right:6px;opacity:0.6;">
+                        Commands
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link nav-link-footer" href="#" data-page="contact">
+                        <img src="/static/Emojis/Menu/contact.png" alt="Contact" style="width:14px;height:14px;margin-right:6px;opacity:0.6;">
+                        Contact
+                    </a>
+                </li>
+
+            </ul>
+            </div><!-- /sidebar-nav-content -->
+        </nav><!-- /sidebar -->
+
     </div>
+</div>
 
-    <!-- Mobile Sidebar Overlay -->
-    <div class="sidebar-overlay" id="sidebar-overlay"></div>
+<!-- Mobile sidebar overlay -->
+<div class="sidebar-overlay" id="sidebar-overlay"></div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
-    <script src="/js/page_loader.js?v=20250327"></script>
-    <script>
-        // Block Cloudflare analytics and other unwanted scripts
-        (function() {
-            const originalAppendChild = Element.prototype.appendChild;
-            const originalInsertBefore = Node.prototype.insertBefore;
-            
-            function blockAnalyticsScript(element) {
-                if (element.tagName === 'SCRIPT') {
-                    const src = element.src || '';
-                    const content = element.textContent || '';
-                    
-                    // Block Cloudflare Insights and other analytics
-                    if (src.includes('cloudflareinsights.com') || 
-                        src.includes('beacon.min.js') ||
-                        content.includes('cloudflareinsights') ||
-                        content.includes('__cfBeacon')) {
-                        console.log('Blocked analytics script:', src || 'inline script');
-                        return true;
-                    }
-                }
-                return false;
-            }
-            
-            Element.prototype.appendChild = function(element) {
-                if (blockAnalyticsScript(element)) {
-                    return element; // Return the element but don't actually append it
-                }
-                return originalAppendChild.call(this, element);
-            };
-            
-            Node.prototype.insertBefore = function(newNode, referenceNode) {
-                if (blockAnalyticsScript(newNode)) {
-                    return newNode; // Return the element but don't actually insert it
-                }
-                return originalInsertBefore.call(this, newNode, referenceNode);
-            };
-            
-            console.log('Analytics blocking initialized');
-        })();
-    </script>
-    <script>
-        const contentDiv = document.getElementById('content');
-        const navLinks = document.querySelectorAll('.nav-link');
+<!-- Mobile close button inside sidebar (injected by JS) -->
 
-        // Removed fetchBotInfo function - bot avatar/banner no longer displayed on dashboard
+<!-- Scripts -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
+        integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
+        crossorigin="anonymous"></script>
+<script src="/js/page_loader.js?v=20250327"></script>
+<script src="/js/dashboard.js"></script>
+<script>
+/**
+ * Attempts to open the Discord desktop app via deep link (discord://-/oauth2/authorize).
+ * Falls back to the standard web OAuth URL after 750ms if the app didn't open.
+ */
+async function discordDeepLinkLogin(event) {
+    event.preventDefault();
 
-        function initializeSidebar() {
-            const sidebar = document.querySelector('.sidebar');
-            const sidebarToggle = document.querySelector('.sidebar-toggle');
-            const sidebarCollapseToggle = document.querySelector('.sidebar-collapse-toggle');
-            const sidebarOverlay = document.getElementById('sidebar-overlay');
-            
-            if (!sidebar) return;
-            
-            // Mobile sidebar toggle
-            if (sidebarToggle) {
-                sidebarToggle.addEventListener('click', () => {
-                    sidebar.classList.toggle('mobile-hidden');
-                    if (sidebarOverlay) {
-                        sidebarOverlay.classList.toggle('active');
-                    }
-                });
-            }
-            
-            // Desktop sidebar collapse
-            if (sidebarCollapseToggle) {
-                sidebarCollapseToggle.addEventListener('click', () => {
-                    sidebar.classList.toggle('collapsed');
-                    localStorage.setItem('sidebarCollapsed', sidebar.classList.contains('collapsed'));
-                });
-                
-                // Restore collapsed state from localStorage
-                if (localStorage.getItem('sidebarCollapsed') === 'true') {
-                    sidebar.classList.add('collapsed');
-                }
-            }
-            
-            // Overlay click to close mobile sidebar
-            if (sidebarOverlay) {
-                sidebarOverlay.addEventListener('click', () => {
-                    sidebar.classList.add('mobile-hidden');
-                    sidebarOverlay.classList.remove('active');
-                });
-            }
-            
-            console.log('Sidebar initialized successfully');
+    let webUrl = '/api/discord/login'; // safe fallback if fetch fails
+    let deepUrl = null;
+
+    try {
+        const res = await fetch('/api/discord/oauth-url');
+        if (res.ok) {
+            const data = await res.json();
+            webUrl  = data.web_url;
+            deepUrl = data.deep_url;
         }
+    } catch (_) { /* network error — fall through to web URL */ }
 
-        let currentLoadedPage = null;
+    if (!deepUrl) {
+        window.location.href = webUrl;
+        return;
+    }
 
-        function loadPage(page, scriptPath, scriptType, cssPath) {
-            let pageFile = page.split('?')[0];
-            if (!pageFile.endsWith('.html')) {
-                pageFile += '.html';
-            }
+    // Try the deep link; if the Discord app is installed it will intercept this.
+    window.location.href = deepUrl;
 
-            if (typeof scriptManager !== 'undefined') {
-                scriptManager.unloadAll();
-            }
+    // After 750 ms, if we're still here the app didn't open — redirect to web URL.
+    setTimeout(() => {
+        window.location.href = webUrl;
+    }, 750);
+}
+</script>
 
-            currentLoadedPage = pageFile;
-
-            if (cssPath && typeof scriptManager !== 'undefined') {
-                scriptManager.loadCSS(cssPath);
-            }
-
-            const cacheBuster = `?v=${new Date().getTime()}`;
-            fetch(`/Pages/${pageFile}${cacheBuster}`)
-                .then(response => {
-                    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-                    return response.text();
-                })
-                .then(html => {
-                    contentDiv.innerHTML = html;
-
-                    const dispatchPageLoadedEvent = () => {
-                        const pageLoadedEvent = new CustomEvent('dashboardPageLoaded', {
-                            detail: { page: pageFile }
-                        });
-                        document.dispatchEvent(pageLoadedEvent);
-                        console.log(`Dispatched dashboardPageLoaded for ${pageFile}`);
-                    };
-
-                    function runInlineScripts(callback) {
-                        const scripts = Array.from(contentDiv.querySelectorAll("script"));
-                        function runNext(index) {
-                            if (index >= scripts.length) {
-                                if (callback) callback();
-                                return;
-                            }
-                            const oldScript = scripts[index];
-                            const newScript = document.createElement("script");
-                            Array.from(oldScript.attributes).forEach(attr => newScript.setAttribute(attr.name, attr.value));
-                            newScript.textContent = oldScript.textContent;
-                            oldScript.parentNode.replaceChild(newScript, oldScript);
-                            runNext(index + 1);
-                        }
-                        runNext(0);
-                    }
-
-                    runInlineScripts(() => {
-                        if (scriptPath && typeof scriptManager !== 'undefined') {
-                            scriptManager.loadScript(scriptPath, scriptType, dispatchPageLoadedEvent);
-                        } else {
-                            dispatchPageLoadedEvent();
-                        }
-                    });
-                })
-                .catch(error => {
-                    console.warn(`Error loading page: ${pageFile}`, error);
-                    contentDiv.innerHTML = `<div class="alert alert-danger">Error loading page: ${pageFile}</div>`;
-                    currentLoadedPage = null;
-                });
-        }
-
-        function navigateTo(page, params = {}, pushState = true) {
-            if (pushState) {
-                const url = new URL(window.location);
-                url.searchParams.set('page', page);
-
-                // Clean up old params and add new ones
-                const oldParams = Array.from(url.searchParams.keys());
-                oldParams.forEach(key => {
-                    if(key !== 'page') url.searchParams.delete(key);
-                });
-                for(const [key, value] of Object.entries(params)){
-                    url.searchParams.set(key, value);
-                }
-                history.pushState({page: page, params: params}, "", url.toString());
-            }
-            
-            // Update active link and get the script path
-            navLinks.forEach(l => l.classList.remove('active'));
-            const activeLink = document.querySelector(`.nav-link[data-page='${page}']`);
-            let scriptPath = null;
-            let scriptType = 'script'; // Default to 'script'
-            if (activeLink) {
-                activeLink.classList.add('active');
-                scriptPath = activeLink.getAttribute('data-script'); // Can be null
-                scriptType = activeLink.getAttribute('data-script-type') || 'script';
-            }
-            
-            const cssPath = activeLink ? activeLink.dataset.css : null;
-            loadPage(page, scriptPath, scriptType, cssPath);
-        }
-
-        // Handle navigation link clicks -- use delegation so dynamically shown links work
-        document.querySelector('nav.sidebar ul.nav, .sidebar ul.nav').addEventListener('click', function(e) {
-            const link = e.target.closest('.nav-link[data-page]');
-            if (!link) return;
-            if (link.id === 'discord-login-link') return;
-            e.preventDefault();
-            const page = link.getAttribute('data-page');
-            if (link.classList.contains('active')) return;
-            // Pass script/css directly from the clicked link so hidden links work
-            const scriptPath = link.getAttribute('data-script') || null;
-            const cssPath = link.getAttribute('data-css') || null;
-            const scriptType = link.getAttribute('data-script-type') || 'script';
-            // Update active state
-            navLinks.forEach(l => l.classList.remove('active'));
-            link.classList.add('active');
-            history.pushState({page}, '', '?page=' + page);
-            loadPage(page, scriptPath, scriptType, cssPath);
-        });
-
-        // Handle browser back/forward buttons
-        window.addEventListener('popstate', (event) => {
-            const params = new URLSearchParams(window.location.search);
-            const page = params.get('page') || 'homepage';
-            navigateTo(page, {}, false); // Don't push state on popstate
-        });
-
-        // Initial page load on DOMContentLoaded
-        document.addEventListener('DOMContentLoaded', () => {
-            const params = new URLSearchParams(window.location.search);
-            const page = params.get('page') || 'homepage';
-            navigateTo(page, {}, false); // Initial load doesn't need to push state
-            initializeSidebar();
-        });
-
-        // Listen for custom navigation events from iframes (if any)
-        window.addEventListener("message", (event) => {
-            if (event.data && event.data.type === 'navigate') {
-                navigateTo(event.data.page);
-            }
-        });
-
-        // Make navigateTo globally available for child pages
-        window.navigateTo = navigateTo;
-
-        // Fetch and display user info on page load
-        document.addEventListener('DOMContentLoaded', () => {
-            fetch('/api/discord/user')
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error('Not logged in');
-                    }
-                    return response.json();
-                })
-                .then(user => {
-                    document.getElementById('login-button').style.display = 'none';
-                    // document.getElementById('logout-button').style.display = 'block';
-                    const userProfile = document.getElementById('user-profile');
-                    userProfile.style.display = 'block';
-                    document.getElementById('user-name').textContent = user.global_name || user.username;
-                    const avatarImg = document.getElementById('user-avatar');
-                    // Use our server-side proxy � avoids CSP/CDN issues and auto-refreshes stale hashes
-                    avatarImg.src = `/api/discord/avatar?_=${user.id}`;
-                    avatarImg.onerror = () => {
-                        avatarImg.onerror = null;
-                        avatarImg.src = 'https://cdn.discordapp.com/embed/avatars/0.png';
-                    };
-
-                    updatePetLink();
-
-                    userProfile.addEventListener('click', (e) => {
-                        e.preventDefault();
-                        if (confirm('Are you sure you want to sign out?')) {
-                            window.location.href = '/api/discord/logout';
-                        }
-                    });
-                })
-                .catch(error => {
-                    console.log('User not logged in:', error.message);
-                    document.getElementById('login-button').style.display = 'block';
-                    // document.getElementById('logout-button').style.display = 'none';
-                    document.getElementById('user-profile').style.display = 'none';
-                    
-                    // Still show pet link for testing/adoption
-                    updatePetLink();
-                });
-        });
-
-        function updatePetLink() {
-            const myPetLink = document.getElementById('my-pet-link');
-            if (!myPetLink) return;
-
-            // Always show the link - users may need to log in and adopt
-            myPetLink.style.display = 'block';
-
-            fetch('/api/user/pet')
-                .then(response => {
-                    if (!response.ok) return null; // 404 = no pet, that's fine
-                    return response.json();
-                })
-                .then(data => {
-                    if (data && data.has_pet && data.species) {
-                        const link = myPetLink.querySelector('a');
-                        if (link) {
-                            const petEmoji = `/static/Emojis/Pets/${data.species}.png`;
-                            link.innerHTML = `<img src="${petEmoji}" alt="My Pet" style="width: 20px; height: 20px; margin-right: 8px;" onerror="this.src='/static/Emojis/Pets/Basic.png'"> ${data.name}`;
-                        }
-                    }
-                    // If no pet, link stays visible with default "My Pet" label
-                })
-                .catch(() => {
-                    // Network error – link stays visible, just keep default label
-                });
-        };
-
-        // --- Nation Link Bar ---
-        const LS_KEY = "pnw_linked_nation";
-
-        function showLinkedNation(nation) {
-            document.getElementById("nation-input-view").style.display = "none";
-            document.getElementById("nation-linked-view").style.display = "block";
-            document.getElementById("nation-linked-name").textContent = nation.nation_name || `Nation #${nation.nation_id}`;
-            const flagImg = document.getElementById("nation-flag-img");
-            if (nation.flag) {
-                flagImg.src = nation.flag;
-                flagImg.style.display = "inline-block";
-            } else {
-                flagImg.style.display = "none";
-            }
-            loadNationRanks(nation.nation_name || "");
-        }
-
-        function showNationInput() {
-            document.getElementById("nation-linked-view").style.display = "none";
-            document.getElementById("nation-input-view").style.display = "block";
-            document.getElementById("nation-link-error").style.display = "none";
-        }
-
-        function setNationLinkError(msg) {
-            const el = document.getElementById("nation-link-error");
-            el.textContent = msg;
-            el.style.display = msg ? "block" : "none";
-        }
-
-        async function initNationLinkBar() {
-            // 1. Try server session first
-            try {
-                const res = await fetch("/api/discord/linked-nation");
-                if (res.ok) {
-                    const data = await res.json();
-                    if (data.linked) {
-                        // Sync to localStorage too
-                        localStorage.setItem(LS_KEY, JSON.stringify(data));
-                        showLinkedNation(data);
-                        return;
-                    }
-                }
-            } catch (_) {}
-
-            // 2. Fall back to localStorage (user not signed in via Discord)
-            const stored = localStorage.getItem(LS_KEY);
-            if (stored) {
-                try {
-                    const nation = JSON.parse(stored);
-                    if (nation && nation.nation_id) {
-                        // Re-sync to server session silently
-                        fetch("/api/discord/link-nation", {
-                            method: "POST",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify(nation),
-                        }).catch(() => {});
-                        showLinkedNation(nation);
-                        return;
-                    }
-                } catch (_) {}
-            }
-
-            showNationInput();
-        }
-
-        document.getElementById("nation-link-form").addEventListener("submit", async (e) => {
-            e.preventDefault();
-            const input = document.getElementById("nation-id-input");
-            const nationId = input.value.trim();
-            if (!nationId || !/^\d+$/.test(nationId)) {
-                setNationLinkError("Enter a valid numeric Nation ID.");
-                return;
-            }
-            setNationLinkError("");
-            const btn = e.target.querySelector("button");
-            btn.textContent = "...";
-            btn.disabled = true;
-
-            try {
-                // Fetch nation info from PnW
-                const infoRes = await fetch(`/api/pnw/nation/${nationId}`);
-                if (!infoRes.ok) {
-                    const err = await infoRes.json().catch(() => ({}));
-                    throw new Error(err.detail || "Nation not found.");
-                }
-                const nation = await infoRes.json();
-                const payload = {
-                    nation_id: String(nation.id || nationId),
-                    nation_name: nation.nation_name || "",
-                    flag: nation.flag || "",
-                };
-
-                // Save to server session
-                await fetch("/api/discord/link-nation", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(payload),
-                });
-
-                // Save to localStorage for persistence without Discord login
-                localStorage.setItem(LS_KEY, JSON.stringify(payload));
-
-                input.value = "";
-                showLinkedNation(payload);
-            } catch (err) {
-                setNationLinkError(err.message || "Failed to link nation.");
-            } finally {
-                btn.textContent = "Link";
-                btn.disabled = false;
-            }
-        });
-
-        document.getElementById("nation-unlink-btn").addEventListener("click", async () => {
-            await fetch("/api/discord/link-nation", { method: "DELETE" }).catch(() => {});
-            localStorage.removeItem(LS_KEY);
-            stopRankTicker();
-            showNationInput();
-        });
-
-        document.addEventListener("DOMContentLoaded", initNationLinkBar);
-
-        // --- Rank Ticker ---
-        let _rankTickerTimer = null;
-        let _rankTickerIndex = 0;
-        let _rankSlides = [];
-
-        function stopRankTicker() {
-            if (_rankTickerTimer) { clearInterval(_rankTickerTimer); _rankTickerTimer = null; }
-            const ticker = document.getElementById("nation-rank-ticker");
-            if (ticker) { ticker.style.display = "none"; ticker.innerHTML = ""; }
-            _rankSlides = [];
-        }
-
-        function buildRankSlides(data) {
-            const slides = [];
-            (data.periods || []).forEach(({ label, ranks }) => {
-                (ranks || []).forEach(r => {
-                    if (r.rank <= 3) {
-                        slides.push({
-                            period: label,
-                            label: r.category_label,
-                            rank: r.rank,
-                            total: r.total,
-                            prefix: r.prefix || "",
-                        });
-                    }
-                });
-            });
-            return slides;
-        }
-
-        function showRankSlide(ticker, index) {
-            const slide = _rankSlides[index];
-            const emojiSrc = slide.prefix
-                ? `/static/Emojis/Leaderboards/${slide.rank}${slide.prefix}.png`
-                : '';
-            const emojiHtml = emojiSrc
-                ? `<img src="${emojiSrc}" alt="#${slide.rank}" style="width:1rem;height:1rem;object-fit:contain;vertical-align:middle;flex-shrink:0;">`
-                : '';
-            ticker.innerHTML = `<span class="rank-slide visible" style="display:flex;align-items:center;gap:0.3rem;min-width:0;flex-wrap:nowrap;">
-                ${emojiHtml}
-                <span class="rank-period" style="flex-shrink:0;">${slide.period}</span>
-                <span class="rank-label" style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${slide.label}</span>
-            </span>`;
-        }
-
-        async function loadNationRanks(nationName) {
-            stopRankTicker();
-            if (!nationName) return;
-            try {
-                const res = await fetch(`/api/watch/nation-ranks/${encodeURIComponent(nationName)}`);
-                if (!res.ok) return;
-                const data = await res.json();
-                _rankSlides = buildRankSlides(data);
-                if (_rankSlides.length === 0) return;
-                const ticker = document.getElementById("nation-rank-ticker");
-                ticker.style.display = "block";
-                _rankTickerIndex = 0;
-                showRankSlide(ticker, _rankTickerIndex);
-                if (_rankSlides.length > 1) {
-                    _rankTickerTimer = setInterval(() => {
-                        _rankTickerIndex = (_rankTickerIndex + 1) % _rankSlides.length;
-                        showRankSlide(ticker, _rankTickerIndex);
-                    }, 4000);
-                }
-            } catch (_) {}
-        }
-        // --- End Nation Link Bar ---
-    </script>
 </body>
 </html>

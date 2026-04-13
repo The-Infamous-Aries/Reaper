@@ -1,0 +1,352 @@
+/* ── Arena Page ─────────────────────────────────────────────────────────────── */
+
+.arena-title {
+    font-family: 'Orbitron', sans-serif;
+    color: var(--gold-primary);
+    text-shadow: 0 0 18px var(--gold-glow), 0 0 40px rgba(255,215,0,0.2);
+    letter-spacing: 3px;
+    font-size: 1.6rem;
+    margin-bottom: 0.2rem;
+}
+.arena-subtitle {
+    color: var(--text-secondary);
+    font-size: 0.82rem;
+    letter-spacing: 1px;
+}
+
+/* ── Divider (matches mypet) ─────────────────────────────────────────────── */
+.arena-divider {
+    border: none;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--gold-primary), transparent);
+    margin: 1rem 0;
+    position: relative;
+    overflow: visible;
+}
+.arena-divider::before, .arena-divider::after {
+    content: '⚔️';
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 0.8rem;
+}
+.arena-divider::before { left: 8%; }
+.arena-divider::after  { right: 8%; }
+
+/* ── Room grid ───────────────────────────────────────────────────────────── */
+.arena-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 14px;
+}
+
+/* ── Single room card ────────────────────────────────────────────────────── */
+.arena-room {
+    position: relative;
+    background: linear-gradient(135deg, rgba(15,15,15,0.92), rgba(20,20,20,0.92));
+    border: 2px solid rgba(255,215,0,0.18);
+    border-radius: 12px;
+    padding: 14px 10px 12px;
+    text-align: center;
+    cursor: pointer;
+    transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease;
+    min-height: 148px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    overflow: hidden;
+    user-select: none;
+}
+.arena-room::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 10px;
+    background: radial-gradient(ellipse at 50% 0%, rgba(255,215,0,0.06) 0%, transparent 70%);
+    pointer-events: none;
+}
+.arena-room:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 0 22px var(--gold-glow);
+    border-color: rgba(255,215,0,0.5);
+}
+
+/* Empty room */
+.arena-room.empty {
+    border-color: rgba(255,255,255,0.08);
+    opacity: 0.7;
+}
+.arena-room.empty:hover {
+    opacity: 1;
+    border-color: rgba(255,215,0,0.4);
+}
+
+/* NPC battle room */
+.arena-room.npc_battle {
+    border-color: rgba(33,150,243,0.5);
+    box-shadow: 0 0 14px rgba(33,150,243,0.2);
+}
+
+/* PvP waiting — glowing pulse */
+.arena-room.pvp_waiting {
+    border-color: var(--gold-primary);
+    animation: pvpPulse 1.4s ease-in-out infinite;
+}
+@keyframes pvpPulse {
+    0%,100% { box-shadow: 0 0 12px rgba(255,215,0,0.4), 0 0 28px rgba(255,0,0,0.15); }
+    50%      { box-shadow: 0 0 28px rgba(255,215,0,0.8), 0 0 50px rgba(255,0,0,0.35); }
+}
+
+/* PvP active battle */
+.arena-room.pvp_battle {
+    border-color: rgba(231,76,60,0.7);
+    box-shadow: 0 0 18px rgba(231,76,60,0.3);
+    animation: pvpBattle 0.9s ease-in-out infinite;
+}
+@keyframes pvpBattle {
+    0%,100% { box-shadow: 0 0 14px rgba(231,76,60,0.4); }
+    50%      { box-shadow: 0 0 32px rgba(231,76,60,0.7); }
+}
+
+/* My room highlight */
+.arena-room.my-room {
+    border-color: var(--gold-primary) !important;
+    box-shadow: 0 0 20px var(--gold-glow) !important;
+}
+
+/* ── Room number badge ───────────────────────────────────────────────────── */
+.arena-room-num {
+    position: absolute;
+    top: 6px;
+    left: 9px;
+    font-size: 0.6rem;
+    color: rgba(255,215,0,0.4);
+    font-family: 'Orbitron', sans-serif;
+    letter-spacing: 1px;
+}
+
+/* ── Occupant avatars ────────────────────────────────────────────────────── */
+.arena-avatars {
+    display: flex;
+    gap: 6px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+.arena-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: 2px solid rgba(255,215,0,0.4);
+    object-fit: cover;
+    transition: transform 0.2s;
+}
+.arena-avatar:hover { transform: scale(1.12); }
+.arena-avatar.battling {
+    border-color: #e74c3c;
+    box-shadow: 0 0 8px rgba(231,76,60,0.6);
+    animation: avatarBattle 0.7s ease-in-out infinite;
+}
+@keyframes avatarBattle {
+    0%,100% { box-shadow: 0 0 6px rgba(231,76,60,0.5); }
+    50%      { box-shadow: 0 0 16px rgba(231,76,60,0.9); }
+}
+
+/* ── Room label / status ─────────────────────────────────────────────────── */
+.arena-room-label {
+    font-size: 0.68rem;
+    color: var(--text-secondary);
+    letter-spacing: 0.5px;
+}
+.arena-room-status {
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+}
+.arena-room-status.empty    { color: rgba(255,255,255,0.25); }
+.arena-room-status.npc      { color: #2196f3; }
+.arena-room-status.pvp-wait { color: var(--gold-primary); }
+.arena-room-status.pvp-live { color: #e74c3c; }
+
+/* ── Empty room icon ─────────────────────────────────────────────────────── */
+.arena-empty-icon {
+    font-size: 1.6rem;
+    opacity: 0.25;
+    line-height: 1;
+}
+
+/* ── Spectator / battle panel ────────────────────────────────────────────── */
+.arena-panel {
+    background: linear-gradient(135deg, rgba(15,15,15,0.95), rgba(20,20,20,0.95));
+    border: 2px solid rgba(255,215,0,0.25);
+    border-radius: 14px;
+    padding: 18px;
+    animation: panelIn 0.3s ease;
+}
+@keyframes panelIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+.arena-panel-title {
+    font-family: 'Orbitron', sans-serif;
+    color: var(--gold-primary);
+    font-size: 1rem;
+    text-shadow: 0 0 8px var(--gold-glow);
+    margin-bottom: 12px;
+}
+
+/* ── HP bar ──────────────────────────────────────────────────────────────── */
+.arena-hp-wrap {
+    height: 8px;
+    border-radius: 4px;
+    background: rgba(255,255,255,0.08);
+    overflow: hidden;
+    margin-top: 3px;
+}
+.arena-hp-bar {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.4s ease;
+}
+
+/* ── Battle log ──────────────────────────────────────────────────────────── */
+.arena-log {
+    max-height: 200px;
+    overflow-y: auto;
+    font-size: 0.76rem;
+    color: var(--text-secondary);
+    line-height: 1.6;
+    padding: 8px 10px;
+    background: rgba(0,0,0,0.3);
+    border-radius: 8px;
+    border: 1px solid rgba(255,215,0,0.1);
+}
+.arena-log::-webkit-scrollbar { width: 4px; }
+.arena-log::-webkit-scrollbar-thumb { background: rgba(255,215,0,0.3); border-radius: 2px; }
+
+/* ── Difficulty selector ─────────────────────────────────────────────────── */
+.arena-diff-btn {
+    background: rgba(255,215,0,0.06);
+    border: 1px solid rgba(255,215,0,0.2);
+    border-radius: 8px;
+    color: var(--text-secondary);
+    padding: 6px 14px;
+    font-size: 0.78rem;
+    cursor: pointer;
+    transition: all 0.18s;
+}
+.arena-diff-btn:hover, .arena-diff-btn.active {
+    background: rgba(255,215,0,0.15);
+    border-color: var(--gold-primary);
+    color: var(--gold-primary);
+    box-shadow: 0 0 8px var(--gold-glow);
+}
+
+/* ── Action button ───────────────────────────────────────────────────────── */
+.arena-btn {
+    background: linear-gradient(135deg, rgba(255,215,0,0.15), rgba(255,215,0,0.08));
+    border: 1px solid rgba(255,215,0,0.4);
+    border-radius: 8px;
+    color: var(--gold-primary);
+    padding: 8px 20px;
+    font-size: 0.82rem;
+    font-family: 'Orbitron', sans-serif;
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: 0.5px;
+}
+.arena-btn:hover:not(:disabled) {
+    background: linear-gradient(135deg, rgba(255,215,0,0.28), rgba(255,215,0,0.15));
+    box-shadow: 0 0 14px var(--gold-glow);
+    transform: translateY(-1px);
+}
+.arena-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+.arena-btn.danger {
+    border-color: rgba(231,76,60,0.5);
+    color: #e74c3c;
+    background: rgba(231,76,60,0.08);
+}
+.arena-btn.danger:hover:not(:disabled) {
+    background: rgba(231,76,60,0.18);
+    box-shadow: 0 0 14px rgba(231,76,60,0.4);
+}
+
+/* ── Live badge ──────────────────────────────────────────────────────────── */
+.arena-live-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: rgba(231,76,60,0.15);
+    border: 1px solid rgba(231,76,60,0.4);
+    border-radius: 20px;
+    padding: 2px 10px;
+    font-size: 0.65rem;
+    color: #e74c3c;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+}
+.arena-live-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #e74c3c;
+    animation: liveDot 1s ease-in-out infinite;
+}
+@keyframes liveDot {
+    0%,100% { opacity: 1; }
+    50%      { opacity: 0.2; }
+}
+
+/* ── Spectator count ─────────────────────────────────────────────────────── */
+.arena-spectators {
+    font-size: 0.68rem;
+    color: var(--text-secondary);
+}
+
+/* ── Combatant card ──────────────────────────────────────────────────────── */
+.arena-combatant {
+    background: rgba(0,0,0,0.3);
+    border: 1px solid rgba(255,215,0,0.15);
+    border-radius: 10px;
+    padding: 10px 12px;
+    text-align: center;
+}
+.arena-combatant img {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    border: 2px solid rgba(255,215,0,0.3);
+    object-fit: cover;
+    margin-bottom: 5px;
+}
+.arena-combatant .name {
+    font-size: 0.78rem;
+    color: var(--text-primary);
+    font-weight: 600;
+}
+.arena-combatant .pet-name {
+    font-size: 0.68rem;
+    color: var(--gold-secondary);
+}
+
+/* ── VS badge ────────────────────────────────────────────────────────────── */
+.arena-vs {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 1.1rem;
+    color: var(--gold-primary);
+    text-shadow: 0 0 10px var(--gold-glow);
+    align-self: center;
+}
+
+/* ── Responsive ──────────────────────────────────────────────────────────── */
+@media (max-width: 576px) {
+    .arena-grid { grid-template-columns: repeat(3, 1fr); gap: 8px; }
+    .arena-room { min-height: 110px; padding: 10px 6px; }
+    .arena-avatar { width: 32px; height: 32px; }
+}

@@ -112,8 +112,8 @@
 
 /* Equipment slots */
 .mp-equip-slot {
-    width: 48px;
-    height: 48px;
+    width: 46px;
+    height: 46px;
     border: 1px solid rgba(255,215,0,0.3);
     border-radius: 6px;
     background: rgba(0,0,0,0.3);
@@ -396,4 +396,68 @@
 }
 .mp-inv-clickable:active {
     transform: scale(0.97);
+}
+
+/* ── Filled equipment slot glow ───────────────────────────────────────────── */
+.mp-equip-filled {
+    border-color: rgba(255,215,0,0.5) !important;
+    box-shadow: 0 0 8px var(--gold-glow), inset 0 0 4px rgba(255,215,0,0.1);
+    animation: equipGlow 2.5s ease-in-out infinite alternate;
+}
+@keyframes equipGlow {
+    from { box-shadow: 0 0 6px var(--gold-glow); }
+    to   { box-shadow: 0 0 14px var(--gold-primary), 0 0 20px var(--gold-glow); }
+}
+.mp-equip-filled:hover {
+    border-color: var(--gold-primary) !important;
+    box-shadow: 0 0 16px var(--gold-primary) !important;
+    animation: none;
+}
+
+/* ── Item hover card ──────────────────────────────────────────────────────── */
+#mp-item-hover {
+    position: fixed;
+    z-index: 9990;
+    pointer-events: none;
+    width: 160px;
+    display: none;
+}
+#mp-item-hover .mp-hover-card {
+    background: linear-gradient(135deg, rgba(15,15,15,0.97), rgba(20,20,20,0.97));
+    border-radius: 8px;
+    padding: 10px;
+    text-align: center;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.8), 0 0 12px var(--gold-glow);
+    animation: hoverCardIn 0.12s ease;
+}
+@keyframes hoverCardIn {
+    from { opacity:0; transform:scale(0.92) translateY(4px); }
+    to   { opacity:1; transform:scale(1) translateY(0); }
+}
+#mp-item-hover .mp-hover-img {
+    width: 52px; height: 52px; object-fit: contain;
+    filter: drop-shadow(0 2px 6px rgba(0,0,0,0.6));
+    margin-bottom: 5px;
+}
+#mp-item-hover .mp-hover-name {
+    font-size: 0.78rem; font-weight: 700;
+    color: var(--text-primary); margin-bottom: 3px;
+}
+#mp-item-hover .mp-hover-rarity {
+    font-size: 0.65rem; font-weight: 600;
+    border-radius: 4px; padding: 1px 6px;
+    display: inline-block; margin-bottom: 5px;
+}
+#mp-item-hover .mp-hover-bonuses {
+    display: flex; flex-wrap: wrap; gap: 3px;
+    justify-content: center; margin-bottom: 4px;
+}
+#mp-item-hover .mp-hover-bonus {
+    font-size: 0.68rem; font-weight: 700;
+    padding: 1px 5px; border-radius: 3px;
+    background: rgba(0,0,0,0.4);
+}
+#mp-item-hover .mp-hover-desc {
+    font-size: 0.65rem; color: var(--text-secondary);
+    line-height: 1.3; margin-top: 3px;
 }

@@ -21,9 +21,9 @@
     <div id="mypet-display" style="display:none;">
         <hr class="mp-divider">
         <div class="row g-3">
-            <!-- LEFT: Pet card -->
-            <div class="col-xl-3 col-lg-4 mb-3">
-                <div class="mp-card h-100">
+            <!-- LEFT: Pet card — sticky, doesn't resize when inventory expands -->
+            <div class="col-xl-3 col-lg-4 mb-3" style="align-self:flex-start;position:sticky;top:0">
+                <div class="mp-card">
                     <div class="mp-card-header text-center" id="my-pet-header"></div>
                     <div class="mp-card-body" id="my-pet-body"></div>
                 </div>
@@ -57,3 +57,14 @@
 </div>
 
 <script src="/js/mypet.js"></script>
+
+<!-- Item hover card (shared singleton) -->
+<div id="mp-item-hover">
+    <div class="mp-hover-card">
+        <img class="mp-hover-img" id="mp-hover-img" src="" alt="">
+        <div class="mp-hover-name" id="mp-hover-name"></div>
+        <div class="mp-hover-rarity" id="mp-hover-rarity"></div>
+        <div class="mp-hover-bonuses" id="mp-hover-bonuses"></div>
+        <div class="mp-hover-desc" id="mp-hover-desc"></div>
+    </div>
+</div>
