@@ -1,0 +1,109 @@
+<link rel="stylesheet" href="/css/races.css">
+
+<div id="race-root" class="container-fluid">
+
+    <!-- Header -->
+    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-1">
+        <div>
+            <div class="casino-title">🏁 Pet Races</div>
+            <div class="casino-subtitle">Race your pet · Build a win streak · Cash out big</div>
+        </div>
+        <div class="casino-xp-badge">
+            <span style="color:var(--text-secondary);font-size:0.75rem">Your XP</span>
+            <span id="race-xp-display" class="casino-xp-amount">—</span>
+        </div>
+    </div>
+
+    <hr class="casino-divider">
+
+    <div id="race-error" style="display:none;color:#e74c3c;font-size:0.82rem;margin-bottom:8px;text-align:center"></div>
+
+    <!-- ── Setup screen ──────────────────────────────────────────────────── -->
+    <div id="race-setup-screen" class="gs-setup">
+        <link rel="stylesheet" href="/css/setup.css">
+
+        <!-- XP balance -->
+        <div class="gs-balance">
+            <div>
+                <div class="gs-balance-label">Your Balance</div>
+                <div class="gs-balance-amount" id="race-xp-display">—</div>
+            </div>
+            <div style="font-size:1.8rem;opacity:0.4">🏁</div>
+        </div>
+
+        <!-- Fun mode -->
+        <label class="gs-fun-row" for="race-fun-toggle">
+            <label class="casino-toggle-wrap" style="flex-shrink:0">
+                <input type="checkbox" id="race-fun-toggle">
+                <span class="casino-toggle-slider"></span>
+            </label>
+            <div class="gs-fun-text">
+                <div class="gs-fun-title">Fun Mode</div>
+                <div class="gs-fun-sub">Race without risking XP</div>
+            </div>
+        </label>
+
+        <!-- Difficulty -->
+        <div class="gs-label">Difficulty</div>
+        <div class="gs-option-grid cols-3" style="margin-bottom:20px">
+            <button class="gs-option-btn race-diff-btn selected" data-diff="apprentice">
+                <span class="gs-option-name">Apprentice</span>
+                <span class="gs-option-sub">1.25× payout</span>
+            </button>
+            <button class="gs-option-btn race-diff-btn" data-diff="journeyman">
+                <span class="gs-option-name">Journeyman</span>
+                <span class="gs-option-sub">2× payout</span>
+            </button>
+            <button class="gs-option-btn race-diff-btn" data-diff="senior">
+                <span class="gs-option-name">Senior</span>
+                <span class="gs-option-sub">3× payout</span>
+            </button>
+        </div>
+
+        <!-- Bet -->
+        <div id="race-bet-row" class="gs-bet-block">
+            <div class="gs-label">Bet Amount</div>
+            <div class="gs-input-wrap">
+                <input type="number" id="race-bet-input" class="gs-input" min="10" placeholder="Enter amount">
+                <span class="gs-currency">XP</span>
+            </div>
+            <div class="gs-chips">
+                <button class="gs-chip race-bet-preset" data-amount="50">50</button>
+                <button class="gs-chip race-bet-preset" data-amount="100">100</button>
+                <button class="gs-chip race-bet-preset" data-amount="250">250</button>
+                <button class="gs-chip race-bet-preset" data-amount="500">500</button>
+                <button class="gs-chip race-bet-preset" data-amount="1000">1,000</button>
+            </div>
+        </div>
+
+        <hr class="gs-divider">
+
+        <!-- Rules -->
+        <div class="gs-rules">
+            <div class="gs-rules-row"><span class="gs-rules-key">🔥 Streak 3+</span> 2× bonus &nbsp;·&nbsp; <span class="gs-rules-key">6+</span> 4× &nbsp;·&nbsp; <span class="gs-rules-key">9+</span> 8×</div>
+            <div class="gs-rules-row"><span class="gs-rules-key">🗝️ Keys</span> awarded on win — better keys at higher streaks</div>
+            <div class="gs-rules-row"><span class="gs-rules-key">⚡ Speed</span> DEX × ENE × HAP (with randomness)</div>
+        </div>
+
+        <button id="race-start-btn" class="gs-start-btn" disabled>🏁 Start Race</button>
+    </div>
+
+    <!-- ── Game screen ───────────────────────────────────────────────────── -->
+    <div id="race-game-screen" style="display:none">
+
+        <!-- Track -->
+        <div class="race-track-area" id="race-track-area">
+            <div class="race-start-line"></div>
+            <div class="race-finish-line"></div>
+            <div class="race-finish-flag">🏁</div>
+            <!-- Lanes injected by JS -->
+        </div>
+
+        <!-- Result area -->
+        <div id="race-result-area" style="display:none"></div>
+
+    </div>
+
+</div>
+
+<script src="/js/races.js"></script>

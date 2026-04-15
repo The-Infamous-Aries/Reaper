@@ -86,7 +86,9 @@ function loadPage(page, scriptPath, scriptType, cssPath) {
 
     if (typeof scriptManager !== 'undefined') scriptManager.unloadAll();
     currentLoadedPage = pageFile;
-    if (cssPath && typeof scriptManager !== 'undefined') scriptManager.loadCSS(cssPath);
+    if (cssPath && typeof scriptManager !== 'undefined') {
+        cssPath.split(' ').filter(Boolean).forEach(p => scriptManager.loadCSS(p));
+    }
 
     fetch(`/Pages/${pageFile}?v=${Date.now()}`)
         .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.text(); })
@@ -347,3 +349,53 @@ async function loadNationRanks(name) {
         }
     } catch (_) {}
 }
+
+// ── Unified live WebSocket — shared global event bus ─────────────────────
+// Fires CustomEvent('liveRooms', {detail: {arena, casino}}) on document
+// whenever the server pushes an update.  Any page script can listen to this
+// instead of opening its own WebSocket connection.
+(function () {
+    let _ws = null, _retries = 0;
+    const MAX_RETRIES = 8;
+
+    function dispatch(arena, casino) {
+        // Update sidebar badge
+        const total = [...(arena||[]), ...(casino||[])].reduce((n, r) => n + (r.occupants||[]).length, 0);
+        const badge = document.getElementById('arena-nav-online');
+        if (badge) badge.textContent = total > 0 ? total : '';
+
+        // Fire event for any loaded page script to consume
+        document.dispatchEvent(new CustomEvent('liveRooms', { detail: { arena: arena||[], casino: casino||[] } }));
+    }
+
+    function connect() {
+        const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+        _ws = new WebSocket(`${proto}://${location.host}/api/ws/unified`);
+
+        _ws.onopen = () => {
+            _retries = 0;
+            _ws._ping = setInterval(() => { if (_ws.readyState === 1) _ws.send('ping'); }, 25000);
+        };
+
+        _ws.onmessage = e => {
+            try {
+                const msg = JSON.parse(e.data);
+                if (msg.type === 'unified') dispatch(msg.arena, msg.casino);
+            } catch (_) {}
+        };
+
+        _ws.onclose = () => {
+            clearInterval(_ws._ping);
+            if (_retries < MAX_RETRIES) setTimeout(connect, Math.min(3000 * ++_retries, 20000));
+        };
+
+        _ws.onerror = () => _ws.close();
+    }
+
+    // Expose so page scripts can check readiness and send pings if needed
+    window._liveWS = {
+        send: (msg) => { if (_ws && _ws.readyState === 1) { _ws.send(msg); return true; } return false; }
+    };
+
+    document.addEventListener('DOMContentLoaded', connect);
+})();

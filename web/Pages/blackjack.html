@@ -1,0 +1,136 @@
+<link rel="stylesheet" href="/css/blackjack.css">
+
+<div id="bj-root" class="container-fluid">
+
+    <!-- Header -->
+    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-1">
+        <div>
+            <div class="casino-title">🃏 Blackjack</div>
+            <div class="casino-subtitle">Beat the dealer to 21 · Hit · Stand · Double · Split</div>
+        </div>
+        <div class="casino-xp-badge">
+            <span style="color:var(--text-secondary);font-size:0.75rem">Your XP</span>
+            <span id="bj-xp-display" class="casino-xp-amount">—</span>
+        </div>
+    </div>
+
+    <hr class="casino-divider">
+
+    <!-- Error toast -->
+    <div id="bj-error" style="display:none;color:#e74c3c;font-size:0.82rem;margin-bottom:10px;text-align:center"></div>
+
+    <!-- ── Setup screen ──────────────────────────────────────────────────── -->
+    <div id="bj-setup-screen" class="gs-setup">
+        <link rel="stylesheet" href="/css/setup.css">
+
+        <!-- XP balance -->
+        <div class="gs-balance">
+            <div>
+                <div class="gs-balance-label">Your Balance</div>
+                <div class="gs-balance-amount" id="bj-xp-display">—</div>
+            </div>
+            <div style="font-size:1.8rem;opacity:0.4">🃏</div>
+        </div>
+
+        <!-- Fun mode -->
+        <label class="gs-fun-row" for="bj-fun-toggle">
+            <label class="casino-toggle-wrap" style="flex-shrink:0">
+                <input type="checkbox" id="bj-fun-toggle">
+                <span class="casino-toggle-slider"></span>
+            </label>
+            <div class="gs-fun-text">
+                <div class="gs-fun-title">Fun Mode</div>
+                <div class="gs-fun-sub">Play without risking XP</div>
+            </div>
+        </label>
+
+        <!-- Bet -->
+        <div id="bj-bet-row" class="gs-bet-block">
+            <div class="gs-label">Bet Amount</div>
+            <div class="gs-input-wrap">
+                <input type="number" id="bj-bet-input" class="gs-input" min="10" placeholder="Enter amount">
+                <span class="gs-currency">XP</span>
+            </div>
+            <div class="gs-chips">
+                <button class="gs-chip bj-preset" data-amount="50">50</button>
+                <button class="gs-chip bj-preset" data-amount="100">100</button>
+                <button class="gs-chip bj-preset" data-amount="250">250</button>
+                <button class="gs-chip bj-preset" data-amount="500">500</button>
+                <button class="gs-chip bj-preset" data-amount="1000">1,000</button>
+            </div>
+        </div>
+
+        <hr class="gs-divider">
+
+        <!-- Rules -->
+        <div class="gs-rules">
+            <div class="gs-rules-row"><span class="gs-rules-key">🃏 Blackjack</span> pays 3:2</div>
+            <div class="gs-rules-row"><span class="gs-rules-key">🎯 Dealer</span> hits soft 17</div>
+            <div class="gs-rules-row"><span class="gs-rules-key">✂️ Split</span> pairs &nbsp;·&nbsp; <span class="gs-rules-key">✖️ Double</span> on first 2 cards</div>
+        </div>
+
+        <button id="bj-deal-btn" class="gs-start-btn" disabled>🃏 Deal Cards</button>
+    </div>
+
+    <!-- ── Game screen ───────────────────────────────────────────────────── -->
+    <div id="bj-game-screen" style="display:none">
+
+        <div class="bj-table">
+
+            <!-- Dealer zone -->
+            <div class="bj-zone-label">Dealer</div>
+            <div class="d-flex align-items-center gap-2 mb-2">
+                <div class="bj-hand" id="bj-dealer-hand"></div>
+                <span class="bj-val" id="bj-dealer-val">0</span>
+            </div>
+
+            <hr class="bj-divider">
+
+            <!-- Player zone -->
+            <div class="bj-zone-label">You</div>
+
+            <!-- Main hand -->
+            <div class="bj-hand-wrap" id="bj-player-hand-wrap">
+                <div class="bj-active-tag">▶ ACTIVE HAND</div>
+                <div class="d-flex align-items-center gap-2">
+                    <div class="bj-hand" id="bj-player-hand"></div>
+                    <span class="bj-val" id="bj-player-val">0</span>
+                </div>
+            </div>
+
+            <!-- Split hand (hidden until split) -->
+            <div id="bj-split-wrap" style="display:none;margin-top:12px">
+                <div style="font-size:0.65rem;color:rgba(155,89,182,0.8);letter-spacing:1px;margin-bottom:4px;font-family:'Orbitron',sans-serif">SPLIT HAND</div>
+                <div class="bj-hand-wrap" id="bj-split-hand-wrap">
+                    <div class="bj-active-tag">▶ ACTIVE HAND</div>
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="bj-hand" id="bj-split-hand"></div>
+                        <span class="bj-val" id="bj-split-val">0</span>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Bet info -->
+        <div class="bj-stat-row mt-2">
+            <span>Current Bet</span>
+            <span id="bj-current-bet">—</span>
+        </div>
+
+        <!-- Action buttons -->
+        <div class="bj-actions" id="bj-action-row">
+            <button class="bj-btn bj-btn--hit"    id="bj-hit-btn"    disabled>Hit</button>
+            <button class="bj-btn bj-btn--stand"  id="bj-stand-btn"  disabled>Stand</button>
+            <button class="bj-btn bj-btn--double" id="bj-double-btn" disabled>Double</button>
+            <button class="bj-btn bj-btn--split"  id="bj-split-btn"  disabled>Split</button>
+        </div>
+
+        <!-- Result area -->
+        <div id="bj-result-area" style="display:none"></div>
+
+    </div>
+
+</div>
+
+<script src="/js/blackjack.js"></script>

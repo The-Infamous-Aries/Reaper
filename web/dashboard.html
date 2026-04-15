@@ -138,6 +138,12 @@
                     </a>
                 </li>
                 <li class="nav-item">
+                    <a class="nav-link" href="#" data-page="weapons" data-css="/css/weapons.css">
+                        <img src="/static/Emojis/Menu/snipe.png" alt="Weapons" style="width:20px;height:20px;margin-right:8px;">
+                        Weapon Eff
+                    </a>
+                </li>
+                <li class="nav-item">
                     <a class="nav-link" href="#" data-page="library">
                         <img src="/static/Emojis/Menu/script.png" alt="Scriptorium" style="width:20px;height:20px;margin-right:8px;">
                         Scriptorium
@@ -158,15 +164,49 @@
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" href="#" data-page="arena" data-css="/css/arena.css" data-script="/js/arena.js">
+                    <a class="nav-link" href="#" data-page="arena" data-css="/css/arena.css /css/casino_lobby.css" data-script="/js/arena.js">
                         <img src="/static/Emojis/Menu/arena.png" alt="Arena" style="width:20px;height:20px;margin-right:8px;">
-                        ⚔️ Arena
+                        Arena
+                        <span class="arena-nav-live ms-auto d-flex align-items-center gap-1" style="margin-left:auto">
+                            <span class="arena-live-badge" style="font-size:0.55rem;padding:1px 6px"><span class="arena-live-dot"></span>LIVE</span>
+                            <span id="arena-nav-online" style="font-size:0.65rem;color:var(--text-secondary)"></span>
+                        </span>
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" href="#" data-page="casino" data-css="/css/casino.css" data-script="/js/casino.js">
+                    <a class="nav-link" href="#" data-page="casino" data-css="/css/casino.css">
                         <img src="/static/Emojis/Menu/casino.png" alt="Casino" style="width:20px;height:20px;margin-right:8px;">
-                        🎰 Casino
+                        Casino
+                    </a>
+                </li>
+                <!-- Blackjack — navigated to from casino page, hidden from sidebar -->
+                <li class="nav-item" style="display:none">
+                    <a class="nav-link" href="#" data-page="blackjack" data-css="/css/blackjack.css">
+                        Blackjack
+                    </a>
+                </li>
+                <!-- Craps — navigated to from casino page, hidden from sidebar -->
+                <li class="nav-item" style="display:none">
+                    <a class="nav-link" href="#" data-page="craps" data-css="/css/craps.css">
+                        Craps
+                    </a>
+                </li>
+                <!-- Hold'em — navigated to from casino page, hidden from sidebar -->
+                <li class="nav-item" style="display:none">
+                    <a class="nav-link" href="#" data-page="holdem" data-css="/css/holdem.css">
+                        Hold'em
+                    </a>
+                </li>
+                <!-- Races — navigated to from casino page, hidden from sidebar -->
+                <li class="nav-item" style="display:none">
+                    <a class="nav-link" href="#" data-page="races" data-css="/css/races.css">
+                        Races
+                    </a>
+                </li>
+                <!-- Mini-Games — navigated to from casino page, hidden from sidebar -->
+                <li class="nav-item" style="display:none">
+                    <a class="nav-link" href="#" data-page="minigames" data-css="/css/minigames.css">
+                        Mini-Games
                     </a>
                 </li>
                 <li class="nav-item">
@@ -196,18 +236,11 @@
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" href="#" data-page="tarot">
+                    <a class="nav-link" href="#" data-page="tarot" data-css="/css/tarot.css" data-script="/js/tarot.js">
                         <img src="/static/Emojis/Menu/tarot.png" alt="Tarot" style="width:20px;height:20px;margin-right:8px;">
                         Tarot
                     </a>
                 </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="#" data-page="fun" data-script="/js/fun_views.js?v=20250325">
-                        <img src="/static/Emojis/Menu/fun.png" alt="Fun" style="width:20px;height:20px;margin-right:8px;">
-                        Fun
-                    </a>
-                </li>
-
                 <!-- ── Footer links ─────────────────────────────────────── -->
                 <li class="nav-item">
                     <hr class="sidebar-divider">

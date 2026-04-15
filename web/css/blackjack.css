@@ -1,0 +1,189 @@
+/* ── Blackjack — uses dashboard theme variables ───────────────────────────── */
+
+.bj-table {
+    background: radial-gradient(ellipse at center, #0d4a1f 0%, #072d12 100%);
+    border: 2px solid rgba(255,215,0,0.3);
+    border-radius: 18px;
+    padding: 24px 20px 20px;
+    position: relative;
+    min-height: 420px;
+}
+
+/* ── Zone labels ─────────────────────────────────────────────────────────── */
+.bj-zone-label {
+    font-size: 0.65rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.35);
+    margin-bottom: 6px;
+    font-family: 'Orbitron', sans-serif;
+}
+
+/* ── Card hand ───────────────────────────────────────────────────────────── */
+.bj-hand {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: flex-end;
+    min-height: 90px;
+}
+
+.bj-card {
+    width: 62px;
+    height: 88px;
+    border-radius: 7px;
+    object-fit: contain;
+    background: #fff;
+    box-shadow: 0 3px 10px rgba(0,0,0,0.5);
+    transition: transform 0.15s;
+    flex-shrink: 0;
+}
+.bj-card:hover { transform: translateY(-4px); }
+.bj-card--new  { animation: bjCardDeal 0.25s ease; }
+
+@keyframes bjCardDeal {
+    from { opacity: 0; transform: translateY(-18px) scale(0.85); }
+    to   { opacity: 1; transform: translateY(0)     scale(1); }
+}
+
+/* ── Value badge ─────────────────────────────────────────────────────────── */
+.bj-val {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #fff;
+    text-shadow: 0 0 8px rgba(0,0,0,0.8);
+    margin-left: 4px;
+    align-self: center;
+}
+.bj-val--bust   { color: #e74c3c; }
+.bj-val--bj     { color: var(--gold-primary); text-shadow: 0 0 10px var(--gold-glow); }
+.bj-val--hidden { color: rgba(255,255,255,0.4); }
+
+/* ── Divider ─────────────────────────────────────────────────────────────── */
+.bj-divider {
+    border: none;
+    border-top: 1px solid rgba(255,255,255,0.1);
+    margin: 16px 0;
+}
+
+/* ── Active hand indicator ───────────────────────────────────────────────── */
+.bj-hand-wrap {
+    position: relative;
+    padding: 8px;
+    border-radius: 10px;
+    transition: background 0.2s;
+}
+.bj-hand-wrap.active {
+    background: rgba(255,215,0,0.08);
+    outline: 1px solid rgba(255,215,0,0.35);
+}
+.bj-hand-wrap .bj-active-tag {
+    display: none;
+    font-size: 0.6rem;
+    color: var(--gold-primary);
+    letter-spacing: 1px;
+    margin-bottom: 4px;
+    font-family: 'Orbitron', sans-serif;
+}
+.bj-hand-wrap.active .bj-active-tag { display: block; }
+
+/* ── Action buttons ──────────────────────────────────────────────────────── */
+.bj-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin-top: 18px;
+}
+
+.bj-btn {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.78rem;
+    letter-spacing: 0.5px;
+    padding: 10px 20px;
+    border-radius: 8px;
+    border: 1px solid rgba(255,215,0,0.4);
+    background: linear-gradient(135deg, rgba(255,215,0,0.14), rgba(255,215,0,0.06));
+    color: var(--gold-primary);
+    cursor: pointer;
+    transition: all 0.18s;
+    min-width: 80px;
+}
+.bj-btn:hover:not(:disabled) {
+    background: linear-gradient(135deg, rgba(255,215,0,0.28), rgba(255,215,0,0.14));
+    box-shadow: 0 0 12px var(--gold-glow);
+    transform: translateY(-1px);
+}
+.bj-btn:disabled { opacity: 0.3; cursor: not-allowed; transform: none; }
+
+.bj-btn--hit    { border-color: rgba(46,204,113,0.6);  color: #2ecc71; background: rgba(46,204,113,0.1); }
+.bj-btn--hit:hover:not(:disabled)    { background: rgba(46,204,113,0.2); box-shadow: 0 0 10px rgba(46,204,113,0.3); }
+.bj-btn--stand  { border-color: rgba(231,76,60,0.6);   color: #e74c3c; background: rgba(231,76,60,0.1); }
+.bj-btn--stand:hover:not(:disabled)  { background: rgba(231,76,60,0.2); box-shadow: 0 0 10px rgba(231,76,60,0.3); }
+.bj-btn--double { border-color: rgba(52,152,219,0.6);  color: #3498db; background: rgba(52,152,219,0.1); }
+.bj-btn--double:hover:not(:disabled) { background: rgba(52,152,219,0.2); box-shadow: 0 0 10px rgba(52,152,219,0.3); }
+.bj-btn--split  { border-color: rgba(155,89,182,0.6);  color: #9b59b6; background: rgba(155,89,182,0.1); }
+.bj-btn--split:hover:not(:disabled)  { background: rgba(155,89,182,0.2); box-shadow: 0 0 10px rgba(155,89,182,0.3); }
+
+/* ── Result banner ───────────────────────────────────────────────────────── */
+.bj-result {
+    text-align: center;
+    padding: 14px 10px 6px;
+    animation: bjResultIn 0.35s ease;
+}
+@keyframes bjResultIn {
+    from { opacity: 0; transform: scale(0.9); }
+    to   { opacity: 1; transform: scale(1); }
+}
+.bj-result-text {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 1.1rem;
+    font-weight: 700;
+    margin-bottom: 4px;
+}
+.bj-result--win  .bj-result-text { color: #2ecc71; text-shadow: 0 0 12px rgba(46,204,113,0.5); }
+.bj-result--bj   .bj-result-text { color: var(--gold-primary); text-shadow: 0 0 14px var(--gold-glow); }
+.bj-result--push .bj-result-text { color: #f39c12; }
+.bj-result--lose .bj-result-text { color: #e74c3c; }
+
+.bj-xp-change {
+    font-size: 0.85rem;
+    margin-top: 4px;
+}
+.bj-xp-change.positive { color: #2ecc71; }
+.bj-xp-change.negative { color: #e74c3c; }
+.bj-xp-change.neutral  { color: var(--text-secondary); }
+
+/* ── Bet setup ───────────────────────────────────────────────────────────── */
+.bj-setup {
+    max-width: 420px;
+    margin: 0 auto;
+}
+.bj-preset-row {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-top: 8px;
+}
+.bj-preset {
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,215,0,0.2);
+    border-radius: 6px;
+    color: var(--text-secondary);
+    padding: 4px 12px;
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+.bj-preset:hover { border-color: var(--gold-primary); color: var(--gold-primary); }
+
+/* ── Stat row ────────────────────────────────────────────────────────────── */
+.bj-stat-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    margin-bottom: 4px;
+}
+.bj-stat-row span:last-child { color: var(--gold-secondary); font-weight: 600; }

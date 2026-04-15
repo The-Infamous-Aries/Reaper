@@ -1,0 +1,279 @@
+/* ── Shared Game Setup Screen — all casino games ─────────────────────────── */
+
+/* ── Setup card wrapper ──────────────────────────────────────────────────── */
+.gs-setup {
+    max-width: 480px;
+    margin: 0 auto;
+}
+
+/* ── XP balance bar ──────────────────────────────────────────────────────── */
+.gs-balance {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: linear-gradient(135deg, rgba(255,215,0,0.07), rgba(255,215,0,0.03));
+    border: 1px solid rgba(255,215,0,0.22);
+    border-radius: 12px;
+    padding: 10px 16px;
+    margin-bottom: 20px;
+}
+.gs-balance-label {
+    font-size: 0.68rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+.gs-balance-amount {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 1.1rem;
+    color: var(--gold-primary);
+    text-shadow: 0 0 10px var(--gold-glow);
+}
+
+/* ── Section label ───────────────────────────────────────────────────────── */
+.gs-label {
+    font-size: 0.68rem;
+    font-family: 'Orbitron', sans-serif;
+    color: var(--gold-secondary);
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+}
+
+/* ── Fun mode row ────────────────────────────────────────────────────────── */
+.gs-fun-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 10px;
+    padding: 10px 14px;
+    margin-bottom: 20px;
+    cursor: pointer;
+    transition: border-color 0.2s;
+}
+.gs-fun-row:has(input:checked) {
+    border-color: rgba(255,215,0,0.35);
+    background: rgba(255,215,0,0.04);
+}
+.gs-fun-text { flex: 1; }
+.gs-fun-title {
+    font-size: 0.82rem;
+    color: var(--gold-secondary);
+    font-weight: 600;
+}
+.gs-fun-sub {
+    font-size: 0.68rem;
+    color: var(--text-secondary);
+    margin-top: 1px;
+}
+
+/* ── Bet input block ─────────────────────────────────────────────────────── */
+.gs-bet-block {
+    margin-bottom: 20px;
+}
+.gs-input-wrap {
+    position: relative;
+    margin-bottom: 10px;
+}
+.gs-input-wrap .gs-currency {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 0.7rem;
+    color: var(--gold-secondary);
+    font-family: 'Orbitron', sans-serif;
+    pointer-events: none;
+}
+.gs-input {
+    background: rgba(0,0,0,0.35);
+    border: 1px solid rgba(255,215,0,0.25);
+    border-radius: 10px;
+    color: var(--text-primary);
+    padding: 10px 44px 10px 14px;
+    font-size: 0.9rem;
+    width: 100%;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    font-family: 'Orbitron', sans-serif;
+}
+.gs-input:focus {
+    border-color: var(--gold-primary);
+    box-shadow: 0 0 0 3px rgba(255,215,0,0.1);
+}
+.gs-input::placeholder { color: rgba(255,255,255,0.2); font-family: 'Roboto', sans-serif; font-size: 0.82rem; }
+
+/* ── Preset chips ────────────────────────────────────────────────────────── */
+.gs-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+.gs-chip {
+    background: rgba(255,215,0,0.07);
+    border: 1px solid rgba(255,215,0,0.22);
+    border-radius: 20px;
+    color: var(--gold-secondary);
+    font-size: 0.75rem;
+    font-family: 'Orbitron', sans-serif;
+    padding: 5px 14px;
+    cursor: pointer;
+    transition: all 0.15s;
+    letter-spacing: 0.5px;
+}
+.gs-chip:hover, .gs-chip.active {
+    background: rgba(255,215,0,0.18);
+    border-color: var(--gold-primary);
+    color: var(--gold-primary);
+    box-shadow: 0 0 8px rgba(255,215,0,0.25);
+}
+
+/* ── Option grid (difficulty, bots, etc.) ────────────────────────────────── */
+.gs-option-grid {
+    display: grid;
+    gap: 8px;
+    margin-bottom: 20px;
+}
+.gs-option-grid.cols-2 { grid-template-columns: repeat(2, 1fr); }
+.gs-option-grid.cols-3 { grid-template-columns: repeat(3, 1fr); }
+.gs-option-grid.cols-4 { grid-template-columns: repeat(4, 1fr); }
+
+.gs-option-btn {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 10px;
+    color: var(--text-secondary);
+    padding: 12px 8px;
+    cursor: pointer;
+    transition: all 0.18s;
+    text-align: center;
+    line-height: 1.3;
+}
+.gs-option-btn:hover {
+    border-color: rgba(255,215,0,0.4);
+    color: var(--gold-secondary);
+    background: rgba(255,215,0,0.05);
+}
+.gs-option-btn.selected {
+    background: rgba(255,215,0,0.12);
+    border-color: var(--gold-primary);
+    color: var(--gold-primary);
+    box-shadow: 0 0 10px rgba(255,215,0,0.2);
+}
+.gs-option-name {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.72rem;
+    font-weight: 700;
+    display: block;
+}
+.gs-option-sub {
+    font-size: 0.62rem;
+    opacity: 0.65;
+    display: block;
+    margin-top: 3px;
+}
+
+/* ── Color swatch grid (craps dice) ──────────────────────────────────────── */
+.gs-swatch-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 20px;
+}
+.gs-swatch {
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+    border: 2px solid rgba(255,255,255,0.1);
+    background: rgba(255,255,255,0.04);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.18s;
+    padding: 4px;
+}
+.gs-swatch img { width: 28px; height: 28px; object-fit: contain; }
+.gs-swatch:hover { border-color: rgba(255,215,0,0.5); transform: translateY(-2px); }
+.gs-swatch.selected {
+    border-color: var(--gold-primary);
+    background: rgba(255,215,0,0.12);
+    box-shadow: 0 0 10px rgba(255,215,0,0.3);
+}
+
+/* ── Rules card ──────────────────────────────────────────────────────────── */
+.gs-rules {
+    background: rgba(0,0,0,0.25);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 10px;
+    padding: 12px 14px;
+    margin-bottom: 20px;
+}
+.gs-rules-row {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    font-size: 0.72rem;
+    color: var(--text-secondary);
+    line-height: 1.9;
+}
+.gs-rules-row .gs-rules-key {
+    color: var(--gold-secondary);
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+/* ── Start button ────────────────────────────────────────────────────────── */
+.gs-start-btn {
+    width: 100%;
+    padding: 13px;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.88rem;
+    letter-spacing: 1.5px;
+    font-weight: 700;
+    border-radius: 10px;
+    border: 1px solid rgba(255,215,0,0.5);
+    background: linear-gradient(135deg, rgba(255,215,0,0.18), rgba(255,165,0,0.1));
+    color: var(--gold-primary);
+    cursor: pointer;
+    transition: all 0.2s;
+    text-shadow: 0 0 8px rgba(255,215,0,0.4);
+    position: relative;
+    overflow: hidden;
+}
+.gs-start-btn::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(255,215,0,0.08), transparent);
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+.gs-start-btn:hover:not(:disabled)::before { opacity: 1; }
+.gs-start-btn:hover:not(:disabled) {
+    box-shadow: 0 0 20px rgba(255,215,0,0.35), 0 4px 16px rgba(0,0,0,0.4);
+    transform: translateY(-1px);
+    border-color: var(--gold-primary);
+}
+.gs-start-btn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+/* ── Divider ─────────────────────────────────────────────────────────────── */
+.gs-divider {
+    border: none;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255,215,0,0.2), transparent);
+    margin: 18px 0;
+}
+
+@media (max-width: 480px) {
+    .gs-option-grid.cols-4 { grid-template-columns: repeat(2, 1fr); }
+    .gs-chips { gap: 5px; }
+    .gs-chip { font-size: 0.7rem; padding: 4px 11px; }
+}

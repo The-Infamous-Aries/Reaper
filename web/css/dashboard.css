@@ -146,7 +146,8 @@ h1, h2, h3, h4, h5, h6 {
     border-bottom: 1px solid rgba(184,134,11,0.1);
     transition: all 0.2s ease;
     margin: 0;
-    padding: 0.4rem 1.5rem;
+    padding: 0.28rem 1.1rem;
+    font-size: 0.82rem;
     font-weight: 400;
     letter-spacing: 0.3px;
     display: flex;
@@ -157,9 +158,11 @@ h1, h2, h3, h4, h5, h6 {
 .nav-pills .nav-link img {
     filter: none;
     transition: all 0.2s ease;
-    margin-right: 12px;
+    margin-right: 9px;
     opacity: 0.8;
     flex-shrink: 0;
+    width: 17px;
+    height: 17px;
 }
 
 .nav-pills .nav-link:hover {
@@ -373,8 +376,8 @@ table {
 
 /* ── Footer nav links ────────────────────────────────────────────────────── */
 .nav-link-footer {
-    font-size: 0.72rem !important;
-    padding: 0.3rem 1.5rem !important;
+    font-size: 0.7rem !important;
+    padding: 0.22rem 1.1rem !important;
     color: rgba(255,255,255,0.35) !important;
     letter-spacing: 0.3px;
 }

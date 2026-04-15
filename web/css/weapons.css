@@ -1,0 +1,288 @@
+/* ── Weapons Page ─────────────────────────────────────────────────────────── */
+.wp-shell { display: grid; gap: 1rem; }
+
+/* Weapon icon — small inline, matches nat-icon-sm */
+.wp-icon { width: 14px; height: 14px; object-fit: contain; vertical-align: middle; }
+
+/* Controls card */
+.wp-controls .card-header { display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; }
+.wp-kicker { margin: 0; color: var(--gold-secondary); font-size: 0.78rem; letter-spacing: 0.08em; text-transform: uppercase; }
+.wp-title  { margin: 0.2rem 0 0; color: var(--gold-primary); font-size: 1.1rem; font-weight: 700; }
+.wp-header-right { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
+
+/* Mode tabs */
+.wp-mode-tabs {
+  display: flex; gap: 0; border-radius: 999px; overflow: hidden;
+  border: 1px solid rgba(255,215,0,0.3);
+  background: rgba(14,11,5,0.92);
+}
+.wp-mode-tab {
+  display: flex; align-items: center; gap: 0.4rem;
+  padding: 0.45rem 1rem; border: none; background: transparent;
+  color: rgba(255,255,255,0.55); font-size: 0.82rem; font-weight: 600;
+  cursor: pointer; transition: all 0.15s; white-space: nowrap;
+}
+.wp-mode-tab:hover { color: var(--gold-primary); background: rgba(255,215,0,0.08); }
+.wp-mode-tab.active {
+  background: linear-gradient(135deg, var(--gold-primary), var(--gold-secondary));
+  color: #1a1a1a;
+}
+
+/* Input row */
+.wp-input-row { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
+.wp-input {
+  padding: 0.4rem 0.75rem; border-radius: 999px;
+  border: 1px solid rgba(255,215,0,0.3);
+  background: rgba(14,11,5,0.92); color: var(--text-primary);
+  font-size: 0.82rem; min-width: 160px;
+}
+.wp-input:focus { outline: none; border-color: var(--gold-primary); box-shadow: 0 0 8px var(--gold-glow); }
+.wp-input::placeholder { color: rgba(255,255,255,0.3); }
+.wp-input-label { font-size: 0.78rem; color: var(--text-secondary); white-space: nowrap; }
+
+/* Status */
+.wp-status { padding: 0.75rem 1rem; border-radius: 0.6rem; border: 1px solid rgba(255,215,0,0.24); background: rgba(15,15,15,0.78); color: var(--text-primary); font-size: 0.85rem; }
+.wp-status-error { border-color: #b00020; color: #b00020; background: rgba(176,0,32,0.08); }
+
+/* Cost badges */
+.wp-cost-row { display: flex; gap: 0.6rem; flex-wrap: wrap; align-items: center; }
+.wp-cost-badge {
+  display: inline-flex; align-items: center; gap: 0.4rem;
+  padding: 0.35rem 0.75rem; border-radius: 999px;
+  border: 1px solid rgba(255,215,0,0.28);
+  background: linear-gradient(135deg, rgba(34,27,9,0.96), rgba(11,11,11,0.92));
+  color: var(--gold-primary); font-weight: 700; font-size: 0.82rem; white-space: nowrap;
+}
+.wp-cost-badge.missile { border-color: rgba(68,136,255,0.5); color: #6ab0f5; }
+.wp-cost-badge.nuke    { border-color: rgba(255,68,68,0.5);  color: #ff8888; }
+
+/* ── Theory mode ─────────────────────────────────────────────────────────── */
+.wp-theory-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+.wp-theory-grid-full { grid-column: 1 / -1; }
+
+.wp-section {
+  background: rgba(20,16,6,0.7);
+  border: 1px solid rgba(255,215,0,0.15);
+  border-radius: 0.6rem;
+  padding: 1rem 1.1rem;
+}
+.wp-section-title {
+  font-size: 0.75rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.6px; color: var(--gold-secondary);
+  margin-bottom: 0.7rem; padding-bottom: 0.35rem;
+  border-bottom: 1px solid rgba(255,215,0,0.15);
+}
+
+/* Threshold table */
+.wp-thresh-table { width: 100%; border-collapse: collapse; }
+.wp-thresh-table th, .wp-thresh-table td { padding: 0.45rem 0.6rem; text-align: left; font-size: 0.78rem; border-bottom: 1px solid rgba(255,215,0,0.08); }
+.wp-thresh-table th { color: var(--gold-secondary); font-weight: 700; text-transform: uppercase; font-size: 0.7rem; letter-spacing: 0.05em; }
+.wp-thresh-table td { color: var(--text-primary); }
+.wp-thresh-table tr:last-child td { border-bottom: none; }
+.wp-thresh-table .wp-mult-cell { color: var(--gold-primary); font-weight: 700; }
+.wp-thresh-table .wp-missile-cell { color: #6ab0f5; }
+.wp-thresh-table .wp-nuke-cell    { color: #ff8888; }
+.wp-thresh-eff   { color: #00c864 !important; font-weight: 700; }
+.wp-thresh-warn  { color: #e74c3c !important; }
+
+/* Chart canvas */
+#wp-chart-canvas { width: 100% !important; max-height: 380px; }
+
+/* City input detail */
+.wp-city-detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+.wp-weapon-card {
+  background: rgba(15,12,5,0.7);
+  border: 1px solid rgba(255,215,0,0.1);
+  border-radius: 0.45rem;
+  padding: 0.75rem 0.9rem;
+}
+.wp-weapon-card.missile { border-color: rgba(68,136,255,0.25); }
+.wp-weapon-card.nuke    { border-color: rgba(255,68,68,0.25); }
+.wp-weapon-card-title { font-size: 0.78rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.5rem; }
+.wp-weapon-card.missile .wp-weapon-card-title { color: #6ab0f5; }
+.wp-weapon-card.nuke    .wp-weapon-card-title { color: #ff8888; }
+.wp-kv-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.2rem 0.5rem; }
+.wp-kv { display: flex; align-items: center; gap: 0.25rem; font-size: 0.76rem; }
+.wp-kv span { color: var(--text-secondary); }
+.wp-kv strong { color: #fff; margin-left: auto; }
+.wp-kv .wp-good { color: #00c864; }
+.wp-kv .wp-warn { color: #e74c3c; }
+.wp-kv .wp-ok   { color: #ffd700; }
+
+/* ── Targeted mode ───────────────────────────────────────────────────────── */
+
+/* Target type toggle */
+.wp-target-type-tabs {
+  display: flex; gap: 0; border-radius: 999px; overflow: hidden;
+  border: 1px solid rgba(255,215,0,0.25);
+  background: rgba(14,11,5,0.92);
+}
+.wp-target-type-tab {
+  padding: 0.35rem 0.85rem; border: none; background: transparent;
+  color: rgba(255,255,255,0.5); font-size: 0.78rem; font-weight: 600;
+  cursor: pointer; transition: all 0.15s;
+}
+.wp-target-type-tab:hover { color: var(--gold-primary); }
+.wp-target-type-tab.active {
+  background: linear-gradient(135deg, var(--gold-primary), var(--gold-secondary));
+  color: #1a1a1a;
+}
+
+/* Sort controls */
+.wp-sort-row { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+.wp-sort-label { font-size: 0.75rem; color: var(--text-secondary); }
+.wp-sort-btn {
+  padding: 0.3rem 0.7rem; border-radius: 999px; border: 1px solid rgba(255,215,0,0.25);
+  background: rgba(14,11,5,0.92); color: rgba(255,255,255,0.6);
+  font-size: 0.75rem; font-weight: 600; cursor: pointer; transition: all 0.15s;
+}
+.wp-sort-btn:hover { border-color: var(--gold-primary); color: var(--gold-primary); }
+.wp-sort-btn.active { background: linear-gradient(135deg, var(--gold-primary), var(--gold-secondary)); color: #1a1a1a; border-color: transparent; }
+
+/* ── Alliance nations table ──────────────────────────────────────────────── */
+.wp-table-wrap { overflow-x: auto; }
+.wp-table { width: 100%; border-collapse: collapse; min-width: 700px; background: rgba(8,8,8,0.8); }
+.wp-table th, .wp-table td { border: 1px solid rgba(255,215,0,0.12); padding: 0.6rem 0.7rem; text-align: left; }
+.wp-table th {
+  cursor: pointer; position: sticky; top: 0; z-index: 1;
+  background: linear-gradient(180deg, rgba(33,26,10,0.98), rgba(17,14,7,0.98));
+  color: var(--gold-primary); text-transform: uppercase; letter-spacing: 0.05em;
+  font-size: 0.7rem; white-space: nowrap; transition: background 0.15s;
+}
+.wp-table th:hover { background: linear-gradient(180deg, rgba(58,45,15,0.98), rgba(28,21,7,0.98)); color: #ffed4e; }
+.wp-table th.wp-sort-active { color: #1a1a1a; background: linear-gradient(45deg, #ffd700, #ffed4e); }
+.wp-table tbody tr { cursor: pointer; }
+.wp-table tbody tr:nth-child(odd) { background: rgba(255,215,0,0.03); }
+.wp-table tbody tr:hover { background: rgba(255,215,0,0.08); }
+.wp-table td { color: var(--text-primary); font-size: 0.82rem; }
+.wp-table td:first-child { color: var(--gold-primary); }
+
+.wp-chevron { text-align: center; color: var(--gold-secondary); font-size: 0.65rem; width: 1.5rem; padding: 0.6rem 0.4rem !important; user-select: none; }
+.wp-row-open .wp-chevron { color: var(--gold-primary); }
+.wp-row-open { background: rgba(255,215,0,0.06) !important; }
+
+.wp-name-cell { display: flex; align-items: center; gap: 0.5rem; }
+.wp-flag { width: 32px; height: 22px; object-fit: cover; border-radius: 2px; border: 1px solid rgba(255,215,0,0.2); flex-shrink: 0; }
+.wp-leader { display: block; font-size: 0.7rem; color: var(--text-secondary); }
+.wp-pnw-link { color: var(--gold-primary); text-decoration: none; }
+.wp-pnw-link:hover { text-decoration: underline; }
+
+.wp-val-missile { color: #6ab0f5; font-weight: 700; }
+.wp-val-nuke    { color: #ff8888; font-weight: 700; }
+.wp-val-dim     { color: var(--text-secondary); font-size: 0.72rem; }
+/* min–max range display */
+.wp-range       { display: block; font-size: 0.78rem; white-space: nowrap; }
+.wp-val-dim     { display: block; font-size: 0.68rem; color: var(--text-secondary); }
+
+/* Defense badges */
+.wp-def-badge { display: inline-block; padding: 1px 5px; border-radius: 3px; font-size: 0.66rem; font-weight: 700; margin-right: 2px; }
+.wp-def-id  { background: rgba(68,136,255,0.15); color: #6ab0f5; border: 1px solid rgba(68,136,255,0.4); }
+.wp-def-vds { background: rgba(255,68,68,0.15);  color: #ff8888; border: 1px solid rgba(255,68,68,0.4); }
+
+/* ── Expand row ──────────────────────────────────────────────────────────── */
+.wp-expand-row { display: none; }
+.wp-expand-row.wp-expand-open { display: table-row; }
+.wp-expand-cell { padding: 0 !important; border-top: none !important; background: rgba(10,8,3,0.95) !important; }
+.wp-expand-inner {
+  padding: 1rem 1.25rem 1.25rem;
+  border-top: 2px solid rgba(255,215,0,0.2);
+  border-bottom: 2px solid rgba(255,215,0,0.2);
+  animation: wp-expand-in 0.18s ease;
+}
+@keyframes wp-expand-in { from{opacity:0;transform:translateY(-6px)} to{opacity:1;transform:translateY(0)} }
+
+/* ── City table inside expand ────────────────────────────────────────────── */
+.wp-city-sort-row { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.6rem; flex-wrap: wrap; }
+.wp-city-table-wrap { overflow-x: auto; }
+.wp-city-table { width: 100%; border-collapse: collapse; min-width: 600px; }
+.wp-city-table th, .wp-city-table td { border: 1px solid rgba(255,215,0,0.08); padding: 0.45rem 0.6rem; text-align: left; font-size: 0.76rem; }
+.wp-city-table th {
+  background: rgba(20,16,6,0.9); color: var(--gold-secondary);
+  text-transform: uppercase; font-size: 0.68rem; letter-spacing: 0.04em;
+  cursor: pointer; white-space: nowrap;
+}
+.wp-city-table th:hover { color: var(--gold-primary); }
+.wp-city-table th.wp-city-sort-active { color: #1a1a1a; background: linear-gradient(45deg, #b8860b, #ffd700); }
+/* inner city table (inside expand rows) same style */
+.wp-city-inner-table th { cursor: pointer; }
+.wp-city-inner-table th.wp-city-sort-active { color: #1a1a1a; background: linear-gradient(45deg, #b8860b, #ffd700); }
+.wp-city-table td { color: var(--text-primary); }
+.wp-city-table tbody tr:nth-child(odd) { background: rgba(255,215,0,0.02); }
+.wp-city-table tbody tr:hover { background: rgba(255,215,0,0.06); }
+.wp-city-best { background: rgba(255,215,0,0.07) !important; }
+
+.wp-powered   { color: #00c864; font-size: 0.72rem; }
+.wp-unpowered { color: #e74c3c; font-size: 0.72rem; }
+.wp-hit-full  { color: #00c864; }
+.wp-hit-part  { color: #e74c3c; }
+
+/* ── Nation detail (single nation mode) ─────────────────────────────────── */
+.wp-nation-header {
+  display: flex; gap: 1rem; align-items: flex-start;
+  margin-bottom: 1rem; padding-bottom: 0.85rem;
+  border-bottom: 1px solid rgba(255,215,0,0.15);
+}
+.wp-nation-flag { width: 56px; height: 38px; object-fit: cover; border-radius: 3px; border: 1px solid rgba(255,215,0,0.25); flex-shrink: 0; }
+.wp-nation-name { margin: 0; font-size: 1.05rem; color: var(--gold-primary); }
+.wp-nation-leader { margin: 0.15rem 0 0.4rem; color: var(--text-secondary); font-size: 0.82rem; }
+.wp-nation-badges { display: flex; gap: 0.35rem; flex-wrap: wrap; }
+
+.wp-defense-row { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.75rem; }
+.wp-defense-card {
+  display: flex; align-items: center; gap: 0.4rem;
+  padding: 0.4rem 0.75rem; border-radius: 0.4rem;
+  font-size: 0.78rem; font-weight: 600;
+}
+.wp-defense-card.has-id  { background: rgba(68,136,255,0.1); border: 1px solid rgba(68,136,255,0.35); color: #6ab0f5; }
+.wp-defense-card.has-vds { background: rgba(255,68,68,0.1);  border: 1px solid rgba(255,68,68,0.35);  color: #ff8888; }
+.wp-defense-card.clear   { background: rgba(0,200,100,0.08); border: 1px solid rgba(0,200,100,0.3);   color: #00c864; }
+
+/* ── Efficiency rating chips ─────────────────────────────────────────────── */
+.wp-eff-chip {
+  display: inline-flex; align-items: center; gap: 0.2rem;
+  padding: 2px 7px; border-radius: 3px;
+  font-size: 0.7rem; font-weight: 700; white-space: nowrap;
+  border: 1px solid transparent;
+}
+.wp-eff-horrible { background: rgba(128,0,128,0.18); color: #cc66ff; border-color: rgba(128,0,128,0.45); }
+.wp-eff-bad      { background: rgba(255,100,0,0.15);  color: #ff8844; border-color: rgba(255,100,0,0.4); }
+.wp-eff-ok       { background: rgba(180,160,0,0.18);  color: #ccb800; border-color: rgba(180,160,0,0.4); }
+.wp-eff-good     { background: rgba(0,180,80,0.15);   color: #33cc77; border-color: rgba(0,180,80,0.4); }
+.wp-eff-great    { background: rgba(30,100,255,0.15); color: #6ab0f5; border-color: rgba(30,100,255,0.4); }
+.wp-eff-legend   {
+  background: linear-gradient(135deg, rgba(255,215,0,0.2), rgba(255,180,0,0.1));
+  color: #ffd700; border-color: rgba(255,215,0,0.6);
+  box-shadow: 0 0 6px rgba(255,215,0,0.35);
+  animation: wp-legend-pulse 2s ease-in-out infinite;
+}
+@keyframes wp-legend-pulse {
+  0%, 100% { box-shadow: 0 0 6px rgba(255,215,0,0.35); }
+  50%       { box-shadow: 0 0 12px rgba(255,215,0,0.7); }
+}
+@media (max-width: 768px) {
+  .wp-theory-grid { grid-template-columns: 1fr; }
+  .wp-city-detail-grid { grid-template-columns: 1fr; }
+}
+
+/* ── Efficiency rating chips ─────────────────────────────────────────────── */
+.wp-eff-chip {
+  display: inline-flex; align-items: center; gap: 0.2rem;
+  padding: 2px 7px; border-radius: 3px;
+  font-size: 0.7rem; font-weight: 700; white-space: nowrap;
+  border: 1px solid transparent;
+}
+.wp-eff-horrible { background: rgba(128,0,128,0.18); color: #cc66ff; border-color: rgba(128,0,128,0.45); }
+.wp-eff-bad      { background: rgba(255,100,0,0.15);  color: #ff8844; border-color: rgba(255,100,0,0.4); }
+.wp-eff-ok       { background: rgba(180,160,0,0.18);  color: #ccb800; border-color: rgba(180,160,0,0.4); }
+.wp-eff-good     { background: rgba(0,180,80,0.15);   color: #33cc77; border-color: rgba(0,180,80,0.4); }
+.wp-eff-great    { background: rgba(30,100,255,0.15); color: #6ab0f5; border-color: rgba(30,100,255,0.4); }
+.wp-eff-legend   {
+  background: linear-gradient(135deg, rgba(255,215,0,0.2), rgba(255,180,0,0.1));
+  color: #ffd700; border-color: rgba(255,215,0,0.6);
+  box-shadow: 0 0 6px rgba(255,215,0,0.35);
+  animation: wp-legend-pulse 2s ease-in-out infinite;
+}
+@keyframes wp-legend-pulse {
+  0%, 100% { box-shadow: 0 0 6px rgba(255,215,0,0.35); }
+  50%       { box-shadow: 0 0 12px rgba(255,215,0,0.7); }
+}

@@ -36,6 +36,11 @@
             text-shadow: 0 0 3px #ffd700, 0 0 6px #ffd700;
         }
 
+/* Allow project picker dropdown to escape card boundary */
+        .card {
+            overflow: visible !important;
+        }
+
 /* Project picker dropdown */
         .project-picker {
             position: relative;
@@ -65,10 +70,8 @@
         .project-picker-trigger.open .pp-arrow { transform: rotate(180deg); }
         .project-picker-panel {
             display: none;
-            position: absolute;
-            top: calc(100% + 4px);
-            left: 0; right: 0;
-            z-index: 200;
+            position: fixed;
+            z-index: 9999;
             background: rgba(12,12,12,0.98);
             border: 1px solid rgba(255,215,0,0.3);
             border-radius: 0.5rem;

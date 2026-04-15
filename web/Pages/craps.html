@@ -1,0 +1,229 @@
+<link rel="stylesheet" href="/css/craps.css">
+
+<div id="craps-root" class="container-fluid">
+
+    <!-- Header -->
+    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-1">
+        <div>
+            <div class="casino-title">🎲 Craps</div>
+            <div class="casino-subtitle">Pass Line · Field · Place Bets · Hardways</div>
+        </div>
+        <div class="casino-xp-badge">
+            <span style="color:var(--text-secondary);font-size:0.75rem">Your XP</span>
+            <span id="craps-xp-display" class="casino-xp-amount">—</span>
+        </div>
+    </div>
+
+    <hr class="casino-divider">
+
+    <!-- Error / toast -->
+    <div id="craps-error" style="display:none;color:#e74c3c;font-size:0.82rem;margin-bottom:8px;text-align:center"></div>
+    <div id="craps-toast" style="opacity:0;transition:opacity 0.4s;color:#2ecc71;font-size:0.8rem;text-align:center;margin-bottom:6px"></div>
+
+    <!-- ── Setup screen ──────────────────────────────────────────────────── -->
+    <div id="craps-setup-screen" class="gs-setup">
+        <link rel="stylesheet" href="/css/setup.css">
+
+        <!-- XP balance -->
+        <div class="gs-balance">
+            <div>
+                <div class="gs-balance-label">Your Balance</div>
+                <div class="gs-balance-amount" id="craps-xp-display">—</div>
+            </div>
+            <div style="font-size:1.8rem;opacity:0.4">🎲</div>
+        </div>
+
+        <!-- Fun mode -->
+        <label class="gs-fun-row" for="craps-fun-toggle">
+            <label class="casino-toggle-wrap" style="flex-shrink:0">
+                <input type="checkbox" id="craps-fun-toggle">
+                <span class="casino-toggle-slider"></span>
+            </label>
+            <div class="gs-fun-text">
+                <div class="gs-fun-title">Fun Mode</div>
+                <div class="gs-fun-sub">Play without risking XP</div>
+            </div>
+        </label>
+
+        <!-- Dice color -->
+        <div class="gs-label">Dice Color</div>
+        <div class="gs-swatch-grid">
+            <button class="gs-swatch selected craps-color-btn" data-color="Red" title="Red">
+                <img src="/static/Emojis/Dice/Red1.png" alt="Red">
+            </button>
+            <button class="gs-swatch craps-color-btn" data-color="Orange" title="Orange">
+                <img src="/static/Emojis/Dice/Orange1.png" alt="Orange">
+            </button>
+            <button class="gs-swatch craps-color-btn" data-color="Blue" title="Blue">
+                <img src="/static/Emojis/Dice/Blue1.png" alt="Blue">
+            </button>
+            <button class="gs-swatch craps-color-btn" data-color="Yellow" title="Yellow">
+                <img src="/static/Emojis/Dice/Yellow1.png" alt="Yellow">
+            </button>
+            <button class="gs-swatch craps-color-btn" data-color="Pink" title="Pink">
+                <img src="/static/Emojis/Dice/Pink1.png" alt="Pink">
+            </button>
+            <button class="gs-swatch craps-color-btn" data-color="Green" title="Green">
+                <img src="/static/Emojis/Dice/Green1.png" alt="Green">
+            </button>
+            <button class="gs-swatch craps-color-btn" data-color="Purple" title="Purple">
+                <img src="/static/Emojis/Dice/Purple1.png" alt="Purple">
+            </button>
+            <button class="gs-swatch craps-color-btn" data-color="Random" title="Random">
+                <img src="/static/Emojis/Dice/Red6.png" alt="Random" style="filter:hue-rotate(90deg)">
+            </button>
+        </div>
+
+        <hr class="gs-divider">
+
+        <!-- Rules -->
+        <div class="gs-rules">
+            <div class="gs-rules-row"><span class="gs-rules-key">Come Out:</span> 7 or 11 = Pass wins · 2, 3, 12 = Pass loses · else = Point set</div>
+            <div class="gs-rules-row"><span class="gs-rules-key">Point Phase:</span> Roll Point = Pass wins · Roll 7 = Seven Out</div>
+            <div class="gs-rules-row"><span class="gs-rules-key">📌 Note:</span> Place &amp; Hardway bets are OFF during Come Out roll</div>
+        </div>
+
+        <button id="craps-start-btn" class="gs-start-btn">🎲 Start Game</button>
+    </div>
+
+    <!-- ── Game screen ───────────────────────────────────────────────────── -->
+    <div id="craps-game-screen" style="display:none">
+
+        <div class="craps-table">
+
+            <!-- Phase bar -->
+            <div class="craps-phase-bar">
+                <div>
+                    <div class="craps-phase-label">PHASE</div>
+                    <div class="craps-phase-val" id="craps-phase-val">Come Out Roll</div>
+                </div>
+                <div class="craps-point-puck off" id="craps-point-puck">OFF</div>
+            </div>
+
+            <!-- Dice -->
+            <div class="craps-dice-area">
+                <img class="craps-die" id="craps-die-1" src="/static/Emojis/Dice/Red1.png" alt="Die 1" style="display:none">
+                <div class="craps-total" id="craps-total">?</div>
+                <img class="craps-die" id="craps-die-2" src="/static/Emojis/Dice/Red1.png" alt="Die 2" style="display:none">
+            </div>
+
+            <!-- Headline -->
+            <div class="craps-headline neutral" id="craps-headline">Place your bets, then roll!</div>
+
+        </div>
+
+        <!-- Stats row -->
+        <div class="d-flex justify-content-between mt-2 mb-3" style="font-size:0.75rem;color:var(--text-secondary)">
+            <span id="craps-mode-label">Betting Mode</span>
+            <span>Total Bet: <span id="craps-total-bet" style="color:var(--gold-secondary)">0 XP</span></span>
+        </div>
+
+        <!-- Active bets -->
+        <div style="font-size:0.72rem;color:var(--text-secondary);margin-bottom:5px">Active Bets</div>
+        <div class="craps-active-bets" id="craps-bets-list">
+            <span style="color:var(--text-secondary);font-size:0.72rem">No active bets</span>
+        </div>
+
+        <!-- Bet grid -->
+        <div style="font-size:0.72rem;color:var(--text-secondary);margin-bottom:6px">Place a Bet</div>
+        <div class="craps-bet-grid">
+            <button class="craps-bet-btn" data-type="Pass Line">
+                <span class="bet-name">Pass Line</span>
+                <span class="bet-odds">1:1</span>
+            </button>
+            <button class="craps-bet-btn" data-type="Don't Pass">
+                <span class="bet-name">Don't Pass</span>
+                <span class="bet-odds">1:1</span>
+            </button>
+            <button class="craps-bet-btn" data-type="Field">
+                <span class="bet-name">Field</span>
+                <span class="bet-odds">1:1 / 2:1</span>
+            </button>
+            <button class="craps-bet-btn" data-type="Place 4">
+                <span class="bet-name">Place 4</span>
+                <span class="bet-odds">9:5</span>
+            </button>
+            <button class="craps-bet-btn" data-type="Place 5">
+                <span class="bet-name">Place 5</span>
+                <span class="bet-odds">7:5</span>
+            </button>
+            <button class="craps-bet-btn" data-type="Place 6">
+                <span class="bet-name">Place 6</span>
+                <span class="bet-odds">7:6</span>
+            </button>
+            <button class="craps-bet-btn" data-type="Place 8">
+                <span class="bet-name">Place 8</span>
+                <span class="bet-odds">7:6</span>
+            </button>
+            <button class="craps-bet-btn" data-type="Place 9">
+                <span class="bet-name">Place 9</span>
+                <span class="bet-odds">7:5</span>
+            </button>
+            <button class="craps-bet-btn" data-type="Place 10">
+                <span class="bet-name">Place 10</span>
+                <span class="bet-odds">9:5</span>
+            </button>
+            <button class="craps-bet-btn" data-type="Any 7">
+                <span class="bet-name">Any 7</span>
+                <span class="bet-odds">4:1</span>
+            </button>
+            <button class="craps-bet-btn" data-type="Hard 4">
+                <span class="bet-name">Hard 4</span>
+                <span class="bet-odds">7:1</span>
+            </button>
+            <button class="craps-bet-btn" data-type="Hard 6">
+                <span class="bet-name">Hard 6</span>
+                <span class="bet-odds">9:1</span>
+            </button>
+            <button class="craps-bet-btn" data-type="Hard 8">
+                <span class="bet-name">Hard 8</span>
+                <span class="bet-odds">9:1</span>
+            </button>
+            <button class="craps-bet-btn" data-type="Hard 10">
+                <span class="bet-name">Hard 10</span>
+                <span class="bet-odds">7:1</span>
+            </button>
+        </div>
+
+        <!-- Roll log -->
+        <div style="font-size:0.72rem;color:var(--text-secondary);margin-bottom:5px;margin-top:4px">Roll History</div>
+        <div class="craps-log" id="craps-log">
+            <div style="color:var(--text-secondary)">No rolls yet.</div>
+        </div>
+
+        <!-- Actions -->
+        <div class="craps-actions">
+            <button class="craps-btn craps-btn--roll" id="craps-roll-btn">🎲 Roll Dice</button>
+            <button class="craps-btn craps-btn--clear" id="craps-clear-btn">Clear Bets</button>
+            <button class="craps-btn" id="craps-quit-btn">Leave Table</button>
+        </div>
+
+    </div>
+
+    <!-- ── Bet amount modal ───────────────────────────────────────────────── -->
+    <div id="craps-modal" class="craps-modal-overlay" style="display:none">
+        <div class="craps-modal">
+            <div class="craps-modal-title" id="craps-modal-title">Place Bet</div>
+            <div style="font-size:0.72rem;color:var(--text-secondary);margin-bottom:12px" id="craps-modal-desc"></div>
+
+            <div style="font-size:0.78rem;color:var(--text-secondary);margin-bottom:6px">Amount (XP)</div>
+            <input type="number" id="craps-modal-amount" class="casino-input" min="10" placeholder="Enter XP amount" style="margin-bottom:10px">
+
+            <div class="bj-preset-row mb-3">
+                <button class="bj-preset craps-modal-preset" data-amount="50">50</button>
+                <button class="bj-preset craps-modal-preset" data-amount="100">100</button>
+                <button class="bj-preset craps-modal-preset" data-amount="250">250</button>
+                <button class="bj-preset craps-modal-preset" data-amount="500">500</button>
+                <button class="bj-preset craps-modal-preset" data-amount="1000">1 000</button>
+            </div>
+
+            <div class="d-flex gap-2">
+                <button class="craps-btn w-100" id="craps-modal-confirm">Confirm Bet</button>
+                <button class="craps-btn craps-btn--clear" id="craps-modal-cancel">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script src="/js/craps.js"></script>

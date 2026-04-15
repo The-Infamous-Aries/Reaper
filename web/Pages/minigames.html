@@ -1,0 +1,196 @@
+<link rel="stylesheet" href="/css/minigames.css">
+
+<div id="mg-root" class="container-fluid">
+
+    <!-- Header -->
+    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-1">
+        <div>
+            <div class="casino-title">🎮 Mini-Games</div>
+            <div class="casino-subtitle">Coin Flip · Rock Paper Scissors · Gamble your Pet XP</div>
+        </div>
+        <div class="casino-xp-badge">
+            <span style="color:var(--text-secondary);font-size:0.75rem">Your XP</span>
+            <span id="mg-xp-cf" class="casino-xp-amount">—</span>
+        </div>
+    </div>
+
+    <hr class="casino-divider">
+
+    <div class="row g-3">
+
+        <!-- ── Coin Flip ──────────────────────────────────────────────────── -->
+        <div class="col-lg-6">
+            <div class="mg-panel">
+                <div class="mg-panel-title">🪙 Coin Flip</div>
+
+                <div id="cf-error" style="display:none;color:#e74c3c;font-size:0.75rem;margin-bottom:8px;text-align:center"></div>
+
+                <!-- Fun mode -->
+                <div class="gs-fun-row" style="margin-bottom:14px">
+                    <label class="casino-toggle-wrap" style="flex-shrink:0;width:38px;height:20px">
+                        <input type="checkbox" id="cf-fun-toggle">
+                        <span class="casino-toggle-slider"></span>
+                    </label>
+                    <div class="gs-fun-text">
+                        <div class="gs-fun-title" style="font-size:0.78rem">Fun Mode</div>
+                        <div class="gs-fun-sub">No XP at risk</div>
+                    </div>
+                </div>
+
+                <!-- Bet -->
+                <div id="cf-bet-row" class="gs-bet-block">
+                    <div class="gs-label">Bet Amount</div>
+                    <div class="gs-input-wrap">
+                        <input type="number" id="cf-bet-input" class="gs-input" min="10" placeholder="Enter amount">
+                        <span class="gs-currency">XP</span>
+                    </div>
+                    <div class="gs-chips">
+                        <button class="gs-chip cf-preset" data-amount="50">50</button>
+                        <button class="gs-chip cf-preset" data-amount="100">100</button>
+                        <button class="gs-chip cf-preset" data-amount="250">250</button>
+                        <button class="gs-chip cf-preset" data-amount="500">500</button>
+                    </div>
+                </div>
+
+                <!-- Theme picker -->
+                <div class="mg-bet-label mb-1">Choose Theme</div>
+                <div class="mg-theme-grid" style="grid-template-columns:repeat(2,1fr)">
+                    <button class="mg-theme-btn cf-theme-btn" data-theme="Raider">
+                        <img src="/static/Emojis/Coins/Pirate.png" alt="Raider"> Raider
+                    </button>
+                    <button class="mg-theme-btn cf-theme-btn" data-theme="Time">
+                        <img src="/static/Emojis/Coins/Future.png" alt="Time"> Time
+                    </button>
+                    <button class="mg-theme-btn cf-theme-btn" data-theme="Battery">
+                        <img src="/static/Emojis/Coins/Full.png" alt="Battery"> Battery
+                    </button>
+                    <button class="mg-theme-btn cf-theme-btn" data-theme="Electric">
+                        <img src="/static/Emojis/Coins/Plug.png" alt="Electric"> Electric
+                    </button>
+                    <button class="mg-theme-btn cf-theme-btn" data-theme="Business">
+                        <img src="/static/Emojis/Coins/Open.png" alt="Business"> Business
+                    </button>
+                    <button class="mg-theme-btn cf-theme-btn" data-theme="Sky">
+                        <img src="/static/Emojis/Coins/Day.png" alt="Sky"> Sky
+                    </button>
+                    <button class="mg-theme-btn cf-theme-btn" style="grid-column:span 2" data-theme="Tempature">
+                        <img src="/static/Emojis/Coins/Heat.png" alt="Tempature"> Temperature
+                    </button>
+                </div>
+
+                <!-- Coin display -->
+                <div class="mg-coin-wrap" id="cf-coin-wrap">
+                    <div class="mg-coin" id="cf-coin">
+                        <div class="mg-coin-face">
+                            <img id="cf-heads-img" src="/static/Emojis/Coins/Pirate.png" alt="Heads">
+                        </div>
+                        <div class="mg-coin-face mg-coin-tails">
+                            <img id="cf-tails-img" src="/static/Emojis/Coins/Poop.png" alt="Tails">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Pick heads/tails -->
+                <div class="mg-bet-label mb-1">Your Pick</div>
+                <div class="mg-pick-row">
+                    <button class="mg-pick-btn cf-pick-btn" data-pick="heads">
+                        <img src="/static/Emojis/Coins/Pirate.png" alt="Heads">
+                        <span id="cf-heads-label">Heads</span>
+                    </button>
+                    <button class="mg-pick-btn cf-pick-btn" data-pick="tails">
+                        <img src="/static/Emojis/Coins/Poop.png" alt="Tails">
+                        <span id="cf-tails-label">Tails</span>
+                    </button>
+                </div>
+
+                <button class="mg-btn" id="cf-flip-btn" disabled>Flip!</button>
+
+                <!-- Result -->
+                <div id="cf-result-area" style="display:none"></div>
+            </div>
+        </div>
+
+        <!-- ── Rock Paper Scissors ────────────────────────────────────────── -->
+        <div class="col-lg-6">
+            <div class="mg-panel">
+                <div class="mg-panel-title">✊ Rock Paper Scissors</div>
+
+                <div id="rps-error" style="display:none;color:#e74c3c;font-size:0.75rem;margin-bottom:8px;text-align:center"></div>
+
+                <!-- Score -->
+                <div style="text-align:center;font-size:0.72rem;color:var(--text-secondary);margin-bottom:10px" id="rps-score-display">
+                    You 0 — AI 0
+                </div>
+
+                <!-- Fun mode -->
+                <div class="gs-fun-row" style="margin-bottom:14px">
+                    <label class="casino-toggle-wrap" style="flex-shrink:0;width:38px;height:20px">
+                        <input type="checkbox" id="rps-fun-toggle">
+                        <span class="casino-toggle-slider"></span>
+                    </label>
+                    <div class="gs-fun-text">
+                        <div class="gs-fun-title" style="font-size:0.78rem">Fun Mode</div>
+                        <div class="gs-fun-sub">No XP at risk</div>
+                    </div>
+                </div>
+
+                <!-- Bet -->
+                <div id="rps-bet-row" class="gs-bet-block">
+                    <div class="gs-label">Bet Amount</div>
+                    <div class="gs-input-wrap">
+                        <input type="number" id="rps-bet-input" class="gs-input" min="10" placeholder="Enter amount">
+                        <span class="gs-currency">XP</span>
+                    </div>
+                    <div class="gs-chips">
+                        <button class="gs-chip rps-preset" data-amount="50">50</button>
+                        <button class="gs-chip rps-preset" data-amount="100">100</button>
+                        <button class="gs-chip rps-preset" data-amount="250">250</button>
+                        <button class="gs-chip rps-preset" data-amount="500">500</button>
+                    </div>
+                </div>
+
+                <!-- Theme picker -->
+                <div class="mg-bet-label mb-1">Choose Theme</div>
+                <div class="mg-theme-grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:12px">
+                    <button class="mg-theme-btn rps-theme-btn" data-theme="Traditional">
+                        <img src="/static/Emojis/RPS/rock_1.png" alt="Traditional"> Traditional
+                    </button>
+                    <button class="mg-theme-btn rps-theme-btn" data-theme="Fantasy">
+                        <img src="/static/Emojis/RPS/knights.png" alt="Fantasy"> Fantasy
+                    </button>
+                    <button class="mg-theme-btn rps-theme-btn" data-theme="War">
+                        <img src="/static/Emojis/RPS/tank.png" alt="War"> War
+                    </button>
+                </div>
+
+                <!-- Choice buttons (built by JS) -->
+                <div class="mg-bet-label mb-1">Your Move</div>
+                <div class="mg-rps-choices" id="rps-choices-wrap">
+                    <div style="color:var(--text-secondary);font-size:0.75rem;text-align:center;width:100%">Select a theme first</div>
+                </div>
+
+                <!-- Arena (hidden until played) -->
+                <div class="mg-rps-arena" id="rps-arena" style="display:none">
+                    <div class="mg-rps-side">
+                        <img id="rps-player-img" src="/static/Emojis/RPS/rps.png" alt="You">
+                        <div class="mg-rps-side-label" id="rps-player-lbl">You</div>
+                    </div>
+                    <div class="mg-rps-vs">VS</div>
+                    <div class="mg-rps-side">
+                        <img id="rps-ai-img" src="/static/Emojis/Cards/BJ.png" alt="AI">
+                        <div class="mg-rps-side-label" id="rps-ai-lbl">AI</div>
+                    </div>
+                </div>
+
+                <button class="mg-btn" id="rps-play-btn" disabled>Play!</button>
+
+                <!-- Result -->
+                <div id="rps-result-area" style="display:none"></div>
+            </div>
+        </div>
+
+    </div>
+
+</div>
+
+<script src="/js/minigames.js"></script>

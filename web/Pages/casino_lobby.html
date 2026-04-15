@@ -1,0 +1,50 @@
+<link rel="stylesheet" href="/css/casino_lobby.css">
+
+<div class="container-fluid" id="cl-root">
+
+    <!-- Header -->
+    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-1">
+        <div>
+            <div class="casino-title">🎰 Casino Floor</div>
+            <div class="casino-subtitle">Join a room · Pick a game · Watch others play</div>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+            <span class="cl-live-badge"><span class="cl-live-dot"></span>LIVE</span>
+            <span style="font-size:0.75rem;color:var(--text-secondary)" id="cl-online">— online</span>
+        </div>
+    </div>
+
+    <hr class="casino-divider">
+
+    <!-- Loading -->
+    <div id="cl-loading" class="text-center py-4">
+        <div class="spinner-border" style="color:var(--gold-primary)" role="status"></div>
+        <p class="mt-2" style="color:var(--text-secondary);font-size:0.82rem">Connecting to Casino Floor...</p>
+    </div>
+
+    <!-- Login prompt -->
+    <div id="cl-login-prompt" style="display:none" class="text-center py-5">
+        <div style="font-size:2rem;margin-bottom:8px">🔒</div>
+        <div style="color:var(--text-secondary);font-size:0.9rem">Sign in with Discord to join the Casino Floor.</div>
+        <a href="/api/discord/login" class="casino-btn mt-3" style="display:inline-block">Login with Discord</a>
+    </div>
+
+    <!-- Main layout -->
+    <div id="cl-main" style="display:none">
+
+        <!-- Room strip -->
+        <div class="cl-room-strip" id="cl-room-grid"></div>
+
+        <!-- Central panel -->
+        <div class="cl-center-panel" id="cl-panel-area">
+            <div class="cl-panel" style="text-align:center;padding:40px 18px">
+                <div style="font-size:2.5rem;opacity:0.25">🎰</div>
+                <div style="color:var(--text-secondary);font-size:0.85rem;margin-top:10px">Select a room above to get started.</div>
+            </div>
+        </div>
+
+    </div>
+
+</div>
+
+<script src="/js/casino_lobby.js"></script>

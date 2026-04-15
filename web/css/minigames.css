@@ -1,0 +1,265 @@
+/* ── Casino Mini-Games (Coin Flip + RPS) ─────────────────────────────────── */
+
+/* ── Shared layout ───────────────────────────────────────────────────────── */
+.mg-panel {
+    background: linear-gradient(135deg, rgba(15,15,15,0.95), rgba(20,20,20,0.95));
+    border: 2px solid rgba(255,215,0,0.22);
+    border-radius: 14px;
+    padding: 20px 18px;
+    height: 100%;
+}
+.mg-panel-title {
+    font-family: 'Orbitron', sans-serif;
+    color: var(--gold-primary);
+    font-size: 0.95rem;
+    text-shadow: 0 0 8px var(--gold-glow);
+    margin-bottom: 14px;
+    text-align: center;
+}
+
+/* ── Bet row ─────────────────────────────────────────────────────────────── */
+.mg-bet-row { margin-bottom: 12px; }
+.mg-bet-label { font-size: 0.72rem; color: var(--text-secondary); margin-bottom: 5px; }
+.mg-bet-presets { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 6px; }
+.mg-preset {
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,215,0,0.2);
+    border-radius: 5px;
+    color: var(--text-secondary);
+    padding: 3px 9px;
+    font-size: 0.7rem;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+.mg-preset:hover { border-color: var(--gold-primary); color: var(--gold-primary); }
+
+/* ── Theme grid ──────────────────────────────────────────────────────────── */
+.mg-theme-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 6px;
+    margin-bottom: 12px;
+}
+.mg-theme-btn {
+    background: rgba(255,215,0,0.04);
+    border: 1px solid rgba(255,215,0,0.18);
+    border-radius: 8px;
+    color: var(--text-secondary);
+    padding: 7px 6px;
+    font-size: 0.72rem;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.mg-theme-btn img { width: 22px; height: 22px; object-fit: contain; }
+.mg-theme-btn:hover, .mg-theme-btn.selected {
+    background: rgba(255,215,0,0.12);
+    border-color: var(--gold-primary);
+    color: var(--gold-primary);
+}
+
+/* ── Coin flip ───────────────────────────────────────────────────────────── */
+.mg-coin-wrap {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 130px;
+    perspective: 600px;
+    margin: 10px 0;
+}
+.mg-coin {
+    width: 100px;
+    height: 100px;
+    position: relative;
+    transform-style: preserve-3d;
+    transition: transform 0.1s;
+}
+.mg-coin-face {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    backface-visibility: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: radial-gradient(circle at 35% 35%, rgba(255,255,255,0.15), transparent);
+    border: 3px solid rgba(255,215,0,0.5);
+    box-shadow: 0 0 20px rgba(255,215,0,0.2);
+}
+.mg-coin-face img { width: 72px; height: 72px; object-fit: contain; }
+.mg-coin-tails { transform: rotateY(180deg); }
+
+.mg-coin.flipping {
+    animation: mgCoinFlip 1.4s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+}
+@keyframes mgCoinFlip {
+    0%   { transform: rotateY(0)     translateY(0)    scale(1); }
+    20%  { transform: rotateY(360deg) translateY(-40px) scale(1.1); }
+    40%  { transform: rotateY(720deg) translateY(-60px) scale(1.05); }
+    60%  { transform: rotateY(1080deg) translateY(-40px) scale(1.05); }
+    80%  { transform: rotateY(1440deg) translateY(-10px) scale(1); }
+    100% { transform: rotateY(var(--final-rot, 0deg)) translateY(0) scale(1); }
+}
+
+/* Pick buttons */
+.mg-pick-row {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    margin-bottom: 10px;
+}
+.mg-pick-btn {
+    flex: 1;
+    max-width: 130px;
+    background: rgba(255,215,0,0.06);
+    border: 2px solid rgba(255,215,0,0.2);
+    border-radius: 10px;
+    color: var(--text-secondary);
+    padding: 10px 8px;
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-align: center;
+}
+.mg-pick-btn img { width: 40px; height: 40px; object-fit: contain; display: block; margin: 0 auto 4px; }
+.mg-pick-btn:hover, .mg-pick-btn.selected {
+    background: rgba(255,215,0,0.14);
+    border-color: var(--gold-primary);
+    color: var(--gold-primary);
+    box-shadow: 0 0 10px var(--gold-glow);
+}
+
+/* ── RPS arena ───────────────────────────────────────────────────────────── */
+.mg-rps-choices {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+}
+.mg-rps-choice {
+    background: rgba(255,215,0,0.05);
+    border: 2px solid rgba(255,215,0,0.18);
+    border-radius: 10px;
+    color: var(--text-secondary);
+    padding: 10px 12px;
+    font-size: 0.72rem;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-align: center;
+    min-width: 80px;
+}
+.mg-rps-choice img { width: 44px; height: 44px; object-fit: contain; display: block; margin: 0 auto 4px; }
+.mg-rps-choice:hover, .mg-rps-choice.selected {
+    background: rgba(255,215,0,0.14);
+    border-color: var(--gold-primary);
+    color: var(--gold-primary);
+    box-shadow: 0 0 10px var(--gold-glow);
+}
+
+.mg-rps-arena {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    margin: 12px 0;
+    min-height: 90px;
+}
+.mg-rps-side {
+    text-align: center;
+    flex: 1;
+}
+.mg-rps-side img {
+    width: 64px;
+    height: 64px;
+    object-fit: contain;
+    border-radius: 10px;
+    border: 2px solid rgba(255,215,0,0.2);
+    background: rgba(0,0,0,0.3);
+    padding: 4px;
+    transition: transform 0.2s;
+}
+.mg-rps-side img.reveal { animation: mgRpsReveal 0.35s ease; }
+@keyframes mgRpsReveal {
+    from { transform: scale(0.5) rotate(-15deg); opacity: 0; }
+    to   { transform: scale(1)   rotate(0deg);   opacity: 1; }
+}
+.mg-rps-side-label { font-size: 0.65rem; color: var(--text-secondary); margin-top: 4px; }
+.mg-rps-vs {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 1rem;
+    color: rgba(255,215,0,0.4);
+    font-weight: 700;
+}
+
+/* ── Result banner ───────────────────────────────────────────────────────── */
+.mg-result {
+    text-align: center;
+    padding: 10px 6px 4px;
+    animation: mgResultIn 0.3s ease;
+}
+@keyframes mgResultIn {
+    from { opacity: 0; transform: scale(0.9); }
+    to   { opacity: 1; transform: scale(1); }
+}
+.mg-result-text {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 1rem;
+    font-weight: 700;
+    margin-bottom: 4px;
+}
+.mg-result-text.win  { color: #2ecc71; text-shadow: 0 0 10px rgba(46,204,113,0.4); }
+.mg-result-text.lose { color: #e74c3c; }
+.mg-result-text.tie  { color: var(--gold-secondary); }
+.mg-xp-change { font-size: 0.82rem; margin-top: 3px; }
+.mg-xp-change.pos { color: #2ecc71; }
+.mg-xp-change.neg { color: #e74c3c; }
+.mg-xp-change.neu { color: var(--text-secondary); }
+
+/* ── Action button ───────────────────────────────────────────────────────── */
+.mg-btn {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.78rem;
+    padding: 9px 20px;
+    border-radius: 8px;
+    border: 1px solid rgba(255,215,0,0.4);
+    background: linear-gradient(135deg, rgba(255,215,0,0.14), rgba(255,215,0,0.06));
+    color: var(--gold-primary);
+    cursor: pointer;
+    transition: all 0.18s;
+    letter-spacing: 0.5px;
+    width: 100%;
+    margin-top: 8px;
+}
+.mg-btn:hover:not(:disabled) {
+    background: linear-gradient(135deg, rgba(255,215,0,0.28), rgba(255,215,0,0.14));
+    box-shadow: 0 0 12px var(--gold-glow);
+    transform: translateY(-1px);
+}
+.mg-btn:disabled { opacity: 0.3; cursor: not-allowed; transform: none; }
+
+/* ── Fun mode toggle row ─────────────────────────────────────────────────── */
+.mg-fun-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+    font-size: 0.72rem;
+    color: var(--text-secondary);
+}
+
+/* ── Sparkle particles ───────────────────────────────────────────────────── */
+.mg-sparkle {
+    position: absolute;
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    pointer-events: none;
+    animation: mgSparkle 0.7s ease forwards;
+}
+@keyframes mgSparkle {
+    0%   { opacity: 1; transform: scale(1) translate(0,0); }
+    100% { opacity: 0; transform: scale(0) translate(var(--sx), var(--sy)); }
+}

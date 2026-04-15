@@ -327,10 +327,10 @@
     const impGroups = [
       ['⚡ Power',['coal_power','oil_power','nuclear_power','wind_power'],['Coal Power','Oil Power','Nuclear Power','Wind Power']],
       ['⛏️ Resources',['coal_mine','oil_well','uranium_mine','lead_mine','iron_mine','bauxite_mine','farm'],['Coal Mine','Oil Well','Uranium Mine','Lead Mine','Iron Mine','Bauxite Mine','Farm']],
-      ['🏭 Manufacturing',['oil_refinery','aluminum_refinery','steel_mill','munitions_factory','factory'],['Gas Refinery','Aluminum Refinery','Steel Mill','Munitions Factory','Factory']],
+      ['🏭 Manufacturing',['oil_refinery','aluminum_refinery','steel_mill','munitions_factory'],['Gas Refinery','Aluminum Refinery','Steel Mill','Munitions Factory']],
       ['🏛️ Civil',['police_station','hospital','recycling_center','subway'],['Police Station','Hospital','Recycling Center','Subway']],
       ['💰 Commerce',['supermarket','bank','shopping_mall','stadium'],['Supermarket','Bank','Shopping Mall','Stadium']],
-      ['⚔️ Military',['barracks','hangar','drydock'],['Barracks','Hangar','Drydock']],
+      ['⚔️ Military',['barracks','hangar','drydock','factory'],['Barracks','Hangar','Drydock','Factory']],
     ];
     const impHTML = impGroups.map(([title,keys,labels])=>{
       const rows = keys.map((k,i)=>agg[k]?`<div class="nat-imp-row"><span>${labels[i]}</span><strong>${fmt(agg[k])}</strong></div>`:'').join('');

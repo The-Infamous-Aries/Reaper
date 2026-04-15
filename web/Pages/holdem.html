@@ -1,0 +1,153 @@
+<link rel="stylesheet" href="/css/holdem.css">
+
+<div id="holdem-root" class="container-fluid">
+
+    <!-- Header -->
+    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-1">
+        <div>
+            <div class="casino-title">♠️ Texas Hold'em</div>
+            <div class="casino-subtitle">Blinds · Flop · Turn · River · Showdown</div>
+        </div>
+        <div class="casino-xp-badge">
+            <span style="color:var(--text-secondary);font-size:0.75rem">Your XP</span>
+            <span id="holdem-xp-display" class="casino-xp-amount">—</span>
+        </div>
+    </div>
+
+    <hr class="casino-divider">
+
+    <div id="holdem-error" style="display:none;color:#e74c3c;font-size:0.82rem;margin-bottom:8px;text-align:center"></div>
+
+    <!-- ── Setup screen ──────────────────────────────────────────────────── -->
+    <div id="holdem-setup-screen" class="gs-setup">
+        <link rel="stylesheet" href="/css/setup.css">
+
+        <!-- XP balance -->
+        <div class="gs-balance">
+            <div>
+                <div class="gs-balance-label">Your Balance</div>
+                <div class="gs-balance-amount" id="holdem-xp-display">—</div>
+            </div>
+            <div style="font-size:1.8rem;opacity:0.4">♠️</div>
+        </div>
+
+        <!-- Fun mode -->
+        <label class="gs-fun-row" for="holdem-fun-toggle">
+            <label class="casino-toggle-wrap" style="flex-shrink:0">
+                <input type="checkbox" id="holdem-fun-toggle">
+                <span class="casino-toggle-slider"></span>
+            </label>
+            <div class="gs-fun-text">
+                <div class="gs-fun-title">Fun Mode</div>
+                <div class="gs-fun-sub">Play without risking XP</div>
+            </div>
+        </label>
+
+        <!-- Buy-in -->
+        <div id="holdem-buyin-row" class="gs-bet-block">
+            <div class="gs-label">Buy-In Amount</div>
+            <div class="gs-input-wrap">
+                <input type="number" id="holdem-buyin-input" class="gs-input" min="100" value="500" placeholder="Enter amount">
+                <span class="gs-currency">XP</span>
+            </div>
+            <div class="gs-chips">
+                <button class="gs-chip holdem-buyin-preset" data-amount="250">250</button>
+                <button class="gs-chip holdem-buyin-preset" data-amount="500">500</button>
+                <button class="gs-chip holdem-buyin-preset" data-amount="1000">1,000</button>
+                <button class="gs-chip holdem-buyin-preset" data-amount="2500">2,500</button>
+            </div>
+        </div>
+
+        <!-- Opponents -->
+        <div class="gs-label">Opponents (AI Bots)</div>
+        <div class="gs-option-grid cols-4" style="margin-bottom:20px">
+            <button class="gs-option-btn holdem-bot-btn" data-bots="1">
+                <span class="gs-option-name">1 Bot</span>
+            </button>
+            <button class="gs-option-btn holdem-bot-btn selected" data-bots="2">
+                <span class="gs-option-name">2 Bots</span>
+            </button>
+            <button class="gs-option-btn holdem-bot-btn" data-bots="3">
+                <span class="gs-option-name">3 Bots</span>
+            </button>
+            <button class="gs-option-btn holdem-bot-btn" data-bots="4">
+                <span class="gs-option-name">4 Bots</span>
+            </button>
+        </div>
+
+        <hr class="gs-divider">
+
+        <!-- Rules -->
+        <div class="gs-rules">
+            <div class="gs-rules-row"><span class="gs-rules-key">🃏 Blinds</span> Small 25 XP · Big 50 XP</div>
+            <div class="gs-rules-row"><span class="gs-rules-key">🎯 Actions</span> Fold · Check · Call · Raise each street</div>
+            <div class="gs-rules-row"><span class="gs-rules-key">🏆 Win</span> Best 5-card hand from 2 hole + 5 community</div>
+        </div>
+
+        <button id="holdem-start-btn" class="gs-start-btn">♠️ Deal Cards</button>
+    </div>
+
+    <!-- ── Game screen ───────────────────────────────────────────────────── -->
+    <div id="holdem-game-screen" style="display:none">
+
+        <!-- Stage badge + pot -->
+        <div class="text-center mb-1">
+            <span class="holdem-stage-badge" id="holdem-stage-badge">Pre-Flop</span>
+        </div>
+        <div class="holdem-pot-bar">
+            <div class="holdem-pot-item">
+                <div class="holdem-pot-label">POT</div>
+                <div class="holdem-pot-val" id="holdem-pot-val">0 XP</div>
+            </div>
+            <div class="holdem-pot-item">
+                <div class="holdem-pot-label">CURRENT BET</div>
+                <div class="holdem-pot-val" id="holdem-bet-val">0 XP</div>
+            </div>
+        </div>
+
+        <!-- Table felt -->
+        <div class="holdem-table">
+            <!-- Community cards -->
+            <div class="holdem-community" id="holdem-community"></div>
+
+            <!-- Seats -->
+            <div class="holdem-seats" id="holdem-seats"></div>
+        </div>
+
+        <!-- Action buttons -->
+        <div class="holdem-actions mt-3" id="holdem-action-row">
+            <button class="holdem-btn holdem-btn--fold"  id="holdem-fold-btn"  disabled>Fold</button>
+            <button class="holdem-btn holdem-btn--call"  id="holdem-check-btn" disabled>Check</button>
+            <button class="holdem-btn holdem-btn--call"  id="holdem-call-btn"  disabled>Call</button>
+            <button class="holdem-btn holdem-btn--raise" id="holdem-raise-btn" disabled>Raise</button>
+        </div>
+
+        <!-- Raise input row -->
+        <div class="holdem-raise-row" id="holdem-raise-row" style="display:none">
+            <input type="number" id="holdem-raise-input" class="holdem-raise-input" min="100" placeholder="Raise amount">
+            <span id="holdem-min-raise-hint" style="font-size:0.7rem;color:var(--text-secondary)"></span>
+        </div>
+
+        <!-- Result area -->
+        <div id="holdem-result-area" style="display:none"></div>
+
+        <!-- Log -->
+        <div class="holdem-log" id="holdem-log"></div>
+
+        <!-- Cashout (always available) -->
+        <div class="text-center mt-3">
+            <button class="casino-btn-sm" id="holdem-cashout-btn">💰 Cash Out &amp; Leave</button>
+        </div>
+
+    </div>
+
+    <!-- ── Game over screen ───────────────────────────────────────────────── -->
+    <div id="holdem-gameover-screen" style="display:none;text-align:center;padding:40px 20px">
+        <div style="font-size:2rem;margin-bottom:12px">🃏</div>
+        <div id="holdem-gameover-msg" style="font-size:0.95rem;color:var(--text-primary);margin-bottom:20px"></div>
+        <button class="casino-btn" onclick="document.getElementById('holdem-gameover-screen').style.display='none';document.getElementById('holdem-setup-screen').style.display=''">Play Again</button>
+    </div>
+
+</div>
+
+<script src="/js/holdem.js"></script>

@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Request, HTTPException
 from fastapi.responses import JSONResponse
-import random
 import asyncio
+import random
 import logging
 from typing import Dict, List, Optional, Any
 
@@ -10,12 +10,26 @@ from Systems.Pets.Logic.pet_brain import LootCalculator
 from Systems.Pets.PetGames.blackjack import BlackjackSession
 from Systems.Pets.PetGames.holdem import HoldemSession
 from Systems.Pets.PetGames.craps import CrapsSession
-from Systems.Pets.PetGames.slots import SlotMachineView, get_emojis_for_difficulty, compute_total_xp, PAYOUTS
+from Systems.Pets.PetGames.slots import SlotMachineView, get_emojis_for_difficulty, PAYOUTS
 from Systems.Pets.PetGames.races import RaceSession
 
 logger = logging.getLogger(__name__)
 
 casino_api = APIRouter()
+
+# ── Per-user locks ────────────────────────────────────────────────────────────
+_user_locks: Dict[str, asyncio.Lock] = {}
+
+def _get_user_lock(user_id: str) -> asyncio.Lock:
+    if user_id not in _user_locks:
+        _user_locks[user_id] = asyncio.Lock()
+    return _user_locks[user_id]
+
+def compute_total_xp(pet_data: dict) -> int:
+    """Total XP = cumulative XP to reach current level + current level's remaining XP."""
+    lvl = int(pet_data.get("level", 1))
+    rem = int(pet_data.get("experience", 0))
+    return int(LootCalculator.get_total_experience_for_level(lvl)) + rem
 
 # Emoji categories for slots
 EMOJI_CATEGORIES = {
@@ -40,21 +54,28 @@ def get_emoji_file_path(emoji_name):
                 return f"/static/Emojis/Pets/Deco/{emoji_name}.png"
     return f"/static/Emojis/Pets/Deco/{emoji_name}.png"
 
-@casino_api.get('/casino/user-xp/{user_id}')
-async def get_user_xp(user_id: str):
-    """Get user's current XP for betting"""
-    try:
-        pet_data = await user_data_manager.get_pet_data_async(user_id)
-        if not pet_data:
-            return JSONResponse(content={'error': 'No pet found'}, status_code=404)
-        
-        total_xp = compute_total_xp(pet_data)
-        return JSONResponse(content={'total_xp': total_xp})
-    except Exception as e:
-        logger.error(f"Error getting user XP: {e}")
-        return JSONResponse(content={'error': 'Failed to get XP'}, status_code=500)
-
 # SLOTS ENDPOINTS
+@casino_api.get('/casino/xp')
+async def get_casino_xp(request: Request):
+    """Return the current user's total XP and pet info for the casino."""
+    user = request.session.get("discord_user")
+    if not user:
+        return JSONResponse(content={"error": "Not logged in"}, status_code=401)
+    user_id = str(user.get("id"))
+    pet_data = await user_data_manager.get_pet_data_async(user_id)
+    if not pet_data:
+        return JSONResponse(content={"has_pet": False, "total_xp": 0})
+    total_xp = compute_total_xp(pet_data)
+    return JSONResponse(content={
+        "has_pet": True,
+        "total_xp": total_xp,
+        "level": pet_data.get("level", 1),
+        "experience": pet_data.get("experience", 0),
+        "name": pet_data.get("name", ""),
+        "species": pet_data.get("species", ""),
+        "element": pet_data.get("element", "basic"),
+    })
+
 @casino_api.get('/casino/slots/odds')
 def get_slots_odds():
     """Return odds information for all slot themes"""
@@ -103,136 +124,134 @@ async def spin_slots(request: Request):
     """Spin slots with XP betting"""
     try:
         data = await request.json()
-        user_id = data.get('user_id')
+        # Use session user — don't trust client-supplied user_id
+        session_user = request.session.get("discord_user")
+        if not session_user:
+            return JSONResponse(content={"error": "Not logged in"}, status_code=401)
+        user_id = str(session_user.get("id"))
+
         theme = data.get('theme')
         bet_amount = int(data.get('bet_amount', 0))
         fun_mode = data.get('fun_mode', False)
-        
-        if not user_id:
-            return JSONResponse(content={'error': 'User ID required'}, status_code=400)
-        
-        # Get user pet data
-        pet_data = await user_data_manager.get_pet_data_async(user_id)
-        if not pet_data:
-            return JSONResponse(content={'error': 'No pet found'}, status_code=404)
-        
-        # Check XP balance if not fun mode
-        if not fun_mode:
-            total_xp = compute_total_xp(pet_data)
-            if bet_amount > total_xp:
-                return JSONResponse(content={'error': 'Insufficient XP'}, status_code=400)
-            
-            # Deduct bet amount
-            await LootCalculator.apply_xp_change(int(user_id), -bet_amount, source="slots_bet")
-        
-        # Get emojis for theme
-        theme_map = {
-            'Very Easy': 'Pet Type',
-            'Easy': 'Units', 
-            'Medium': 'Stats',
-            'Hard': 'Elements',
-            'Very Hard': 'Pets',
-            'Insanity': ['Pets', 'Pet Type', 'Units', 'Stats', 'Elements']
-        }
 
-        emoji_category = theme_map.get(theme)
-        emojis = []
+        async with _get_user_lock(user_id):
+            return await _spin_slots_inner(request, user_id, theme, bet_amount, fun_mode)
 
-        if isinstance(emoji_category, list):
-            for category in emoji_category:
-                emojis.extend(EMOJI_CATEGORIES.get(category, []))
-        elif emoji_category:
-            emojis = EMOJI_CATEGORIES.get(emoji_category, [])
-
-        if not emojis:
-            return JSONResponse(content={'error': f'No emojis found for theme {theme}'}, status_code=400)
-
-        # Handle Insanity mode (dual reels)
-        if theme == 'Insanity':
-            element = str(pet_data.get("element", "fire")).lower()
-            species = str(pet_data.get("species", "Cat"))
-            
-            element_emojis = EMOJI_CATEGORIES.get('Elements', [])
-            species_emojis = EMOJI_CATEGORIES.get('Pets', [])
-            
-            # Spin both reels
-            emoji_slots = [random.choice(element_emojis) for _ in range(3)]
-            pet_slots = [random.choice(species_emojis) for _ in range(3)]
-            
-            element_matches = sum(1 for s in emoji_slots if s.lower() == element)
-            species_matches = sum(1 for s in pet_slots if s == species)
-            
-            # Calculate winnings
-            winnings = 0
-            result_text = "Better luck next time!"
-            payouts = PAYOUTS.get("insanity", {})
-            
-            if element_matches == 3 and species_matches == 3:
-                winnings = int(bet_amount * float(payouts.get("three_both", 0.0)))
-                result_text = "INSANITY JACKPOT!"
-            elif (element_matches == 3 and species_matches == 2) or (element_matches == 2 and species_matches == 3):
-                winnings = int(bet_amount * float(payouts.get("combination", 0.0)))
-                result_text = "MEGA WIN!"
-            elif element_matches == 2 and species_matches == 2:
-                winnings = int(bet_amount * float(payouts.get("two_both", 0.0)))
-                result_text = "DUAL WIN!"
-            
-            # Apply winnings
-            if not fun_mode and winnings > 0:
-                await LootCalculator.apply_xp_change(int(user_id), winnings, source="slots_win")
-            
-            return JSONResponse(content={
-                'emoji_reels': [{'name': e, 'path': get_emoji_file_path(e)} for e in emoji_slots],
-                'pet_reels': [{'name': p, 'path': get_emoji_file_path(p)} for p in pet_slots],
-                'result_text': result_text,
-                'winnings': winnings if not fun_mode else 0,
-                'element_target': element,
-                'species_target': species,
-                'insanity_mode': True
-            })
-        else:
-            # Regular slots
-            reel1 = random.choice(emojis)
-            reel2 = random.choice(emojis)
-            reel3 = random.choice(emojis)
-            
-            reels_result = [reel1, reel2, reel3]
-            
-            # Check for wins
-            all_match = len(set(reels_result)) == 1
-            two_match = len(set(reels_result)) == 2
-            
-            # Calculate winnings
-            winnings = 0
-            payouts = PAYOUTS.get(theme.lower().replace(' ', '_'), PAYOUTS.get("very_easy", {"three": 0.0, "two": 0.0}))
-            
-            if all_match:
-                winnings = int(bet_amount * payouts["three"])
-                result_text = 'JACKPOT! 3 in a row!'
-            elif two_match:
-                winnings = int(bet_amount * payouts["two"])
-                result_text = 'WIN! 2 in a row!'
-            else:
-                result_text = 'Better luck next time!'
-            
-            # Apply winnings
-            if not fun_mode and winnings > 0:
-                await LootCalculator.apply_xp_change(int(user_id), winnings, source="slots_win")
-            
-            response_reels = [
-                {'name': r, 'path': get_emoji_file_path(r)} for r in reels_result
-            ]
-            
-            return JSONResponse(content={
-                'reels': response_reels,
-                'result_text': result_text,
-                'winnings': winnings if not fun_mode else 0,
-                'insanity_mode': False
-            })
-            
     except Exception as e:
         logger.error(f"Error in slots spin: {e}")
         return JSONResponse(content={'error': 'Spin failed'}, status_code=500)
+
+
+async def _spin_slots_inner(request: Request, user_id: str, theme: str, bet_amount: int, fun_mode: bool):
+    # Get user pet data
+    pet_data = await user_data_manager.get_pet_data_async(user_id)
+    if not pet_data:
+        return JSONResponse(content={'error': 'No pet found'}, status_code=404)
+
+    # Check XP balance if not fun mode
+    if not fun_mode:
+        total_xp = compute_total_xp(pet_data)
+        if bet_amount > total_xp:
+            return JSONResponse(content={'error': 'Insufficient XP'}, status_code=400)
+        # Deduct bet amount
+        await LootCalculator.apply_xp_change(int(user_id), -bet_amount, source="slots_bet")
+
+    # Get emojis for theme
+    theme_map = {
+        'Very Easy': 'Pet Type',
+        'Easy': 'Units',
+        'Medium': 'Stats',
+        'Hard': 'Elements',
+        'Very Hard': 'Pets',
+        'Insanity': ['Pets', 'Pet Type', 'Units', 'Stats', 'Elements']
+    }
+
+    emoji_category = theme_map.get(theme)
+    emojis = []
+
+    if isinstance(emoji_category, list):
+        for category in emoji_category:
+            emojis.extend(EMOJI_CATEGORIES.get(category, []))
+    elif emoji_category:
+        emojis = EMOJI_CATEGORIES.get(emoji_category, [])
+
+    if not emojis:
+        return JSONResponse(content={'error': f'No emojis found for theme {theme}'}, status_code=400)
+
+    # Handle Insanity mode (dual reels)
+    if theme == 'Insanity':
+        element = str(pet_data.get("element", "fire")).lower()
+        species = str(pet_data.get("species", "Cat"))
+
+        element_emojis = EMOJI_CATEGORIES.get('Elements', [])
+        species_emojis = EMOJI_CATEGORIES.get('Pets', [])
+
+        emoji_slots = [random.choice(element_emojis) for _ in range(3)]
+        pet_slots = [random.choice(species_emojis) for _ in range(3)]
+
+        element_matches = sum(1 for s in emoji_slots if s.lower() == element)
+        species_matches = sum(1 for s in pet_slots if s == species)
+
+        winnings = 0
+        result_text = "Better luck next time!"
+        payouts = PAYOUTS.get("insanity", {})
+
+        if element_matches == 3 and species_matches == 3:
+            winnings = int(bet_amount * float(payouts.get("three_both", 0.0)))
+            result_text = "INSANITY JACKPOT!"
+        elif (element_matches == 3 and species_matches == 2) or (element_matches == 2 and species_matches == 3):
+            winnings = int(bet_amount * float(payouts.get("combination", 0.0)))
+            result_text = "MEGA WIN!"
+        elif element_matches == 2 and species_matches == 2:
+            winnings = int(bet_amount * float(payouts.get("two_both", 0.0)))
+            result_text = "DUAL WIN!"
+
+        if not fun_mode and winnings > 0:
+            await LootCalculator.apply_xp_change(int(user_id), winnings, source="slots_win")
+        if not fun_mode:
+            net = winnings - bet_amount
+            await user_data_manager.update_pet_gambling_stats(user_id, "slots", net, bet_amount=bet_amount)
+
+        return JSONResponse(content={
+            'emoji_reels': [{'name': e, 'path': get_emoji_file_path(e)} for e in emoji_slots],
+            'pet_reels': [{'name': p, 'path': get_emoji_file_path(p)} for p in pet_slots],
+            'result_text': result_text,
+            'winnings': winnings if not fun_mode else 0,
+            'element_target': element,
+            'species_target': species,
+            'insanity_mode': True
+        })
+    else:
+        # Regular slots
+        reels_result = [random.choice(emojis) for _ in range(3)]
+
+        all_match = len(set(reels_result)) == 1
+        two_match = len(set(reels_result)) == 2
+
+        winnings = 0
+        payouts = PAYOUTS.get(theme.lower().replace(' ', '_'), PAYOUTS.get("very_easy", {"three": 0.0, "two": 0.0}))
+
+        if all_match:
+            winnings = int(bet_amount * payouts["three"])
+            result_text = 'JACKPOT! 3 in a row!'
+        elif two_match:
+            winnings = int(bet_amount * payouts["two"])
+            result_text = 'WIN! 2 in a row!'
+        else:
+            result_text = 'Better luck next time!'
+
+        if not fun_mode and winnings > 0:
+            await LootCalculator.apply_xp_change(int(user_id), winnings, source="slots_win")
+        if not fun_mode:
+            net = winnings - bet_amount
+            await user_data_manager.update_pet_gambling_stats(user_id, "slots", net, bet_amount=bet_amount)
+
+        return JSONResponse(content={
+            'reels': [{'name': r, 'path': get_emoji_file_path(r)} for r in reels_result],
+            'result_text': result_text,
+            'winnings': winnings if not fun_mode else 0,
+            'insanity_mode': False
+        })
 
 # BLACKJACK ENDPOINTS
 @casino_api.post('/casino/blackjack/create')

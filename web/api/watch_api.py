@@ -5,7 +5,7 @@ from typing import Dict, Any
 import re
 from datetime import date
 
-from Systems.PnW.MA.night_watch_wars_db import NightWatchWarsDB
+from Systems.Functions.night_watch_wars_db import NightWatchWarsDB
 from Systems.PnW.Util.war_calc import get_resource_prices, calculate_unit_cost, calculate_war_costs
 from Systems.PnW.MA.war_net_bd import WarsNetBD
 
@@ -697,79 +697,105 @@ async def get_nation_ranks(nation_name: str):
 
 @router.get("/watch/periods")
 async def get_available_periods():
-    """Return all distinct weeks and months that have war data in the DB."""
+    """Return all distinct Sun–Sat weeks and calendar months that have war data in the DB.
+
+    Each entry is tagged with `is_current` so the frontend can highlight the
+    current week/month without doing its own timezone-sensitive date math.
+    """
     db = NightWatchWarsDB(WATCH_DB_PATH)
     try:
         import sqlite3
+        import calendar
+        from datetime import date as _date, timedelta
+
         async with db._lock:
             with sqlite3.connect(db.db_path) as conn:
                 cursor = conn.cursor()
                 cursor.execute(
                     """
-                    SELECT DISTINCT
-                        strftime('%Y-%W', substr(date, 1, 10)) AS week_key,
-                        strftime('%Y-%m', substr(date, 1, 10)) AS month_key,
-                        date(substr(date, 1, 10), 'weekday 0', '-6 days') AS week_start,
-                        date(substr(date, 1, 10), 'weekday 0') AS week_end,
-                        strftime('%Y-%m-01', substr(date, 1, 10)) AS month_start
+                    SELECT DISTINCT date(substr(date, 1, 10)) AS d
                     FROM wars
                     WHERE att_alliance_id = ? OR def_alliance_id = ?
-                    ORDER BY date DESC
-                    """,
-                    (WATCH_ALLIANCE_ID, WATCH_ALLIANCE_ID),
-                )
-                rows = cursor.fetchall()
-
-                cursor.execute(
-                    """
-                    SELECT DISTINCT date(substr(date, 1, 10))
-                    FROM wars
-                    WHERE att_alliance_id = ? OR def_alliance_id = ?
-                    ORDER BY 1 ASC
+                    ORDER BY d ASC
                     """,
                     (WATCH_ALLIANCE_ID, WATCH_ALLIANCE_ID),
                 )
                 all_dates = [r[0] for r in cursor.fetchall() if r[0]]
 
-        seen_weeks: dict = {}
-        seen_months: dict = {}
+        if not all_dates:
+            return {"weeks": [], "months": [], "dates": [],
+                    "current_week_key": None, "current_month_key": None}
 
-        for week_key, month_key, week_start, week_end, month_start in rows:
-            if week_key and week_key not in seen_weeks:
-                seen_weeks[week_key] = {"start": week_start, "end": week_end}
-            if month_key and month_key not in seen_months:
-                seen_months[month_key] = {"start": month_start}
+        # ── Determine today's Sun–Sat week and calendar month (server-side) ──
+        today = _date.today()
+        days_since_sunday = (today.weekday() + 1) % 7   # Mon=0…Sun=6 → 0 on Sun
+        current_week_sun  = today - timedelta(days=days_since_sunday)
+        current_week_key  = current_week_sun.isoformat()          # "YYYY-MM-DD" of Sunday
+        current_month_key = today.strftime("%Y-%m")               # "YYYY-MM"
 
-        # Build month end dates
-        import calendar
-        from datetime import date as _date
+        # ── Build Sun–Sat week buckets ────────────────────────────────────────
+        seen_weeks: dict  = {}   # sunday-ISO → {start, end}
+        seen_months: dict = {}   # "YYYY-MM"  → {start}
+
+        for ds in all_dates:
+            d = _date.fromisoformat(ds)
+
+            # Sun–Sat week — key is the Sunday date string
+            dsun = (d.weekday() + 1) % 7
+            week_sun = d - timedelta(days=dsun)
+            week_sat = week_sun + timedelta(days=6)
+            wk = week_sun.isoformat()
+            if wk not in seen_weeks:
+                seen_weeks[wk] = {"start": week_sun.isoformat(), "end": week_sat.isoformat()}
+
+            # Calendar month
+            mk = d.strftime("%Y-%m")
+            if mk not in seen_months:
+                seen_months[mk] = {"start": d.strftime("%Y-%m-01")}
+
+        # ── Format helpers ────────────────────────────────────────────────────
+        def _fmt_date(iso: str) -> str:
+            d = _date.fromisoformat(iso)
+            return f"{d.month}/{d.day:02d}/{str(d.year)[2:]}"
+
+        # ── Weeks — newest first, tag current ────────────────────────────────
+        weeks = sorted(
+            [
+                {
+                    "key":        wk,
+                    "start":      wv["start"],
+                    "end":        wv["end"],
+                    "label":      f"{_fmt_date(wv['start'])} – {_fmt_date(wv['end'])}",
+                    "is_current": wk == current_week_key,
+                }
+                for wk, wv in seen_weeks.items()
+            ],
+            key=lambda x: x["start"],
+            reverse=True,
+        )
+
+        # ── Months — newest first, tag current ───────────────────────────────
         months = []
         for mk, mv in seen_months.items():
             y, m = int(mk[:4]), int(mk[5:7])
             last_day = calendar.monthrange(y, m)[1]
             months.append({
-                "key": mk,
-                "start": mv["start"],
-                "end": f"{y:04d}-{m:02d}-{last_day:02d}",
-                "label": _date(y, m, 1).strftime("%B %Y"),
+                "key":        mk,
+                "start":      mv["start"],
+                "end":        f"{y:04d}-{m:02d}-{last_day:02d}",
+                "label":      _date(y, m, 1).strftime("%B %Y"),
+                "is_current": mk == current_month_key,
             })
+        months.sort(key=lambda x: x["start"], reverse=True)
 
-        def _fmt_w2(iso: str) -> str:
-            from datetime import date as _d3
-            d = _d3.fromisoformat(iso)
-            return f"{d.month}/{d.day:02d}/{str(d.year)[2:]}"
+        return {
+            "weeks":              weeks,
+            "months":             months,
+            "dates":              all_dates,
+            "current_week_key":   current_week_key,
+            "current_month_key":  current_month_key,
+        }
 
-        weeks = [
-            {
-                "key": wk,
-                "start": wv["start"],
-                "end": wv["end"],
-                "label": f"{_fmt_w2(wv['start'])} - {_fmt_w2(wv['end'])}",
-            }
-            for wk, wv in seen_weeks.items()
-        ]
-
-        return {"weeks": weeks, "months": months, "dates": all_dates}
     except Exception as e:
         logger.error(f"Error fetching available periods: {e}")
         return {"weeks": [], "months": [], "error": str(e)}
@@ -783,7 +809,7 @@ NATIONS_DB_PATH = "c:\\Users\\codyr\\DiscordBots\\Reaper\\Databases\\NightWatchN
 async def get_watch_nations():
     """Return all nations from the NightWatchNations DB with their city aggregates."""
     try:
-        from Systems.PnW.MA.night_watch_nations_db import NightWatchNationsDB
+        from Systems.Functions.night_watch_nations_db import NightWatchNationsDB
         import sqlite3
 
         db = NightWatchNationsDB(NATIONS_DB_PATH)
@@ -880,7 +906,7 @@ async def get_watch_nations():
 async def get_watch_nation_detail(nation_id: int):
     """Return full nation detail including all cities."""
     try:
-        from Systems.PnW.MA.night_watch_nations_db import NightWatchNationsDB
+        from Systems.Functions.night_watch_nations_db import NightWatchNationsDB
 
         db = NightWatchNationsDB(NATIONS_DB_PATH)
         nation = await db.get_nation(nation_id)

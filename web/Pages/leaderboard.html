@@ -12,6 +12,7 @@
             display: flex;
             gap: 0.5rem;
             flex-wrap: wrap;
+            overflow: visible;
         }
         .lb-tab {
             padding: 0.5rem 1.1rem;
@@ -140,6 +141,14 @@
             background: rgba(176, 0, 32, 0.08);
         }
 
+        /* Allow dropdowns to escape the card boundary */
+        .lb-shell > .card {
+            overflow: visible;
+        }
+        .lb-shell > .card > .card-header {
+            overflow: visible;
+        }
+
         .lb-tab-group {
             position: relative;
         }
@@ -228,6 +237,11 @@
         }
         .lb-apply-btn:hover { opacity: 0.85; }
         .lb-date-sep { color: var(--text-secondary); font-size: 0.8rem; }
+
+        .lb-sub-item--current {
+            color: var(--gold-primary) !important;
+            font-weight: 700;
+        }
 
         .lb-loading-grid {
             display: grid;
@@ -399,35 +413,19 @@
 
         // ── Date helpers ──────────────────────────────────────────────────────
         function toISO(d) {
-            return d.toISOString().slice(0, 10);
+            const y = d.getFullYear();
+            const m = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `${y}-${m}-${day}`;
         }
-        function getPeriodRange(period) {
-            const now = new Date();
-            const y = now.getFullYear(), m = now.getMonth(), d = now.getDay();
-            // week starts Monday
-            const dayOfWeek = (d === 0) ? 6 : d - 1;
 
-            if (period === 'this_month') {
-                const start = new Date(y, m, 1);
-                const end = new Date(y, m + 1, 0);
-                return { start: toISO(start), end: toISO(end), label: start.toLocaleDateString(undefined, { month: 'long', year: 'numeric' }) };
-            }
-            if (period === 'last_month') {
-                const start = new Date(y, m - 1, 1);
-                const end = new Date(y, m, 0);
-                return { start: toISO(start), end: toISO(end), label: start.toLocaleDateString(undefined, { month: 'long', year: 'numeric' }) };
-            }
-            if (period === 'this_week') {
-                const start = new Date(now); start.setDate(now.getDate() - dayOfWeek); start.setHours(0,0,0,0);
-                const end = new Date(start); end.setDate(start.getDate() + 6);
-                return { start: toISO(start), end: toISO(end), label: `${start.toLocaleDateString(undefined,{month:'short',day:'numeric'})} – ${end.toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'})}` };
-            }
-            if (period === 'last_week') {
-                const start = new Date(now); start.setDate(now.getDate() - dayOfWeek - 7); start.setHours(0,0,0,0);
-                const end = new Date(start); end.setDate(start.getDate() + 6);
-                return { start: toISO(start), end: toISO(end), label: `${start.toLocaleDateString(undefined,{month:'short',day:'numeric'})} – ${end.toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'})}` };
-            }
-            return null;
+        // Periods loaded from API — keyed by period id string or {start,end,label} object
+        // _periodMap holds the resolved {start, end, label} for named periods
+        const _periodMap = {};   // 'this_month' | 'this_week' → {start, end, label}
+
+        function getPeriodRange(period) {
+            if (typeof period === 'object' && period !== null) return period;
+            return _periodMap[period] || null;
         }
 
         // ── Data enrichment ───────────────────────────────────────────────────
@@ -663,40 +661,53 @@
                 if (!res.ok) return;
                 const data = await res.json();
 
-                // Constrain custom date pickers to dates that exist in the DB
                 if (data.dates && data.dates.length) applyDateConstraints(data.dates);
 
                 const monthsMenu = document.getElementById('prev-months-menu');
-                const weeksMenu = document.getElementById('prev-weeks-menu');
+                const weeksMenu  = document.getElementById('prev-weeks-menu');
+                const months = data.months || [];
+                const weeks  = data.weeks  || [];
 
-                // Skip the current month (first entry) since "This Month" tab covers it
-                const now = new Date();
-                const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+                // ── Wire up "This Month" tab from API data ────────────────────
+                const currentMonth = months.find(m => m.is_current);
+                if (currentMonth) {
+                    _periodMap['this_month'] = { start: currentMonth.start, end: currentMonth.end, label: currentMonth.label };
+                } else {
+                    // No data yet for current month — disable the tab
+                    const btn = document.querySelector('.lb-tab[data-period="this_month"]');
+                    if (btn) { btn.disabled = true; btn.title = 'No data for current month'; }
+                }
 
-                const months = (data.months || []).filter(m => m.key !== currentMonthKey);
+                // ── Wire up "This Week" tab from API data ─────────────────────
+                const currentWeek = weeks.find(w => w.is_current);
+                if (currentWeek) {
+                    _periodMap['this_week'] = { start: currentWeek.start, end: currentWeek.end, label: currentWeek.label };
+                } else {
+                    const btn = document.querySelector('.lb-tab[data-period="this_week"]');
+                    if (btn) { btn.disabled = true; btn.title = 'No data for current week'; }
+                }
+
+                // ── Months dropdown — ALL months, current labeled ─────────────
                 if (months.length === 0) {
                     monthsMenu.innerHTML = '<div class="lb-sub-item" style="color:var(--text-secondary);cursor:default;">No data</div>';
                 } else {
-                    monthsMenu.innerHTML = months.map(m =>
-                        `<button class="lb-sub-item" data-start="${m.start}" data-end="${m.end}" data-label="${m.label}">${m.label}</button>`
-                    ).join('');
+                    monthsMenu.innerHTML = months.map(m => {
+                        const label = m.is_current ? `${m.label} ★` : m.label;
+                        return `<button class="lb-sub-item${m.is_current ? ' lb-sub-item--current' : ''}" data-start="${m.start}" data-end="${m.end}" data-label="${m.label}">${label}</button>`;
+                    }).join('');
                 }
 
-                // Skip the current week
-                const dayOfWeek = now.getDay() === 0 ? 6 : now.getDay() - 1;
-                const weekStart = new Date(now); weekStart.setDate(now.getDate() - dayOfWeek); weekStart.setHours(0,0,0,0);
-                const currentWeekStart = weekStart.toISOString().slice(0,10);
-
-                const weeks = (data.weeks || []).filter(w => w.start !== currentWeekStart);
+                // ── Weeks dropdown — ALL weeks, current labeled ───────────────
                 if (weeks.length === 0) {
                     weeksMenu.innerHTML = '<div class="lb-sub-item" style="color:var(--text-secondary);cursor:default;">No data</div>';
                 } else {
-                    weeksMenu.innerHTML = weeks.map(w =>
-                        `<button class="lb-sub-item" data-start="${w.start}" data-end="${w.end}" data-label="${w.label}">${w.label}</button>`
-                    ).join('');
+                    weeksMenu.innerHTML = weeks.map(w => {
+                        const label = w.is_current ? `${w.label} ★` : w.label;
+                        return `<button class="lb-sub-item${w.is_current ? ' lb-sub-item--current' : ''}" data-start="${w.start}" data-end="${w.end}" data-label="${w.label}">${label}</button>`;
+                    }).join('');
                 }
 
-                // Attach click handlers to sub-items
+                // ── Attach click handlers to all dropdown items ───────────────
                 document.querySelectorAll('.lb-sub-item[data-start]').forEach(item => {
                     item.addEventListener('click', (e) => {
                         e.stopPropagation();
@@ -706,6 +717,11 @@
                         loadCustomRange(activePeriod);
                     });
                 });
+
+                // ── Now that _periodMap is populated, load the default period ──
+                // Re-trigger the initial load so it uses the API-sourced date range
+                load(activePeriod);
+
             } catch (e) {
                 console.warn('Could not load periods:', e);
             }
@@ -739,8 +755,8 @@
         }
 
         // ── Init ──────────────────────────────────────────────────────────────
+        // loadPeriods() populates _periodMap then calls load() itself
         loadPeriods();
-        load(activePeriod);
     })();
     </script>
 </body>

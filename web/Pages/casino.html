@@ -1,343 +1,246 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pet Casino</title>
-    
-    <!-- External CSS -->
-    <link rel="stylesheet" href="/css/casino.css">
-    
-    <!-- External JavaScript -->
-    <script src="/js/casino.js?v=20250413" defer></script>
-</head>
-<body>
+<link rel="stylesheet" href="/css/casino.css">
 
-<div class="container-fluid">
-    <!-- Casino Header -->
-    <div class="row">
-        <div class="col-12">
-            <div class="casino-header text-center">
-                <h1 class="casino-title">🎰 PET CASINO 🎰</h1>
-                <div class="casino-subtitle">Gamble Your Pet XP • Win Big or Go Home</div>
-                <div id="user-xp-display" class="user-xp-display">
-                    <span class="xp-label">Your XP:</span>
-                    <span id="current-xp" class="xp-amount">Loading...</span>
-                </div>
-            </div>
+<div class="container-fluid" id="casino-root">
+
+    <!-- Header -->
+    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-1">
+        <div>
+            <div class="casino-title">🎰 Pet Casino</div>
+            <div class="casino-subtitle">Gamble Your Pet XP · Win Big or Go Home</div>
+        </div>
+        <div id="user-xp-display" class="casino-xp-badge">
+            <span style="color:var(--text-secondary);font-size:0.75rem">Your XP</span>
+            <span id="current-xp" class="casino-xp-amount">—</span>
         </div>
     </div>
 
-    <!-- Game Selection Grid -->
-    <div class="row casino-games-grid">
-        <!-- Slots Game -->
-        <div class="col-lg-4 col-md-6 mb-4">
-            <div class="casino-game-card" data-game="slots">
-                <div class="game-icon">🎰</div>
-                <h3 class="game-title">Slot Machine</h3>
-                <p class="game-description">Spin the reels and match symbols for big wins!</p>
-                <div class="game-features">
-                    <span class="feature-tag">6 Difficulties</span>
-                    <span class="feature-tag">Insanity Mode</span>
-                </div>
-                <button class="btn btn-casino-primary play-game-btn" data-game="slots">
-                    Play Slots
-                </button>
-            </div>
-        </div>
+    <hr class="casino-divider">
 
-        <!-- Blackjack Game -->
-        <div class="col-lg-4 col-md-6 mb-4">
-            <div class="casino-game-card" data-game="blackjack">
-                <div class="game-icon">🃏</div>
-                <h3 class="game-title">Blackjack</h3>
-                <p class="game-description">Beat the dealer and get as close to 21 as possible!</p>
-                <div class="game-features">
-                    <span class="feature-tag">Classic Rules</span>
-                    <span class="feature-tag">Split & Double</span>
-                </div>
-                <button class="btn btn-casino-primary play-game-btn" data-game="blackjack">
-                    Play Blackjack
-                </button>
-            </div>
-        </div>
-
-        <!-- Texas Hold'em Game -->
-        <div class="col-lg-4 col-md-6 mb-4">
-            <div class="casino-game-card" data-game="holdem">
-                <div class="game-icon">♠️</div>
-                <h3 class="game-title">Texas Hold'em</h3>
-                <p class="game-description">The ultimate poker experience with community cards!</p>
-                <div class="game-features">
-                    <span class="feature-tag">Tournament Style</span>
-                    <span class="feature-tag">AI Opponents</span>
-                </div>
-                <button class="btn btn-casino-primary play-game-btn" data-game="holdem">
-                    Play Hold'em
-                </button>
-            </div>
-        </div>
-
-        <!-- Craps Game -->
-        <div class="col-lg-4 col-md-6 mb-4">
-            <div class="casino-game-card" data-game="craps">
-                <div class="game-icon">🎲</div>
-                <h3 class="game-title">Craps</h3>
-                <p class="game-description">Roll the dice and bet on the outcome!</p>
-                <div class="game-features">
-                    <span class="feature-tag">Multiple Bets</span>
-                    <span class="feature-tag">Live Action</span>
-                </div>
-                <button class="btn btn-casino-primary play-game-btn" data-game="craps">
-                    Play Craps
-                </button>
-            </div>
-        </div>
-
-        <!-- Pet Races Game -->
-        <div class="col-lg-4 col-md-6 mb-4">
-            <div class="casino-game-card" data-game="races">
-                <div class="game-icon">🏁</div>
-                <h3 class="game-title">Pet Races</h3>
-                <p class="game-description">Race your pet against AI competitors!</p>
-                <div class="game-features">
-                    <span class="feature-tag">3 Difficulties</span>
-                    <span class="feature-tag">Win Streaks</span>
-                </div>
-                <button class="btn btn-casino-primary play-game-btn" data-game="races">
-                    Race Pets
-                </button>
-            </div>
-        </div>
-
-        <!-- Fun Mode Toggle -->
-        <div class="col-lg-4 col-md-6 mb-4">
-            <div class="casino-game-card fun-mode-card">
-                <div class="game-icon">🎮</div>
-                <h3 class="game-title">Fun Mode</h3>
-                <p class="game-description">Play without risking XP - just for entertainment!</p>
-                <div class="fun-mode-toggle">
-                    <label class="toggle-switch">
-                        <input type="checkbox" id="fun-mode-toggle">
-                        <span class="toggle-slider"></span>
-                    </label>
-                    <span class="toggle-label">Fun Mode</span>
-                </div>
-            </div>
-        </div>
+    <!-- Loading -->
+    <div id="casino-loading" class="text-center py-5">
+        <div class="spinner-border" style="color:var(--gold-primary)" role="status"></div>
+        <p class="mt-2" style="color:var(--text-secondary);font-size:0.82rem">Loading casino...</p>
     </div>
 
-    <!-- Game Modal -->
-    <div class="modal fade" id="gameModal" tabindex="-1">
-        <div class="modal-dialog modal-xl">
-            <div class="modal-content casino-modal">
-                <div class="modal-header casino-modal-header">
-                    <h5 class="modal-title" id="gameModalTitle">Game</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body" id="gameModalBody">
-                    <!-- Game content will be loaded here -->
-                </div>
-            </div>
-        </div>
+    <!-- Login prompt -->
+    <div id="casino-login-prompt" style="display:none" class="text-center py-5">
+        <div style="font-size:2rem;margin-bottom:8px">🔒</div>
+        <div style="color:var(--text-secondary);font-size:0.9rem">Sign in with Discord to access the casino.</div>
+        <a href="/api/discord/login" class="casino-btn mt-3" style="display:inline-block">Login with Discord</a>
     </div>
 
-    <!-- Slots Game Content (Hidden Template) -->
-    <div id="slots-game-template" class="d-none">
-        <div class="slots-container">
-            <div class="slots-header">
-                <h3>🎰 Slot Machine</h3>
-                <div class="slots-mode-info">
-                    <span id="slots-current-mode">Betting Mode</span>
-                    <span class="mode-separator">•</span>
-                    <span id="slots-current-xp">XP: Loading...</span>
+    <!-- No pet prompt -->
+    <div id="casino-no-pet" style="display:none" class="text-center py-5">
+        <div style="font-size:2rem;margin-bottom:8px">🐾</div>
+        <div style="color:var(--text-secondary);font-size:0.9rem">You need a pet to gamble XP in the casino.</div>
+        <a href="?page=mypet" class="casino-btn mt-3" style="display:inline-block">Get a Pet</a>
+    </div>
+
+    <!-- Main casino -->
+    <div id="casino-main" style="display:none">
+
+        <!-- Fun mode toggle -->
+        <div class="d-flex align-items-center gap-3 mb-4">
+            <label class="casino-toggle-wrap">
+                <input type="checkbox" id="fun-mode-toggle">
+                <span class="casino-toggle-slider"></span>
+            </label>
+            <div>
+                <div style="font-size:0.82rem;color:var(--gold-secondary);font-weight:600">Fun Mode</div>
+                <div style="font-size:0.7rem;color:var(--text-secondary)">Play without risking XP</div>
+            </div>
+        </div>
+
+        <!-- Game cards -->
+        <div class="row g-3" id="casino-game-grid">
+
+            <div class="col-lg-4 col-md-6">
+                <div class="casino-game-card" onclick="window._casinoOpen('slots')">
+                    <div class="casino-game-icon">🎰</div>
+                    <div class="casino-game-title">Slot Machine</div>
+                    <div class="casino-game-desc">Spin the reels and match symbols for big wins!</div>
+                    <div class="d-flex gap-2 flex-wrap mt-2">
+                        <span class="casino-tag">6 Difficulties</span>
+                        <span class="casino-tag">Insanity Mode</span>
+                    </div>
                 </div>
             </div>
 
-            <!-- Difficulty Selection -->
-            <div id="slots-setup" class="slots-setup">
-                <h5 class="text-center mb-3">Choose Difficulty & Place Bet</h5>
-                
-                <div class="difficulty-grid mb-3">
-                    <button class="btn btn-outline-casino difficulty-btn" data-difficulty="Very Easy">
-                        <div class="difficulty-info">
-                            <div class="difficulty-name">Very Easy</div>
-                            <div class="difficulty-desc">Pet Types • Low Risk</div>
-                        </div>
-                    </button>
-                    <button class="btn btn-outline-casino difficulty-btn" data-difficulty="Easy">
-                        <div class="difficulty-info">
-                            <div class="difficulty-name">Easy</div>
-                            <div class="difficulty-desc">Military • Moderate Risk</div>
-                        </div>
-                    </button>
-                    <button class="btn btn-outline-casino difficulty-btn" data-difficulty="Medium">
-                        <div class="difficulty-info">
-                            <div class="difficulty-name">Medium</div>
-                            <div class="difficulty-desc">Stats • Balanced</div>
-                        </div>
-                    </button>
-                    <button class="btn btn-outline-casino difficulty-btn" data-difficulty="Hard">
-                        <div class="difficulty-info">
-                            <div class="difficulty-name">Hard</div>
-                            <div class="difficulty-desc">Elements • High Risk</div>
-                        </div>
-                    </button>
-                    <button class="btn btn-outline-casino difficulty-btn" data-difficulty="Very Hard">
-                        <div class="difficulty-info">
-                            <div class="difficulty-name">Very Hard</div>
-                            <div class="difficulty-desc">Pets • Extreme Risk</div>
-                        </div>
-                    </button>
-                    <button class="btn btn-outline-casino difficulty-btn" data-difficulty="Insanity">
-                        <div class="difficulty-info">
-                            <div class="difficulty-name">Insanity</div>
-                            <div class="difficulty-desc">Dual Reels • Massive Payouts</div>
-                        </div>
-                    </button>
-                </div>
-
-                <div class="bet-input-section">
-                    <label for="slots-bet-amount" class="form-label">Bet Amount (XP)</label>
-                    <input type="number" class="form-control bet-input" id="slots-bet-amount" min="10" max="100000" placeholder="Enter XP amount">
-                    <div class="bet-presets">
-                        <button class="btn btn-sm btn-outline-secondary preset-btn" data-amount="50">50</button>
-                        <button class="btn btn-sm btn-outline-secondary preset-btn" data-amount="100">100</button>
-                        <button class="btn btn-sm btn-outline-secondary preset-btn" data-amount="500">500</button>
-                        <button class="btn btn-sm btn-outline-secondary preset-btn" data-amount="1000">1K</button>
+            <div class="col-lg-4 col-md-6">
+                <div class="casino-game-card" onclick="window._casinoOpenGame('blackjack')">
+                    <div class="casino-game-icon">🃏</div>
+                    <div class="casino-game-title">Blackjack</div>
+                    <div class="casino-game-desc">Beat the dealer to 21. Hit, stand, double down, split.</div>
+                    <div class="d-flex gap-2 flex-wrap mt-2">
+                        <span class="casino-tag">3:2 Blackjack</span>
+                        <span class="casino-tag">Split & Double</span>
                     </div>
                 </div>
-
-                <button id="start-slots-btn" class="btn btn-casino-primary w-100 mt-3" disabled>
-                    Start Slot Machine
-                </button>
             </div>
 
-            <!-- Slots Game Area -->
-            <div id="slots-game" class="slots-game d-none">
-                <div class="slots-info-bar">
-                    <div class="bet-info">Bet: <span id="current-bet">0</span> XP</div>
-                    <div class="difficulty-info">Difficulty: <span id="current-difficulty">-</span></div>
-                </div>
-
-                <!-- Regular Slots Reels -->
-                <div id="regular-slots" class="slots-reels-container">
-                    <div class="slots-reel-container">
-                        <div class="slots-reel" id="reel-1"></div>
-                    </div>
-                    <div class="slots-reel-container">
-                        <div class="slots-reel" id="reel-2"></div>
-                    </div>
-                    <div class="slots-reel-container">
-                        <div class="slots-reel" id="reel-3"></div>
+            <div class="col-lg-4 col-md-6">
+                <div class="casino-game-card" onclick="window._casinoOpenGame('craps')">
+                    <div class="casino-game-icon">🎲</div>
+                    <div class="casino-game-title">Craps</div>
+                    <div class="casino-game-desc">Pass Line, Field, Place bets, Hardways. Roll the dice!</div>
+                    <div class="d-flex gap-2 flex-wrap mt-2">
+                        <span class="casino-tag">14 Bet Types</span>
+                        <span class="casino-tag">Hardways</span>
                     </div>
                 </div>
+            </div>
 
-                <!-- Insanity Mode Dual Reels -->
-                <div id="insanity-slots" class="insanity-reels-container d-none">
-                    <div class="reel-section">
-                        <h6>Element Reel</h6>
-                        <div class="slots-reels-container">
-                            <div class="slots-reel-container">
-                                <div class="slots-reel" id="element-reel-1"></div>
+            <div class="col-lg-4 col-md-6">
+                <div class="casino-game-card" onclick="window._casinoOpenGame('holdem')">
+                    <div class="casino-game-icon">♠️</div>
+                    <div class="casino-game-title">Texas Hold'em</div>
+                    <div class="casino-game-desc">Blinds, flop, turn, river. Best hand wins the pot.</div>
+                    <div class="d-flex gap-2 flex-wrap mt-2">
+                        <span class="casino-tag">vs AI Bots</span>
+                        <span class="casino-tag">Full Showdown</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-4 col-md-6">
+                <div class="casino-game-card" onclick="window._casinoOpenGame('races')">
+                    <div class="casino-game-icon">🏁</div>
+                    <div class="casino-game-title">Pet Races</div>
+                    <div class="casino-game-desc">Race your pet vs 3 AI opponents. Build a win streak for massive multipliers!</div>
+                    <div class="d-flex gap-2 flex-wrap mt-2">
+                        <span class="casino-tag">Win Streak</span>
+                        <span class="casino-tag">8× Bonus</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-4 col-md-6">
+                <div class="casino-game-card" onclick="window._casinoOpenGame('minigames')">
+                    <div class="casino-game-icon">🎮</div>
+                    <div class="casino-game-title">Mini-Games</div>
+                    <div class="casino-game-desc">Coin Flip and Rock Paper Scissors — quick XP gambles with 7 themes each.</div>
+                    <div class="d-flex gap-2 flex-wrap mt-2">
+                        <span class="casino-tag">Coin Flip</span>
+                        <span class="casino-tag">RPS</span>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Slots panel (inline, shown when slots selected) -->
+        <div id="casino-slots-panel" style="display:none;margin-top:24px">
+            <div class="casino-panel">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div class="casino-panel-title">🎰 Slot Machine</div>
+                    <button class="casino-btn-sm" onclick="window._casinoClose()">✕ Close</button>
+                </div>
+
+                <!-- Setup -->
+                <div id="slots-setup">
+                    <div style="font-size:0.78rem;color:var(--text-secondary);margin-bottom:8px">Choose Difficulty</div>
+                    <div class="casino-diff-grid mb-3">
+                        <button class="casino-diff-btn" data-difficulty="Very Easy">
+                            <div style="font-weight:700">Very Easy</div>
+                            <div style="font-size:0.65rem;opacity:0.7">Pet Types · Low Risk</div>
+                        </button>
+                        <button class="casino-diff-btn" data-difficulty="Easy">
+                            <div style="font-weight:700">Easy</div>
+                            <div style="font-size:0.65rem;opacity:0.7">Military · Moderate</div>
+                        </button>
+                        <button class="casino-diff-btn" data-difficulty="Medium">
+                            <div style="font-weight:700">Medium</div>
+                            <div style="font-size:0.65rem;opacity:0.7">Stats · Balanced</div>
+                        </button>
+                        <button class="casino-diff-btn" data-difficulty="Hard">
+                            <div style="font-weight:700">Hard</div>
+                            <div style="font-size:0.65rem;opacity:0.7">Elements · High Risk</div>
+                        </button>
+                        <button class="casino-diff-btn" data-difficulty="Very Hard">
+                            <div style="font-weight:700">Very Hard</div>
+                            <div style="font-size:0.65rem;opacity:0.7">Pets · Extreme</div>
+                        </button>
+                        <button class="casino-diff-btn" data-difficulty="Insanity">
+                            <div style="font-weight:700">Insanity</div>
+                            <div style="font-size:0.65rem;opacity:0.7">Dual Reels · Massive</div>
+                        </button>
+                    </div>
+
+                    <div id="slots-bet-section" class="mb-3">
+                        <div style="font-size:0.78rem;color:var(--text-secondary);margin-bottom:6px">Bet Amount (XP)</div>
+                        <input type="number" class="casino-input" id="slots-bet-amount" min="10" max="100000" placeholder="Enter XP amount">
+                        <div class="d-flex gap-2 mt-2 flex-wrap">
+                            <button class="casino-btn-sm preset-btn" data-amount="50">50</button>
+                            <button class="casino-btn-sm preset-btn" data-amount="100">100</button>
+                            <button class="casino-btn-sm preset-btn" data-amount="500">500</button>
+                            <button class="casino-btn-sm preset-btn" data-amount="1000">1 000</button>
+                        </div>
+                    </div>
+
+                    <button id="start-slots-btn" class="casino-btn w-100" disabled>Start Slot Machine</button>
+                </div>
+
+                <!-- Game area -->
+                <div id="slots-game" style="display:none">
+                    <div class="d-flex justify-content-between mb-3" style="font-size:0.78rem;color:var(--text-secondary)">
+                        <span>Bet: <span id="current-bet" style="color:var(--gold-primary)">0</span> XP</span>
+                        <span>Difficulty: <span id="current-difficulty" style="color:var(--gold-secondary)">—</span></span>
+                        <span id="slots-current-mode" style="color:var(--text-secondary)">Betting Mode</span>
+                    </div>
+
+                    <!-- Regular reels -->
+                    <div id="regular-slots" class="casino-reels-wrap">
+                        <div class="casino-reel-col"><div class="casino-reel" id="reel-1"></div></div>
+                        <div class="casino-reel-col"><div class="casino-reel" id="reel-2"></div></div>
+                        <div class="casino-reel-col"><div class="casino-reel" id="reel-3"></div></div>
+                    </div>
+
+                    <!-- Insanity reels -->
+                    <div id="insanity-slots" style="display:none">
+                        <div class="row g-3">
+                            <div class="col-6">
+                                <div style="font-size:0.72rem;color:var(--gold-secondary);margin-bottom:6px;text-align:center">Element Reel</div>
+                                <div class="casino-reels-wrap">
+                                    <div class="casino-reel-col"><div class="casino-reel" id="element-reel-1"></div></div>
+                                    <div class="casino-reel-col"><div class="casino-reel" id="element-reel-2"></div></div>
+                                    <div class="casino-reel-col"><div class="casino-reel" id="element-reel-3"></div></div>
+                                </div>
                             </div>
-                            <div class="slots-reel-container">
-                                <div class="slots-reel" id="element-reel-2"></div>
-                            </div>
-                            <div class="slots-reel-container">
-                                <div class="slots-reel" id="element-reel-3"></div>
+                            <div class="col-6">
+                                <div style="font-size:0.72rem;color:var(--gold-secondary);margin-bottom:6px;text-align:center">Pet Reel</div>
+                                <div class="casino-reels-wrap">
+                                    <div class="casino-reel-col"><div class="casino-reel" id="pet-reel-1"></div></div>
+                                    <div class="casino-reel-col"><div class="casino-reel" id="pet-reel-2"></div></div>
+                                    <div class="casino-reel-col"><div class="casino-reel" id="pet-reel-3"></div></div>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                    <div class="reel-section">
-                        <h6>Pet Reel</h6>
-                        <div class="slots-reels-container">
-                            <div class="slots-reel-container">
-                                <div class="slots-reel" id="pet-reel-1"></div>
-                            </div>
-                            <div class="slots-reel-container">
-                                <div class="slots-reel" id="pet-reel-2"></div>
-                            </div>
-                            <div class="slots-reel-container">
-                                <div class="slots-reel" id="pet-reel-3"></div>
-                            </div>
+                        <div style="font-size:0.72rem;color:var(--text-secondary);text-align:center;margin-top:8px">
+                            Targets: <span id="element-target" style="color:var(--gold-secondary)">—</span> · <span id="species-target" style="color:var(--gold-secondary)">—</span>
                         </div>
                     </div>
-                    <div class="insanity-targets">
-                        <div>Your Targets: <span id="element-target">-</span> • <span id="species-target">-</span></div>
+
+                    <div class="text-center mt-3">
+                        <button id="spin-slots-btn" class="casino-btn casino-btn--spin">🎰 SPIN</button>
+                    </div>
+
+                    <div id="slots-result" class="mt-3" style="text-align:center">
+                        <div id="slots-result-text" style="font-size:0.9rem;color:var(--text-primary)"></div>
+                        <div id="slots-winnings" style="display:none;margin-top:8px">
+                            <span style="font-size:0.78rem;color:var(--text-secondary)">Winnings: </span>
+                            <span id="winnings-amount" style="font-size:1rem;color:var(--gold-primary);font-weight:700">0 XP</span>
+                        </div>
+                    </div>
+
+                    <div class="text-center mt-3">
+                        <button id="slots-play-again" class="casino-btn" style="display:none">Play Again</button>
                     </div>
                 </div>
-
-                <div class="slots-controls">
-                    <button id="spin-slots-btn" class="btn btn-casino-success btn-lg">
-                        🎰 SPIN
-                    </button>
-                </div>
-
-                <div id="slots-result" class="slots-result">
-                    <div id="slots-result-text" class="result-text"></div>
-                    <div id="slots-winnings" class="winnings-display d-none">
-                        <span class="winnings-label">Winnings:</span>
-                        <span id="winnings-amount" class="winnings-amount">0 XP</span>
-                    </div>
-                </div>
-
-                <button id="slots-play-again" class="btn btn-casino-secondary mt-3 d-none">
-                    Play Again
-                </button>
             </div>
         </div>
+
     </div>
 
-    <!-- Other Game Templates (Placeholder for now) -->
-    <div id="blackjack-game-template" class="d-none">
-        <div class="game-placeholder">
-            <h3>🃏 Blackjack</h3>
-            <p>Blackjack game coming soon! This will integrate with the existing Discord blackjack system.</p>
-            <div class="placeholder-features">
-                <div>• Hit, Stand, Double Down, Split</div>
-                <div>• Multiple betting rounds</div>
-                <div>• AI dealer with realistic behavior</div>
-            </div>
-        </div>
-    </div>
-
-    <div id="holdem-game-template" class="d-none">
-        <div class="game-placeholder">
-            <h3>♠️ Texas Hold'em</h3>
-            <p>Texas Hold'em poker coming soon! This will integrate with the existing Discord poker system.</p>
-            <div class="placeholder-features">
-                <div>• Community cards and hole cards</div>
-                <div>• Betting rounds (pre-flop, flop, turn, river)</div>
-                <div>• AI opponents with different strategies</div>
-            </div>
-        </div>
-    </div>
-
-    <div id="craps-game-template" class="d-none">
-        <div class="game-placeholder">
-            <h3>🎲 Craps</h3>
-            <p>Craps game coming soon! This will integrate with the existing Discord craps system.</p>
-            <div class="placeholder-features">
-                <div>• Pass Line, Don't Pass, Field bets</div>
-                <div>• Place bets and Hardways</div>
-                <div>• Live dice rolling animation</div>
-            </div>
-        </div>
-    </div>
-
-    <div id="races-game-template" class="d-none">
-        <div class="game-placeholder">
-            <h3>🏁 Pet Races</h3>
-            <p>Pet racing coming soon! This will integrate with the existing Discord racing system.</p>
-            <div class="placeholder-features">
-                <div>• Race your pet against AI competitors</div>
-                <div>• Three difficulty levels</div>
-                <div>• Win streak bonuses and key rewards</div>
-            </div>
-        </div>
-    </div>
 </div>
 
-</body>
-</html>
+<script src="/js/casino.js"></script>

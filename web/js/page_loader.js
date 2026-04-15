@@ -11,13 +11,10 @@ class PageScriptManager {
             return;
         }
 
-        if (this.loadedScripts.has(scriptPath)) {
-            if (callback) callback();
-            return;
-        }
-
         const script = document.createElement('script');
-        script.src = scriptPath;
+        // Always append a cache-buster so the browser re-executes the script
+        // on every page navigation (the IIFE and event listeners must re-run).
+        script.src = scriptPath + '?v=' + Date.now();
         script.type = scriptType;
         
         script.onload = () => {

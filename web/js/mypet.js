@@ -86,27 +86,37 @@ function calcEquipBonuses(pet) {
     var levelMult = 1 + Math.floor(level / 50);
     var bonuses = {ATT:0,DEF:0,INT:0,DEX:0,HAP:0,ENE:0};
 
-    var items = [];
+    // Collect typed items exactly as pet_brain does
+    var items = []; // [{typeKey, item}]
     var mat = eq.Material;
-    if (mat && typeof mat === 'object' && !Array.isArray(mat)) items.push(mat);
-    var matList = Array.isArray(eq.Material) ? eq.Material : [];
-    matList.forEach(function(m){ if(m && m.name) items.push(m); });
+    if (mat && typeof mat === 'object' && !Array.isArray(mat) && mat.name) items.push({t:'Material', item:mat});
+    (Array.isArray(eq.Material) ? eq.Material : []).forEach(function(m){ if(m && m.name) items.push({t:'Material', item:m}); });
     var hat = eq.Hat;
-    if (hat && typeof hat === 'object') items.push(hat);
-    (eq.Gems||[]).forEach(function(g){ if(g && g.name) items.push(g); });
-    (eq.Monsters||[]).forEach(function(m){ if(m && m.name) items.push(m); });
+    if (hat && typeof hat === 'object' && hat.name) items.push({t:'Hat', item:hat});
+    (eq.Gems||[]).forEach(function(g){ if(g && g.name) items.push({t:'Gem', item:g}); });
+    (eq.Monsters||[]).forEach(function(m){ if(m && m.name) items.push({t:'Monster', item:m}); });
 
-    // Count duplicates
-    var counts = {};
-    items.forEach(function(item){
-        var k = (item.name||'').toLowerCase();
-        counts[k] = (counts[k]||0) + 1;
+    // Count duplicates per type (Material, Gem, Monster — not Hat)
+    var matCounts = {}, gemCounts = {}, monCounts = {};
+    items.forEach(function(e2) {
+        var n = (e2.item.name||'').toLowerCase();
+        if (e2.t === 'Material') matCounts[n] = (matCounts[n]||0) + 1;
+        else if (e2.t === 'Gem')     gemCounts[n] = (gemCounts[n]||0) + 1;
+        else if (e2.t === 'Monster') monCounts[n] = (monCounts[n]||0) + 1;
     });
 
-    items.forEach(function(item) {
-        var data = getEquipItem(item.name);
-        var b = (data && data.bonuses) ? data.bonuses : (item.bonuses || {});
-        var isDup = counts[(item.name||'').toLowerCase()] >= 2;
+    items.forEach(function(e2) {
+        var data = getEquipItem(e2.item.name);
+        var b = (data && data.bonuses) ? data.bonuses : (e2.item.bonuses || {});
+        var n = (e2.item.name||'').toLowerCase();
+        var isDup = false;
+        if (e2.t === 'Material') isDup = (matCounts[n]||0) >= 2;
+        else if (e2.t === 'Gem')     isDup = (gemCounts[n]||0) >= 2;
+        else if (e2.t === 'Monster') isDup = (monCounts[n]||0) >= 2;
+        // mult=2 means the PAIR gives 2× total, so each item contributes 1× (same as normal)
+        // but we only want to apply the bonus once per unique item when it's a pair
+        // pet_brain applies val*mult per item, so a pair of items each get mult=2 → 2+2=4 total
+        // That IS the intended behaviour: each item in the pair contributes double
         var mult = isDup ? 2 : 1;
         Object.keys(b).forEach(function(stat){
             if (bonuses[stat] !== undefined) bonuses[stat] += parseInt(b[stat]||0, 10) * mult;
@@ -215,7 +225,7 @@ function renderPetCard(pet) {
         '<div class="mp-xp-bar-wrap mb-1"><div class="mp-xp-bar" style="width:'+xpPct+'%"></div></div>'+
         '<div style="font-size:0.68rem;color:var(--text-secondary);text-align:right">'+(pet.experience||0).toLocaleString()+' / '+xpMax.toLocaleString()+' XP</div>';
     var body = el('my-pet-body');
-    if (body) body.innerHTML = xpHtml + buildEquipped(pet) + buildInventoryCollapsible(pet) + '<hr class="mp-divider my-2">' + statsHtml + combatHtml + buildBattleRecordCard(pet) + buildCasinoCard(pet);
+    if (body) body.innerHTML = xpHtml + buildEquipped(pet) + buildInventoryCollapsible(pet) + '<hr class="mp-divider my-2">' + statsHtml + combatHtml + buildXpSourcesCard(pet) + buildBattleRecordCard(pet) + buildCasinoCard(pet);
 }
 
 function bindTabs() {}
@@ -323,8 +333,9 @@ function buildInteractions(pet) {
     // ── Battle ─────────────────────────────────────────────────────────────
     html += '<div id="panel-battle" style="display:none">'+
         '<div class="mp-section-title">⚔️ NPC Battle</div>'+
+        '<div id="battle-setup">'+
         '<div class="mp-battle-card mb-3" style="font-size:0.82rem;color:var(--text-secondary)">'+
-        'Fight a generated enemy scaled to your pet\'s stats. Win to earn XP and loot. Difficulty affects enemy strength and XP rewards.'+
+        'Fight a generated enemy scaled to your pet\'s stats. Pick your action each turn — Attack, Defend, or Charge. Win to earn XP and loot.'+
         '</div>'+
         '<div class="row g-2 mb-3">'+
         [['easy','Easy','Weaker enemy, 0.7x stats'],['average','Average','Matched enemy, 1.1x stats'],['hard','Hard','Stronger enemy, 1.5x stats']].map(function(d){
@@ -334,8 +345,39 @@ function buildInteractions(pet) {
                 '</div></div>';
         }).join('')+
         '</div>'+
-        '<button class="mp-adopt-btn" id="battle-start-btn" onclick="window._mpBattle()">⚔️ Start Battle</button>'+
-        '<div id="battle-result" class="mt-3"></div>'+
+        '<button class="mp-adopt-btn" id="battle-start-btn" onclick="window._mpBattleStart()">⚔️ Start Battle</button>'+
+        '</div>'+
+        '<div id="battle-arena" style="display:none">'+
+        // Enemy display card
+        '<div class="mp-battle-card mb-3" id="battle-enemy-card" style="display:flex;align-items:center;gap:12px;padding:10px 14px">'+
+        '<img id="battle-e-img" src="/static/Emojis/Pets/Deco/Basic.png" style="width:52px;height:52px;object-fit:contain;border-radius:8px;background:rgba(255,255,255,0.04)" onerror="this.src=\'/static/Emojis/Pets/Deco/Basic.png\'">'+
+        '<div style="flex:1;min-width:0">'+
+        '<div style="font-size:0.85rem;font-weight:700;color:var(--text-primary)" id="battle-e-title">Enemy</div>'+
+        '<div style="display:flex;gap:6px;align-items:center;margin:3px 0" id="battle-e-badges"></div>'+
+        '<div id="battle-e-hpbar"></div>'+
+        '</div>'+
+        '</div>'+
+        // Player HP bar
+        '<div class="mb-2">'+
+        '<div style="font-size:0.72rem;color:var(--gold-secondary);margin-bottom:2px" id="battle-p-name">Your Pet</div>'+
+        '<div id="battle-p-hpbar"></div>'+
+        '</div>'+
+        // Charge indicators
+        '<div style="display:flex;gap:12px;margin-bottom:6px;font-size:0.7rem">'+
+        '<span id="battle-p-charge" style="color:var(--gold-secondary)"></span>'+
+        '<span id="battle-e-charge" style="color:#e74c3c"></span>'+
+        '</div>'+
+        // Turn log
+        '<div id="battle-log" style="max-height:180px;overflow-y:auto;margin-bottom:10px;font-size:0.78rem"></div>'+
+        // Action buttons
+        '<div id="battle-actions" class="row g-2 mb-2">'+
+        '<div class="col-4"><button class="mp-adopt-btn" style="width:100%;padding:8px 4px;font-size:0.8rem;line-height:1.2" onclick="window._mpBattleTurn(\'attack\')" id="btn-attack">⚔️ Attack<br><span id="btn-attack-sub" style="font-size:0.62rem;opacity:0.75;font-weight:400"></span></button></div>'+
+        '<div class="col-4"><button class="mp-adopt-btn" style="width:100%;padding:8px 4px;font-size:0.8rem;line-height:1.2;background:rgba(52,152,219,0.35);border-color:rgba(52,152,219,0.8);color:#7ec8e3" onclick="window._mpBattleTurn(\'defend\')" id="btn-defend">🛡️ Defend<br><span id="btn-defend-sub" style="font-size:0.62rem;opacity:0.75;font-weight:400"></span></button></div>'+
+        '<div class="col-4"><button class="mp-adopt-btn" style="width:100%;padding:8px 4px;font-size:0.8rem;line-height:1.2;background:rgba(155,89,182,0.35);border-color:rgba(155,89,182,0.85);color:#d7aefb" onclick="window._mpBattleTurn(\'charge\')" id="btn-charge">⚡ Charge<br><span id="btn-charge-sub" style="font-size:0.62rem;opacity:0.75;font-weight:400"></span></button></div>'+
+        '</div>'+
+        '<div id="battle-status" style="font-size:0.75rem;color:var(--text-secondary);min-height:18px;margin-bottom:6px"></div>'+
+        '<div id="battle-result" class="mt-2"></div>'+
+        '</div>'+
         '</div>';
 
     // ── Quest ──────────────────────────────────────────────────────────────
@@ -387,6 +429,7 @@ function buildInteractions(pet) {
         '</div>'+
         '<div id="quest-outcome" class="mt-2"></div>'+
         '<div id="quest-xp-track" style="font-size:0.75rem;color:var(--gold-secondary);margin-top:4px"></div>'+
+        '<button class="mp-adopt-btn" onclick="window._mpQuestAbandon()" style="font-size:0.72rem;padding:5px 12px;margin-top:8px;background:rgba(231,76,60,0.15);border-color:rgba(231,76,60,0.4);color:#e74c3c">🚪 Abandon Quest</button>'+
         '</div>'+
 
         // Quest result (shown when done)
@@ -578,6 +621,20 @@ function cleanDiscordText(raw) {
     return out;
 }
 
+// Inject equipment item images into a cleaned message string.
+// Replaces known item names (Keys, etc.) with an inline img + name.
+function injectItemImages(text) {
+    if (!text) return text;
+    // Match item names that have a known Equipment image — word boundary aware
+    return text.replace(/\b(Key[123]|Key 1|Key 2|Key 3)\b/g, function(match) {
+        var file = match.replace(/ /g, '') + '.png'; // "Key 1" → "Key1.png"
+        return '<img src="/static/Emojis/Pets/Equipment/'+file+'" '+
+            'style="width:14px;height:14px;object-fit:contain;vertical-align:middle;margin:0 2px" '+
+            'onerror="this.style.display=\'none\'"> '+match;
+    });
+}
+
+
 window._mpTab = function(tab) {
     ['train','mission','play','battle','quest','market','rename','kill'].forEach(function(t) {
         var btn = el('tab-'+t), panel = el('panel-'+t);
@@ -762,80 +819,322 @@ window._mpSelectBattle = function(d) {
     });
 };
 
-window._mpBattle = async function() {
+// ── Turn-based battle state ───────────────────────────────────────────────────
+var _battleState = null;  // {player, enemy, turn, difficulty, action_labels, over}
+
+function _updateBattleActionLabels() {
+    if (!_battleState) return;
+    var labels = _battleState.action_labels || {};
+    var p = _battleState.player;
+    // Fallback to player's actions field if action_labels is sparse
+    var acts = p && p.actions ? p.actions : {};
+    var atk = labels.attack  || acts.Attack  || acts.attack  || '';
+    var def = labels.defend  || acts.Defense || acts.defend  || '';
+    var chg = labels.charge  || acts.Charge  || acts.charge  || '';
+    var sa = el('btn-attack-sub'), sd = el('btn-defend-sub'), sc = el('btn-charge-sub');
+    if (sa) sa.textContent = atk;
+    if (sd) sd.textContent = def;
+    if (sc) sc.textContent = chg;
+}
+
+function _setBattleButtons(enabled) {
+    ['btn-attack','btn-defend','btn-charge'].forEach(function(id) {
+        var b = el(id); if (b) b.disabled = !enabled;
+    });
+}
+
+function _updateBattleHpBars() {
+    if (!_battleState) return;
+    var p = _battleState.player, e = _battleState.enemy;
+    var ph = el('battle-p-hpbar'), eh = el('battle-e-hpbar');
+    if (ph) ph.innerHTML = _buildBattleHpBar(p.cur_hp, p.max_hp, false);
+    if (eh) eh.innerHTML = _buildBattleHpBar(e.cur_hp, e.max_hp, true);
+    var pc = el('battle-p-charge'), ec = el('battle-e-charge');
+    if (pc) pc.textContent = p.charge > 1 ? '⚡ Your charge: x' + p.charge.toFixed(0) : '';
+    if (ec) ec.textContent = e.charge > 1 ? '⚡ Enemy charging: x' + e.charge.toFixed(0) : '';
+}
+
+function _buildEnemyBadge(label, imgSrc, color) {
+    return '<span style="display:inline-flex;align-items:center;gap:3px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:4px;padding:1px 5px;font-size:0.65rem;color:'+color+'">'+
+        '<img src="'+imgSrc+'" style="width:12px;height:12px;object-fit:contain" onerror="this.style.display=\'none\'">'+
+        escHtml(label)+'</span>';
+}
+
+function _initEnemyCard(enemy) {
+    var img = el('battle-e-img');
+    var title = el('battle-e-title');
+    var badges = el('battle-e-badges');
+    var species = (enemy.species || '').trim();
+    if (img) {
+        if (species) {
+            img.src = petImg(species);
+            img.alt = species;
+        } else {
+            img.src = '/static/Emojis/Pets/Deco/Basic.png';
+        }
+        img.onerror = function(){ this.src = '/static/Emojis/Pets/Deco/Basic.png'; };
+    }
+    if (title) {
+        title.innerHTML = escHtml(enemy.name || 'Enemy') +
+            (species ? '<span style="font-size:0.65rem;color:var(--text-secondary);display:block;margin-top:1px">' + escHtml(species) + '</span>' : '');
+    }
+    if (badges) {
+        var html = '';
+        var typeKey = (enemy.type || 'land').toLowerCase();
+        var typeInfo = TYPE_INFO[typeKey] || {label: cap(typeKey), img: cap(typeKey)+'.png'};
+        html += _buildEnemyBadge(typeInfo.label, ELEM_IMG_BASE + typeInfo.img, '#aaa');
+        var elems = [enemy.element];
+        if (enemy.element2 && enemy.element2 !== 'basic' && enemy.element2 !== '') elems.push(enemy.element2);
+        elems.forEach(function(e2) {
+            if (!e2) return;
+            var eKey = e2.toLowerCase();
+            var eInfo = ELEM_INFO[eKey] || {label: cap(eKey), img: cap(eKey)+'.png'};
+            html += _buildEnemyBadge(eInfo.label, elemImgPath(eKey), 'var(--gold-secondary)');
+        });
+        html += '<span style="font-size:0.65rem;color:var(--text-secondary);margin-left:2px">ATK '+enemy.attack+' DEF '+enemy.defense+'</span>';
+        badges.innerHTML = html;
+    }
+}
+
+function _rollColor(result) {
+    if (!result) return 'var(--text-secondary)';
+    var r = result.toLowerCase();
+    if (r === 'critical') return '#f1c40f';
+    if (r === 'great')    return '#2ecc71';
+    if (r === 'good')     return '#27ae60';
+    if (r === 'miss')     return '#e74c3c';
+    return 'var(--text-secondary)';
+}
+
+// Derive a human-readable roll label from the raw d20 value
+function _rollLabel(roll) {
+    if (roll == null) return null;
+    var n = parseInt(roll, 10);
+    if (n === 20) return {label: 'Critical!', color: '#f1c40f'};
+    if (n >= 16)  return {label: 'Great',     color: '#2ecc71'};
+    if (n >= 10)  return {label: 'Good',      color: '#27ae60'};
+    if (n >= 5)   return {label: 'Low',       color: '#e67e22'};
+    return            {label: 'Miss',      color: '#e74c3c'};
+}
+
+// Render a roll as "rolled 17 (Great)" in a readable inline span
+function _rollSpan(roll) {
+    if (roll == null) return '';
+    var info = _rollLabel(roll);
+    return ' <span style="font-size:0.68rem;color:var(--text-secondary)">rolled <span style="color:'+info.color+'">'+roll+' ('+info.label+')</span></span>';
+}
+
+function _appendBattleLog(turn, combat, pName, eName) {
+    var log = el('battle-log');
+    if (!log || !combat) return;
+
+    var actionColors = {attack:'#e74c3c', defend:'#3498db', charge:'#9b59b6'};
+    var pCol = actionColors[combat.p_action] || '#ccc';
+    var eCol = actionColors[combat.e_action] || '#ccc';
+
+    var html = '<div style="border-left:2px solid rgba(255,215,0,0.2);padding:5px 8px;margin-bottom:5px;font-size:0.75rem">';
+    html += '<div style="font-size:0.68rem;color:var(--text-secondary);margin-bottom:4px;display:flex;justify-content:space-between">'+
+        '<span>Turn '+turn+'</span>'+
+        '<span><span style="color:'+pCol+'">You: '+combat.p_action+'</span> | <span style="color:'+eCol+'">Enemy: '+combat.e_action+'</span></span>'+
+        '</div>';
+
+    // ── Player row ────────────────────────────────────────────────────────
+    html += '<div style="margin-bottom:3px">';
+    if (combat.p_action === 'charge') {
+        html += '<span style="color:#9b59b6">⚡ '+escHtml(pName)+' charges up!</span>'+
+            ' <span style="color:var(--gold-primary)">→ x'+combat.p_charge_after.toFixed(0)+' ready</span>';
+    } else if (combat.p_action === 'defend') {
+        html += '<span style="color:#3498db">🛡️ '+escHtml(pName)+' defends</span>';
+        html += _rollSpan(combat.p_defense_roll);
+        if (combat.e_parry > 0) {
+            html += ' → <span style="color:#2ecc71">parried <b>'+combat.e_parry+'</b> dmg back at enemy!</span>';
+        } else if (combat.e_dmg === 0 && combat.e_action === 'attack') {
+            html += ' → <span style="color:#2ecc71">fully blocked the attack!</span>';
+        } else if (combat.p_final_defense > 0 && combat.e_dmg > 0) {
+            var absorbed = combat.e_final_attack - combat.e_dmg;
+            html += ' → <span style="color:#7fb3d3">blocked '+absorbed+' dmg</span> <span style="color:var(--text-secondary);font-size:0.68rem">('+combat.e_dmg+' got through)</span>';
+        }
+    } else {
+        var chargeTag = combat.p_charge_mult > 1 ? ' <span style="color:#9b59b6">at x'+combat.p_charge_mult.toFixed(0)+' charge</span>' : '';
+        html += '<span style="color:#e74c3c">⚔️ '+escHtml(pName)+' uses '+escHtml(combat.p_action_label)+'</span>'+chargeTag;
+        html += _rollSpan(combat.p_attack_roll);
+        if (combat.p_dmg > 0) {
+            var mult = combat.p_type_elem_mult;
+            var effTag = mult > 1.05 ? ' <span style="color:#f39c12;font-size:0.68rem">super effective</span>' :
+                         mult < 0.95 ? ' <span style="color:#7f8c8d;font-size:0.68rem">not very effective</span>' : '';
+            html += ' → <span style="color:#e74c3c"><b>'+combat.p_dmg+'</b> dmg</span>'+effTag;
+        } else {
+            html += ' → <span style="color:#7f8c8d">blocked!</span>';
+        }
+    }
+    html += '</div>';
+
+    // ── Enemy row ─────────────────────────────────────────────────────────
+    html += '<div>';
+    if (combat.e_action === 'charge') {
+        html += '<span style="color:#9b59b6">⚡ '+escHtml(eName)+' charges up!</span>'+
+            ' <span style="color:#e74c3c">→ x'+combat.e_charge_after.toFixed(0)+' ready</span>';
+    } else if (combat.e_action === 'defend') {
+        html += '<span style="color:#3498db">🛡️ '+escHtml(eName)+' defends</span>';
+        html += _rollSpan(combat.e_defense_roll);
+        if (combat.p_parry > 0) {
+            html += ' → <span style="color:#e74c3c">parried <b>'+combat.p_parry+'</b> dmg back at you!</span>';
+        } else if (combat.p_dmg === 0 && combat.p_action === 'attack') {
+            html += ' → <span style="color:#2ecc71">fully blocked your attack!</span>';
+        } else if (combat.e_final_defense > 0 && combat.p_dmg > 0) {
+            var eAbsorbed = combat.p_final_attack - combat.p_dmg;
+            html += ' → <span style="color:#7fb3d3">blocked '+eAbsorbed+' dmg</span> <span style="color:var(--text-secondary);font-size:0.68rem">('+combat.p_dmg+' got through)</span>';
+        }
+    } else {
+        var eChargeTag = combat.e_charge_mult > 1 ? ' <span style="color:#9b59b6">at x'+combat.e_charge_mult.toFixed(0)+' charge</span>' : '';
+        html += '<span style="color:#e67e22">💥 '+escHtml(eName)+' attacks</span>'+eChargeTag;
+        html += _rollSpan(combat.e_attack_roll);
+        if (combat.e_dmg > 0) {
+            var eMult = combat.e_type_elem_mult;
+            var eEffTag = eMult > 1.05 ? ' <span style="color:#f39c12;font-size:0.68rem">super effective</span>' :
+                          eMult < 0.95 ? ' <span style="color:#7f8c8d;font-size:0.68rem">not very effective</span>' : '';
+            html += ' → <span style="color:#e67e22"><b>'+combat.e_dmg+'</b> dmg</span>'+eEffTag;
+        } else {
+            html += ' → <span style="color:#7f8c8d">blocked!</span>';
+        }
+    }
+    html += '</div></div>';
+
+    var wrapper = document.createElement('div');
+    wrapper.innerHTML = html;
+    log.appendChild(wrapper.firstChild);
+    log.scrollTop = log.scrollHeight;
+}
+
+window._mpBattleStart = async function() {
     var btn = el('battle-start-btn');
-    var r   = el('battle-result');
     if (btn) btn.disabled = true;
-    if (r) r.innerHTML = '<div class="mp-battle-card" style="font-size:0.8rem;color:var(--text-secondary)">⚔️ Battle in progress...</div>';
+    var status = el('battle-status');
+    if (status) status.textContent = 'Starting battle...';
     try {
-        var res = await fetch('/api/pets/battle/npc', {
-            method: 'POST', headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({difficulty: _battleDiff, action: 'attack'})
+        var res = await fetch('/api/pets/battle/npc/start', {
+            method: 'POST', headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({difficulty: _battleDiff})
         });
         var d = await res.json();
-        if (!res.ok) { showResult('battle-result', false, d.detail || 'Battle failed'); return; }
+        if (!res.ok) { alert(d.detail || 'Failed to start battle'); if(btn) btn.disabled=false; return; }
 
-        // ── Build battle log UI ───────────────────────────────────────────
-        var won = d.won;
-        var enemy = d.enemy || {};
-        var player = d.player || {};
-        var turns = d.turns || [];
+        _battleState = d;
 
-        var html = '<div class="mp-battle-card" style="border-color:'+(won?'rgba(39,174,96,0.5)':'rgba(231,76,60,0.5)')+'">';
+        // Show arena, hide setup
+        var setup = el('battle-setup'), arena = el('battle-arena');
+        if (setup) setup.style.display = 'none';
+        if (arena) arena.style.display = '';
 
-        // Header
-        html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">'+
-            '<div style="font-size:1rem;font-weight:700;color:'+(won?'#2ecc71':'#e74c3c')+'">'+(won?'🏆 Victory!':'💀 Defeated')+' vs '+escHtml(enemy.name||'Enemy')+'</div>'+
-            '<div style="font-size:0.72rem;color:var(--text-secondary)">'+turns.length+' turns</div>'+
-            '</div>';
+        // Set names and init enemy card
+        var pn = el('battle-p-name');
+        if (pn) pn.textContent = d.player.name;
+        _initEnemyCard(d.enemy);
 
-        // HP bars final state
-        var lastTurn = turns[turns.length-1] || {};
-        html += '<div class="row g-2 mb-3">'+
-            '<div class="col-6">'+
-            '<div style="font-size:0.72rem;color:var(--gold-secondary);margin-bottom:2px">'+escHtml(player.name||'Your Pet')+'</div>'+
-            _buildBattleHpBar(lastTurn.player_hp||0, player.max_hp||1)+
-            '</div>'+
-            '<div class="col-6">'+
-            '<div style="font-size:0.72rem;color:var(--text-secondary);margin-bottom:2px">'+escHtml(enemy.name||'Enemy')+'</div>'+
-            _buildBattleHpBar(lastTurn.enemy_hp||0, enemy.max_hp||1, true)+
-            '</div>'+
-            '</div>';
+        // Clear log and result
+        var log = el('battle-log'); if (log) log.innerHTML = '';
+        var res2 = el('battle-result'); if (res2) res2.innerHTML = '';
 
-        // Turn log (collapsible)
-        html += '<details style="margin-bottom:8px"><summary style="cursor:pointer;font-size:0.78rem;color:var(--gold-secondary);user-select:none">📜 Battle Log ('+turns.length+' turns)</summary>'+
-            '<div style="max-height:220px;overflow-y:auto;margin-top:6px">';
-        turns.forEach(function(t) {
-            var pPct = Math.round((t.player_hp / (t.player_max_hp||1)) * 100);
-            var ePct = Math.round((t.enemy_hp  / (t.enemy_max_hp||1))  * 100);
-            html += '<div style="border-left:2px solid rgba(255,215,0,0.2);padding:4px 8px;margin-bottom:4px;font-size:0.75rem">'+
-                '<div style="color:var(--text-secondary);font-size:0.68rem;margin-bottom:2px">Turn '+t.turn+
-                ' — '+escHtml(player.name||'You')+': <span style="color:'+(pPct>30?'#2ecc71':'#e74c3c')+'">'+t.player_hp+' HP</span>'+
-                ' | '+escHtml(enemy.name||'Enemy')+': <span style="color:'+(ePct>30?'#e74c3c':'#e74c3c')+'">'+t.enemy_hp+' HP</span></div>';
-            (t.lines||[]).forEach(function(line) { html += '<div>'+escHtml(line)+'</div>'; });
-            html += '</div>';
-        });
-        html += '</div></details>';
+        _updateBattleHpBars();
+        _updateBattleActionLabels();
+        _setBattleButtons(true);
+        if (status) status.textContent = 'Your turn — pick an action!';
 
-        // XP and loot
-        if (d.xp_gained) {
-            html += '<div style="font-size:0.8rem;color:var(--gold-primary);margin-bottom:4px">📈 +'+(d.xp_gained)+' XP</div>';
-        }
-        if (d.messages && d.messages.length) {
-            d.messages.forEach(function(m) {
-                if (!m.includes('XP')) html += '<div style="font-size:0.75rem;color:var(--text-secondary)">'+cleanDiscordText(m)+'</div>';
-            });
-        }
-
-        html += '</div>';
-        if (r) r.innerHTML = html;
-
-        if (d.pet) { _pet = d.pet; renderPetCard(d.pet); }
-        if (d.level_change) showLevelChangePopup(d.level_change, d.level_change.new_level < d.level_change.old_level);
-
-    } catch(e) { showResult('battle-result', false, e.message); }
-    finally { if (btn) btn.disabled = false; }
+    } catch(e) { alert('Error: ' + e.message); if(btn) btn.disabled=false; }
 };
+
+window._mpBattleTurn = async function(action) {
+    if (!_battleState || _battleState.over) return;
+    _setBattleButtons(false);
+    var status = el('battle-status');
+    if (status) status.textContent = 'Processing turn...';
+
+    try {
+        var res = await fetch('/api/pets/battle/npc/turn', {
+            method: 'POST', headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({
+                action: action,
+                player: _battleState.player,
+                enemy: _battleState.enemy,
+                turn: _battleState.turn,
+                difficulty: _battleState.difficulty,
+                action_labels: _battleState.action_labels || {}
+            })
+        });
+        var d = await res.json();
+        if (!res.ok) { if(status) status.textContent = d.detail || 'Error'; _setBattleButtons(true); return; }
+
+        // Update state
+        _battleState.player = d.player;
+        _battleState.enemy  = d.enemy;
+        _battleState.turn   = d.turn;
+        _battleState.over   = d.over;
+
+        _updateBattleHpBars();
+        _appendBattleLog(d.turn, d.combat, _battleState.player.name, _battleState.enemy.name);
+
+        if (d.over) {
+            var won = d.won;
+            var r = el('battle-result');
+            var pName = _battleState.player.name;
+            var eName = _battleState.enemy.name;
+
+            // ── Build result card ─────────────────────────────────────────
+            var borderColor = won ? 'rgba(39,174,96,0.5)' : 'rgba(231,76,60,0.5)';
+            var outcomeColor = won ? '#2ecc71' : '#e74c3c';
+            var html = '<div class="mp-battle-card mt-2" style="border-color:'+borderColor+'">';
+
+            // Header
+            html += '<div style="text-align:center;padding-bottom:10px;border-bottom:1px solid rgba(255,215,0,0.15);margin-bottom:10px">'+
+                '<div style="font-size:1.05rem;font-weight:700;color:'+outcomeColor+';margin-bottom:4px">'+(won?'🏆 Victory!':'💀 Defeated')+'</div>'+
+                '<div style="font-size:0.78rem;color:var(--text-secondary)">'+escHtml(pName)+' vs '+escHtml(eName)+' · '+history.length+' turns</div>'+
+                '</div>';
+
+            // XP / rewards
+            if (d.xp_gained) {
+                html += '<div style="text-align:center;font-size:0.85rem;color:var(--gold-primary);margin-bottom:6px">📈 +'+d.xp_gained+' XP</div>';
+            }
+            if (d.messages && d.messages.length) {
+                d.messages.forEach(function(m){
+                    var stripped = String(m).replace(/<img[^>]*>/gi, '').replace(/<[^>]+>/g, '').trim();
+                    var clean = injectItemImages(cleanDiscordText(stripped).replace(/\*\*/g, '').trim());
+                    if (!clean) return;
+                    if (/^\+?\d+\s*XP$/.test(clean)) return;
+                    var isXp   = clean.indexOf('XP') !== -1 && clean.indexOf('Gained') !== -1;
+                    var isLoot = clean.indexOf('🎁') !== -1 || clean.indexOf('Looted') !== -1;
+                    var isWarn = clean.indexOf('⚠️') !== -1;
+                    var color  = isXp ? 'var(--gold-primary)' : isLoot ? '#2ecc71' : isWarn ? '#f39c12' : 'var(--text-secondary)';
+                    html += '<div style="text-align:center;font-size:0.75rem;color:'+color+';margin-bottom:2px">'+clean+'</div>';
+                });
+            }
+
+            html += '<div style="text-align:center;margin-top:10px">'+
+                '<button class="mp-adopt-btn" style="font-size:0.8rem" onclick="window._mpBattleReset()">⚔️ Fight Again</button>'+
+                '</div>';
+            html += '</div>';
+
+            if (r) r.innerHTML = html;
+            if (status) status.textContent = '';
+            if (d.pet) { _pet = d.pet; renderPetCard(d.pet); }
+            if (d.level_change) showLevelChangePopup(d.level_change, d.level_change.new_level < d.level_change.old_level);
+        } else {
+            if (status) status.textContent = 'Turn ' + d.turn + ' — pick your next action!';
+            _setBattleButtons(true);
+        }
+    } catch(e) { if(status) status.textContent = 'Error: '+e.message; _setBattleButtons(true); }
+};
+
+window._mpBattleReset = function() {
+    _battleState = null;
+    var setup = el('battle-setup'), arena = el('battle-arena');
+    if (setup) setup.style.display = '';
+    if (arena) arena.style.display = 'none';
+    var btn = el('battle-start-btn'); if (btn) btn.disabled = false;
+    var r = el('battle-result'); if (r) r.innerHTML = '';
+};
+
+// Legacy kept for any external references
+window._mpBattle = window._mpBattleStart;
 
 function _buildBattleHpBar(cur, max, enemy) {
     var pct = max > 0 ? Math.max(0, Math.min(100, Math.round((cur/max)*100))) : 0;
@@ -923,9 +1222,12 @@ window._mpQuestChoice = async function(choice) {
             body: JSON.stringify({choice: choice})
         });
         var d = await res.json();
-        if (!res.ok) { showResult('quest-outcome', false, d.detail||'Error'); return; }
+        if (!res.ok) { showResult('quest-outcome', false, d.detail||'Error'); if(cho) cho.querySelectorAll('button').forEach(function(b){b.disabled=false;b.style.opacity='1';}); return; }
+
         if (d.done) {
             _renderQuestDone(d);
+        } else if (d.battle_required) {
+            _startQuestBattle(d);
         } else {
             _renderQuestStage(d);
         }
@@ -935,6 +1237,154 @@ window._mpQuestChoice = async function(choice) {
         if(cho) cho.querySelectorAll('button').forEach(function(b){b.disabled=false;b.style.opacity='1';});
     }
 };
+
+// ── Quest battle integration ──────────────────────────────────────────────────
+// When a hostile pet encounter fails the skill check, we run a real turn-based
+// battle using the same engine as the NPC Battle tab.
+
+function _startQuestBattle(d) {
+    var stageBox = el('quest-stage-box');
+    var out      = el('quest-outcome');
+    var cho      = el('quest-choices');
+    var xpt      = el('quest-xp-track');
+
+    // Show the failure message
+    if(out) out.innerHTML = '<div class="mp-battle-card" style="border-color:rgba(231,76,60,0.4);color:#e74c3c;font-size:0.8rem;margin-bottom:6px">'+cleanDiscordText(d.outcome_msg)+'</div>';
+    if(cho) cho.innerHTML = '';
+    if(xpt) xpt.textContent = 'XP earned so far: '+(d.xp_so_far||0);
+
+    // Build an inline battle arena inside the quest panel
+    var bossName = d.boss_name || 'Wild Creature';
+    var hp       = d.hostile_pet ? (d.hostile_pet.ENE || 50) : 50;
+
+    if(stageBox) stageBox.innerHTML =
+        '<div id="quest-progress" style="font-size:0.7rem;color:var(--text-secondary);margin-bottom:6px">⚔️ Battle!</div>'+
+        '<div id="quest-stage-name" class="mp-section-title" style="margin-bottom:6px;color:#e74c3c">Fight: '+escHtml(bossName)+'</div>'+
+        '<div id="quest-event" style="font-size:0.85rem;color:var(--text-primary);margin-bottom:12px">Defeat the enemy to continue your quest!</div>'+
+        '<div id="quest-choices" class="d-flex flex-column gap-2"></div>';
+
+    // Start the actual NPC battle using the existing battle engine
+    // We pass the hostile_pet data so the server uses it as the enemy
+    _questBattleState = null;
+    _startQuestBattleFetch(d.hostile_pet);
+}
+
+var _questBattleState = null;
+
+async function _startQuestBattleFetch(hostilePet) {
+    var cho = el('quest-choices');
+    if(cho) cho.innerHTML = '<div style="font-size:0.8rem;color:var(--text-secondary)">⏳ Starting battle...</div>';
+    try {
+        var res = await fetch('/api/pets/battle/npc/start', {
+            method:'POST', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({difficulty: 'quest', hostile_pet: hostilePet})
+        });
+        var d = await res.json();
+        if(!res.ok) { _questBattleFallback(d.detail||'Battle failed'); return; }
+        _questBattleState = d;
+        _renderQuestBattleArena();
+    } catch(e) { _questBattleFallback(e.message); }
+}
+
+function _questBattleFallback(msg) {
+    // If battle can't start, treat as a win so quest can continue
+    console.warn('Quest battle fallback:', msg);
+    _resolveQuestBattle(true, 20);
+}
+
+function _renderQuestBattleArena() {
+    var cho = el('quest-choices');
+    if(!cho || !_questBattleState) return;
+    var p = _questBattleState.player, e = _questBattleState.enemy;
+    var labels = _questBattleState.action_labels || {};
+
+    cho.innerHTML =
+        '<div style="display:flex;gap:8px;margin-bottom:8px">'+
+            '<div style="flex:1;font-size:0.75rem">'+
+                '<div style="color:var(--gold-secondary);font-weight:700">'+escHtml(p.name||'You')+'</div>'+
+                _buildBattleHpBar(p.cur_hp, p.max_hp, false)+
+            '</div>'+
+            '<div style="font-size:0.8rem;color:var(--text-secondary);align-self:center">VS</div>'+
+            '<div style="flex:1;font-size:0.75rem;text-align:right">'+
+                '<div style="color:#e74c3c;font-weight:700">'+escHtml(e.name||'Enemy')+'</div>'+
+                _buildBattleHpBar(e.cur_hp, e.max_hp, true)+
+            '</div>'+
+        '</div>'+
+        '<div id="quest-battle-log" style="font-size:0.72rem;color:var(--text-secondary);max-height:80px;overflow-y:auto;margin-bottom:8px"></div>'+
+        '<div style="display:flex;gap:6px;flex-wrap:wrap">'+
+            '<button class="mp-adopt-btn" style="font-size:0.75rem;padding:6px 10px" onclick="window._mpQuestBattleTurn(\'attack\')">⚔️ '+(labels.attack||'Attack')+'</button>'+
+            '<button class="mp-adopt-btn" style="font-size:0.75rem;padding:6px 10px" onclick="window._mpQuestBattleTurn(\'defend\')">🛡️ '+(labels.defend||'Defend')+'</button>'+
+            '<button class="mp-adopt-btn" style="font-size:0.75rem;padding:6px 10px" onclick="window._mpQuestBattleTurn(\'charge\')">⚡ '+(labels.charge||'Charge')+'</button>'+
+        '</div>';
+}
+
+window._mpQuestBattleTurn = async function(action) {
+    if(!_questBattleState || _questBattleState.over) return;
+    // Disable buttons
+    var cho = el('quest-choices');
+    if(cho) cho.querySelectorAll('button').forEach(function(b){b.disabled=true;b.style.opacity='0.5';});
+    try {
+        var res = await fetch('/api/pets/battle/npc/turn', {
+            method:'POST', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({
+                action: action,
+                player: _questBattleState.player,
+                enemy:  _questBattleState.enemy,
+                turn:   _questBattleState.turn,
+                difficulty: _questBattleState.difficulty,
+                action_labels: _questBattleState.action_labels || {}
+            })
+        });
+        var d = await res.json();
+        if(!res.ok) { _questBattleFallback(d.detail||'Turn failed'); return; }
+
+        _questBattleState.player = d.player;
+        _questBattleState.enemy  = d.enemy;
+        _questBattleState.turn   = d.turn;
+        _questBattleState.over   = d.over;
+
+        // Update HP bars and log
+        _renderQuestBattleArena();
+        var log = el('quest-battle-log');
+        if(log && d.combat) {
+            var c = d.combat;
+            var line = 'Turn '+d.turn+': ';
+            if(c.p_action==='charge') line += 'You charge up!';
+            else if(c.p_action==='defend') line += 'You defend.';
+            else line += 'You deal '+(c.p_dmg||0)+' dmg.';
+            if(c.e_action==='attack') line += ' Enemy deals '+(c.e_dmg||0)+' dmg.';
+            log.innerHTML += '<div>'+escHtml(line)+'</div>';
+            log.scrollTop = log.scrollHeight;
+        }
+
+        if(d.over) {
+            var xpGained = d.xp_gained || 0;
+            _resolveQuestBattle(d.won, xpGained);
+        } else {
+            // Re-enable buttons
+            if(cho) cho.querySelectorAll('button').forEach(function(b){b.disabled=false;b.style.opacity='1';});
+        }
+    } catch(e) { _questBattleFallback(e.message); }
+};
+
+async function _resolveQuestBattle(won, xpGained) {
+    _questBattleState = null;
+    try {
+        var res = await fetch('/api/pets/quest/battle_result', {
+            method:'POST', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({won: won, xp_gained: xpGained||0})
+        });
+        var d = await res.json();
+        if(!res.ok) { showResult('quest-outcome', false, d.detail||'Error'); return; }
+        if(d.done) {
+            _renderQuestDone(d);
+        } else {
+            _renderQuestStage(d);
+        }
+    } catch(e) {
+        showResult('quest-outcome', false, e.message);
+    }
+}
 
 function _renderQuestDone(d) {
     el('quest-active').style.display = 'none';
@@ -973,6 +1423,14 @@ window._mpQuestReset = function() {
     el('quest-result').style.display = 'none';
     var out = el('quest-outcome'); if(out) out.innerHTML='';
     var xpt = el('quest-xp-track'); if(xpt) xpt.textContent='';
+    _questBattleState = null;
+};
+
+window._mpQuestAbandon = async function() {
+    try {
+        await fetch('/api/pets/quest/abandon', {method:'POST', headers:{'Content-Type':'application/json'}, body:'{}'});
+    } catch(e) { /* silent */ }
+    window._mpQuestReset();
 };
 
 // ── Loot Market state & handlers ──────────────────────────────────────────────
@@ -1007,40 +1465,124 @@ window._mpOpenChest = async function() {
     var amtEl = el('lm-amount');
     _lmAmt = amtEl ? Math.max(1,parseInt(amtEl.value||'1',10)||1) : 1;
     var r = el('lm-result');
-    if(r) r.innerHTML='<div class="mp-battle-card" style="font-size:0.8rem;color:var(--text-secondary)">Opening chest...</div>';
+    if(r) r.innerHTML = '';
+
+    var chestImgSrc = '/static/Emojis/Pets/Equipment/' + _lmChest + '.png';
+    var chestColor = ({chest1:'#9e9e9e',chest2:'#4caf50',chest3:'#2196f3',chest4:'#ff9800'})[_lmChest] || '#ffd700';
+
     try {
+        // Fetch first, then animate with the results
         var res = await fetch('/api/pets/loot/open', {
             method:'POST', headers:{'Content-Type':'application/json'},
             body: JSON.stringify({chest:_lmChest, amount:_lmAmt, selected_type:_lmType||null})
         });
         var d = await res.json();
+
         if(res.ok && d.success) {
-            var html = '<div class="mp-battle-card" style="border-color:rgba(255,215,0,0.4)">'+
-                '<div class="mp-section-title" style="color:var(--gold-primary)">📦 Chest Opened!</div>'+
-                '<div class="d-flex flex-wrap gap-2 mt-2">';
-            (d.items||[]).forEach(function(item){
-                var f=item.emoji_file||(item.name+'.png');
-                var rcClass='rc-'+(item.rarity||'Common').toLowerCase();
-                html+='<div class="mp-inv-item">'+
-                    '<img src="/static/Emojis/Pets/Equipment/'+f+'" style="width:28px;height:28px" onerror="this.src=\'/static/Emojis/Pets/Deco/Basic.png\'">'+
-                    '<div><div class="fw-bold '+rcClass+'" style="font-size:0.78rem">'+item.name+'</div>'+
-                    '<div style="font-size:0.65rem;color:var(--text-secondary)">'+(item.rarity||'Common')+'</div></div></div>';
-            });
-            html += '</div>';
-            // Also show raw messages cleaned up
-            if (d.messages && d.messages.length) {
-                html += '<div style="font-size:0.75rem;color:var(--text-secondary);margin-top:8px">';
-                d.messages.forEach(function(m){ html += '<div>'+cleanDiscordText(m)+'</div>'; });
+            var items = d.items || [];
+            _showChestAnimation(chestImgSrc, chestColor, items, function() {
+                var html = '<div class="mp-battle-card" style="border-color:rgba(255,215,0,0.4)">';
+                html += '<div class="mp-section-title" style="color:var(--gold-primary)">📦 Chest Opened!</div>';
+                html += '<div class="d-flex flex-wrap gap-2 mt-2">';
+                items.forEach(function(item){
+                    var f = item.emoji_file||(item.name+'.png');
+                    var rcClass = 'rc-'+(item.rarity||'Common').toLowerCase();
+                    html += '<div class="mp-inv-item">'+
+                        '<img src="/static/Emojis/Pets/Equipment/'+f+'" style="width:28px;height:28px" onerror="this.src=\'/static/Emojis/Pets/Deco/Basic.png\'">'+
+                        '<div><div class="fw-bold '+rcClass+'" style="font-size:0.78rem">'+escHtml(item.name)+'</div>'+
+                        '<div style="font-size:0.65rem;color:var(--text-secondary)">'+(item.rarity||'Common')+'</div></div></div>';
+                });
                 html += '</div>';
-            }
-            html += '</div>';
-            if(r) r.innerHTML=html;
-            if(d.pet){ _pet=d.pet; renderPetCard(d.pet); }
+                if (d.messages && d.messages.length) {
+                    html += '<div style="font-size:0.75rem;color:var(--text-secondary);margin-top:8px">';
+                    d.messages.forEach(function(m){
+                        var stripped = String(m).replace(/<img[^>]*>/gi, '').replace(/<[^>]+>/g, '').trim();
+                        var clean = injectItemImages(cleanDiscordText(stripped).replace(/\*\*/g,'').trim());
+                        if (clean) html += '<div>'+clean+'</div>';
+                    });
+                    html += '</div>';
+                }
+                html += '</div>';
+                if(r) r.innerHTML = html;
+                if(d.pet){ _pet=d.pet; renderPetCard(d.pet); }
+            });
         } else {
             showResult('lm-result', false, d.detail||d.error||'Failed');
         }
     } catch(e){ showResult('lm-result',false,e.message); }
 };
+
+function _showChestAnimation(chestSrc, chestColor, items, callback) {
+    // Inject keyframes once
+    if (!document.getElementById('chest-anim-style')) {
+        var s = document.createElement('style');
+        s.id = 'chest-anim-style';
+        s.textContent =
+            '@keyframes chestZoomIn{0%{transform:scale(0.6);opacity:0}40%{transform:scale(1.12);opacity:1}70%{transform:scale(0.97)}100%{transform:scale(1);opacity:1}}'+
+            '@keyframes chestFadeOut{0%{transform:scale(1);opacity:1}100%{transform:scale(1.3);opacity:0}}'+
+            '@keyframes itemsReveal{0%{opacity:0;transform:scale(0.5) translateY(20px)}60%{transform:scale(1.08) translateY(-4px)}100%{opacity:1;transform:scale(1) translateY(0)}}'+
+            '@keyframes shimmer{0%,100%{box-shadow:0 0 20px rgba(255,215,0,0.3)}50%{box-shadow:0 0 50px rgba(255,215,0,0.9),0 0 80px rgba(255,215,0,0.4)}}';
+        document.head.appendChild(s);
+    }
+
+    var overlay = document.createElement('div');
+    overlay.id = 'chest-anim-overlay';
+    overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;z-index:9999;'+
+        'display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.75);backdrop-filter:blur(4px)';
+
+    // Build item icons HTML
+    var itemIconsHtml = items.map(function(item) {
+        var f = item.emoji_file || (item.name + '.png');
+        var rc = ({Common:'#9e9e9e',Uncommon:'#4caf50',Rare:'#2196f3',Epic:'#9c27b0',Mythic:'#ff9800'})[item.rarity||'Common'] || '#9e9e9e';
+        return '<div style="text-align:center;animation:itemsReveal 0.5s ease forwards">'+
+            '<img src="/static/Emojis/Pets/Equipment/'+f+'" style="width:52px;height:52px;object-fit:contain;filter:drop-shadow(0 0 8px '+rc+')" onerror="this.src=\'/static/Emojis/Pets/Deco/Basic.png\'">'+
+            '<div style="font-size:0.62rem;color:'+rc+';margin-top:3px;max-width:60px;word-break:break-word">'+escHtml(item.name)+'</div>'+
+            '</div>';
+    }).join('');
+
+    overlay.innerHTML =
+        '<div style="text-align:center;max-width:420px;padding:24px">'+
+        // Phase 1: chest
+        '<div id="chest-phase1">'+
+        '<img id="chest-anim-img" src="'+chestSrc+'" style="width:96px;height:96px;object-fit:contain;animation:chestZoomIn 0.6s ease forwards;filter:drop-shadow(0 0 24px '+chestColor+')" onerror="this.src=\'/static/Emojis/Pets/Deco/Basic.png\'">'+
+        '<div style="font-size:0.9rem;color:'+chestColor+';font-family:Orbitron,sans-serif;margin-top:10px;animation:shimmer 1s ease infinite">Opening...</div>'+
+        '</div>'+
+        // Phase 2: items (hidden initially)
+        '<div id="chest-phase2" style="display:none">'+
+        '<div style="font-size:1rem;color:var(--gold-primary);font-family:Orbitron,sans-serif;margin-bottom:14px">✨ You got!</div>'+
+        '<div style="display:flex;flex-wrap:wrap;gap:12px;justify-content:center">'+itemIconsHtml+'</div>'+
+        '<div style="font-size:0.75rem;color:var(--text-secondary);margin-top:14px">Click anywhere to continue</div>'+
+        '</div>'+
+        '</div>';
+
+    document.body.appendChild(overlay);
+
+    // After zoom-in pause, fade chest out then show items
+    setTimeout(function() {
+        var chestImg = document.getElementById('chest-anim-img');
+        var phase1 = document.getElementById('chest-phase1');
+        var phase2 = document.getElementById('chest-phase2');
+        if (chestImg) chestImg.style.animation = 'chestFadeOut 0.4s ease forwards';
+        setTimeout(function() {
+            if (phase1) phase1.style.display = 'none';
+            if (phase2) phase2.style.display = '';
+        }, 380);
+    }, 1200);
+
+    // Click anywhere to dismiss
+    overlay.addEventListener('click', function() {
+        overlay.remove();
+        callback();
+    });
+
+    // Auto-dismiss after 4s
+    setTimeout(function() {
+        if (document.getElementById('chest-anim-overlay')) {
+            overlay.remove();
+            callback();
+        }
+    }, 4000);
+}
 
 window._mpRename = async function() {
     var nameEl = el('rename-name');
@@ -1111,8 +1653,38 @@ window._mpKill = async function() {
     }
 };
 
+// Returns {matPair, gemPair, monPair, fullSet} for a pet's equipment
+function getEquipSetState(pet) {
+    var eq = pet.equipment || {};
+    var specs = pet.specializations || pet.Spec || [];
+
+    var matCounts = {}, gemCounts = {}, monCounts = {};
+    (Array.isArray(eq.Material) ? eq.Material : (eq.Material && eq.Material.name ? [eq.Material] : []))
+        .forEach(function(m){ if(m&&m.name){ var n=m.name.toLowerCase(); matCounts[n]=(matCounts[n]||0)+1; } });
+    (eq.Gems||[]).forEach(function(g){ if(g&&g.name){ var n=g.name.toLowerCase(); gemCounts[n]=(gemCounts[n]||0)+1; } });
+    (eq.Monsters||[]).forEach(function(m){ if(m&&m.name){ var n=m.name.toLowerCase(); monCounts[n]=(monCounts[n]||0)+1; } });
+
+    var matPair = Object.values(matCounts).some(function(c){ return c >= 2; });
+    var gemPair = Object.values(gemCounts).some(function(c){ return c >= 2; });
+    var monPair = Object.values(monCounts).some(function(c){ return c >= 2; });
+
+    // Hat bonus matches a spec stat
+    var hatMatchesSpec = false;
+    if (eq.Hat && eq.Hat.name && specs.length) {
+        var hatData = getEquipItem(eq.Hat.name);
+        var hatBonuses = (hatData && hatData.bonuses) ? hatData.bonuses : (eq.Hat.bonuses || {});
+        var hatStats = Object.keys(hatBonuses).map(function(s){ return s.toUpperCase(); });
+        hatMatchesSpec = specs.some(function(sp){ return hatStats.indexOf(sp.toUpperCase()) !== -1; });
+    }
+
+    var fullSet = matPair && gemPair && monPair && hatMatchesSpec;
+    return {matPair:matPair, gemPair:gemPair, monPair:monPair, hatMatchesSpec:hatMatchesSpec, fullSet:fullSet};
+}
+
 function buildEquipped(pet) {
     var eq = pet.equipment||{};
+    var state = getEquipSetState(pet);
+
     var slots = [
         {type:'Monsters',idx:0,label:'Monster 1'},{type:'Gems',idx:0,label:'Gem 1'},
         {type:'Material',idx:0,label:'Material 1'},{type:'Hat',label:'Hat'},
@@ -1134,7 +1706,20 @@ function buildEquipped(pet) {
             var data = getEquipItem(item.name);
             var tip = item.name+' — '+bonusTooltip(data||item)+' (click to unequip)';
             var unequipSlot = sl.type === 'Material' ? 'Material' : sl.type;
-            html += '<div class="mp-equip-slot mp-equip-filled" title="'+tip+'" '+
+
+            // Determine glow tier for this slot
+            var glowClass = '';
+            if (state.fullSet) {
+                glowClass = ' equip-fullset';
+            } else {
+                var isPair = (sl.type === 'Monsters' && state.monPair) ||
+                             (sl.type === 'Gems'     && state.gemPair) ||
+                             (sl.type === 'Material' && state.matPair) ||
+                             (sl.type === 'Hat'      && state.hatMatchesSpec);
+                if (isPair) glowClass = ' equip-pair';
+            }
+
+            html += '<div class="mp-equip-slot mp-equip-filled'+glowClass+'" title="'+tip+'" '+
                 'onclick="window._mpUnequipSlot(\''+unequipSlot+'\')" style="cursor:pointer"'+
                 ' data-hover-item="'+escHtml(item.name)+'">'+
                 '<img src="'+src+'" onerror="this.src=\'/static/Emojis/Pets/Deco/Basic.png\'">'+
@@ -1212,7 +1797,7 @@ function buildInventoryCollapsible(pet) {
 
             var onclick = clickable ? ' onclick="window._mpInvClick(\''+escHtml(item.name)+'\',\''+t+'\',\''+action+'\','+equipCount+')"' : '';
 
-            var glowStyle = isEquipped ? 'box-shadow:0 0 8px var(--gold-glow);border-color:var(--gold-primary);' : '';
+            var glowStyle = isEquipped ? 'box-shadow:0 0 5px rgba(255,215,0,0.3);border-color:rgba(255,215,0,0.6);' : '';
             content += '<div class="mp-inv-item'+(clickable?' mp-inv-clickable':'')+'" '+
                 'style="padding:4px 6px;'+glowStyle+'" title="'+escHtml(tip)+'"'+onclick+
                 ' data-hover-item="'+escHtml(item.name)+'">'+
@@ -1226,6 +1811,37 @@ function buildInventoryCollapsible(pet) {
         content += '</div>';
     });
     return header + content + '</div>';
+}
+
+function buildXpSourcesCard(pet) {
+    var xs = pet.xp_sources || {};
+
+    // Activity sources we want to highlight
+    var activities = [
+        { label: '🎮 Play',     keys: ['play'] },
+        { label: '🏋️ Train',   keys: ['training'] },
+        { label: '🎯 Mission',  keys: ['mission', 'mission_fail'] },
+        { label: '📜 Quest',    keys: ['quest'] },
+        { label: '⚔️ Battle',   keys: ['battle', 'npc_battle', 'pvp_battle'] },
+    ];
+
+    var rows = activities.map(function(a) {
+        var net = a.keys.reduce(function(sum, k) { return sum + (xs[k] || 0); }, 0);
+        return { label: a.label, net: net };
+    }).filter(function(r) { return r.net !== 0; });
+
+    if (!rows.length) return '';
+
+    var html = '<hr class="mp-divider my-2"><div class="mp-section-title">XP Sources</div>' +
+        '<div class="d-flex gap-2 flex-wrap">';
+    rows.forEach(function(r) {
+        html += '<div class="mp-mini-stat-card">' +
+            '<div class="mp-mini-label" style="font-size:0.7rem">' + r.label + '</div>' +
+            '<div style="font-size:0.78rem;font-weight:700" class="' + (r.net >= 0 ? 'text-success' : 'text-danger') + '">' +
+            (r.net >= 0 ? '+' : '') + r.net.toLocaleString() + ' XP</div>' +
+            '</div>';
+    });
+    return html + '</div>';
 }
 
 function buildBattleRecordCard(pet) {
@@ -1248,116 +1864,76 @@ function buildBattleRecordCard(pet) {
 }
 
 function buildCasinoCard(pet) {
-    var gs = pet.gambling_stats||{};
+    var gs = pet.gambling_stats || {};
+    var xs = pet.xp_sources || {};
+
+    // Map xp_sources keys to game display names for fallback
+    var sourceMap = {
+        slots_win: 'Slots', slots_bet: 'Slots',
+        race_win: 'Races', race_bet: 'Races',
+        blackjack_win: 'Blackjack', blackjack_bet: 'Blackjack',
+        blackjack_double: 'Blackjack', blackjack_split: 'Blackjack',
+        craps_win: 'Craps', craps_bet: 'Craps',
+        holdem_win: 'Hold\'em', holdem_buyin: 'Hold\'em', holdem_cashout: 'Hold\'em',
+        coinflip_win: 'Coin Flip', minigame_bet: 'Mini-Games',
+        rps_win: 'RPS', rps_tie: 'RPS',
+    };
+
     var games = [
-        {key:'slots',name:'Slots'},{key:'blackjack',name:'BJ'},
-        {key:'holdem',name:"Hold'em"},{key:'craps',name:'Craps'},{key:'races',name:'Races'}
+        {key:'slots',     name:'Slots',      playedKey:'total_games_played', wonKey:'races_won'},
+        {key:'blackjack', name:'Blackjack',   playedKey:'rounds_played',      wonKey:'rounds_won'},
+        {key:'holdem',    name:"Hold'em",     playedKey:'games_played',       wonKey:'games_won'},
+        {key:'craps',     name:'Craps',       playedKey:'games_played',       wonKey:'games_won'},
+        {key:'races',     name:'Races',       playedKey:'races_played',       wonKey:'races_won'},
+        {key:'coinflip',  name:'Coin Flip',   playedKey:'games_played',       wonKey:'games_won'},
+        {key:'rps',       name:'RPS',         playedKey:'games_played',       wonKey:'games_won'},
     ];
-    var html = '<hr class="mp-divider my-2"><div class="mp-section-title">Casino</div>'+
-        '<div class="d-flex gap-2 flex-wrap">';
-    games.forEach(function(g) {
-        var s = gs[g.key]||{};
-        var played = s.total_played||s.games_played||s.races_played||s.rounds_played||0;
-        var wins   = s.wins||s.games_won||s.races_won||s.rounds_won||0;
-        var won    = s.total_won||s.xp_won_total||0;
-        var lost   = s.total_lost||s.xp_lost_total||0;
-        var net    = won-lost;
-        var wr     = played>0 ? ((wins/played)*100).toFixed(0) : 0;
-        html += '<div class="mp-mini-stat-card">'+
-            '<div class="mp-mini-label">'+g.name+'</div>'+
-            '<div style="font-size:0.72rem;color:var(--text-secondary)">'+played+' played</div>'+
-            '<div style="font-size:0.7rem">'+wr+'% WR</div>'+
-            '<div style="font-size:0.68rem" class="'+(net>=0?'text-success':'text-danger')+'">'+(net>=0?'+':'')+net.toLocaleString()+' XP</div>'+
+
+    var html = '<hr class="mp-divider my-2"><div class="mp-section-title">Casino</div>';
+
+    // Build net XP from xp_sources as the authoritative source
+    var netByGame = {
+        'Slots': (xs.slots_win||0) + (xs.slots_bet||0),
+        'Races': (xs.race_win||0) + (xs.race_bet||0),
+        'Blackjack': (xs.blackjack_win||0) + (xs.blackjack_bet||0) + (xs.blackjack_double||0) + (xs.blackjack_split||0),
+        'Craps': (xs.craps_win||0) + (xs.craps_bet||0),
+        "Hold'em": (xs.holdem_win||0) + (xs.holdem_buyin||0) + (xs.holdem_cashout||0),
+        'Coin Flip': (xs.coinflip_win||0) + (xs.minigame_bet||0),
+        'RPS': (xs.rps_win||0) + (xs.rps_tie||0),
+    };
+
+    // Determine which games were actually played (either gambling_stats or xp_sources)
+    var playedGames = games.filter(function(g) {
+        var s = gs[g.key] || {};
+        var played = s[g.playedKey] || s.games_played || s.races_played || s.rounds_played || s.total_games_played || 0;
+        var hasXpSource = Math.abs(netByGame[g.name] || 0) > 0;
+        return played > 0 || hasXpSource;
+    });
+
+    if (!playedGames.length) {
+        return html + '<div style="font-size:0.75rem;color:var(--text-secondary);padding:6px 0">No casino games played yet.</div>';
+    }
+
+    html += '<div class="d-flex gap-2 flex-wrap">';
+    playedGames.forEach(function(g) {
+        var s = gs[g.key] || {};
+        var played = s[g.playedKey] || s.games_played || s.races_played || s.rounds_played || s.total_games_played || 0;
+        var wins   = s[g.wonKey]   || s.games_won   || s.races_won   || s.rounds_won   || 0;
+        var won    = s.xp_won_total  || s.total_won  || 0;
+        var lost   = s.xp_lost_total || s.total_lost || 0;
+        // Use xp_sources net as authoritative if gambling_stats net is 0
+        var net    = (won - lost) || netByGame[g.name] || 0;
+        var wr     = played > 0 ? ((wins / played) * 100).toFixed(0) : '—';
+        html += '<div class="mp-mini-stat-card">' +
+            '<div class="mp-mini-label">' + g.name + '</div>' +
+            (played ? '<div style="font-size:0.72rem;color:var(--text-secondary)">' + played + ' played</div>' : '') +
+            (played ? '<div style="font-size:0.7rem">' + wr + '% WR</div>' : '') +
+            '<div style="font-size:0.68rem" class="' + (net >= 0 ? 'text-success' : 'text-danger') + '">' +
+            (net >= 0 ? '+' : '') + net.toLocaleString() + ' XP</div>' +
             '</div>';
     });
-    return html + '</div>';
-
-
-    var base = {ATT:pet.ATT||0,DEF:pet.DEF||0,INT:pet.INT||0,DEX:pet.DEX||0,HAP:pet.HAP||0,ENE:pet.ENE||0};
-    var cs = pet.computed_stats||{}, bs = pet.battle_stats||{};
-    var specs = pet.specializations||pet.Spec||[];
-
-    // Use computed_stats from server if present, otherwise calculate using exact same formulas as pet_brain.py
-    // attack  = ATT + DEX
-    // defense = DEF + INT
-    // max_health = ((ATT+DEF+INT+DEX+HAP+ENE)/6 + HAP*ENE) * 10
-    var att = cs.ATT !== undefined ? cs.ATT : base.ATT;
-    var def = cs.DEF !== undefined ? cs.DEF : base.DEF;
-    var int_ = cs.INT !== undefined ? cs.INT : base.INT;
-    var dex = cs.DEX !== undefined ? cs.DEX : base.DEX;
-    var hap = cs.HAP !== undefined ? cs.HAP : base.HAP;
-    var ene = cs.ENE !== undefined ? cs.ENE : base.ENE;
-
-    var attack  = cs.attack  !== undefined ? cs.attack  : (att + dex);
-    var defense = cs.defense !== undefined ? cs.defense : (def + int_);
-    var totalStats = att + def + int_ + dex + hap + ene;
-    var maxHp = cs.max_health !== undefined ? cs.max_health : Math.floor(((totalStats / 6) + (hap * ene)) * 10);
-    var html = '<div class="mp-section-title">Stats Breakdown</div><div class="row g-2 mb-2">';
-    html += '<div class="col-md-4"><div class="mp-battle-card"><div style="font-size:0.7rem;color:var(--gold-secondary);font-weight:700;margin-bottom:6px">Base Stats</div>';
-    html += '<div class="row g-1">';
-    Object.keys(base).forEach(function(k) {
-        var isSp = specs.indexOf(k) !== -1;
-        html += '<div class="col-6"><div class="mp-stat-row"><img src="/static/Emojis/Pets/Deco/'+k+'.png" onerror="this.style.display=\'none\'">'+
-            '<span class="'+(isSp?'stat-special':'')+'" style="font-size:0.85rem">'+k+': '+base[k]+'</span></div></div>';
-    });
-    html += '</div></div></div>';
-    html += '<div class="col-md-4"><div class="mp-battle-card"><div style="font-size:0.7rem;color:var(--gold-secondary);font-weight:700;margin-bottom:6px">Combat</div>'+
-        '<div style="font-size:0.75rem;margin-bottom:4px">⚔️ Attack: <strong>'+attack+'</strong> <span style="font-size:0.65rem;color:var(--text-secondary)">(ATT+DEX)</span></div>'+
-        '<div style="font-size:0.75rem;margin-bottom:4px">🛡️ Defense: <strong>'+defense+'</strong> <span style="font-size:0.65rem;color:var(--text-secondary)">(DEF+INT)</span></div>'+
-        '<div style="font-size:0.75rem">❤️ Max HP: <strong>'+maxHp.toLocaleString()+'</strong> <span style="font-size:0.65rem;color:var(--text-secondary)">(avg+HAP×ENE)×10</span></div>'+
-        '</div></div>';
-    html += '<div class="col-md-4"><div class="mp-battle-card"><div style="font-size:0.7rem;color:var(--gold-secondary);font-weight:700;margin-bottom:6px">Battle Records</div>';
-    [{key:'pvp',name:'PvP'},{key:'npc',name:'NPC'},{key:'wild_encounter',name:'Wild'},{key:'boss',name:'Boss'}].forEach(function(bt) {
-        var s = bs[bt.key]||{wins:0,losses:0};
-        var wr = (s.wins+s.losses)>0 ? ((s.wins/(s.wins+s.losses))*100).toFixed(0) : 0;
-        html += '<div style="font-size:0.72rem;margin-bottom:2px"><span style="color:var(--text-secondary)">'+bt.name+':</span> '+
-            '<span class="text-success">'+s.wins+'W</span>/<span class="text-danger">'+s.losses+'L</span> '+
-            '<span style="color:var(--text-secondary)">('+wr+'%)</span></div>';
-    });
-    html += '</div></div></div>';
-    var xpE = Object.entries(pet).filter(function(kv){ return kv[0].endsWith('_xp_earned') && kv[1]!==0; });
-    if (xpE.length) {
-        html += '<div style="font-size:0.7rem;color:var(--gold-secondary);font-weight:700;margin-bottom:4px">XP Sources</div><div class="d-flex flex-wrap gap-2">';
-        xpE.sort(function(a,b){return b[1]-a[1];}).forEach(function(kv) {
-            var v = kv[1];
-            html += '<div class="mp-battle-card" style="font-size:0.7rem">'+
-                '<div>'+kv[0].replace('_xp_earned','').replace(/_/g,' ').toUpperCase()+'</div>'+
-                '<div class="'+(v>=0?'text-success':'text-danger')+' fw-bold">'+(v>=0?'+':'')+v.toLocaleString()+' XP</div></div>';
-        });
-        html += '</div>';
-    }
+    html += '</div>';
     return html;
-}
-
-function buildCasino(pet) {
-    var gs = pet.gambling_stats||{};
-    var games = [
-        {key:'slots',name:'Slots'},{key:'blackjack',name:'Blackjack'},
-        {key:'holdem',name:"Hold'em"},{key:'craps',name:'Craps'},{key:'races',name:'Races'}
-    ];
-    var html = '<div class="mp-section-title">Casino Stats</div><div class="row g-2">';
-    games.forEach(function(g) {
-        var s = gs[g.key]||{};
-        var played = s.total_played||s.games_played||s.races_played||s.rounds_played||0;
-        var wins   = s.wins||s.games_won||s.races_won||s.rounds_won||0;
-        var losses = s.losses||s.games_lost||s.races_lost||s.rounds_lost||0;
-        var won    = s.total_won||s.xp_won_total||0;
-        var lost   = s.total_lost||s.xp_lost_total||0;
-        var net    = won-lost;
-        var wr     = played>0 ? ((wins/played)*100).toFixed(1) : 0;
-        html += '<div class="col-md-4 col-sm-6"><div class="mp-casino-card">'+
-            '<div style="font-size:0.72rem;color:var(--gold-secondary);font-weight:700;margin-bottom:4px">'+g.name+'</div>'+
-            '<div class="d-flex justify-content-between" style="font-size:0.7rem">'+
-            '<span class="text-muted">'+played+' played</span>'+
-            '<span><span class="text-success">'+wins+'W</span>/<span class="text-danger">'+losses+'L</span></span>'+
-            '</div>'+
-            '<div class="mp-xp-bar-wrap mt-1 mb-1" style="height:5px"><div class="mp-xp-bar" style="width:'+wr+'%"></div></div>'+
-            '<div class="d-flex justify-content-between" style="font-size:0.68rem;color:var(--text-secondary)">'+
-            '<span>'+wr+'% WR</span>'+
-            '<span class="'+(net>=0?'text-success':'text-danger')+'">'+(net>=0?'+':'')+net.toLocaleString()+' XP</span>'+
-            '</div></div></div>';
-    });
-    return html + '</div>';
 }
 
 function bindAdoptBtn() {
@@ -1785,36 +2361,54 @@ window._mpInvClick = function(name, type, action, equipCount) {
     var isPotion = action === 'Use';
     var count    = equipCount || 1;
 
-    var imgSrc = EMOJI_PATH_MAP[name.toLowerCase()]
-        || '/static/Emojis/Pets/Equipment/' + name + '.png';
-
-    // Build bonus description for confirm dialog
     var data = getEquipItem(name);
-    var bonusLine = '';
-    if (!isPotion && data && data.bonuses) {
+    // Always prefer emoji_file from cached data for correct image path
+    var imgFile = (data && data.emoji_file) ? data.emoji_file : (name + '.png');
+    var imgSrc  = '/static/Emojis/Pets/Equipment/' + imgFile;
+
+    // Build effect/bonus description for confirm dialog
+    var descLine = '';
+    if (isPotion && data && data.use_effect) {
+        var eff = data.use_effect;
+        if (eff.type === 'attribute_boost') {
+            descLine = '<div style="font-size:0.78rem;color:#ce93d8;margin-top:6px">+' + eff.value + ' ' + eff.attribute + ' permanently</div>';
+        } else if (eff.type === 'elemental_boost') {
+            descLine = '<div style="font-size:0.78rem;color:#ce93d8;margin-top:6px">Boosts stats matching <b>' + escHtml(eff.element) + '</b> element (+' + eff.value_single + ' single / +' + eff.value_dual + ' dual)</div>';
+        } else if (eff.type === 'health_restore') {
+            descLine = '<div style="font-size:0.78rem;color:#2ecc71;margin-top:6px">Restores ' + (eff.percent ? eff.percent + '% HP' : eff.value + ' HP') + '</div>';
+        } else if (eff.type === 'xp_boost') {
+            descLine = '<div style="font-size:0.78rem;color:var(--gold-primary);margin-top:6px">+' + eff.value + ' XP</div>';
+        } else if (eff.type === 'random_boost') {
+            descLine = '<div style="font-size:0.78rem;color:#ce93d8;margin-top:6px">+' + eff.value + ' to ' + eff.count + ' random stats</div>';
+        } else {
+            descLine = '<div style="font-size:0.78rem;color:var(--text-secondary);margin-top:6px">' + escHtml(eff.type.replace(/_/g,' ')) + '</div>';
+        }
+    } else if (!isPotion && data && data.bonuses) {
         var bParts = Object.keys(data.bonuses).map(function(k){ return k+': +'+data.bonuses[k]; });
-        if (bParts.length) bonusLine = '<div style="font-size:0.72rem;color:#4caf50;margin-top:4px">'+bParts.join(' | ')+(count===2?' (×2 equipped)':'')+'</div>';
+        if (bParts.length) descLine = '<div style="font-size:0.72rem;color:#4caf50;margin-top:4px">'+bParts.join(' | ')+(count===2?' (×2 equipped)':'')+'</div>';
     }
+
+    var confirmText = isPotion
+        ? 'Use <b>' + escHtml(name) + '</b> on your pet? This cannot be undone.'
+        : count === 2
+            ? 'Equip both <b>' + escHtml(name) + '</b> to your pet (fills both slots)?'
+            : 'Equip this ' + type.toLowerCase() + ' to your pet?';
 
     var div = document.createElement('div');
     div.innerHTML =
         '<div class="modal fade" id="inv-confirm-modal" tabindex="-1">'+
-        '<div class="modal-dialog modal-sm">'+
+        '<div class="modal-dialog modal-sm modal-dialog-centered">'+
         '<div class="modal-content" style="background:var(--bg-secondary);border:1px solid var(--gold-primary)">'+
         '<div class="modal-header" style="border-bottom:1px solid rgba(255,215,0,0.2)">'+
         '<h6 class="modal-title" style="color:var(--gold-primary);font-family:Orbitron,sans-serif;font-size:0.85rem">'+
-        (isPotion ? '🧪 Use Potion' : '⚔️ '+action)+'</h6>'+
+        (isPotion ? '🧪 Use Potion' : '⚔️ ' + action) + '</h6>'+
         '<button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>'+
         '</div>'+
         '<div class="modal-body text-center">'+
-        '<img src="'+imgSrc+'" style="width:56px;height:56px;object-fit:contain;margin-bottom:8px;filter:drop-shadow(0 0 8px var(--gold-glow))" onerror="this.src=\'/static/Emojis/Pets/Deco/Basic.png\'"><br>'+
-        '<div style="font-size:0.9rem;color:var(--gold-primary);font-weight:700;font-family:Orbitron,sans-serif">'+escHtml(name)+'</div>'+
-        bonusLine+
-        '<div style="font-size:0.75rem;color:var(--text-secondary);margin-top:6px">'+
-        (isPotion ? 'Use this potion on your pet? This cannot be undone.' :
-         count===2 ? 'Equip both '+escHtml(name)+' to your pet (fills both slots)?' :
-         'Equip this '+type.toLowerCase()+' to your pet?')+
-        '</div>'+
+        '<img src="'+imgSrc+'" style="width:60px;height:60px;object-fit:contain;margin-bottom:8px;filter:drop-shadow(0 0 10px var(--gold-glow))" onerror="this.src=\'/static/Emojis/Pets/Deco/Basic.png\'"><br>'+
+        '<div style="font-size:0.95rem;color:var(--gold-primary);font-weight:700;font-family:Orbitron,sans-serif">'+escHtml(name)+'</div>'+
+        descLine+
+        '<div style="font-size:0.78rem;color:var(--text-secondary);margin-top:8px">'+confirmText+'</div>'+
         '</div>'+
         '<div class="modal-footer" style="border-top:1px solid rgba(255,215,0,0.2);justify-content:center;gap:8px">'+
         '<button class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>'+
@@ -1829,9 +2423,8 @@ window._mpInvClick = function(name, type, action, equipCount) {
     document.getElementById('inv-confirm-btn').onclick = function() {
         modal.hide();
         if (isPotion) {
-            _mpUsePotion(name);
+            _mpUsePotion(name, data);
         } else if (count === 2) {
-            // Equip first, then equip second
             _mpEquipItem(name, type, function() { _mpEquipItem(name, type); });
         } else {
             _mpEquipItem(name, type);
@@ -1855,10 +2448,10 @@ function _mpEquipItem(name, type, callback) {
             } else {
                 renderPetCard(d.pet);
                 renderAllPanels(d.pet);
-                _showToast('✅ '+escHtml(name)+' equipped!', true);
+                _showToast('✅ ' + name + ' equipped!', true);
             }
         } else {
-            _showToast('❌ '+cleanDiscordText(d.detail||d.message||'Equip failed'), false);
+            _showToast('❌ ' + cleanDiscordText(d.detail || d.message || 'Equip failed').replace(/\*\*/g,'').trim(), false);
         }
     })
     .catch(function(e){ _showToast('❌ '+e.message, false); });
@@ -1876,15 +2469,14 @@ window._mpUnequipSlot = function(slotType) {
             _pet = d.pet;
             renderPetCard(d.pet);
             renderAllPanels(d.pet);
-            _showToast('📦 '+cleanDiscordText(d.message||'Unequipped'), true);
+            _showToast('📦 ' + cleanDiscordText(d.message || 'Unequipped').replace(/\*\*/g,'').trim(), true);
         } else {
             _showToast('❌ '+cleanDiscordText(d.detail||d.message||'Unequip failed'), false);
         }
     })
     .catch(function(e){ _showToast('❌ '+e.message, false); });
-};function _mpUsePotion(name) {
-    // Show potion animation overlay
-    _showPotionAnimation(name, function() {
+};function _mpUsePotion(name, data) {
+    _showPotionAnimation(name, data, function() {
         fetch('/api/pets/use-potion', {
             method: 'POST',
             headers: {'Content-Type':'application/json'},
@@ -1896,30 +2488,41 @@ window._mpUnequipSlot = function(slotType) {
                 _pet = d.pet;
                 renderPetCard(d.pet);
                 renderAllPanels(d.pet);
-                _showToast('🧪 '+escHtml(name)+' used! '+cleanDiscordText(d.message||''), true);
+                // Build a clean readable message — strip all HTML tags
+                var msg = name + ' used!';
+                if (d.message) {
+                    var clean = String(d.message)
+                        .replace(/<img[^>]*>/gi, '')   // drop img tags
+                        .replace(/<[^>]+>/g, '')        // drop all other tags
+                        .replace(/\*\*/g, '')           // drop markdown bold
+                        .replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>') // decode entities
+                        .trim();
+                    if (clean) msg = name + ' — ' + clean;
+                }
+                _showToast('🧪 ' + msg, true);
             } else {
-                _showToast('❌ '+(d.detail||d.message||'Potion failed'), false);
+                _showToast('❌ ' + (d.detail || d.message || 'Potion failed'), false);
             }
         })
-        .catch(function(e){ _showToast('❌ '+e.message, false); });
+        .catch(function(e){ _showToast('❌ ' + e.message, false); });
     });
 }
 
-function _showPotionAnimation(name, callback) {
-    var imgSrc = EMOJI_PATH_MAP[name.toLowerCase()]
-        || '/static/Emojis/Pets/Equipment/' + name + '.png';
+function _showPotionAnimation(name, data, callback) {
+    var imgFile = (data && data.emoji_file) ? data.emoji_file : (name + '.png');
+    var imgSrc  = '/static/Emojis/Pets/Equipment/' + imgFile;
+
     var overlay = document.createElement('div');
     overlay.id = 'potion-anim-overlay';
     overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;z-index:9999;display:flex;align-items:center;justify-content:center;pointer-events:none;';
     overlay.innerHTML =
         '<div id="potion-anim-inner" style="text-align:center;animation:potionPop 1.8s ease forwards">'+
-        '<img src="'+imgSrc+'" style="width:80px;height:80px;object-fit:contain;filter:drop-shadow(0 0 20px #9c27b0)" onerror="this.src=\'/static/Emojis/Pets/Deco/Basic.png\'">'+
-        '<div style="font-size:1.2rem;color:#ce93d8;font-family:Orbitron,sans-serif;margin-top:8px;text-shadow:0 0 12px #9c27b0">✨ '+escHtml(name)+'</div>'+
-        '<div style="font-size:0.85rem;color:#e1bee7;margin-top:4px">Applying effects...</div>'+
+        '<img src="'+imgSrc+'" style="width:88px;height:88px;object-fit:contain;filter:drop-shadow(0 0 24px #9c27b0)" onerror="this.src=\'/static/Emojis/Pets/Deco/Basic.png\'">'+
+        '<div style="font-size:1.1rem;color:#ce93d8;font-family:Orbitron,sans-serif;margin-top:10px;text-shadow:0 0 12px #9c27b0">✨ '+escHtml(name)+'</div>'+
+        '<div style="font-size:0.82rem;color:#e1bee7;margin-top:4px">Applying effects...</div>'+
         '</div>';
     document.body.appendChild(overlay);
 
-    // Inject keyframes if not already present
     if (!document.getElementById('potion-anim-style')) {
         var style = document.createElement('style');
         style.id = 'potion-anim-style';

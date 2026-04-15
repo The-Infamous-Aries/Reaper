@@ -1,0 +1,913 @@
+<link rel="stylesheet" href="/css/weapons.css">
+
+<div class="wp-shell">
+
+  <!-- Controls -->
+  <div class="card wp-controls">
+    <div class="card-header">
+      <div>
+        <p class="wp-kicker">Politics &amp; War</p>
+        <p class="wp-title"><img src="/static/Emojis/Menu/snipe.png" style="width:22px;height:22px;vertical-align:middle;margin-right:6px;" alt="">Weapon Efficiency</p>
+      </div>
+      <div class="wp-header-right">
+        <div class="wp-mode-tabs">
+          <button class="wp-mode-tab active" data-mode="theory">📊 Theory</button>
+          <button class="wp-mode-tab" data-mode="targeted">🎯 Targeted</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Theory inputs -->
+    <div id="wp-theory-inputs" class="card-body" style="padding-top:0.5rem;">
+      <div class="wp-input-row">
+        <span class="wp-input-label">Optional — specific city:</span>
+        <input type="number" id="wp-infra-input" class="wp-input" placeholder="Infra level (e.g. 2500)" min="0" step="100">
+        <input type="number" id="wp-pd-input" class="wp-input" placeholder="Pop density (e.g. 60)" min="1" step="10">
+        <button id="wp-theory-run" class="btn btn-gold btn-sm">Analyze</button>
+      </div>
+    </div>
+
+    <!-- Targeted inputs -->
+    <div id="wp-targeted-inputs" class="card-body" style="padding-top:0.5rem;display:none;">
+      <div class="wp-input-row">
+        <div class="wp-target-type-tabs">
+          <button class="wp-target-type-tab active" data-type="nation">Nation</button>
+          <button class="wp-target-type-tab" data-type="alliance">Alliance</button>
+        </div>
+        <input type="text" id="wp-target-input" class="wp-input" placeholder="Nation or Alliance name / ID" style="min-width:220px;">
+        <button id="wp-targeted-run" class="btn btn-gold btn-sm">Analyze</button>
+        <button id="wp-targeted-refresh" class="btn btn-sm" style="background:rgba(255,215,0,0.08);border:1px solid rgba(255,215,0,0.3);color:var(--gold-secondary);font-size:0.75rem;" title="Force refresh — bypasses 1-hour cache">↻ Refresh</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="wp-status" class="wp-status" style="display:none;"></div>
+
+  <!-- ── Theory output ──────────────────────────────────────────────────── -->
+  <div id="wp-theory-output" style="display:none;">
+
+    <!-- Cost row -->
+    <div class="card" style="padding:0.75rem 1rem;">
+      <div class="wp-cost-row">
+        <span style="font-size:0.78rem;color:var(--text-secondary);">Live Weapon Costs:</span>
+        <span class="wp-cost-badge missile"><img src="/static/Emojis/Military/missile.png" class="wp-icon" alt="Missile"> Missile: <span id="wp-missile-cost">—</span></span>
+        <span class="wp-cost-badge nuke"><img src="/static/Emojis/Military/bomb.png" class="wp-icon" alt="Nuke"> Nuke: <span id="wp-nuke-cost">—</span></span>
+        <span style="font-size:0.72rem;color:var(--text-secondary);margin-left:auto;" id="wp-theory-ts"></span>
+      </div>
+    </div>
+
+    <div class="wp-theory-grid">
+
+      <!-- Efficiency thresholds -->
+      <div class="wp-section">
+        <div class="wp-section-title">📈 Efficiency Thresholds (avg pop density 60)</div>
+        <table class="wp-thresh-table">
+          <thead>
+            <tr>
+              <th>Multiplier</th>
+              <th><img src="/static/Emojis/Military/missile.png" class="wp-icon" alt=""> Min Missile Infra</th>
+              <th><img src="/static/Emojis/Military/bomb.png" class="wp-icon" alt=""> Min Nuke Infra</th>
+              <th>Rating</th>
+            </tr>
+          </thead>
+          <tbody id="wp-thresh-body"></tbody>
+        </table>
+      </div>
+
+      <!-- Chart -->
+      <div class="wp-section">
+        <div class="wp-section-title">📉 Infra Required vs Damage Multiplier</div>
+        <canvas id="wp-chart-canvas"></canvas>
+      </div>
+
+      <!-- Specific city detail (shown only when infra+pd provided) -->
+      <div class="wp-section wp-theory-grid-full" id="wp-city-detail-section" style="display:none;">
+        <div class="wp-section-title">🏙️ Specific City Analysis — <span id="wp-city-detail-label"></span></div>
+        <div class="wp-city-detail-grid" id="wp-city-detail-grid"></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── Targeted output ────────────────────────────────────────────────── -->
+  <div id="wp-targeted-output" style="display:none;">
+
+    <!-- Cost row -->
+    <div class="card" style="padding:0.75rem 1rem;">
+      <div class="wp-cost-row">
+        <span style="font-size:0.78rem;color:var(--text-secondary);">Live Weapon Costs:</span>
+        <span class="wp-cost-badge missile"><img src="/static/Emojis/Military/missile.png" class="wp-icon" alt="Missile"> Missile: <span id="wp-t-missile-cost">—</span></span>
+        <span class="wp-cost-badge nuke"><img src="/static/Emojis/Military/bomb.png" class="wp-icon" alt="Nuke"> Nuke: <span id="wp-t-nuke-cost">—</span></span>
+        <span style="font-size:0.72rem;color:var(--text-secondary);margin-left:auto;" id="wp-targeted-ts"></span>
+      </div>
+    </div>
+
+    <!-- Alliance view -->
+    <div id="wp-alliance-view" style="display:none;">
+      <div class="card nat-table-card">
+        <div class="card-header">
+          <span id="wp-alliance-title">Alliance Strike Analysis</span>
+          <span id="wp-alliance-sort-summary" class="nat-sort-summary">Sorted by Missile Dmg ↓</span>
+        </div>
+        <div class="card-body p-0">
+          <div class="wp-table-wrap">
+            <table class="wp-table" id="wp-alliance-table">
+              <thead>
+                <tr>
+                  <th style="width:1.5rem"></th>
+                  <th data-sort="name">Nation</th>
+                  <th data-sort="cities">Cities</th>
+                  <th>Defenses</th>
+                  <th data-sort="missile" class="wp-sort-active"><img src="/static/Emojis/Military/missile.png" class="wp-icon" alt=""> Infra Taken ↓</th>
+                  <th data-sort="missile_cost"><img src="/static/Emojis/Military/missile.png" class="wp-icon" alt=""> Infra Cost</th>
+                  <th data-sort="nuke"><img src="/static/Emojis/Military/bomb.png" class="wp-icon" alt=""> Infra Taken</th>
+                  <th data-sort="nuke_cost"><img src="/static/Emojis/Military/bomb.png" class="wp-icon" alt=""> Infra Cost</th>
+                </tr>
+              </thead>
+              <tbody id="wp-alliance-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Nation view (single nation — full city table, no collapse) -->
+    <div id="wp-nation-view" style="display:none;">
+      <div class="card">
+        <div class="card-body">
+          <div class="wp-nation-header" id="wp-nation-header"></div>
+          <div class="wp-defense-row" id="wp-nation-defenses"></div>
+          <div class="wp-city-table-wrap">
+            <table class="wp-city-table" id="wp-nation-city-table">
+              <thead>
+                <tr>
+                  <th data-city-col="city_name">City</th>
+                  <th data-city-col="infra">Infra</th>
+                  <th data-city-col="pop_density">Pop Density</th>
+                  <th data-city-col="actual_pop">Population</th>
+                  <th>Power</th>
+                  <th data-city-col="missile_dmg" class="wp-city-sort-active"><img src="/static/Emojis/Military/missile.png" class="wp-icon" alt=""> Infra Taken ↓</th>
+                  <th data-city-col="missile_val"><img src="/static/Emojis/Military/missile.png" class="wp-icon" alt=""> Infra Cost</th>
+                  <th data-city-col="missile_hit"><img src="/static/Emojis/Military/missile.png" class="wp-icon" alt=""> Hit Chance</th>
+                  <th data-city-col="missile_eff"><img src="/static/Emojis/Military/missile.png" class="wp-icon" alt=""> Eff. Ratio</th>
+                  <th data-city-col="nuke_dmg"><img src="/static/Emojis/Military/bomb.png" class="wp-icon" alt=""> Infra Taken</th>
+                  <th data-city-col="nuke_val"><img src="/static/Emojis/Military/bomb.png" class="wp-icon" alt=""> Infra Cost</th>
+                  <th data-city-col="nuke_hit"><img src="/static/Emojis/Military/bomb.png" class="wp-icon" alt=""> Hit Chance</th>
+                  <th data-city-col="nuke_eff"><img src="/static/Emojis/Military/bomb.png" class="wp-icon" alt=""> Eff. Ratio</th>
+                </tr>
+              </thead>
+              <tbody id="wp-nation-city-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+</div><!-- /wp-shell -->
+
+<script>
+(function () {
+  'use strict';
+
+  // ── Helpers ────────────────────────────────────────────────────────────────
+  const MI = `<img src="/static/Emojis/Military/missile.png" class="wp-icon" alt="Missile">`;
+  const NU = `<img src="/static/Emojis/Military/bomb.png"    class="wp-icon" alt="Nuke">`;
+
+  const fmt  = n => Number(n || 0).toLocaleString();
+  const fmtF = (n, d = 1) => Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: d, maximumFractionDigits: d });
+  const fmtD = n => '$' + fmt(Math.round(n || 0));
+  // fmtM(val, cost) → ratio string; fmtM(val, decimals_number) used inside effRating
+  const fmtM = (val, cost) => cost ? (val / cost).toFixed(2) + '×' : '—';
+  const pnwLink = (id, text) =>
+    `<a href="https://politicsandwar.com/nation/id=${id}" target="_blank" class="wp-pnw-link" onclick="event.stopPropagation()">${text}</a>`;
+
+  function multClass(mult) {
+    if (mult >= 5)  return 'wp-good';
+    if (mult >= 2)  return 'wp-ok';
+    return 'wp-warn';
+  }
+
+  function hitBadge(chance) {
+    const pct = Math.round(chance * 100);
+    const cls = chance < 1 ? 'wp-hit-part' : 'wp-hit-full';
+    return `<span class="${cls}">${pct}%</span>`;
+  }
+
+  // ── Efficiency rating ──────────────────────────────────────────────────────
+  // Returns a colored chip based on avg_val / weapon_cost ratio.
+  // emoji only shown for missile at Ok (≥2×), nuke at Good (≥4×).
+  function effRating(ratio, weapon) {
+    let cls, label;
+    if      (ratio >= 10) { cls = 'wp-eff-legend';  label = '10×+ Legend'; }
+    else if (ratio >= 7)  { cls = 'wp-eff-great';   label = ratio.toFixed(1) + '× Great'; }
+    else if (ratio >= 4)  { cls = 'wp-eff-good';    label = ratio.toFixed(1) + '× Good'; }
+    else if (ratio >= 2)  { cls = 'wp-eff-ok';      label = ratio.toFixed(1) + '× Ok'; }
+    else if (ratio >= 1)  { cls = 'wp-eff-bad';     label = ratio.toFixed(1) + '× Bad'; }
+    else                  { cls = 'wp-eff-horrible'; label = ratio.toFixed(2) + '× Horrible'; }
+
+    const emojiThresh = weapon === 'missile' ? 2 : 4;
+    const icon = ratio >= emojiThresh ? (weapon === 'missile' ? MI : NU) + ' ' : '';
+    return `<span class="wp-eff-chip ${cls}">${icon}${label}</span>`;
+  }
+
+  // fmtM removed duplicate — keep original const above
+
+  function defBadges(hasId, hasVds) {
+    let out = '';
+    if (hasId)  out += `<span class="wp-def-badge wp-def-id">🛡️ Iron Dome</span>`;
+    if (hasVds) out += `<span class="wp-def-badge wp-def-vds">🛡️ VDS</span>`;
+    return out || '<span style="color:var(--text-secondary);font-size:0.72rem;">None</span>';
+  }
+
+  // ── State ──────────────────────────────────────────────────────────────────
+  let _mode        = 'theory';
+  let _targetType  = 'nation';
+  let _allianceData = null;
+  let _nationData   = null;
+  let _allianceSort = 'missile';
+  let _allianceSortAsc = false;
+  let _expandedNation  = null;
+  let _citySort        = 'missile_dmg';
+  let _citySortAsc     = false;
+  let _nationCitySort  = 'missile_dmg';
+  let _nationCitySortAsc = false;
+  let _wpChart = null;
+
+  // ── Mode switching ─────────────────────────────────────────────────────────
+  document.querySelectorAll('.wp-mode-tab').forEach(btn => {
+    btn.addEventListener('click', () => {
+      _mode = btn.dataset.mode;
+      document.querySelectorAll('.wp-mode-tab').forEach(b => b.classList.toggle('active', b === btn));
+      document.getElementById('wp-theory-inputs').style.display  = _mode === 'theory'   ? '' : 'none';
+      document.getElementById('wp-targeted-inputs').style.display = _mode === 'targeted' ? '' : 'none';
+      document.getElementById('wp-theory-output').style.display   = 'none';
+      document.getElementById('wp-targeted-output').style.display = 'none';
+      setStatus('');
+    });
+  });
+
+  document.querySelectorAll('.wp-target-type-tab').forEach(btn => {
+    btn.addEventListener('click', () => {
+      _targetType = btn.dataset.type;
+      document.querySelectorAll('.wp-target-type-tab').forEach(b => b.classList.toggle('active', b === btn));
+      document.getElementById('wp-target-input').placeholder =
+        _targetType === 'nation' ? 'Nation name or ID' : 'Alliance name or ID';
+    });
+  });
+
+  // ── Status helper ──────────────────────────────────────────────────────────
+  function setStatus(msg, isError = false) {
+    const el = document.getElementById('wp-status');
+    if (!msg) { el.style.display = 'none'; return; }
+    el.style.display = 'block';
+    el.className = 'wp-status' + (isError ? ' wp-status-error' : '');
+    el.textContent = msg;
+  }
+
+  // ── Theory mode ────────────────────────────────────────────────────────────
+  document.getElementById('wp-theory-run').addEventListener('click', runTheory);
+  document.getElementById('wp-infra-input').addEventListener('keydown', e => { if (e.key === 'Enter') runTheory(); });
+  document.getElementById('wp-pd-input').addEventListener('keydown',    e => { if (e.key === 'Enter') runTheory(); });
+
+  async function runTheory() {
+    const infraVal = document.getElementById('wp-infra-input').value.trim();
+    const pdVal    = document.getElementById('wp-pd-input').value.trim();
+
+    let url = '/api/weapons/theory';
+    if (infraVal && pdVal) url += `?infra=${encodeURIComponent(infraVal)}&pop_density=${encodeURIComponent(pdVal)}`;
+
+    setStatus('Loading theory data…');
+    document.getElementById('wp-theory-output').style.display = 'none';
+
+    try {
+      const res  = await fetch(url);
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      renderTheory(data);
+      setStatus('');
+    } catch (e) {
+      setStatus('Error: ' + e.message, true);
+    }
+  }
+
+  function renderTheory(data) {
+    document.getElementById('wp-missile-cost').textContent = fmtD(data.missile_cost);
+    document.getElementById('wp-nuke-cost').textContent    = fmtD(data.nuke_cost);
+    document.getElementById('wp-theory-ts').textContent    = 'Updated ' + new Date().toLocaleTimeString();
+
+    // Thresholds table
+    const tbody = document.getElementById('wp-thresh-body');
+    const rows = [];
+    const multLabels = { 1: '1× (Break-even)', 2: '2×', 3: '3×', 5: '5× (Optimal)', 10: '10×', 15: '15×', 20: '20×' };
+    for (const [mult, vals] of Object.entries(data.thresholds)) {
+      const m = parseInt(mult);
+      const rating = m >= 5 ? '<span class="wp-thresh-eff">✅ Efficient</span>'
+                   : m >= 2 ? '<span class="wp-ok">⚠️ Marginal</span>'
+                   : '<span class="wp-thresh-warn">❌ Inefficient</span>';
+      rows.push(`<tr>
+        <td class="wp-mult-cell">${multLabels[m] || m + '×'}</td>
+        <td class="wp-missile-cell">${fmt(vals.missile_infra)}</td>
+        <td class="wp-nuke-cell">${fmt(vals.nuke_infra)}</td>
+        <td>${rating}</td>
+      </tr>`);
+    }
+    tbody.innerHTML = rows.join('');
+
+    // Chart
+    renderTheoryChart(data);
+
+    // City detail
+    if (data.city_input && data.city_detail) {
+      const ci = data.city_input;
+      document.getElementById('wp-city-detail-label').textContent =
+        `${fmt(ci.infra)} infra / ${fmtF(ci.pop_density)} pop density`;
+      renderCityDetail(data.city_detail, data.missile_cost, data.nuke_cost);
+      document.getElementById('wp-city-detail-section').style.display = '';
+    } else {
+      document.getElementById('wp-city-detail-section').style.display = 'none';
+    }
+
+    document.getElementById('wp-theory-output').style.display = '';
+  }
+
+  function renderTheoryChart(data) {
+    const canvas = document.getElementById('wp-chart-canvas');
+    if (!canvas) return;
+
+    if (_wpChart) { _wpChart.destroy(); _wpChart = null; }
+
+    const labels = data.chart.missile.min.map(p => p.mult + '×');
+    // (kept for tooltip lookup only — x-axis is linear, not category-based)
+
+    const datasets = [
+      {
+        label: 'Nuke Max (high density)',
+        data: data.chart.nuke.max.map(p => ({ x: p.mult, y: p.infra })),
+        borderColor: '#aa0000', backgroundColor: 'rgba(170,0,0,0.08)',
+        borderWidth: 2, pointRadius: 3, tension: 0.3,
+      },
+      {
+        label: 'Nuke Min (low density)',
+        data: data.chart.nuke.min.map(p => ({ x: p.mult, y: p.infra })),
+        borderColor: '#ff6666', backgroundColor: 'rgba(255,102,102,0.05)',
+        borderWidth: 2, borderDash: [5, 3], pointRadius: 3, tension: 0.3,
+      },
+      {
+        label: 'Missile Max (high density)',
+        data: data.chart.missile.max.map(p => ({ x: p.mult, y: p.infra })),
+        borderColor: '#0033aa', backgroundColor: 'rgba(0,51,170,0.08)',
+        borderWidth: 2, pointRadius: 3, tension: 0.3,
+      },
+      {
+        label: 'Missile Min (low density)',
+        data: data.chart.missile.min.map(p => ({ x: p.mult, y: p.infra })),
+        borderColor: '#6ab0f5', backgroundColor: 'rgba(106,176,245,0.05)',
+        borderWidth: 2, borderDash: [5, 3], pointRadius: 3, tension: 0.3,
+      },
+    ];
+
+    // ── City input markers ─────────────────────────────────────────────────
+    // Pre-load emoji images for use as chart point styles
+    const _missileImg = new Image(20, 20);
+    _missileImg.src = '/static/Emojis/Military/missile.png';
+    const _bombImg = new Image(20, 20);
+    _bombImg.src = '/static/Emojis/Military/bomb.png';
+
+    // Store marker detail for tooltip use
+    let _missileMarkerDetail = null;
+    let _nukeMarkerDetail    = null;
+
+    if (data.city_input && data.city_detail) {
+      const ci = data.city_input;
+      const md = data.city_detail.missile;
+      const nd = data.city_detail.nuke;
+
+      const mMult = md && data.missile_cost ? md.avg_val / data.missile_cost : null;
+      const nMult = nd && data.nuke_cost    ? nd.avg_val / data.nuke_cost    : null;
+
+      if (mMult !== null && mMult > 0) {
+        _missileMarkerDetail = { mult: mMult, ci, md, cost: data.missile_cost };
+        datasets.push({
+          label: `Your City — Missile (${fmtF(ci.infra)} infra)`,
+          type: 'scatter',
+          data: [{ x: mMult, y: ci.infra }],
+          backgroundColor: 'transparent',
+          borderColor: 'transparent',
+          borderWidth: 0,
+          pointRadius: 14,
+          pointStyle: _missileImg,
+          pointHoverRadius: 18,
+          order: -1,
+        });
+      }
+
+      if (nMult !== null && nMult > 0) {
+        _nukeMarkerDetail = { mult: nMult, ci, nd, cost: data.nuke_cost };
+        datasets.push({
+          label: `Your City — Nuke (${fmtF(ci.infra)} infra)`,
+          type: 'scatter',
+          data: [{ x: nMult, y: ci.infra }],
+          backgroundColor: 'transparent',
+          borderColor: 'transparent',
+          borderWidth: 0,
+          pointRadius: 14,
+          pointStyle: _bombImg,
+          pointHoverRadius: 18,
+          order: -1,
+        });
+      }
+    }
+
+    function buildChart() {
+      _wpChart = new Chart(canvas, {
+        type: 'line',
+        data: { datasets },
+        options: {
+          responsive: true,
+          maintainAspectRatio: true,
+          plugins: {
+            legend: { labels: { color: '#ccc', font: { size: 11 } } },
+            tooltip: {
+              callbacks: {
+                label: ctx => {
+                  if (ctx.dataset.type === 'scatter') {
+                    const isNuke = ctx.dataset.label.includes('Nuke');
+                    const detail = isNuke ? _nukeMarkerDetail : _missileMarkerDetail;
+                    if (!detail) return ` ${ctx.dataset.label}: ${ctx.parsed.x.toFixed(2)}× weapon cost`;
+                    const d = isNuke ? detail.nd : detail.md;
+                    const weapon = isNuke ? 'Nuke' : 'Missile';
+                    return [
+                      ` ${weapon} @ ${fmtF(detail.ci.infra)} infra`,
+                      ` Min dmg: ${fmtF(d.min_dmg)} infra  (${d.min_mult}× — ${fmtD(d.min_val)})`,
+                      ` Max dmg: ${fmtF(d.max_dmg)} infra  (${d.max_mult}× — ${fmtD(d.max_val)})`,
+                      ` Avg multiplier: ${detail.mult.toFixed(2)}× weapon cost`,
+                      ` Weapon cost: ${fmtD(detail.cost)}`,
+                    ];
+                  }
+                  const wt  = ctx.dataset.label.toLowerCase().startsWith('nuke') ? 'nuke' : 'missile';
+                  const key = ctx.dataset.label.toLowerCase().includes('max') ? 'max' : 'min';
+                  const pt  = data.chart[wt][key][ctx.dataIndex];
+                  if (!pt) return ` ${ctx.dataset.label}: ${fmt(ctx.parsed.y)} infra`;
+                  return ` ${ctx.dataset.label}: ${fmt(pt.infra)} infra → ${fmtD(pt.val)}`;
+                }
+              }
+            }
+          },
+          scales: {
+            x: {
+              type: 'linear',
+              min: 1, max: 20,
+              ticks: {
+                color: '#aaa',
+                stepSize: 1,
+                callback: v => v + '×',
+              },
+              grid: { color: 'rgba(255,215,0,0.06)' },
+            },
+            y: {
+              ticks: { color: '#aaa' },
+              grid: { color: 'rgba(255,215,0,0.06)' },
+              title: { display: true, text: 'Required Infra', color: '#888' },
+            }
+          }
+        }
+      });
+    }
+
+    if (typeof Chart !== 'undefined') {
+      buildChart();
+    } else {
+      const s = document.createElement('script');
+      s.src = 'https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js';
+      s.onload = buildChart;
+      document.head.appendChild(s);
+    }
+  }
+
+  function renderCityDetail(detail, missileCost, nukeCost) {
+    const grid = document.getElementById('wp-city-detail-grid');
+    const cards = [];
+    for (const [wt, d] of [['missile', detail.missile], ['nuke', detail.nuke]]) {
+      const label = wt === 'missile' ? `${MI} Missile` : `${NU} Nuke`;
+      const cost  = wt === 'missile' ? missileCost : nukeCost;
+      cards.push(`
+        <div class="wp-weapon-card ${wt}">
+          <div class="wp-weapon-card-title">${label} — Cost: ${fmtD(cost)}</div>
+          <div class="wp-kv-grid">
+            <div class="wp-kv"><span>Min Dmg</span><strong>${fmtF(d.min_dmg)} infra</strong></div>
+            <div class="wp-kv"><span>Min Value</span><strong class="${multClass(d.min_mult)}">${fmtD(d.min_val)} (${d.min_mult}×)</strong></div>
+            <div class="wp-kv"><span>Max Dmg</span><strong>${fmtF(d.max_dmg)} infra</strong></div>
+            <div class="wp-kv"><span>Max Value</span><strong class="${multClass(d.max_mult)}">${fmtD(d.max_val)} (${d.max_mult}×)</strong></div>
+            <div class="wp-kv"><span>Avg Dmg</span><strong>${fmtF(d.avg_dmg)} infra</strong></div>
+            <div class="wp-kv"><span>Avg Value</span><strong>${fmtD(d.avg_val)}</strong></div>
+          </div>
+        </div>`);
+    }
+    grid.innerHTML = cards.join('');
+  }
+
+  // ── Targeted mode ──────────────────────────────────────────────────────────
+  document.getElementById('wp-targeted-run').addEventListener('click', runTargeted);
+  document.getElementById('wp-targeted-refresh').addEventListener('click', () => runTargeted(true));
+  document.getElementById('wp-target-input').addEventListener('keydown', e => { if (e.key === 'Enter') runTargeted(); });
+
+  async function runTargeted(forceRefresh = false) {
+    const target = document.getElementById('wp-target-input').value.trim();
+    if (!target) { setStatus('Please enter a nation or alliance name/ID.', true); return; }
+
+    const refresh = forceRefresh ? '&force_refresh=true' : '';
+    const endpoint = _targetType === 'nation'
+      ? `/api/weapons/targeted/nation?target=${encodeURIComponent(target)}${refresh}`
+      : `/api/weapons/targeted/alliance?target=${encodeURIComponent(target)}${refresh}`;
+
+    setStatus(`Loading ${_targetType} data for "${target}"…`);
+    document.getElementById('wp-targeted-output').style.display = 'none';
+
+    try {
+      const res  = await fetch(endpoint);
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+
+      document.getElementById('wp-t-missile-cost').textContent = fmtD(data.missile_cost);
+      document.getElementById('wp-t-nuke-cost').textContent    = fmtD(data.nuke_cost);
+      document.getElementById('wp-targeted-ts').textContent    =
+        (forceRefresh ? 'Refreshed ' : 'Cached ') + new Date().toLocaleTimeString();
+
+      if (_targetType === 'alliance') {
+        _allianceData = data;
+        renderAlliance(data);
+        document.getElementById('wp-alliance-view').style.display = '';
+        document.getElementById('wp-nation-view').style.display   = 'none';
+      } else {
+        _nationData = data;
+        renderNation(data);
+        document.getElementById('wp-nation-view').style.display   = '';
+        document.getElementById('wp-alliance-view').style.display = 'none';
+      }
+
+      document.getElementById('wp-targeted-output').style.display = '';
+      setStatus('');
+    } catch (e) {
+      setStatus('Error: ' + e.message, true);
+    }
+  }
+
+  // ── Alliance rendering ─────────────────────────────────────────────────────
+  // Event delegation — one listener on tbody covers all rows and inner headers.
+  // Sort reorders existing DOM nodes instead of rebuilding innerHTML.
+
+  let _allianceTbody = null;  // cached tbody reference after first render
+
+  function _bindAllianceHeaders() {
+    document.querySelectorAll('#wp-alliance-table th[data-sort]').forEach(th => {
+      th.addEventListener('click', () => {
+        const s = th.dataset.sort;
+        if (_allianceSort === s) _allianceSortAsc = !_allianceSortAsc;
+        else { _allianceSort = s; _allianceSortAsc = false; }
+        if (_allianceData) _sortAllianceRows();
+      });
+    });
+  }
+
+  function _updateAllianceHeaders() {
+    const sortLabels = {
+      missile: 'Missile Infra Taken', missile_cost: 'Missile Infra Cost',
+      nuke: 'Nuke Infra Taken',       nuke_cost: 'Nuke Infra Cost',
+      name: 'Nation', cities: 'Cities',
+    };
+    document.querySelectorAll('#wp-alliance-table th[data-sort]').forEach(th => {
+      th.innerHTML = th.innerHTML.replace(/\s*[↑↓]$/, '');
+      th.classList.remove('wp-sort-active');
+      if (th.dataset.sort === _allianceSort) {
+        th.classList.add('wp-sort-active');
+        th.innerHTML += _allianceSortAsc ? ' ↑' : ' ↓';
+      }
+    });
+    const lbl = sortLabels[_allianceSort] || _allianceSort;
+    const summary = document.getElementById('wp-alliance-sort-summary');
+    if (summary) summary.textContent = `Sorted by ${lbl} ${_allianceSortAsc ? '↑' : '↓'}`;
+  }
+
+  // Sort by reordering existing DOM row-pairs — no HTML rebuild
+  function _sortAllianceRows() {
+    if (!_allianceData || !_allianceTbody) return;
+    _updateAllianceHeaders();
+
+    const nations = _allianceData.nations;
+    const order = [...nations].sort((a, b) => {
+      let av, bv;
+      if (_allianceSort === 'missile')           { av = (a.best_missile_min_dmg + a.best_missile_max_dmg) / 2; bv = (b.best_missile_min_dmg + b.best_missile_max_dmg) / 2; }
+      else if (_allianceSort === 'missile_cost') { av = a.best_missile_avg_val; bv = b.best_missile_avg_val; }
+      else if (_allianceSort === 'nuke')         { av = (a.best_nuke_min_dmg + a.best_nuke_max_dmg) / 2; bv = (b.best_nuke_min_dmg + b.best_nuke_max_dmg) / 2; }
+      else if (_allianceSort === 'nuke_cost')    { av = a.best_nuke_avg_val; bv = b.best_nuke_avg_val; }
+      else if (_allianceSort === 'cities')       { av = a.num_cities; bv = b.num_cities; }
+      else { av = (a.nation_name || '').toLowerCase(); bv = (b.nation_name || '').toLowerCase(); }
+      if (typeof av === 'string') return _allianceSortAsc ? av.localeCompare(bv) : bv.localeCompare(av);
+      return _allianceSortAsc ? av - bv : bv - av;
+    });
+
+    // Move existing row-pairs into sorted order — pure DOM reorder, no repaint of cell content
+    const frag = document.createDocumentFragment();
+    for (const n of order) {
+      const nid = String(n.nation_id);
+      const mainRow   = _allianceTbody.querySelector(`.wp-row[data-nid="${nid}"]`);
+      const expandRow = _allianceTbody.querySelector(`.wp-expand-row[data-expand-nid="${nid}"]`);
+      if (mainRow)   frag.appendChild(mainRow);
+      if (expandRow) frag.appendChild(expandRow);
+    }
+    _allianceTbody.appendChild(frag);
+  }
+
+  function renderAlliance(data) {
+    document.getElementById('wp-alliance-title').textContent =
+      `🎯 ${data.alliance_name} — ${data.nation_count} nations`;
+
+    const tbody = document.getElementById('wp-alliance-body');
+    _allianceTbody = tbody;
+
+    // Build all rows once as HTML string — fast single innerHTML write
+    const rows = [];
+    for (const n of data.nations) {
+      rows.push(`<tr class="wp-row" data-nid="${n.nation_id}">
+        <td class="wp-chevron">▶</td>
+        <td class="wp-name-cell" style="pointer-events:none;">
+          ${n.flag ? `<img src="${n.flag}" class="wp-flag" alt="" style="pointer-events:none;">` : ''}
+          <div style="pointer-events:none;">
+            <span style="pointer-events:auto;">${pnwLink(n.nation_id, n.nation_name)}</span>
+            <small class="wp-leader">${n.leader_name || ''}</small>
+          </div>
+        </td>
+        <td>${n.num_cities}</td>
+        <td>${defBadges(n.has_iron_dome, n.has_vds)}</td>
+        <td class="wp-val-missile">
+          <span class="wp-range">${fmtF(n.best_missile_min_dmg)}–${fmtF(n.best_missile_max_dmg)}</span>
+          <span class="wp-val-dim">avg ${fmtF((n.best_missile_min_dmg+n.best_missile_max_dmg)/2)}</span>
+        </td>
+        <td class="wp-val-missile">
+          <span class="wp-range">${fmtD(n.best_missile_min_val)}–${fmtD(n.best_missile_max_val)}</span>
+          <span class="wp-val-dim">avg ${fmtD(n.best_missile_avg_val)}</span>
+        </td>
+        <td class="wp-val-nuke">
+          <span class="wp-range">${fmtF(n.best_nuke_min_dmg)}–${fmtF(n.best_nuke_max_dmg)}</span>
+          <span class="wp-val-dim">avg ${fmtF((n.best_nuke_min_dmg+n.best_nuke_max_dmg)/2)}</span>
+        </td>
+        <td class="wp-val-nuke">
+          <span class="wp-range">${fmtD(n.best_nuke_min_val)}–${fmtD(n.best_nuke_max_val)}</span>
+          <span class="wp-val-dim">avg ${fmtD(n.best_nuke_avg_val)}</span>
+        </td>
+      </tr>
+      <tr class="wp-expand-row" data-expand-nid="${n.nation_id}">
+        <td colspan="8" class="wp-expand-cell">
+          <div class="wp-expand-inner" id="wp-expand-${n.nation_id}"></div>
+        </td>
+      </tr>`);
+    }
+    tbody.innerHTML = rows.join('');
+
+    _updateAllianceHeaders();
+    _bindAllianceHeaders();
+
+    // Apply initial sort order via DOM reorder
+    _sortAllianceRows();
+
+    // Single delegated listener on tbody — handles row clicks AND inner city header clicks
+    tbody.addEventListener('click', e => {
+      // Inner city table header sort
+      const cityTh = e.target.closest('.wp-city-inner-table th[data-city-sort]');
+      if (cityTh) {
+        e.stopPropagation();
+        const s = cityTh.dataset.citySort;
+        if (_citySort === s) _citySortAsc = !_citySortAsc;
+        else { _citySort = s; _citySortAsc = false; }
+        // Only rebuild the open city table body
+        const innerTable = cityTh.closest('.wp-city-inner-table');
+        if (innerTable && _expandedNation) {
+          const nation = data.nations.find(n => String(n.nation_id) === _expandedNation);
+          if (nation) _rebuildCityTableBody(innerTable, nation, data.missile_cost, data.nuke_cost);
+        }
+        return;
+      }
+
+      // Row expand/collapse
+      const row = e.target.closest('.wp-row[data-nid]');
+      if (!row) return;
+      const nid = row.dataset.nid;
+      const wasOpen = _expandedNation === nid;
+      _expandedNation = wasOpen ? null : nid;
+
+      // Update chevron and open class on this row
+      row.querySelector('.wp-chevron').textContent = wasOpen ? '▶' : '▼';
+      row.classList.toggle('wp-row-open', !wasOpen);
+
+      // Show/hide expand row
+      const expandRow = tbody.querySelector(`.wp-expand-row[data-expand-nid="${nid}"]`);
+      if (expandRow) {
+        expandRow.classList.toggle('wp-expand-open', !wasOpen);
+        if (!wasOpen) {
+          // Build city table only when opening
+          const inner = document.getElementById(`wp-expand-${nid}`);
+          if (inner && !inner.dataset.built) {
+            const nation = data.nations.find(n => String(n.nation_id) === nid);
+            if (nation) {
+              inner.innerHTML = buildAllianceCityTable(nation, data.missile_cost, data.nuke_cost);
+              const table = inner.querySelector('.wp-city-inner-table');
+              if (table) _rebuildCityTableBody(table, nation, data.missile_cost, data.nuke_cost);
+              inner.dataset.built = '1';
+            }
+          }
+        }
+      }
+
+      // Close previously open row if different
+      if (!wasOpen && _expandedNation !== null) {
+        const prevNid = _expandedNation === nid ? null : _expandedNation;
+        // _expandedNation was just set to nid, so find any other open row
+        tbody.querySelectorAll('.wp-row-open').forEach(r => {
+          if (r.dataset.nid !== nid) {
+            r.classList.remove('wp-row-open');
+            r.querySelector('.wp-chevron').textContent = '▶';
+            const er = tbody.querySelector(`.wp-expand-row[data-expand-nid="${r.dataset.nid}"]`);
+            if (er) er.classList.remove('wp-expand-open');
+          }
+        });
+      }
+    });
+  }
+
+  // Build full city table HTML — called once when a row is first opened
+  function buildAllianceCityTable(nation, missileCost, nukeCost) {
+    const mkTh = (col, label) => {
+      const active = _citySort === col;
+      const arrow  = active ? (_citySortAsc ? ' ↑' : ' ↓') : '';
+      return `<th class="${active ? 'wp-city-sort-active' : ''}" data-city-sort="${col}">${label}${arrow}</th>`;
+    };
+    return `<div class="wp-city-table-wrap">
+        <table class="wp-city-table wp-city-inner-table" data-nation-id="${nation.nation_id}">
+          <thead><tr>
+            ${mkTh('city_name','City')}${mkTh('infra','Infra')}${mkTh('pop_density','Pop Density')}${mkTh('actual_pop','Population')}<th>Power</th>
+            ${mkTh('missile_dmg',MI+' Infra Taken')}${mkTh('missile_val',MI+' Infra Cost')}${mkTh('missile_hit',MI+' Hit')}${mkTh('missile_eff',MI+' Eff.')}
+            ${mkTh('nuke_dmg',NU+' Infra Taken')}${mkTh('nuke_val',NU+' Infra Cost')}${mkTh('nuke_hit',NU+' Hit')}${mkTh('nuke_eff',NU+' Eff.')}
+          </tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>`;
+  }
+
+  // Rebuild only the tbody of an already-rendered city table (for city sort)
+  function _rebuildCityTableBody(table, nation, missileCost, nukeCost) {
+    const cities = sortCities([...nation.cities], _citySort, _citySortAsc);
+    const tbody = table.querySelector('tbody');
+    if (!tbody) return;
+
+    // Update header arrows
+    table.querySelectorAll('th[data-city-sort]').forEach(th => {
+      th.innerHTML = th.innerHTML.replace(/\s*[↑↓]$/, '');
+      th.classList.remove('wp-city-sort-active');
+      if (th.dataset.citySort === _citySort) {
+        th.classList.add('wp-city-sort-active');
+        th.innerHTML += _citySortAsc ? ' ↑' : ' ↓';
+      }
+    });
+
+    tbody.innerHTML = cities.map(c => {
+      const m = c.missile || {};
+      const n = c.nuke    || {};
+      const avgMDmg = (m.min_dmg + m.max_dmg) / 2;
+      const avgNDmg = (n.min_dmg + n.max_dmg) / 2;
+      const avgMVal = (m.min_val + m.max_val) / 2;
+      const avgNVal = (n.min_val + n.max_val) / 2;
+      const mRatio  = missileCost ? avgMVal / missileCost : 0;
+      const nRatio  = nukeCost    ? avgNVal / nukeCost    : 0;
+      return `<tr>
+        <td>${c.city_name}</td>
+        <td>${fmtF(c.infra)}</td>
+        <td>${fmtF(m.pop_density || n.pop_density || 0)}</td>
+        <td>${fmt(m.actual_pop || n.actual_pop || 0)}</td>
+        <td class="${c.powered ? 'wp-powered' : 'wp-unpowered'}">${c.powered ? '⚡' : '⚠️'}</td>
+        <td class="wp-val-missile"><span class="wp-range">${fmtF(m.min_dmg)}–${fmtF(m.max_dmg)}</span><br><span class="wp-val-dim">avg ${fmtF(avgMDmg)}</span></td>
+        <td class="wp-val-missile"><span class="wp-range">${fmtD(m.min_val)}–${fmtD(m.max_val)}</span><br><span class="wp-val-dim">avg ${fmtD(avgMVal)}</span></td>
+        <td>${hitBadge(m.hit_chance || 1)}</td>
+        <td>${effRating(mRatio, 'missile')}</td>
+        <td class="wp-val-nuke"><span class="wp-range">${fmtF(n.min_dmg)}–${fmtF(n.max_dmg)}</span><br><span class="wp-val-dim">avg ${fmtF(avgNDmg)}</span></td>
+        <td class="wp-val-nuke"><span class="wp-range">${fmtD(n.min_val)}–${fmtD(n.max_val)}</span><br><span class="wp-val-dim">avg ${fmtD(avgNVal)}</span></td>
+        <td>${hitBadge(n.hit_chance || 1)}</td>
+        <td>${effRating(nRatio, 'nuke')}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  // ── Nation rendering ───────────────────────────────────────────────────────
+  function _bindNationCityHeaders() {
+    document.querySelectorAll('#wp-nation-city-table th[data-city-col]').forEach(th => {
+      th.addEventListener('click', () => {
+        const s = th.dataset.cityCol;
+        if (_nationCitySort === s) _nationCitySortAsc = !_nationCitySortAsc;
+        else { _nationCitySort = s; _nationCitySortAsc = false; }
+        if (_nationData) renderNationCities(_nationData);
+      });
+    });
+  }
+
+  function renderNation(data) {
+    // Header
+    document.getElementById('wp-nation-header').innerHTML = `
+      ${data.flag ? `<img src="${data.flag}" class="wp-nation-flag" alt="">` : ''}
+      <div>
+        <h3 class="wp-nation-name">${pnwLink(data.nation_id, data.nation_name)}</h3>
+        <p class="wp-nation-leader">Leader: ${data.leader_name || '—'}</p>
+      </div>`;
+
+    // Defenses
+    const defDiv = document.getElementById('wp-nation-defenses');
+    const cards = [];
+    if (data.has_iron_dome) cards.push(`<div class="wp-defense-card has-id">🛡️ Iron Dome — ${MI} Missiles: ${Math.round(data.missile_chance * 100)}% hit chance</div>`);
+    if (data.has_vds)       cards.push(`<div class="wp-defense-card has-vds">🛡️ VDS — ${NU} Nukes: ${Math.round(data.nuke_chance * 100)}% hit chance</div>`);
+    if (!data.has_iron_dome && !data.has_vds) cards.push(`<div class="wp-defense-card clear">✅ No missile/nuke defenses</div>`);
+    defDiv.innerHTML = cards.join('');
+
+    renderNationCities(data);
+    _bindNationCityHeaders();
+  }
+
+  function renderNationCities(data) {
+    const cities = sortCities([...data.cities], _nationCitySort, _nationCitySortAsc);
+
+    // Update sort header highlights + arrows
+    document.querySelectorAll('#wp-nation-city-table th[data-city-col]').forEach(th => {
+      th.innerHTML = th.innerHTML.replace(/\s*[↑↓]$/, '');
+      th.classList.remove('wp-city-sort-active');
+      if (th.dataset.cityCol === _nationCitySort) {
+        th.classList.add('wp-city-sort-active');
+        th.innerHTML += _nationCitySortAsc ? ' ↑' : ' ↓';
+      }
+    });
+
+    const tbody = document.getElementById('wp-nation-city-body');
+    const rows = cities.map(c => {
+      const m = c.missile || {};
+      const n = c.nuke    || {};
+      const avgMDmg = (m.min_dmg + m.max_dmg) / 2;
+      const avgNDmg = (n.min_dmg + n.max_dmg) / 2;
+      const avgMVal = (m.min_val + m.max_val) / 2;
+      const avgNVal = (n.min_val + n.max_val) / 2;
+      const mRatio  = data.missile_cost ? avgMVal / data.missile_cost : 0;
+      const nRatio  = data.nuke_cost    ? avgNVal / data.nuke_cost    : 0;
+      return `<tr>
+        <td><strong>${c.city_name}</strong></td>
+        <td>${fmtF(c.infra)}</td>
+        <td>${fmtF(m.pop_density || n.pop_density || 0)}</td>
+        <td>${fmt(m.actual_pop || n.actual_pop || 0)}</td>
+        <td class="${c.powered ? 'wp-powered' : 'wp-unpowered'}">${c.powered ? '⚡ Powered' : '⚠️ Unpowered'}</td>
+        <td class="wp-val-missile"><span class="wp-range">${fmtF(m.min_dmg)}–${fmtF(m.max_dmg)}</span><br><span class="wp-val-dim">avg ${fmtF(avgMDmg)}</span></td>
+        <td class="wp-val-missile"><span class="wp-range">${fmtD(m.min_val)}–${fmtD(m.max_val)}</span><br><span class="wp-val-dim">avg ${fmtD(avgMVal)}</span></td>
+        <td>${hitBadge(m.hit_chance || 1)}</td>
+        <td>${effRating(mRatio, 'missile')}</td>
+        <td class="wp-val-nuke"><span class="wp-range">${fmtF(n.min_dmg)}–${fmtF(n.max_dmg)}</span><br><span class="wp-val-dim">avg ${fmtF(avgNDmg)}</span></td>
+        <td class="wp-val-nuke"><span class="wp-range">${fmtD(n.min_val)}–${fmtD(n.max_val)}</span><br><span class="wp-val-dim">avg ${fmtD(avgNVal)}</span></td>
+        <td>${hitBadge(n.hit_chance || 1)}</td>
+        <td>${effRating(nRatio, 'nuke')}</td>
+      </tr>`;
+    }).join('');
+    tbody.innerHTML = rows;
+  }
+
+  // ── City sort helper ───────────────────────────────────────────────────────
+  function sortCities(cities, sortKey, asc) {
+    return cities.sort((a, b) => {
+      let av, bv;
+      const m = k => a.missile?.[k] || 0;
+      const mb = k => b.missile?.[k] || 0;
+      const n = k => a.nuke?.[k]    || 0;
+      const nb = k => b.nuke?.[k]   || 0;
+      switch (sortKey) {
+        // missile infra taken — sort by avg (min+max)/2
+        case 'missile_dmg':  av = (m('min_dmg') + m('max_dmg')) / 2; bv = (mb('min_dmg') + mb('max_dmg')) / 2; break;
+        // missile infra cost — sort by avg (min_val+max_val)/2
+        case 'missile_val':  av = (m('min_val') + m('max_val')) / 2; bv = (mb('min_val') + mb('max_val')) / 2; break;
+        case 'missile_hit':  av = m('hit_chance');  bv = mb('hit_chance');  break;
+        case 'missile_eff':  av = (m('min_val') + m('max_val')) / 2; bv = (mb('min_val') + mb('max_val')) / 2; break;
+        // nuke infra taken
+        case 'nuke_dmg':     av = (n('min_dmg') + n('max_dmg')) / 2; bv = (nb('min_dmg') + nb('max_dmg')) / 2; break;
+        // nuke infra cost
+        case 'nuke_val':     av = (n('min_val') + n('max_val')) / 2; bv = (nb('min_val') + nb('max_val')) / 2; break;
+        case 'nuke_hit':     av = n('hit_chance');  bv = nb('hit_chance');  break;
+        case 'nuke_eff':     av = (n('min_val') + n('max_val')) / 2; bv = (nb('min_val') + nb('max_val')) / 2; break;
+        case 'infra':        av = a.infra || 0;     bv = b.infra || 0;      break;
+        case 'pop_density':  av = m('pop_density'); bv = mb('pop_density'); break;
+        case 'actual_pop':   av = m('actual_pop');  bv = mb('actual_pop');  break;
+        case 'city_name':
+          av = (a.city_name || '').toLowerCase(); bv = (b.city_name || '').toLowerCase();
+          return asc ? av.localeCompare(bv) : bv.localeCompare(av);
+        default:             av = (m('min_dmg') + m('max_dmg')) / 2; bv = (mb('min_dmg') + mb('max_dmg')) / 2;
+      }
+      return asc ? av - bv : bv - av;
+    });
+  }
+
+  // ── Auto-run theory on load ────────────────────────────────────────────────
+  runTheory();
+
+})();
+</script>

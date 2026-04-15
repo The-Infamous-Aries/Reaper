@@ -1,0 +1,230 @@
+/* ── Casino Lobby — mirrors arena.css room/panel pattern ─────────────────── */
+
+/* ── Room strip ──────────────────────────────────────────────────────────── */
+.cl-room-strip {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+    margin-bottom: 18px;
+}
+
+/* ── Single room card ────────────────────────────────────────────────────── */
+.cl-room {
+    position: relative;
+    background: linear-gradient(135deg, rgba(15,15,15,0.92), rgba(20,20,20,0.92));
+    border: 2px solid rgba(255,215,0,0.18);
+    border-radius: 10px;
+    padding: 8px 10px 7px;
+    text-align: center;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+    width: 72px;
+    min-height: 72px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    user-select: none;
+}
+.cl-room:hover { transform: translateY(-3px); box-shadow: 0 0 16px var(--gold-glow); border-color: rgba(255,215,0,0.5); }
+.cl-room.empty { border-color: rgba(255,255,255,0.08); opacity: 0.65; }
+.cl-room.empty:hover { opacity: 1; border-color: rgba(255,215,0,0.35); }
+.cl-room.picking  { border-color: rgba(255,215,0,0.4); }
+.cl-room.playing  { border-color: rgba(46,204,113,0.55); box-shadow: 0 0 10px rgba(46,204,113,0.2); }
+.cl-room.open     { border-color: var(--gold-primary); animation: clOpenPulse 1.4s ease-in-out infinite; }
+@keyframes clOpenPulse {
+    0%,100% { box-shadow: 0 0 8px rgba(255,215,0,0.35); }
+    50%      { box-shadow: 0 0 22px rgba(255,215,0,0.75); }
+}
+.cl-room.my-room { border-color: var(--gold-primary) !important; box-shadow: 0 0 16px var(--gold-glow) !important; }
+
+.cl-room-num    { font-size: 0.55rem; color: rgba(255,215,0,0.4); font-family: 'Orbitron',sans-serif; }
+.cl-room-icon   { font-size: 1.1rem; line-height: 1; }
+.cl-room-status { font-size: 0.55rem; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; }
+.cl-room-status.empty   { color: rgba(255,255,255,0.2); }
+.cl-room-status.picking { color: var(--gold-secondary); }
+.cl-room-status.playing { color: #2ecc71; }
+.cl-room-status.open    { color: var(--gold-primary); }
+
+.cl-avatar-mini {
+    width: 26px; height: 26px; border-radius: 50%;
+    border: 1px solid rgba(255,215,0,0.3);
+    object-fit: cover;
+}
+
+/* ── Center panel ────────────────────────────────────────────────────────── */
+.cl-center-panel { max-width: 780px; margin: 0 auto; }
+
+.cl-panel {
+    background: linear-gradient(135deg, rgba(15,15,15,0.95), rgba(20,20,20,0.95));
+    border: 2px solid rgba(255,215,0,0.25);
+    border-radius: 14px;
+    padding: 20px 18px;
+    animation: clPanelIn 0.25s ease;
+}
+@keyframes clPanelIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+
+.cl-panel-title {
+    font-family: 'Orbitron', sans-serif;
+    color: var(--gold-primary);
+    font-size: 0.95rem;
+    text-shadow: 0 0 8px var(--gold-glow);
+    margin-bottom: 14px;
+}
+
+/* ── Game picker grid ────────────────────────────────────────────────────── */
+.cl-game-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-bottom: 14px;
+}
+.cl-game-btn {
+    background: linear-gradient(135deg, rgba(15,15,15,0.92), rgba(20,20,20,0.92));
+    border: 2px solid rgba(255,215,0,0.2);
+    border-radius: 12px;
+    padding: 14px 8px;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+    text-align: center;
+    color: var(--text-secondary);
+}
+.cl-game-btn:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 0 18px var(--gold-glow);
+    border-color: rgba(255,215,0,0.55);
+    color: var(--gold-primary);
+}
+.cl-game-btn .game-icon  { font-size: 1.6rem; display: block; margin-bottom: 5px; }
+.cl-game-btn .game-label { font-size: 0.72rem; font-family: 'Orbitron',sans-serif; }
+
+/* ── Spectate panel ──────────────────────────────────────────────────────── */
+.cl-spectate-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: rgba(0,0,0,0.3);
+    border-radius: 10px;
+    padding: 10px 14px;
+    margin-bottom: 12px;
+}
+.cl-spectate-avatar {
+    width: 44px; height: 44px; border-radius: 50%;
+    border: 2px solid rgba(255,215,0,0.3);
+    object-fit: cover;
+    flex-shrink: 0;
+}
+.cl-spectate-name  { font-size: 0.82rem; font-weight: 700; color: var(--text-primary); }
+.cl-spectate-game  { font-size: 0.72rem; color: var(--gold-secondary); }
+
+/* ── Activity log ────────────────────────────────────────────────────────── */
+.cl-activity-log {
+    background: rgba(0,0,0,0.25);
+    border-radius: 8px;
+    padding: 8px 10px;
+    max-height: 130px;
+    overflow-y: auto;
+    font-size: 0.72rem;
+    color: var(--text-secondary);
+    line-height: 1.6;
+    margin-bottom: 12px;
+}
+.cl-activity-line { border-bottom: 1px solid rgba(255,255,255,0.04); padding: 1px 0; }
+.cl-activity-line:last-child { border-bottom: none; }
+
+/* ── Buttons ─────────────────────────────────────────────────────────────── */
+.cl-btn {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.78rem;
+    padding: 9px 18px;
+    border-radius: 8px;
+    border: 1px solid rgba(255,215,0,0.4);
+    background: linear-gradient(135deg, rgba(255,215,0,0.14), rgba(255,215,0,0.06));
+    color: var(--gold-primary);
+    cursor: pointer;
+    transition: all 0.18s;
+    letter-spacing: 0.5px;
+}
+.cl-btn:hover:not(:disabled) {
+    background: linear-gradient(135deg, rgba(255,215,0,0.28), rgba(255,215,0,0.14));
+    box-shadow: 0 0 12px var(--gold-glow);
+    transform: translateY(-1px);
+}
+.cl-btn:disabled { opacity: 0.3; cursor: not-allowed; transform: none; }
+.cl-btn.danger   { border-color: rgba(231,76,60,0.5); color: #e74c3c; background: rgba(231,76,60,0.06); }
+.cl-btn.danger:hover:not(:disabled) { background: rgba(231,76,60,0.15); box-shadow: 0 0 10px rgba(231,76,60,0.3); }
+.cl-btn.join     { border-color: rgba(46,204,113,0.6); color: #2ecc71; background: rgba(46,204,113,0.06); }
+.cl-btn.join:hover:not(:disabled)   { background: rgba(46,204,113,0.18); box-shadow: 0 0 10px rgba(46,204,113,0.3); }
+
+/* ── Live badge ──────────────────────────────────────────────────────────── */
+.cl-live-badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    background: rgba(231,76,60,0.15);
+    border: 1px solid rgba(231,76,60,0.4);
+    border-radius: 20px;
+    padding: 3px 10px;
+    font-size: 0.65rem;
+    font-family: 'Orbitron', sans-serif;
+    color: #e74c3c;
+    letter-spacing: 1px;
+}
+.cl-live-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: #e74c3c;
+    animation: clLivePulse 1s ease-in-out infinite;
+}
+@keyframes clLivePulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+/* ── Responsive ──────────────────────────────────────────────────────────── */
+@media (max-width: 576px) {
+    .cl-room { width: 58px; min-height: 58px; }
+    .cl-game-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+/* ── Inline game embed box ───────────────────────────────────────────────── */
+.cl-game-embed {
+    padding: 0;
+    overflow: hidden;
+}
+
+.cl-game-embed-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 18px 12px;
+    border-bottom: 1px solid rgba(255,215,0,0.15);
+    background: rgba(0,0,0,0.2);
+    border-radius: 14px 14px 0 0;
+}
+
+.cl-game-embed-body {
+    padding: 16px 18px 18px;
+    max-height: 72vh;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+.cl-game-embed-body::-webkit-scrollbar { width: 5px; }
+.cl-game-embed-body::-webkit-scrollbar-thumb { background: rgba(255,215,0,0.25); border-radius: 3px; }
+
+/* Hide the game page's own header/divider since we show it in the embed header */
+.cl-game-embed-body .casino-title,
+.cl-game-embed-body .casino-subtitle,
+.cl-game-embed-body .arena-title,
+.cl-game-embed-body .arena-subtitle,
+.cl-game-embed-body .casino-divider,
+.cl-game-embed-body .arena-divider {
+    display: none !important;
+}
+
+/* Hide the XP badge — it's redundant inside the embed */
+.cl-game-embed-body .casino-xp-badge {
+    display: none !important;
+}
+
+/* Tighten top padding since header is gone */
+.cl-game-embed-body .container-fluid {
+    padding-top: 0 !important;
+}

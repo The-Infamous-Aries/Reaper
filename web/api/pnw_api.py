@@ -392,7 +392,7 @@ async def get_war_costs_graph(alliance: str, time: str, force_refresh: bool = Fa
     resource_prices = await get_resource_prices()
 
     if _is_nights_watch(alliance):
-        from Systems.PnW.MA.night_watch_wars_db import NightWatchWarsDB
+        from Systems.Functions.night_watch_wars_db import NightWatchWarsDB
         from web.api.watch_api import _attach_war_attacks
         from datetime import date as date_type
         db = NightWatchWarsDB(WATCH_DB_PATH)
@@ -439,7 +439,7 @@ async def get_war_net_graph(alliance: str, time: str, force_refresh: bool = Fals
     resource_prices = await get_resource_prices()
 
     if _is_nights_watch(alliance):
-        from Systems.PnW.MA.night_watch_wars_db import NightWatchWarsDB
+        from Systems.Functions.night_watch_wars_db import NightWatchWarsDB
         from web.api.watch_api import _attach_war_attacks
         db = NightWatchWarsDB(WATCH_DB_PATH)
         start_date = after_datetime.date()

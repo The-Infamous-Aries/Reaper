@@ -400,18 +400,39 @@
 
 /* ── Filled equipment slot glow ───────────────────────────────────────────── */
 .mp-equip-filled {
-    border-color: rgba(255,215,0,0.5) !important;
-    box-shadow: 0 0 8px var(--gold-glow), inset 0 0 4px rgba(255,215,0,0.1);
-    animation: equipGlow 2.5s ease-in-out infinite alternate;
+    border-color: rgba(255,215,0,0.35) !important;
+    box-shadow: 0 0 4px rgba(255,215,0,0.18), inset 0 0 3px rgba(255,215,0,0.06);
+    animation: equipGlow 5s ease-in-out infinite alternate;
 }
 @keyframes equipGlow {
-    from { box-shadow: 0 0 6px var(--gold-glow); }
-    to   { box-shadow: 0 0 14px var(--gold-primary), 0 0 20px var(--gold-glow); }
+    from { box-shadow: 0 0 3px rgba(255,215,0,0.15); }
+    to   { box-shadow: 0 0 8px rgba(255,215,0,0.35), 0 0 12px rgba(255,215,0,0.12); }
 }
+
+/* Pair bonus — solid, slightly brighter, no pulse */
+.mp-equip-filled.equip-pair {
+    border-color: rgba(255,215,0,0.75) !important;
+    box-shadow: 0 0 10px rgba(255,215,0,0.55), inset 0 0 5px rgba(255,215,0,0.15) !important;
+    animation: none !important;
+}
+
+/* Full set — bright dancing glow */
+.mp-equip-filled.equip-fullset {
+    border-color: var(--gold-primary) !important;
+    animation: equipFullSet 1.6s ease-in-out infinite !important;
+}
+@keyframes equipFullSet {
+    0%   { box-shadow: 0 0 10px var(--gold-glow), 0 0 22px rgba(255,215,0,0.4); transform: scale(1); }
+    25%  { box-shadow: 0 0 18px var(--gold-primary), 0 0 36px rgba(255,215,0,0.6); transform: scale(1.06) rotate(-1deg); }
+    50%  { box-shadow: 0 0 24px var(--gold-primary), 0 0 48px rgba(255,215,0,0.8), 0 0 8px #fff; transform: scale(1.08); }
+    75%  { box-shadow: 0 0 18px var(--gold-primary), 0 0 36px rgba(255,215,0,0.6); transform: scale(1.06) rotate(1deg); }
+    100% { box-shadow: 0 0 10px var(--gold-glow), 0 0 22px rgba(255,215,0,0.4); transform: scale(1); }
+}
+
 .mp-equip-filled:hover {
     border-color: var(--gold-primary) !important;
     box-shadow: 0 0 16px var(--gold-primary) !important;
-    animation: none;
+    animation: none !important;
 }
 
 /* ── Item hover card ──────────────────────────────────────────────────────── */

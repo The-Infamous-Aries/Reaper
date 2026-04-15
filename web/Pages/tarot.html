@@ -11,21 +11,8 @@
                     <!-- Dealer Section -->
                     <div class="dealer-section text-center mb-4">
                         <div class="dealer-avatar-container">
-                            <div class="smoke-container">
-                                <div class="smoke-plume" style="--i:1;"></div>
-                                <div class="smoke-plume" style="--i:2;"></div>
-                                <div class="smoke-plume" style="--i:3;"></div>
-                                <div class="smoke-plume" style="--i:4;"></div>
-                                <div class="smoke-plume" style="--i:5;"></div>
-                                <div class="smoke-plume" style="--i:6;"></div>
-                            </div>
-                            <div id="crystal-ball-container" style="width: 120px; height: 120px; margin: 0 auto; border-radius: 50%; border: 4px solid var(--gold-primary); box-shadow: 0 0 25px var(--gold-glow), 0 0 50px var(--gold-glow); overflow: hidden; background: #05000a;">
-                                <canvas id="crystal-canvas" width="120" height="120"></canvas>
-                            </div>
-                            <div id="dealer-avatar-loading" class="dealer-avatar-loading" style="display: none;">
-                                <div class="spinner-border text-primary" role="status">
-                                    <span class="visually-hidden">Loading dealer...</span>
-                                </div>
+                            <div class="floating-skull" id="floating-skull">
+                                <img id="skull-image" src="" alt="skull" style="width:80px;height:80px;object-fit:contain;display:none;">
                             </div>
                             <div id="dealer-speech" class="dealer-speech-bubble d-none">
                                 <div class="speech-content"></div>
@@ -72,14 +59,7 @@
                     <div id="card-table" class="card-table d-none">
                         <div class="table-felt">
                             <div id="card-slots" class="card-slots">
-                                <!-- Cards will be dealt here -->
-                            </div>
-                            <div id="card-deck" class="card-deck">
-                                <div class="deck-visual">
-                                    <div class="card-back"></div>
-                                    <div class="card-back"></div>
-                                    <div class="card-back"></div>
-                                </div>
+                                <!-- Cards will be dealt here dynamically -->
                             </div>
                         </div>
                     </div>
@@ -114,9 +94,4 @@
     </div>
 </div>
 
-<!-- Link to external CSS -->
-<link rel="stylesheet" href="/css/tarot.css">
-
-<!-- Link to external JavaScript -->
-<script src="/js/simple_crystal.js"></script>
-<script src="/js/tarot.js"></script>
+<!-- CSS and JS are loaded by dashboard.js via data-css/data-script on the nav link -->

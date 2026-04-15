@@ -97,6 +97,10 @@ async def _broadcast_rooms():
         "type": "rooms",
         "rooms": [r.to_dict() for r in _rooms.values()],
     })
+    try:
+        await broadcast_unified()
+    except Exception:
+        pass
 
 
 # ── WebSocket endpoint ────────────────────────────────────────────────────────
@@ -137,9 +141,9 @@ async def join_room(request: Request, data: Dict[str, Any] = Body(...)):
 
     room = _rooms[room_id]
 
-    # Remove user from any existing room first
+    # Remove user from any OTHER room first (not the target room)
     for r in _rooms.values():
-        if r.has_user(user_id):
+        if r.room_id != room_id and r.has_user(user_id):
             r.remove_user(user_id)
 
     if not room.is_empty() and room.state not in ("pvp_waiting",):
@@ -304,3 +308,67 @@ async def arena_pvp_battle(request: Request, data: Dict[str, Any] = Body(...)):
     await _broadcast_rooms()
 
     return JSONResponse(result)
+
+
+# ── Unified WebSocket endpoint (arena + casino in one feed) ───────────────────
+# The unified manager lives here; casino_lobby_api imports and uses it too.
+
+class UnifiedConnectionManager:
+    def __init__(self):
+        self._connections: Set[WebSocket] = set()
+
+    async def connect(self, ws: WebSocket):
+        await ws.accept()
+        self._connections.add(ws)
+
+    def disconnect(self, ws: WebSocket):
+        self._connections.discard(ws)
+
+    async def broadcast(self, data: Any):
+        msg = json.dumps(data)
+        dead: Set[WebSocket] = set()
+        for ws in list(self._connections):
+            try:
+                await ws.send_text(msg)
+            except Exception:
+                dead.add(ws)
+        for ws in dead:
+            self._connections.discard(ws)
+
+
+_unified_manager = UnifiedConnectionManager()
+
+
+async def broadcast_unified():
+    """Push both room sets to all unified WS clients. Called by both APIs."""
+    from web.api.casino_lobby_api import _casino_rooms
+    await _unified_manager.broadcast({
+        "type":   "unified",
+        "arena":  [r.to_dict() for r in _rooms.values()],
+        "casino": [r.to_dict() for r in _casino_rooms.values()],
+    })
+
+
+@router.websocket("/ws/unified")
+async def unified_ws(websocket: WebSocket):
+    await _unified_manager.connect(websocket)
+    from web.api.casino_lobby_api import _casino_rooms
+    # Send current state immediately on connect
+    await websocket.send_text(json.dumps({
+        "type":   "unified",
+        "arena":  [r.to_dict() for r in _rooms.values()],
+        "casino": [r.to_dict() for r in _casino_rooms.values()],
+    }))
+    try:
+        while True:
+            msg = await websocket.receive_text()
+            # Respond to ping with a fresh room snapshot
+            if msg == "ping":
+                from web.api.casino_lobby_api import _casino_rooms as _cr
+                await websocket.send_text(json.dumps({
+                    "type":   "unified",
+                    "arena":  [r.to_dict() for r in _rooms.values()],
+                    "casino": [r.to_dict() for r in _cr.values()],
+                }))
+    except WebSocketDisconnect:
+        _unified_manager.disconnect(websocket)

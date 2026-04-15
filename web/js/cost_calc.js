@@ -582,7 +582,7 @@ const calculatorToggle = document.getElementById('calculator-toggle');
             try {
                 const resourcePrices = await fetch('/api/pnw/resource-prices').then(r => r.json());
 
-                const getPrice = (res) => (resourcePrices?.sell?.[res]) || 0;
+                const getPrice = (res) => (resourcePrices?.data?.[res]?.sell) || 0;
 
                 // Accumulators
                 let grandCash = 0;
@@ -863,7 +863,17 @@ const calculatorToggle = document.getElementById('calculator-toggle');
             });
         }
 
+        function ppPosition() {
+            const trigger = document.getElementById('pp-trigger');
+            const panel   = document.getElementById('pp-panel');
+            const rect    = trigger.getBoundingClientRect();
+            panel.style.left  = rect.left + 'px';
+            panel.style.width = rect.width + 'px';
+            panel.style.top   = (rect.bottom + 4) + 'px';
+        }
+
         function ppOpen() {
+            ppPosition();
             document.getElementById('pp-panel').classList.add('open');
             document.getElementById('pp-trigger').classList.add('open');
             document.getElementById('pp-trigger').setAttribute('aria-expanded', 'true');
@@ -875,6 +885,10 @@ const calculatorToggle = document.getElementById('calculator-toggle');
             document.getElementById('pp-trigger').classList.remove('open');
             document.getElementById('pp-trigger').setAttribute('aria-expanded', 'false');
         }
+
+        // Reposition on scroll/resize so the fixed panel tracks the trigger
+        window.addEventListener('scroll', () => { if (document.getElementById('pp-panel').classList.contains('open')) ppPosition(); }, true);
+        window.addEventListener('resize', () => { if (document.getElementById('pp-panel').classList.contains('open')) ppPosition(); });
 
         document.getElementById('pp-trigger').addEventListener('click', () => {
             document.getElementById('pp-panel').classList.contains('open') ? ppClose() : ppOpen();

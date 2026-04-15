@@ -469,6 +469,22 @@ def _strip_hints(text: str) -> str:
     import re
     return re.sub(r'\s*\(.*?\)\s*', '', text).strip()
 
+def _next_stage_payload(session: dict, next_idx: int, outcome_msg: str = "") -> dict:
+    """Build the JSON payload for the next quest stage."""
+    stages = session["stages"]
+    stage  = stages[next_idx]
+    return {
+        "stage_idx":       next_idx,
+        "total_stages":    len(stages),
+        "stage_name":      stage["stage_name"],
+        "event":           _strip_hints(stage["event"]),
+        "choices":         {k: _strip_hints(v) for k, v in stage["choices"].items()},
+        "outcome_msg":     outcome_msg,
+        "xp_so_far":       session["xp"],
+        "done":            False,
+        "battle_required": False,
+    }
+
 @router.post("/pets/quest/start")
 async def quest_start(request: Request, data: Dict[str, Any] = Body(...)):
     user = request.session.get("discord_user")
@@ -536,12 +552,20 @@ async def quest_start(request: Request, data: Dict[str, Any] = Body(...)):
 
         stage = stages[0]
         return JSONResponse(content={
-            "stage_idx":   0,
-            "total_stages": len(stages),
-            "stage_name":  stage["stage_name"],
-            "event":       _strip_hints(stage["event"]),
-            "choices":     {k: _strip_hints(v) for k, v in stage["choices"].items()},
-            "done":        False,
+            "stage_idx":       0,
+            "total_stages":    len(stages),
+            "stage_name":      stage["stage_name"],
+            "event":           _strip_hints(stage["event"]),
+            "choices":         {k: _strip_hints(v) for k, v in stage["choices"].items()},
+            "outcome_msg":     "",
+            "xp_so_far":       0,
+            "done":            False,
+            "battle_required": False,
+            "hostile_pet": {
+                "name":    hostile_pet.get("name", "Wild Creature"),
+                "species": hostile_pet.get("species", "Creature"),
+                "level":   hostile_pet.get("level", 1),
+            },
         })
 
     except HTTPException:
@@ -562,27 +586,28 @@ async def quest_choice(request: Request, data: Dict[str, Any] = Body(...)):
     if not session or session.get("done"):
         raise HTTPException(status_code=400, detail="No active quest. Start a new one.")
 
+    if session.get("pending_battle"):
+        raise HTTPException(status_code=400, detail="A battle is in progress. Resolve it first.")
+
     try:
         choice_num = int(data.get("choice", 1))
         import random as _random
         from Systems.Pets.Logic.pet_brain import LootCalculator
-        from Systems.Pets.pets_system import add_experience
 
-        stages    = session["stages"]
-        idx       = session["stage_idx"]
-        pet       = session["pet"]
-        diff      = session["difficulty"]
-        location  = session["location"]
+        stages   = session["stages"]
+        idx      = session["stage_idx"]
+        pet      = session["pet"]
+        diff     = session["difficulty"]
+        location = session["location"]
 
         if idx >= len(stages):
-            # All stages done
             return await _quest_finish(user_id, session, True)
 
         stage      = stages[idx]
         stage_name = stage["stage_name"]
         sub_type   = stage.get("sub_type")
 
-        # Skip evade if hostile already defeated
+        # Auto-skip evade if hostile already defeated
         if stage_name == "Avoiding Hostile Pets" and sub_type == "evade" and session["hostile_defeated"]:
             session["stage_idx"] += 1
             idx += 1
@@ -592,29 +617,32 @@ async def quest_choice(request: Request, data: Dict[str, Any] = Body(...)):
             stage_name = stage["stage_name"]
             sub_type   = stage.get("sub_type")
 
+        # Stat check
         stat_map = {1: ("ATT","DEF"), 2: ("INT","DEX"), 3: ("HAP","ENE")}
         stat1, stat2 = stat_map.get(choice_num, ("ATT","DEF"))
-        pet_skill = (pet.get(stat1, 0) + pet.get(stat2, 0)) / 2
+        pet_skill    = (pet.get(stat1, 0) + pet.get(stat2, 0)) / 2
 
-        diff_mult = {"Apprentice": 0.8, "Journeyman": 1.0, "Senior": 1.2}[diff]
-        stage_mod = stage.get("difficulty_modifier", 1.0)
-        required  = 10 * diff_mult * stage_mod
+        diff_mult    = {"Apprentice": 0.8, "Journeyman": 1.0, "Senior": 1.2}[diff]
+        stage_mod    = stage.get("difficulty_modifier", 1.0)
+        required     = 10 * diff_mult * stage_mod
         success_rate = min(95, max(5, int((pet_skill / max(1, required)) * 50)))
-        success = _random.randint(1, 100) <= success_rate
+        success      = _random.randint(1, 100) <= success_rate
 
-        outcome_msg = ""
-        xp_gain     = 0
-        loot_gained = []
+        outcome_msg  = ""
+        xp_gain      = 0
+        loot_gained  = []
         quest_failed = False
 
         # ── Stage-specific logic ──────────────────────────────────────────────
         if stage_name == "Entering Location":
-            success = True
-            outcome_msg = "You enter the area and begin your quest."
+            success      = True
+            success_rate = 100
+            xp_gain      = 5
+            outcome_msg  = f"You enter {location} and begin your quest."
 
         elif stage_name == "Avoiding Hostile Pets":
-            boss_name = f"{location} {session['hostile_pet']['species']}"
-            skill_inf = ((pet_skill - required) / max(1, required)) * 15
+            boss_name  = f"{location} {session['hostile_pet']['species']}"
+            skill_inf  = ((pet_skill - required) / max(1, required)) * 15
             if sub_type == "scare_off":
                 success_rate = min(95, max(5, 65 + skill_inf))
             else:
@@ -623,75 +651,88 @@ async def quest_choice(request: Request, data: Dict[str, Any] = Body(...)):
 
             if success:
                 xp_gain = max(10, int(pet_skill * 1.5))
-                outcome_msg = f"✅ You {'scared off' if sub_type=='scare_off' else 'evaded'} the {boss_name}! +{xp_gain} XP"
                 if sub_type == "scare_off":
-                    session["hostile_defeated"] = True
-            else:
-                # Simulate battle outcome (no real Discord battle on web — use stat check)
-                battle_chance = min(90, max(10, int(pet_skill * 2)))
-                battle_won = _random.randint(1, 100) <= battle_chance
-                if battle_won:
-                    xp_gain = max(15, int(pet_skill * 2))
-                    outcome_msg = f"⚔️ You fought the {boss_name} and won! +{xp_gain} XP"
+                    outcome_msg = f"✅ You scared off the {boss_name}! +{xp_gain} XP"
                     session["hostile_defeated"] = True
                 else:
-                    outcome_msg = f"💀 You were defeated by the {boss_name}. Quest failed."
-                    quest_failed = True
+                    outcome_msg = f"✅ You evaded the {boss_name}! +{xp_gain} XP"
+            else:
+                # Signal the frontend to run a real battle
+                session["pending_battle"]   = True
+                session["pending_sub_type"] = sub_type
+                session["stage_idx"] += 1   # advance past this stage — battle resolves it
+                session["event_log"].append({
+                    "stage":        stage_name,
+                    "choice":       _strip_hints(stage["choices"].get(str(choice_num), "")),
+                    "success":      False,
+                    "success_rate": round(success_rate, 1),
+                    "outcome":      f"Failed to {'scare off' if sub_type=='scare_off' else 'evade'} the {boss_name} — battle triggered!",
+                })
+                return JSONResponse(content={
+                    "done":            False,
+                    "battle_required": True,
+                    "boss_name":       boss_name,
+                    "hostile_pet":     session["hostile_pet"],
+                    "outcome_msg":     f"⚔️ You failed to {'scare off' if sub_type=='scare_off' else 'evade'} the {boss_name}! Prepare to fight!",
+                    "xp_so_far":       session["xp"],
+                })
 
         elif stage_name == "Locating a FREE to open Loot Chest":
             success_rate = min(95, max(5, int((pet_skill / max(1, required)) * 60)))
-            success = _random.randint(1, 100) <= success_rate
+            success      = _random.randint(1, 100) <= success_rate
             if not success:
-                outcome_msg = "You fumbled and couldn't open the chest."
+                outcome_msg = "⚠️ You fumbled and couldn't open the chest."
             else:
                 loot_mult = {"Apprentice": 1, "Journeyman": 2, "Senior": 3}[diff]
                 base_amt  = _random.randint(1, 3) * loot_mult
                 if sub_type == "mimic":
                     if choice_num == 1:
-                        loot_amt = base_amt * 2
+                        loot_amt    = base_amt * 2
                         outcome_msg = "⚔️ You overpowered the mimic and found double loot!"
                     else:
-                        loot_amt = 0
+                        loot_amt    = 0
                         outcome_msg = "🪤 It was a mimic! You barely escaped."
                 else:
                     double_choice = stage.get("double_loot_choice", -1)
-                    loot_amt = base_amt * 2 if choice_num == double_choice else base_amt
-                    outcome_msg = f"📦 You opened the chest and found {'double ' if choice_num==double_choice else ''}loot!"
+                    loot_amt      = base_amt * 2 if choice_num == double_choice else base_amt
+                    outcome_msg   = f"📦 You opened the chest and found {'double ' if choice_num == double_choice else ''}loot!"
 
                 if loot_amt > 0:
                     loot_gained = _generate_quest_loot_web(loot_amt, diff)
                     session["loot"].extend(loot_gained)
+                    session["loot_earned"] = True
                     names = [f"{i.get('count',1)}x {i['name']}" for i in loot_gained]
                     outcome_msg += f" Got: {', '.join(names)}"
 
         else:  # Looking Around, Exiting Location, etc.
             if success:
-                xp_gain = max(10, int((pet_skill - required) * 5))
+                xp_gain     = max(10, int(pet_skill * 0.5 + 5))
                 outcome_msg = f"✅ Success! +{xp_gain} XP"
             else:
+                xp_gain     = 3
                 outcome_msg = "⚠️ You struggled but made it through."
 
         session["xp"] += xp_gain
         session["event_log"].append({
-            "stage": stage_name,
-            "choice": _strip_hints(stage["choices"].get(str(choice_num), "")),
-            "success": success,
+            "stage":        stage_name,
+            "choice":       _strip_hints(stage["choices"].get(str(choice_num), "")),
+            "success":      success,
             "success_rate": round(success_rate, 1),
-            "outcome": outcome_msg,
+            "outcome":      outcome_msg,
         })
         session["stage_idx"] += 1
 
         if quest_failed:
             return await _quest_finish(user_id, session, False)
 
-        # Move to next stage
         next_idx = session["stage_idx"]
         if next_idx >= len(stages):
             return await _quest_finish(user_id, session, True)
 
         next_stage = stages[next_idx]
-        # Skip evade if hostile defeated
-        if next_stage["stage_name"] == "Avoiding Hostile Pets" and next_stage.get("sub_type") == "evade" and session["hostile_defeated"]:
+        if (next_stage["stage_name"] == "Avoiding Hostile Pets"
+                and next_stage.get("sub_type") == "evade"
+                and session["hostile_defeated"]):
             session["stage_idx"] += 1
             next_idx += 1
             if next_idx >= len(stages):
@@ -699,14 +740,15 @@ async def quest_choice(request: Request, data: Dict[str, Any] = Body(...)):
             next_stage = stages[next_idx]
 
         return JSONResponse(content={
-            "stage_idx":    next_idx,
-            "total_stages": len(stages),
-            "stage_name":   next_stage["stage_name"],
-            "event":        _strip_hints(next_stage["event"]),
-            "choices":      {k: _strip_hints(v) for k, v in next_stage["choices"].items()},
-            "outcome_msg":  outcome_msg,
-            "xp_so_far":    session["xp"],
-            "done":         False,
+            "stage_idx":       next_idx,
+            "total_stages":    len(stages),
+            "stage_name":      next_stage["stage_name"],
+            "event":           _strip_hints(next_stage["event"]),
+            "choices":         {k: _strip_hints(v) for k, v in next_stage["choices"].items()},
+            "outcome_msg":     outcome_msg,
+            "xp_so_far":       session["xp"],
+            "done":            False,
+            "battle_required": False,
         })
 
     except HTTPException:
@@ -716,13 +758,104 @@ async def quest_choice(request: Request, data: Dict[str, Any] = Body(...)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.post("/pets/quest/battle_result")
+async def quest_battle_result(request: Request, data: Dict[str, Any] = Body(...)):
+    """Called after the web battle resolves to continue the quest."""
+    user = request.session.get("discord_user")
+    if not user:
+        return JSONResponse(content={"error": "Not logged in"}, status_code=401)
+    user_id = str(user.get("id"))
+
+    session = _quest_sessions.get(user_id)
+    if not session or session.get("done"):
+        raise HTTPException(status_code=400, detail="No active quest.")
+    if not session.get("pending_battle"):
+        raise HTTPException(status_code=400, detail="No battle pending.")
+
+    try:
+        won      = bool(data.get("won", False))
+        xp_bonus = int(data.get("xp_gained", 0))
+        sub_type = session.pop("pending_sub_type", "scare_off")
+        session["pending_battle"] = False
+
+        if won:
+            session["hostile_defeated"] = True
+            session["xp"] += xp_bonus
+            outcome_msg = f"⚔️ You defeated the enemy and earned {xp_bonus} XP!"
+        else:
+            session["event_log"].append({
+                "stage":        "Battle",
+                "choice":       "Fight",
+                "success":      False,
+                "success_rate": 50,
+                "outcome":      "💀 You were defeated in battle. Quest failed.",
+            })
+            return await _quest_finish(user_id, session, False)
+
+        next_idx = session["stage_idx"]
+        stages   = session["stages"]
+
+        if next_idx >= len(stages):
+            return await _quest_finish(user_id, session, True)
+
+        next_stage = stages[next_idx]
+        if (next_stage["stage_name"] == "Avoiding Hostile Pets"
+                and next_stage.get("sub_type") == "evade"
+                and session["hostile_defeated"]):
+            session["stage_idx"] += 1
+            next_idx += 1
+            if next_idx >= len(stages):
+                return await _quest_finish(user_id, session, True)
+            next_stage = stages[next_idx]
+
+        return JSONResponse(content={
+            "stage_idx":       next_idx,
+            "total_stages":    len(stages),
+            "stage_name":      next_stage["stage_name"],
+            "event":           _strip_hints(next_stage["event"]),
+            "choices":         {k: _strip_hints(v) for k, v in next_stage["choices"].items()},
+            "outcome_msg":     outcome_msg,
+            "xp_so_far":       session["xp"],
+            "done":            False,
+            "battle_required": False,
+        })
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"quest_battle_result error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/pets/quest/abandon")
+async def quest_abandon(request: Request):
+    """Abandon the current quest, awarding any XP/loot already earned."""
+    user = request.session.get("discord_user")
+    if not user:
+        return JSONResponse(content={"error": "Not logged in"}, status_code=401)
+    user_id = str(user.get("id"))
+    session = _quest_sessions.pop(user_id, None)
+    if session and not session.get("done"):
+        xp   = session.get("xp", 0)
+        loot = session.get("loot", []) if session.get("loot_earned") else []
+        if xp > 0:
+            from Systems.Pets.pets_system import add_experience
+            await add_experience(int(user_id), xp, "quest_partial")
+        if loot:
+            from Systems.Pets.Logic.pet_brain import LootCalculator
+            pet = session.get("pet", {})
+            for item in loot:
+                await LootCalculator.add_item_to_inventory(int(user_id), item, pet)
+    return JSONResponse(content={"ok": True})
+
+
 def _generate_quest_loot_web(amount: int, difficulty: str) -> list:
     import random as _random
     from Systems.Pets.Logic.pet_brain import LootCalculator
     loot = []
     types = ["Material","Gem","Monster","Potion","Hat"]
     for _ in range(amount):
-        t = _random.choice(types)
+        t    = _random.choice(types)
         item = None
         if t == "Material": item = LootCalculator.get_material_loot_item(difficulty, bypass_chance=True)
         elif t == "Gem":    item = LootCalculator.get_gem_loot_item(difficulty, bypass_chance=True)
@@ -730,8 +863,8 @@ def _generate_quest_loot_web(amount: int, difficulty: str) -> list:
         elif t == "Potion": item = LootCalculator.get_potion_loot(difficulty, bypass_chance=True)
         elif t == "Hat":    item = LootCalculator.get_hat_loot_item(difficulty, bypass_chance=True)
         if item:
-            found = next((x for x in loot if x["name"]==item["name"] and x["type"]==item["type"]), None)
-            if found: found["count"] = found.get("count",1) + 1
+            found = next((x for x in loot if x["name"] == item["name"] and x["type"] == item["type"]), None)
+            if found: found["count"] = found.get("count", 1) + 1
             else:     item["count"] = 1; loot.append(item)
     return loot
 
@@ -744,22 +877,18 @@ async def _quest_finish(user_id: str, session: dict, success: bool):
     session["success"] = success
 
     xp   = session["xp"]
-    loot = session["loot"]
+    loot = session["loot"] if session.get("loot_earned") else []
     pet  = session["pet"]
 
-    # Award XP
     if xp > 0:
         await add_experience(int(user_id), xp, "quest")
 
-    # Award loot
-    keep_loot = success or (session["stage_idx"] >= 3 and loot)
-    if keep_loot and loot:
+    if loot:
         for item in loot:
             await LootCalculator.add_item_to_inventory(int(user_id), item, pet)
 
-    refreshed = await user_data_manager.get_pet_data_async(user_id)
-
-    loot_names = [f"{i.get('count',1)}x {i['name']}" for i in loot] if keep_loot else []
+    refreshed  = await user_data_manager.get_pet_data_async(user_id)
+    loot_names = [f"{i.get('count',1)}x {i['name']}" for i in loot]
 
     return JSONResponse(content={
         "done":      True,
@@ -945,7 +1074,382 @@ async def unequip_item(request: Request, data: Dict[str, Any] = Body(...)):
         raise HTTPException(status_code=500, detail="Unequip failed.")
 
 
-# ── NPC Battle ────────────────────────────────────────────────────────────────
+# ── NPC Battle (turn-based) ───────────────────────────────────────────────────
+
+@router.post("/pets/battle/npc/start")
+async def battle_npc_start(request: Request, data: Dict[str, Any] = Body(...)):
+    """Initialize a turn-based NPC battle. Returns initial battle state (no turns processed)."""
+    user = request.session.get("discord_user")
+    if not user:
+        return JSONResponse(content={"error": "Not logged in"}, status_code=401)
+    user_id = str(user.get("id"))
+
+    try:
+        import random as _random
+        from Systems.Pets.Logic.pet_brain import StatsCalculator, DamageCalculator, NPCBrain
+
+        pet = await user_data_manager.get_pet_data_async(user_id)
+        if not pet:
+            raise HTTPException(status_code=404, detail="No pet found")
+
+        difficulty = (data.get("difficulty") or "easy").lower()
+        if difficulty not in ("easy", "average", "hard", "quest"):
+            raise HTTPException(status_code=400, detail="Invalid difficulty")
+
+        # Quest battles pass a pre-built hostile_pet — use it directly
+        hostile_pet_override = data.get("hostile_pet") if difficulty == "quest" else None
+
+        stats = StatsCalculator.calculate_pet_stats(pet)
+        p_atk  = int(stats.get("attack",  10))
+        p_def  = int(stats.get("defense",  5))
+        p_hp   = int(stats.get("max_health", 500))
+        p_type = str(pet.get("category", "land")).lower()
+        p_elem = str(pet.get("element",  "basic")).lower()
+        p_elem2= str(pet.get("element2", "") or "").lower() or None
+        p_spec = str(pet.get("species",  "")).strip()
+
+        if hostile_pet_override:
+            # Use the quest-generated hostile pet stats directly
+            hp_raw = hostile_pet_override
+            e_atk  = max(1, int(hp_raw.get("ATT", p_atk * 0.8)))
+            e_def  = max(1, int(hp_raw.get("DEF", p_def * 0.8)))
+            e_hp   = max(50, int((hp_raw.get("HAP", 50) + hp_raw.get("ENE", 50)) * 3))
+            e_type = str(hp_raw.get("category", "land")).lower()
+            e_elem = str(hp_raw.get("element", "basic")).lower()
+            e_species = str(hp_raw.get("species", "Creature"))
+            enemy_name = str(hp_raw.get("name", "Wild Creature"))
+            # Use "average" scaling for action label purposes
+            difficulty = "average"
+        else:
+            scale = {"easy": (0.70, 0.70, 0.85), "average": (1.10, 1.10, 1.10), "hard": (1.50, 1.50, 1.35)}
+            s_atk, s_def, s_hp = scale[difficulty]
+            e_atk  = max(1, int(p_atk * s_atk * _random.uniform(0.9, 1.1)))
+            e_def  = max(1, int(p_def * s_def * _random.uniform(0.9, 1.1)))
+            e_hp   = max(50, int(p_hp  * s_hp  * _random.uniform(0.95, 1.15)))
+            e_atk  = min(e_atk, max(10, p_hp // 12))
+
+            all_types    = list(DamageCalculator.CATEGORY_ADVANTAGES.keys())
+            all_elements = list(DamageCalculator.ELEMENT_EFFECTIVENESS.keys())
+            if difficulty == "easy":
+                cand_types = [t for t in all_types if DamageCalculator.compute_type_bonus(p_type, t) > 1.0] or all_types
+                cand_elems = [e for e in all_elements if DamageCalculator.compute_element_bonus(p_elem, e) > 1.0] or all_elements
+            elif difficulty == "hard":
+                cand_types = [t for t in all_types if DamageCalculator.compute_type_bonus(t, p_type) > 1.0] or all_types
+                cand_elems = [e for e in all_elements if DamageCalculator.compute_element_bonus(e, p_elem) > 1.0] or all_elements
+            else:
+                cand_types = all_types
+                cand_elems = all_elements
+
+            e_type = _random.choice(cand_types)
+            e_elem = _random.choice(cand_elems)
+
+            e_species = ""
+            try:
+                _info = _load_json(os.path.join(project_root, "Systems", "Pets", "Logic", "info.json"))
+                _all_species = list(_info.get("Pets", {}).keys())
+                if _all_species:
+                    e_species = _random.choice(_all_species)
+            except Exception as _e:
+                logger.warning(f"battle_npc_start: could not pick enemy species: {_e}")
+                e_species = ""
+
+            try:
+                from Systems.Functions.optimal_file_manager import OptimalFileManager
+                _base = OptimalFileManager().get_data("base")
+                adj  = _random.choice(_base.get("element_bases", {}).get(e_elem, ["Mysterious"]))
+                noun = _random.choice(_base.get("category_bases", {}).get(e_type, ["Creature"]))
+                enemy_name = f"{adj} {noun}"
+            except Exception:
+                enemy_name = f"{e_elem.title()} {e_type.title()} Foe"
+
+        action_labels = DamageCalculator.get_action_labels(p_type, p_elem, p_spec)
+
+        # Build flat ordered equipment list for display: Monster, Gem, Material, Hat, Material, Gem, Monster
+        def _equip_items(pet: dict) -> list:
+            eq = pet.get("equipment") or {}
+            slots = []
+            mons  = eq.get("Monsters", [])
+            gems  = eq.get("Gems", [])
+            mats  = eq.get("Material", [])
+            hat   = eq.get("Hat")
+            if isinstance(mons, dict): mons = [mons]
+            if isinstance(gems, dict): gems = [gems]
+            if isinstance(mats, dict): mats = [mats]
+            def _item(i): return {"name": i.get("name",""), "emoji_file": i.get("emoji_file", i.get("name","") + ".png"), "rarity": i.get("rarity","Common"), "type": i.get("type","")}
+            # Left side: first monster, first gem, first material
+            if len(mons) > 0: slots.append(_item(mons[0]))
+            if len(gems) > 0: slots.append(_item(gems[0]))
+            if len(mats) > 0: slots.append(_item(mats[0]))
+            # Center: hat
+            if hat and isinstance(hat, dict): slots.append(_item(hat))
+            # Right side: second material, second gem, second monster
+            if len(mats) > 1: slots.append(_item(mats[1]))
+            if len(gems) > 1: slots.append(_item(gems[1]))
+            if len(mons) > 1: slots.append(_item(mons[1]))
+            return slots
+
+        return JSONResponse(content={
+            "success": True,
+            "difficulty": difficulty,
+            "player": {
+                "name": pet["name"],
+                "max_hp": p_hp,
+                "cur_hp": p_hp,
+                "attack": p_atk,
+                "defense": p_def,
+                "type": p_type,
+                "element": p_elem,
+                "element2": p_elem2 or "",
+                "species": p_spec,
+                "charge": 1.0,
+                "last_action": None,
+                "equipment": _equip_items(pet),
+            },
+            "enemy": {
+                "name": enemy_name,
+                "max_hp": e_hp,
+                "cur_hp": e_hp,
+                "attack": e_atk,
+                "defense": e_def,
+                "type": e_type,
+                "element": e_elem,
+                "species": e_species,
+                "charge": 1.0,
+                "last_action": None,
+            },
+            "turn": 0,
+            "over": False,
+            "won": None,
+            "action_labels": action_labels,
+        })
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"battle_npc_start error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to start battle.")
+
+
+@router.post("/pets/battle/npc/turn")
+async def battle_npc_turn(request: Request, data: Dict[str, Any] = Body(...)):
+    """Process one turn of a turn-based NPC battle. Client sends full state + player action."""
+    user = request.session.get("discord_user")
+    if not user:
+        return JSONResponse(content={"error": "Not logged in"}, status_code=401)
+    user_id = str(user.get("id"))
+
+    try:
+        from Systems.Pets.Logic.pet_brain import DamageCalculator, LootCalculator, NPCBrain
+
+        p_action = (data.get("action") or "attack").lower()
+        if p_action not in ("attack", "defend", "charge"):
+            p_action = "attack"
+
+        # Unpack state sent from client
+        ps = data["player"]
+        es = data["enemy"]
+        turn_num = int(data.get("turn", 0)) + 1
+        difficulty = (data.get("difficulty") or "easy").lower()
+
+        p_atk   = int(ps["attack"])
+        p_def   = int(ps["defense"])
+        p_type  = str(ps.get("type", "land"))
+        p_elem  = str(ps.get("element", "basic"))
+        p_elem2 = str(ps.get("element2") or "") or None
+        p_spec  = str(ps.get("species", ""))
+        p_hp    = int(ps["max_hp"])
+        cur_p_hp = int(ps["cur_hp"])
+        p_charge = float(ps.get("charge", 1.0))
+        p_last   = ps.get("last_action")
+
+        e_atk   = int(es["attack"])
+        e_def   = int(es["defense"])
+        e_type  = str(es.get("type", "land"))
+        e_elem  = str(es.get("element", "basic"))
+        e_hp    = int(es["max_hp"])
+        cur_e_hp = int(es["cur_hp"])
+        e_charge = float(es.get("charge", 1.0))
+        e_last   = es.get("last_action")
+        enemy_name = str(es.get("name", "Enemy"))
+        pet_name   = str(ps.get("name", "Your Pet"))
+
+        # NPC decides
+        npc_brain = NPCBrain()
+        monster_state = {
+            "hp": cur_e_hp, "max_hp": e_hp, "prev_hp": cur_e_hp,
+            "charge_multiplier": e_charge, "last_action": e_last,
+            "attack_stat": float(e_atk), "defense_stat": float(e_def),
+            "seed": turn_num
+        }
+        player_state = [{"alive": cur_p_hp > 0, "hp": cur_p_hp, "max_hp": p_hp, "charging": p_action == "charge"}]
+        e_action = npc_brain.decide_action(monster_state, player_state).get("action", "attack")
+
+        # Charge accumulation
+        if p_action == "charge":
+            p_charge = DamageCalculator.get_next_charge_multiplier(p_charge)
+        if e_action == "charge":
+            e_charge = DamageCalculator.get_next_charge_multiplier(e_charge)
+
+        # Resolve combat
+        p_result = DamageCalculator.calculate_battle_action(
+            attacker_attack=p_atk, target_defense=e_def,
+            charge_multiplier=p_charge if p_action == "attack" else 1.0,
+            target_charge_multiplier=e_charge if e_action == "defend" else 1.0,
+            attacker_action_type=p_action, target_action_type=e_action,
+            attacker_type=p_type, attacker_element=p_elem, attacker_element2=p_elem2,
+            defender_type=e_type, defender_element=e_elem,
+            attacker_species=p_spec
+        )
+        e_result = DamageCalculator.calculate_battle_action(
+            attacker_attack=e_atk, target_defense=p_def,
+            charge_multiplier=e_charge if e_action == "attack" else 1.0,
+            target_charge_multiplier=p_charge if p_action == "defend" else 1.0,
+            attacker_action_type=e_action, target_action_type=p_action,
+            attacker_type=e_type, attacker_element=e_elem,
+            defender_type=p_type, defender_element=p_elem, defender_element2=p_elem2,
+            defender_species=p_spec
+        )
+
+        p_dmg_dealt = p_result["final_damage"]
+        e_dmg_dealt = e_result["final_damage"]
+        p_parry     = p_result["parry_damage"]
+        e_parry     = e_result["parry_damage"]
+
+        cur_e_hp = max(0, cur_e_hp - p_dmg_dealt - e_parry)
+        cur_p_hp = max(0, cur_p_hp - e_dmg_dealt - p_parry)
+
+        if p_action == "attack" or p_action == "defend": p_charge = 1.0
+        if e_action == "attack" or e_action == "defend": e_charge = 1.0
+        action_labels = data.get("action_labels", {})
+        p_action_label = action_labels.get(p_action, p_action.title())
+
+        # ── Structured combat data for rich frontend rendering ────────────────
+        p_charge_used = float(data.get("player", {}).get("charge", 1.0))  # charge BEFORE reset
+        e_charge_used = float(data.get("enemy", {}).get("charge", 1.0))
+
+        combat = {
+            # Player → Enemy
+            "p_action": p_action,
+            "p_action_label": p_action_label,
+            "p_dmg": p_dmg_dealt,
+            "p_parry": p_parry,           # parry player dealt back to enemy (player defended)
+            "p_charge_mult": p_charge_used if p_action == "attack" else (p_charge if p_action == "charge" else 1.0),
+            "p_attack_roll": p_result.get("attack_roll"),
+            "p_attack_result": p_result.get("attack_result", ""),
+            "p_defense_roll": p_result.get("defense_roll"),
+            "p_defense_result": p_result.get("defense_result", ""),
+            "p_final_attack": p_result.get("final_attack", 0),
+            "p_final_defense": p_result.get("final_defense", 0),
+            "p_type_elem_mult": round(p_result.get("type_element_bonus_mult_attack", 1.0), 2),
+            # Enemy → Player
+            "e_action": e_action,
+            "e_dmg": e_dmg_dealt,
+            "e_parry": e_parry,           # parry enemy dealt back to player (enemy defended)
+            "e_charge_mult": e_charge_used if e_action == "attack" else (e_charge if e_action == "charge" else 1.0),
+            "e_attack_roll": e_result.get("attack_roll"),
+            "e_attack_result": e_result.get("attack_result", ""),
+            "e_defense_roll": e_result.get("defense_roll"),
+            "e_defense_result": e_result.get("defense_result", ""),
+            "e_final_attack": e_result.get("final_attack", 0),
+            "e_final_defense": e_result.get("final_defense", 0),
+            "e_type_elem_mult": round(e_result.get("type_element_bonus_mult_attack", 1.0), 2),
+            # New charge levels after this turn
+            "p_charge_after": p_charge,
+            "e_charge_after": e_charge,
+        }
+
+        lines = []
+        if p_action == "charge":
+            lines.append(f"⚡ {pet_name} charges up! (x{p_charge:.0f})")
+        elif p_dmg_dealt > 0:
+            mult = p_result.get("type_element_bonus_mult_attack", 1.0)
+            bonus = " 🔥 Super effective!" if mult > 1.0 else (" 💨 Not very effective..." if mult < 1.0 else "")
+            charge_tag = f" [x{p_charge_used:.0f} charge]" if p_charge_used > 1.0 else ""
+            lines.append(f"⚔️ {pet_name} uses {p_action_label}{charge_tag} → {p_dmg_dealt} dmg{bonus}")
+        elif p_action == "defend":
+            if e_parry > 0:
+                lines.append(f"🛡️ {pet_name} defends and parries {e_parry} dmg back!")
+            else:
+                lines.append(f"🛡️ {pet_name} defends.")
+        elif p_dmg_dealt == 0 and p_action == "attack":
+            lines.append(f"⚔️ {pet_name} uses {p_action_label} → blocked!")
+
+        if e_action == "charge":
+            lines.append(f"⚡ {enemy_name} charges up! (x{e_charge:.0f})")
+        elif e_dmg_dealt > 0:
+            charge_tag = f" [x{e_charge_used:.0f} charge]" if e_charge_used > 1.0 else ""
+            lines.append(f"💥 {enemy_name} attacks{charge_tag} → {e_dmg_dealt} dmg")
+        elif e_action == "defend":
+            if p_parry > 0:
+                lines.append(f"🛡️ {enemy_name} defends and parries {p_parry} dmg back!")
+            else:
+                lines.append(f"🛡️ {enemy_name} defends.")
+        elif e_dmg_dealt == 0 and e_action == "attack":
+            lines.append(f"💥 {enemy_name} attacks → blocked!")
+
+        over = cur_p_hp <= 0 or cur_e_hp <= 0
+        player_won = cur_p_hp > 0 and cur_e_hp <= 0
+
+        # If battle is over, apply XP/loot
+        loot_result = None
+        level_change = None
+        refreshed_pet = None
+        if over:
+            pet = await user_data_manager.get_pet_data_async(user_id)
+            if pet:
+                old_level = int(pet.get("level", 1))
+                loot_result = await LootCalculator.calculate_loot(
+                    user_id=int(user_id), pet_data=pet, source="battle",
+                    difficulty=difficulty, winner_level=old_level, is_winner=player_won
+                )
+                await user_data_manager.update_pet_battle_stats(
+                    user_id, "npc",
+                    wins=1 if player_won else 0, losses=0 if player_won else 1,
+                    xp_earned=loot_result["xp_gained"], damage_dealt=0, damage_taken=0
+                )
+                refreshed_pet = await user_data_manager.get_pet_data_async(user_id)
+                new_level = int(refreshed_pet.get("level", 1)) if refreshed_pet else old_level
+                if new_level != old_level:
+                    level_change = {"old_level": old_level, "new_level": new_level, "gains": {}}
+
+        return JSONResponse(content={
+            "success": True,
+            "turn": turn_num,
+            "lines": lines,
+            "combat": combat,
+            "player_action": p_action,
+            "enemy_action": e_action,
+            "player": {
+                **ps,
+                "cur_hp": cur_p_hp,
+                "charge": p_charge,
+                "last_action": p_action,
+            },
+            "enemy": {
+                **es,
+                "cur_hp": cur_e_hp,
+                "charge": e_charge,
+                "last_action": e_action,
+            },
+            "over": over,
+            "won": player_won if over else None,
+            "xp_gained": loot_result["xp_gained"] if loot_result else 0,
+            "messages": loot_result["messages"] if loot_result else [],
+            "level_change": level_change,
+            "pet": refreshed_pet,
+        })
+
+    except (KeyError, TypeError, ValueError) as e:
+        logger.warning(f"battle_npc_turn bad input: {e}")
+        raise HTTPException(status_code=400, detail="Invalid battle state.")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"battle_npc_turn error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Battle turn failed.")
+
+
+# ── NPC Battle (legacy full-simulation) ──────────────────────────────────────
 
 @router.post("/pets/battle/npc")
 async def battle_npc(request: Request, data: Dict[str, Any] = Body(...)):
@@ -1319,8 +1823,8 @@ async def _run_npc_battle_sim(user_id: str, difficulty: str) -> dict:
         p_parry     = e_result["parry_damage"]
         cur_e_hp    = max(0, cur_e_hp - p_dmg_dealt - e_parry)
         cur_p_hp    = max(0, cur_p_hp - e_dmg_dealt - p_parry)
-        if p_action == "attack": p_charge = 1.0
-        if e_action == "attack": e_charge = 1.0
+        if p_action == "attack" or p_action == "defend": p_charge = 1.0
+        if e_action == "attack" or e_action == "defend": e_charge = 1.0
         p_last_action = p_action
         e_last_action = e_action
 
