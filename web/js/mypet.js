@@ -3,6 +3,30 @@
 
 var ELEM_IMG_BASE = '/static/Emojis/Pets/Deco/';
 
+// Format large numbers: 3000→3k, 4530→4.53k, 1500000→1.5m, etc.
+function fmtStat(n) {
+    n = Number(n) || 0;
+    var tiers = [
+        [1e18, 'q'],   // quintillion
+        [1e15, 'qa'],  // quadrillion
+        [1e12, 't'],   // trillion
+        [1e9,  'b'],   // billion
+        [1e6,  'm'],   // million
+        [1e3,  'k'],   // thousand
+    ];
+    for (var i = 0; i < tiers.length; i++) {
+        if (n >= tiers[i][0]) {
+            var val = n / tiers[i][0];
+            // Up to 2 significant decimal places, strip trailing zeros
+            var str = val >= 100 ? val.toFixed(0)
+                    : val >= 10  ? val.toFixed(1).replace(/\.0$/, '')
+                    :              val.toFixed(2).replace(/\.?0+$/, '');
+            return str + tiers[i][1];
+        }
+    }
+    return n.toLocaleString();
+}
+
 var _pet = null;
 var _adoptList = [];
 var _adoptSel  = null;
@@ -71,6 +95,17 @@ function getEquipItem(name) {
     return _equipData[(name||'').toLowerCase()] || null;
 }
 
+// Always resolve the correct emoji filename for an equipment item.
+// Checks cached _equipData first, then falls back to the item's own emoji_file,
+// then derives from name — preventing 404s for items whose names don't match filenames.
+function equipImgFile(item) {
+    var name = (item && item.name) ? item.name : (typeof item === 'string' ? item : '');
+    var cached = getEquipItem(name);
+    if (cached && cached.emoji_file) return cached.emoji_file;
+    if (item && item.emoji_file) return item.emoji_file;
+    return name.toLowerCase().replace(/ /g, '_') + '.png';
+}
+
 function bonusTooltip(item) {
     if (!item) return '';
     var bonuses = item.bonuses || {};
@@ -81,22 +116,26 @@ function bonusTooltip(item) {
 
 // Client-side equipment bonus calculation (mirrors pet_brain.py _calculate_equipment_bonuses)
 function calcEquipBonuses(pet) {
-    var eq = pet.equipment || {};
-    var level = parseInt(pet.level||1, 10);
-    var levelMult = 1 + Math.floor(level / 50);
-    var bonuses = {ATT:0,DEF:0,INT:0,DEX:0,HAP:0,ENE:0};
+    var eq     = pet.equipment || {};
+    var level  = parseInt(pet.level || 1, 10);
+    var specs  = (pet.specializations || pet.Spec || []).map(function(s){ return s.toUpperCase(); });
+    var levelBonus = Math.floor(level / 50); // +1 per 50 levels
+    var bonuses = {ATT:0, DEF:0, INT:0, DEX:0, HAP:0, ENE:0};
 
-    // Collect typed items exactly as pet_brain does
-    var items = []; // [{typeKey, item}]
+    // ── Collect typed items ───────────────────────────────────────────────────
+    var items = []; // [{t, item}]
     var mat = eq.Material;
     if (mat && typeof mat === 'object' && !Array.isArray(mat) && mat.name) items.push({t:'Material', item:mat});
-    (Array.isArray(eq.Material) ? eq.Material : []).forEach(function(m){ if(m && m.name) items.push({t:'Material', item:m}); });
+    (Array.isArray(eq.Material) ? eq.Material : []).forEach(function(m){ if(m&&m.name) items.push({t:'Material', item:m}); });
+    (eq.Gems||[]).forEach(function(g){ if(g&&g.name) items.push({t:'Gem', item:g}); });
+    (eq.Monsters||[]).forEach(function(m){ if(m&&m.name) items.push({t:'Monster', item:m}); });
     var hat = eq.Hat;
-    if (hat && typeof hat === 'object' && hat.name) items.push({t:'Hat', item:hat});
-    (eq.Gems||[]).forEach(function(g){ if(g && g.name) items.push({t:'Gem', item:g}); });
-    (eq.Monsters||[]).forEach(function(m){ if(m && m.name) items.push({t:'Monster', item:m}); });
+    // Hat may be stored as a list (from backend) or a plain dict (legacy)
+    if (Array.isArray(hat)) hat = hat[0] || null;
+    var hatEquipped = hat && typeof hat === 'object' && hat.name;
+    if (hatEquipped) items.push({t:'Hat', item:hat});
 
-    // Count duplicates per type (Material, Gem, Monster — not Hat)
+    // ── Count duplicates ──────────────────────────────────────────────────────
     var matCounts = {}, gemCounts = {}, monCounts = {};
     items.forEach(function(e2) {
         var n = (e2.item.name||'').toLowerCase();
@@ -105,31 +144,59 @@ function calcEquipBonuses(pet) {
         else if (e2.t === 'Monster') monCounts[n] = (monCounts[n]||0) + 1;
     });
 
+    var hasMatPair = Object.values(matCounts).some(function(c){ return c >= 2; });
+    var hasGemPair = Object.values(gemCounts).some(function(c){ return c >= 2; });
+    var hasMonPair = Object.values(monCounts).some(function(c){ return c >= 2; });
+
+    // ── Hat spec matching ─────────────────────────────────────────────────────
+    var hatSpecMatches = 0;
+    if (hatEquipped && specs.length) {
+        var hatData = getEquipItem(hat.name);
+        var hatBonuses = (hatData && hatData.bonuses) ? hatData.bonuses : (hat.bonuses || {});
+        Object.keys(hatBonuses).forEach(function(s){
+            if (specs.indexOf(s.toUpperCase()) !== -1) hatSpecMatches++;
+        });
+    }
+
+    // ── Determine global set multiplier ──────────────────────────────────────
+    var fullSet = hasMatPair && hasGemPair && hasMonPair && hatEquipped;
+    var setMult;
+    if (fullSet) {
+        setMult = hatSpecMatches >= 2 ? 4 : 3;
+    } else {
+        setMult = 1; // pairs handled per-item
+    }
+    var finalMult = setMult + levelBonus;
+
+    // ── Accumulate bonuses ────────────────────────────────────────────────────
     items.forEach(function(e2) {
         var data = getEquipItem(e2.item.name);
         var b = (data && data.bonuses) ? data.bonuses : (e2.item.bonuses || {});
         var n = (e2.item.name||'').toLowerCase();
-        var isDup = false;
-        if (e2.t === 'Material') isDup = (matCounts[n]||0) >= 2;
-        else if (e2.t === 'Gem')     isDup = (gemCounts[n]||0) >= 2;
-        else if (e2.t === 'Monster') isDup = (monCounts[n]||0) >= 2;
-        // mult=2 means the PAIR gives 2× total, so each item contributes 1× (same as normal)
-        // but we only want to apply the bonus once per unique item when it's a pair
-        // pet_brain applies val*mult per item, so a pair of items each get mult=2 → 2+2=4 total
-        // That IS the intended behaviour: each item in the pair contributes double
-        var mult = isDup ? 2 : 1;
+
+        var itemMult;
+        if (fullSet) {
+            itemMult = finalMult;
+        } else {
+            var isPair = (e2.t === 'Material' && (matCounts[n]||0) >= 2) ||
+                         (e2.t === 'Gem'      && (gemCounts[n]||0) >= 2) ||
+                         (e2.t === 'Monster'  && (monCounts[n]||0) >= 2);
+            itemMult = (isPair ? 2 : 1) + levelBonus;
+        }
+
         Object.keys(b).forEach(function(stat){
-            if (bonuses[stat] !== undefined) bonuses[stat] += parseInt(b[stat]||0, 10) * mult;
+            if (bonuses[stat] !== undefined) bonuses[stat] += parseInt(b[stat]||0, 10) * itemMult;
         });
     });
 
-    Object.keys(bonuses).forEach(function(k){ bonuses[k] *= levelMult; });
     return bonuses;
 }
 
 function init() {
     hide('mypet-empty'); hide('mypet-display'); hide('mypet-error'); show('mypet-loading');
     loadEquipData();
+    // Restore any active cooldowns from the server (survives page reload)
+    _restoreCooldowns();
     fetch('/api/user/pet')
         .then(function(r) { if(r.status===401){showLogin();return null;} return r.json(); })
         .then(function(d) {
@@ -168,14 +235,22 @@ function renderPetCard(pet) {
     var sp   = pet.species||'Unknown';
     var cs   = pet.computed_stats||{};
     var specs= pet.specializations||pet.Spec||[];
-    var xpMax= pet.xp_for_next_level||200;
-    var xpPct= Math.min(((pet.experience||0)/xpMax)*100,100).toFixed(1);
+    var xpMax= pet.xp_for_next_level || 1;
+    var xpCur= pet.experience || 0;
+    var xpPct= xpMax > 0 ? Math.min((xpCur / xpMax) * 100, 100).toFixed(1) : 0;
     var hdr = el('my-pet-header');
     if (hdr) {
+        var level = parseInt(pet.level||1, 10);
+        var rank     = Math.floor(level / 50);
+        var rankImg  = Math.min(rank, 58);  // emoji caps at 58, but rank number continues forever
+        var rankHtml = rank > 0
+            ? '<img src="/static/Emojis/Pet Rank/'+rankImg+'.png" style="width:52px;height:52px;object-fit:contain;flex-shrink:0" title="Rank '+rank+'" onerror="this.style.display=\'none\'">'
+            : '<div style="width:52px;height:52px;flex-shrink:0"></div>';
+
         hdr.innerHTML =
-            '<div class="d-flex align-items-center gap-2">'+
+            '<div class="d-flex align-items-center justify-content-between gap-2" style="width:100%">'+
             '<img src="'+petImg(sp)+'" class="mp-pet-img" onerror="this.src=\'/static/Emojis/Pets/Basic.png\'">'+
-            '<div>'+
+            '<div style="flex:1;min-width:0">'+
             '<div class="fw-bold" style="font-family:Orbitron,sans-serif;color:var(--gold-primary);font-size:0.95rem;text-shadow:0 0 8px var(--gold-glow)">'+(pet.name||sp)+'</div>'+
             '<div class="d-flex align-items-center gap-1 mt-1 flex-wrap">'+
             '<span class="badge bg-warning text-dark" style="font-size:0.6rem">Lv.'+(pet.level||1)+'</span>'+
@@ -185,7 +260,9 @@ function renderPetCard(pet) {
             '<img src="'+elemImgPath(e1)+'" style="width:18px;height:18px;object-fit:contain" title="'+cap(e1)+'" onerror="this.style.display=\'none\'">'+
             '<span style="font-size:0.75rem;color:var(--gold-secondary)">'+cap(e1)+'</span>'+
             (e2 ? '<span style="color:rgba(255,215,0,0.4);margin:0 2px">/</span><img src="'+elemImgPath(e2)+'" style="width:18px;height:18px;object-fit:contain" title="'+cap(e2)+'" onerror="this.style.display=\'none\'"><span style="font-size:0.75rem;color:var(--gold-secondary)">'+cap(e2)+'</span>' : '')+
-            '</div></div></div>';
+            '</div></div>'+
+            rankHtml+
+            '</div>';
     }
     var statKeys = ['ATT','DEF','INT','DEX','HAP','ENE'];
     var equipBonuses = calcEquipBonuses(pet);
@@ -217,15 +294,15 @@ function renderPetCard(pet) {
 
     var combatHtml =
         '<div class="mp-combat-row">'+
-        '<span class="mp-combat-item"><span class="mp-combat-label">⚔️ ATK</span><span class="mp-combat-val">'+atk+'</span></span>'+
-        '<span class="mp-combat-item"><span class="mp-combat-label">🛡️ DEF</span><span class="mp-combat-val">'+dfn+'</span></span>'+
-        '<span class="mp-combat-item"><span class="mp-combat-label">❤️ HP</span><span class="mp-combat-val">'+hp.toLocaleString()+'</span></span>'+
+        '<span class="mp-combat-item"><span class="mp-combat-label">⚔️ ATK</span><span class="mp-combat-val">'+fmtStat(atk)+'</span></span>'+
+        '<span class="mp-combat-item"><span class="mp-combat-label">🛡️ DEF</span><span class="mp-combat-val">'+fmtStat(dfn)+'</span></span>'+
+        '<span class="mp-combat-item"><span class="mp-combat-label">❤️ HP</span><span class="mp-combat-val">'+fmtStat(hp)+'</span></span>'+
         '</div>';
     var xpHtml =
         '<div class="mp-xp-bar-wrap mb-1"><div class="mp-xp-bar" style="width:'+xpPct+'%"></div></div>'+
-        '<div style="font-size:0.68rem;color:var(--text-secondary);text-align:right">'+(pet.experience||0).toLocaleString()+' / '+xpMax.toLocaleString()+' XP</div>';
+        '<div style="font-size:0.68rem;color:var(--text-secondary);text-align:right">'+xpCur.toLocaleString()+' / '+xpMax.toLocaleString()+' XP</div>';
     var body = el('my-pet-body');
-    if (body) body.innerHTML = xpHtml + buildEquipped(pet) + buildInventoryCollapsible(pet) + '<hr class="mp-divider my-2">' + statsHtml + combatHtml + buildXpSourcesCard(pet) + buildBattleRecordCard(pet) + buildCasinoCard(pet);
+    if (body) body.innerHTML = xpHtml + buildEquipped(pet) + buildEquipBonus(pet) + '<hr class="mp-divider my-2">' + statsHtml + combatHtml + buildInventoryCollapsible(pet) + buildTokenStatsCard(pet) + buildFriendFoeCard() + buildBreakdownCard(pet);
 }
 
 function bindTabs() {}
@@ -250,9 +327,9 @@ function buildInteractions(pet) {
         {id:'train',  label:'🏋️ Train'},
         {id:'mission',label:'🗺️ Mission'},
         {id:'play',   label:'🎮 Play'},
-        {id:'battle', label:'⚔️ Battle'},
         {id:'quest',  label:'🗡️ Quest'},
         {id:'market', label:'📦 Loot Market'},
+        {id:'gift',   label:'🎁 Gift Item'},
         {id:'rename', label:'✏️ Rename'},
         {id:'kill',   label:'💀 Kill Pet'}
     ];
@@ -271,7 +348,7 @@ function buildInteractions(pet) {
         '</div>'+
         '<div class="row g-2 mb-3">'+
         ['Easy','Average','Hard'].map(function(d) {
-            var xp = {Easy:50,Average:100,Hard:200}[d];
+            var xp = {Easy:'50+',Average:'100+',Hard:'200+'}[d];
             var chance = {Easy:'90%',Average:'70%',Hard:'50%'}[d];
             return '<div class="col-md-4"><div class="mp-mini-stat-card" style="cursor:pointer;transition:all 0.2s" id="train-opt-'+d+'" onclick="window._mpSelectTrain(\''+d+'\')">'+
                 '<div class="mp-mini-label">'+d+'</div>'+
@@ -280,7 +357,8 @@ function buildInteractions(pet) {
                 '</div></div>';
         }).join('')+
         '</div>'+
-        '<button class="mp-adopt-btn" onclick="window._mpTrain()">Start Training</button>'+
+        '<div style="font-size:0.68rem;color:var(--text-secondary);margin-bottom:8px">⚡ XP scales with your pet\'s level (+10% per level above 1). 5 sec cooldown.</div>'+
+        '<button class="mp-adopt-btn" id="train-btn" onclick="window._mpTrain()">Start Training</button>'+
         '<div id="train-result" class="mt-3"></div>'+
         '</div>';
 
@@ -292,7 +370,7 @@ function buildInteractions(pet) {
         '</div>'+
         '<div class="row g-2 mb-3">'+
         ['Easy','Average','Hard'].map(function(d) {
-            var xp = {Easy:100,Average:250,Hard:500}[d];
+            var xp = {Easy:'100+',Average:'250+',Hard:'500+'}[d];
             var chance = {Easy:'70%',Average:'50%',Hard:'30%'}[d];
             var keys = {Easy:'33% Key1',Average:'Key1+Key2',Hard:'Key1+Key2+Key3'}[d];
             return '<div class="col-md-4"><div class="mp-mini-stat-card" style="cursor:pointer;transition:all 0.2s" id="mission-opt-'+d+'" onclick="window._mpSelectMission(\''+d+'\')">'+
@@ -303,11 +381,12 @@ function buildInteractions(pet) {
                 '</div></div>';
         }).join('')+
         '</div>'+
+        '<div style="font-size:0.68rem;color:var(--text-secondary);margin-bottom:8px">⚡ XP scales with your pet\'s level (+10% per level above 1). 5 sec cooldown.</div>'+
         '<div class="mb-3">'+
         '<label class="form-label" style="font-size:0.8rem;color:var(--text-secondary)">Gamble XP <small>(optional — risk XP for bonus reward)</small></label>'+
         '<input type="number" class="form-control mp-input" id="mission-gamble" min="0" placeholder="0" style="max-width:160px">'+
         '</div>'+
-        '<button class="mp-adopt-btn" onclick="window._mpMission()">Launch Mission</button>'+
+        '<button class="mp-adopt-btn" id="mission-btn" onclick="window._mpMission()">Launch Mission</button>'+
         '<div id="mission-result" class="mt-3"></div>'+
         '</div>';
 
@@ -326,58 +405,8 @@ function buildInteractions(pet) {
                 '</div></div>';
         }).join('')+
         '</div>'+
-        '<button class="mp-adopt-btn" onclick="window._mpPlay()">Go Play!</button>'+
+        '<button class="mp-adopt-btn" id="play-btn" onclick="window._mpPlay()">Go Play!</button>'+
         '<div id="play-result" class="mt-3"></div>'+
-        '</div>';
-
-    // ── Battle ─────────────────────────────────────────────────────────────
-    html += '<div id="panel-battle" style="display:none">'+
-        '<div class="mp-section-title">⚔️ NPC Battle</div>'+
-        '<div id="battle-setup">'+
-        '<div class="mp-battle-card mb-3" style="font-size:0.82rem;color:var(--text-secondary)">'+
-        'Fight a generated enemy scaled to your pet\'s stats. Pick your action each turn — Attack, Defend, or Charge. Win to earn XP and loot.'+
-        '</div>'+
-        '<div class="row g-2 mb-3">'+
-        [['easy','Easy','Weaker enemy, 0.7x stats'],['average','Average','Matched enemy, 1.1x stats'],['hard','Hard','Stronger enemy, 1.5x stats']].map(function(d){
-            return '<div class="col-md-4"><div class="mp-mini-stat-card" style="cursor:pointer;transition:all 0.2s" id="battle-opt-'+d[0]+'" onclick="window._mpSelectBattle(\''+d[0]+'\')">'+
-                '<div class="mp-mini-label">'+d[1]+'</div>'+
-                '<div style="font-size:0.7rem;color:var(--text-secondary)">'+d[2]+'</div>'+
-                '</div></div>';
-        }).join('')+
-        '</div>'+
-        '<button class="mp-adopt-btn" id="battle-start-btn" onclick="window._mpBattleStart()">⚔️ Start Battle</button>'+
-        '</div>'+
-        '<div id="battle-arena" style="display:none">'+
-        // Enemy display card
-        '<div class="mp-battle-card mb-3" id="battle-enemy-card" style="display:flex;align-items:center;gap:12px;padding:10px 14px">'+
-        '<img id="battle-e-img" src="/static/Emojis/Pets/Deco/Basic.png" style="width:52px;height:52px;object-fit:contain;border-radius:8px;background:rgba(255,255,255,0.04)" onerror="this.src=\'/static/Emojis/Pets/Deco/Basic.png\'">'+
-        '<div style="flex:1;min-width:0">'+
-        '<div style="font-size:0.85rem;font-weight:700;color:var(--text-primary)" id="battle-e-title">Enemy</div>'+
-        '<div style="display:flex;gap:6px;align-items:center;margin:3px 0" id="battle-e-badges"></div>'+
-        '<div id="battle-e-hpbar"></div>'+
-        '</div>'+
-        '</div>'+
-        // Player HP bar
-        '<div class="mb-2">'+
-        '<div style="font-size:0.72rem;color:var(--gold-secondary);margin-bottom:2px" id="battle-p-name">Your Pet</div>'+
-        '<div id="battle-p-hpbar"></div>'+
-        '</div>'+
-        // Charge indicators
-        '<div style="display:flex;gap:12px;margin-bottom:6px;font-size:0.7rem">'+
-        '<span id="battle-p-charge" style="color:var(--gold-secondary)"></span>'+
-        '<span id="battle-e-charge" style="color:#e74c3c"></span>'+
-        '</div>'+
-        // Turn log
-        '<div id="battle-log" style="max-height:180px;overflow-y:auto;margin-bottom:10px;font-size:0.78rem"></div>'+
-        // Action buttons
-        '<div id="battle-actions" class="row g-2 mb-2">'+
-        '<div class="col-4"><button class="mp-adopt-btn" style="width:100%;padding:8px 4px;font-size:0.8rem;line-height:1.2" onclick="window._mpBattleTurn(\'attack\')" id="btn-attack">⚔️ Attack<br><span id="btn-attack-sub" style="font-size:0.62rem;opacity:0.75;font-weight:400"></span></button></div>'+
-        '<div class="col-4"><button class="mp-adopt-btn" style="width:100%;padding:8px 4px;font-size:0.8rem;line-height:1.2;background:rgba(52,152,219,0.35);border-color:rgba(52,152,219,0.8);color:#7ec8e3" onclick="window._mpBattleTurn(\'defend\')" id="btn-defend">🛡️ Defend<br><span id="btn-defend-sub" style="font-size:0.62rem;opacity:0.75;font-weight:400"></span></button></div>'+
-        '<div class="col-4"><button class="mp-adopt-btn" style="width:100%;padding:8px 4px;font-size:0.8rem;line-height:1.2;background:rgba(155,89,182,0.35);border-color:rgba(155,89,182,0.85);color:#d7aefb" onclick="window._mpBattleTurn(\'charge\')" id="btn-charge">⚡ Charge<br><span id="btn-charge-sub" style="font-size:0.62rem;opacity:0.75;font-weight:400"></span></button></div>'+
-        '</div>'+
-        '<div id="battle-status" style="font-size:0.75rem;color:var(--text-secondary);min-height:18px;margin-bottom:6px"></div>'+
-        '<div id="battle-result" class="mt-2"></div>'+
-        '</div>'+
         '</div>';
 
     // ── Quest ──────────────────────────────────────────────────────────────
@@ -415,7 +444,7 @@ function buildInteractions(pet) {
                 '</div>';
         }).join('')+
         '</div></div></div>'+
-        '<button class="mp-adopt-btn" onclick="window._mpQuestStart()">⚔️ Begin Quest</button>'+
+        '<button class="mp-adopt-btn" id="quest-start-btn" onclick="window._mpQuestStart()">⚔️ Begin Quest</button>'+
         '<div id="quest-start-result" class="mt-2"></div>'+
         '</div>'+
 
@@ -486,6 +515,25 @@ function buildInteractions(pet) {
         '<div id="lm-result" class="mt-3"></div>'+
         '</div>';
 
+    // ── Gift ───────────────────────────────────────────────────────────────
+    html += '<div id="panel-gift" style="display:none">'+
+        '<div class="mp-section-title">🎁 Gift an Item</div>'+
+        '<div class="mp-battle-card mb-3" style="font-size:0.82rem;color:var(--text-secondary)">'+
+        'Send one item from your inventory to another player\'s pet. Counts toward the Gift task.'+
+        '</div>'+
+        '<div class="mb-3">'+
+        '<label class="form-label" style="font-size:0.82rem;color:var(--text-secondary)">Recipient Discord User ID</label>'+
+        '<input type="text" class="form-control mp-input" id="gift-recipient-id" placeholder="e.g. 200967951958933504" style="max-width:280px">'+
+        '<div style="font-size:0.7rem;color:var(--text-secondary);margin-top:4px">Ask them to share their Discord User ID (right-click their name → Copy ID)</div>'+
+        '</div>'+
+        '<div class="mb-3">'+
+        '<label class="form-label" style="font-size:0.82rem;color:var(--text-secondary)">Item to Gift</label>'+
+        '<input type="text" class="form-control mp-input" id="gift-item-name" placeholder="Exact item name from your inventory" style="max-width:280px">'+
+        '</div>'+
+        '<button class="mp-adopt-btn" onclick="window._mpGift()">🎁 Send Gift</button>'+
+        '<div id="gift-result" class="mt-3"></div>'+
+        '</div>';
+
     // ── Rename ─────────────────────────────────────────────────────────────
     html += '<div id="panel-rename" style="display:none">'+
         '<div class="mp-section-title">Rename Pet &amp; Battle Actions</div>'+
@@ -528,6 +576,12 @@ function buildInteractions(pet) {
 
 function escHtml(s) {
     return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// Safely encode a value for embedding inside an HTML onclick="..." attribute as a JS string argument.
+// Uses JSON.stringify then escapes the surrounding double quotes so it sits inside a double-quoted attribute.
+function escArg(v) {
+    return JSON.stringify(String(v)).replace(/"/g, '&quot;');
 }
 
 // Map Discord emoji slugs → local PNG paths
@@ -636,7 +690,7 @@ function injectItemImages(text) {
 
 
 window._mpTab = function(tab) {
-    ['train','mission','play','battle','quest','market','rename','kill'].forEach(function(t) {
+    ['train','mission','play','battle','quest','market','gift','rename','kill'].forEach(function(t) {
         var btn = el('tab-'+t), panel = el('panel-'+t);
         if (btn)   btn.classList.toggle('active', t===tab);
         if (panel) panel.style.display = t===tab ? '' : 'none';
@@ -747,6 +801,101 @@ function showLevelChangePopup(data, isDown) {
     setTimeout(dismiss, 4000);
 }
 
+// ── Cooldown timer helper ─────────────────────────────────────────────────────
+// Maps: button ID → { interval, end }
+var _cdTimers = {};
+
+// Map action name → {btnId, resultId}
+var _CD_TARGETS = {
+    'train':   { btn:'train-btn',       result:'train-result'      },
+    'mission': { btn:'mission-btn',     result:'mission-result'    },
+    'play':    { btn:'play-btn',        result:'play-result'       },
+    'quest':   { btn:'quest-start-btn', result:'quest-start-result'},
+};
+
+/**
+ * Start (or restore) a cooldown timer for a button.
+ *
+ * @param {string} btnId       - ID of the button to disable
+ * @param {string} resultId    - ID of the result container
+ * @param {string|null} errorMsg - Error text from server (parses remaining time from it)
+ * @param {number} [secsOverride] - Use this many seconds instead of parsing
+ */
+function _startCooldownTimer(btnId, resultId, errorMsg, secsOverride) {
+    var secs = secsOverride || 0;
+    if (!secs && errorMsg) {
+        var m = errorMsg.match(/(\d+)m\s*(\d+)s/);
+        if (m) secs = parseInt(m[1], 10) * 60 + parseInt(m[2], 10);
+        else { var s2 = errorMsg.match(/(\d+)s/); if (s2) secs = parseInt(s2[1], 10); }
+    }
+    if (!secs || secs <= 0) return;
+
+    var btn = el(btnId);
+    if (btn) {
+        btn._cdOrigLabel = btn._cdOrigLabel || btn.textContent;
+        btn.disabled = true;
+    }
+
+    // Cancel any existing timer for this button
+    if (_cdTimers[btnId]) { clearInterval(_cdTimers[btnId].iv); }
+
+    var end = Date.now() + secs * 1000;
+    _cdTimers[btnId] = { iv: null, end: end };
+
+    function tick() {
+        var left = Math.max(0, Math.ceil((end - Date.now()) / 1000));
+        var mins = Math.floor(left / 60), ss = left % 60;
+        var timeStr = (mins > 0 ? mins + 'm ' : '') + ss + 's';
+
+        if (btn) btn.textContent = left > 0 ? ('⏳ ' + timeStr) : (btn._cdOrigLabel || 'Go');
+
+        // Update the cooldown pill inside the result area WITHOUT wiping reward content
+        var r = el(resultId);
+        if (r) {
+            var pill = r.querySelector('.mp-cd-pill');
+            if (left > 0) {
+                if (!pill) {
+                    pill = document.createElement('div');
+                    pill.className = 'mp-cd-pill';
+                    pill.style.cssText = 'font-size:0.72rem;color:var(--text-secondary);margin-top:6px';
+                    r.appendChild(pill);  // append below existing reward content
+                }
+                pill.textContent = '⏳ Next use in: ' + timeStr;
+            } else {
+                if (pill) pill.remove();
+            }
+        }
+
+        if (left <= 0) {
+            clearInterval(_cdTimers[btnId].iv);
+            delete _cdTimers[btnId];
+            if (btn) { btn.disabled = false; btn.textContent = btn._cdOrigLabel || 'Go'; }
+        }
+    }
+
+    tick();
+    _cdTimers[btnId].iv = setInterval(tick, 1000);
+}
+
+// ── Restore cooldowns from server on page load ────────────────────────────────
+function _restoreCooldowns() {
+    fetch('/api/pets/cooldowns', { credentials:'include' })
+        .then(function(r){ return r.ok ? r.json() : null; })
+        .then(function(d) {
+            if (!d || !d.cooldowns) return;
+            Object.keys(d.cooldowns).forEach(function(action) {
+                var remaining = d.cooldowns[action];
+                if (remaining <= 0) return;
+                var t = _CD_TARGETS[action];
+                if (!t) return;
+                // Only start timer — don't touch the result area content (no previous reward to show)
+                _startCooldownTimer(t.btn, t.result, null, remaining);
+            });
+        })
+        .catch(function(){});
+}
+
+
 window._mpTrain = async function() {
     var r = el('train-result');
     if (r) r.innerHTML = '<div class="mp-battle-card" style="font-size:0.8rem;color:var(--text-secondary)">Training...</div>';
@@ -756,12 +905,16 @@ window._mpTrain = async function() {
             body: JSON.stringify({difficulty: _trainDiff})
         });
         var d = await res.json();
-        if (res.ok) {
+        if (res.status === 429) {
+            showResult('train-result', false, d.error || 'On cooldown.');
+            _startCooldownTimer('train-btn', 'train-result', d.error);
+        } else if (res.ok) {
             showResult('train-result', d.success, d.outcome);
             if (d.pet) { _pet = d.pet; renderPetCard(d.pet); }
             if (d.level_up) showLevelChangePopup(d.level_up, false);
+            _startCooldownTimer('train-btn', 'train-result', null, 5);
         } else {
-            showResult('train-result', false, d.detail||'Failed');
+            showResult('train-result', false, d.error || d.detail || 'Failed');
         }
     } catch(e) { showResult('train-result', false, e.message); }
 };
@@ -777,13 +930,17 @@ window._mpMission = async function() {
             body: JSON.stringify({difficulty: _missionDiff, gamble_xp: gamble})
         });
         var d = await res.json();
-        if (res.ok) {
+        if (res.status === 429) {
+            showResult('mission-result', false, d.error || 'On cooldown.');
+            _startCooldownTimer('mission-btn', 'mission-result', d.error);
+        } else if (res.ok) {
             showResult('mission-result', d.success, d.outcome);
             if (d.pet) { _pet = d.pet; renderPetCard(d.pet); }
             if (d.level_up) showLevelChangePopup(d.level_up, false);
             else if (d.level_down) showLevelChangePopup(d.level_down, true);
+            _startCooldownTimer('mission-btn', 'mission-result', null, 5);
         } else {
-            showResult('mission-result', false, d.detail||'Failed');
+            showResult('mission-result', false, d.error || d.detail || 'Failed');
         }
     } catch(e) { showResult('mission-result', false, e.message); }
 };
@@ -798,344 +955,25 @@ window._mpPlay = async function() {
             body: JSON.stringify({location: _playLoc})
         });
         var d = await res.json();
-        if (res.ok) {
+        if (res.status === 429) {
+            showResult('play-result', false, d.error || 'On cooldown.');
+            _startCooldownTimer('play-btn', 'play-result', d.error);
+        } else if (res.ok) {
             showResult('play-result', d.success, d.outcome);
             if (d.pet) { _pet = d.pet; renderPetCard(d.pet); }
             if (d.level_up) showLevelChangePopup(d.level_up, false);
+            _startCooldownTimer('play-btn', 'play-result', null, 5);
         } else {
-            showResult('play-result', false, d.detail||'Failed');
+            showResult('play-result', false, d.error || d.detail || 'Failed');
         }
     } catch(e) { showResult('play-result', false, e.message); }
 };
 
-// ── Battle state & handlers ───────────────────────────────────────────────────
-var _battleDiff = 'easy';
+// ── Quest state & handlers ────────────────────────────────────────────────────
+var _questLoc  = '';
+var _questDiff = 'Apprentice';
 
-window._mpSelectBattle = function(d) {
-    _battleDiff = d;
-    ['easy','average','hard'].forEach(function(x) {
-        var e2 = el('battle-opt-'+x);
-        if (e2) { e2.style.borderColor = x===d ? 'var(--gold-primary)' : 'rgba(255,215,0,0.15)'; e2.style.boxShadow = x===d ? '0 0 8px var(--gold-glow)' : ''; }
-    });
-};
-
-// ── Turn-based battle state ───────────────────────────────────────────────────
-var _battleState = null;  // {player, enemy, turn, difficulty, action_labels, over}
-
-function _updateBattleActionLabels() {
-    if (!_battleState) return;
-    var labels = _battleState.action_labels || {};
-    var p = _battleState.player;
-    // Fallback to player's actions field if action_labels is sparse
-    var acts = p && p.actions ? p.actions : {};
-    var atk = labels.attack  || acts.Attack  || acts.attack  || '';
-    var def = labels.defend  || acts.Defense || acts.defend  || '';
-    var chg = labels.charge  || acts.Charge  || acts.charge  || '';
-    var sa = el('btn-attack-sub'), sd = el('btn-defend-sub'), sc = el('btn-charge-sub');
-    if (sa) sa.textContent = atk;
-    if (sd) sd.textContent = def;
-    if (sc) sc.textContent = chg;
-}
-
-function _setBattleButtons(enabled) {
-    ['btn-attack','btn-defend','btn-charge'].forEach(function(id) {
-        var b = el(id); if (b) b.disabled = !enabled;
-    });
-}
-
-function _updateBattleHpBars() {
-    if (!_battleState) return;
-    var p = _battleState.player, e = _battleState.enemy;
-    var ph = el('battle-p-hpbar'), eh = el('battle-e-hpbar');
-    if (ph) ph.innerHTML = _buildBattleHpBar(p.cur_hp, p.max_hp, false);
-    if (eh) eh.innerHTML = _buildBattleHpBar(e.cur_hp, e.max_hp, true);
-    var pc = el('battle-p-charge'), ec = el('battle-e-charge');
-    if (pc) pc.textContent = p.charge > 1 ? '⚡ Your charge: x' + p.charge.toFixed(0) : '';
-    if (ec) ec.textContent = e.charge > 1 ? '⚡ Enemy charging: x' + e.charge.toFixed(0) : '';
-}
-
-function _buildEnemyBadge(label, imgSrc, color) {
-    return '<span style="display:inline-flex;align-items:center;gap:3px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:4px;padding:1px 5px;font-size:0.65rem;color:'+color+'">'+
-        '<img src="'+imgSrc+'" style="width:12px;height:12px;object-fit:contain" onerror="this.style.display=\'none\'">'+
-        escHtml(label)+'</span>';
-}
-
-function _initEnemyCard(enemy) {
-    var img = el('battle-e-img');
-    var title = el('battle-e-title');
-    var badges = el('battle-e-badges');
-    var species = (enemy.species || '').trim();
-    if (img) {
-        if (species) {
-            img.src = petImg(species);
-            img.alt = species;
-        } else {
-            img.src = '/static/Emojis/Pets/Deco/Basic.png';
-        }
-        img.onerror = function(){ this.src = '/static/Emojis/Pets/Deco/Basic.png'; };
-    }
-    if (title) {
-        title.innerHTML = escHtml(enemy.name || 'Enemy') +
-            (species ? '<span style="font-size:0.65rem;color:var(--text-secondary);display:block;margin-top:1px">' + escHtml(species) + '</span>' : '');
-    }
-    if (badges) {
-        var html = '';
-        var typeKey = (enemy.type || 'land').toLowerCase();
-        var typeInfo = TYPE_INFO[typeKey] || {label: cap(typeKey), img: cap(typeKey)+'.png'};
-        html += _buildEnemyBadge(typeInfo.label, ELEM_IMG_BASE + typeInfo.img, '#aaa');
-        var elems = [enemy.element];
-        if (enemy.element2 && enemy.element2 !== 'basic' && enemy.element2 !== '') elems.push(enemy.element2);
-        elems.forEach(function(e2) {
-            if (!e2) return;
-            var eKey = e2.toLowerCase();
-            var eInfo = ELEM_INFO[eKey] || {label: cap(eKey), img: cap(eKey)+'.png'};
-            html += _buildEnemyBadge(eInfo.label, elemImgPath(eKey), 'var(--gold-secondary)');
-        });
-        html += '<span style="font-size:0.65rem;color:var(--text-secondary);margin-left:2px">ATK '+enemy.attack+' DEF '+enemy.defense+'</span>';
-        badges.innerHTML = html;
-    }
-}
-
-function _rollColor(result) {
-    if (!result) return 'var(--text-secondary)';
-    var r = result.toLowerCase();
-    if (r === 'critical') return '#f1c40f';
-    if (r === 'great')    return '#2ecc71';
-    if (r === 'good')     return '#27ae60';
-    if (r === 'miss')     return '#e74c3c';
-    return 'var(--text-secondary)';
-}
-
-// Derive a human-readable roll label from the raw d20 value
-function _rollLabel(roll) {
-    if (roll == null) return null;
-    var n = parseInt(roll, 10);
-    if (n === 20) return {label: 'Critical!', color: '#f1c40f'};
-    if (n >= 16)  return {label: 'Great',     color: '#2ecc71'};
-    if (n >= 10)  return {label: 'Good',      color: '#27ae60'};
-    if (n >= 5)   return {label: 'Low',       color: '#e67e22'};
-    return            {label: 'Miss',      color: '#e74c3c'};
-}
-
-// Render a roll as "rolled 17 (Great)" in a readable inline span
-function _rollSpan(roll) {
-    if (roll == null) return '';
-    var info = _rollLabel(roll);
-    return ' <span style="font-size:0.68rem;color:var(--text-secondary)">rolled <span style="color:'+info.color+'">'+roll+' ('+info.label+')</span></span>';
-}
-
-function _appendBattleLog(turn, combat, pName, eName) {
-    var log = el('battle-log');
-    if (!log || !combat) return;
-
-    var actionColors = {attack:'#e74c3c', defend:'#3498db', charge:'#9b59b6'};
-    var pCol = actionColors[combat.p_action] || '#ccc';
-    var eCol = actionColors[combat.e_action] || '#ccc';
-
-    var html = '<div style="border-left:2px solid rgba(255,215,0,0.2);padding:5px 8px;margin-bottom:5px;font-size:0.75rem">';
-    html += '<div style="font-size:0.68rem;color:var(--text-secondary);margin-bottom:4px;display:flex;justify-content:space-between">'+
-        '<span>Turn '+turn+'</span>'+
-        '<span><span style="color:'+pCol+'">You: '+combat.p_action+'</span> | <span style="color:'+eCol+'">Enemy: '+combat.e_action+'</span></span>'+
-        '</div>';
-
-    // ── Player row ────────────────────────────────────────────────────────
-    html += '<div style="margin-bottom:3px">';
-    if (combat.p_action === 'charge') {
-        html += '<span style="color:#9b59b6">⚡ '+escHtml(pName)+' charges up!</span>'+
-            ' <span style="color:var(--gold-primary)">→ x'+combat.p_charge_after.toFixed(0)+' ready</span>';
-    } else if (combat.p_action === 'defend') {
-        html += '<span style="color:#3498db">🛡️ '+escHtml(pName)+' defends</span>';
-        html += _rollSpan(combat.p_defense_roll);
-        if (combat.e_parry > 0) {
-            html += ' → <span style="color:#2ecc71">parried <b>'+combat.e_parry+'</b> dmg back at enemy!</span>';
-        } else if (combat.e_dmg === 0 && combat.e_action === 'attack') {
-            html += ' → <span style="color:#2ecc71">fully blocked the attack!</span>';
-        } else if (combat.p_final_defense > 0 && combat.e_dmg > 0) {
-            var absorbed = combat.e_final_attack - combat.e_dmg;
-            html += ' → <span style="color:#7fb3d3">blocked '+absorbed+' dmg</span> <span style="color:var(--text-secondary);font-size:0.68rem">('+combat.e_dmg+' got through)</span>';
-        }
-    } else {
-        var chargeTag = combat.p_charge_mult > 1 ? ' <span style="color:#9b59b6">at x'+combat.p_charge_mult.toFixed(0)+' charge</span>' : '';
-        html += '<span style="color:#e74c3c">⚔️ '+escHtml(pName)+' uses '+escHtml(combat.p_action_label)+'</span>'+chargeTag;
-        html += _rollSpan(combat.p_attack_roll);
-        if (combat.p_dmg > 0) {
-            var mult = combat.p_type_elem_mult;
-            var effTag = mult > 1.05 ? ' <span style="color:#f39c12;font-size:0.68rem">super effective</span>' :
-                         mult < 0.95 ? ' <span style="color:#7f8c8d;font-size:0.68rem">not very effective</span>' : '';
-            html += ' → <span style="color:#e74c3c"><b>'+combat.p_dmg+'</b> dmg</span>'+effTag;
-        } else {
-            html += ' → <span style="color:#7f8c8d">blocked!</span>';
-        }
-    }
-    html += '</div>';
-
-    // ── Enemy row ─────────────────────────────────────────────────────────
-    html += '<div>';
-    if (combat.e_action === 'charge') {
-        html += '<span style="color:#9b59b6">⚡ '+escHtml(eName)+' charges up!</span>'+
-            ' <span style="color:#e74c3c">→ x'+combat.e_charge_after.toFixed(0)+' ready</span>';
-    } else if (combat.e_action === 'defend') {
-        html += '<span style="color:#3498db">🛡️ '+escHtml(eName)+' defends</span>';
-        html += _rollSpan(combat.e_defense_roll);
-        if (combat.p_parry > 0) {
-            html += ' → <span style="color:#e74c3c">parried <b>'+combat.p_parry+'</b> dmg back at you!</span>';
-        } else if (combat.p_dmg === 0 && combat.p_action === 'attack') {
-            html += ' → <span style="color:#2ecc71">fully blocked your attack!</span>';
-        } else if (combat.e_final_defense > 0 && combat.p_dmg > 0) {
-            var eAbsorbed = combat.p_final_attack - combat.p_dmg;
-            html += ' → <span style="color:#7fb3d3">blocked '+eAbsorbed+' dmg</span> <span style="color:var(--text-secondary);font-size:0.68rem">('+combat.p_dmg+' got through)</span>';
-        }
-    } else {
-        var eChargeTag = combat.e_charge_mult > 1 ? ' <span style="color:#9b59b6">at x'+combat.e_charge_mult.toFixed(0)+' charge</span>' : '';
-        html += '<span style="color:#e67e22">💥 '+escHtml(eName)+' attacks</span>'+eChargeTag;
-        html += _rollSpan(combat.e_attack_roll);
-        if (combat.e_dmg > 0) {
-            var eMult = combat.e_type_elem_mult;
-            var eEffTag = eMult > 1.05 ? ' <span style="color:#f39c12;font-size:0.68rem">super effective</span>' :
-                          eMult < 0.95 ? ' <span style="color:#7f8c8d;font-size:0.68rem">not very effective</span>' : '';
-            html += ' → <span style="color:#e67e22"><b>'+combat.e_dmg+'</b> dmg</span>'+eEffTag;
-        } else {
-            html += ' → <span style="color:#7f8c8d">blocked!</span>';
-        }
-    }
-    html += '</div></div>';
-
-    var wrapper = document.createElement('div');
-    wrapper.innerHTML = html;
-    log.appendChild(wrapper.firstChild);
-    log.scrollTop = log.scrollHeight;
-}
-
-window._mpBattleStart = async function() {
-    var btn = el('battle-start-btn');
-    if (btn) btn.disabled = true;
-    var status = el('battle-status');
-    if (status) status.textContent = 'Starting battle...';
-    try {
-        var res = await fetch('/api/pets/battle/npc/start', {
-            method: 'POST', headers: {'Content-Type':'application/json'},
-            body: JSON.stringify({difficulty: _battleDiff})
-        });
-        var d = await res.json();
-        if (!res.ok) { alert(d.detail || 'Failed to start battle'); if(btn) btn.disabled=false; return; }
-
-        _battleState = d;
-
-        // Show arena, hide setup
-        var setup = el('battle-setup'), arena = el('battle-arena');
-        if (setup) setup.style.display = 'none';
-        if (arena) arena.style.display = '';
-
-        // Set names and init enemy card
-        var pn = el('battle-p-name');
-        if (pn) pn.textContent = d.player.name;
-        _initEnemyCard(d.enemy);
-
-        // Clear log and result
-        var log = el('battle-log'); if (log) log.innerHTML = '';
-        var res2 = el('battle-result'); if (res2) res2.innerHTML = '';
-
-        _updateBattleHpBars();
-        _updateBattleActionLabels();
-        _setBattleButtons(true);
-        if (status) status.textContent = 'Your turn — pick an action!';
-
-    } catch(e) { alert('Error: ' + e.message); if(btn) btn.disabled=false; }
-};
-
-window._mpBattleTurn = async function(action) {
-    if (!_battleState || _battleState.over) return;
-    _setBattleButtons(false);
-    var status = el('battle-status');
-    if (status) status.textContent = 'Processing turn...';
-
-    try {
-        var res = await fetch('/api/pets/battle/npc/turn', {
-            method: 'POST', headers: {'Content-Type':'application/json'},
-            body: JSON.stringify({
-                action: action,
-                player: _battleState.player,
-                enemy: _battleState.enemy,
-                turn: _battleState.turn,
-                difficulty: _battleState.difficulty,
-                action_labels: _battleState.action_labels || {}
-            })
-        });
-        var d = await res.json();
-        if (!res.ok) { if(status) status.textContent = d.detail || 'Error'; _setBattleButtons(true); return; }
-
-        // Update state
-        _battleState.player = d.player;
-        _battleState.enemy  = d.enemy;
-        _battleState.turn   = d.turn;
-        _battleState.over   = d.over;
-
-        _updateBattleHpBars();
-        _appendBattleLog(d.turn, d.combat, _battleState.player.name, _battleState.enemy.name);
-
-        if (d.over) {
-            var won = d.won;
-            var r = el('battle-result');
-            var pName = _battleState.player.name;
-            var eName = _battleState.enemy.name;
-
-            // ── Build result card ─────────────────────────────────────────
-            var borderColor = won ? 'rgba(39,174,96,0.5)' : 'rgba(231,76,60,0.5)';
-            var outcomeColor = won ? '#2ecc71' : '#e74c3c';
-            var html = '<div class="mp-battle-card mt-2" style="border-color:'+borderColor+'">';
-
-            // Header
-            html += '<div style="text-align:center;padding-bottom:10px;border-bottom:1px solid rgba(255,215,0,0.15);margin-bottom:10px">'+
-                '<div style="font-size:1.05rem;font-weight:700;color:'+outcomeColor+';margin-bottom:4px">'+(won?'🏆 Victory!':'💀 Defeated')+'</div>'+
-                '<div style="font-size:0.78rem;color:var(--text-secondary)">'+escHtml(pName)+' vs '+escHtml(eName)+' · '+history.length+' turns</div>'+
-                '</div>';
-
-            // XP / rewards
-            if (d.xp_gained) {
-                html += '<div style="text-align:center;font-size:0.85rem;color:var(--gold-primary);margin-bottom:6px">📈 +'+d.xp_gained+' XP</div>';
-            }
-            if (d.messages && d.messages.length) {
-                d.messages.forEach(function(m){
-                    var stripped = String(m).replace(/<img[^>]*>/gi, '').replace(/<[^>]+>/g, '').trim();
-                    var clean = injectItemImages(cleanDiscordText(stripped).replace(/\*\*/g, '').trim());
-                    if (!clean) return;
-                    if (/^\+?\d+\s*XP$/.test(clean)) return;
-                    var isXp   = clean.indexOf('XP') !== -1 && clean.indexOf('Gained') !== -1;
-                    var isLoot = clean.indexOf('🎁') !== -1 || clean.indexOf('Looted') !== -1;
-                    var isWarn = clean.indexOf('⚠️') !== -1;
-                    var color  = isXp ? 'var(--gold-primary)' : isLoot ? '#2ecc71' : isWarn ? '#f39c12' : 'var(--text-secondary)';
-                    html += '<div style="text-align:center;font-size:0.75rem;color:'+color+';margin-bottom:2px">'+clean+'</div>';
-                });
-            }
-
-            html += '<div style="text-align:center;margin-top:10px">'+
-                '<button class="mp-adopt-btn" style="font-size:0.8rem" onclick="window._mpBattleReset()">⚔️ Fight Again</button>'+
-                '</div>';
-            html += '</div>';
-
-            if (r) r.innerHTML = html;
-            if (status) status.textContent = '';
-            if (d.pet) { _pet = d.pet; renderPetCard(d.pet); }
-            if (d.level_change) showLevelChangePopup(d.level_change, d.level_change.new_level < d.level_change.old_level);
-        } else {
-            if (status) status.textContent = 'Turn ' + d.turn + ' — pick your next action!';
-            _setBattleButtons(true);
-        }
-    } catch(e) { if(status) status.textContent = 'Error: '+e.message; _setBattleButtons(true); }
-};
-
-window._mpBattleReset = function() {
-    _battleState = null;
-    var setup = el('battle-setup'), arena = el('battle-arena');
-    if (setup) setup.style.display = '';
-    if (arena) arena.style.display = 'none';
-    var btn = el('battle-start-btn'); if (btn) btn.disabled = false;
-    var r = el('battle-result'); if (r) r.innerHTML = '';
-};
-
-// Legacy kept for any external references
-window._mpBattle = window._mpBattleStart;
-
+// _buildBattleHpBar is still used by the quest battle integration below
 function _buildBattleHpBar(cur, max, enemy) {
     var pct = max > 0 ? Math.max(0, Math.min(100, Math.round((cur/max)*100))) : 0;
     var color = pct > 50 ? '#2ecc71' : pct > 25 ? '#f39c12' : '#e74c3c';
@@ -1175,7 +1013,12 @@ window._mpQuestStart = async function() {
             body: JSON.stringify({location:_questLoc, difficulty:_questDiff})
         });
         var d = await res.json();
-        if (!res.ok) { showResult('quest-start-result', false, d.detail||'Failed to start quest'); return; }
+        if (res.status === 429) {
+            showResult('quest-start-result', false, d.error || 'On cooldown.');
+            _startCooldownTimer('quest-start-btn', 'quest-start-result', d.error);
+            return;
+        }
+        if (!res.ok) { showResult('quest-start-result', false, d.error || d.detail || 'Failed to start quest'); return; }
         if(sr) sr.innerHTML='';
         el('quest-setup').style.display = 'none';
         el('quest-active').style.display = '';
@@ -1485,7 +1328,7 @@ window._mpOpenChest = async function() {
                 html += '<div class="mp-section-title" style="color:var(--gold-primary)">📦 Chest Opened!</div>';
                 html += '<div class="d-flex flex-wrap gap-2 mt-2">';
                 items.forEach(function(item){
-                    var f = item.emoji_file||(item.name+'.png');
+                    var f = equipImgFile(item);
                     var rcClass = 'rc-'+(item.rarity||'Common').toLowerCase();
                     html += '<div class="mp-inv-item">'+
                         '<img src="/static/Emojis/Pets/Equipment/'+f+'" style="width:28px;height:28px" onerror="this.src=\'/static/Emojis/Pets/Deco/Basic.png\'">'+
@@ -1527,16 +1370,17 @@ function _showChestAnimation(chestSrc, chestColor, items, callback) {
 
     var overlay = document.createElement('div');
     overlay.id = 'chest-anim-overlay';
-    overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;z-index:9999;'+
-        'display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.75);backdrop-filter:blur(4px)';
+    overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;z-index:10500;'+
+        'display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.82);backdrop-filter:blur(6px)';
 
     // Build item icons HTML
-    var itemIconsHtml = items.map(function(item) {
-        var f = item.emoji_file || (item.name + '.png');
+    var itemIconsHtml = items.map(function(item, idx) {
+        var f = equipImgFile(item);
         var rc = ({Common:'#9e9e9e',Uncommon:'#4caf50',Rare:'#2196f3',Epic:'#9c27b0',Mythic:'#ff9800'})[item.rarity||'Common'] || '#9e9e9e';
-        return '<div style="text-align:center;animation:itemsReveal 0.5s ease forwards">'+
-            '<img src="/static/Emojis/Pets/Equipment/'+f+'" style="width:52px;height:52px;object-fit:contain;filter:drop-shadow(0 0 8px '+rc+')" onerror="this.src=\'/static/Emojis/Pets/Deco/Basic.png\'">'+
-            '<div style="font-size:0.62rem;color:'+rc+';margin-top:3px;max-width:60px;word-break:break-word">'+escHtml(item.name)+'</div>'+
+        return '<div style="text-align:center;animation:itemsReveal 0.5s ease forwards;animation-delay:'+(idx*0.12)+'s;opacity:0">'+
+            '<img src="/static/Emojis/Pets/Equipment/'+f+'" style="width:56px;height:56px;object-fit:contain;filter:drop-shadow(0 0 10px '+rc+')" onerror="this.src=\'/static/Emojis/Pets/Deco/Basic.png\'">'+
+            '<div style="font-size:0.65rem;color:'+rc+';margin-top:4px;max-width:64px;word-break:break-word;font-weight:600">'+escHtml(item.name)+'</div>'+
+            '<div style="font-size:0.58rem;color:rgba(255,255,255,0.45);margin-top:1px">'+(item.rarity||'Common')+'</div>'+
             '</div>';
     }).join('');
 
@@ -1629,6 +1473,37 @@ window._mpRename = async function() {
     }
 };
 
+window._mpGift = async function() {
+    var recipientEl = el('gift-recipient-id');
+    var itemEl      = el('gift-item-name');
+    var resultEl    = el('gift-result');
+    var recipientId = (recipientEl ? recipientEl.value : '').trim();
+    var itemName    = (itemEl ? itemEl.value : '').trim();
+
+    if (!recipientId) { if (resultEl) resultEl.innerHTML = '<div class="alert alert-warning">Enter a recipient Discord User ID.</div>'; return; }
+    if (!itemName)    { if (resultEl) resultEl.innerHTML = '<div class="alert alert-warning">Enter an item name.</div>'; return; }
+
+    if (resultEl) resultEl.innerHTML = '<div style="font-size:0.82rem;color:var(--text-secondary)">Sending gift…</div>';
+
+    try {
+        var r = await fetch('/api/pets/gift', {
+            method: 'POST',
+            headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({ item_name: itemName, recipient_user_id: recipientId })
+        });
+        var d = await r.json();
+        if (r.ok && d.success) {
+            if (resultEl) resultEl.innerHTML = '<div class="alert alert-success">🎁 Gifted <strong>' + escHtml(d.gifted) + '</strong> to <strong>' + escHtml(d.to) + '</strong>!</div>';
+            if (itemEl) itemEl.value = '';
+            init(); // refresh pet to show updated inventory
+        } else {
+            if (resultEl) resultEl.innerHTML = '<div class="alert alert-danger">' + escHtml(d.error || 'Gift failed.') + '</div>';
+        }
+    } catch(e) {
+        if (resultEl) resultEl.innerHTML = '<div class="alert alert-danger">Error: ' + escHtml(e.message) + '</div>';
+    }
+};
+
 window._mpKill = async function() {
     var confirmEl = el('kill-confirm');
     var result = el('kill-result');
@@ -1653,10 +1528,12 @@ window._mpKill = async function() {
     }
 };
 
-// Returns {matPair, gemPair, monPair, fullSet} for a pet's equipment
+// Returns {matPair, gemPair, monPair, hatEquipped, hatSpecMatches, fullSet, setMult} for a pet's equipment
 function getEquipSetState(pet) {
-    var eq = pet.equipment || {};
-    var specs = pet.specializations || pet.Spec || [];
+    var eq    = pet.equipment || {};
+    var specs = (pet.specializations || pet.Spec || []).map(function(s){ return s.toUpperCase(); });
+    var level = parseInt(pet.level || 1, 10);
+    var levelBonus = Math.floor(level / 50);
 
     var matCounts = {}, gemCounts = {}, monCounts = {};
     (Array.isArray(eq.Material) ? eq.Material : (eq.Material && eq.Material.name ? [eq.Material] : []))
@@ -1668,17 +1545,30 @@ function getEquipSetState(pet) {
     var gemPair = Object.values(gemCounts).some(function(c){ return c >= 2; });
     var monPair = Object.values(monCounts).some(function(c){ return c >= 2; });
 
-    // Hat bonus matches a spec stat
-    var hatMatchesSpec = false;
-    if (eq.Hat && eq.Hat.name && specs.length) {
-        var hatData = getEquipItem(eq.Hat.name);
-        var hatBonuses = (hatData && hatData.bonuses) ? hatData.bonuses : (eq.Hat.bonuses || {});
-        var hatStats = Object.keys(hatBonuses).map(function(s){ return s.toUpperCase(); });
-        hatMatchesSpec = specs.some(function(sp){ return hatStats.indexOf(sp.toUpperCase()) !== -1; });
+    var hat = eq.Hat;
+    var hatEquipped = !!(hat && hat.name);
+
+    // Count how many of the hat's bonus stats match a pet spec
+    var hatSpecMatches = 0;
+    if (hatEquipped && specs.length) {
+        var hatData = getEquipItem(hat.name);
+        var hatBonuses = (hatData && hatData.bonuses) ? hatData.bonuses : (hat.bonuses || {});
+        Object.keys(hatBonuses).forEach(function(s){
+            if (specs.indexOf(s.toUpperCase()) !== -1) hatSpecMatches++;
+        });
     }
 
-    var fullSet = matPair && gemPair && monPair && hatMatchesSpec;
-    return {matPair:matPair, gemPair:gemPair, monPair:monPair, hatMatchesSpec:hatMatchesSpec, fullSet:fullSet};
+    var fullSet = matPair && gemPair && monPair && hatEquipped;
+    var setMult = fullSet ? (hatSpecMatches >= 2 ? 4 : 3) : 1;
+    var finalMult = setMult + levelBonus;
+
+    return {
+        matPair: matPair, gemPair: gemPair, monPair: monPair,
+        hatEquipped: hatEquipped, hatSpecMatches: hatSpecMatches,
+        fullSet: fullSet, setMult: setMult, finalMult: finalMult,
+        // legacy alias used by buildEquipped glow logic
+        hatMatchesSpec: hatSpecMatches >= 1
+    };
 }
 
 function buildEquipped(pet) {
@@ -1695,7 +1585,7 @@ function buildEquipped(pet) {
     slots.forEach(function(sl) {
         var item = sl.type==='Hat' ? (eq.Hat||null) : ((eq[sl.type]||[])[sl.idx]||null);
         var isEmpty = !item || !item.name;
-        var f = isEmpty ? 'Basic.png' : (item.emoji_file||(item.name+'.png'));
+        var f = isEmpty ? 'Basic.png' : equipImgFile(item);
         var src = isEmpty ? '/static/Emojis/Pets/Deco/Basic.png' : '/static/Emojis/Pets/Equipment/'+f;
 
         if (isEmpty) {
@@ -1719,11 +1609,11 @@ function buildEquipped(pet) {
                 if (isPair) glowClass = ' equip-pair';
             }
 
-            html += '<div class="mp-equip-slot mp-equip-filled'+glowClass+'" title="'+tip+'" '+
-                'onclick="window._mpUnequipSlot(\''+unequipSlot+'\')" style="cursor:pointer"'+
+            html += '<div class="mp-equip-slot mp-equip-filled'+glowClass+'" title="'+escHtml(tip)+'" '+
+                'onclick="window._mpUnequipSlot('+escArg(unequipSlot)+')" style="cursor:pointer"'+
                 ' data-hover-item="'+escHtml(item.name)+'">'+
                 '<img src="'+src+'" onerror="this.src=\'/static/Emojis/Pets/Deco/Basic.png\'">'+
-                '<span class="mp-slot-label">'+item.name+'</span></div>';
+                '<span class="mp-slot-label">'+escHtml(item.name)+'</span></div>';
         }
     });
     return html + '</div>';
@@ -1751,33 +1641,42 @@ function buildInventoryCollapsible(pet) {
         }
     });
 
-    var uid = 'inv-collapse-'+Date.now();
-    var header = '<div class="mp-section-title" style="cursor:pointer;user-select:none" onclick="var c=document.getElementById(\''+uid+'\');c.style.display=c.style.display===\'none\'?\'block\':\'none\'">'+
-        '🎒 Inventory <span style="font-size:0.65rem;color:var(--text-secondary)">('+inv.length+' items — click to expand)</span>'+
+    var uid    = 'inv-collapse-body';
+    var chevId = 'inv-collapse-chev';
+    var isOpen = (function() {
+        var existing = document.getElementById(uid);
+        return existing ? existing.style.display !== 'none' : false;
+    })();
+    var header =
+        '<hr class="mp-divider my-2">' +
+        '<div class="mp-collapse-header" onclick="mpToggleCollapse(\'' + uid + '\',\'' + chevId + '\')">' +
+            '<span class="mp-section-title" style="margin:0">🎒 Inventory <span style="font-size:0.65rem;color:var(--text-secondary)">(' + inv.length + ' items)</span></span>' +
+            '<span id="' + chevId + '" class="mp-chev ' + (isOpen ? 'mp-chev-open' : 'mp-chev-collapsed') + '">▼</span>' +
         '</div>';
-    if (!inv.length) return header+'<div id="'+uid+'" style="display:none"><div class="mp-empty-state" style="padding:8px">Inventory is empty.</div></div>';
+    if (!inv.length) return header + '<div id="' + uid + '" class="mp-collapse-body" style="display:' + (isOpen ? '' : 'none') + '"><div class="mp-empty-state" style="padding:8px">Inventory is empty.</div></div>';
 
     var grouped = {};
     inv.forEach(function(item){ var t=item.type||'Other'; if(!grouped[t])grouped[t]=[]; grouped[t].push(item); });
 
-    var content = '<div id="'+uid+'" style="display:none">';
+    var content = '<div id="' + uid + '" class="mp-collapse-body" style="display:' + (isOpen ? '' : 'none') + '">';
     ['Hat','Potion','Material','Gem','Monster','Key','Chest','Other'].forEach(function(t) {
         if (!grouped[t]) return;
         content += '<div style="font-size:0.68rem;color:var(--gold-secondary);font-weight:700;margin:5px 0 3px">'+t+'s</div>';
         content += '<div class="d-flex flex-wrap gap-1 mb-1">';
         grouped[t].forEach(function(item) {
-            var f = item.emoji_file||(item.name+'.png');
+            var f = equipImgFile(item);
             var rcClass = 'rc-'+(item.rarity||'Common').toLowerCase();
             var isEquippable = ['Hat','Material','Gem','Monster'].indexOf(t) !== -1;
             var isPotion     = t === 'Potion';
-            var clickable    = isEquippable || isPotion;
+            var isChest      = t === 'Chest';
+            var clickable    = isEquippable || isPotion || isChest;
 
             var eqCount  = equippedNames[item.name.toLowerCase()]||0;
             var invCount = item.count||1;
             var isEquipped = eqCount > 0;
 
             // Determine action label and equip count to send
-            var action = isPotion ? 'Use' : (isEquipped ? 'Equipped' : 'Equip');
+            var action = isPotion ? 'Use' : (isChest ? 'Open' : (isEquipped ? 'Equipped' : 'Equip'));
             // For equippable multi-slot types: if user has ≥2 in inventory and 0 equipped, equip both
             var equipCount = 1;
             if (!isPotion && isEquippable && t !== 'Hat' && invCount >= 2 && eqCount === 0) {
@@ -1795,7 +1694,7 @@ function buildInventoryCollapsible(pet) {
             if (isEquipped) tip += ' · Currently Equipped ('+eqCount+'x)';
             else if (clickable) tip += ' · Click to '+action.toLowerCase();
 
-            var onclick = clickable ? ' onclick="window._mpInvClick(\''+escHtml(item.name)+'\',\''+t+'\',\''+action+'\','+equipCount+')"' : '';
+            var onclick = clickable ? ' onclick="window._mpInvClick('+escArg(item.name)+','+escArg(t)+','+escArg(action)+','+equipCount+','+escArg(item.rarity||'Common')+','+invCount+')"' : '';
 
             var glowStyle = isEquipped ? 'box-shadow:0 0 5px rgba(255,215,0,0.3);border-color:rgba(255,215,0,0.6);' : '';
             content += '<div class="mp-inv-item'+(clickable?' mp-inv-clickable':'')+'" '+
@@ -1813,127 +1712,459 @@ function buildInventoryCollapsible(pet) {
     return header + content + '</div>';
 }
 
-function buildXpSourcesCard(pet) {
-    var xs = pet.xp_sources || {};
+function fmtXp(n) {
+    var abs = Math.abs(n);
+    var sign = n < 0 ? '-' : '+';
+    if (abs >= 1e12) return sign + (abs / 1e12).toFixed(abs % 1e12 === 0 ? 0 : 1).replace(/\.0$/, '') + 't';
+    if (abs >= 1e9)  return sign + (abs / 1e9 ).toFixed(abs % 1e9  === 0 ? 0 : 1).replace(/\.0$/, '') + 'b';
+    if (abs >= 1e6)  return sign + (abs / 1e6 ).toFixed(abs % 1e6  === 0 ? 0 : 1).replace(/\.0$/, '') + 'm';
+    if (abs >= 1000) return sign + (abs / 1000).toFixed(abs % 1000 === 0 ? 0 : 1).replace(/\.0$/, '') + 'k';
+    return (n >= 0 ? '+' : '') + n;
+}
 
-    // Activity sources we want to highlight
-    var activities = [
-        { label: '🎮 Play',     keys: ['play'] },
-        { label: '🏋️ Train',   keys: ['training'] },
-        { label: '🎯 Mission',  keys: ['mission', 'mission_fail'] },
-        { label: '📜 Quest',    keys: ['quest'] },
-        { label: '⚔️ Battle',   keys: ['battle', 'npc_battle', 'pvp_battle'] },
+function buildEquipBonus(pet) {
+    var state = getEquipSetState(pet);
+    if (!state.matPair && !state.gemPair && !state.monPair && !state.hatEquipped) return '';
+
+    var multColor = state.fullSet
+        ? (state.hatSpecMatches >= 2 ? '#f59e0b' : '#a855f7')
+        : '#57d9a3';
+
+    var cardStyle = 'style="flex:0 0 auto;min-width:0;width:52px;padding:4px 6px"';
+    var html = '<div class="d-flex gap-1 mb-2" style="padding:4px 0;flex-wrap:nowrap">';
+    html += '<div class="mp-mini-stat-card" ' + cardStyle + '>' +
+        '<div class="mp-mini-label" style="font-size:0.58rem">Multi</div>' +
+        '<div style="font-size:0.82rem;font-weight:700;color:' + multColor + '">x' + state.finalMult + '</div>' +
+        '</div>';
+
+    var checks = [
+        {label:'🧵', ok: state.matPair},
+        {label:'💎', ok: state.gemPair},
+        {label:'👹', ok: state.monPair},
+        {label:'👤', ok: state.hatEquipped},
+        {label:'👥', ok: state.hatSpecMatches >= 2},
     ];
+    checks.forEach(function(c) {
+        html += '<div class="mp-mini-stat-card" ' + cardStyle + '>' +
+            '<div style="font-size:1rem;line-height:1">' + c.label + '</div>' +
+            '<div style="font-size:0.9rem">' + (c.ok ? '✅' : '❌') + '</div>' +
+            '</div>';
+    });
+    return html + '</div>';
+}
 
-    var rows = activities.map(function(a) {
+function buildBreakdownCard(pet) {
+    var xs = pet.xp_sources || {};
+    var bs = pet.battle_stats || {};
+    var gs = pet.gambling_stats || {};
+
+    // ── XP Sources ──────────────────────────────────────────────
+    var activities = [
+        { label: 'Play',    emoji: '🎮', keys: ['play'] },
+        { label: 'Train',   emoji: '🏋️', keys: ['training'] },
+        { label: 'Mission', emoji: '🎯', keys: ['mission', 'mission_fail'] },
+        { label: 'Quest',   emoji: '📜', keys: ['quest'] },
+        { label: 'Battle',  emoji: '⚔️', keys: ['battle', 'npc_battle', 'pvp_battle'] },
+    ];
+    var xpRows = activities.map(function(a) {
         var net = a.keys.reduce(function(sum, k) { return sum + (xs[k] || 0); }, 0);
-        return { label: a.label, net: net };
+        return { label: a.label, emoji: a.emoji, net: net };
     }).filter(function(r) { return r.net !== 0; });
 
-    if (!rows.length) return '';
-
-    var html = '<hr class="mp-divider my-2"><div class="mp-section-title">XP Sources</div>' +
-        '<div class="d-flex gap-2 flex-wrap">';
-    rows.forEach(function(r) {
-        html += '<div class="mp-mini-stat-card">' +
-            '<div class="mp-mini-label" style="font-size:0.7rem">' + r.label + '</div>' +
-            '<div style="font-size:0.78rem;font-weight:700" class="' + (r.net >= 0 ? 'text-success' : 'text-danger') + '">' +
-            (r.net >= 0 ? '+' : '') + r.net.toLocaleString() + ' XP</div>' +
-            '</div>';
-    });
-    return html + '</div>';
-}
-
-function buildBattleRecordCard(pet) {
-    var bs = pet.battle_stats||{};
-    var types = [{key:'pvp',name:'PvP'},{key:'npc',name:'NPC'},{key:'wild_encounter',name:'Wild'},{key:'boss',name:'Boss'}];
-    var html = '<hr class="mp-divider my-2"><div class="mp-section-title">Battle Records</div>'+
-        '<div class="d-flex gap-2 flex-wrap">';
-    types.forEach(function(bt) {
-        var s = bs[bt.key]||{wins:0,losses:0};
-        var wr = (s.wins+s.losses)>0 ? ((s.wins/(s.wins+s.losses))*100).toFixed(0) : 0;
-        html += '<div class="mp-mini-stat-card">'+
-            '<div class="mp-mini-label">'+bt.name+'</div>'+
-            '<div><span class="text-success" style="font-size:0.78rem;font-weight:700">'+s.wins+'W</span>'+
-            '<span style="color:var(--text-secondary);font-size:0.7rem"> / </span>'+
-            '<span class="text-danger" style="font-size:0.78rem;font-weight:700">'+s.losses+'L</span></div>'+
-            '<div style="font-size:0.62rem;color:var(--text-secondary)">'+wr+'% WR</div>'+
-            '</div>';
-    });
-    return html + '</div>';
-}
-
-function buildCasinoCard(pet) {
-    var gs = pet.gambling_stats || {};
-    var xs = pet.xp_sources || {};
-
-    // Map xp_sources keys to game display names for fallback
-    var sourceMap = {
-        slots_win: 'Slots', slots_bet: 'Slots',
-        race_win: 'Races', race_bet: 'Races',
-        blackjack_win: 'Blackjack', blackjack_bet: 'Blackjack',
-        blackjack_double: 'Blackjack', blackjack_split: 'Blackjack',
-        craps_win: 'Craps', craps_bet: 'Craps',
-        holdem_win: 'Hold\'em', holdem_buyin: 'Hold\'em', holdem_cashout: 'Hold\'em',
-        coinflip_win: 'Coin Flip', minigame_bet: 'Mini-Games',
-        rps_win: 'RPS', rps_tie: 'RPS',
-    };
-
-    var games = [
-        {key:'slots',     name:'Slots',      playedKey:'total_games_played', wonKey:'races_won'},
-        {key:'blackjack', name:'Blackjack',   playedKey:'rounds_played',      wonKey:'rounds_won'},
-        {key:'holdem',    name:"Hold'em",     playedKey:'games_played',       wonKey:'games_won'},
-        {key:'craps',     name:'Craps',       playedKey:'games_played',       wonKey:'games_won'},
-        {key:'races',     name:'Races',       playedKey:'races_played',       wonKey:'races_won'},
-        {key:'coinflip',  name:'Coin Flip',   playedKey:'games_played',       wonKey:'games_won'},
-        {key:'rps',       name:'RPS',         playedKey:'games_played',       wonKey:'games_won'},
-    ];
-
-    var html = '<hr class="mp-divider my-2"><div class="mp-section-title">Casino</div>';
-
-    // Build net XP from xp_sources as the authoritative source
-    var netByGame = {
-        'Slots': (xs.slots_win||0) + (xs.slots_bet||0),
-        'Races': (xs.race_win||0) + (xs.race_bet||0),
-        'Blackjack': (xs.blackjack_win||0) + (xs.blackjack_bet||0) + (xs.blackjack_double||0) + (xs.blackjack_split||0),
-        'Craps': (xs.craps_win||0) + (xs.craps_bet||0),
-        "Hold'em": (xs.holdem_win||0) + (xs.holdem_buyin||0) + (xs.holdem_cashout||0),
-        'Coin Flip': (xs.coinflip_win||0) + (xs.minigame_bet||0),
-        'RPS': (xs.rps_win||0) + (xs.rps_tie||0),
-    };
-
-    // Determine which games were actually played (either gambling_stats or xp_sources)
-    var playedGames = games.filter(function(g) {
-        var s = gs[g.key] || {};
-        var played = s[g.playedKey] || s.games_played || s.races_played || s.rounds_played || s.total_games_played || 0;
-        var hasXpSource = Math.abs(netByGame[g.name] || 0) > 0;
-        return played > 0 || hasXpSource;
-    });
-
-    if (!playedGames.length) {
-        return html + '<div style="font-size:0.75rem;color:var(--text-secondary);padding:6px 0">No casino games played yet.</div>';
+    var xpHtml = '';
+    if (xpRows.length) {
+        xpHtml += '<div class="mp-breakdown-sub">XP Sources</div><div class="d-flex gap-2 flex-wrap mb-2">';
+        xpRows.forEach(function(r) {
+            xpHtml += '<div class="mp-mini-stat-card">' +
+                '<div class="mp-mini-label" style="font-size:0.7rem;display:flex;flex-direction:column;align-items:center;gap:1px">' +
+                '<span>' + r.emoji + '</span><span>' + r.label.toUpperCase() + '</span></div>' +
+                '<div style="font-size:0.78rem;font-weight:700" class="' + (r.net >= 0 ? 'text-success' : 'text-danger') + '">' +
+                fmtXp(r.net) + ' XP</div>' +
+                '</div>';
+        });
+        xpHtml += '</div>';
     }
 
-    html += '<div class="d-flex gap-2 flex-wrap">';
-    playedGames.forEach(function(g) {
-        var s = gs[g.key] || {};
-        var played = s[g.playedKey] || s.games_played || s.races_played || s.rounds_played || s.total_games_played || 0;
-        var wins   = s[g.wonKey]   || s.games_won   || s.races_won   || s.rounds_won   || 0;
-        var won    = s.xp_won_total  || s.total_won  || 0;
-        var lost   = s.xp_lost_total || s.total_lost || 0;
-        // Use xp_sources net as authoritative if gambling_stats net is 0
-        var net    = (won - lost) || netByGame[g.name] || 0;
-        var wr     = played > 0 ? ((wins / played) * 100).toFixed(0) : '—';
-        html += '<div class="mp-mini-stat-card">' +
-            '<div class="mp-mini-label">' + g.name + '</div>' +
-            (played ? '<div style="font-size:0.72rem;color:var(--text-secondary)">' + played + ' played</div>' : '') +
-            (played ? '<div style="font-size:0.7rem">' + wr + '% WR</div>' : '') +
-            '<div style="font-size:0.68rem" class="' + (net >= 0 ? 'text-success' : 'text-danger') + '">' +
-            (net >= 0 ? '+' : '') + net.toLocaleString() + ' XP</div>' +
+    // ── Battle Records ───────────────────────────────────────────
+    var battleTypes = [{key:'pvp',name:'PvP'},{key:'npc',name:'NPC'},{key:'wild_encounter',name:'Wild'},{key:'boss',name:'Boss'}];
+    var battleHtml = '<div class="mp-breakdown-sub">Battle Records</div><div class="d-flex gap-2 flex-wrap mb-2">';
+    battleTypes.forEach(function(bt) {
+        var s = bs[bt.key] || {wins:0, losses:0};
+        var wr = (s.wins + s.losses) > 0 ? ((s.wins / (s.wins + s.losses)) * 100).toFixed(0) : 0;
+        battleHtml += '<div class="mp-mini-stat-card">' +
+            '<div class="mp-mini-label">' + bt.name + '</div>' +
+            '<div><span class="text-success" style="font-size:0.78rem;font-weight:700">' + s.wins + 'W</span>' +
+            '<span style="color:var(--text-secondary);font-size:0.7rem"> / </span>' +
+            '<span class="text-danger" style="font-size:0.78rem;font-weight:700">' + s.losses + 'L</span></div>' +
+            '<div style="font-size:0.62rem;color:var(--text-secondary)">' + wr + '% WR</div>' +
             '</div>';
     });
-    html += '</div>';
+    battleHtml += '</div>';
+
+    // ── Survivor Series ──────────────────────────────────────────
+    var ssUid = 'mp-ss-stats-' + Date.now();
+    var ssHtml = '<div class="mp-breakdown-sub">⚔️ Survivor Series</div>' +
+        '<div id="' + ssUid + '" class="d-flex gap-2 flex-wrap mb-2" style="min-height:48px">' +
+        '<div style="font-size:0.72rem;color:var(--text-secondary);padding:4px 0">Loading…</div></div>';
+    setTimeout(function() { _loadSsStats(ssUid); }, 0);
+
+    // ── Casino ───────────────────────────────────────────────────
+    var games = [
+        {key:'slots',        name:'Slots',      playedKey:'total_games_played', wonKey:''},
+        {key:'blackjack',    name:'Blackjack',  playedKey:'rounds_played',      wonKey:'rounds_won'},
+        {key:'holdem',       name:"Hold'em",    playedKey:'games_played',       wonKey:'games_won'},
+        {key:'craps',        name:'Craps',      playedKey:'games_played',       wonKey:'games_won'},
+        {key:'races',        name:'Races',      playedKey:'races_played',       wonKey:'races_won'},
+        {key:'coinflip',     name:'Coin Flip',  playedKey:'games_played',       wonKey:'games_won'},
+        {key:'rps',          name:'RPS',        playedKey:'games_played',       wonKey:'games_won'},
+        {key:'keno',         name:'Keno',       playedKey:'games_played',       wonKey:'games_won'},
+        {key:'wheel_of_pets',name:'Wheel',      playedKey:'games_played',       wonKey:'games_won'},
+        {key:'powerball',    name:'Powerball',  playedKey:'tickets_bought',     wonKey:'games_won'},
+        {key:'scratch_cards',name:'Scratch',    playedKey:'games_played',       wonKey:'games_won'},
+    ];
+    var netByGame = {
+        'Slots':    (xs.slots_win||0)     + (xs.slots_bet||0),
+        'Races':    (xs.race_win||0)      + (xs.race_bet||0),
+        'Blackjack':(xs.blackjack_win||0) + (xs.blackjack_bet||0) + (xs.blackjack_double||0) + (xs.blackjack_split||0),
+        'Craps':    (xs.craps_win||0)     + (xs.craps_bet||0),
+        "Hold'em":  (xs.holdem_win||0)    + (xs.holdem_buyin||0)  + (xs.holdem_cashout||0),
+        'Coin Flip':(xs.coinflip_win||0)  + (xs.minigame_bet||0),
+        'RPS':      (xs.rps_win||0)       + (xs.rps_tie||0),
+        'Keno':     (xs.keno_win||0)      + (xs.keno_bet||0),
+        'Wheel':    (xs.wheel_win||0)     + (xs.wheel_bet||0),
+        'Powerball':(xs.powerball_win||0),
+        'Scratch':  (xs.scratch_win||0)   + (xs.scratch_bet||0),
+    };
+    var playedGames = games.filter(function(g) {
+        var s = gs[g.key] || {};
+        var played = s[g.playedKey] || s.games_played || s.races_played || s.rounds_played || s.total_games_played || s.tickets_bought || 0;
+        return played > 0 || Math.abs(netByGame[g.name] || 0) > 0;
+    });
+    var casinoHtml = '';
+    if (playedGames.length) {
+        casinoHtml += '<div class="mp-breakdown-sub">Casino</div><div class="d-flex gap-2 flex-wrap mb-2">';
+        playedGames.forEach(function(g) {
+            var s = gs[g.key] || {};
+            var played = s[g.playedKey] || s.games_played || s.races_played || s.rounds_played || s.total_games_played || s.tickets_bought || 0;
+            var wins   = g.wonKey ? (s[g.wonKey] || 0) : 0;
+            var won    = s.xp_won_total  || s.total_won  || 0;
+            var lost   = s.xp_lost_total || s.total_lost || 0;
+            var net    = (won - lost) || netByGame[g.name] || 0;
+            var wr     = (played > 0 && wins > 0) ? ((wins / played) * 100).toFixed(0) + '%' : (played > 0 ? '—' : '');
+            var highWin = s.highest_xp_win || 0;
+            casinoHtml += '<div class="mp-mini-stat-card">' +
+                '<div class="mp-mini-label">' + g.name + '</div>' +
+                (played ? '<div style="font-size:0.72rem;color:var(--text-secondary)">' + played.toLocaleString() + ' played</div>' : '') +
+                (wr ? '<div style="font-size:0.7rem">' + wr + ' WR</div>' : '') +
+                (highWin > 0 ? '<div style="font-size:0.62rem;color:var(--gold-secondary)">Best: ' + fmtXp(highWin) + '</div>' : '') +
+                '<div style="font-size:0.68rem" class="' + (net >= 0 ? 'text-success' : 'text-danger') + '">' +
+                fmtXp(net) + ' XP</div>' +
+                '</div>';
+        });
+        casinoHtml += '</div>';
+    }
+
+    // ── Collapsible wrapper ──────────────────────────────────────
+    var bodyId = 'mp-breakdown-body';
+    var chevId = 'mp-breakdown-chev';
+    // Default: collapsed
+    var html =
+        '<hr class="mp-divider my-2">' +
+        '<div class="mp-collapse-header" onclick="mpToggleCollapse(\'' + bodyId + '\',\'' + chevId + '\')">' +
+            '<span class="mp-section-title" style="margin:0">Breakdown</span>' +
+            '<span id="' + chevId + '" class="mp-chev mp-chev-collapsed">▼</span>' +
+        '</div>' +
+        '<div id="' + bodyId + '" class="mp-collapse-body" style="display:none">' +
+            xpHtml + battleHtml + ssHtml + casinoHtml +
+        '</div>';
+
     return html;
+}
+function buildXpSourcesCard(pet)    { return ''; }
+function buildBattleRecordCard(pet) { return ''; }
+function buildCasinoCard(pet)       { return ''; }
+
+// ── Collapse toggle ───────────────────────────────────────────────────────────
+window.mpToggleCollapse = function(bodyId, chevId) {
+    var body = document.getElementById(bodyId);
+    var chev = document.getElementById(chevId);
+    if (!body) return;
+    var open = body.style.display !== 'none';
+    body.style.display = open ? 'none' : '';
+    if (chev) {
+        chev.classList.toggle('mp-chev-collapsed', open);
+        chev.classList.toggle('mp-chev-open', !open);
+    }
+};
+
+// ── Friends & Foes card ───────────────────────────────────────────────────────
+function buildFriendFoeCard() {
+    var bodyId = 'mp-ff-body';
+    var chevId = 'mp-ff-chev';
+    var loadId = 'mp-ff-load-' + Date.now();
+
+    var html =
+        '<hr class="mp-divider my-2">' +
+        '<div class="mp-collapse-header" onclick="mpToggleCollapse(\'' + bodyId + '\',\'' + chevId + '\')">' +
+            '<span class="mp-section-title" style="margin:0">⚔️ Friends &amp; Foes</span>' +
+            '<span id="' + chevId + '" class="mp-chev mp-chev-collapsed">▼</span>' +
+        '</div>' +
+        // Collapsed summary (always visible)
+        '<div id="' + loadId + '-summary" class="mp-ff-summary">Loading…</div>' +
+        // Expanded detail
+        '<div id="' + bodyId + '" class="mp-collapse-body" style="display:none">' +
+            '<div id="' + loadId + '-detail"></div>' +
+        '</div>';
+
+    setTimeout(function() { _loadFriendFoe(loadId + '-summary', loadId + '-detail'); }, 0);
+    return html;
+}
+
+var _FF_COLORS = {
+    best_friend: '#4caf50',
+    friend:      '#2196f3',
+    foe:         '#ff9800',
+    enemy:       '#f44336',
+};
+var _FF_LABELS = {
+    best_friend: 'Best Friend',
+    friend:      'Friend',
+    foe:         'Foe',
+    enemy:       'Enemy',
+};
+var _FF_ICONS = {
+    best_friend: '💚',
+    friend:      '💙',
+    foe:         '🧡',
+    enemy:       '❤️',
+};
+
+function _loadFriendFoe(summaryId, detailId) {
+    fetch('/api/world/my-relationships', { credentials: 'include' })
+        .then(function(r) { return r.ok ? r.json() : null; })
+        .then(function(d) {
+            var sumEl = document.getElementById(summaryId);
+            var detEl = document.getElementById(detailId);
+            if (!sumEl) return;
+
+            if (!d) {
+                sumEl.innerHTML = '<span style="font-size:0.72rem;color:var(--text-secondary)">No relationships set.</span>';
+                return;
+            }
+
+            var rels = d.relationships || [];           // outgoing: who I marked
+            var incoming = d.incoming_relationships || []; // incoming: who marked me
+
+            // ── Count helpers ──────────────────────────────────────
+            function countByType(arr) {
+                var c = { best_friend: 0, friend: 0, foe: 0, enemy: 0 };
+                arr.forEach(function(r) { if (c[r.type] !== undefined) c[r.type]++; });
+                return c;
+            }
+
+            var outCounts = countByType(rels);
+            var inCounts  = countByType(incoming);
+
+            // ── Summary row (always visible): two mini-sections ───
+            function buildCountPills(counts) {
+                var html = '<div class="mp-ff-counts">';
+                ['best_friend','friend','foe','enemy'].forEach(function(t) {
+                    html += '<span class="mp-ff-count-pill" style="border-color:' + _FF_COLORS[t] + ';color:' + _FF_COLORS[t] + '">' +
+                        _FF_ICONS[t] + ' ' + counts[t] + ' ' + _FF_LABELS[t] + (counts[t] !== 1 ? 's' : '') +
+                        '</span>';
+                });
+                html += '</div>';
+                return html;
+            }
+
+            var sumHtml =
+                '<div class="mp-ff-section-label">My Friends &amp; Foes</div>' +
+                buildCountPills(outCounts) +
+                '<div class="mp-ff-section-label" style="margin-top:6px">Who Has Me As…</div>' +
+                buildCountPills(inCounts);
+            sumEl.innerHTML = sumHtml;
+
+            if (!detEl) return;
+
+            // ── Expanded detail: two full sections ────────────────
+            function buildGroupList(arr, showMutualLabel) {
+                if (!arr.length) {
+                    return '<div style="font-size:0.72rem;color:var(--text-secondary);padding:4px 0">None yet.</div>';
+                }
+                var html = '';
+                ['best_friend','friend','foe','enemy'].forEach(function(t) {
+                    var group = arr.filter(function(r) { return r.type === t; });
+                    if (!group.length) return;
+                    html += '<div class="mp-ff-group">' +
+                        '<div class="mp-ff-group-title" style="color:' + _FF_COLORS[t] + '">' +
+                            _FF_ICONS[t] + ' ' + _FF_LABELS[t] + 's (' + group.length + ')' +
+                        '</div>' +
+                        '<div class="mp-ff-group-list">';
+                    group.forEach(function(r) {
+                        html += '<div class="mp-ff-entry" style="border-left:3px solid ' + _FF_COLORS[t] + '">' +
+                            '<span class="mp-ff-name">' + escHtml(r.username) + '</span>' +
+                            (r.mutual_type ? '<span class="mp-ff-mutual" style="color:' + _FF_COLORS[r.mutual_type] + '">' +
+                                (showMutualLabel ? '↔ I marked: ' : '↔ ') + _FF_LABELS[r.mutual_type] + '</span>' : '') +
+                            '</div>';
+                    });
+                    html += '</div></div>';
+                });
+                return html;
+            }
+
+            var detHtml =
+                '<div class="mp-ff-detail-section">' +
+                    '<div class="mp-ff-detail-heading">👤 My Friends &amp; Foes</div>' +
+                    buildGroupList(rels, false) +
+                '</div>' +
+                '<div class="mp-ff-detail-section" style="margin-top:10px">' +
+                    '<div class="mp-ff-detail-heading">🔍 Who Has Me As…</div>' +
+                    buildGroupList(incoming, true) +
+                '</div>';
+            detEl.innerHTML = detHtml;
+        })
+        .catch(function() {
+            var sumEl = document.getElementById(summaryId);
+            if (sumEl) sumEl.innerHTML = '<span style="font-size:0.72rem;color:var(--text-secondary)">Could not load relationships.</span>';
+        });
+}
+
+function _loadSsStats(containerId) {
+    fetch('/api/ss/pet-stats')
+        .then(function(r) { return r.ok ? r.json() : null; })
+        .then(function(d) {
+            var c = document.getElementById(containerId);
+            if (!c) return;
+            if (!d || !d.games_played) {
+                c.innerHTML = '<div style="font-size:0.72rem;color:var(--text-secondary)">No Survivor Series games yet.</div>';
+                return;
+            }
+            var gp   = d.games_played  || 0;
+            var gw   = d.games_won     || 0;
+            var gl   = gp - gw;
+            var wr   = gp > 0 ? ((gw / gp) * 100).toFixed(0) : 0;
+            var kills = d.total_kills  || 0;
+            var best  = d.best_placement != null ? '#' + d.best_placement : '—';
+
+            function ssCard(label, val, sub) {
+                return '<div class="mp-mini-stat-card">' +
+                    '<div class="mp-mini-label" style="font-size:0.62rem;text-transform:uppercase;letter-spacing:0.5px">' + label + '</div>' +
+                    '<div style="font-family:Orbitron,sans-serif;font-size:0.9rem;font-weight:700;color:var(--gold-primary)">' + val + '</div>' +
+                    (sub ? '<div style="font-size:0.6rem;color:var(--text-secondary)">' + sub + '</div>' : '') +
+                    '</div>';
+            }
+
+            c.innerHTML =
+                ssCard('Games', gp, gw + 'W / ' + gl + 'L') +
+                ssCard('Win Rate', wr + '%', gw + ' wins') +
+                ssCard('Kills', kills, 'total elims') +
+                ssCard('Best Place', best, 'all-time');
+        })
+        .catch(function() {
+            var c = document.getElementById(containerId);
+            if (c) c.innerHTML = '<div style="font-size:0.72rem;color:var(--text-secondary)">Could not load SS stats.</div>';
+        });
+}
+
+function buildTokenStatsCard(pet) {
+    // Returns a collapsible card shell; content is loaded async into the body div
+    var bodyId = 'mp-token-stats-body';
+    var chevId = 'mp-token-stats-chev';
+    var uid    = 'mp-token-stats-' + Date.now();
+    setTimeout(function() { _loadTokenStats(uid, bodyId); }, 0);
+    return '<hr class="mp-divider my-2">' +
+        '<div class="mp-collapse-header" onclick="mpToggleCollapse(\'' + bodyId + '\',\'' + chevId + '\')">' +
+            '<span class="mp-section-title" style="margin:0">📈 Pet Stocks</span>' +
+            '<span id="' + chevId + '" class="mp-chev mp-chev-collapsed">▼</span>' +
+        '</div>' +
+        '<div id="' + uid + '" class="mp-ff-summary" style="font-size:0.75rem;color:var(--text-secondary);padding:4px 0">Loading token stats…</div>' +
+        '<div id="' + bodyId + '" class="mp-collapse-body" style="display:none"></div>';
+}
+
+function _loadTokenStats(summaryId, bodyId) {
+    fetch('/api/pet-stock/pnl')
+        .then(function(r) {
+            if (r.status === 401) return null;
+            if (!r.ok) throw new Error('Failed');
+            return r.json();
+        })
+        .then(function(d) {
+            var sumEl = document.getElementById(summaryId);
+            var bodyEl = document.getElementById(bodyId);
+            if (!sumEl) return;
+            if (!d) { sumEl.textContent = 'Log in to see token stats.'; return; }
+
+            var perToken   = d.per_token || {};
+            var tokens     = Object.keys(perToken);
+            var totalNet   = d.total_net || 0;
+            var totalSpent = d.total_spent || 0;
+
+            if (!tokens.length && !totalSpent) {
+                sumEl.innerHTML = '<div style="font-size:0.75rem;color:var(--text-secondary)">No token trades yet.</div>';
+                return;
+            }
+
+            var netCls  = totalNet >= 0 ? 'text-success' : 'text-danger';
+            var netSign = totalNet >= 0 ? '+' : '';
+
+            // Always-visible summary row
+            sumEl.innerHTML =
+                '<span style="font-size:0.72rem;color:var(--text-secondary)">Total Spent: <strong style="color:#ccc">' + totalSpent.toLocaleString() + ' XP</strong></span>' +
+                '<span style="font-size:0.72rem;color:var(--text-secondary);margin-left:10px">Net P&amp;L: <strong class="' + netCls + '">' + netSign + totalNet.toLocaleString() + ' XP</strong></span>';
+
+            if (!bodyEl) return;
+
+            // Expanded per-token breakdown
+            var ELEM_LABELS_MAP = {
+                basic:'Basic', fire:'Fire', water:'Water', electric:'Electric', ice:'Ice',
+                plant:'Plant', rock:'Rock', air:'Air', magic:'Magic', holy:'Holy',
+                necro:'Necro', psychic:'Psychic', fighting:'Fighting',
+                land:'Land', swimming:'Swimming', flying:'Flying'
+            };
+            var ELEM_EMOJIS_MAP = {
+                basic:'/static/Emojis/Pets/Deco/Basic.png', fire:'/static/Emojis/Pets/Deco/Fire.png',
+                water:'/static/Emojis/Pets/Deco/Water.png', electric:'/static/Emojis/Pets/Deco/Electric.png',
+                ice:'/static/Emojis/Pets/Deco/Ice.png', plant:'/static/Emojis/Pets/Deco/Plant.png',
+                rock:'/static/Emojis/Pets/Deco/Rock.png', air:'/static/Emojis/Pets/Deco/Air.png',
+                magic:'/static/Emojis/Pets/Deco/Magic.png', holy:'/static/Emojis/Pets/Deco/Holy.png',
+                necro:'/static/Emojis/Pets/Deco/Necro.png', psychic:'/static/Emojis/Pets/Deco/Psychic.png',
+                fighting:'/static/Emojis/Pets/Deco/Fighting.png',
+                land:'/static/Emojis/Pets/Deco/Land.png',
+                swimming:'/static/Emojis/Pets/Deco/Swimming.png',
+                flying:'/static/Emojis/Pets/Deco/Flying.png'
+            };
+
+            var html = '<div class="d-flex gap-2 flex-wrap">';
+            tokens.forEach(function(tok) {
+                var t     = perToken[tok];
+                var net   = t.net || 0;
+                var spent = t.spent || 0;
+                var recv  = t.received || 0;
+                var heldQ = t.held_qty || 0;
+                var heldV = t.held_value || 0;
+                var cls   = net >= 0 ? 'text-success' : 'text-danger';
+                var sign  = net >= 0 ? '+' : '';
+                var label = ELEM_LABELS_MAP[tok] || tok;
+                var emoji = ELEM_EMOJIS_MAP[tok] || '';
+
+                html += '<div class="mp-mini-stat-card" style="min-width:110px">' +
+                    '<div style="display:flex;align-items:center;gap:5px;margin-bottom:3px">' +
+                    (emoji ? '<img src="' + emoji + '" style="width:16px;height:16px;border-radius:3px">' : '') +
+                    '<span class="mp-mini-label">' + label + '</span>' +
+                    '</div>' +
+                    '<div style="font-size:0.68rem;color:var(--text-secondary)">Spent: ' + spent.toLocaleString() + '</div>' +
+                    '<div style="font-size:0.68rem;color:var(--text-secondary)">Sold: ' + recv.toLocaleString() + '</div>' +
+                    (heldQ > 0 ? '<div style="font-size:0.68rem;color:#aaa">Held: ×' + heldQ + ' (~' + heldV.toLocaleString() + ' XP)</div>' : '') +
+                    '<div style="font-size:0.72rem;font-weight:700;margin-top:3px" class="' + cls + '">' + sign + net.toLocaleString() + ' XP</div>' +
+                    '</div>';
+            });
+            html += '</div>';
+            bodyEl.innerHTML = html;
+        })
+        .catch(function() {
+            var sumEl = document.getElementById(summaryId);
+            if (sumEl) sumEl.textContent = 'Could not load token stats.';
+        });
 }
 
 function bindAdoptBtn() {
@@ -2354,15 +2585,34 @@ window.initMyPetPage = init;
 
 init();
 // ── Inventory item click — confirm + action ───────────────────────────────────
-window._mpInvClick = function(name, type, action, equipCount) {
+window._mpInvClick = function(name, type, action, equipCount, rarity, invCount) {
     var old = document.getElementById('inv-confirm-modal');
     if (old) old.remove();
 
     var isPotion = action === 'Use';
+    var isChest  = action === 'Open';
+    var isEquippable = !isPotion && !isChest;
     var count    = equipCount || 1;
+    rarity   = rarity || 'Common';
+    invCount = invCount || 1;
+
+    // ── Chest opening flow ────────────────────────────────────────────────────
+    if (isChest) {
+        var chestMap = {
+            Chest1:'chest1', Chest2:'chest2', Chest3:'chest3', Chest4:'chest4',
+            chest1:'chest1', chest2:'chest2', chest3:'chest3', chest4:'chest4',
+        };
+        var chestType = chestMap[name] || 'chest1';
+        if (chestType === 'chest4') {
+            // Need type selection first
+            _mpOpenInventoryChest4(chestType);
+        } else {
+            _mpOpenInventoryChest(chestType, null);
+        }
+        return;
+    }
 
     var data = getEquipItem(name);
-    // Always prefer emoji_file from cached data for correct image path
     var imgFile = (data && data.emoji_file) ? data.emoji_file : (name + '.png');
     var imgSrc  = '/static/Emojis/Pets/Equipment/' + imgFile;
 
@@ -2394,6 +2644,25 @@ window._mpInvClick = function(name, type, action, equipCount) {
             ? 'Equip both <b>' + escHtml(name) + '</b> to your pet (fills both slots)?'
             : 'Equip this ' + type.toLowerCase() + ' to your pet?';
 
+    // Consume section with quantity slider
+    var rarityLevels = {Common:1, Uncommon:2, Rare:3, Epic:4, Mythic:5};
+    var petLevel = (_pet && _pet.level) ? parseInt(_pet.level) : 1;
+    var xpPer = 10 * (rarityLevels[rarity] || 1) * petLevel;
+
+    var consumeSection =
+        '<div style="margin-top:10px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.08)">'+
+        '<div style="font-size:0.7rem;color:var(--text-secondary);margin-bottom:4px">🔥 Consume for XP</div>'+
+        '<div style="display:flex;align-items:center;gap:6px;justify-content:center">'+
+        '<span style="font-size:0.7rem;color:var(--text-secondary)">1</span>'+
+        '<input id="consume-qty" type="range" min="1" max="'+invCount+'" value="'+invCount+'" style="flex:1;accent-color:#e74c3c">'+
+        '<span style="font-size:0.7rem;color:var(--text-secondary)">'+invCount+'</span>'+
+        '</div>'+
+        '<div style="font-size:0.78rem;color:#fff;margin-top:2px">Qty: <span id="consume-qty-label" style="font-weight:700">'+invCount+'</span></div>'+
+        '<div id="consume-xp-preview" style="font-size:0.82rem;color:var(--gold-primary);font-weight:700;margin-top:1px">'+
+        '+' + (xpPer * invCount).toLocaleString() + ' XP'+
+        '</div>'+
+        '</div>';
+
     var div = document.createElement('div');
     div.innerHTML =
         '<div class="modal fade" id="inv-confirm-modal" tabindex="-1">'+
@@ -2409,9 +2678,11 @@ window._mpInvClick = function(name, type, action, equipCount) {
         '<div style="font-size:0.95rem;color:var(--gold-primary);font-weight:700;font-family:Orbitron,sans-serif">'+escHtml(name)+'</div>'+
         descLine+
         '<div style="font-size:0.78rem;color:var(--text-secondary);margin-top:8px">'+confirmText+'</div>'+
+        consumeSection+
         '</div>'+
         '<div class="modal-footer" style="border-top:1px solid rgba(255,215,0,0.2);justify-content:center;gap:8px">'+
         '<button class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>'+
+        '<button class="btn btn-sm" id="inv-consume-btn" style="background:rgba(231,76,60,0.2);border:1px solid #e74c3c;color:#e74c3c">🔥 Consume</button>'+
         '<button class="btn btn-primary btn-sm" id="inv-confirm-btn">'+action+'</button>'+
         '</div>'+
         '</div></div></div>';
@@ -2420,16 +2691,87 @@ window._mpInvClick = function(name, type, action, equipCount) {
     var modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('inv-confirm-modal'));
     modal.show();
 
+    // Live-update XP preview as slider moves
+    document.getElementById('consume-qty').addEventListener('input', function() {
+        var q = parseInt(this.value);
+        document.getElementById('consume-qty-label').textContent = q;
+        document.getElementById('consume-xp-preview').textContent = '+' + (xpPer * q).toLocaleString() + ' XP';
+    });
+
     document.getElementById('inv-confirm-btn').onclick = function() {
+        var qty = parseInt(document.getElementById('consume-qty').value) || 1;
         modal.hide();
         if (isPotion) {
-            _mpUsePotion(name, data);
+            _mpUsePotion(name, data, qty);
         } else if (count === 2) {
             _mpEquipItem(name, type, function() { _mpEquipItem(name, type); });
         } else {
             _mpEquipItem(name, type);
         }
     };
+
+    document.getElementById('inv-consume-btn').onclick = function() {
+        var qty = parseInt(document.getElementById('consume-qty').value) || invCount;
+        modal.hide();
+        _mpDoConsume(name, rarity, qty, imgSrc);
+    };
+};
+
+// ── Inventory chest opening ───────────────────────────────────────────────────
+
+function _mpOpenInventoryChest(chestType, selectedType) {
+    var chestImgSrc = '/static/Emojis/Pets/Equipment/' + chestType + '.png';
+    var chestColor  = ({chest1:'#9e9e9e',chest2:'#4caf50',chest3:'#2196f3',chest4:'#ff9800'})[chestType] || '#ffd700';
+
+    fetch('/api/pets/inventory/open-chest', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({chest: chestType, selected_type: selectedType})
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+        if (d.success) {
+            var items = d.items || [];
+            _showChestAnimation(chestImgSrc, chestColor, items, function() {
+                if (d.pet) { _pet = d.pet; renderPetCard(d.pet); renderAllPanels(d.pet); }
+            });
+        } else {
+            showResult('lm-result', false, d.error || d.detail || 'Failed to open chest.');
+        }
+    })
+    .catch(function(e) { showResult('lm-result', false, 'Error: ' + e.message); });
+}
+
+function _mpOpenInventoryChest4(chestType) {
+    // Show type selection modal for chest4
+    var old = document.getElementById('chest4-inv-modal');
+    if (old) old.remove();
+    var types = ['Material','Gem','Monster','Potion','Hat'];
+    var div = document.createElement('div');
+    div.innerHTML =
+        '<div class="modal fade" id="chest4-inv-modal" tabindex="-1">'+
+        '<div class="modal-dialog modal-sm modal-dialog-centered">'+
+        '<div class="modal-content" style="background:var(--bg-secondary);border:1px solid var(--gold-primary)">'+
+        '<div class="modal-header" style="border-bottom:1px solid rgba(255,215,0,0.2)">'+
+        '<h6 class="modal-title" style="color:var(--gold-primary);font-family:Orbitron,sans-serif;font-size:0.85rem">🌟 Open Mythic Chest</h6>'+
+        '<button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>'+
+        '</div>'+
+        '<div class="modal-body text-center">'+
+        '<p style="font-size:0.82rem;color:var(--text-secondary)">Choose your item type:</p>'+
+        '<div class="d-flex flex-wrap gap-2 justify-content-center">'+
+        types.map(function(t) {
+            return '<button class="btn btn-sm" style="background:rgba(255,215,0,0.1);border:1px solid rgba(255,215,0,0.3);color:var(--gold-primary)" onclick="window._mpChest4InvSelect(\''+t+'\')">'+t+'</button>';
+        }).join('')+
+        '</div></div></div></div></div>';
+    document.body.appendChild(div.firstChild);
+    var modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('chest4-inv-modal'));
+    modal.show();
+}
+
+window._mpChest4InvSelect = function(selectedType) {
+    var modal = bootstrap.Modal.getInstance(document.getElementById('chest4-inv-modal'));
+    if (modal) modal.hide();
+    _mpOpenInventoryChest('chest4', selectedType);
 };
 
 function _mpEquipItem(name, type, callback) {
@@ -2475,12 +2817,20 @@ window._mpUnequipSlot = function(slotType) {
         }
     })
     .catch(function(e){ _showToast('❌ '+e.message, false); });
-};function _mpUsePotion(name, data) {
-    _showPotionAnimation(name, data, function() {
-        fetch('/api/pets/use-potion', {
+};
+
+window._mpConsumeItem = function(name, rarity, count) {
+    var data = getEquipItem(name);
+    var imgFile = (data && data.emoji_file) ? data.emoji_file : (name + '.png');
+    _mpDoConsume(name, rarity, count, '/static/Emojis/Pets/Equipment/' + imgFile);
+};
+
+function _mpDoConsume(name, rarity, qty, imgSrc) {
+    _mpFeedAnimation(imgSrc, qty, function() {
+        fetch('/api/pets/consume', {
             method: 'POST',
             headers: {'Content-Type':'application/json'},
-            body: JSON.stringify({name: name})
+            body: JSON.stringify({name: name, quantity: qty})
         })
         .then(function(r){ return r.json(); })
         .then(function(d) {
@@ -2488,16 +2838,104 @@ window._mpUnequipSlot = function(slotType) {
                 _pet = d.pet;
                 renderPetCard(d.pet);
                 renderAllPanels(d.pet);
-                // Build a clean readable message — strip all HTML tags
-                var msg = name + ' used!';
+                _showToast('🔥 ' + (d.message || 'Consumed!'), true);
+            } else {
+                _showToast('❌ ' + (d.detail || d.message || 'Consume failed'), false);
+            }
+        })
+        .catch(function(e){ _showToast('❌ ' + e.message, false); });
+    });
+}
+
+function _mpFeedAnimation(imgSrc, qty, onComplete) {
+    var petImgEl = document.querySelector('#my-pet-header .mp-pet-img');
+    if (!petImgEl) { onComplete(); return; }
+
+    var petRect = petImgEl.getBoundingClientRect();
+    var targetX = petRect.left + petRect.width / 2;
+    var targetY = petRect.top + petRect.height / 2;
+
+    var count = Math.min(qty, 12);
+    var completed = 0;
+
+    for (var i = 0; i < count; i++) {
+        (function(idx) {
+            setTimeout(function() {
+                var node = document.createElement('img');
+                node.src = imgSrc;
+                node.onerror = function() { this.src = '/static/Emojis/Pets/Deco/Basic.png'; };
+                node.style.cssText = 'position:fixed;width:28px;height:28px;object-fit:contain;pointer-events:none;z-index:9999;border-radius:6px;filter:drop-shadow(0 0 6px rgba(231,76,60,0.9));';
+                var startX = window.innerWidth * 0.25 + Math.random() * window.innerWidth * 0.5;
+                var startY = window.innerHeight * 0.65 + Math.random() * 100;
+                node.style.left = startX + 'px';
+                node.style.top  = startY + 'px';
+                document.body.appendChild(node);
+
+                var startTime = null;
+                var dur = 380 + Math.random() * 160;
+                var arcH = 50 + Math.random() * 60;
+
+                function step(ts) {
+                    if (!startTime) startTime = ts;
+                    var p = Math.min((ts - startTime) / dur, 1);
+                    var ep = p * p;
+                    var cx = startX + (targetX - startX) * ep;
+                    var cy = startY + (targetY - startY) * ep - Math.sin(p * Math.PI) * arcH;
+                    var sc = 1 - p * 0.55;
+                    node.style.left    = (cx - 14) + 'px';
+                    node.style.top     = (cy - 14) + 'px';
+                    node.style.opacity = p < 0.8 ? '1' : String(1 - (p - 0.8) / 0.2);
+                    node.style.transform = 'scale(' + sc + ')';
+                    if (p < 1) {
+                        requestAnimationFrame(step);
+                    } else {
+                        node.remove();
+                        // Bounce pet image on each hit
+                        petImgEl.style.transition = 'transform 0.07s ease-out';
+                        petImgEl.style.transform  = 'scale(1.3)';
+                        setTimeout(function() { petImgEl.style.transform = 'scale(1)'; }, 110);
+                        completed++;
+                        if (completed === count) {
+                            setTimeout(function() {
+                                petImgEl.style.transition = 'transform 0.12s ease-out';
+                                petImgEl.style.transform  = 'scale(1.45)';
+                                setTimeout(function() {
+                                    petImgEl.style.transform  = 'scale(1)';
+                                    petImgEl.style.transition = '';
+                                    onComplete();
+                                }, 180);
+                            }, 60);
+                        }
+                    }
+                }
+                requestAnimationFrame(step);
+            }, idx * 75);
+        })(i);
+    }
+}
+function _mpUsePotion(name, data, qty) {
+    qty = qty || 1;
+    _showPotionAnimation(name, data, function() {
+        fetch('/api/pets/use-potion', {
+            method: 'POST',
+            headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({name: name, quantity: qty})
+        })
+        .then(function(r){ return r.json(); })
+        .then(function(d) {
+            if (d.success && d.pet) {
+                _pet = d.pet;
+                renderPetCard(d.pet);
+                renderAllPanels(d.pet);
+                var msg = name + (qty > 1 ? ' x'+qty : '') + ' used!';
                 if (d.message) {
                     var clean = String(d.message)
-                        .replace(/<img[^>]*>/gi, '')   // drop img tags
-                        .replace(/<[^>]+>/g, '')        // drop all other tags
-                        .replace(/\*\*/g, '')           // drop markdown bold
-                        .replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>') // decode entities
+                        .replace(/<img[^>]*>/gi, '')
+                        .replace(/<[^>]+>/g, '')
+                        .replace(/\*\*/g, '')
+                        .replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>')
                         .trim();
-                    if (clean) msg = name + ' — ' + clean;
+                    if (clean) msg = name + (qty > 1 ? ' x'+qty : '') + ' — ' + clean;
                 }
                 _showToast('🧪 ' + msg, true);
             } else {

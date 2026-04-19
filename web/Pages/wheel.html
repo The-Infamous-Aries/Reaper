@@ -1,0 +1,144 @@
+<link rel="stylesheet" href="/css/casino.css">
+<link rel="stylesheet" href="/css/wheel.css">
+
+<div class="container-fluid" id="wheel-root">
+
+    <!-- Header -->
+    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-1">
+        <div>
+            <div class="casino-title">🎡 Wheel of Pets</div>
+            <div class="casino-subtitle">Click a segment · Place your bet · Spin to win</div>
+        </div>
+        <div class="casino-xp-badge">
+            <span style="color:var(--text-secondary);font-size:0.75rem">Your XP</span>
+            <span id="wop-xp-display" class="casino-xp-amount">—</span>
+        </div>
+    </div>
+
+    <hr class="casino-divider">
+
+    <!-- Loading -->
+    <div id="wop-loading" class="text-center py-5">
+        <div class="spinner-border" style="color:var(--gold-primary)" role="status"></div>
+        <p class="mt-2" style="color:var(--text-secondary);font-size:0.82rem">Loading Wheel of Pets…</p>
+    </div>
+
+    <!-- Login prompt -->
+    <div id="wop-login-prompt" style="display:none" class="text-center py-5">
+        <div style="font-size:2rem;margin-bottom:8px">🔒</div>
+        <div style="color:var(--text-secondary);font-size:0.9rem">Sign in with Discord to spin the wheel.</div>
+        <a href="/api/discord/login" class="casino-btn mt-3" style="display:inline-block">Login with Discord</a>
+    </div>
+
+    <!-- No pet prompt -->
+    <div id="wop-no-pet" style="display:none" class="text-center py-5">
+        <div style="font-size:2rem;margin-bottom:8px">🐾</div>
+        <div style="color:var(--text-secondary);font-size:0.9rem">You need a pet to spin the wheel.</div>
+        <a href="?page=mypet" class="casino-btn mt-3" style="display:inline-block">Get a Pet</a>
+    </div>
+
+    <!-- Main game -->
+    <div id="wop-main" style="display:none">
+
+        <!-- Fun mode + back -->
+        <div class="d-flex align-items-center gap-3 mb-3 flex-wrap">
+            <label class="casino-toggle-wrap">
+                <input type="checkbox" id="wop-fun-toggle">
+                <span class="casino-toggle-slider"></span>
+            </label>
+            <div>
+                <div style="font-size:0.82rem;color:var(--gold-secondary);font-weight:600">Fun Mode</div>
+                <div style="font-size:0.7rem;color:var(--text-secondary)">Spin without risking XP</div>
+            </div>
+            <button class="casino-btn-sm ms-auto" onclick="window._wopBack()">← Back to Casino</button>
+        </div>
+
+        <!-- Two-column layout: wheel left, controls right -->
+        <div class="wop-layout">
+
+            <!-- ── Wheel column ── -->
+            <div class="wop-wheel-col">
+                <!-- Pointer triangle -->
+                <div class="wop-pointer-wrap">
+                    <div class="wop-pointer-triangle"></div>
+                </div>
+                <!-- Canvas + hub -->
+                <div class="wop-canvas-wrap" id="wop-canvas-wrap">
+                    <canvas id="wop-canvas" width="500" height="500"></canvas>
+                    <div class="wop-hub" id="wop-hub">🎡</div>
+                </div>
+                <!-- Hover tooltip -->
+                <div class="wop-hover-tip" id="wop-hover-tip" style="display:none"></div>
+                <div style="font-size:0.65rem;color:var(--text-secondary);text-align:center;margin-top:8px">
+                    Hover to preview · Click a segment to select your pet
+                </div>
+            </div>
+
+            <!-- ── Sidebar ── -->
+            <div class="wop-sidebar">
+
+                <!-- Selected pet display -->
+                <div class="wop-selected-box" id="wop-selected-box">
+                    <div class="wop-selected-label">Click a segment to pick your pet</div>
+                    <div class="wop-selected-pet" id="wop-selected-pet" style="display:none">
+                        <img id="wop-sel-img" src="" alt="" class="wop-sel-img">
+                        <div>
+                            <div class="wop-sel-name" id="wop-sel-name"></div>
+                            <div class="wop-sel-sub"  id="wop-sel-sub"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Payout info -->
+                <div class="wop-payout-row">
+                    <div class="wop-payout-item">
+                        <span class="wop-payout-label">Win payout</span>
+                        <span class="wop-payout-val" id="wop-pay-win">—</span>
+                    </div>
+                    <div class="wop-payout-item wop-payout-item--own">
+                        <span class="wop-payout-label">⭐ Own-pet 2×</span>
+                        <span class="wop-payout-val" id="wop-pay-own">—</span>
+                    </div>
+                </div>
+                <div style="font-size:0.65rem;color:var(--text-secondary);margin-bottom:10px;text-align:center">
+                    103 pets · equal odds · 5% house edge
+                </div>
+
+                <!-- Bet input -->
+                <div id="wop-bet-section">
+                    <div style="font-size:0.75rem;color:var(--text-secondary);margin-bottom:5px">Bet Amount (XP)</div>
+                    <input type="number" class="casino-input" id="wop-bet" min="10" max="100000" placeholder="Enter XP…">
+                    <div class="d-flex gap-2 mt-2 flex-wrap">
+                        <button class="casino-btn-sm wop-preset" data-amount="50">50</button>
+                        <button class="casino-btn-sm wop-preset" data-amount="100">100</button>
+                        <button class="casino-btn-sm wop-preset" data-amount="500">500</button>
+                        <button class="casino-btn-sm wop-preset" data-amount="1000">1k</button>
+                        <button class="casino-btn-sm wop-preset" data-amount="5000">5k</button>
+                    </div>
+                </div>
+
+                <!-- Spin button -->
+                <button id="wop-spin-btn" class="casino-btn wop-spin-btn" disabled>
+                    🎡 SPIN
+                </button>
+
+                <!-- Result card -->
+                <div id="wop-result" class="wop-result" style="display:none">
+                    <div class="wop-result-inner">
+                        <img id="wop-res-img" src="" alt="" class="wop-res-img">
+                        <div class="wop-res-name" id="wop-res-name"></div>
+                        <div class="wop-res-text" id="wop-res-text"></div>
+                        <div class="wop-res-xp"   id="wop-res-xp"   style="display:none"></div>
+                    </div>
+                    <div class="wop-again-row">
+                        <button id="wop-again-btn"  class="casino-btn wop-again-btn">🎡 Spin Again</button>
+                        <button id="wop-change-btn" class="casino-btn-sm">Change Pet</button>
+                    </div>
+                </div>
+
+            </div><!-- /sidebar -->
+        </div><!-- /layout -->
+    </div><!-- /main -->
+</div><!-- /root -->
+
+<script src="/js/wheel.js?v=20260419b"></script>

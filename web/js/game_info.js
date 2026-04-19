@@ -56,9 +56,17 @@ function switchInfoSection(infoType) {
     });
 }
 
+// Compact number formatter: 60356000 → "60.36m", 1500 → "1.5k", 999 → "999"
+function fmtPrice(n) {
+    n = Math.abs(n);
+    if (n >= 1e9)  return (n / 1e9).toFixed(2).replace(/\.?0+$/, '') + 'b';
+    if (n >= 1e6)  return (n / 1e6).toFixed(3).replace(/\.?0+$/, '') + 'm';
+    if (n >= 1e3)  return (n / 1e3).toFixed(1).replace(/\.?0+$/, '') + 'k';
+    return Math.round(n).toString();
+}
+
 // Generates a stock-like chart with buy and sell price lines
-function generateStockLikeChart(historyData, resourceName) {
-    if (!historyData || historyData.length < 2) {
+function generateStockLikeChart(historyData, resourceName) {    if (!historyData || historyData.length < 2) {
         return '<div class="chart-placeholder">Not enough historical data</div>';
     }
 
@@ -269,6 +277,179 @@ function updateBellState(resource) {
 }
 
 // ---------------------------------------------------------------------------
+// Chart zoom modal — fetches full history on demand
+// ---------------------------------------------------------------------------
+function generateFullHistoryChart(historyData) {
+    if (!historyData || historyData.length < 2) {
+        return '<div class="chart-placeholder">Not enough data</div>';
+    }
+
+    const PX_PER_POINT = 5;
+    const H = 260;
+    const PAD = { top: 16, right: 24, bottom: 52, left: 62 };
+    const W = Math.max(900, historyData.length * PX_PER_POINT);
+    const dW = W - PAD.left - PAD.right;
+    const dH = H - PAD.top - PAD.bottom;
+
+    const buyPrices  = historyData.map(d => d.buy).filter(p => p > 0);
+    const sellPrices = historyData.map(d => d.sell).filter(p => p > 0);
+    if (!buyPrices.length && !sellPrices.length) {
+        return '<div class="chart-placeholder">No valid price data</div>';
+    }
+
+    const allPrices = [...buyPrices, ...sellPrices];
+    const rawMin = Math.min(...allPrices);
+    const rawMax = Math.max(...allPrices);
+    // Nice round Y bounds
+    const range   = rawMax - rawMin || 1;
+    const pad     = range * 0.08;
+    const minP    = rawMin - pad;
+    const maxP    = rawMax + pad;
+    const pRange  = maxP - minP;
+
+    const toX = i  => PAD.left + (i / (historyData.length - 1)) * dW;
+    const toY = p  => H - PAD.bottom - ((p - minP) / pRange) * dH;
+
+    // --- Y axis ticks (6 ticks) ---
+    const Y_TICKS = 6;
+    let yGrid = '', yLabels = '';
+    for (let i = 0; i <= Y_TICKS; i++) {
+        const val = minP + (pRange / Y_TICKS) * i;
+        const y   = toY(val);
+        const lbl = val >= 1e9 ? (val/1e9).toFixed(2)+'b'
+                  : val >= 1e6 ? (val/1e6).toFixed(2)+'m'
+                  : val >= 1e3 ? (val/1e3).toFixed(1)+'k'
+                  : Math.round(val).toString();
+        yGrid   += `<line x1="${PAD.left}" y1="${y.toFixed(1)}" x2="${W - PAD.right}" y2="${y.toFixed(1)}" stroke="#252528" stroke-width="1"/>`;
+        yLabels += `<text x="${PAD.left - 8}" y="${(y + 4).toFixed(1)}" text-anchor="end" font-size="11" fill="#666" font-family="JetBrains Mono,monospace">${lbl}</text>`;
+    }
+
+    // --- X axis ticks: one label per day, minor ticks every 6 hours ---
+    // 15-min intervals → 96 per day, 24 per 6h
+    const MINOR_EVERY = 24; // 6 hours
+    const MAJOR_EVERY = 96; // 1 day
+    let xGrid = '', xLabels = '';
+    historyData.forEach((pt, i) => {
+        if (i % MINOR_EVERY !== 0) return;
+        const x   = toX(i);
+        const ts  = pt.timestamp ? new Date(pt.timestamp * 1000) : null;
+        const isMajor = i % MAJOR_EVERY === 0;
+        xGrid += `<line x1="${x.toFixed(1)}" y1="${PAD.top}" x2="${x.toFixed(1)}" y2="${H - PAD.bottom}" stroke="${isMajor ? '#333' : '#1e1e20'}" stroke-width="1"/>`;
+        if (ts && isMajor) {
+            const lbl = `${ts.getMonth()+1}/${ts.getDate()}`;
+            xLabels += `<text x="${x.toFixed(1)}" y="${H - PAD.bottom + 18}" text-anchor="middle" font-size="11" fill="#777" font-family="JetBrains Mono,monospace">${lbl}</text>`;
+        } else if (ts) {
+            const lbl = `${ts.getHours().toString().padStart(2,'0')}:00`;
+            xLabels += `<text x="${x.toFixed(1)}" y="${H - PAD.bottom + 14}" text-anchor="middle" font-size="9" fill="#444" font-family="JetBrains Mono,monospace">${lbl}</text>`;
+        }
+    });
+
+    // --- Price paths ---
+    const buildPath = key => {
+        let d = '', first = true;
+        historyData.forEach((pt, i) => {
+            const p = pt[key];
+            if (!p || p <= 0) return;
+            const x = toX(i).toFixed(1), y = toY(p).toFixed(1);
+            d += first ? `M${x},${y}` : ` L${x},${y}`;
+            first = false;
+        });
+        return d;
+    };
+
+    const buyD  = buildPath('buy');
+    const sellD = buildPath('sell');
+
+    // --- Y axis label (rotated) ---
+    const yAxisLabel = `<text transform="rotate(-90)" x="${-(H/2)}" y="14" text-anchor="middle" font-size="11" fill="#666" font-family="JetBrains Mono,monospace">Price ($)</text>`;
+
+    // --- Axis lines ---
+    const axes = `
+        <line x1="${PAD.left}" y1="${PAD.top}" x2="${PAD.left}" y2="${H - PAD.bottom}" stroke="#444" stroke-width="1.5"/>
+        <line x1="${PAD.left}" y1="${H - PAD.bottom}" x2="${W - PAD.right}" y2="${H - PAD.bottom}" stroke="#444" stroke-width="1.5"/>`;
+
+    return `
+        <svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" style="display:block;overflow:visible">
+            ${yAxisLabel}
+            ${yGrid}${xGrid}
+            ${axes}
+            ${yLabels}${xLabels}
+            ${buyD  ? `<path d="${buyD}"  stroke="#4caf50" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/>` : ''}
+            ${sellD ? `<path d="${sellD}" stroke="#f44336" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/>` : ''}
+        </svg>`;
+}
+
+function openChartModal(resource, iconSrc) {
+    document.getElementById('chart-zoom-modal')?.remove();
+
+    const modal = document.createElement('div');
+    modal.id = 'chart-zoom-modal';
+    modal.innerHTML = `
+        <div class="chart-modal-backdrop" id="chart-modal-backdrop">
+            <div class="chart-modal-box" id="chart-modal-inner">
+                <div class="chart-modal-header">
+                    <div class="chart-modal-title">
+                        ${iconSrc ? `<img src="${iconSrc}" alt="${resource}">` : ''}
+                        ${resource.toUpperCase()} — Full Price History
+                    </div>
+                    <button class="chart-modal-close" id="chart-modal-close">&times;</button>
+                </div>
+                <div class="chart-modal-legend">
+                    <div class="chart-modal-legend-item">
+                        <div class="chart-modal-legend-dot" style="background:#4caf50"></div>
+                        Buy price
+                    </div>
+                    <div class="chart-modal-legend-item">
+                        <div class="chart-modal-legend-dot" style="background:#f44336"></div>
+                        Sell price
+                    </div>
+                </div>
+                <div class="chart-modal-scroll" id="chart-modal-scroll">
+                    <div class="chart-modal-loading">
+                        <div class="chart-modal-spinner"></div>
+                        Loading full history…
+                    </div>
+                </div>
+                <div class="chart-modal-hint">← scroll to explore full history →</div>
+            </div>
+        </div>`;
+
+    document.body.appendChild(modal);
+
+    const close = () => modal.remove();
+    document.getElementById('chart-modal-close').addEventListener('click', close);
+    document.getElementById('chart-modal-backdrop').addEventListener('click', e => {
+        if (e.target === document.getElementById('chart-modal-backdrop')) close();
+    });
+    document.addEventListener('keydown', function onKey(e) {
+        if (e.key === 'Escape') { close(); document.removeEventListener('keydown', onKey); }
+    });
+
+    // Fetch full history on demand
+    fetch(`/api/game-info/resource-history/${resource}`)
+        .then(r => { if (!r.ok) throw new Error('Failed to load history'); return r.json(); })
+        .then(data => {
+            const scrollEl = document.getElementById('chart-modal-scroll');
+            if (!scrollEl) return;
+            const history = data.history || [];
+            const days = history.length > 0 ? (history.length / 96).toFixed(1) : '?';
+            // Update title with day count
+            const titleEl = modal.querySelector('.chart-modal-title');
+            if (titleEl) {
+                titleEl.innerHTML = `${iconSrc ? `<img src="${iconSrc}" alt="${resource}" style="width:24px;height:24px">` : ''}
+                    ${resource.toUpperCase()} — Full Price History <span style="color:#888;font-size:0.8rem;font-weight:400">(${days} days)</span>`;
+            }
+            scrollEl.innerHTML = generateFullHistoryChart(history);
+            // Scroll to most recent (right side)
+            requestAnimationFrame(() => { scrollEl.scrollLeft = scrollEl.scrollWidth; });
+        })
+        .catch(err => {
+            const scrollEl = document.getElementById('chart-modal-scroll');
+            if (scrollEl) scrollEl.innerHTML = `<div class="chart-placeholder" style="height:200px">Error loading history: ${err.message}</div>`;
+        });
+}
+
+// ---------------------------------------------------------------------------
 // Main execution function to run when the page is ready
 // ---------------------------------------------------------------------------
 function initializeGameInfo() {
@@ -421,48 +602,62 @@ function initializeGameInfo() {
                 }
 
                 const urlResource = resource === 'credit' ? 'credits' : resource;
-                const resourceUrl = `https://politicsandwar.com/index.php?id=90&display=world&resource1=${urlResource}&buysell=sell&ob=price&od=DEF&maximum=50&minimum=0&search=Go`;
+                const buyUrl = `https://politicsandwar.com/index.php?id=26&display=world&resource1=${urlResource}&buysell=buy&ob=price&od=DEF&maximum=50&minimum=0&search=Go`;
+                const sellUrl = `https://politicsandwar.com/index.php?id=90&display=world&resource1=${urlResource}&buysell=sell&ob=price&od=DEF&maximum=50&minimum=0&search=Go`;
+
+                const isCredit = resource === 'credit';
+                const buyDisplay  = isCredit ? fmtPrice(priceData.buy)  : priceData.buy.toFixed(0);
+                const sellDisplay = isCredit ? fmtPrice(priceData.sell) : priceData.sell.toFixed(0);
+                const marginDisplay = isCredit
+                    ? (margin < 0 ? '-' : '') + fmtPrice(Math.abs(margin))
+                    : margin.toFixed(0);
+
+                // For credits: overlay full prices on the chart
+                const chartPriceOverlay = isCredit ? `
+                    <div style="position:absolute;top:4px;right:6px;font-size:0.68rem;font-weight:700;color:#f44336;background:rgba(0,0,0,0.55);padding:1px 4px;border-radius:3px;pointer-events:none">
+                        ${priceData.sell.toLocaleString(undefined,{maximumFractionDigits:0})}
+                    </div>
+                    <div style="position:absolute;bottom:4px;right:6px;font-size:0.68rem;font-weight:700;color:#4caf50;background:rgba(0,0,0,0.55);padding:1px 4px;border-radius:3px;pointer-events:none">
+                        ${priceData.buy.toLocaleString(undefined,{maximumFractionDigits:0})}
+                    </div>` : '';
 
                 html += `
-                    <a href="${resourceUrl}" target="_blank" rel="noopener noreferrer" class="resource-card-link">
-                        <div class="resource-card ${trendClass}">
-                            <div class="rc-header">
-                                <img src="${resourceEmojis[resource]}" class="rc-icon">
-                                <div style="display:flex;flex-direction:row;align-items:center;justify-content:flex-end;width:100%;">
-                                    <div style="display:flex;align-items:center;gap:8px;">
-                                        <span style="font-size:1.3rem;font-weight:700;color:#fff;">${price.toLocaleString(undefined,{minimumFractionDigits:0,maximumFractionDigits:0})}</span>
-                                        ${hasComparison ? `
-                                        <span class="rc-price-change ${trendClass}" style="font-size:0.9rem;padding:2px 6px;">
-                                            ${valueChange >= 0 ? '▲' : '▼'} ${Math.abs(valueChange).toFixed(0)} (${percentChange.toFixed(2)}%)
-                                        </span>
-                                        ` : ''}
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="rc-body">
-                                <div class="rc-chart-container">
-                                    ${chart}
-                                </div>
-                            </div>
-                            <div class="rc-footer">
-                                <button class="rc-bell-btn" data-resource="${resource}" title="Set price alert">&#x1F514;</button>
-                                <div class="rc-footer-stats">
-                                    <div class="rc-footer-item">
-                                        <span class="rc-label">Buy</span>
-                                        <span class="rc-value">${priceData.buy.toFixed(0)}</span>
-                                    </div>
-                                    <div class="rc-footer-item">
-                                        <span class="rc-label">Sell</span>
-                                        <span class="rc-value">${priceData.sell.toFixed(0)}</span>
-                                    </div>
-                                    <div class="rc-footer-item">
-                                        <span class="rc-label">Margin</span>
-                                        <span class="rc-value ${marginClass}">${margin.toFixed(0)}</span>
-                                    </div>
+                    <div class="resource-card ${trendClass}">
+                        <div class="rc-header">
+                            <img src="${resourceEmojis[resource]}" class="rc-icon">
+                            <div style="display:flex;flex-direction:row;align-items:center;justify-content:flex-end;width:100%;">
+                                <div style="display:flex;align-items:center;gap:8px;">
+                                    <span style="font-size:1.3rem;font-weight:700;color:#fff;">${price.toLocaleString(undefined,{minimumFractionDigits:0,maximumFractionDigits:0})}</span>
+                                    ${hasComparison ? `
+                                    <span class="rc-price-change ${trendClass}" style="font-size:0.9rem;padding:2px 6px;">
+                                        ${valueChange >= 0 ? '▲' : '▼'} ${Math.abs(valueChange).toFixed(0)} (${percentChange.toFixed(2)}%)
+                                    </span>
+                                    ` : ''}
                                 </div>
                             </div>
                         </div>
-                    </a>
+                        <div class="rc-body">
+                            <div class="rc-chart-container" style="position:relative" data-resource="${resource}">
+                                ${chart}
+                                ${chartPriceOverlay}
+                            </div>
+                        </div>
+                        <div class="rc-footer">
+                            <button class="rc-bell-btn" data-resource="${resource}" title="Set price alert">&#x1F514;</button>
+                            <div class="rc-footer-stats">
+                                <div class="rc-footer-item">
+                                    <a href="${buyUrl}" target="_blank" rel="noopener noreferrer" class="rc-trade-btn rc-buy-btn">${buyDisplay}</a>
+                                </div>
+                                <div class="rc-footer-item">
+                                    <a href="${sellUrl}" target="_blank" rel="noopener noreferrer" class="rc-trade-btn rc-sell-btn">${sellDisplay}</a>
+                                </div>
+                                <div class="rc-footer-item">
+                                    <span class="rc-label">Margin</span>
+                                    <span class="rc-value ${marginClass}">${marginDisplay}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 `
             }
             html += '</div>';
@@ -479,6 +674,16 @@ function initializeGameInfo() {
                     e.preventDefault();
                     e.stopPropagation();
                     openAlertModal(res, pd.buy, pd.sell);
+                });
+            });
+
+            // Wire up chart zoom — click on chart area fetches full history on demand
+            marketContainer.querySelectorAll('.rc-chart-container[data-resource]').forEach(container => {
+                const res = container.dataset.resource;
+                container.addEventListener('click', e => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    openChartModal(res, resourceEmojis[res]);
                 });
             });
         })

@@ -1,0 +1,313 @@
+<link rel="stylesheet" href="/css/survive.css">
+
+<div class="container-fluid" id="ss-root">
+
+    <!-- Header -->
+    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+        <div class="d-flex align-items-center gap-3">
+            <h4 style="font-family:Orbitron,sans-serif;color:var(--gold-primary);text-shadow:0 0 10px var(--gold-glow);margin:0">
+                ⚔️ Pet Survivor Series
+            </h4>
+            <span id="ss-live-badge" class="ss-live-badge" style="display:none">
+                <span class="ss-live-dot"></span>LIVE
+            </span>
+        </div>
+        <div class="d-flex gap-2 flex-wrap align-items-center" id="ss-action-btns">
+            <button class="ss-btn" id="ss-join-btn" onclick="ssOpenJoinModal()" style="display:none">⚔️ Join Game</button>
+            <button class="ss-btn" id="ss-start-btn" onclick="ssOpenStartModal()" style="display:none">🚀 Start Game</button>
+            <button class="ss-btn ss-btn-secondary" id="ss-reset-btn" onclick="ssReset()" style="display:none;font-size:0.7rem;padding:0.4rem 1rem">↺ Reset</button>
+        </div>
+    </div>
+
+    <hr class="ss-divider">
+
+    <!-- Countdown (shown during countdown phase) -->
+    <div id="ss-countdown-wrap" style="display:none">
+        <div class="ss-countdown" id="ss-countdown-timer">1:00:00</div>
+        <div class="ss-countdown-label">Game begins in</div>
+    </div>
+
+    <!-- Winner (shown when finished) -->
+    <div id="ss-winner-wrap" style="display:none" class="mb-3">
+        <div class="ss-winner-card">
+            <img id="ss-winner-img" src="/static/Emojis/Pets/Cat.png" class="ss-winner-img" alt="Winner">
+            <div class="ss-winner-name" id="ss-winner-name">Champion</div>
+            <div class="ss-winner-sub" id="ss-winner-sub"></div>
+        </div>
+    </div>
+
+    <!-- Main grid -->
+    <div class="row g-3 justify-content-center" id="ss-main-grid">
+
+        <!-- Map + Live feed (centered, narrower width) -->
+        <div class="col-lg-10 col-xl-8" id="ss-right-col">
+
+            <!-- ── Arena Map (sits above live feed, hidden until game active) ── -->
+            <div class="ss-card mb-3" id="ss-map-card" style="display:none;flex-direction:column">
+                <!-- Top header row: title + round label + controls -->
+                <div class="ss-card-header" style="padding:6px 12px;flex-wrap:wrap;gap:4px">
+                    <div class="d-flex align-items-center gap-2">
+                        <h6 style="margin:0;font-size:0.8rem">🗺️ Arena Map</h6>
+                        <span id="ss-map-round-label" style="font-size:0.68rem;color:var(--text-secondary)"></span>
+                    </div>
+                    <div class="d-flex align-items-center gap-1">
+                        <button class="ss-btn ss-btn-secondary" onclick="ssMapZoomIn()"   style="font-size:0.75rem;padding:1px 8px;line-height:1.4" title="Zoom in">+</button>
+                        <button class="ss-btn ss-btn-secondary" onclick="ssMapZoomOut()"  style="font-size:0.75rem;padding:1px 8px;line-height:1.4" title="Zoom out">−</button>
+                        <button class="ss-btn ss-btn-secondary" onclick="ssMapReset()"    style="font-size:0.6rem;padding:2px 8px">⟳ Fit</button>
+                    </div>
+                </div>
+
+                <!-- Stats bar: alive/elim counts + progress bar + round timer -->
+                <div style="padding:6px 12px;background:rgba(0,0,0,0.35);border-bottom:1px solid rgba(255,255,255,0.06);display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+                    <!-- Alive -->
+                    <div style="display:flex;align-items:center;gap:5px;flex-shrink:0">
+                        <span style="width:8px;height:8px;border-radius:50%;background:#4caf50;display:inline-block;box-shadow:0 0 5px #4caf50"></span>
+                        <span id="ss-map-alive-count" style="font-size:0.85rem;font-weight:700;color:#4caf50;font-family:Orbitron,monospace">0</span>
+                        <span style="font-size:0.6rem;color:rgba(200,200,200,0.5)">alive</span>
+                    </div>
+                    <!-- Progress bar -->
+                    <div style="flex:1;min-width:60px;background:rgba(244,67,54,0.25);border-radius:20px;height:7px;overflow:hidden;position:relative">
+                        <div id="ss-map-alive-fill" style="height:100%;background:linear-gradient(90deg,#4caf50,#8bc34a);border-radius:20px;transition:width 0.8s ease;width:100%"></div>
+                    </div>
+                    <!-- Eliminated -->
+                    <div style="display:flex;align-items:center;gap:5px;flex-shrink:0">
+                        <span style="font-size:0.85rem;font-weight:700;color:#f44336;font-family:Orbitron,monospace" id="ss-map-elim-count">0</span>
+                        <span style="font-size:0.6rem;color:rgba(200,200,200,0.5)">elim</span>
+                        <span style="font-size:0.6rem;color:rgba(200,200,200,0.3)">💀</span>
+                    </div>
+                    <!-- Separator -->
+                    <div style="width:1px;height:16px;background:rgba(255,255,255,0.1);flex-shrink:0"></div>
+                    <!-- Participant count -->
+                    <span id="ss-map-part-count" style="font-size:0.6rem;color:rgba(200,200,200,0.45);flex-shrink:0"></span>
+                    <!-- Round timer -->
+                    <div style="margin-left:auto;display:flex;align-items:center;gap:5px;flex-shrink:0">
+                        <span style="font-size:0.58rem;color:rgba(200,200,200,0.4)">next round</span>
+                        <span id="ss-map-round-timer" style="font-size:0.75rem;font-family:Orbitron,monospace;color:var(--gold-primary,#ffd700);min-width:3rem;text-align:right"></span>
+                    </div>
+                </div>
+
+                <!-- Filter buttons row -->
+                <div style="padding:5px 12px;background:rgba(0,0,0,0.25);border-bottom:1px solid rgba(255,255,255,0.05);display:flex;gap:4px;flex-wrap:wrap;align-items:center">
+                    <span style="font-size:0.58rem;color:rgba(200,200,200,0.35);margin-right:2px">SHOW:</span>
+                    <button id="ss-mf-all"    class="ss-filter-tab active" onclick="ssMapFilter('all')">All</button>
+                    <button id="ss-mf-player" class="ss-filter-tab"        onclick="ssMapFilter('player')">Players</button>
+                    <button id="ss-mf-npc"    class="ss-filter-tab"        onclick="ssMapFilter('npc')">NPCs</button>
+                    <button id="ss-mf-alive"  class="ss-filter-tab"        onclick="ssMapFilter('alive')">Alive</button>
+                    <button id="ss-mf-elim"   class="ss-filter-tab"        onclick="ssMapFilter('elim')">Eliminated</button>
+                    <button id="ss-mf-rel"    class="ss-filter-tab"        onclick="ssMapFilter('rel')" title="Click a pet first, then use this to see their relationships">Relationships</button>
+                </div>
+
+                <div style="padding:0;position:relative;overflow:hidden;background:#07070f;flex:1;min-height:400px">
+                    <canvas id="ss-map-canvas" style="display:block;width:100%;height:100%;cursor:grab;touch-action:none;position:absolute;inset:0"></canvas>
+                    <!-- Tooltip -->
+                    <div id="ss-map-tooltip" style="position:absolute;pointer-events:none;display:none;z-index:10"></div>
+                    <!-- Zone focus back button (shown when zoomed into a room) -->
+                    <div id="ss-map-zone-back" style="display:none;position:absolute;top:8px;left:8px;z-index:15">
+                        <button onclick="ssExitZoom()" style="
+                            background:rgba(6,6,16,0.92);
+                            border:1px solid rgba(255,215,0,0.45);
+                            color:rgba(255,215,0,0.9);
+                            font-size:0.72rem;
+                            font-family:Orbitron,monospace;
+                            padding:5px 12px;
+                            border-radius:6px;
+                            cursor:pointer;
+                            letter-spacing:0.5px;
+                            box-shadow:0 0 12px rgba(255,215,0,0.15);
+                            transition:all 0.2s">← Back to Map</button>
+                        <span id="ss-map-zone-name-label" style="
+                            display:inline-block;
+                            margin-left:8px;
+                            font-size:0.7rem;
+                            font-family:Orbitron,monospace;
+                            color:rgba(255,255,255,0.6);
+                            vertical-align:middle"></span>
+                    </div>
+                    <!-- Pet detail panel (slides in from right on click) -->
+                    <div id="ss-map-pet-panel" style="
+                        display:none;flex-direction:column;
+                        position:absolute;top:0;right:0;bottom:0;width:260px;max-width:80%;
+                        background:rgba(6,6,16,0.97);
+                        border-left:1px solid rgba(255,215,0,0.3);
+                        border-top:none;border-bottom:none;border-right:none;
+                        z-index:20;overflow:hidden">
+                        <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;border-bottom:1px solid rgba(255,255,255,0.07);flex-shrink:0">
+                            <span style="font-size:0.65rem;color:rgba(200,200,200,0.5);text-transform:uppercase;letter-spacing:0.5px">Pet Details</span>
+                            <button onclick="_closePetPanel()" style="background:none;border:none;color:rgba(200,200,200,0.5);cursor:pointer;font-size:1rem;line-height:1;padding:0 2px" title="Close">✕</button>
+                        </div>
+                        <div id="ss-map-pet-panel-body" style="flex:1;overflow-y:auto;padding:10px 12px;font-size:0.7rem;color:rgba(200,200,200,0.85)"></div>
+                    </div>
+                    <!-- Zoom hint -->
+                    <div id="ss-map-zoom-hint" style="position:absolute;bottom:6px;right:8px;font-size:0.55rem;color:rgba(255,255,255,0.3);pointer-events:none;text-align:right">
+                        scroll to zoom · drag to pan<br>
+                        <span style="font-size:0.5rem">click a zone to enter it</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Live feed -->
+            <div class="ss-card">
+                <div class="ss-card-header">
+                    <h6>📡 Live Feed</h6>
+                    <div class="d-flex align-items-center gap-3">
+                        <span id="ss-round-label" style="font-size:0.7rem;color:var(--text-secondary)">Waiting...</span>
+                        <span id="ss-round-timer" style="font-size:0.7rem;font-family:Orbitron,monospace;color:var(--gold-primary);min-width:3.5rem;text-align:right;display:inline-block"></span>
+                    </div>
+                </div>
+                <div class="ss-card-body">
+                    <div id="ss-live-feed" class="ss-live-feed">
+                        <div class="ss-feed-item system">Waiting for the game to start...</div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Login prompt -->
+    <div id="ss-login-prompt" style="display:none;text-align:center;padding:2rem">
+        <p style="color:var(--text-secondary)">
+            <a href="/api/discord/login" style="color:var(--gold-primary)">Log in with Discord</a>
+            to join the Survivor Series.
+        </p>
+    </div>
+
+</div>
+
+<!-- ── Join Game Modal ───────────────────────────────────────────────────────── -->
+<div id="ss-join-modal" style="
+    display:none;position:fixed;inset:0;z-index:9999;
+    background:rgba(0,0,0,0.80);backdrop-filter:blur(4px);
+    align-items:center;justify-content:center;">
+    <div style="
+        background:linear-gradient(135deg,rgba(15,15,15,0.98),rgba(20,20,20,0.98));
+        border:2px solid var(--gold-primary);
+        clip-path:polygon(0 16px,16px 0,calc(100% - 16px) 0,100% 16px,100% calc(100% - 16px),calc(100% - 16px) 100%,16px 100%,0 calc(100% - 16px));
+        box-shadow:0 0 40px var(--gold-glow);
+        padding:2rem;max-width:520px;width:90%;position:relative;text-align:center">
+
+        <div style="font-family:Orbitron,sans-serif;font-size:1.1rem;font-weight:700;color:var(--gold-primary);text-shadow:0 0 10px var(--gold-glow);margin-bottom:0.3rem;letter-spacing:1px">
+            ⚔️ Pet Survivor Series
+        </div>
+        <div style="font-size:0.6rem;color:var(--text-secondary);text-transform:uppercase;letter-spacing:2px;margin-bottom:1.2rem">
+            Your pet has been drafted. Congratulations, probably.
+        </div>
+
+        <!-- Pet stat card — populated by JS -->
+        <div id="sj-pet-card" style="
+            display:flex;align-items:center;gap:1rem;
+            background:rgba(255,215,0,0.06);border:1px solid rgba(255,215,0,0.25);
+            border-radius:8px;padding:0.75rem 1rem;margin-bottom:1.2rem;text-align:left">
+            <img id="sj-pet-img" src="/static/Emojis/Pets/Cat.png"
+                 style="width:52px;height:52px;object-fit:contain;flex-shrink:0"
+                 onerror="this.src='/static/Emojis/Pets/Cat.png'" alt="">
+            <div style="flex:1;min-width:0">
+                <div id="sj-pet-name" style="font-family:Orbitron,sans-serif;font-size:0.85rem;font-weight:700;color:var(--gold-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">—</div>
+                <div id="sj-pet-meta" style="font-size:0.68rem;color:var(--text-secondary);margin-top:2px">—</div>
+                <div style="margin-top:5px;display:flex;align-items:center;gap:0.5rem">
+                    <span style="font-size:0.6rem;color:var(--text-secondary);text-transform:uppercase;letter-spacing:1px">Survive Score</span>
+                    <span id="sj-survive-score" style="font-family:Orbitron,sans-serif;font-size:1rem;font-weight:900;color:var(--gold-primary)">—</span>
+                    <span id="sj-score-note" style="font-size:0.58rem;color:var(--text-secondary)"></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Game explanation -->
+        <div style="
+            background:rgba(0,0,0,0.4);border:1px solid rgba(255,215,0,0.12);
+            border-radius:8px;padding:0.9rem 1.1rem;margin-bottom:1.2rem;
+            font-size:0.76rem;color:var(--text-secondary);line-height:1.75;text-align:left">
+            <p style="margin:0 0 0.5rem">
+                <strong style="color:var(--gold-secondary)">The Setup:</strong>
+                Your pet gets yeeted into a 13-zone elemental arena — Fire, Ice, Necro, Holy, and nine other places no sane pet would vacation. They don't get a map. They don't get a choice. They get a vibe and a prayer.
+            </p>
+            <p style="margin:0 0 0.5rem">
+                🗺️ <strong style="color:var(--gold-secondary)">Every 15 minutes, a round fires.</strong> Pets roam zones based on their <em>relationships</em>: they chase Enemies like they have a personal vendetta, cling to Best Friends like a security blanket, avoid Friends (it's complicated), and ignore Foes while pretending they're not scared.
+            </p>
+            <p style="margin:0 0 0.5rem">
+                ⚔️ <strong style="color:var(--gold-secondary)">Combat score</strong> = Survive Score (level ÷ multiplier ÷ 10) × element &amp; type matchups × Charge bonus. Each matchup advantage stacks ×1.2, each disadvantage ×0.8 — across up to 5 axes (type triangle + 4 element combos). Higher score wins. Upsets happen. Cope.
+            </p>
+            <p style="margin:0 0 0.5rem">
+                ⚡ <strong style="color:var(--gold-secondary)">Charge:</strong> Every round your pet skips combat, they build a Charge stack (+×0.1 per round, caps at ×1.5 after 5 rounds). It resets the moment they fight. Hiding is a valid strategy — until it isn't.
+            </p>
+            <p style="margin:0 0 0.5rem">
+                🤝 <strong style="color:var(--gold-secondary)">Deals &amp; Pressure:</strong> If nobody dies for a few rounds, the arena shrinks and desperate pets start forming shady truces with their enemies to gang up on someone worse. The arena does not reward cowardice.
+            </p>
+            <p style="margin:0 0 0.5rem">
+                💀 <strong style="color:var(--gold-secondary)">Elimination is permanent.</strong> Dead is dead. Your pet will not be consulted, appealed to, or given a participation trophy.
+            </p>
+            <p style="margin:0">
+                🏆 <strong style="color:var(--gold-secondary)">Winning:</strong> Last pet standing takes the crown. Up to 4 mutual Best Friends can share the win if they're the last ones standing — 60% chance for 2, 40% for 3, 25% for 4, or guaranteed if they pulled off a group elimination together. Everyone else gets nothing and has to think about what they did.
+            </p>
+        </div>
+
+        <div style="font-size:0.68rem;color:#f44336;margin-bottom:1.3rem;font-style:italic">
+            ⚠️ Once you join, there is no leaving. Your pet has accepted their fate even if you haven't.
+        </div>
+        <div class="d-flex gap-3 justify-content-center">
+            <button class="ss-btn ss-btn-secondary" onclick="ssCloseJoinModal()" style="font-size:0.85rem;padding:0.55rem 1.6rem;min-width:140px">🏃 Absolutely Not</button>
+            <button class="ss-btn" id="sj-confirm-btn" onclick="ssConfirmJoin()" style="font-size:0.85rem;padding:0.55rem 1.6rem;min-width:140px">⚔️ Send Them In</button>
+        </div>
+    </div>
+</div>
+
+<!-- ── Start Game Modal ──────────────────────────────────────────────────────── -->
+<div id="ss-start-modal" style="
+    display:none;position:fixed;inset:0;z-index:9999;
+    background:rgba(0,0,0,0.75);backdrop-filter:blur(4px);
+    align-items:center;justify-content:center;">
+    <div style="
+        background:linear-gradient(135deg,rgba(15,15,15,0.98),rgba(20,20,20,0.98));
+        border:2px solid var(--gold-primary);
+        clip-path:polygon(0 16px,16px 0,calc(100% - 16px) 0,100% 16px,100% calc(100% - 16px),calc(100% - 16px) 100%,16px 100%,0 calc(100% - 16px));
+        box-shadow:0 0 40px var(--gold-glow);
+        padding:2rem;max-width:480px;width:90%;position:relative">
+
+        <div style="font-family:Orbitron,sans-serif;font-size:1rem;font-weight:700;color:var(--gold-primary);text-shadow:0 0 8px var(--gold-glow);margin-bottom:1.2rem;letter-spacing:1px">
+            🚀 Start Survivor Series
+        </div>
+        <div style="margin-bottom:1.2rem">
+            <div class="d-flex justify-content-between align-items-center mb-1">
+                <label style="font-size:0.8rem;color:var(--text-secondary);font-weight:600">NPC Participants</label>
+                <span id="sm-npc-val" style="font-family:Orbitron,sans-serif;font-size:1rem;font-weight:900;color:var(--gold-primary);min-width:2.5rem;text-align:right">0</span>
+            </div>
+            <input type="range" id="sm-npc-slider" min="0" max="98" value="0" step="1"
+                   oninput="ssModalSliderChange()"
+                   style="width:100%;accent-color:var(--gold-primary);cursor:pointer">
+            <div class="d-flex justify-content-between" style="font-size:0.6rem;color:var(--text-secondary);margin-top:2px">
+                <span>0 NPCs</span>
+                <span id="sm-slider-max-label">max 98</span>
+            </div>
+        </div>
+        <div style="
+            background:rgba(0,0,0,0.4);border:1px solid rgba(255,215,0,0.2);
+            border-radius:6px;padding:10px 14px;margin-bottom:1.2rem;
+            display:flex;gap:1.5rem;flex-wrap:wrap">
+            <div style="text-align:center;flex:1">
+                <div style="font-size:0.6rem;color:var(--text-secondary);text-transform:uppercase;letter-spacing:1px">Players</div>
+                <div id="sm-real-count" style="font-family:Orbitron,sans-serif;font-size:1.1rem;font-weight:900;color:#4caf50">0</div>
+            </div>
+            <div style="text-align:center;flex:1">
+                <div style="font-size:0.6rem;color:var(--text-secondary);text-transform:uppercase;letter-spacing:1px">NPCs</div>
+                <div id="sm-npc-count" style="font-family:Orbitron,sans-serif;font-size:1.1rem;font-weight:900;color:var(--text-secondary)">0</div>
+            </div>
+            <div style="text-align:center;flex:1">
+                <div style="font-size:0.6rem;color:var(--text-secondary);text-transform:uppercase;letter-spacing:1px">Total</div>
+                <div id="sm-total-count" style="font-family:Orbitron,sans-serif;font-size:1.1rem;font-weight:900;color:var(--gold-primary)">0</div>
+            </div>
+        </div>
+        <div style="font-size:0.72rem;color:var(--text-secondary);margin-bottom:1.2rem;line-height:1.5">
+            NPCs are generated immediately and appear in the lobby.
+            The game begins <strong style="color:var(--gold-secondary)">15 minutes</strong> after you click Start —
+            Round 1 fires immediately when the countdown ends, then every
+            <strong style="color:var(--gold-secondary)">15 minutes</strong> after that.
+        </div>
+        <div class="d-flex gap-2 justify-content-end">
+            <button class="ss-btn ss-btn-secondary" onclick="ssCloseStartModal()" style="font-size:0.8rem;padding:0.45rem 1.2rem">Cancel</button>
+            <button class="ss-btn" id="sm-confirm-btn" onclick="ssConfirmStart()" style="font-size:0.8rem;padding:0.45rem 1.4rem">⚔️ Start</button>
+        </div>
+    </div>
+</div>
+
+<script src="/js/survive.js"></script>
+<script src="/js/ss_map.js"></script>

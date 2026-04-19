@@ -1,11 +1,14 @@
 <link rel="stylesheet" href="/css/mypet.css">
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
 <style>
-/* ── Layout ─────────────────────────────────────────────────────────────── */
+/* ── Layout ──────────────────────────────────────────────────────────────── */
 #wap-wrap { display:flex; gap:20px; align-items:flex-start; }
+
 #wap-nav {
     position: sticky;
     top: 12px;
-    width: 168px;
+    width: 172px;
     flex-shrink: 0;
     background: rgba(15,15,15,0.82);
     border: 1px solid rgba(255,215,0,0.18);
@@ -37,73 +40,141 @@
     padding: 8px 14px 3px;
     text-transform: uppercase;
 }
+
 #wap-content { flex: 1; min-width: 0; }
 
-/* ── Cards ──────────────────────────────────────────────────────────────── */
-.wap-card {
-    background: linear-gradient(145deg, rgba(20,20,20,0.88), rgba(38,38,38,0.88));
-    border: 1px solid rgba(255,215,0,0.22);
-    border-radius: 12px;
-    padding: 1.4rem 1.6rem;
-    margin-bottom: 1.4rem;
-    scroll-margin-top: 12px;
-    transition: box-shadow 0.25s;
-}
-.wap-card:hover { box-shadow: 0 4px 24px rgba(255,215,0,0.09); }
-.wap-title {
+/* ── Markdown rendered content ───────────────────────────────────────────── */
+#wap-body h2 {
     color: var(--gold-primary);
     font-size: 1rem;
     font-weight: 700;
     letter-spacing: 0.03em;
     border-bottom: 1px solid rgba(255,215,0,0.18);
     padding-bottom: 0.5rem;
-    margin-bottom: 0.9rem;
+    margin: 1.6rem 0 0.9rem;
+    scroll-margin-top: 12px;
 }
-.wap-sub { color: var(--gold-secondary); font-size: 0.8rem; font-weight: 600; margin: 0.85rem 0 0.35rem; }
-.wap-text { color: var(--text-secondary); font-size: 0.8rem; line-height: 1.65; margin-bottom: 0.45rem; }
-
-/* ── Tables ─────────────────────────────────────────────────────────────── */
-.wap-table { width:100%; border-collapse:collapse; font-size:0.76rem; margin-top:0.4rem; }
-.wap-table th { color:var(--gold-primary); font-weight:600; padding:5px 9px; border-bottom:1px solid rgba(255,215,0,0.18); text-align:left; }
-.wap-table td { color:var(--text-secondary); padding:4px 9px; border-bottom:1px solid rgba(255,255,255,0.04); vertical-align:top; }
-.wap-table tr:last-child td { border-bottom:none; }
-.wap-table tr:hover td { background:rgba(255,215,0,0.03); }
-
-/* ── Misc components ─────────────────────────────────────────────────────── */
-.wap-formula {
-    display:block; background:rgba(0,0,0,0.38); border:1px solid rgba(255,215,0,0.16);
-    border-radius:6px; padding:7px 13px; font-family:monospace; font-size:0.76rem;
-    color:var(--gold-secondary); margin:0.45rem 0;
+#wap-body h3 {
+    color: var(--gold-secondary);
+    font-size: 0.82rem;
+    font-weight: 600;
+    margin: 1rem 0 0.35rem;
 }
-.wap-tip  { background:rgba(46,204,113,0.07);  border-left:3px solid #2ecc71; border-radius:0 6px 6px 0; padding:7px 11px; font-size:0.74rem; color:#a8e6cf; margin:0.5rem 0; }
-.wap-warn { background:rgba(231,76,60,0.07);   border-left:3px solid #e74c3c; border-radius:0 6px 6px 0; padding:7px 11px; font-size:0.74rem; color:#ffb3b3; margin:0.5rem 0; }
-.wap-badge { display:inline-block; padding:2px 8px; border-radius:20px; font-size:0.68rem; font-weight:700; margin-right:3px; }
-.badge-atk { background:rgba(231,76,60,0.15);  color:#e74c3c; border:1px solid rgba(231,76,60,0.35); }
-.badge-def { background:rgba(52,152,219,0.15); color:#3498db; border:1px solid rgba(52,152,219,0.35); }
-.badge-int { background:rgba(155,89,182,0.15); color:#9b59b6; border:1px solid rgba(155,89,182,0.35); }
-.badge-dex { background:rgba(46,204,113,0.15); color:#2ecc71; border:1px solid rgba(46,204,113,0.35); }
-.badge-hap { background:rgba(241,196,15,0.15); color:#f1c40f; border:1px solid rgba(241,196,15,0.35); }
-.badge-ene { background:rgba(230,126,34,0.15); color:#e67e22; border:1px solid rgba(230,126,34,0.35); }
-.wap-action-row { display:flex; gap:8px; flex-wrap:wrap; margin:0.5rem 0; }
-.wap-action { flex:1; min-width:130px; background:rgba(0,0,0,0.28); border-radius:8px; padding:9px 11px; border:1px solid rgba(255,255,255,0.07); }
-.wap-action .alabel { font-size:0.78rem; font-weight:700; margin-bottom:3px; }
-.wap-action .adesc  { font-size:0.71rem; color:var(--text-secondary); line-height:1.5; }
-.wap-charge-row { display:flex; gap:5px; flex-wrap:wrap; margin:0.5rem 0; }
-.wap-charge-pip { flex:1; min-width:70px; border-radius:7px; padding:7px 8px; text-align:center; font-size:0.7rem; font-weight:700; }
-.pip1{background:rgba(155,89,182,0.10);border:1px solid rgba(155,89,182,0.22);color:#b39ddb;}
-.pip2{background:rgba(155,89,182,0.18);border:1px solid rgba(155,89,182,0.38);color:#ce93d8;}
-.pip3{background:rgba(155,89,182,0.28);border:1px solid rgba(155,89,182,0.55);color:#e040fb;}
-.pip4{background:rgba(231,76,60,0.22); border:1px solid rgba(231,76,60,0.48); color:#ef9a9a;}
-.pip5{background:rgba(231,76,60,0.38); border:1px solid rgba(231,76,60,0.72); color:#ff5252;}
-.wap-elem-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:5px; margin-top:0.4rem; }
-.wap-elem-cell { background:rgba(0,0,0,0.26); border:1px solid rgba(255,255,255,0.06); border-radius:7px; padding:6px 9px; font-size:0.71rem; color:var(--text-secondary); }
-.wap-elem-cell .ename { color:var(--text-primary); font-weight:600; font-size:0.74rem; margin-bottom:2px; }
-.ei { width:15px; height:15px; vertical-align:middle; object-fit:contain; margin-right:3px; }
-.wap-payout-hi { color:#f1c40f; font-weight:700; }
-.wap-payout-med { color:#e67e22; font-weight:600; }
-.wap-payout-lo  { color:var(--text-secondary); }
+#wap-body p {
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+    line-height: 1.65;
+    margin-bottom: 0.5rem;
+}
+#wap-body strong { color: var(--text-primary); }
+#wap-body em { color: var(--gold-secondary); font-style: normal; }
 
-/* ── Responsive: collapse nav on small screens ───────────────────────────── */
+#wap-body table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.76rem;
+    margin: 0.5rem 0 0.9rem;
+}
+#wap-body table th {
+    color: var(--gold-primary);
+    font-weight: 600;
+    padding: 5px 9px;
+    border-bottom: 1px solid rgba(255,215,0,0.18);
+    text-align: left;
+}
+#wap-body table td {
+    color: var(--text-secondary);
+    padding: 4px 9px;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    vertical-align: top;
+}
+#wap-body table tr:last-child td { border-bottom: none; }
+#wap-body table tr:hover td { background: rgba(255,215,0,0.03); }
+
+#wap-body code {
+    display: block;
+    background: rgba(0,0,0,0.38);
+    border: 1px solid rgba(255,215,0,0.16);
+    border-radius: 6px;
+    padding: 7px 13px;
+    font-family: monospace;
+    font-size: 0.76rem;
+    color: var(--gold-secondary);
+    margin: 0.45rem 0;
+    white-space: pre-wrap;
+}
+#wap-body p code, #wap-body li code {
+    display: inline;
+    padding: 1px 5px;
+    border-radius: 4px;
+    font-size: 0.74rem;
+}
+
+#wap-body blockquote {
+    border-left: 3px solid #2ecc71;
+    background: rgba(46,204,113,0.07);
+    border-radius: 0 6px 6px 0;
+    padding: 7px 11px;
+    font-size: 0.74rem;
+    color: #a8e6cf;
+    margin: 0.5rem 0;
+}
+#wap-body blockquote p { color: #a8e6cf; margin: 0; font-size: 0.74rem; }
+#wap-body blockquote strong { color: #fff; }
+
+/* Warning blockquotes — paragraphs starting with Warning: */
+#wap-body blockquote.warn,
+#wap-body blockquote.warn p {
+    border-left-color: #e74c3c;
+    background: rgba(231,76,60,0.07);
+    color: #ffb3b3;
+}
+
+#wap-body ul, #wap-body ol {
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+    line-height: 1.65;
+    padding-left: 1.4rem;
+    margin-bottom: 0.5rem;
+}
+#wap-body li { margin-bottom: 0.2rem; }
+
+#wap-body hr {
+    border: none;
+    border-top: 1px solid rgba(255,215,0,0.12);
+    margin: 1.6rem 0 0;
+}
+
+/* ── Section cards ───────────────────────────────────────────────────────── */
+.wap-section {
+    background: linear-gradient(145deg, rgba(20,20,20,0.88), rgba(38,38,38,0.88));
+    border: 1px solid rgba(255,215,0,0.22);
+    border-radius: 12px;
+    padding: 1.2rem 1.6rem 0.8rem;
+    margin-bottom: 1.4rem;
+    scroll-margin-top: 12px;
+    transition: box-shadow 0.25s;
+}
+.wap-section:hover { box-shadow: 0 4px 24px rgba(255,215,0,0.09); }
+
+/* ── Loading / error states ──────────────────────────────────────────────── */
+#wap-loading {
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    padding: 2rem;
+    text-align: center;
+}
+#wap-error {
+    display: none;
+    color: #ffb3b3;
+    font-size: 0.82rem;
+    padding: 1rem;
+    background: rgba(231,76,60,0.07);
+    border-left: 3px solid #e74c3c;
+    border-radius: 0 6px 6px 0;
+}
+
+/* ── Responsive ──────────────────────────────────────────────────────────── */
 @media(max-width:680px){
     #wap-wrap { flex-direction:column; }
     #wap-nav  { position:static; width:100%; max-height:none; display:flex; flex-wrap:wrap; padding:6px 8px; gap:2px; }
@@ -116,660 +187,258 @@
 <div class="container-fluid" style="max-width:1060px;padding-bottom:3rem">
 <div id="wap-wrap">
 
-<!-- ── Sticky nav ─────────────────────────────────────────────────────────── -->
+<!-- ── Sticky nav (built dynamically from headings) ───────────────────────── -->
 <nav id="wap-nav">
-    <div class="nav-section">Basics</div>
-    <a href="#overview">🐾 Overview</a>
-    <a href="#stats">📊 Stats & Health</a>
-    <a href="#leveling">⬆️ Leveling & XP</a>
-    <div class="nav-section">Combat</div>
-    <a href="#combat">⚔️ How Combat Works</a>
-    <a href="#actions">🎮 Actions</a>
-    <a href="#charge">⚡ Charge Mechanic</a>
-    <a href="#advantages">🔥 Type & Element</a>
-    <div class="nav-section">Growth</div>
-    <a href="#equipment">🎒 Equipment</a>
-    <a href="#activities">🗺️ Activities</a>
-    <a href="#keys">🗝️ Keys & Chests</a>
-    <div class="nav-section">Multiplayer</div>
-    <a href="#arena">⚔️🎰 The Floor</a>
-    <div class="nav-section">Casino</div>
-    <a href="#casino">🎰 Casino Overview</a>
-    <a href="#slots">🎰 Slots</a>
-    <a href="#races">🏁 Races</a>
-    <a href="#blackjack">🃏 Blackjack</a>
-    <a href="#craps">🎲 Craps</a>
-    <a href="#holdem">♠️ Hold'em</a>
-    <a href="#minigames">🎮 Mini-Games</a>
+    <div id="wap-nav-loading" style="padding:10px 14px;font-size:0.72rem;color:rgba(255,215,0,0.4)">Loading…</div>
 </nav>
 
 <!-- ── Content ────────────────────────────────────────────────────────────── -->
 <div id="wap-content">
-
-<!-- OVERVIEW -->
-<div class="wap-card" id="overview">
-    <div class="wap-title">🐾 What Are Pets?</div>
-    <p class="wap-text">Pets are your personal digital companions. Adopt one, name it, build its stats through activities, gear it up with equipment, and take it into turn-based battles against NPCs or other players. Every pet is unique — defined by its species, type, elements, and the stat path it carves out as it levels up.</p>
-    <p class="wap-text">There are <strong style="color:var(--text-primary)">103 unique species</strong> to choose from. When adopting you pick:</p>
-    <table class="wap-table">
-        <thead><tr><th>Choice</th><th>Options</th><th>Effect</th></tr></thead>
-        <tbody>
-            <tr><td style="color:var(--text-primary)">Type</td><td>Flying · Land · Swimming</td><td>Determines type advantage in combat (15% bonus)</td></tr>
-            <tr><td style="color:var(--text-primary)">Element 1</td><td>12 elements + Basic</td><td>Determines element advantage in combat (10% bonus)</td></tr>
-            <tr><td style="color:var(--text-primary)">Element 2</td><td>Same 12 (optional, not Basic)</td><td>Adds a second element — bonuses are averaged across all matchup pairs</td></tr>
-            <tr><td style="color:var(--text-primary)">Name</td><td>Custom</td><td>Cosmetic only — you can also rename your action labels</td></tr>
-        </tbody>
-    </table>
-    <div class="wap-tip">Basic element pets are a special case — they deal 10% less damage against every other element, but they receive all three key types from Play instead of just one.</div>
+    <div id="wap-loading">⏳ Loading pet guide…</div>
+    <div id="wap-error">Failed to load the pet guide. Please refresh the page.</div>
+    <div id="wap-body"></div>
 </div>
 
-<!-- STATS -->
-<div class="wap-card" id="stats">
-    <div class="wap-title">📊 Stats & Health</div>
-    <p class="wap-text">Every pet has six base stats. These are the foundation of everything — combat power, health, and how well activities go.</p>
-    <table class="wap-table">
-        <thead><tr><th>Stat</th><th>Name</th><th>What it does</th></tr></thead>
-        <tbody>
-            <tr><td><span class="wap-badge badge-atk">ATT</span></td><td>Attack</td><td>Raw offensive power. Contributes to computed Attack stat.</td></tr>
-            <tr><td><span class="wap-badge badge-def">DEF</span></td><td>Defense</td><td>Raw defensive power. Contributes to computed Defense stat.</td></tr>
-            <tr><td><span class="wap-badge badge-int">INT</span></td><td>Intelligence</td><td>Boosts computed Defense. Also used in quest stat checks.</td></tr>
-            <tr><td><span class="wap-badge badge-dex">DEX</span></td><td>Dexterity</td><td>Boosts computed Attack. Also used in quest stat checks.</td></tr>
-            <tr><td><span class="wap-badge badge-hap">HAP</span></td><td>Happiness</td><td>Major contributor to Max HP. Used in quest checks and races.</td></tr>
-            <tr><td><span class="wap-badge badge-ene">ENE</span></td><td>Energy</td><td>Major contributor to Max HP. Used in quest checks and races.</td></tr>
-        </tbody>
-    </table>
-    <div class="wap-sub">Computed Combat Stats</div>
-    <code class="wap-formula">Attack  = ATT + DEX</code>
-    <code class="wap-formula">Defense = DEF + INT</code>
-    <p class="wap-text">These are the numbers used when damage is calculated. A high DEX pet punches above its ATT, and a high INT pet defends better than its DEF alone suggests.</p>
-    <div class="wap-sub">Max Health Formula</div>
-    <code class="wap-formula">Max HP = ( (ATT+DEF+INT+DEX+HAP+ENE) / 6  +  HAP × ENE ) × 10</code>
-    <p class="wap-text">HAP and ENE dominate HP because they appear in both the average and the multiplicative term. A pet with HAP=30 and ENE=30 gets 900 from the HAP×ENE term alone. Equipment bonuses to any stat also raise HP.</p>
-    <div class="wap-tip">Specializing in HAP + ENE gives a massive HP pool. ATT + DEX gives high attack. DEF + INT gives high defense and parry potential. DEX + ENE + HAP makes you fast in races.</div>
-</div>
-
-<!-- LEVELING -->
-<div class="wap-card" id="leveling">
-    <div class="wap-title">⬆️ Leveling & XP</div>
-    <div class="wap-sub">XP to Level Up</div>
-    <code class="wap-formula">XP needed for level N = 200 × (1.03 ^ (N − 1))</code>
-    <p class="wap-text">Level 1 needs 200 XP. Level 10 needs ~261. Level 50 needs ~855. Level 100 needs ~3,532. The 3% curve is gradual — early levels are fast, later ones require sustained effort.</p>
-    <div class="wap-sub">Stat Gains Per Level</div>
-    <p class="wap-text">Every level up grants <strong style="color:var(--text-primary)">5 stat points</strong> distributed randomly across all six stats. Each point is rolled independently — you might get 3 ATT and 2 HAP one level, then 5 DEF the next. Over many levels the distribution tends to even out.</p>
-    <div class="wap-sub">XP Sources</div>
-    <table class="wap-table">
-        <thead><tr><th>Source</th><th>Base XP (level ≤50)</th><th>Notes</th></tr></thead>
-        <tbody>
-            <tr><td>Battle win</td><td>~25</td><td>×1.0 difficulty scale · ±20% variance</td></tr>
-            <tr><td>Battle loss</td><td>~2–3</td><td>10% of normal win XP</td></tr>
-            <tr><td>Mission win</td><td>~30</td><td>Source ×1.2 · Easy ×0.7 · Average ×1.0 · Hard ×1.5</td></tr>
-            <tr><td>Training win</td><td>~20</td><td>Source ×0.8 · same difficulty scale</td></tr>
-            <tr><td>Quest stage</td><td>~37</td><td>Source ×1.5 · scales with pet skill vs difficulty</td></tr>
-            <tr><td>Play</td><td>5 × level</td><td>×1 no match · ×2 one element match · ×3 both match</td></tr>
-            <tr><td>PvP win</td><td>Scales with level gap</td><td>Source ×1.3 · beating higher-level pets earns more</td></tr>
-            <tr><td>PvP loss</td><td>~20% of win XP</td><td>You still earn something for trying</td></tr>
-        </tbody>
-    </table>
-    <div class="wap-warn">Losing a Mission with gambled XP deducts that XP from your total. If it drops you below your current level's threshold, you level down.</div>
-</div>
-
-<!-- COMBAT -->
-<div class="wap-card" id="combat">
-    <div class="wap-title">⚔️ How Combat Works</div>
-    <p class="wap-text">Battles are turn-based. Each turn both sides pick an action simultaneously — neither knows what the other chose. Damage resolves after both choices are locked in.</p>
-    <div class="wap-sub">Damage Formula</div>
-    <code class="wap-formula">Raw Attack  = (d20 roll × Attack stat) × charge multiplier × type bonus × element bonus</code>
-    <code class="wap-formula">Raw Defense = (d20 roll × Defense stat) × defender charge multiplier × type bonus × element bonus</code>
-    <p class="wap-text">The d20 roll (1–20) means every hit has natural variance — a roll of 1 deals 1× your attack stat, a roll of 20 deals 20×. This keeps battles unpredictable even between evenly matched pets.</p>
-    <div class="wap-sub">Damage Outcomes by Action Matchup</div>
-    <table class="wap-table">
-        <thead><tr><th>You do</th><th>Enemy does</th><th>Result</th></tr></thead>
-        <tbody>
-            <tr><td>Attack</td><td>Attack</td><td>Both deal damage. No defense roll on either side.</td></tr>
-            <tr><td>Attack</td><td>Defend</td><td>Enemy rolls defense. Attack &gt; Defense → you deal the difference. Defense &gt; Attack → enemy parries the difference back at you.</td></tr>
-            <tr><td>Attack</td><td>Charge</td><td>Enemy is vulnerable — you deal ×1.25 damage. Enemy deals 0.</td></tr>
-            <tr><td>Defend</td><td>Attack</td><td>You roll defense. Same parry logic in reverse.</td></tr>
-            <tr><td>Defend</td><td>Defend</td><td>Both defend. No damage either way.</td></tr>
-            <tr><td>Defend</td><td>Charge</td><td>You roll defense vs 0 attack. No damage, no parry.</td></tr>
-            <tr><td>Charge</td><td>Attack</td><td>You deal 0 and take ×1.25 damage.</td></tr>
-            <tr><td>Charge</td><td>Charge</td><td>Both build charge. No damage.</td></tr>
-            <tr><td>Charge</td><td>Defend</td><td>You build charge. Enemy defends against 0. No damage.</td></tr>
-        </tbody>
-    </table>
-    <div class="wap-sub">The Parry System</div>
-    <p class="wap-text">Parry is the most important mechanic to understand. When you defend and your defense roll <em>exceeds</em> the attacker's attack roll, the excess is reflected back as damage to the attacker. A high-DEF/INT pet defending against a weak attack doesn't just block — it punishes the attacker.</p>
-    <div class="wap-tip">Parry damage = Defense roll − Attack roll (when defense wins). A pet with DEF=34 and INT=20 has computed Defense of 54. On a d20=15 roll that's 810 defense value — easily parrying most attacks back at the enemy.</div>
-    <div class="wap-warn">Parry only triggers when the defender's roll beats the attacker's roll. If the attacker rolls high enough to overcome your defense, you take the difference as damage instead.</div>
-</div>
-
-<!-- ACTIONS -->
-<div class="wap-card" id="actions">
-    <div class="wap-title">🎮 The Three Actions</div>
-    <div class="wap-action-row">
-        <div class="wap-action">
-            <div class="alabel" style="color:#e74c3c">⚔️ Attack</div>
-            <div class="adesc">Deal damage this turn. Rolls d20 × Attack stat × charge multiplier × bonuses. If the enemy is defending, their defense roll reduces or reflects your damage. If the enemy is charging, you deal 25% extra. No defense roll on your side when attacking.</div>
-        </div>
-        <div class="wap-action">
-            <div class="alabel" style="color:#3498db">🛡️ Defend</div>
-            <div class="adesc">Roll defense this turn. If the enemy attacks, your defense roll reduces their damage. If your defense roll exceeds their attack roll, the excess bounces back as parry damage. Defending against a charging enemy blocks 0 attack — no parry possible. Charge multiplier boosts your defense roll.</div>
-        </div>
-        <div class="wap-action">
-            <div class="alabel" style="color:#9b59b6">⚡ Charge</div>
-            <div class="adesc">Build your charge multiplier by 1 (up to ×5). You deal 0 damage this turn and take 25% extra if attacked. Your charge carries into future turns and multiplies your next attack or defense roll. Charge resets to ×1 after you attack or defend.</div>
-        </div>
-    </div>
-    <div class="wap-tip">Each species has custom names for its actions (e.g. a Snail might "Slime Lunge" instead of "Attack"). These are cosmetic — the mechanics are identical. You can also set your own custom action names via Rename.</div>
-</div>
-
-<!-- CHARGE -->
-<div class="wap-card" id="charge">
-    <div class="wap-title">⚡ The Charge Mechanic</div>
-    <p class="wap-text">Charge is a risk/reward buildup system. Each Charge action increases your multiplier by 1. The multiplier applies to your next attack or defense roll — making both your offense and parry potential much stronger.</p>
-    <div class="wap-charge-row">
-        <div class="wap-charge-pip pip1">×1<br><span style="font-weight:400;font-size:0.63rem">No charge</span></div>
-        <div class="wap-charge-pip pip2">×2<br><span style="font-weight:400;font-size:0.63rem">1 charge</span></div>
-        <div class="wap-charge-pip pip3">×3<br><span style="font-weight:400;font-size:0.63rem">2 charges</span></div>
-        <div class="wap-charge-pip pip4">×4<br><span style="font-weight:400;font-size:0.63rem">3 charges</span></div>
-        <div class="wap-charge-pip pip5">×5<br><span style="font-weight:400;font-size:0.63rem">MAX</span></div>
-    </div>
-    <table class="wap-table" style="margin-top:0.6rem">
-        <thead><tr><th>Rule</th><th>Detail</th></tr></thead>
-        <tbody>
-            <tr><td>Max charge</td><td>×5 — cannot charge beyond this</td></tr>
-            <tr><td>Charge resets</td><td>Immediately after you use Attack or Defend (regardless of outcome)</td></tr>
-            <tr><td>Vulnerability</td><td>While charging you take ×1.25 damage from attacks</td></tr>
-            <tr><td>Charge + Defend</td><td>Your charge multiplier also boosts your defense roll — great for parry builds</td></tr>
-            <tr><td>Charge + Attack</td><td>Your charge multiplier boosts your attack roll — great for burst builds</td></tr>
-        </tbody>
-    </table>
-    <div class="wap-tip">Charging is most effective when you predict the enemy will also charge or defend. The safest charge window is when you're confident the enemy won't attack that turn.</div>
-    <div class="wap-warn">Don't charge to ×5 against a high-defense enemy — your boosted attack might still get parried, and you spent 4 turns of vulnerability to get there.</div>
-</div>
-
-<!-- TYPE & ELEMENT -->
-<div class="wap-card" id="advantages">
-    <div class="wap-title">🔥 Type & Element Advantages</div>
-    <p class="wap-text">Bonuses from type and element are multiplicative. A 15% type bonus and a 10% element bonus together give <strong style="color:var(--text-primary)">×1.265</strong> total (1.15 × 1.10). These bonuses apply to both attack rolls and defense rolls.</p>
-    <div class="wap-sub">Type Advantages — ×1.15 (15% bonus)</div>
-    <table class="wap-table">
-        <thead><tr><th>Attacker Type</th><th>Beats</th><th>Loses to</th></tr></thead>
-        <tbody>
-            <tr><td><img src="/static/Emojis/Pets/Deco/Flying.png" class="ei">Flying</td><td><img src="/static/Emojis/Pets/Deco/Land.png" class="ei">Land</td><td><img src="/static/Emojis/Pets/Deco/Swimming.png" class="ei">Swimming</td></tr>
-            <tr><td><img src="/static/Emojis/Pets/Deco/Land.png" class="ei">Land</td><td><img src="/static/Emojis/Pets/Deco/Swimming.png" class="ei">Swimming</td><td><img src="/static/Emojis/Pets/Deco/Flying.png" class="ei">Flying</td></tr>
-            <tr><td><img src="/static/Emojis/Pets/Deco/Swimming.png" class="ei">Swimming</td><td><img src="/static/Emojis/Pets/Deco/Flying.png" class="ei">Flying</td><td><img src="/static/Emojis/Pets/Deco/Land.png" class="ei">Land</td></tr>
-        </tbody>
-    </table>
-    <div class="wap-sub">Element Advantages — ×1.10 (10% bonus)</div>
-    <div class="wap-elem-grid">
-        <div class="wap-elem-cell"><div class="ename"><img src="/static/Emojis/Pets/Deco/Fire.png" class="ei">Fire</div>Strong vs: Ice · Plant · Necro</div>
-        <div class="wap-elem-cell"><div class="ename"><img src="/static/Emojis/Pets/Deco/Electric.png" class="ei">Electric</div>Strong vs: Water · Plant · Fighting</div>
-        <div class="wap-elem-cell"><div class="ename"><img src="/static/Emojis/Pets/Deco/Air.png" class="ei">Air</div>Strong vs: Rock · Fighting · Electric</div>
-        <div class="wap-elem-cell"><div class="ename"><img src="/static/Emojis/Pets/Deco/Ice.png" class="ei">Ice</div>Strong vs: Air · Electric · Water</div>
-        <div class="wap-elem-cell"><div class="ename"><img src="/static/Emojis/Pets/Deco/Water.png" class="ei">Water</div>Strong vs: Fire · Rock · Air</div>
-        <div class="wap-elem-cell"><div class="ename"><img src="/static/Emojis/Pets/Deco/Plant.png" class="ei">Plant</div>Strong vs: Water · Air · Psychic</div>
-        <div class="wap-elem-cell"><div class="ename"><img src="/static/Emojis/Pets/Deco/Rock.png" class="ei">Rock</div>Strong vs: Electric · Fire · Ice</div>
-        <div class="wap-elem-cell"><div class="ename"><img src="/static/Emojis/Pets/Deco/Fighting.png" class="ei">Fighting</div>Strong vs: Ice · Psychic · Holy</div>
-        <div class="wap-elem-cell"><div class="ename"><img src="/static/Emojis/Pets/Deco/Psychic.png" class="ei">Psychic</div>Strong vs: Holy · Necro · Magic</div>
-        <div class="wap-elem-cell"><div class="ename"><img src="/static/Emojis/Pets/Deco/Magic.png" class="ei">Magic</div>Strong vs: Psychic · Fighting · Fire</div>
-        <div class="wap-elem-cell"><div class="ename"><img src="/static/Emojis/Pets/Deco/Holy.png" class="ei">Holy</div>Strong vs: Necro · Magic · Rock</div>
-        <div class="wap-elem-cell"><div class="ename"><img src="/static/Emojis/Pets/Deco/Necro.png" class="ei">Necro</div>Strong vs: Holy · Magic · Plant</div>
-        <div class="wap-elem-cell"><div class="ename"><img src="/static/Emojis/Pets/Deco/Basic.png" class="ei">Basic</div>No advantages. −10% vs all elements.</div>
-    </div>
-    <div class="wap-sub">Dual Elements</div>
-    <p class="wap-text">If your pet has two elements, the game calculates the bonus for every attacker/defender element pair and averages them. A Fire/Holy pet attacking a Necro/Plant enemy gets: Fire→Necro (×1.10), Fire→Plant (×1.10), Holy→Necro (×1.10), Holy→Plant (×1.0) — averaged to ×1.075. Dual elements smooth out your matchups rather than doubling your advantage.</p>
-    <div class="wap-tip">Dual elements are strongest when both your elements beat the same enemy element — you get consistent bonuses across all pairs.</div>
-</div>
-
-<!-- EQUIPMENT -->
-<div class="wap-card" id="equipment">
-    <div class="wap-title">🎒 Equipment & Inventory</div>
-    <p class="wap-text">Items boost your base stats directly. Since stats feed into Attack, Defense, and HP, even small bonuses compound significantly at higher levels.</p>
-    <div class="wap-sub">Equipment Slots</div>
-    <table class="wap-table">
-        <thead><tr><th>Slot</th><th>Max Equipped</th><th>What it does</th></tr></thead>
-        <tbody>
-            <tr><td>🧢 Hat</td><td>1</td><td>Stat bonuses. One hat at a time.</td></tr>
-            <tr><td>🧵 Material</td><td>2</td><td>Stat bonuses. Up to 2 materials simultaneously.</td></tr>
-            <tr><td>💎 Gem</td><td>2</td><td>Stat bonuses. Up to 2 gems simultaneously.</td></tr>
-            <tr><td>👹 Monster</td><td>2</td><td>Stat bonuses. Up to 2 monsters simultaneously.</td></tr>
-        </tbody>
-    </table>
-    <div class="wap-sub">Equipment Multipliers</div>
-    <table class="wap-table">
-        <thead><tr><th>Bonus Type</th><th>Condition</th><th>Effect</th></tr></thead>
-        <tbody>
-            <tr><td>Level Milestone</td><td>Every 50 levels</td><td>All equipped item stat bonuses multiply. Level 50 = ×2, Level 100 = ×3, Level 150 = ×4, etc.</td></tr>
-            <tr><td>Duplication Bonus</td><td>Two identical items in same slot type</td><td>That pair's stat bonuses are doubled. Stack two of the same Material, Gem, or Monster to trigger this.</td></tr>
-        </tbody>
-    </table>
-    <div class="wap-sub">Item Rarities</div>
-    <p class="wap-text">
-        <span class="wap-badge" style="background:rgba(150,150,150,0.12);color:#aaa;border:1px solid rgba(150,150,150,0.28)">Common</span>
-        <span class="wap-badge" style="background:rgba(46,204,113,0.12);color:#2ecc71;border:1px solid rgba(46,204,113,0.28)">Uncommon</span>
-        <span class="wap-badge" style="background:rgba(52,152,219,0.12);color:#3498db;border:1px solid rgba(52,152,219,0.28)">Rare</span>
-        <span class="wap-badge" style="background:rgba(155,89,182,0.12);color:#9b59b6;border:1px solid rgba(155,89,182,0.28)">Epic</span>
-        <span class="wap-badge" style="background:rgba(241,196,15,0.12);color:#f1c40f;border:1px solid rgba(241,196,15,0.28)">Mythic</span>
-    </p>
-    <div class="wap-sub">Inventory Limits</div>
-    <table class="wap-table">
-        <thead><tr><th>Item Type</th><th>Max Held</th></tr></thead>
-        <tbody>
-            <tr><td>Potions</td><td>16 per potion type</td></tr>
-            <tr><td>All other items (Hats, Materials, Gems, Monsters, Keys)</td><td>5 per item</td></tr>
-        </tbody>
-    </table>
-    <div class="wap-warn">If your inventory is full when you earn an item, it's automatically converted to XP instead. Keep your inventory managed.</div>
-    <div class="wap-sub">Potions</div>
-    <p class="wap-text">Potions grant a temporary elemental boost. Using a potion on a single-element pet gives +5 to that element's effectiveness. On a dual-element pet it gives +3. Potions are consumed on use and stack up to 16 per type.</p>
-</div>
-
-<!-- ACTIVITIES -->
-<div class="wap-card" id="activities">
-    <div class="wap-title">🗺️ Activities</div>
-    <div class="wap-sub">🎮 Play</div>
-    <p class="wap-text">Low-risk, low-reward. Pick a location and your pet plays there. XP = <code style="font-size:0.73rem;color:var(--gold-secondary)">5 × level</code> with an element-match multiplier:</p>
-    <table class="wap-table">
-        <thead><tr><th>Element Match</th><th>XP Multiplier</th><th>Key Awarded</th></tr></thead>
-        <tbody>
-            <tr><td>No elements match the location</td><td>×1</td><td>Key1</td></tr>
-            <tr><td>One element matches</td><td>×2</td><td>Key2</td></tr>
-            <tr><td>Both elements match</td><td>×3</td><td>Key3</td></tr>
-            <tr><td>Basic element pet</td><td>×1</td><td>Key1 + Key2 + Key3</td></tr>
-        </tbody>
-    </table>
-    <div class="wap-sub">🏋️ Train</div>
-    <table class="wap-table">
-        <thead><tr><th>Difficulty</th><th>Success Chance</th><th>XP on Win</th></tr></thead>
-        <tbody>
-            <tr><td>Easy</td><td>90%</td><td>50 XP</td></tr>
-            <tr><td>Average</td><td>70%</td><td>100 XP</td></tr>
-            <tr><td>Hard</td><td>50%</td><td>200 XP</td></tr>
-        </tbody>
-    </table>
-    <div class="wap-sub">🎯 Mission</div>
-    <p class="wap-text">High risk, high reward. You can gamble your own XP — win and you get it back plus the mission reward. Lose and it's gone.</p>
-    <table class="wap-table">
-        <thead><tr><th>Difficulty</th><th>Success Chance</th><th>Key Chances</th></tr></thead>
-        <tbody>
-            <tr><td>Easy</td><td>70%</td><td>33% Key1</td></tr>
-            <tr><td>Average</td><td>50%</td><td>50% Key1 · 33% Key2</td></tr>
-            <tr><td>Hard</td><td>30%</td><td>75% Key1 · 50% Key2 · 33% Key3</td></tr>
-        </tbody>
-    </table>
-    <div class="wap-sub">📜 Quest</div>
-    <p class="wap-text">A 5-stage AI-generated story adventure. Each stage presents three choices tied to stat pairs:</p>
-    <table class="wap-table">
-        <thead><tr><th>Choice</th><th>Stats Checked</th></tr></thead>
-        <tbody>
-            <tr><td>Choice 1</td><td>ATT + DEF (averaged)</td></tr>
-            <tr><td>Choice 2</td><td>INT + DEX (averaged)</td></tr>
-            <tr><td>Choice 3</td><td>HAP + ENE (averaged)</td></tr>
-        </tbody>
-    </table>
-    <p class="wap-text">Quests include a hostile pet encounter, a loot chest stage (real chest or mimic), and an exit. Completing all stages rewards XP and loot. Failing the hostile encounter ends the quest early.</p>
-    <div class="wap-sub">⚔️ NPC Battle</div>
-    <table class="wap-table">
-        <thead><tr><th>Difficulty</th><th>Enemy ATK/DEF Scale</th><th>Enemy HP Scale</th><th>Enemy Type/Element</th></tr></thead>
-        <tbody>
-            <tr><td>Easy</td><td>×0.70</td><td>×0.85</td><td>Chosen to be weak against your pet</td></tr>
-            <tr><td>Average</td><td>×1.10</td><td>×1.10</td><td>Random</td></tr>
-            <tr><td>Hard</td><td>×1.50</td><td>×1.35</td><td>Chosen to counter your pet</td></tr>
-        </tbody>
-    </table>
-    <p class="wap-text">Enemy attack is capped at <code style="font-size:0.73rem;color:var(--gold-secondary)">max(10, your_HP / 12)</code> to prevent instant kills. Winning awards XP and has a chance to drop keys and items. Losing still gives 10% of normal XP.</p>
-</div>
-
-<!-- KEYS & CHESTS -->
-<div class="wap-card" id="keys">
-    <div class="wap-title">🗝️ Keys & Chests</div>
-    <p class="wap-text">Keys are earned from most activities and used to open chests in the Loot Market. Each chest tier unlocks a different rarity of loot — not just more items, but better ones.</p>
-
-    <div class="wap-sub">Key Drop Chances by Activity</div>
-    <table class="wap-table">
-        <thead><tr><th>Activity</th><th>Key1</th><th>Key2</th><th>Key3</th></tr></thead>
-        <tbody>
-            <tr><td>Play — no element match</td><td>✅ Always</td><td>—</td><td>—</td></tr>
-            <tr><td>Play — one element match</td><td>—</td><td>✅ Always</td><td>—</td></tr>
-            <tr><td>Play — both elements match</td><td>—</td><td>—</td><td>✅ Always</td></tr>
-            <tr><td>Play — Basic element pet</td><td>✅ Always</td><td>✅ Always</td><td>✅ Always</td></tr>
-            <tr><td>Mission Easy (win)</td><td>33%</td><td>—</td><td>—</td></tr>
-            <tr><td>Mission Average (win)</td><td>50%</td><td>33%</td><td>—</td></tr>
-            <tr><td>Mission Hard (win)</td><td>75%</td><td>50%</td><td>33%</td></tr>
-            <tr><td>Battle (win, any difficulty)</td><td>Chance via loot roll</td><td>Chance via loot roll</td><td>—</td></tr>
-        </tbody>
-    </table>
-
-    <div class="wap-sub">Chest Costs & Loot</div>
-    <table class="wap-table">
-        <thead><tr><th>Chest</th><th>Key Cost</th><th>Loot Awarded</th></tr></thead>
-        <tbody>
-            <tr>
-                <td><img src="/static/Emojis/Pets/Equipment/chest1.png" style="width:22px;vertical-align:middle;margin-right:5px">Chest 1</td>
-                <td>1× <img src="/static/Emojis/Pets/Equipment/Key1.png" style="width:18px;vertical-align:middle"> Key1</td>
-                <td>1 <span class="wap-badge" style="background:rgba(150,150,150,0.12);color:#aaa;border:1px solid rgba(150,150,150,0.28)">Common</span> or <span class="wap-badge" style="background:rgba(46,204,113,0.12);color:#2ecc71;border:1px solid rgba(46,204,113,0.28)">Uncommon</span> item (any type)</td>
-            </tr>
-            <tr>
-                <td><img src="/static/Emojis/Pets/Equipment/chest2.png" style="width:22px;vertical-align:middle;margin-right:5px">Chest 2</td>
-                <td>1× <img src="/static/Emojis/Pets/Equipment/Key2.png" style="width:18px;vertical-align:middle"> Key2</td>
-                <td>1 <span class="wap-badge" style="background:rgba(52,152,219,0.12);color:#3498db;border:1px solid rgba(52,152,219,0.28)">Rare</span> item (any type)</td>
-            </tr>
-            <tr>
-                <td><img src="/static/Emojis/Pets/Equipment/chest3.png" style="width:22px;vertical-align:middle;margin-right:5px">Chest 3</td>
-                <td>1× <img src="/static/Emojis/Pets/Equipment/Key3.png" style="width:18px;vertical-align:middle"> Key3</td>
-                <td>1 <span class="wap-badge" style="background:rgba(155,89,182,0.12);color:#9b59b6;border:1px solid rgba(155,89,182,0.28)">Epic</span> item (any type)</td>
-            </tr>
-            <tr>
-                <td><img src="/static/Emojis/Pets/Equipment/chest4.png" style="width:22px;vertical-align:middle;margin-right:5px">Chest 4</td>
-                <td>1× Key1 + 1× Key2 + 1× Key3</td>
-                <td>1 item of your <strong style="color:var(--text-primary)">chosen type</strong> (any rarity) + 1 bonus <span class="wap-badge" style="background:rgba(46,204,113,0.12);color:#2ecc71;border:1px solid rgba(46,204,113,0.28)">Uncommon</span>+ item (random type)</td>
-            </tr>
-        </tbody>
-    </table>
-
-    <div class="wap-sub">Chest 4 — Chosen Type</div>
-    <p class="wap-text">When opening Chest 4 you pick one item type: Material, Gem, Monster, Hat, or Potion. The chest guarantees one item of that type at any rarity (Common through Mythic), plus a free bonus item of Uncommon rarity or better from any type. This makes Chest 4 the best way to target a specific equipment slot.</p>
-
-    <div class="wap-sub">Rare Chest Drops</div>
-    <p class="wap-text">Chests themselves can also drop as loot from battles — a very rare bonus on top of normal rewards:</p>
-    <table class="wap-table">
-        <thead><tr><th>Battle Difficulty</th><th>Chest Drop Chance</th><th>Chest Weights if it drops</th></tr></thead>
-        <tbody>
-            <tr><td>Easy</td><td>2%</td><td>Chest1 50% · Chest2 30% · Chest3 15% · Chest4 5%</td></tr>
-            <tr><td>Medium / Average</td><td>5%</td><td>Chest1 50% · Chest2 30% · Chest3 15% · Chest4 5%</td></tr>
-            <tr><td>Hard</td><td>8%</td><td>Chest1 50% · Chest2 30% · Chest3 15% · Chest4 5%</td></tr>
-        </tbody>
-    </table>
-
-    <div class="wap-tip">Chest 4 is the most efficient use of keys when you need a specific slot filled — you're guaranteed the item type you want plus a free bonus item. Save your Key1+Key2+Key3 sets for it rather than opening three separate chests.</div>
-    <div class="wap-warn">Inventory is capped at 5 per item (16 for potions). If a chest drops an item you're already maxed on, the overflow converts to XP at a rate of level × 100 XP per excess item.</div>
-</div>
-
-<!-- ARENA / THE FLOOR -->
-<div class="wap-card" id="arena">
-    <div class="wap-title">⚔️🎰 The Floor</div>
-    <p class="wap-text">The Floor is a unified live room hub — one grid of rooms where you can battle <em>or</em> gamble, all visible to everyone in real time. Pick any open room and choose what you want to do inside it. Other users can watch your room from the grid as it updates live.</p>
-
-    <div class="wap-sub">How Rooms Work</div>
-    <p class="wap-text">There are 24 rooms total — 12 for battles, 12 for casino games. Every room starts empty. Click one and you get a choice:</p>
-    <table class="wap-table">
-        <thead><tr><th>Choice</th><th>What happens</th></tr></thead>
-        <tbody>
-            <tr><td>⚔️ Battle</td><td>Enter the room as a fighter. Pick NPC or PvP mode, set difficulty, and start battling. Your room glows blue for NPC or gold-pulsing for PvP-seeking.</td></tr>
-            <tr><td>🎰 Casino</td><td>Enter the room as a gambler. Pick any casino game and it opens inline — no page navigation. Your room shows the game icon and status to spectators.</td></tr>
-        </tbody>
-    </table>
-    <p class="wap-text">The room grid updates live for everyone watching. Occupied rooms show player avatars, the current activity, and a status badge. Empty rooms show as dim until someone enters.</p>
-
-    <div class="wap-sub">Battle Rooms — NPC AI Behavior</div>
-    <p class="wap-text">The NPC makes strategic decisions every turn based on its situation — it's not random:</p>
-    <table class="wap-table">
-        <thead><tr><th>Situation</th><th>NPC Tendency</th></tr></thead>
-        <tbody>
-            <tr><td>Full HP</td><td>Heavily favors attacking (weight 6 attack vs 1 defend)</td></tr>
-            <tr><td>Below 50% HP</td><td>Starts mixing in more defense</td></tr>
-            <tr><td>Below 25% HP</td><td>Mostly defends, stops charging</td></tr>
-            <tr><td>Below 15% HP</td><td>Almost pure defense, charge disabled</td></tr>
-            <tr><td>You're below 25% HP</td><td>Pushes hard on attack to finish you</td></tr>
-            <tr><td>Charge built to ×3+</td><td>Dumps charge into an attack</td></tr>
-            <tr><td>Low ATK vs high DEF stat</td><td>Prefers charging and defending over raw attacking</td></tr>
-            <tr><td>You're charging</td><td>More likely to attack (punish your vulnerability)</td></tr>
-        </tbody>
-    </table>
-
-    <div class="wap-sub">Battle Rooms — PvP</div>
-    <p class="wap-text">Enter a room in PvP mode and your room pulses gold — visible to everyone. Another player can click your room and accept the challenge. PvP XP scales with the level difference — beating a higher-level pet earns more. Losing still gives 20% of normal PvP XP.</p>
-    <div class="wap-tip">In PvP, the room panel shows your opponent's pet species before you accept. Use that to predict their type and element matchup.</div>
-
-    <div class="wap-sub">Casino Rooms — Inline Games</div>
-    <p class="wap-text">All six casino games open directly inside the panel — no page navigation. The game loads into a scrollable embed with a Close button that returns you to your room. Your room stays active the whole time, so spectators can still see you're gambling.</p>
-    <table class="wap-table">
-        <thead><tr><th>Game</th><th>Room status shown to others</th></tr></thead>
-        <tbody>
-            <tr><td>🎰 Slots</td><td>🎰 Choosing → 🎰 Playing</td></tr>
-            <tr><td>🃏 Blackjack</td><td>🃏 Choosing → 🃏 Playing</td></tr>
-            <tr><td>🎲 Craps</td><td>🎲 Choosing → 🎲 Playing</td></tr>
-            <tr><td>♠️ Hold'em</td><td>♠️ Choosing → ♠️ Playing</td></tr>
-            <tr><td>🏁 Races</td><td>🏁 Choosing → 🏁 Playing</td></tr>
-            <tr><td>🎮 Mini-Games</td><td>🎮 Choosing → Join Me! (open seat for 2nd player)</td></tr>
-        </tbody>
-    </table>
-    <div class="wap-tip">Mini-Games (Coin Flip and RPS) support two players in the same room. When you're in a Mini-Games room, it shows "Join Me!" so another player can join and play against you.</div>
-</div>
-
-<!-- CASINO OVERVIEW -->
-<div class="wap-card" id="casino">
-    <div class="wap-title">🎰 The Pet Casino</div>
-    <p class="wap-text">The Casino lets you gamble your pet's XP across six games. All bets are placed in XP — win and your XP grows, lose and it shrinks. Every game has a <strong style="color:var(--text-primary)">Fun Mode</strong> toggle that lets you play without any XP at stake, so you can learn the games risk-free.</p>
-    <p class="wap-text">All casino games are accessible from The Floor — pick a casino room, choose your game, and it opens inline in the panel. No page navigation needed.</p>
-    <div class="wap-warn">Casino losses reduce your XP directly. If you drop below your current level's XP threshold, you level down. Don't bet more than you can afford to lose.</div>
-    <div class="wap-sub">Available Games</div>
-    <table class="wap-table">
-        <thead><tr><th>Game</th><th>Type</th><th>Stat Influence</th></tr></thead>
-        <tbody>
-            <tr><td>🎰 Slot Machine</td><td>Luck / Matching</td><td>Insanity mode uses your pet's element and species</td></tr>
-            <tr><td>🃏 Blackjack</td><td>Card game</td><td>None — pure card skill</td></tr>
-            <tr><td>🎲 Craps</td><td>Dice game</td><td>None — pure dice odds</td></tr>
-            <tr><td>♠️ Texas Hold'em</td><td>Poker</td><td>None — pure card skill</td></tr>
-            <tr><td>🏁 Pet Races</td><td>Streak / Progression</td><td>DEX · ENE · HAP determine your pet's speed</td></tr>
-            <tr><td>🎮 Mini-Games</td><td>Coin Flip / RPS</td><td>None — pure luck/choice</td></tr>
-        </tbody>
-    </table>
-</div>
-
-<!-- SLOTS -->
-<div class="wap-card" id="slots">
-    <div class="wap-title">🎰 Slot Machine</div>
-    <p class="wap-text">Spin three reels and match symbols. The difficulty determines which symbol set the reels use and how large the payouts are. Higher difficulties have more symbols in the pool, making matches rarer but paying out far more when they hit.</p>
-    <div class="wap-sub">Difficulties & Symbol Sets</div>
-    <table class="wap-table">
-        <thead><tr><th>Difficulty</th><th>Symbol Set</th><th>Pool Size</th><th>3-Match Payout</th><th>2-Match Payout</th></tr></thead>
-        <tbody>
-            <tr><td>Very Easy</td><td>Pet Types (Flying, Land, Swimming)</td><td>3 symbols</td><td class="wap-payout-med">×8.0 bet</td><td class="wap-payout-lo">×0.5 bet</td></tr>
-            <tr><td>Easy</td><td>Military / Units</td><td>~9 symbols</td><td class="wap-payout-med">×15.0 bet</td><td class="wap-payout-lo">×0.78 bet</td></tr>
-            <tr><td>Medium</td><td>Stats (ATT, DEF, INT…)</td><td>~6 symbols</td><td class="wap-payout-med">×35.0 bet</td><td class="wap-payout-lo">×1.33 bet</td></tr>
-            <tr><td>Hard</td><td>Elements (all 13)</td><td>13 symbols</td><td class="wap-payout-hi">×168.0 bet</td><td class="wap-payout-lo">×3.33 bet</td></tr>
-            <tr><td>Very Hard</td><td>Pet Species (all 103)</td><td>103 symbols</td><td class="wap-payout-hi">×1,061.0 bet</td><td class="wap-payout-lo">×0.49 bet</td></tr>
-            <tr><td>Insanity</td><td>Dual reels — see below</td><td>—</td><td colspan="2" style="color:var(--gold-primary);font-weight:700">See Insanity table</td></tr>
-        </tbody>
-    </table>
-    <div class="wap-sub">Insanity Mode</div>
-    <p class="wap-text">Insanity uses two independent reels simultaneously — an Element reel and a Pet Species reel. Your targets are your own pet's element and species. Both reels must match your targets to win big.</p>
-    <table class="wap-table">
-        <thead><tr><th>Match Condition</th><th>Payout</th></tr></thead>
-        <tbody>
-            <tr><td>3 element matches AND 3 species matches</td><td class="wap-payout-hi">×2,500,000,000 bet — INSANITY JACKPOT</td></tr>
-            <tr><td>(3 element + 2 species) OR (2 element + 3 species)</td><td class="wap-payout-hi">×215,000 bet — MEGA WIN</td></tr>
-            <tr><td>2 element matches AND 2 species matches</td><td class="wap-payout-med">×220,000 bet — DUAL WIN</td></tr>
-            <tr><td>Anything else</td><td class="wap-payout-lo">Loss — bet is consumed</td></tr>
-        </tbody>
-    </table>
-    <div class="wap-warn">Insanity mode has astronomically low odds of hitting the jackpot. The 2.5 billion multiplier is real but the probability of hitting it is vanishingly small. Only bet what you're comfortable losing entirely.</div>
-    <div class="wap-tip">Very Easy is the best mode for consistent small wins — only 3 symbols means a 1-in-3 chance per reel for a 3-match. Use it to grind small XP gains safely.</div>
-</div>
-
-<!-- RACES -->
-<div class="wap-card" id="races">
-    <div class="wap-title">🏁 Pet Races</div>
-    <p class="wap-text">Race your pet against AI competitors. Your pet's speed is calculated from three stats with random variance each race — making it a mix of stat investment and luck.</p>
-    <div class="wap-sub">Speed Formula</div>
-    <code class="wap-formula">Speed = (DEX × rand[0.5–1.5]) × (ENE × rand[0.5–1.5]) × (HAP × rand[0.5–1.5]) / 3</code>
-    <p class="wap-text">Each of the three stats is multiplied by an independent random factor between 0.5 and 1.5 every race. Higher base stats give you a better average speed, but the variance means upsets happen. AI opponents are generated with stats scaled from yours based on difficulty.</p>
-    <div class="wap-sub">Difficulty Scaling</div>
-    <table class="wap-table">
-        <thead><tr><th>Difficulty</th><th>AI Stat Multiplier</th><th>Win Payout</th></tr></thead>
-        <tbody>
-            <tr><td>Apprentice</td><td>Scaled below your stats</td><td class="wap-payout-lo">×1.25 bet</td></tr>
-            <tr><td>Journeyman</td><td>Scaled near your stats</td><td class="wap-payout-med">×2.0 bet</td></tr>
-            <tr><td>Senior</td><td>Scaled above your stats</td><td class="wap-payout-hi">×3.0 bet</td></tr>
-        </tbody>
-    </table>
-    <div class="wap-sub">Win Streaks</div>
-    <p class="wap-text">Races have a streak system — keep winning without cashing out to multiply your pending winnings. You can continue racing or cash out at any time after a win. Losing resets your streak and you lose your bet.</p>
-    <table class="wap-table">
-        <thead><tr><th>Win Streak</th><th>Streak Multiplier</th><th>Key Bonus</th></tr></thead>
-        <tbody>
-            <tr><td>1–2 wins</td><td>×1</td><td>Key1</td></tr>
-            <tr><td>3–5 wins</td><td>×2</td><td>Key2</td></tr>
-            <tr><td>6–8 wins</td><td>×4</td><td>Key3</td></tr>
-            <tr><td>9+ wins</td><td>×8</td><td>Key1 + Key2 + Key3</td></tr>
-        </tbody>
-    </table>
-    <p class="wap-text">Your total payout = <code style="font-size:0.73rem;color:var(--gold-secondary)">bet × difficulty_multiplier × streak_multiplier</code>. A Senior race with a 9-win streak pays ×24 your original bet.</p>
-    <div class="wap-tip">Cash out before you lose your streak. The XP and keys are only awarded when you cash out — if you lose before cashing out, you get nothing from that run.</div>
-</div>
-
-<!-- BLACKJACK -->
-<div class="wap-card" id="blackjack">
-    <div class="wap-title">🃏 Blackjack</div>
-    <p class="wap-text">Beat the dealer to 21 without going over. Standard rules — dealer hits soft 17, blackjack pays 3:2.</p>
-    <div class="wap-sub">Actions</div>
-    <table class="wap-table">
-        <thead><tr><th>Action</th><th>When available</th><th>Effect</th></tr></thead>
-        <tbody>
-            <tr><td>Hit</td><td>Any time</td><td>Draw one more card</td></tr>
-            <tr><td>Stand</td><td>Any time</td><td>End your turn, dealer plays out</td></tr>
-            <tr><td>Double Down</td><td>First 2 cards only</td><td>Double your bet, draw exactly one more card</td></tr>
-            <tr><td>Split</td><td>First 2 cards are a pair</td><td>Split into two hands, each gets a new card, bet is doubled</td></tr>
-        </tbody>
-    </table>
-    <div class="wap-sub">Payouts</div>
-    <table class="wap-table">
-        <thead><tr><th>Outcome</th><th>Payout</th></tr></thead>
-        <tbody>
-            <tr><td>Blackjack (Ace + 10-value on first 2 cards)</td><td class="wap-payout-hi">+150% of bet (3:2)</td></tr>
-            <tr><td>Win</td><td class="wap-payout-med">+100% of bet (1:1)</td></tr>
-            <tr><td>Push (tie)</td><td>Bet returned</td></tr>
-            <tr><td>Lose / Bust</td><td class="wap-payout-lo">Bet lost</td></tr>
-        </tbody>
-    </table>
-    <div class="wap-tip">Double down on 10 or 11 when the dealer shows a weak card (2–6). The dealer is forced to hit soft 17, which busts them more often than you'd expect.</div>
-</div>
-
-<!-- CRAPS -->
-<div class="wap-card" id="craps">
-    <div class="wap-title">🎲 Craps</div>
-    <p class="wap-text">Bet on the outcome of two dice rolls. The game has two phases — Come Out and Point — and 14 different bet types.</p>
-    <div class="wap-sub">Phases</div>
-    <table class="wap-table">
-        <thead><tr><th>Phase</th><th>Roll</th><th>Result</th></tr></thead>
-        <tbody>
-            <tr><td rowspan="3">Come Out</td><td>7 or 11</td><td>Pass Line wins immediately</td></tr>
-            <tr><td>2, 3, or 12</td><td>Pass Line loses (craps)</td></tr>
-            <tr><td>Any other (4,5,6,8,9,10)</td><td>That number becomes the Point — enter Point phase</td></tr>
-            <tr><td rowspan="2">Point</td><td>Roll the Point again</td><td>Pass Line wins</td></tr>
-            <tr><td>Roll a 7</td><td>Seven Out — Pass Line loses, Place bets lose</td></tr>
-        </tbody>
-    </table>
-    <div class="wap-sub">Key Bet Types & Odds</div>
-    <table class="wap-table">
-        <thead><tr><th>Bet</th><th>Pays</th><th>Notes</th></tr></thead>
-        <tbody>
-            <tr><td>Pass Line</td><td>1:1</td><td>The core bet. Active both phases.</td></tr>
-            <tr><td>Don't Pass</td><td>1:1</td><td>Opposite of Pass Line. 12 is a push on Come Out.</td></tr>
-            <tr><td>Field</td><td>1:1 (2 or 12 pays 2:1)</td><td>Wins on 2,3,4,9,10,11,12. Loses on 5,6,7,8.</td></tr>
-            <tr><td>Place 6 / Place 8</td><td>7:6</td><td>Wins if that number rolls before a 7. OFF during Come Out.</td></tr>
-            <tr><td>Place 4 / Place 10</td><td>9:5</td><td>Same — wins before a 7.</td></tr>
-            <tr><td>Any 7</td><td>4:1</td><td>Wins only if next roll is 7.</td></tr>
-            <tr><td>Hard 6 / Hard 8</td><td>9:1</td><td>Wins if rolled as a pair (3+3 or 4+4) before a 7 or easy way.</td></tr>
-            <tr><td>Hard 4 / Hard 10</td><td>7:1</td><td>Same — pair only (2+2 or 5+5).</td></tr>
-        </tbody>
-    </table>
-    <div class="wap-tip">Pass Line + Place 6 and 8 is the classic low-house-edge strategy. Avoid Any 7 and Hardways for serious play — they look exciting but have high house edges.</div>
-</div>
-
-<!-- HOLD'EM -->
-<div class="wap-card" id="holdem">
-    <div class="wap-title">♠️ Texas Hold'em</div>
-    <p class="wap-text">Make the best 5-card hand from your 2 hole cards and 5 community cards. Play against AI bots — 1 to 4 opponents. Small blind is 25 XP, big blind is 50 XP.</p>
-    <div class="wap-sub">Betting Rounds</div>
-    <table class="wap-table">
-        <thead><tr><th>Round</th><th>Community Cards</th><th>Actions</th></tr></thead>
-        <tbody>
-            <tr><td>Pre-Flop</td><td>None dealt yet</td><td>Fold · Call · Raise (based on hole cards)</td></tr>
-            <tr><td>Flop</td><td>3 cards revealed</td><td>Check · Call · Raise · Fold</td></tr>
-            <tr><td>Turn</td><td>4th card revealed</td><td>Check · Call · Raise · Fold</td></tr>
-            <tr><td>River</td><td>5th card revealed</td><td>Check · Call · Raise · Fold</td></tr>
-            <tr><td>Showdown</td><td>All 5 visible</td><td>Best hand wins the pot</td></tr>
-        </tbody>
-    </table>
-    <div class="wap-sub">Hand Rankings (best to worst)</div>
-    <p class="wap-text" style="line-height:2">
-        Royal Flush &gt; Straight Flush &gt; Four of a Kind &gt; Full House &gt; Flush &gt; Straight &gt; Three of a Kind &gt; Two Pair &gt; One Pair &gt; High Card
-    </p>
-    <div class="wap-sub">AI Bot Behavior</div>
-    <p class="wap-text">Bots play with basic poker logic — they fold weak hands, call with medium hands, and raise with strong ones. They don't bluff perfectly, so tight-aggressive play tends to beat them over time.</p>
-    <div class="wap-tip">Buy in with enough XP to survive variance. With 2 bots and a 500 XP buy-in, you have 10 big blinds — enough to play a few hands before you're pot-committed.</div>
-</div>
-
-<!-- MINI-GAMES -->
-<div class="wap-card" id="minigames">
-    <div class="wap-title">🎮 Mini-Games</div>
-    <p class="wap-text">Two quick XP gambles — Coin Flip and Rock Paper Scissors. Both support 7 visual themes and Fun Mode. Mini-Games rooms on The Floor support two players, so you can play against another user in the same room.</p>
-    <div class="wap-sub">🪙 Coin Flip</div>
-    <p class="wap-text">Pick heads or tails, set your bet, flip. 50/50 odds. Win and you double your bet. Lose and it's gone. Seven themes change the coin art and the heads/tails labels — Raider, Time, Battery, Electric, Business, Sky, Temperature.</p>
-    <div class="wap-sub">✊ Rock Paper Scissors</div>
-    <p class="wap-text">Pick your move against an AI opponent. Win pays 1:1, tie returns your bet, loss takes it. Three themes — Traditional, Fantasy (knights/dragons/wizards), War (tanks/planes/infantry). The AI picks randomly, so it's pure 50/50 on win/loss (ties excluded).</p>
-    <table class="wap-table">
-        <thead><tr><th>Outcome</th><th>Payout</th></tr></thead>
-        <tbody>
-            <tr><td>Win</td><td class="wap-payout-med">+100% of bet</td></tr>
-            <tr><td>Tie</td><td>Bet returned</td></tr>
-            <tr><td>Lose</td><td class="wap-payout-lo">Bet lost</td></tr>
-        </tbody>
-    </table>
-    <div class="wap-tip">Mini-Games are the fastest way to double small amounts of XP. The 50/50 odds mean no house edge on win/loss — just variance.</div>
-</div>
-
-</div><!-- end wap-content -->
 </div><!-- end wap-wrap -->
+</div><!-- end container -->
 
 <script>
-(function() {
-    // Highlight active nav link based on scroll position
-    var sections = document.querySelectorAll('.wap-card[id]');
-    var navLinks = document.querySelectorAll('#wap-nav a');
+(function () {
 
-    function getActive() {
-        var scrollY = window.scrollY || window.pageYOffset;
-        var best = null;
-        sections.forEach(function(sec) {
-            var top = sec.getBoundingClientRect().top + scrollY - 20;
-            if (scrollY >= top) best = sec.id;
-        });
-        return best;
+    // ── Nav section labels keyed by the first word(s) of each h2 ─────────────
+    const NAV_SECTIONS = {
+        'Overview':         'Basics',
+        'Stats':            'Basics',
+        'Leveling':         'Basics',
+        'Specialization':   'Basics',
+        'Rank':             'Basics',
+        'My Pet':           'Basics',
+        'How Combat':       'Combat',
+        'The Three':        'Combat',
+        'The Charge':       'Combat',
+        'Type &':           'Combat',
+        'Equipment':        'Growth',
+        'Activities':       'Growth',
+        'Keys':             'Growth',
+        'Tasks':            'Growth',
+        'The Floor':        'Multiplayer',
+        'The Pet Casino':   'Casino',
+        'Slot':             'Casino',
+        'Pet Races':        'Casino',
+        'Blackjack':        'Casino',
+        'Craps':            'Casino',
+        'Texas':            'Casino',
+        'Mini-Games':       'Casino',
+        'Survivor':         'Other',
+        'Pet Stock':        'Other',
+    };
+
+    const NAV_ICONS = {
+        'Overview':         '🐾',
+        'Stats':            '📊',
+        'Leveling':         '⬆️',
+        'Specialization':   '⭐',
+        'Rank':             '🏅',
+        'My Pet':           '🐾',
+        'How Combat':       '⚔️',
+        'The Three':        '🎮',
+        'The Charge':       '⚡',
+        'Type &':           '🔥',
+        'Equipment':        '🎒',
+        'Activities':       '🗺️',
+        'Keys':             '🗝️',
+        'Tasks':            '🗡️',
+        'The Floor':        '🏟️',
+        'The Pet Casino':   '🎰',
+        'Slot':             '🎰',
+        'Pet Races':        '🏁',
+        'Blackjack':        '🃏',
+        'Craps':            '🎲',
+        'Texas':            '♠️',
+        'Mini-Games':       '🎮',
+        'Survivor':         '⚔️',
+        'Pet Stock':        '📈',
+    };
+
+    function slugify(text) {
+        return text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
     }
 
-    function updateNav() {
-        var active = getActive();
-        navLinks.forEach(function(a) {
-            var href = a.getAttribute('href');
-            if (href === '#' + active) {
-                a.classList.add('active');
-                // Scroll nav link into view within the nav panel
-                var nav = document.getElementById('wap-nav');
-                if (nav && a.offsetTop < nav.scrollTop || a.offsetTop + a.offsetHeight > nav.scrollTop + nav.clientHeight) {
-                    a.scrollIntoView({block:'nearest'});
+    function getNavKey(title) {
+        for (const key of Object.keys(NAV_SECTIONS)) {
+            if (title.startsWith(key)) return key;
+        }
+        return null;
+    }
+
+    function buildNav(headings) {
+        const nav = document.getElementById('wap-nav');
+        nav.innerHTML = '';
+        let currentSection = null;
+
+        headings.forEach(function (h) {
+            // The section wrapper div carries the id (moved there by wrapSections).
+            // Walk up to find it.
+            const sectionEl = h.closest('.wap-section[id]');
+            const sectionId = sectionEl ? sectionEl.id : '';
+            if (!sectionId) return;
+
+            const key = getNavKey(h.textContent.trim());
+            const section = key ? NAV_SECTIONS[key] : null;
+            const icon   = key ? (NAV_ICONS[key] || '') : '';
+
+            if (section && section !== currentSection) {
+                const div = document.createElement('div');
+                div.className = 'nav-section';
+                div.textContent = section;
+                nav.appendChild(div);
+                currentSection = section;
+            }
+
+            const a = document.createElement('a');
+            a.href = 'javascript:void(0)';
+            a.dataset.target = sectionId;
+            a.textContent = (icon ? icon + ' ' : '') + h.textContent.trim();
+            nav.appendChild(a);
+        });
+    }
+
+    function applyWarnClass() {
+        // Turn blockquotes whose first strong text starts with "Warning" into red style
+        document.querySelectorAll('#wap-body blockquote').forEach(function (bq) {
+            const strong = bq.querySelector('strong');
+            if (strong && strong.textContent.trim().startsWith('Warning')) {
+                bq.classList.add('warn');
+            }
+        });
+    }
+
+    function wrapSections(headings) {
+        // Wrap each h2 and its following siblings (until next h2) in a .wap-section card
+        const body = document.getElementById('wap-body');
+        const children = Array.from(body.childNodes);
+        let current = null;
+
+        children.forEach(function (node) {
+            if (node.nodeType === Node.ELEMENT_NODE && node.tagName === 'H2') {
+                current = document.createElement('div');
+                current.className = 'wap-section';
+                current.id = node.id;
+                node.removeAttribute('id'); // id moves to wrapper
+                body.insertBefore(current, node);
+                current.appendChild(node);
+            } else if (node.tagName === 'HR') {
+                current = null; // HR acts as section separator — don't include it
+                if (node.parentNode) node.parentNode.removeChild(node);
+            } else if (current) {
+                current.appendChild(node);
+            }
+        });
+    }
+
+    async function loadGuide() {
+        const body    = document.getElementById('wap-body');
+        const loading = document.getElementById('wap-loading');
+        const error   = document.getElementById('wap-error');
+
+        try {
+            const res = await fetch('/api/library/Pet%20Guide');
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            const md = await res.text();
+
+            // Render markdown
+            body.innerHTML = marked.parse(md);
+
+            // Assign IDs to all h2 headings
+            const headings = body.querySelectorAll('h2');
+            headings.forEach(function (h) {
+                h.id = slugify(h.textContent.trim());
+            });
+
+            applyWarnClass();
+            wrapSections(headings);
+            buildNav(document.querySelectorAll('.wap-section h2'));
+
+            loading.style.display = 'none';
+            initScrollSpy();
+
+        } catch (e) {
+            loading.style.display = 'none';
+            error.style.display = 'block';
+            console.error('Pet guide load error:', e);
+        }
+    }
+
+    function initScrollSpy() {
+        const sections = document.querySelectorAll('.wap-section[id]');
+        const navLinks = document.querySelectorAll('#wap-nav a[data-target]');
+
+        // The SPA loads content inside .content-wrapper / .main-content.
+        // scrollIntoView works regardless of which element is scrolling,
+        // but to read scroll position we need the actual scrolling ancestor.
+        function getScrollParent() {
+            let el = document.getElementById('wap-body');
+            while (el && el !== document.body) {
+                const style = window.getComputedStyle(el);
+                if (/(auto|scroll)/.test(style.overflow + style.overflowY)) return el;
+                el = el.parentElement;
+            }
+            return window;
+        }
+
+        function getScrollTop() {
+            const sp = getScrollParent();
+            return sp === window ? (window.scrollY || window.pageYOffset) : sp.scrollTop;
+        }
+
+        function getActive() {
+            const scrollTop = getScrollTop();
+            let best = null;
+            sections.forEach(function (sec) {
+                const sp = getScrollParent();
+                const containerTop = sp === window ? 0 : sp.getBoundingClientRect().top;
+                const secTop = sec.getBoundingClientRect().top - containerTop + scrollTop - 20;
+                if (scrollTop >= secTop) best = sec.id;
+            });
+            return best;
+        }
+
+        function updateNav() {
+            const active = getActive();
+            navLinks.forEach(function (a) {
+                if (a.dataset.target === active) {
+                    a.classList.add('active');
+                    const nav = document.getElementById('wap-nav');
+                    if (nav && (a.offsetTop < nav.scrollTop || a.offsetTop + a.offsetHeight > nav.scrollTop + nav.clientHeight)) {
+                        a.scrollIntoView({ block: 'nearest' });
+                    }
+                } else {
+                    a.classList.remove('active');
                 }
-            } else {
-                a.classList.remove('active');
-            }
+            });
+        }
+
+        // Listen on both window and any scrollable ancestor
+        window.addEventListener('scroll', updateNav, { passive: true });
+        const sp = getScrollParent();
+        if (sp !== window) sp.addEventListener('scroll', updateNav, { passive: true });
+        updateNav();
+
+        navLinks.forEach(function (a) {
+            a.addEventListener('click', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                const target = document.getElementById(a.dataset.target);
+                if (target) {
+                    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    // Update active state immediately on click
+                    navLinks.forEach(l => l.classList.remove('active'));
+                    a.classList.add('active');
+                }
+            });
         });
     }
 
-    window.addEventListener('scroll', updateNav, {passive:true});
-    updateNav();
-
-    // Smooth scroll on click
-    navLinks.forEach(function(a) {
-        a.addEventListener('click', function(e) {
-            var id = a.getAttribute('href').slice(1);
-            var el = document.getElementById(id);
-            if (el) {
-                e.preventDefault();
-                el.scrollIntoView({behavior:'smooth', block:'start'});
-            }
-        });
-    });
+    loadGuide();
 })();
 </script>

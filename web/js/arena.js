@@ -17,6 +17,10 @@ const MAX_RETRIES = 8;
 // Turn-based battle state
 let _battle      = null;
 
+// Tracks whether a casino game is currently embedded in the panel — prevents
+// WebSocket room broadcasts from wiping the active game UI.
+let _gameEmbedActive = false;
+
 // ── DOM helpers ───────────────────────────────────────────────────────────────
 const $   = id => document.getElementById(id);
 const esc = s  => String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
@@ -116,7 +120,7 @@ function _onLiveRooms(e) {
     updateOnlineCount();
 }
 
-// ── Unified room grid — 12 rooms, each can be battle or casino ────────────────
+// ── Unified room grid — 12 rooms (battle) + casino rooms (view-only) ─────────
 function renderUnifiedGrid() {
     const grid = $('unified-grid');
     if (!grid) return;
@@ -155,12 +159,18 @@ function renderUnifiedGrid() {
             inner += `<div class="u-room-icon">🚪</div>
                       <div class="u-room-status empty">Open</div>`;
         } else if (isArena) {
-            const avatars = arenaRoom.occupants.slice(0,2).map(o =>
+            const avatars = arenaRoom.occupants.slice(0,4).map(o =>
                 `<img class="u-avatar-mini" src="${esc(o.avatar)}" title="${esc(o.username)}"
                       onerror="this.src='/static/Emojis/Pets/Deco/Basic.png'">`
             ).join('');
-            inner += `<div style="display:flex;gap:2px;justify-content:center">${avatars}</div>`;
-            const sm = {npc_battle:['battle','⚔️ NPC'], pvp_waiting:['pvp-wait','🔥 PvP'], pvp_battle:['pvp-live','⚡ Live']};
+            inner += `<div style="display:flex;gap:2px;justify-content:center;flex-wrap:wrap">${avatars}</div>`;
+            const sm = {
+                npc_battle:   ['battle',    '⚔️ NPC'],
+                pvp_waiting:  ['pvp-wait',  '🔥 PvP'],
+                pvp_battle:   ['pvp-live',  '⚡ Live'],
+                boss_waiting: ['boss-wait', '👹 Boss'],
+                boss_battle:  ['boss-live', '👹 Live'],
+            };
             const [cls, lbl] = sm[arenaRoom.state] || ['battle', arenaRoom.state];
             inner += `<div class="u-room-status ${cls}">${lbl}</div>`;
         } else {
@@ -197,6 +207,8 @@ function updateOnlineCount() {
 
 function refreshPanelIfNeeded() {
     if (!_viewRoomId) return;
+    // Never interrupt an active battle or embedded casino game
+    if (_battle || _bossBattle || _gameEmbedActive) return;
     const { id, type } = _viewRoomId;
     if (type === 'arena') {
         const room = _arenaRooms.find(r => r.room_id === id);
@@ -204,10 +216,13 @@ function refreshPanelIfNeeded() {
         const isMine = room.occupants.some(o => o.user_id === _myUserId);
         if (room.state === 'empty') { /* keep join panel */ }
         else if (isMine) {
-            // Don't interrupt an active battle — only update the pre-battle/pvp-wait panel
-            if (!_battle) showArenaMyRoom(room);
+            if (!_battle && !_bossBattle) {
+                if (room.state === 'boss_waiting') showBossWaitingRoom(room);
+                else showArenaMyRoom(room);
+            }
         }
         else if (room.state === 'pvp_waiting') showChallengePanel(room);
+        else if (room.state === 'boss_waiting') showBossJoinPanel(room);
         else showArenaSpectate(room);
     } else {
         const room = _casinoRooms.find(r => r.room_id === id);
@@ -224,84 +239,64 @@ function refreshPanelIfNeeded() {
 
 // ── Unified room click ────────────────────────────────────────────────────────
 window._uClickRoom = function(type, roomId) {
-    _viewRoomId = { id: roomId, type };
+    _viewRoomId = { id: roomId, type: 'arena' };
 
-    if (type === 'arena') {
-        const room = _arenaRooms.find(r => r.room_id === roomId);
-        if (!room) return;
-        const isMine = room.occupants.some(o => o.user_id === _myUserId);
-        if (room.state === 'empty')          showEmptyRoomPicker(roomId);
-        else if (isMine)                     showArenaMyRoom(room);
-        else if (room.state === 'pvp_waiting') showChallengePanel(room);
-        else                                 showArenaSpectate(room);
-    } else {
-        const room = _casinoRooms.find(r => r.room_id === roomId);
-        if (!room) return;
-        const isMine = room.occupants.some(o => o.user_id === _myUserId);
-        const isObserving = room.observers && room.observers.some(o => o.user_id === _myUserId);
-        if (room.state === 'empty')   showEmptyRoomPicker(roomId);
-        else if (isMine)              showCasinoMyRoom(room);
-        else if (isObserving)         showCasinoSpectate(room);
-        else if (room.state === 'open') showCasinoJoinOpen(room);
-        else                          showCasinoObservePrompt(room);
+    // Arena rooms always handle the click — casino rooms are view-only from here
+    const arenaRoom = _arenaRooms.find(r => r.room_id === roomId);
+    const casinoRoom = _casinoRooms.find(r => r.room_id === roomId);
+
+    const aEmpty = !arenaRoom  || arenaRoom.state  === 'empty';
+    const cEmpty = !casinoRoom || casinoRoom.state === 'empty';
+
+    // If a casino game is running in this room, show spectate view (read-only)
+    if (!cEmpty && aEmpty) {
+        _viewRoomId = { id: roomId, type: 'casino' };
+        const isMine = casinoRoom.occupants.some(o => o.user_id === _myUserId);
+        const isObserving = casinoRoom.observers && casinoRoom.observers.some(o => o.user_id === _myUserId);
+        if (isMine)              showCasinoMyRoom(casinoRoom);
+        else if (isObserving)    showCasinoSpectate(casinoRoom);
+        else if (casinoRoom.state === 'open') showCasinoJoinOpen(casinoRoom);
+        else                     showCasinoObservePrompt(casinoRoom);
+        return;
     }
+
+    // Battle room (or empty → go to battle join panel)
+    if (!arenaRoom || arenaRoom.state === 'empty') {
+        showEmptyRoomPicker(roomId);
+        return;
+    }
+
+    const isMine = arenaRoom.occupants.some(o => o.user_id === _myUserId);
+    if (isMine) {
+        if (arenaRoom.state === 'boss_waiting') showBossWaitingRoom(arenaRoom);
+        else if (arenaRoom.state === 'boss_battle' && _bossBattle) { /* already in battle */ }
+        else showArenaMyRoom(arenaRoom);
+    } else if (arenaRoom.state === 'pvp_waiting') showChallengePanel(arenaRoom);
+    else if (arenaRoom.state === 'boss_waiting')  showBossJoinPanel(arenaRoom);
+    else                                          showArenaSpectate(arenaRoom);
 };
 
-// ── Empty room picker — Battle or Casino? ─────────────────────────────────────
+// ── Empty room picker — goes straight to battle join panel ───────────────────
 function showEmptyRoomPicker(roomId) {
-    const alreadyInArena  = _myArenaRoomId  !== null;
-    const alreadyInCasino = _myCasinoRoomId !== null;
-    const alreadyIn       = alreadyInArena || alreadyInCasino;
+    const alreadyIn = _myArenaRoomId !== null || _myCasinoRoomId !== null;
 
+    if (!alreadyIn) {
+        // Go straight to the battle join panel — casino has its own page
+        showJoinPanel(roomId);
+        return;
+    }
+
+    // Already in a room — show a warning instead
     setPanel(`
         <div class="arena-panel">
-            <div class="arena-panel-title">🚪 Room #${roomId + 1} — Choose Your Game</div>
-            ${alreadyIn ? `<div style="font-size:0.75rem;color:#e74c3c;margin-bottom:12px">⚠️ You're already in a room — leave it first.</div>` : ''}
-
-            <div class="d-flex gap-3 mb-4" style="justify-content:center">
-
-                <div class="u-picker-card" onclick="window._uPickBattle(${roomId})" ${alreadyIn?'style="opacity:0.4;pointer-events:none"':''}>
-                    <div class="u-picker-icon">⚔️</div>
-                    <div class="u-picker-title">Battle</div>
-                    <div class="u-picker-sub">Fight NPCs or challenge other players in turn-based pet combat</div>
-                </div>
-
-                <div class="u-picker-card" onclick="window._uPickCasino(${roomId})" ${alreadyIn?'style="opacity:0.4;pointer-events:none"':''}>
-                    <div class="u-picker-icon">🎰</div>
-                    <div class="u-picker-title">Casino</div>
-                    <div class="u-picker-sub">Blackjack, Craps, Hold'em, Races, Slots, Mini-Games</div>
-                </div>
-
-            </div>
-
+            <div class="arena-panel-title">🚪 Room #${roomId + 1}</div>
+            <div style="font-size:0.75rem;color:#e74c3c;margin-bottom:12px">⚠️ You're already in a room — leave it first.</div>
             <div style="font-size:0.68rem;color:var(--text-secondary);text-align:center">
                 Others can watch your room live from the grid above
             </div>
         </div>
     `);
 }
-
-// ── Pick battle → show battle join panel ──────────────────────────────────────
-window._uPickBattle = function(roomId) {
-    _viewRoomId = { id: roomId, type: 'arena' };
-    showJoinPanel(roomId);
-};
-
-// ── Pick casino → join casino room immediately ────────────────────────────────
-window._uPickCasino = async function(roomId) {
-    _viewRoomId = { id: roomId, type: 'casino' };
-    try {
-        const r = await fetch('/api/casino/lobby/join', {
-            method: 'POST', headers: {'Content-Type':'application/json'},
-            body: JSON.stringify({ room_id: roomId })
-        });
-        const d = await r.json();
-        if (!r.ok) { alert(d.detail || 'Failed to join'); return; }
-        _myCasinoRoomId = roomId;
-        const room = _casinoRooms.find(r => r.room_id === roomId) || { room_id: roomId, state:'picking', occupants:[], activity:[], game:null };
-        showCasinoMyRoom(room);
-    } catch(e) { alert(e.message); }
-};
 
 // ── Arena join panel ──────────────────────────────────────────────────────────
 function showJoinPanel(roomId) {
@@ -316,18 +311,13 @@ function showJoinPanel(roomId) {
             </div>
 
             <div style="font-size:0.72rem;color:var(--text-secondary);margin-bottom:6px">Mode</div>
-            <div class="d-flex gap-2 mb-3">
-                <button class="arena-btn" id="mode-npc" onclick="window._arenaSetMode('npc',${roomId})">⚔️ NPC Battle</button>
-                <button class="arena-btn" id="mode-pvp" onclick="window._arenaSetMode('pvp',${roomId})">🔥 Seek PvP</button>
+            <div class="d-flex gap-2 mb-3 flex-wrap">
+                <button class="arena-btn" id="mode-npc"  onclick="window._arenaSetMode('npc',${roomId})">⚔️ NPC Battle</button>
+                <button class="arena-btn" id="mode-pvp"  onclick="window._arenaSetMode('pvp',${roomId})">🔥 Seek PvP</button>
+                <button class="arena-btn boss-mode-btn" id="mode-boss" onclick="window._arenaSetMode('boss',${roomId})">👹 Boss Battle</button>
             </div>
 
             <div id="join-npc-opts" style="display:none">
-                <div style="font-size:0.72rem;color:var(--text-secondary);margin-bottom:6px">Difficulty</div>
-                <div class="d-flex gap-2 mb-3 flex-wrap">
-                    ${['easy','average','hard'].map(d =>
-                        `<button class="arena-diff-btn${d===_diff?' active':''}" onclick="window._arenaSetDiff('${d}')">${d.charAt(0).toUpperCase()+d.slice(1)}</button>`
-                    ).join('')}
-                </div>
                 <button class="arena-btn" id="join-enter-btn" onclick="window._arenaJoin(${roomId},'npc')" ${alreadyIn?'disabled':''}>
                     Enter Room
                 </button>
@@ -341,14 +331,30 @@ function showJoinPanel(roomId) {
                     Enter &amp; Seek PvP
                 </button>
             </div>
+
+            <div id="join-boss-opts" style="display:none">
+                <div class="boss-info-box">
+                    <div style="font-size:0.85rem;font-weight:700;color:#ff6b35;margin-bottom:6px">👹 Boss Battle</div>
+                    <div style="font-size:0.75rem;color:var(--text-secondary);line-height:1.6">
+                        Up to <strong style="color:var(--gold-primary)">4 players</strong> join the room and fight a single massive Boss Pet together.<br>
+                        The Boss is generated from the <strong>average stats</strong> of all players — massive HP, reduced attack &amp; defense.<br>
+                        Players always attack the Boss. When defending, choose a teammate to <strong>shield</strong>.<br>
+                        All players must submit their action each turn before the round resolves.
+                    </div>
+                </div>
+                <button class="arena-btn boss-mode-btn" id="join-boss-btn" onclick="window._arenaJoin(${roomId},'boss')" ${alreadyIn?'disabled':''}>
+                    👹 Enter Boss Room
+                </button>
+            </div>
         </div>
     `);
 }
 
 window._arenaSetMode = function(mode, roomId) {
-    $('join-npc-opts') && ($('join-npc-opts').style.display = mode === 'npc' ? '' : 'none');
-    $('join-pvp-opts') && ($('join-pvp-opts').style.display = mode === 'pvp' ? '' : 'none');
-    ['mode-npc','mode-pvp'].forEach(id => {
+    $('join-npc-opts')  && ($('join-npc-opts').style.display  = mode === 'npc'  ? '' : 'none');
+    $('join-pvp-opts')  && ($('join-pvp-opts').style.display  = mode === 'pvp'  ? '' : 'none');
+    $('join-boss-opts') && ($('join-boss-opts').style.display = mode === 'boss' ? '' : 'none');
+    ['mode-npc','mode-pvp','mode-boss'].forEach(id => {
         const el = $(id);
         if (el) el.style.borderColor = id.endsWith(mode) ? 'var(--gold-primary)' : '';
     });
@@ -362,7 +368,7 @@ window._arenaSetDiff = function(d) {
 };
 
 window._arenaJoin = async function(roomId, mode) {
-    const btn = $('join-enter-btn') || $('join-pvp-btn');
+    const btn = $('join-enter-btn') || $('join-pvp-btn') || $('join-boss-btn');
     if (btn) btn.disabled = true;
     try {
         const r = await fetch('/api/arena/join', {
@@ -375,6 +381,9 @@ window._arenaJoin = async function(roomId, mode) {
         _viewRoomId = { id: roomId, type: 'arena' };
         if (mode === 'npc') {
             showArenaMyRoom(_arenaRooms.find(rm => rm.room_id === roomId) || {room_id: roomId, state:'npc_battle', occupants:[], battle_log:[]});
+        } else if (mode === 'boss') {
+            const room = _arenaRooms.find(rm => rm.room_id === roomId) || {room_id: roomId, state:'boss_waiting', occupants:[], battle_log:[]};
+            showBossWaitingRoom(room);
         }
     } catch(e) { alert(e.message); }
     finally { if (btn) btn.disabled = false; }
@@ -429,6 +438,7 @@ window._arenaFight = window._arenaStartBattle = async function(roomId) {
 // ── Battle stage ──────────────────────────────────────────────────────────────
 function _showBattleStage() {
     if (!_battle) return;
+    _gameEmbedActive = true;
     const p = _battle.player, e = _battle.enemy;
     const labels = _battle.action_labels || {};
     const atkLabel = labels.attack || 'Attack';
@@ -778,6 +788,7 @@ window._arenaTurn = async function(action) {
 };
 
 function _showBattleResult(d) {
+    _gameEmbedActive = false;
     const won = d.won;
     const res = $('arena-result');
     const status = $('arena-status');
@@ -896,14 +907,437 @@ function showArenaSpectate(room) {
     if (log) log.scrollTop = log.scrollHeight;
 }
 
+// ── Boss Battle State ─────────────────────────────────────────────────────────
+let _bossBattle = null;   // full battle state from server
+let _bossDefendTarget = null;  // user_id of the player this user is shielding
+
+// ── Boss waiting room (player is in the room, waiting for others) ─────────────
+function showBossWaitingRoom(room) {
+    const occs = room.occupants || [];
+    const myOcc = occs.find(o => o.user_id === _myUserId);
+    const canStart = occs.length >= 2;
+
+    setPanel(`
+        <div class="arena-panel">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div class="arena-panel-title">👹 Boss Battle — Room #${room.room_id + 1}</div>
+                <button class="arena-btn danger" style="padding:4px 10px;font-size:0.7rem" onclick="window._arenaLeave()">Leave</button>
+            </div>
+            <div class="boss-waiting-info">
+                <div style="font-size:0.78rem;color:var(--text-secondary);margin-bottom:10px">
+                    Waiting for players… <strong style="color:var(--gold-primary)">${occs.length} / 4</strong> joined
+                </div>
+                <div class="boss-player-slots">
+                    ${[0,1,2,3].map(i => {
+                        const o = occs[i];
+                        if (o) return `
+                            <div class="boss-player-slot filled">
+                                <img src="${esc(o.avatar)}" onerror="this.src='/static/Emojis/Pets/Deco/Basic.png'" alt="">
+                                <div class="bps-name">${esc(o.username)}</div>
+                                <div class="bps-pet">🐾 ${esc(o.pet_name)}</div>
+                            </div>`;
+                        return `<div class="boss-player-slot empty"><span>+</span><div class="bps-name" style="opacity:0.3">Open</div></div>`;
+                    }).join('')}
+                </div>
+            </div>
+            <div style="font-size:0.7rem;color:var(--text-secondary);margin-bottom:12px;text-align:center">
+                The Boss is generated from the average stats of all players once the battle starts.
+            </div>
+            ${canStart ? `
+                <button class="arena-btn boss-mode-btn" id="boss-start-btn" onclick="window._bossStart(${room.room_id})">
+                    👹 Start Boss Battle (${occs.length} players)
+                </button>
+            ` : `
+                <div style="font-size:0.75rem;color:var(--text-secondary);text-align:center;padding:8px;border:1px dashed rgba(255,107,53,0.3);border-radius:6px">
+                    Need at least 2 players to start. Share the room number with friends!
+                </div>
+            `}
+        </div>
+    `);
+}
+
+// ── Boss join panel (non-member sees a boss_waiting room) ─────────────────────
+function showBossJoinPanel(room) {
+    const occs = room.occupants || [];
+    const alreadyIn = _myArenaRoomId !== null;
+    const full = occs.length >= 4;
+
+    setPanel(`
+        <div class="arena-panel">
+            <div class="arena-panel-title">👹 Boss Battle — Room #${room.room_id + 1}</div>
+            <div class="boss-player-slots" style="margin-bottom:14px">
+                ${[0,1,2,3].map(i => {
+                    const o = occs[i];
+                    if (o) return `
+                        <div class="boss-player-slot filled">
+                            <img src="${esc(o.avatar)}" onerror="this.src='/static/Emojis/Pets/Deco/Basic.png'" alt="">
+                            <div class="bps-name">${esc(o.username)}</div>
+                            <div class="bps-pet">🐾 ${esc(o.pet_name)}</div>
+                        </div>`;
+                    return `<div class="boss-player-slot empty"><span>+</span><div class="bps-name" style="opacity:0.3">Open</div></div>`;
+                }).join('')}
+            </div>
+            ${full ? `<div style="font-size:0.75rem;color:#e74c3c;text-align:center">Room is full (4/4)</div>` : `
+                ${alreadyIn ? `<div style="font-size:0.75rem;color:#e74c3c;margin-bottom:8px">⚠️ Leave your current room first.</div>` : ''}
+                <button class="arena-btn boss-mode-btn" onclick="window._arenaJoin(${room.room_id},'boss')" ${alreadyIn||full?'disabled':''}>
+                    👹 Join Boss Battle
+                </button>
+            `}
+        </div>
+    `);
+}
+
+// ── Start boss battle ─────────────────────────────────────────────────────────
+window._bossStart = async function(roomId) {
+    const btn = $('boss-start-btn');
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Generating Boss...'; }
+    try {
+        const r = await fetch('/api/arena/battle/boss/start', {
+            method: 'POST', headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({room_id: roomId})
+        });
+        const d = await r.json();
+        if (!r.ok) { alert(d.detail || 'Failed to start boss battle'); if(btn){btn.disabled=false;btn.textContent='👹 Start Boss Battle';} return; }
+        _bossBattle = d.battle;
+        _bossBattle.roomId = roomId;
+        _bossDefendTarget = _myUserId;  // default: defend yourself
+        _showBossStage();
+    } catch(e) { alert(e.message); if(btn){btn.disabled=false;btn.textContent='👹 Start Boss Battle';} }
+};
+
+// ── Boss battle stage ─────────────────────────────────────────────────────────
+function _showBossStage() {
+    if (!_bossBattle) return;
+    _gameEmbedActive = true;
+    const boss = _bossBattle.boss;
+    const players = _bossBattle.players;
+    const me = players.find(p => p.user_id === _myUserId);
+    if (!me) return;
+
+    const labels = me.action_labels || {};
+    const atkLabel = labels.attack || 'Attack';
+    const defLabel = labels.defend || 'Defend';
+    const chgLabel = labels.charge || 'Charge';
+
+    setPanel(`
+        <div class="arena-panel" id="boss-battle-panel">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <div class="arena-panel-title" style="margin-bottom:0;color:#ff6b35">👹 Boss Battle</div>
+                <button class="arena-btn danger" style="padding:4px 10px;font-size:0.7rem" onclick="window._arenaLeave()">Flee</button>
+            </div>
+
+            <!-- Boss HP bar -->
+            <div class="boss-hp-section">
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                    <div style="font-size:0.82rem;font-weight:700;color:#ff6b35">
+                        <img src="${petImgUrl(boss.species)}" style="width:22px;height:22px;object-fit:contain;vertical-align:middle;margin-right:4px" onerror="this.src='/static/Emojis/Pets/Deco/Basic.png'">
+                        ${esc(boss.name)}
+                    </div>
+                    <div style="font-size:0.72rem;color:var(--text-secondary)" id="boss-hp-text">${boss.cur_hp} / ${boss.max_hp}</div>
+                </div>
+                <div style="background:rgba(0,0,0,0.4);border-radius:20px;height:14px;overflow:hidden;border:1px solid rgba(255,107,53,0.3)">
+                    <div id="boss-hp-bar" style="height:100%;background:linear-gradient(90deg,#ff6b35,#e74c3c);border-radius:20px;transition:width 0.6s ease;width:100%"></div>
+                </div>
+                <div style="font-size:0.65rem;color:var(--text-secondary);margin-top:2px">
+                    ${esc(boss.element)} · ${esc(boss.type)} · ATK ${boss.attack} · DEF ${boss.defense}
+                    <span id="boss-charge-badge" style="display:none;color:#9b59b6;margin-left:6px">⚡ Charging x<span id="boss-charge-val">1</span></span>
+                </div>
+            </div>
+
+            <!-- Player HP bars -->
+            <div class="boss-players-row" id="boss-players-row">
+                ${players.map(p => _buildBossPlayerCard(p, p.user_id === _myUserId)).join('')}
+            </div>
+
+            <!-- Defend target selector -->
+            <div class="boss-defend-section" id="boss-defend-section">
+                <div style="font-size:0.68rem;color:var(--text-secondary);margin-bottom:4px">🛡️ Shield target (when defending):</div>
+                <div class="d-flex gap-2 flex-wrap" id="boss-defend-targets">
+                    ${players.map(p => `
+                        <button class="boss-defend-btn${p.user_id === _myUserId ? ' active' : ''}"
+                                id="bdt-${p.user_id}"
+                                onclick="window._bossSetDefendTarget('${p.user_id}')">
+                            ${esc(p.name.split(' ')[0])}
+                        </button>
+                    `).join('')}
+                </div>
+            </div>
+
+            <!-- Action buttons -->
+            <div class="arena-action-row" id="boss-actions">
+                <button class="arena-action-btn atk" id="bab-attack" onclick="window._bossAction('attack')">
+                    ⚔️ Attack<span class="arena-action-sub">${esc(atkLabel)}</span>
+                </button>
+                <button class="arena-action-btn def" id="bab-defend" onclick="window._bossAction('defend')">
+                    🛡️ Defend<span class="arena-action-sub">${esc(defLabel)}</span>
+                </button>
+                <button class="arena-action-btn chg" id="bab-charge" onclick="window._bossAction('charge')">
+                    ⚡ Charge<span class="arena-action-sub">${esc(chgLabel)}</span>
+                </button>
+            </div>
+
+            <div class="arena-status-text" id="boss-status">Your turn — pick an action! All players must act before the round resolves.</div>
+            <div class="arena-log" id="boss-turn-log"></div>
+            <div id="boss-result" style="display:none"></div>
+        </div>
+    `);
+
+    _updateBossHpBar(boss.cur_hp, boss.max_hp);
+    _updateBossPlayerCards(players);
+}
+
+function _buildBossPlayerCard(p, isMe) {
+    const pct = p.max_hp > 0 ? Math.max(0, Math.min(100, Math.round((p.cur_hp / p.max_hp) * 100))) : 0;
+    const hpColor = pct > 50 ? '#2ecc71' : pct > 25 ? '#f39c12' : '#e74c3c';
+    const elimStyle = p.alive ? '' : 'opacity:0.35;filter:grayscale(0.8)';
+    const meBorder = isMe ? 'border-color:var(--gold-primary);box-shadow:0 0 8px var(--gold-glow)' : '';
+    return `
+        <div class="boss-player-card" id="bpc-${p.user_id}" style="${elimStyle};${meBorder}">
+            <div class="arena-fighter-img-wrap" style="width:52px;height:52px">
+                <div class="arena-charge-ring" id="bpc-ring-${p.user_id}"
+                     style="--charge-c1:${elemColor(p.element)};--charge-c2:${elemColor(p.element2||p.element)}"></div>
+                <img style="width:44px;height:44px;object-fit:contain"
+                     src="${petImgUrl(p.species)}"
+                     onerror="this.src='/static/Emojis/Pets/Deco/Basic.png'" alt="">
+            </div>
+            <div style="font-size:0.65rem;font-weight:600;color:${isMe?'var(--gold-primary)':'var(--text-primary)'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:70px">${esc(p.name)}</div>
+            <div style="width:100%;background:rgba(0,0,0,0.4);border-radius:10px;height:6px;overflow:hidden;margin-top:2px">
+                <div id="bpc-hp-${p.user_id}" style="height:100%;background:${hpColor};border-radius:10px;transition:width 0.5s ease;width:${pct}%"></div>
+            </div>
+            <div style="font-size:0.58rem;color:var(--text-secondary)" id="bpc-hp-text-${p.user_id}">${p.cur_hp}/${p.max_hp}</div>
+            ${!p.alive ? '<div style="font-size:0.65rem;color:#e74c3c">💀 Eliminated</div>' : ''}
+            <div id="bpc-pending-${p.user_id}" style="font-size:0.6rem;color:#9b59b6;min-height:14px"></div>
+        </div>`;
+}
+
+function _updateBossHpBar(cur, max) {
+    const pct = max > 0 ? Math.max(0, Math.min(100, Math.round((cur / max) * 100))) : 0;
+    const color = pct > 50 ? 'linear-gradient(90deg,#ff6b35,#e74c3c)' : pct > 25 ? 'linear-gradient(90deg,#f39c12,#e74c3c)' : '#e74c3c';
+    const bar = $('boss-hp-bar'), text = $('boss-hp-text');
+    if (bar)  { bar.style.width = pct + '%'; bar.style.background = color; }
+    if (text) text.textContent = cur + ' / ' + max;
+}
+
+function _updateBossPlayerCards(players) {
+    players.forEach(p => {
+        const pct = p.max_hp > 0 ? Math.max(0, Math.min(100, Math.round((p.cur_hp / p.max_hp) * 100))) : 0;
+        const hpColor = pct > 50 ? '#2ecc71' : pct > 25 ? '#f39c12' : '#e74c3c';
+        const bar  = $(`bpc-hp-${p.user_id}`);
+        const text = $(`bpc-hp-text-${p.user_id}`);
+        const card = $(`bpc-${p.user_id}`);
+        if (bar)  { bar.style.width = pct + '%'; bar.style.background = hpColor; }
+        if (text) text.textContent = p.cur_hp + '/' + p.max_hp;
+        if (card && !p.alive) { card.style.opacity = '0.35'; card.style.filter = 'grayscale(0.8)'; }
+        _setChargeRingLevel(`bpc-ring-${p.user_id}`, p.charge || 1);
+    });
+}
+
+function _setBossButtons(enabled) {
+    ['bab-attack','bab-defend','bab-charge'].forEach(id => {
+        const b = $(id); if (b) b.disabled = !enabled;
+    });
+}
+
+window._bossSetDefendTarget = function(uid) {
+    _bossDefendTarget = uid;
+    document.querySelectorAll('.boss-defend-btn').forEach(b => {
+        b.classList.toggle('active', b.id === 'bdt-' + uid);
+    });
+};
+
+window._bossAction = async function(action) {
+    if (!_bossBattle || _bossBattle.over) return;
+    const me = _bossBattle.players.find(p => p.user_id === _myUserId);
+    if (!me || !me.alive) return;
+
+    _setBossButtons(false);
+    const status = $('boss-status');
+    if (status) status.textContent = '⏳ Action submitted — waiting for other players...';
+
+    // Mark pending locally
+    const pendingEl = $(`bpc-pending-${_myUserId}`);
+    const actionIcons = {attack:'⚔️', defend:'🛡️', charge:'⚡'};
+    if (pendingEl) pendingEl.textContent = actionIcons[action] + ' Submitted';
+
+    try {
+        const r = await fetch('/api/arena/battle/boss/action', {
+            method: 'POST', headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({
+                room_id:       _bossBattle.roomId,
+                action,
+                defend_target: action === 'defend' ? (_bossDefendTarget || _myUserId) : _myUserId,
+            })
+        });
+        const d = await r.json();
+        if (!r.ok) { if(status) status.textContent = d.detail || 'Error'; _setBossButtons(true); return; }
+
+        if (d.resolved) {
+            // Turn resolved — update full state
+            _bossBattle = d.battle;
+            _bossBattle.roomId = _bossBattle.room_id || _bossBattle.roomId;
+
+            // Update boss HP
+            _updateBossHpBar(_bossBattle.boss.cur_hp, _bossBattle.boss.max_hp);
+
+            // Update player cards
+            _updateBossPlayerCards(_bossBattle.players);
+
+            // Boss charge badge
+            const chargeBadge = $('boss-charge-badge'), chargeVal = $('boss-charge-val');
+            if (chargeBadge && chargeVal) {
+                const bc = _bossBattle.boss.charge || 1;
+                chargeBadge.style.display = bc > 1 ? '' : 'none';
+                chargeVal.textContent = bc.toFixed(0);
+            }
+
+            // Clear pending indicators
+            _bossBattle.players.forEach(p => {
+                const el = $(`bpc-pending-${p.user_id}`);
+                if (el) el.textContent = '';
+            });
+
+            // Append turn log
+            (d.turn_log || []).forEach(line => {
+                const log = $('boss-turn-log');
+                if (!log) return;
+                const div = document.createElement('div');
+                div.style.cssText = 'font-size:0.72rem;border-left:2px solid rgba(255,107,53,0.3);padding:2px 6px;margin-bottom:2px';
+                div.textContent = line;
+                log.appendChild(div);
+                log.scrollTop = log.scrollHeight;
+            });
+
+            if (_bossBattle.over) {
+                setTimeout(() => _showBossResult(), 1200);
+            } else {
+                if (status) status.textContent = `Turn ${_bossBattle.turn} complete — pick your next action!`;
+                setTimeout(() => _setBossButtons(true), 500);
+            }
+        } else {
+            // Waiting for others
+            const waiting = d.waiting_for || 0;
+            if (status) status.textContent = `⏳ Waiting for ${waiting} more player${waiting !== 1 ? 's' : ''}...`;
+            // Poll for resolution
+            _pollBossResolution();
+        }
+    } catch(e) {
+        if (status) status.textContent = 'Error: ' + e.message;
+        _setBossButtons(true);
+    }
+};
+
+// Poll for boss turn resolution (when waiting for other players)
+let _bossPollTimer = null;
+function _pollBossResolution() {
+    if (_bossPollTimer) clearTimeout(_bossPollTimer);
+    _bossPollTimer = setTimeout(async () => {
+        if (!_bossBattle || _bossBattle.over) return;
+        try {
+            const r = await fetch(`/api/arena/battle/boss/state?room_id=${_bossBattle.roomId}`);
+            if (!r.ok) return;
+            const d = await r.json();
+            const newBattle = d.battle;
+            if (!newBattle) return;
+
+            // Check if turn advanced
+            if (newBattle.turn > _bossBattle.turn) {
+                _bossBattle = newBattle;
+                _bossBattle.roomId = newBattle.room_id || _bossBattle.roomId;
+
+                _updateBossHpBar(_bossBattle.boss.cur_hp, _bossBattle.boss.max_hp);
+                _updateBossPlayerCards(_bossBattle.players);
+
+                const chargeBadge = $('boss-charge-badge'), chargeVal = $('boss-charge-val');
+                if (chargeBadge && chargeVal) {
+                    const bc = _bossBattle.boss.charge || 1;
+                    chargeBadge.style.display = bc > 1 ? '' : 'none';
+                    chargeVal.textContent = bc.toFixed(0);
+                }
+
+                // Show new log lines
+                const newLines = _bossBattle.log.slice(-10);
+                newLines.forEach(line => {
+                    const log = $('boss-turn-log');
+                    if (!log) return;
+                    const div = document.createElement('div');
+                    div.style.cssText = 'font-size:0.72rem;border-left:2px solid rgba(255,107,53,0.3);padding:2px 6px;margin-bottom:2px';
+                    div.textContent = line;
+                    log.appendChild(div);
+                    log.scrollTop = log.scrollHeight;
+                });
+
+                _bossBattle.players.forEach(p => {
+                    const el = $(`bpc-pending-${p.user_id}`);
+                    if (el) el.textContent = '';
+                });
+
+                if (_bossBattle.over) {
+                    setTimeout(() => _showBossResult(), 1200);
+                } else {
+                    const status = $('boss-status');
+                    if (status) status.textContent = `Turn ${_bossBattle.turn} complete — pick your next action!`;
+                    _setBossButtons(true);
+                }
+            } else {
+                // Still waiting — check pending actions
+                const alive = newBattle.players.filter(p => p.alive);
+                const submitted = Object.keys(newBattle.pending_actions || {}).length;
+                const waiting = alive.length - submitted;
+                const status = $('boss-status');
+                if (status && waiting > 0) status.textContent = `⏳ Waiting for ${waiting} more player${waiting !== 1 ? 's' : ''}...`;
+                // Update pending indicators from server state
+                alive.forEach(p => {
+                    const el = $(`bpc-pending-${p.user_id}`);
+                    if (el) {
+                        const hasSubmitted = (newBattle.pending_actions || {})[p.user_id];
+                        el.textContent = hasSubmitted ? '✅ Ready' : '';
+                    }
+                });
+                _pollBossResolution();
+            }
+        } catch(e) {
+            _pollBossResolution();
+        }
+    }, 1500);
+}
+
+function _showBossResult() {
+    _gameEmbedActive = false;
+    if (!_bossBattle) return;
+    const won = _bossBattle.won;
+    const res = $('boss-result');
+    const status = $('boss-status');
+    if (status) status.textContent = '';
+    if (!res) return;
+
+    const me = _bossBattle.players.find(p => p.user_id === _myUserId);
+    const myXp = me ? (me.xp_gained || 0) : 0;
+    const survivors = _bossBattle.players.filter(p => p.alive).map(p => esc(p.name)).join(', ');
+
+    let html = `<div style="text-align:center;padding:12px 0;border-top:1px solid rgba(255,107,53,0.2);margin-top:8px">`;
+    html += `<div style="font-size:1.1rem;font-weight:700;color:${won?'#2ecc71':'#e74c3c'};margin-bottom:6px">${won?'🏆 Boss Defeated!':'💀 Party Wiped'}</div>`;
+    if (won && survivors) html += `<div style="font-size:0.78rem;color:var(--text-secondary);margin-bottom:6px">Survivors: ${survivors}</div>`;
+    if (myXp > 0) html += `<div style="font-size:0.82rem;color:var(--gold-primary);margin-bottom:4px">📈 +${myXp} XP</div>`;
+    html += `<div class="d-flex gap-2 justify-content-center mt-3">
+        <button class="arena-btn" onclick="window._arenaLeave()">Leave Room</button>
+    </div></div>`;
+    res.innerHTML = html;
+    res.style.display = '';
+    _bossBattle = null;
+}
+
 // ── Leave ─────────────────────────────────────────────────────────────────────
 window._arenaLeave = async function() {
+    if (_bossPollTimer) { clearTimeout(_bossPollTimer); _bossPollTimer = null; }
     try {
         await fetch('/api/arena/leave', {method:'POST'});
     } catch { /* ignore */ }
-    _myArenaRoomId = null;
-    _viewRoomId    = null;
-    _battle        = null;
+    _myArenaRoomId   = null;
+    _viewRoomId      = null;
+    _battle          = null;
+    _bossBattle      = null;
+    _bossDefendTarget = null;
+    _gameEmbedActive = false;
     setPanel(`
         <div class="arena-panel" style="text-align:center;padding:32px 18px">
             <div style="font-size:2rem;opacity:0.3">⚔️🎰</div>
@@ -1160,6 +1594,7 @@ window._clPickGame = async function(game) {
 window._clOpenGameInline = async function(game) {
     const panel = $('shared-panel-area');
     if (!panel) return;
+    _gameEmbedActive = true;
 
     const gi = GAME_INFO_MAP[game] || { icon: '🎮', label: game };
     panel.innerHTML = `<div class="cl-panel" style="text-align:center;padding:40px 18px">
@@ -1256,6 +1691,7 @@ window._clOpenGameInline = async function(game) {
 
 window._clCloseGame = function() {
     if (_activeGameScript) { _activeGameScript.remove(); _activeGameScript = null; }
+    _gameEmbedActive = false;
     // Auto-cashout any games with pending server-side state before closing
     _autoCashoutPending().then(() => {
         const room = _casinoRooms.find(r => r.room_id === _myCasinoRoomId);
@@ -1269,6 +1705,7 @@ window._clCloseGame = function() {
 
 window._casinoLeave = async function() {
     if (_activeGameScript) { _activeGameScript.remove(); _activeGameScript = null; }
+    _gameEmbedActive = false;
     await _autoCashoutPending();
     try {
         await fetch('/api/casino/lobby/leave', { method:'POST', headers:{'Content-Type':'application/json'}, body:'{}' });

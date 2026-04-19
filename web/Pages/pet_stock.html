@@ -1,0 +1,59 @@
+<link rel="stylesheet" href="/css/pet_stock.css">
+
+<div class="container-fluid ps-page">
+
+    <!-- Login prompt (hidden until needed) -->
+    <div id="ps-login-prompt" style="display:none" class="alert alert-warning text-center mb-3">
+        🔒 <strong>Log in with Discord</strong> to trade tokens and view your holdings.
+        <a href="/auth/discord" class="btn btn-sm btn-warning ms-2">Log In</a>
+    </div>
+
+    <!-- Market Events Feed -->
+    <div class="ps-events-bar mb-3" id="ps-events-bar">
+        <span class="ps-events-label">📢 Events:</span>
+        <div class="ps-events-track">
+            <span class="ps-events-text" id="ps-events-text"></span>
+        </div>
+    </div>
+
+    <!-- Types Section -->
+    <div class="mb-4">
+        <div class="ps-grid" id="ps-grid-types"></div>
+    </div>
+
+    <!-- Elements Section -->
+    <div class="mb-4">
+        <div class="ps-grid" id="ps-grid-elements"></div>
+    </div>
+
+    <!-- Trade Modal -->
+    <div id="ps-trade-modal" style="display:none">
+        <div class="ps-modal-backdrop" id="ps-modal-backdrop"></div>
+        <div class="ps-modal-box">
+            <div class="ps-modal-header">
+                <span id="ps-modal-title">Trade Token</span>
+                <button class="rss-modal-close" id="ps-modal-close">&times;</button>
+            </div>
+            <div class="ps-modal-body">
+                <div class="ps-modal-info" id="ps-modal-info"></div>
+                <div class="ps-modal-tabs">
+                    <button class="ps-tab-btn active" id="ps-buy-tab" onclick="psModalTab('buy')">Buy</button>
+                    <button class="ps-tab-btn" id="ps-sell-tab" onclick="psModalTab('sell')">Sell</button>
+                </div>
+                <div class="ps-modal-trade" id="ps-modal-trade">
+                    <label class="ps-qty-label">Quantity</label>
+                    <div class="ps-qty-row">
+                        <button class="ps-qty-btn" onclick="psAdjQty(-1)">−</button>
+                        <input type="number" id="ps-qty-input" class="ps-qty-input" value="1" min="1" max="9999">
+                        <button class="ps-qty-btn" onclick="psAdjQty(1)">+</button>
+                    </div>
+                    <div class="ps-cost-preview" id="ps-cost-preview"></div>
+                    <button class="ps-confirm-btn" id="ps-confirm-btn" onclick="psConfirmTrade()">Confirm</button>
+                    <p id="ps-trade-status" class="ps-trade-status"></p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="/js/pet_stock.js"></script>

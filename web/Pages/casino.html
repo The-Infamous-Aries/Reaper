@@ -126,6 +126,58 @@
                 </div>
             </div>
 
+            <div class="col-lg-4 col-md-6">
+                <div class="casino-game-card" onclick="window._casinoOpenGame('keno')">
+                    <div class="casino-game-icon">🎯</div>
+                    <div class="casino-game-title">Mega Keno</div>
+                    <div class="casino-game-desc">Pick 10 pets, 3 elements, 1 type. Match pets to trigger bonus draws for stacked multipliers!</div>
+                    <div class="d-flex gap-2 flex-wrap mt-2">
+                        <span class="casino-tag">3-Phase Draw</span>
+                        <span class="casino-tag">MEGA Bonus</span>
+                        <span class="casino-tag">Up to 200,000×</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-4 col-md-6">
+                <div class="casino-game-card" onclick="window._casinoOpenGame('wheel')">
+                    <div class="casino-game-icon">🎡</div>
+                    <div class="casino-game-title">Wheel of Pets</div>
+                    <div class="casino-game-desc">Click a segment, place your bet, spin the wheel. Land on your own pet for a 2× jackpot!</div>
+                    <div class="d-flex gap-2 flex-wrap mt-2">
+                        <span class="casino-tag">103 Pets</span>
+                        <span class="casino-tag">Own-Pet 2×</span>
+                        <span class="casino-tag">Equal Odds</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-4 col-md-6">
+                <div class="casino-game-card" onclick="window._casinoOpenGame('powerball')">
+                    <div class="casino-game-icon">🎟️</div>
+                    <div class="casino-game-title">Pet Powerball</div>
+                    <div class="casino-game-desc">Pick 5 pets in order + optional Elemental Ball. Daily draw at midnight UTC. Jackpot grows every ticket!</div>
+                    <div class="d-flex gap-2 flex-wrap mt-2">
+                        <span class="casino-tag">Daily Draw</span>
+                        <span class="casino-tag">Rolls Over</span>
+                        <span class="casino-tag">MEGA Jackpot</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-4 col-md-6">
+                <div class="casino-game-card" onclick="window._casinoOpenGame('scratch')">
+                    <div class="casino-game-icon">🎫</div>
+                    <div class="casino-game-title">Scratch Cards</div>
+                    <div class="casino-game-desc">5 card types — Types, Units, Elements, Pets, Items. Match symbols on 1×3 or 3×3 grids for XP wins!</div>
+                    <div class="d-flex gap-2 flex-wrap mt-2">
+                        <span class="casino-tag">5 Card Types</span>
+                        <span class="casino-tag">Up to 75×</span>
+                        <span class="casino-tag">Type Bonus</span>
+                    </div>
+                </div>
+            </div>
+
         </div>
 
         <!-- Slots panel (inline, shown when slots selected) -->
@@ -146,7 +198,7 @@
                         </button>
                         <button class="casino-diff-btn" data-difficulty="Easy">
                             <div style="font-weight:700">Easy</div>
-                            <div style="font-size:0.65rem;opacity:0.7">Military · Moderate</div>
+                            <div style="font-size:0.65rem;opacity:0.7">Units · Moderate</div>
                         </button>
                         <button class="casino-diff-btn" data-difficulty="Medium">
                             <div style="font-weight:700">Medium</div>
@@ -193,30 +245,17 @@
                         <div class="casino-reel-col"><div class="casino-reel" id="reel-1"></div></div>
                         <div class="casino-reel-col"><div class="casino-reel" id="reel-2"></div></div>
                         <div class="casino-reel-col"><div class="casino-reel" id="reel-3"></div></div>
+                        <div class="casino-reel-col" id="reel-4-col" style="display:none"><div class="casino-reel" id="reel-4"></div></div>
                     </div>
 
-                    <!-- Insanity reels -->
-                    <div id="insanity-slots" style="display:none">
-                        <div class="row g-3">
-                            <div class="col-6">
-                                <div style="font-size:0.72rem;color:var(--gold-secondary);margin-bottom:6px;text-align:center">Element Reel</div>
-                                <div class="casino-reels-wrap">
-                                    <div class="casino-reel-col"><div class="casino-reel" id="element-reel-1"></div></div>
-                                    <div class="casino-reel-col"><div class="casino-reel" id="element-reel-2"></div></div>
-                                    <div class="casino-reel-col"><div class="casino-reel" id="element-reel-3"></div></div>
-                                </div>
-                            </div>
-                            <div class="col-6">
-                                <div style="font-size:0.72rem;color:var(--gold-secondary);margin-bottom:6px;text-align:center">Pet Reel</div>
-                                <div class="casino-reels-wrap">
-                                    <div class="casino-reel-col"><div class="casino-reel" id="pet-reel-1"></div></div>
-                                    <div class="casino-reel-col"><div class="casino-reel" id="pet-reel-2"></div></div>
-                                    <div class="casino-reel-col"><div class="casino-reel" id="pet-reel-3"></div></div>
-                                </div>
-                            </div>
-                        </div>
-                        <div style="font-size:0.72rem;color:var(--text-secondary);text-align:center;margin-top:8px">
-                            Targets: <span id="element-target" style="color:var(--gold-secondary)">—</span> · <span id="species-target" style="color:var(--gold-secondary)">—</span>
+                    <!-- Insanity reel labels (shown only in Insanity mode) -->
+                    <div id="insanity-labels" style="display:none;margin-top:8px">
+                        <div style="font-size:0.68rem;color:var(--text-secondary);text-align:center;margin-bottom:4px">Need to match your pet:</div>
+                        <div style="display:flex;justify-content:center;gap:12px;font-size:0.72rem">
+                            <span>🐾 <span id="label-species" style="color:var(--gold-secondary)">Species</span></span>
+                            <span>📦 <span id="label-type" style="color:var(--gold-secondary)">Type</span></span>
+                            <span>🔥 <span id="label-element1" style="color:var(--gold-secondary)">Element</span></span>
+                            <span id="label-element2-wrap" style="display:none">✨ <span id="label-element2" style="color:var(--gold-secondary)">Element2</span></span>
                         </div>
                     </div>
 
@@ -239,8 +278,10 @@
             </div>
         </div>
 
+        </div>
+
     </div>
 
 </div>
 
-<script src="/js/casino.js"></script>
+<script src="/js/casino.js?v=20260418b"></script>

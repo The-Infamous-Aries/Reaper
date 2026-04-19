@@ -74,7 +74,7 @@ function bindEvents() {
         if (id === 'bj-double-btn') action('double');
         if (id === 'bj-split-btn')  action('split');
         if (id === 'bj-again-btn')  showSetup();
-        if (id === 'bj-quit-btn')   window._casinoClose && window._casinoClose();
+        if (id === 'bj-quit-btn')   showSetup();
     });
 }
 
@@ -229,7 +229,7 @@ function showResult(state) {
             ${xpText}
             <div class="bj-actions mt-3">
                 <button class="bj-btn" id="bj-again-btn">Deal Again</button>
-                <button class="bj-btn bj-btn--stand" id="bj-quit-btn">Leave Table</button>
+                <button class="bj-btn bj-btn--stand" id="bj-quit-btn">New Game</button>
             </div>
         </div>`;
     area.style.display = '';

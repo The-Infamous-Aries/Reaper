@@ -1,0 +1,161 @@
+<link rel="stylesheet" href="/css/casino.css">
+<link rel="stylesheet" href="/css/keno.css">
+
+<div class="container-fluid" id="keno-root">
+
+    <!-- Header -->
+    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-1">
+        <div>
+            <div class="casino-title">🎯 Mega Keno</div>
+            <div class="casino-subtitle">Pick Type · Element · Pets — Trigger Bonus Draws for Massive Wins</div>
+        </div>
+        <div id="keno-xp-badge" class="casino-xp-badge">
+            <span style="color:var(--text-secondary);font-size:0.75rem">Your XP</span>
+            <span id="keno-current-xp" class="casino-xp-amount">—</span>
+        </div>
+    </div>
+
+    <hr class="casino-divider">
+
+    <!-- Loading -->
+    <div id="keno-loading" class="text-center py-5">
+        <div class="spinner-border" style="color:var(--gold-primary)" role="status"></div>
+        <p class="mt-2" style="color:var(--text-secondary);font-size:0.82rem">Loading Mega Keno...</p>
+    </div>
+
+    <!-- Login prompt -->
+    <div id="keno-login-prompt" style="display:none" class="text-center py-5">
+        <div style="font-size:2rem;margin-bottom:8px">🔒</div>
+        <div style="color:var(--text-secondary);font-size:0.9rem">Sign in with Discord to play Mega Keno.</div>
+        <a href="/api/discord/login" class="casino-btn mt-3" style="display:inline-block">Login with Discord</a>
+    </div>
+
+    <!-- No pet prompt -->
+    <div id="keno-no-pet" style="display:none" class="text-center py-5">
+        <div style="font-size:2rem;margin-bottom:8px">🐾</div>
+        <div style="color:var(--text-secondary);font-size:0.9rem">You need a pet to play Mega Keno.</div>
+        <a href="?page=mypet" class="casino-btn mt-3" style="display:inline-block">Get a Pet</a>
+    </div>
+
+    <!-- Main game -->
+    <div id="keno-main" style="display:none">
+
+        <!-- Fun mode toggle -->
+        <div class="d-flex align-items-center gap-3 mb-3">
+            <label class="casino-toggle-wrap">
+                <input type="checkbox" id="keno-fun-mode-toggle">
+                <span class="casino-toggle-slider"></span>
+            </label>
+            <div>
+                <div style="font-size:0.82rem;color:var(--gold-secondary);font-weight:600">Fun Mode</div>
+                <div style="font-size:0.7rem;color:var(--text-secondary)">Play without risking XP</div>
+            </div>
+            <button class="casino-btn-sm ms-auto" onclick="window._kenoBack()">← Back to Casino</button>
+        </div>
+
+        <!-- Setup panel -->
+        <div id="keno-setup" class="casino-panel mb-3">
+            <div class="casino-panel-title mb-3">🎯 Mega Keno Setup</div>
+
+            <!-- Bet -->
+            <div id="keno-bet-section" class="mb-3">
+                <div class="keno-section-label">Bet Amount (XP)</div>
+                <input type="number" class="casino-input" id="keno-bet-amount" min="10" max="500000" placeholder="Enter XP amount">
+                <div class="d-flex gap-2 mt-2 flex-wrap">
+                    <button class="casino-btn-sm keno-preset" data-amount="50">50</button>
+                    <button class="casino-btn-sm keno-preset" data-amount="100">100</button>
+                    <button class="casino-btn-sm keno-preset" data-amount="500">500</button>
+                    <button class="casino-btn-sm keno-preset" data-amount="1000">1 000</button>
+                    <button class="casino-btn-sm keno-preset" data-amount="5000">5 000</button>
+                </div>
+            </div>
+
+            <!-- ── LINE 1: Type (pick 1 of 3) ── -->
+            <div class="keno-line-block mb-3">
+                <div class="keno-line-header">
+                    <span class="keno-line-badge keno-line-badge--type">TYPE</span>
+                    <span class="keno-line-title">Pick 1 Pet Type</span>
+                    <span class="keno-line-hint">Bonus draw if 4+ pets match</span>
+                </div>
+                <div class="keno-pick-row" id="keno-type-row">
+                    <!-- populated by JS -->
+                </div>
+            </div>
+
+            <!-- ── LINE 2: Element (pick 3 of 13) ── -->
+            <div class="keno-line-block mb-3">
+                <div class="keno-line-header">
+                    <span class="keno-line-badge keno-line-badge--element">ELEMENT</span>
+                    <span class="keno-line-title">Pick 3 Elements</span>
+                    <span class="keno-line-hint">Multiplier draw if 2+ match</span>
+                </div>
+                <div class="keno-pick-row" id="keno-element-row">
+                    <!-- populated by JS -->
+                </div>
+            </div>
+
+            <!-- ── LINE 3: Pets (pick 10 of 103) ── -->
+            <div class="keno-line-block mb-3">
+                <div class="keno-line-header">
+                    <span class="keno-line-badge keno-line-badge--pet">PETS</span>
+                    <span class="keno-line-title">Pick 10 Pets</span>
+                    <span class="keno-line-hint">Main draw — bot picks 20 from 103</span>
+                </div>
+                <div class="keno-selection-info mb-2">
+                    <span id="keno-pet-count">0</span>/10 selected
+                </div>
+                <div class="keno-pet-grid" id="keno-pet-grid">
+                    <!-- populated by JS -->
+                </div>
+            </div>
+
+            <button id="keno-play-btn" class="casino-btn w-100" disabled>🎯 Play Mega Keno</button>
+        </div>
+
+        <!-- ── Game / Result panel ── -->
+        <div id="keno-game-panel" style="display:none" class="casino-panel">
+
+            <!-- Payout info bar -->
+            <div class="keno-payout-bar mb-3">
+                <div class="keno-payout-item">
+                    <span class="keno-payout-label">Bet</span>
+                    <span id="keno-display-bet" class="keno-payout-value">—</span>
+                </div>
+                <div class="keno-payout-item">
+                    <span class="keno-payout-label">Base Payout</span>
+                    <span id="keno-display-base" class="keno-payout-value">—</span>
+                </div>
+                <div class="keno-payout-item" id="keno-elem-payout-item" style="display:none">
+                    <span class="keno-payout-label">Element ×</span>
+                    <span id="keno-display-elem-mult" class="keno-payout-value keno-payout-value--bonus">—</span>
+                </div>
+                <div class="keno-payout-item" id="keno-mega-payout-item" style="display:none">
+                    <span class="keno-payout-label">MEGA ×</span>
+                    <span id="keno-display-mega-mult" class="keno-payout-value keno-payout-value--mega">—</span>
+                </div>
+                <div class="keno-payout-item">
+                    <span class="keno-payout-label">Total Won</span>
+                    <span id="keno-display-total" class="keno-payout-value keno-payout-value--total">—</span>
+                </div>
+            </div>
+
+            <!-- Phase result texts (shown inline below each section) -->
+            <div id="keno-pet-result-text"     class="keno-result-text mb-2" style="display:none"></div>
+            <div id="keno-element-result-text" class="keno-result-text mb-2" style="display:none"></div>
+            <div id="keno-type-result-text"    class="keno-result-text mb-2" style="display:none"></div>
+
+            <!-- Final result -->
+            <div id="keno-final-result" style="display:none" class="keno-final-block mt-3">
+                <div id="keno-final-text" class="keno-final-text"></div>
+                <div id="keno-final-winnings" class="keno-final-winnings"></div>
+            </div>
+
+            <div class="text-center mt-3">
+                <button id="keno-play-again-btn" class="casino-btn" style="display:none">🎯 Play Again</button>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script src="/js/keno.js?v=20260418c"></script>

@@ -1,0 +1,435 @@
+<div class="rev-shell">
+
+  <!-- Controls -->
+  <div class="card rev-controls">
+    <div class="card-header">
+      <div>
+        <p class="rev-kicker">Night's Watch</p>
+        <p class="rev-title">Alliance Revenue</p>
+      </div>
+      <div class="rev-header-right">
+        <div class="rev-view-tabs">
+          <button class="rev-view-tab active" id="tab-members" data-view="members">
+            <img src="/static/Emojis/Menu/member.png" class="rev-icon-sm" alt="">
+            <span id="rev-member-count">—</span> Members
+          </button>
+          <button class="rev-view-tab" id="tab-alliance" data-view="alliance">
+            <img src="/static/Emojis/Menu/alliance.png" class="rev-icon-sm" alt="">
+            Alliance Total
+          </button>
+        </div>
+        <input type="text" id="rev-search" class="rev-search" placeholder="Search nation or leader…">
+        <button id="rev-refresh" class="btn btn-gold btn-sm">↻ Refresh</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="rev-status" class="rev-status" style="display:none"></div>
+
+  <!-- Members view -->
+  <div id="view-members" class="card rev-table-card">
+    <div class="card-header">
+      <span>Member Revenue</span>
+      <span id="rev-sort-summary" class="rev-sort-summary">Sorted by Turn Revenue ↓</span>
+    </div>
+    <div class="card-body p-0">
+      <div class="rev-table-wrap">
+        <table id="rev-table">
+          <thead>
+            <tr>
+              <th style="width:1.5rem"></th>
+              <th data-col="nation_name">Nation</th>
+              <th data-col="turn_revenue" class="rev-sort-active">Turn Revenue ↓</th>
+              <th data-col="day_revenue">Day Revenue</th>
+              <th data-col="num_cities">Cities</th>
+              <th data-col="score">Score</th>
+              <th data-col="population">Population</th>
+              <th data-col="color_bonus">Color Bonus</th>
+              <th data-col="military_upkeep">Mil. Upkeep</th>
+              <th data-col="improvement_upkeep">Imp. Upkeep</th>
+              <th data-col="alliance_tax">Tax (10%)</th>
+            </tr>
+          </thead>
+          <tbody id="rev-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Alliance view -->
+  <div id="view-alliance" class="rev-alliance-view" style="display:none">
+    <div class="card">
+      <div class="card-header">
+        <img src="/static/Emojis/Menu/revenue.png" class="rev-icon-sm" alt="">
+        Alliance Revenue Summary
+      </div>
+      <div class="card-body">
+        <div class="rev-alliance-grid">
+          <div class="rev-stat-card">
+            <div class="rev-stat-label">Total Turn Revenue</div>
+            <div class="rev-stat-value" id="alliance-turn-revenue">$0</div>
+          </div>
+          <div class="rev-stat-card">
+            <div class="rev-stat-label">Total Day Revenue</div>
+            <div class="rev-stat-value" id="alliance-day-revenue">$0</div>
+          </div>
+          <div class="rev-stat-card">
+            <div class="rev-stat-label">Avg per Nation/Turn</div>
+            <div class="rev-stat-value" id="alliance-avg-turn">$0</div>
+          </div>
+          <div class="rev-stat-card">
+            <div class="rev-stat-label">Avg per Nation/Day</div>
+            <div class="rev-stat-value" id="alliance-avg-day">$0</div>
+          </div>
+          <div class="rev-stat-card">
+            <div class="rev-stat-label">Total Members</div>
+            <div class="rev-stat-value" id="alliance-member-count">0</div>
+          </div>
+          <div class="rev-stat-card">
+            <div class="rev-stat-label">Highest Earner</div>
+            <div class="rev-stat-value" id="alliance-top-earner">—</div>
+          </div>
+        </div>
+        <div class="rev-top-earners">
+          <h5 class="rev-section-title">Top 10 Revenue Earners</h5>
+          <div class="rev-top-list" id="rev-top-list"></div>
+        </div>
+        <div class="rev-color-dist">
+          <h5 class="rev-section-title">Revenue by Color</h5>
+          <div class="rev-color-bars" id="rev-color-bars"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+(function () {
+
+  const RSC_ICONS = {
+    food:'food',coal:'coal',oil:'oil',uranium:'uranium',lead:'lead',
+    iron:'iron',bauxite:'bauxite',gasoline:'gasoline',munitions:'munitions',
+    steel:'steel',aluminum:'aluminum'
+  };
+  const RSC_LABELS = {
+    food:'Food',coal:'Coal',oil:'Oil',uranium:'Uranium',lead:'Lead',
+    iron:'Iron',bauxite:'Bauxite',gasoline:'Gasoline',munitions:'Munitions',
+    steel:'Steel',aluminum:'Aluminum'
+  };
+
+  // ── State ──────────────────────────────────────────────────────────────────
+  let _nations  = [];
+  let _filtered = [];
+  let _sortCol  = 'turn_revenue';
+  let _sortAsc  = false;
+  let _view     = 'members';
+  let _expanded = null;
+
+  // ── Utilities ──────────────────────────────────────────────────────────────
+  function $m(v) {
+    if (v == null) return '$0.00';
+    const s = v < 0 ? '-' : '';
+    return s + '$' + Math.abs(v).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+  }
+  function $n(v,d=0) {
+    return Number(v||0).toLocaleString('en-US',{maximumFractionDigits:d});
+  }
+  function esc(t) { const d=document.createElement('div'); d.textContent=t||''; return d.innerHTML; }
+  function set(id,v) { const el=document.getElementById(id); if(el) el.textContent=v; }
+
+  // ── Status ─────────────────────────────────────────────────────────────────
+  function showStatus(msg,err) {
+    const el=document.getElementById('rev-status');
+    if(!el) return;
+    el.textContent=msg; el.className=err?'rev-status rev-status-error':'rev-status'; el.style.display='block';
+  }
+  function hideStatus() { const el=document.getElementById('rev-status'); if(el) el.style.display='none'; }
+
+  // ── Fetch ──────────────────────────────────────────────────────────────────
+  async function fetchData() {
+    showStatus('Loading revenue data…',false);
+    try {
+      const res  = await fetch('/api/watch/revenue');
+      if(!res.ok) throw new Error('HTTP '+res.status);
+      const data = await res.json();
+      if(data.error) throw new Error(data.error);
+
+      _nations  = data.nations||[];
+      _filtered = [..._nations];
+      _expanded = null;
+
+      const TAX_RATE = 0.10;
+      // Ensure 10% tax is applied if backend didn't compute it
+      _nations.forEach(n => {
+        if (!n.alliance_tax || n.alliance_tax === 0) {
+          n.alliance_tax = (n.gross_income || 0) * TAX_RATE;
+          n.turn_revenue = (n.gross_income || 0) - n.alliance_tax
+            - (n.military_upkeep||0) - (n.improvement_upkeep||0)
+            - (n.power_upkeep||0) - (n.rss_upkeep||0);
+          n.day_revenue  = n.turn_revenue * 12;
+        }
+        n.alliance_tax_rate = n.alliance_tax_rate || TAX_RATE;
+      });
+
+      // Re-sort after tax adjustment
+      _nations.sort((a,b) => b.turn_revenue - a.turn_revenue);
+      _filtered = [..._nations];
+
+      const totalTurn = _nations.reduce((s,n)=>s+n.turn_revenue,0);
+      const totalDay  = _nations.reduce((s,n)=>s+n.day_revenue,0);
+      const cnt = _nations.length || 1;
+
+      set('rev-member-count',      _nations.length);
+      set('alliance-member-count', _nations.length);
+      set('alliance-turn-revenue', $m(totalTurn));
+      set('alliance-day-revenue',  $m(totalDay));
+      set('alliance-avg-turn',     $m(totalTurn/cnt));
+      set('alliance-avg-day',      $m(totalDay/cnt));
+      if(_nations.length) set('alliance-top-earner', _nations[0].nation_name);
+
+      hideStatus();
+      render();
+    } catch(e) {
+      showStatus('Error: '+e.message, true);
+    }
+  }
+
+  // ── Render ─────────────────────────────────────────────────────────────────
+  function render() {
+    if(_view==='members') renderTable();
+    else renderAlliance();
+  }
+
+  // ── Build expand detail HTML ───────────────────────────────────────────────
+  function buildRevenueDetail(n) {
+    const rsc   = n.resources || {};
+    const prices= n.prices    || {};
+    const TAX   = n.alliance_tax_rate || 0.10;
+
+    // Resource rows — only show non-zero
+    const rscRows = Object.entries(RSC_LABELS).map(([key, label]) => {
+      const amt   = rsc[key] || 0;
+      if(Math.abs(amt) < 0.001) return '';
+      const price = prices[key] || 0;
+      const val   = amt * price;
+      const cls   = amt >= 0 ? 'rev-positive' : 'rev-negative';
+      const icon  = `/static/Emojis/Resources/${RSC_ICONS[key]}.png`;
+      return `<div class="rev-detail-rsc-row">
+        <img src="${icon}" class="rev-icon-sm" alt="">
+        <span class="rev-detail-rsc-label">${label}</span>
+        <span class="rev-detail-rsc-amt ${cls}">${amt>=0?'+':''}${$n(amt,2)}/t</span>
+        <span class="rev-detail-rsc-price">@ ${$m(price)}</span>
+        <span class="rev-detail-rsc-val ${cls}">${$m(val)}/t</span>
+      </div>`;
+    }).join('');
+
+    const rscTotalVal = Object.entries(rsc).reduce((s,[k,v])=>s+(v*(prices[k]||0)),0);
+    const grossMoney  = n.gross_income || 0;
+    const totalGross  = grossMoney + rscTotalVal;
+    const taxAmt      = n.alliance_tax || 0;
+    const milUp       = n.military_upkeep    || 0;
+    const impUp       = n.improvement_upkeep || 0;
+    const powUp       = n.power_upkeep       || 0;
+    const rssUp       = n.rss_upkeep         || 0;
+    const totalExp    = taxAmt + milUp + impUp + powUp + rssUp;
+    const netTurn     = n.turn_revenue || 0;
+
+    return `<div class="rev-detail-wrap">
+      <div class="rev-detail-grid">
+
+        <!-- Income breakdown -->
+        <div class="rev-detail-section">
+          <div class="rev-detail-section-title">💰 Income (per turn)</div>
+          <div class="rev-detail-kv">
+            <div class="rev-detail-row"><span>National Tax Revenue</span><strong class="rev-positive">${$m(grossMoney)}</strong></div>
+            <div class="rev-detail-row"><span>Color Bonus</span><strong class="rev-positive">${$m(n.color_bonus||0)}</strong></div>
+            ${rscRows ? `<div class="rev-detail-row rev-detail-row-header"><span>Resource Production</span><strong class="rev-positive">${$m(rscTotalVal)}</strong></div>
+            <div class="rev-detail-rsc-list">${rscRows}</div>` : ''}
+            <div class="rev-detail-row rev-detail-total"><span>Total Gross</span><strong class="rev-positive">${$m(totalGross)}</strong></div>
+          </div>
+        </div>
+
+        <!-- Expenses breakdown -->
+        <div class="rev-detail-section">
+          <div class="rev-detail-section-title">📉 Expenses (per turn)</div>
+          <div class="rev-detail-kv">
+            <div class="rev-detail-row"><span>Alliance Tax (${(TAX*100).toFixed(0)}%)</span><strong class="rev-negative">-${$m(taxAmt)}</strong></div>
+            <div class="rev-detail-row"><span>Military Upkeep</span><strong class="rev-negative">-${$m(milUp)}</strong></div>
+            <div class="rev-detail-row"><span>Improvement Upkeep</span><strong class="rev-negative">-${$m(impUp)}</strong></div>
+            <div class="rev-detail-row"><span>Power Upkeep</span><strong class="rev-negative">-${$m(powUp)}</strong></div>
+            <div class="rev-detail-row"><span>Resource Upkeep</span><strong class="rev-negative">-${$m(rssUp)}</strong></div>
+            <div class="rev-detail-row rev-detail-total"><span>Total Expenses</span><strong class="rev-negative">-${$m(totalExp)}</strong></div>
+          </div>
+        </div>
+
+        <!-- Net summary -->
+        <div class="rev-detail-section">
+          <div class="rev-detail-section-title">📊 Net Summary</div>
+          <div class="rev-detail-kv">
+            <div class="rev-detail-row"><span>Net/Turn</span><strong class="${netTurn>=0?'rev-positive':'rev-negative'}">${$m(netTurn)}</strong></div>
+            <div class="rev-detail-row"><span>Net/Day (×12)</span><strong class="${netTurn>=0?'rev-positive':'rev-negative'}">${$m(netTurn*12)}</strong></div>
+            <div class="rev-detail-row"><span>Net/Week (×84)</span><strong class="${netTurn>=0?'rev-positive':'rev-negative'}">${$m(netTurn*84)}</strong></div>
+            <div class="rev-detail-row"><span>Population</span><strong>${$n(n.population)}</strong></div>
+            <div class="rev-detail-row"><span>Cities</span><strong>${n.num_cities||0}</strong></div>
+            <div class="rev-detail-row"><span>Color</span><strong>${esc(n.color||'—')}</strong></div>
+          </div>
+        </div>
+
+      </div>
+    </div>`;
+  }
+
+  // ── Render table ───────────────────────────────────────────────────────────
+  function renderTable() {
+    const tbody = document.getElementById('rev-body');
+    if(!tbody) return;
+    if(!_filtered.length) {
+      tbody.innerHTML='<tr><td colspan="11" style="text-align:center;padding:2rem;color:var(--text-secondary)">No data</td></tr>';
+      return;
+    }
+    const rows = [];
+    _filtered.forEach((n,i) => {
+      const tr  = n.turn_revenue||0;
+      const dr  = n.day_revenue||0;
+      const tc  = tr>=0?'rev-positive':'rev-negative';
+      const dc  = dr>=0?'rev-positive':'rev-negative';
+      const open = _expanded === n.nation_id;
+      rows.push(`<tr class="rev-row${open?' rev-row-open':''}" data-nid="${n.nation_id}" style="cursor:pointer">
+        <td class="rev-chevron">${open?'▼':'▶'}</td>
+        <td><div class="rev-name-cell">
+          ${n.flag?`<img src="${esc(n.flag)}" class="rev-flag" alt="">`:''}
+          <div>
+            <a href="https://politicsandwar.com/nation/id=${n.nation_id}" target="_blank" class="rev-pnw-link" onclick="event.stopPropagation()">${esc(n.nation_name)}</a>
+            <span class="rev-leader">${esc(n.leader_name)}</span>
+          </div>
+        </div></td>
+        <td class="${tc}">${$m(tr)}</td>
+        <td class="${dc}">${$m(dr)}</td>
+        <td>${n.num_cities||0}</td>
+        <td>${$n(n.score,0)}</td>
+        <td>${$n(n.population)}</td>
+        <td class="rev-positive">${$m(n.color_bonus||0)}</td>
+        <td class="rev-negative">-${$m(n.military_upkeep||0)}</td>
+        <td class="rev-negative">-${$m(n.improvement_upkeep||0)}</td>
+        <td class="rev-negative">-${$m(n.alliance_tax||0)}</td>
+      </tr>`);
+      rows.push(`<tr class="rev-expand-row${open?' rev-expand-open':''}" data-expand-nid="${n.nation_id}">
+        <td colspan="11" class="rev-expand-cell">
+          <div class="rev-expand-inner">
+            ${open ? buildRevenueDetail(n) : ''}
+          </div>
+        </td>
+      </tr>`);
+    });
+    tbody.innerHTML = rows.join('');
+    tbody.querySelectorAll('.rev-row').forEach(row => {
+      row.addEventListener('click', () => {
+        const nid = parseInt(row.dataset.nid);
+        _expanded = _expanded===nid ? null : nid;
+        renderTable();
+      });
+    });
+  }
+
+  // ── Alliance view ──────────────────────────────────────────────────────────
+  function renderAlliance() {
+    const topList = document.getElementById('rev-top-list');
+    if(topList) {
+      topList.innerHTML = _nations.slice(0,10).map((n,i) => {
+        const tr=n.turn_revenue||0;
+        const tc=tr>=0?'rev-positive':'rev-negative';
+        return `<div class="rev-top-item">
+          <div class="rev-top-rank">#${i+1}</div>
+          <div class="rev-top-nation">
+            ${n.flag?`<img src="${esc(n.flag)}" class="rev-flag" alt="">`:''}
+            <div>
+              <a href="https://politicsandwar.com/nation/id=${n.nation_id}" target="_blank" class="rev-pnw-link">${esc(n.nation_name)}</a>
+              <span class="rev-leader">${esc(n.leader_name)}</span>
+            </div>
+          </div>
+          <div class="rev-top-value ${tc}">${$m(tr)}/t</div>
+        </div>`;
+      }).join('');
+    }
+    const colorBars = document.getElementById('rev-color-bars');
+    if(colorBars) {
+      const byColor={};
+      _nations.forEach(n=>{
+        const c=n.color||'beige';
+        if(!byColor[c]) byColor[c]={turn:0,count:0};
+        byColor[c].turn+=n.turn_revenue||0; byColor[c].count++;
+      });
+      const sorted=Object.entries(byColor).sort((a,b)=>b[1].turn-a[1].turn);
+      const max=sorted.length?sorted[0][1].turn:1;
+      colorBars.innerHTML=sorted.map(([color,d])=>{
+        const pct=(d.turn/max)*100;
+        const tc=d.turn>=0?'rev-positive':'rev-negative';
+        return `<div class="rev-color-bar">
+          <div class="rev-color-name">${color} (${d.count})</div>
+          <div class="rev-color-bar-bg"><div class="rev-color-bar-fill" style="width:${pct}%"></div></div>
+          <div class="rev-color-value ${tc}">${$m(d.turn)}/t</div>
+        </div>`;
+      }).join('');
+    }
+  }
+
+  // ── Sort ───────────────────────────────────────────────────────────────────
+  function applySort(col) {
+    if(_sortCol===col) _sortAsc=!_sortAsc;
+    else { _sortCol=col; _sortAsc=false; }
+    document.querySelectorAll('#rev-table th').forEach(th=>{
+      th.classList.remove('rev-sort-active');
+      th.textContent=th.textContent.replace(/\s*[↑↓]$/,'').trim();
+    });
+    const active=document.querySelector(`#rev-table th[data-col="${col}"]`);
+    if(active){ active.classList.add('rev-sort-active'); active.textContent+=_sortAsc?' ↑':' ↓'; }
+    _filtered.sort((a,b)=>{
+      let av=a[col],bv=b[col];
+      if(typeof av==='string') return _sortAsc?av.localeCompare(bv||''):(bv||'').localeCompare(av);
+      av=av||0; bv=bv||0; return _sortAsc?av-bv:bv-av;
+    });
+    const sum=document.getElementById('rev-sort-summary');
+    if(sum&&active) sum.textContent=`Sorted by ${active.textContent.replace(/\s*[↑↓]$/,'').trim()} ${_sortAsc?'↑':'↓'}`;
+    renderTable();
+  }
+
+  // ── Filter ─────────────────────────────────────────────────────────────────
+  function applyFilter(q) {
+    const lq=(q||'').toLowerCase().trim();
+    _filtered=lq?_nations.filter(n=>(n.nation_name||'').toLowerCase().includes(lq)||(n.leader_name||'').toLowerCase().includes(lq)):[..._nations];
+    _filtered.sort((a,b)=>{
+      let av=a[_sortCol],bv=b[_sortCol];
+      if(typeof av==='string') return _sortAsc?av.localeCompare(bv||''):(bv||'').localeCompare(av);
+      av=av||0; bv=bv||0; return _sortAsc?av-bv:bv-av;
+    });
+    renderTable();
+  }
+
+  // ── View switch ────────────────────────────────────────────────────────────
+  function switchView(view) {
+    _view=view;
+    document.getElementById('view-members').style.display =view==='members'?'':'none';
+    document.getElementById('view-alliance').style.display=view==='alliance'?'':'none';
+    document.querySelectorAll('.rev-view-tab').forEach(t=>t.classList.toggle('active',t.dataset.view===view));
+    render();
+  }
+
+  // ── Init (matches nations.html pattern exactly) ────────────────────────────
+  document.addEventListener('dashboardPageLoaded', function(e) {
+    if(e.detail.page !== 'revenue.html') return;
+
+    fetchData();
+
+    document.getElementById('rev-refresh').addEventListener('click', fetchData);
+    document.getElementById('rev-search').addEventListener('input', function(){ applyFilter(this.value); });
+    document.querySelectorAll('.rev-view-tab').forEach(btn=>{
+      btn.addEventListener('click',()=>switchView(btn.dataset.view));
+    });
+    document.querySelectorAll('#rev-table th[data-col]').forEach(th=>{
+      th.addEventListener('click',()=>applySort(th.dataset.col));
+    });
+  });
+
+})();
+</script>

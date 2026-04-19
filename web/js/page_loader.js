@@ -14,12 +14,13 @@ class PageScriptManager {
         const script = document.createElement('script');
         // Always append a cache-buster so the browser re-executes the script
         // on every page navigation (the IIFE and event listeners must re-run).
-        script.src = scriptPath + '?v=' + Date.now();
+        const src = scriptPath + '?v=' + Date.now();
+        script.src = src;
         script.type = scriptType;
         
         script.onload = () => {
             console.log(`Script loaded successfully: ${scriptPath}`);
-            this.loadedScripts.add(scriptPath);
+            this.loadedScripts.add(src);
             if (callback) callback();
         };
 
@@ -61,9 +62,9 @@ class PageScriptManager {
     }
 
     unloadAll() {
-        this.loadedScripts.forEach(scriptPath => {
-            const scriptElements = document.querySelectorAll(`script[src="${scriptPath}"]`);
-            scriptElements.forEach(el => el.remove());
+        // Remove by full src (including ?v= cache-buster)
+        this.loadedScripts.forEach(src => {
+            document.querySelectorAll(`script[src="${src}"]`).forEach(el => el.remove());
         });
         this.loadedScripts.clear();
         

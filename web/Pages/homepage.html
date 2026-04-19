@@ -57,27 +57,27 @@ document.addEventListener('DOMContentLoaded', function() {
             </div>
         </div>
         <div class="col-md-4 mb-4">
-            <div class="home-card" onclick="loadPage('comparison')" style="cursor: pointer;">
-                <h4><img src="/static/Emojis/Menu/comparison.png" class="home-card-icon"> Comparison</h4>
-                <p>Stack any two alliances side by side and watch the numbers fight. Military, production, projects, improvements, city distribution — all in one rich breakdown. Night's Watch pre-loaded, obviously.</p>
-            </div>
-        </div>
-        <div class="col-md-4 mb-4">
             <div class="home-card" onclick="loadPage('cost_calc')" style="cursor: pointer;">
                 <h4><img src="/static/Emojis/Menu/calculator.png" class="home-card-icon"> Calculators</h4>
                 <p>Find out exactly how broke you'll be after that city upgrade, or how many soldiers you need to send to their doom. Spoiler: it's always more than you think.</p>
             </div>
         </div>
         <div class="col-md-4 mb-4">
-            <div class="home-card" onclick="loadPage('library')" style="cursor: pointer;">
-                <h4><img src="/static/Emojis/Menu/script.png" class="home-card-icon"> Scriptorium</h4>
-                <p>Five ancient scrolls of forbidden knowledge: the FAFO Doctrine, Basic Building, Beige Cycling, Weapon Efficiency, and Sniping. Click a wax seal, read the scroll, stop being a filthy casual.</p>
+            <div class="home-card" onclick="loadPage('comparison')" style="cursor: pointer;">
+                <h4><img src="/static/Emojis/Menu/comparison.png" class="home-card-icon"> Comparison</h4>
+                <p>Stack any two alliances side by side and watch the numbers fight. Military, production, projects, improvements, city distribution — all in one rich breakdown. Night's Watch pre-loaded, obviously.</p>
             </div>
         </div>
         <div class="col-md-4 mb-4">
             <div class="home-card" onclick="loadPage('weapons')" style="cursor: pointer;">
                 <h4><img src="/static/Emojis/Menu/snipe.png" class="home-card-icon"> Weapon Efficiency</h4>
                 <p>Theory mode plots the full infra-vs-damage curve so you know exactly when nuking someone becomes economically justified. Targeted mode finds the juiciest city in any nation or alliance and tells you what it's worth. Spoiler: it's always worth it.</p>
+            </div>
+        </div>
+        <div class="col-md-4 mb-4">
+            <div class="home-card" onclick="loadPage('library')" style="cursor: pointer;">
+                <h4><img src="/static/Emojis/Menu/script.png" class="home-card-icon"> Scriptorium</h4>
+                <p>Five ancient scrolls of forbidden knowledge: the FAFO Doctrine, Basic Building, Beige Cycling, Weapon Efficiency, and Sniping. Click a wax seal, read the scroll, stop being a filthy casual.</p>
             </div>
         </div>
     </div>
@@ -88,33 +88,104 @@ document.addEventListener('DOMContentLoaded', function() {
             <h3 class="category-header text-center mb-3" style="color: var(--gold-secondary); font-size: 1.2rem; letter-spacing: 2px;">PETS</h3>
         </div>
         <div class="col-md-4 mb-4">
-            <div class="home-card" onclick="loadPage('mypet')" style="cursor: pointer;">
+            <div class="home-card" onclick="loadPage('petconnector', '/js/petconnector.js', 'script', '/css/petconnector.css')" style="cursor: pointer;">
+                <h4><img src="/static/Emojis/Menu/world.png" class="home-card-icon"> Pet Connector</h4>
+                <p>The interdimensional pet registry. Link your Discord account to your pet so the bot knows who you are and stops treating you like a stranger. One link, zero excuses for not having a pet.</p>
+            </div>
+        </div>
+        <div class="col-md-4 mb-4">
+            <div class="home-card" onclick="loadPage('mypet', '/js/mypet.js', 'script', '/css/mypet.css')" style="cursor: pointer;">
                 <h4><img src="/static/Emojis/Menu/pets.png" class="home-card-icon"> My Pet</h4>
                 <p>Your personal digital companion's full profile — stats, inventory, casino history, and the 7-slot equipment loadout you've been agonizing over. Yes, the hat matters.</p>
             </div>
         </div>
         <div class="col-md-4 mb-4">
-            <div class="home-card" onclick="loadPage('what_are_pets')" style="cursor: pointer;">
-                <h4><img src="/static/Emojis/Menu/what_pets.png" class="home-card-icon"> Breakdown</h4>
-                <p>103 species, 12 elements, 3 types, 78 elemental combos, and a type chart that makes Pokémon look simple. Also: XP formulas, chest tiers, every activity from /play to /tournament, and a full guide to The Floor — battles and all six casino games in one place.</p>
+            <div class="home-card" onclick="loadPage('tasks', null, 'script', '/css/tasks.css')" style="cursor: pointer;">
+                <h4><img src="/static/Emojis/Menu/tasks.png" class="home-card-icon"> Tasks</h4>
+                <p>Daily and weekly chores dressed up as quests so you feel like a hero instead of someone doing homework. Complete them, collect rewards, pretend you had a plan all along.</p>
             </div>
         </div>
         <div class="col-md-4 mb-4">
-            <div class="home-card" onclick="loadPage('pets')" style="cursor: pointer;">
-                <h4><img src="/static/Emojis/Menu/pets.png" class="home-card-icon"> Types &amp; Items</h4>
-                <p>The full database: every pet, material, gem, monster, hat, and potion — sortable by any stat. Browse in cards or list view. It's the Pokédex we deserved but with more existential dread.</p>
+            <div class="home-card" onclick="loadPage('bazaar', '/js/bazaar.js', 'script', '/css/bazaar.css')" style="cursor: pointer;">
+                <h4>
+                    <img src="/static/Emojis/Menu/bazaar.png" class="home-card-icon"> Item Board
+                    <span id="bazaar-live-badge" style="
+                        display:none;
+                        font-family:sans-serif;
+                        font-size:0.7rem;
+                        font-weight:700;
+                        background:rgba(255,215,0,0.15);
+                        border:1px solid var(--gold-primary);
+                        color:var(--gold-primary);
+                        border-radius:10px;
+                        padding:1px 8px;
+                        margin-left:6px;
+                        vertical-align:middle;
+                        letter-spacing:0.5px;
+                    "></span>
+                </h4>
+                <p>The live player marketplace. Post items from your inventory for XP or trade them for something you actually want. The board updates in real time — no refreshing, no waiting, just deals and regret.</p>
             </div>
         </div>
+<script>
+(function () {
+    function updateBazaarBadge() {
+        fetch('/api/bazaar/listings')
+            .then(r => r.ok ? r.json() : null)
+            .then(d => {
+                const badge = document.getElementById('bazaar-live-badge');
+                if (!badge) return;
+                const count = d && d.listings ? d.listings.length : 0;
+                if (count > 0) {
+                    badge.textContent = count + ' listed';
+                    badge.style.display = 'inline';
+                } else {
+                    badge.style.display = 'none';
+                }
+            })
+            .catch(() => {});
+    }
+    updateBazaarBadge();
+    const _bzInterval = setInterval(function () {
+        if (!document.getElementById('bazaar-live-badge')) { clearInterval(_bzInterval); return; }
+        updateBazaarBadge();
+    }, 15000);
+})();
+</script>
         <div class="col-md-4 mb-4">
-            <div class="home-card" onclick="loadPage('arena')" style="cursor: pointer;">
+            <div class="home-card" onclick="loadPage('arena', '/js/arena.js', 'script', '/css/arena.css /css/casino_lobby.css')" style="cursor: pointer;">
                 <h4><img src="/static/Emojis/Menu/arena.png" class="home-card-icon"> Arena &amp; Casino Floor</h4>
-                <p>One live page — two worlds. Watch battles and gambling happening in real time, jump into an NPC fight or seek PvP, or grab a casino room and pick a game. Everyone's visible, everything's live.</p>
+                <p>One live page — two worlds. Watch battles and gambling happening in real time, jump into an NPC fight or seek PvP, or grab a casino room and pick a game. Everyone's visible, everything's live, and someone is always losing.</p>
+            </div>
+        </div>
+        <div class="col-md-4 mb-4">
+            <div class="home-card" onclick="loadPage('survive', '/js/survive.js', 'script', '/css/survive.css')" style="cursor: pointer;">
+                <h4><img src="/static/Emojis/Menu/survive.png" class="home-card-icon"> Survive</h4>
+                <p>A Survivor-style elimination game where pets vote each other off the island one by one. Alliances form, betrayals happen, and someone's beloved companion gets ceremonially yeeted into the void. Democracy has never been crueler.</p>
+            </div>
+        </div>
+        <div class="col-md-4 mb-4">
+            <div class="home-card" onclick="loadPage('pet_stock', '/js/pet_stock.js', 'script', '/css/pet_stock.css')" style="cursor: pointer;">
+                <h4><img src="/static/Emojis/Menu/pet_stock.png" class="home-card-icon"> Pet Stocks</h4>
+                <p>A full stock market, but for pets. Buy low, sell high, watch your portfolio crater because you trusted a raccoon. Live prices, historical charts, and the slow dawning realization that you are not a financial genius.</p>
             </div>
         </div>
         <div class="col-md-4 mb-4">
             <div class="home-card" onclick="loadPage('casino')" style="cursor: pointer;">
                 <h4><img src="/static/Emojis/Menu/casino.png" class="home-card-icon"> Casino</h4>
-                <p>Blackjack, slots, roulette, and coin flip — all playable with your pet's currency. The house always wins, but the house is a Discord bot, so at least you can blame the algorithm. Responsibly, of course.</p>
+                <p>Blackjack, slots, roulette, coin flip, craps, Hold'em, and races — all playable with your pet's currency. The house always wins, but the house is a Discord bot, so at least you can blame the algorithm. Responsibly, of course.</p>
+            </div>
+        </div>
+        <div class="col-md-4 mb-4">
+            <div class="home-card" onclick="loadPage('what_are_pets')" style="cursor: pointer;">
+                <h4><img src="/static/Emojis/Menu/what_pets.png" class="home-card-icon"> Breakdown</h4>
+                <p>103 species, 12 elements, 3 types, 78 elemental combos, and a type chart that makes Pokémon look simple. XP formulas, chest tiers, every activity from /play to /tournament, and a full guide to The Floor. Required reading. No quiz, but you'll wish there was.</p>
+            </div>
+        </div>
+        <div class="col-md-4 mb-4">
+            <div class="home-card" onclick="loadPage('pets')" style="cursor: pointer;">
+                <h4><img src="/static/Emojis/Menu/pets.png" class="home-card-icon"> Types &amp; Items</h4>
+                <p>The full database: every pet, material, gem, monster, hat, and potion — sortable by any stat. Browse in cards or list view. It's the Pokédex we deserved but with more existential dread and significantly worse odds.</p>
             </div>
         </div>
     </div>
@@ -127,13 +198,13 @@ document.addEventListener('DOMContentLoaded', function() {
         <div class="col-md-4 mb-4">
             <div class="home-card" onclick="loadPage('astrology')" style="cursor: pointer;">
                 <h4><img src="/static/Emojis/Menu/astrology.png" class="home-card-icon"> Astrology</h4>
-                <p>Enter your birthday and get your Western zodiac, Chinese zodiac, and spirit animal in one shot. Then grab a daily horoscope for any sign — yesterday, today, or tomorrow if you're feeling bold.</p>
+                <p>Enter your birthday and get your Western zodiac, Chinese zodiac, and spirit animal in one shot. Then grab a daily horoscope for any sign — yesterday, today, or tomorrow if you're feeling bold and want to be disappointed in advance.</p>
             </div>
         </div>
         <div class="col-md-4 mb-4">
-            <div class="home-card" onclick="loadPage('tarot')" style="cursor: pointer;">
+            <div class="home-card" onclick="loadPage('tarot', '/js/tarot.js', 'script', '/css/tarot.css')" style="cursor: pointer;">
                 <h4><img src="/static/Emojis/Menu/tarot.png" class="home-card-icon"> Tarot</h4>
-                <p>A crystal ball, a sarcastic AI dealer, and your choice of 1-card, 3-card, or 5-card spread. The universe will speak. Whether you like what it says is your problem.</p>
+                <p>A crystal ball, a sarcastic AI dealer, and your choice of 1-card, 3-card, or 5-card spread. The universe will speak. Whether you like what it says is your problem, not the cards'.</p>
             </div>
         </div>
     </div>
@@ -166,6 +237,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
 <script>
 function loadPage(pageName) {
-    window.location.href = `dashboard.html?page=${pageName}`;
+    if (typeof navigateTo === 'function') {
+        navigateTo(pageName);
+    } else {
+        window.location.href = `dashboard.html?page=${pageName}`;
+    }
 }
 </script>

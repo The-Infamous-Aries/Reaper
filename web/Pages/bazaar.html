@@ -1,0 +1,77 @@
+<link rel="stylesheet" href="/css/bazaar.css">
+
+<div class="container-fluid" id="bazaar-root">
+
+    <hr class="bz-divider">
+
+    <!-- Header -->
+    <div class="row mb-3">
+        <div class="col-12 text-center">
+            <h4 style="font-family:'Orbitron',sans-serif;color:var(--gold-primary);text-shadow:0 0 10px var(--gold-glow);margin:0">
+                🏪 Pet Bazaar
+            </h4>
+            <p style="color:var(--text-secondary);font-size:0.88rem;margin-top:0.3rem">
+                Trade items from your inventory for XP or other items.
+            </p>
+        </div>
+    </div>
+
+    <!-- Post a listing -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="bz-card">
+                <div class="bz-card-header">
+                    <h5>📦 Post a Listing</h5>
+                </div>
+                <div class="bz-card-body">
+                    <div id="bz-post-form">
+                        <div class="text-center py-3">
+                            <div class="spinner-border spinner-border-sm" style="color:var(--gold-primary)" role="status"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Live board -->
+    <div class="row">
+        <div class="col-12">
+            <div class="bz-card">
+                <div class="bz-card-header d-flex align-items-center justify-content-between">
+                    <h5>📋 Active Listings</h5>
+                    <span style="font-size:0.8rem;color:var(--text-secondary)">
+                        <span class="bz-live-dot" id="bz-live-dot"></span>Live
+                    </span>
+                </div>
+                <div class="bz-card-body" style="overflow-x:auto">
+                    <table class="bz-table">
+                        <thead>
+                            <tr>
+                                <th>Item</th>
+                                <th>Seller</th>
+                                <th>Price / Trade</th>
+                                <th>Posted</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="bz-tbody">
+                            <tr><td colspan="5"><div class="bz-empty">
+                                <div class="spinner-border spinner-border-sm" style="color:var(--gold-primary)" role="status"></div>
+                                <span style="margin-left:0.5rem">Connecting to live board…</span>
+                            </div></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <hr class="bz-divider">
+
+</div>
+
+<!-- Toast notification -->
+<div id="bz-toast"></div>
+
+<script src="/js/bazaar.js"></script>

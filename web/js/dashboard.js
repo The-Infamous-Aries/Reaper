@@ -113,8 +113,10 @@ function loadPage(page, scriptPath, scriptType, cssPath) {
 
             runInlineScripts(() => {
                 if (scriptPath && typeof scriptManager !== 'undefined') {
+                    console.log(`[loadPage] Loading script: ${scriptPath}`);
                     scriptManager.loadScript(scriptPath, scriptType, dispatch);
                 } else {
+                    console.log(`[loadPage] No scriptPath for ${pageFile}, dispatching directly`);
                     dispatch();
                 }
             });
@@ -350,7 +352,48 @@ async function loadNationRanks(name) {
     } catch (_) {}
 }
 
-// ── Unified live WebSocket — shared global event bus ─────────────────────
+// ── Bazaar live item count badge ──────────────────────────────────────────
+(function () {
+    let _bws = null, _bRetries = 0;
+    const MAX = 8;
+
+    function updateBadge(count) {
+        const badge = document.getElementById('bazaar-nav-count');
+        if (!badge) return;
+        if (count > 0) {
+            badge.textContent = count + ' listed';
+            badge.style.display = 'inline-block';
+        } else {
+            badge.style.display = 'none';
+        }
+    }
+
+    function connect() {
+        const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+        _bws = new WebSocket(`${proto}://${location.host}/api/bazaar/ws`);
+
+        _bws.onopen = () => {
+            _bRetries = 0;
+            _bws._ping = setInterval(() => { if (_bws.readyState === 1) _bws.send('ping'); }, 25000);
+        };
+
+        _bws.onmessage = e => {
+            try {
+                const msg = JSON.parse(e.data);
+                if (msg.type === 'board') updateBadge((msg.listings || []).length);
+            } catch (_) {}
+        };
+
+        _bws.onclose = () => {
+            clearInterval(_bws._ping);
+            if (_bRetries < MAX) setTimeout(connect, Math.min(3000 * ++_bRetries, 20000));
+        };
+
+        _bws.onerror = () => _bws.close();
+    }
+
+    document.addEventListener('DOMContentLoaded', connect);
+})();
 // Fires CustomEvent('liveRooms', {detail: {arena, casino}}) on document
 // whenever the server pushes an update.  Any page script can listen to this
 // instead of opening its own WebSocket connection.
@@ -398,4 +441,120 @@ async function loadNationRanks(name) {
     };
 
     document.addEventListener('DOMContentLoaded', connect);
+})();
+
+// ── Survive nav badge — polls /api/ss/state every 15s, live countdown ticker ──
+(function () {
+    var _ssNavState = null;       // last known game state
+    var _ssNavTicker = null;      // setInterval id for countdown tick
+
+    function _fmtTime(secs) {
+        secs = Math.max(0, Math.floor(secs));
+        var h = Math.floor(secs / 3600);
+        var m = Math.floor((secs % 3600) / 60);
+        var s = secs % 60;
+        return (h > 0 ? h + ':' : '') +
+               (h > 0 ? String(m).padStart(2,'0') : m) + ':' +
+               String(s).padStart(2,'0');
+    }
+
+    function _stopTicker() {
+        if (_ssNavTicker) { clearInterval(_ssNavTicker); _ssNavTicker = null; }
+    }
+
+    function _renderNav() {
+        var badge = document.getElementById('ss-nav-count');
+        var timer = document.getElementById('ss-nav-timer');
+        if (!badge) return;
+
+        var g = _ssNavState;
+        var status = g ? (g.status || 'none') : 'none';
+
+        if (status === 'none') {
+            badge.style.display = 'none';
+            if (timer) timer.style.display = 'none';
+            _stopTicker();
+            return;
+        }
+
+        // ── Badge label ───────────────────────────────────────────────────────
+        var label = '';
+        if (status === 'lobby') {
+            var lobbyCount = (g.participants || []).filter(function(p) { return !p.is_npc; }).length;
+            label = lobbyCount + ' in lobby';
+        } else if (status === 'countdown') {
+            label = 'Start';
+        } else if (status === 'running') {
+            var rnd = g.round_index || 0;
+            label = rnd === 0 ? 'Starting' : 'Round ' + rnd;
+        } else if (status === 'finished') {
+            label = 'Finished';
+        }
+
+        badge.textContent = label;
+        badge.style.display = label ? 'inline-block' : 'none';
+
+        // ── Countdown timer ───────────────────────────────────────────────────
+        if (!timer) return;
+
+        if (status === 'countdown' && g.countdown_end) {
+            timer.style.display = 'inline-block';
+            _stopTicker();
+            _ssNavTicker = setInterval(function() {
+                var rem = g.countdown_end - Math.floor(Date.now() / 1000);
+                if (rem <= 0) { timer.textContent = '0:00'; _stopTicker(); }
+                else          { timer.textContent = _fmtTime(rem); }
+            }, 1000);
+            var remNow = g.countdown_end - Math.floor(Date.now() / 1000);
+            timer.textContent = remNow > 0 ? _fmtTime(remNow) : '0:00';
+        } else if (status === 'running' && g.next_round_at) {
+            timer.style.display = 'inline-block';
+            _stopTicker();
+            var endEpoch = g.next_round_at;
+            _ssNavTicker = setInterval(function() {
+                var rem = endEpoch - Math.floor(Date.now() / 1000);
+                if (rem <= 0) { timer.textContent = '…'; _stopTicker(); }
+                else          { timer.textContent = _fmtTime(rem); }
+            }, 1000);
+            var remNowR = endEpoch - Math.floor(Date.now() / 1000);
+            timer.textContent = remNowR > 0 ? _fmtTime(remNowR) : '…';
+        } else {
+            timer.style.display = 'none';
+            _stopTicker();
+        }
+    }
+
+    function updateSsNavBadge() {
+        fetch('/api/ss/state')
+            .then(function(r) { return r.ok ? r.json() : null; })
+            .then(function(g) {
+                _ssNavState = g;
+                _renderNav();
+            })
+            .catch(function() {});
+    }
+
+    // Run immediately and poll every 15s to catch round changes
+    updateSsNavBadge();
+    setInterval(updateSsNavBadge, 15000);
+
+    // Expose so survive.js SSE handler can trigger an immediate refresh
+    window.ssNavRefresh = updateSsNavBadge;
+
+    // Expose so survive.js round countdown ticker can directly update the nav timer
+    // without spawning a duplicate interval. Called once per second by survive.js.
+    window.ssNavSetRoundTimer = function(nextRoundAt) {
+        var timer = document.getElementById('ss-nav-timer');
+        if (!timer) return;
+        _stopTicker();
+        var endEpoch = nextRoundAt;
+        _ssNavTicker = setInterval(function() {
+            var rem = endEpoch - Math.floor(Date.now() / 1000);
+            if (rem <= 0) { timer.textContent = '…'; _stopTicker(); }
+            else          { timer.textContent = _fmtTime(rem); }
+        }, 1000);
+        var remNow = endEpoch - Math.floor(Date.now() / 1000);
+        timer.style.display = 'inline-block';
+        timer.textContent = remNow > 0 ? _fmtTime(remNow) : '…';
+    };
 })();

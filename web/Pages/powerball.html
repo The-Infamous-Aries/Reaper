@@ -1,0 +1,274 @@
+<link rel="stylesheet" href="/css/casino.css">
+<link rel="stylesheet" href="/css/powerball.css">
+
+<div class="container-fluid" id="pb-root">
+
+    <!-- Header -->
+    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-1">
+        <div>
+            <div class="casino-title">🎟️ Pet Powerball</div>
+            <div class="casino-subtitle">Daily Jackpot · Drawn at Midnight UTC · Pot Grows Every Ticket</div>
+        </div>
+        <div class="casino-xp-badge">
+            <span style="color:var(--text-secondary);font-size:0.75rem">Your XP</span>
+            <span id="pb-xp-display" class="casino-xp-amount">—</span>
+        </div>
+    </div>
+
+    <hr class="casino-divider">
+
+    <!-- Loading -->
+    <div id="pb-loading" class="text-center py-5">
+        <div class="spinner-border" style="color:var(--gold-primary)" role="status"></div>
+        <p class="mt-2" style="color:var(--text-secondary);font-size:0.82rem">Loading Powerball…</p>
+    </div>
+
+    <!-- Login prompt -->
+    <div id="pb-login-prompt" style="display:none" class="text-center py-5">
+        <div style="font-size:2rem;margin-bottom:8px">🔒</div>
+        <div style="color:var(--text-secondary);font-size:0.9rem">Sign in with Discord to play Pet Powerball.</div>
+        <a href="/api/discord/login" class="casino-btn mt-3" style="display:inline-block">Login with Discord</a>
+    </div>
+
+    <!-- No pet prompt -->
+    <div id="pb-no-pet" style="display:none" class="text-center py-5">
+        <div style="font-size:2rem;margin-bottom:8px">🐾</div>
+        <div style="color:var(--text-secondary);font-size:0.9rem">You need a pet to play Pet Powerball.</div>
+        <a href="?page=mypet" class="casino-btn mt-3" style="display:inline-block">Get a Pet</a>
+    </div>
+
+    <!-- Main -->
+    <div id="pb-main" style="display:none">
+
+        <!-- Back + draw date -->
+        <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+            <button class="casino-btn-sm" onclick="window._pbBack()">← Back to Casino</button>
+            <div style="font-size:0.72rem;color:var(--text-secondary);font-family:'Orbitron',sans-serif">
+                Draw Date: <span id="pb-draw-date" style="color:var(--gold-secondary)">—</span>
+            </div>
+        </div>
+
+        <!-- Jackpot banner -->
+        <div class="pb-jackpot-banner">
+            <div class="pb-jackpot-label">🏆 Today's Jackpot</div>
+            <div class="pb-jackpot-amount" id="pb-pot-display">—</div>
+            <div class="pb-jackpot-sub">Grows with every ticket sold · Rolls over if no MEGA winner</div>
+            <div class="pb-draw-countdown">⏰ Next draw: <span id="pb-countdown">—</span></div>
+        </div>
+
+        <!-- Two-column layout -->
+        <div class="pb-layout">
+
+            <!-- ── LEFT: Ticket builder ── -->
+            <div class="pb-main-col">
+
+                <!-- Already has ticket -->
+                <div id="pb-has-ticket" style="display:none">
+                    <div class="pb-section">
+                        <div class="pb-section-title">🎟️ Your Ticket for Today</div>
+                        <div id="pb-ticket-display"></div>
+                        <div style="font-size:0.72rem;color:var(--text-secondary);margin-top:10px;text-align:center">
+                            Results announced at midnight UTC. Check back tomorrow!
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Ticket builder -->
+                <div id="pb-builder" style="display:none">
+
+                    <!-- Step indicator -->
+                    <div class="pb-steps">
+                        <div class="pb-step active" id="pb-step-1">
+                            <span class="pb-step-num">1</span>Pick 5 Pets
+                        </div>
+                        <div class="pb-step" id="pb-step-2">
+                            <span class="pb-step-num">2</span>Elemental Ball
+                        </div>
+                        <div class="pb-step" id="pb-step-3">
+                            <span class="pb-step-num">3</span>Buy Ticket
+                        </div>
+                    </div>
+
+                    <!-- Step 1: Pet picker -->
+                    <div id="pb-step1-panel" class="pb-section">
+                        <div class="pb-section-title">
+                            🐾 Pick 5 Pets (in order)
+                            <span class="pb-section-badge" id="pb-pet-count-badge">0 / 5</span>
+                        </div>
+
+                        <!-- Selected pets row -->
+                        <div class="pb-selected-row" id="pb-selected-row">
+                            <!-- 5 slots injected by JS -->
+                        </div>
+
+                        <!-- Search -->
+                        <div class="pb-pet-search">
+                            <input type="text" class="casino-input" id="pb-pet-search"
+                                   placeholder="🔍 Search pets…" autocomplete="off">
+                        </div>
+
+                        <!-- Grid -->
+                        <div class="pb-pet-grid" id="pb-pet-grid"></div>
+
+                        <div style="font-size:0.65rem;color:var(--text-secondary);margin-top:8px">
+                            Order matters — drawn pets must match your picks in the exact same positions.
+                        </div>
+                    </div>
+
+                    <!-- Step 2: Elemental Multiplier -->
+                    <div id="pb-step2-panel" class="pb-section" style="display:none">
+                        <div class="pb-section-title">
+                            ⚡ Elemental Multiplier Ball
+                            <span class="pb-section-badge">Optional</span>
+                        </div>
+
+                        <div class="pb-em-toggle-row">
+                            <label class="casino-toggle-wrap" style="flex-shrink:0">
+                                <input type="checkbox" id="pb-em-toggle">
+                                <span class="casino-toggle-slider"></span>
+                            </label>
+                            <div class="pb-em-label">
+                                <div class="pb-em-label-title">Add Elemental Multiplier Ball</div>
+                                <div class="pb-em-label-sub">Match all 5 pets + element = MEGA JACKPOT (full pot)</div>
+                            </div>
+                            <div class="pb-em-cost-badge" id="pb-em-cost-badge">+50% cost</div>
+                        </div>
+
+                        <div class="pb-elem-grid" id="pb-elem-grid"></div>
+
+                        <div style="font-size:0.65rem;color:var(--text-secondary);margin-top:8px">
+                            The element ball is drawn separately. You must pick the correct element AND all 5 pets in order.
+                        </div>
+
+                        <div class="d-flex gap-2 mt-3">
+                            <button class="casino-btn-sm" id="pb-back-to-step1">← Back</button>
+                            <button class="casino-btn" id="pb-to-step3" style="flex:1">Continue →</button>
+                        </div>
+                    </div>
+
+                    <!-- Step 3: Cost summary + buy -->
+                    <div id="pb-step3-panel" class="pb-section" style="display:none">
+                        <div class="pb-section-title">🎟️ Confirm Your Ticket</div>
+
+                        <!-- Ticket preview -->
+                        <div id="pb-preview-ticket" style="margin-bottom:14px"></div>
+
+                        <!-- Cost breakdown -->
+                        <div class="pb-cost-box mb-3">
+                            <div class="pb-cost-row">
+                                <span>Pet Level</span>
+                                <span class="pb-cost-val" id="pb-cost-level">—</span>
+                            </div>
+                            <div class="pb-cost-row">
+                                <span>Equipment Multiplier</span>
+                                <span class="pb-cost-val" id="pb-cost-equip">—</span>
+                            </div>
+                            <div class="pb-cost-row">
+                                <span>Base Cost (Level × Equip × 500)</span>
+                                <span class="pb-cost-val" id="pb-cost-base">—</span>
+                            </div>
+                            <div class="pb-cost-row" id="pb-cost-em-row" style="display:none">
+                                <span>Elemental Ball Surcharge (+50%)</span>
+                                <span class="pb-cost-val" id="pb-cost-em-extra">—</span>
+                            </div>
+                            <div class="pb-cost-row total">
+                                <span>Total Ticket Cost</span>
+                                <span id="pb-cost-total">—</span>
+                            </div>
+                            <div class="pb-cost-row" style="font-size:0.62rem;color:var(--text-secondary)">
+                                <span>80% goes to the jackpot pot</span>
+                                <span id="pb-cost-pot-contrib">—</span>
+                            </div>
+                        </div>
+
+                        <div id="pb-buy-error" style="display:none;color:#e74c3c;font-size:0.75rem;margin-bottom:8px;text-align:center"></div>
+
+                        <div class="d-flex gap-2">
+                            <button class="casino-btn-sm" id="pb-back-to-step2">← Back</button>
+                            <button class="casino-btn pb-buy-btn" id="pb-buy-btn" disabled>🎟️ Buy Ticket</button>
+                        </div>
+                    </div>
+
+                </div><!-- /builder -->
+
+            </div><!-- /main-col -->
+
+            <!-- ── RIGHT: Sidebar ── -->
+            <div class="pb-side-col">
+
+                <!-- Payout table -->
+                <div class="pb-section">
+                    <div class="pb-section-title">💰 Payout Table</div>
+                    <table class="pb-payout-table">
+                        <thead>
+                            <tr>
+                                <th>Match</th>
+                                <th>Payout</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr class="tier-mega">
+                                <td>5 Pets + ⚡ Element</td>
+                                <td class="pb-payout-xp">🏆 Full Pot</td>
+                            </tr>
+                            <tr class="tier-1">
+                                <td>5 Pets (no EM)</td>
+                                <td class="pb-payout-xp">25% of Pot</td>
+                            </tr>
+                            <tr class="tier-2em">
+                                <td>4 Pets + ⚡ Element</td>
+                                <td class="pb-payout-xp" id="pb-pay-2em">—</td>
+                            </tr>
+                            <tr class="tier-2">
+                                <td>4 Pets (no EM)</td>
+                                <td class="pb-payout-xp" id="pb-pay-2">—</td>
+                            </tr>
+                            <tr class="tier-3em">
+                                <td>3 Pets + ⚡ Element</td>
+                                <td class="pb-payout-xp" id="pb-pay-3em">—</td>
+                            </tr>
+                            <tr class="tier-3">
+                                <td>3 Pets (no EM)</td>
+                                <td class="pb-payout-xp" id="pb-pay-3">—</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <div style="font-size:0.6rem;color:var(--text-secondary);margin-top:8px">
+                        Pets must match in exact draw order. EM = Elemental Multiplier Ball.
+                    </div>
+                </div>
+
+                <!-- Last draw result -->
+                <div class="pb-section" id="pb-last-draw-section" style="display:none">
+                    <div class="pb-section-title">📋 Last Draw</div>
+                    <div id="pb-last-draw-content" class="pb-last-draw"></div>
+                </div>
+
+                <!-- How to play -->
+                <div class="pb-section">
+                    <div class="pb-section-title">📖 How to Play</div>
+                    <div style="font-size:0.68rem;color:var(--text-secondary);line-height:1.7">
+                        <div>1. Pick <strong style="color:var(--gold-secondary)">5 pets in order</strong> — order matters!</div>
+                        <div>2. Optionally add an <strong style="color:#ffa500">Elemental Ball</strong> for a chance at the full jackpot.</div>
+                        <div>3. Ticket cost = <strong style="color:var(--gold-secondary)">Level × Equipment × 500 XP</strong></div>
+                        <div>4. 80% of your ticket cost goes into the pot.</div>
+                        <div>5. Drawing happens at <strong style="color:var(--gold-secondary)">midnight UTC</strong> every day.</div>
+                        <div>6. No winner = pot <strong style="color:var(--gold-secondary)">rolls over</strong> to tomorrow!</div>
+                    </div>
+                </div>
+
+            </div><!-- /side-col -->
+        </div><!-- /layout -->
+    </div><!-- /main -->
+
+    <!-- Draw animation overlay (hidden) -->
+    <div id="pb-draw-overlay" class="pb-draw-overlay" style="display:none">
+        <div class="pb-draw-title">🎟️ POWERBALL DRAW 🎟️</div>
+        <div class="pb-draw-balls" id="pb-draw-balls"></div>
+        <div class="pb-draw-result-text" id="pb-draw-result-text"></div>
+        <button class="casino-btn pb-draw-close-btn" id="pb-draw-close-btn">Close</button>
+    </div>
+
+</div>
+
+<script src="/js/powerball.js?v=20260419a"></script>

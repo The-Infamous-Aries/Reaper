@@ -22,10 +22,38 @@ function init() {
     loadXP().then(() => {
         fetch('/api/casino/holdem/state')
             .then(r => r.json())
-            .then(d => { if (d.active) { _state = d; showGame(); } else showSetup(); })
+            .then(d => {
+                if (d.active) {
+                    _state = d;
+                    // Restore settings from state for recovery
+                    if (d.buy_in)    _buyIn   = d.buy_in;
+                    if (d.num_bots)  _numBots = d.num_bots;
+                    _funMode = d.fun_mode || false;
+                    showGame();
+                } else showSetup();
+            })
             .catch(() => showSetup());
     });
     bindEvents();
+}
+
+// ── Session recovery ──────────────────────────────────────────────────────────
+async function _recoverSession() {
+    if (!_state) return false;
+    try {
+        const r = await fetch('/api/casino/holdem/start', {
+            method: 'POST',
+            headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({
+                buy_in:   _state.buy_in   || _buyIn,
+                fun_mode: _state.fun_mode || _funMode,
+                num_bots: _state.num_bots || _numBots
+            })
+        });
+        if (!r.ok) return false;
+        _state = await r.json();
+        return true;
+    } catch { return false; }
 }
 
 async function loadXP() {
@@ -128,12 +156,26 @@ async function playerAction(action, amount) {
     try {
         const body = { action };
         if (amount !== undefined) body.amount = amount;
-        const r = await fetch('/api/casino/holdem/action', {
+        let r = await fetch('/api/casino/holdem/action', {
             method: 'POST',
             headers: {'Content-Type':'application/json'},
             body: JSON.stringify(body)
         });
-        const d = await r.json();
+        let d = await r.json();
+
+        // Auto-recover lost session then retry
+        if (!r.ok && r.status === 400 && d.error === 'No active session') {
+            const recovered = await _recoverSession();
+            if (recovered) {
+                r = await fetch('/api/casino/holdem/action', {
+                    method: 'POST',
+                    headers: {'Content-Type':'application/json'},
+                    body: JSON.stringify(body)
+                });
+                d = await r.json();
+            }
+        }
+
         if (!r.ok) { showError(d.error || action + ' failed'); setActionButtons(true); return; }
         _state = d;
         renderGame(_state);
@@ -154,10 +196,22 @@ async function nextHand() {
     const btn = $('holdem-next-btn');
     if (btn) { btn.disabled = true; btn.textContent = 'Dealing...'; }
     try {
-        const r = await fetch('/api/casino/holdem/next_hand', {
+        let r = await fetch('/api/casino/holdem/next_hand', {
             method: 'POST', headers: {'Content-Type':'application/json'}, body: '{}'
         });
-        const d = await r.json();
+        let d = await r.json();
+
+        // Auto-recover lost session then retry
+        if (!r.ok && r.status === 400 && d.error === 'No active session') {
+            const recovered = await _recoverSession();
+            if (recovered) {
+                r = await fetch('/api/casino/holdem/next_hand', {
+                    method: 'POST', headers: {'Content-Type':'application/json'}, body: '{}'
+                });
+                d = await r.json();
+            }
+        }
+
         if (d.game_over) {
             showGameOver(d);
             return;
@@ -166,20 +220,31 @@ async function nextHand() {
         _state = d;
         renderGame(_state);
         setActionButtons(true);
+        if (!_state.fun_mode) loadXP();
     } catch(e) { showError(e.message); }
     finally { if (btn) { btn.disabled = false; btn.textContent = 'Next Hand'; } }
 }
 
 async function cashOut() {
     try {
-        const r = await fetch('/api/casino/holdem/cashout', {
+        let r = await fetch('/api/casino/holdem/cashout', {
             method: 'POST', headers: {'Content-Type':'application/json'}, body: '{}'
         });
-        const d = await r.json();
+        let d = await r.json();
+
+        // If session was lost, just go back to setup — nothing to cash out
+        if (!r.ok && r.status === 400 && d.error === 'No active session') {
+            _state = null;
+            showSetup();
+            return;
+        }
+
         if (!r.ok) { showError(d.error || 'Cashout failed'); return; }
         const stack = d.cashed_out || 0;
+        const wasFun = d.fun_mode;
+        _state = null;
+        if (!wasFun) loadXP();
         showGameOver({ message: `Cashed out ${stack.toLocaleString()} XP. Thanks for playing!`, won: stack });
-        if (!d.fun_mode) loadXP();
     } catch(e) { showError(e.message); }
 }
 
@@ -280,6 +345,9 @@ function renderSeats(state) {
         const dealerBtn = isDealer ? '<span class="dealer-btn">D</span>' : '';
         const statusText = seat.folded ? 'Folded' : seat.left ? 'Left' : '';
 
+        // -1 sentinel = infinite bot stack
+        const stackDisplay = seat.stack === -1 ? '∞' : seat.stack.toLocaleString() + ' XP';
+
         // Cards
         let cardsHtml = '';
         if (seat.hole && seat.hole.length) {
@@ -292,7 +360,7 @@ function renderSeats(state) {
 
         div.innerHTML = `
             <div class="holdem-seat-name">${dealerBtn}${escHtml(seat.name)}${seat.is_active_turn ? ' ▶' : ''}</div>
-            <div class="holdem-seat-stack">Stack: ${seat.stack.toLocaleString()} XP</div>
+            <div class="holdem-seat-stack">Stack: ${stackDisplay}</div>
             ${seat.round_bet > 0 ? `<div class="holdem-seat-bet">Bet: ${seat.round_bet.toLocaleString()}</div>` : ''}
             ${statusText ? `<div class="holdem-seat-status">${statusText}</div>` : ''}
             ${cardsHtml}

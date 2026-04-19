@@ -21,6 +21,7 @@ const GAME_INFO = {
     holdem:    { label: "Texas Hold'em", icon: "♠️" },
     races:     { label: "Pet Races",     icon: "🏁" },
     minigames: { label: "Mini-Games",    icon: "🎮" },
+    scratch:   { label: "Scratch Cards", icon: "🎫" },
 };
 
 // ── Boot ──────────────────────────────────────────────────────────────────────

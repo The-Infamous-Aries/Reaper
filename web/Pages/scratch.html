@@ -1,0 +1,133 @@
+<link rel="stylesheet" href="/css/casino.css">
+<link rel="stylesheet" href="/css/scratch.css">
+
+<div class="container-fluid" id="scratch-root">
+
+    <!-- Header -->
+    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-1">
+        <div>
+            <div class="casino-title">🎟️ Scratch Cards</div>
+            <div class="casino-subtitle">Buy a card · Scratch to reveal · Match symbols to win XP</div>
+        </div>
+        <div class="casino-xp-badge">
+            <span style="color:var(--text-secondary);font-size:0.75rem">Your XP</span>
+            <span id="sc-xp" class="casino-xp-amount">—</span>
+        </div>
+    </div>
+
+    <hr class="casino-divider">
+
+    <!-- Loading -->
+    <div id="sc-loading" class="text-center py-5">
+        <div class="spinner-border" style="color:var(--gold-primary)" role="status"></div>
+        <p class="mt-2" style="color:var(--text-secondary);font-size:0.82rem">Loading Scratch Cards...</p>
+    </div>
+
+    <!-- Login prompt -->
+    <div id="sc-login" style="display:none" class="text-center py-5">
+        <div style="font-size:2rem;margin-bottom:8px">🔒</div>
+        <div style="color:var(--text-secondary);font-size:0.9rem">Sign in with Discord to play Scratch Cards.</div>
+        <a href="/api/discord/login" class="casino-btn mt-3" style="display:inline-block">Login with Discord</a>
+    </div>
+
+    <!-- No pet prompt -->
+    <div id="sc-nopet" style="display:none" class="text-center py-5">
+        <div style="font-size:2rem;margin-bottom:8px">🐾</div>
+        <div style="color:var(--text-secondary);font-size:0.9rem">You need a pet to play Scratch Cards.</div>
+        <a href="?page=mypet" class="casino-btn mt-3" style="display:inline-block">Get a Pet</a>
+    </div>
+
+    <!-- Main -->
+    <div id="sc-main" style="display:none">
+
+        <!-- Fun mode + back -->
+        <div class="d-flex align-items-center gap-3 mb-3">
+            <label class="casino-toggle-wrap">
+                <input type="checkbox" id="sc-fun-toggle">
+                <span class="casino-toggle-slider"></span>
+            </label>
+            <div>
+                <div style="font-size:0.82rem;color:var(--gold-secondary);font-weight:600">Fun Mode</div>
+                <div style="font-size:0.7rem;color:var(--text-secondary)">Play without risking XP</div>
+            </div>
+            <button class="casino-btn-sm ms-auto" onclick="window._scratchBack()">← Back to Casino</button>
+        </div>
+
+        <!-- Card selection -->
+        <div id="sc-select-panel" class="casino-panel mb-3">
+            <div class="casino-panel-title mb-3">🎟️ Choose Your Scratch Card</div>
+
+            <div class="sc-card-grid" id="sc-card-grid">
+                <!-- populated by JS -->
+            </div>
+
+            <!-- Bet section -->
+            <div id="sc-bet-section" class="mt-3">
+                <div style="font-size:0.78rem;color:var(--text-secondary);margin-bottom:6px">Bet Amount (XP)</div>
+                <input type="number" class="casino-input" id="sc-bet-input" min="10" max="500000" placeholder="Enter XP amount">
+                <div class="d-flex gap-2 mt-2 flex-wrap">
+                    <button class="casino-btn-sm sc-preset" data-amount="50">50</button>
+                    <button class="casino-btn-sm sc-preset" data-amount="100">100</button>
+                    <button class="casino-btn-sm sc-preset" data-amount="500">500</button>
+                    <button class="casino-btn-sm sc-preset" data-amount="1000">1 000</button>
+                    <button class="casino-btn-sm sc-preset" data-amount="5000">5 000</button>
+                </div>
+            </div>
+
+            <button id="sc-buy-btn" class="casino-btn w-100 mt-3" disabled>🎟️ Buy &amp; Scratch</button>
+        </div>
+
+        <!-- Scratch card reveal panel -->
+        <div id="sc-reveal-panel" style="display:none" class="casino-panel">
+
+            <!-- Card header -->
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div id="sc-reveal-title" class="casino-panel-title"></div>
+                <div style="font-size:0.75rem;color:var(--text-secondary)">
+                    Bet: <span id="sc-reveal-bet" style="color:var(--gold-primary)">—</span> XP
+                </div>
+            </div>
+
+            <!-- Scratch area -->
+            <div id="sc-scratch-area" class="sc-scratch-area">
+                <!-- 1×3 grid -->
+                <div id="sc-grid-1x3" class="sc-grid-1x3" style="display:none">
+                    <div class="sc-cell" data-idx="0"><div class="sc-scratch-cover"></div><div class="sc-cell-inner"></div></div>
+                    <div class="sc-cell" data-idx="1"><div class="sc-scratch-cover"></div><div class="sc-cell-inner"></div></div>
+                    <div class="sc-cell" data-idx="2"><div class="sc-scratch-cover"></div><div class="sc-cell-inner"></div></div>
+                </div>
+                <!-- 3×3 grid -->
+                <div id="sc-grid-3x3" class="sc-grid-3x3" style="display:none">
+                    <div class="sc-cell" data-idx="0"><div class="sc-scratch-cover"></div><div class="sc-cell-inner"></div></div>
+                    <div class="sc-cell" data-idx="1"><div class="sc-scratch-cover"></div><div class="sc-cell-inner"></div></div>
+                    <div class="sc-cell" data-idx="2"><div class="sc-scratch-cover"></div><div class="sc-cell-inner"></div></div>
+                    <div class="sc-cell" data-idx="3"><div class="sc-scratch-cover"></div><div class="sc-cell-inner"></div></div>
+                    <div class="sc-cell" data-idx="4"><div class="sc-scratch-cover"></div><div class="sc-cell-inner"></div></div>
+                    <div class="sc-cell" data-idx="5"><div class="sc-scratch-cover"></div><div class="sc-cell-inner"></div></div>
+                    <div class="sc-cell" data-idx="6"><div class="sc-scratch-cover"></div><div class="sc-cell-inner"></div></div>
+                    <div class="sc-cell" data-idx="7"><div class="sc-scratch-cover"></div><div class="sc-cell-inner"></div></div>
+                    <div class="sc-cell" data-idx="8"><div class="sc-scratch-cover"></div><div class="sc-cell-inner"></div></div>
+                </div>
+            </div>
+
+            <!-- Scratch all button -->
+            <div class="text-center mt-3">
+                <button id="sc-reveal-all-btn" class="casino-btn-sm">Reveal All</button>
+            </div>
+
+            <!-- Result (hidden until all revealed) -->
+            <div id="sc-result-area" style="display:none" class="mt-3">
+                <div id="sc-result-text" class="sc-result-text"></div>
+                <div id="sc-result-winnings" class="sc-result-winnings" style="display:none"></div>
+                <div id="sc-bonus-badge" class="sc-bonus-badge" style="display:none"></div>
+            </div>
+
+            <div class="text-center mt-3">
+                <button id="sc-play-again-btn" class="casino-btn" style="display:none">🎟️ Buy Another Card</button>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script src="/js/scratch.js?v=20260419a"></script>

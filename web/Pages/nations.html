@@ -43,12 +43,23 @@
               <th data-col="nation_name">Nation</th>
               <th data-col="score" class="nat-sort-active">Score ↓</th>
               <th data-col="num_cities">Cities</th>
-              <th data-col="soldiers"><img src="/static/Emojis/Military/soldier.png" class="nat-icon-sm" alt=""> Soldiers</th>
-              <th data-col="tanks"><img src="/static/Emojis/Military/tank.png" class="nat-icon-sm" alt=""> Tanks</th>
-              <th data-col="aircraft"><img src="/static/Emojis/Military/jet.png" class="nat-icon-sm" alt=""> Aircraft</th>
-              <th data-col="ships"><img src="/static/Emojis/Military/ship.png" class="nat-icon-sm" alt=""> Ships</th>
-              <th data-col="missiles"><img src="/static/Emojis/Military/missile.png" class="nat-icon-sm" alt=""> Missiles</th>
-              <th data-col="nukes"><img src="/static/Emojis/Military/bomb.png" class="nat-icon-sm" alt=""> Nukes</th>
+              <!-- Units dropdown sort -->
+              <th class="nat-dropdown-th" data-group="units">
+                <div class="nat-sort-ctrl" id="units-ctrl">
+                  <div class="nat-units-label">
+                    <img id="units-emoji" src="/static/Emojis/Military/soldier.png" class="nat-icon-sm" alt="">
+                  </div>
+                  <select id="units-select" class="nat-sort-select">
+                    <option value="soldiers" data-img="soldier.png">Soldiers</option>
+                    <option value="tanks" data-img="tank.png">Tanks</option>
+                    <option value="aircraft" data-img="jet.png">Aircraft</option>
+                    <option value="ships" data-img="ship.png">Ships</option>
+                    <option value="missiles" data-img="missile.png">Missiles</option>
+                    <option value="nukes" data-img="bomb.png">Nukes</option>
+                  </select>
+                  <button class="nat-sort-dir" data-group="units">↓</button>
+                </div>
+              </th>
               <!-- MMR — sortable by deficit from 5/5/5/3 -->
               <th data-col="city_agg.mmr_deficit">MMR</th>
               <!-- Infra dropdown sort -->
@@ -95,6 +106,17 @@
               <th data-col="total_projects">Projects</th>
               <!-- Status sortable -->
               <th data-col="status_order">Status</th>
+              <!-- Revenue dropdown sort -->
+              <th class="nat-dropdown-th" data-group="rev">
+                <div class="nat-sort-ctrl" id="rev-ctrl">
+                  <select id="rev-select" class="nat-sort-select">
+                    <option value="_rev_mon_net">💰 Net Revenue</option>
+                    <option value="_rev_gross">📈 Gross Income</option>
+                    <option value="_rev_tax">🏦 Alliance Tax</option>
+                  </select>
+                  <button class="nat-sort-dir" data-group="rev">↓</button>
+                </div>
+              </th>
             </tr>
           </thead>
           <tbody id="nat-body"></tbody>
@@ -135,15 +157,18 @@
   // ── state ─────────────────────────────────────────────────────────────────
   let _nations = [], _sortCol = 'score', _sortAsc = false, _search = '';
   let _expandedId = null, _detailCache = {};
+  let _revCache = {}, _revData = null;
 
   // Dropdown sort groups: group → current col
   const _dropdowns = {
+    units: 'soldiers',
     infra: 'city_agg.avg_infra',
     land:  'city_agg.avg_land',
     wars:  'wars_won',
     imps:  'city_agg.total_improvements',
+    rev:   '_rev_mon_net',
   };
-  const _dropdownAsc = { infra: false, land: false, wars: false, imps: false };
+  const _dropdownAsc = { units: false, infra: false, land: false, wars: false, imps: false, rev: false };
 
   function sortedFiltered() {
     return _nations
@@ -154,14 +179,52 @@
                (n.leader_name||'').toLowerCase().includes(q);
       })
       .sort((a,b) => {
-        const av = get(a,_sortCol) ?? -Infinity;
-        const bv = get(b,_sortCol) ?? -Infinity;
+        let av, bv;
+        // Revenue virtual sort keys — pull from _revCache
+        if (_sortCol === '_rev_mon_net') {
+          const ra = _revCache[a.id] || {}, rb = _revCache[b.id] || {};
+          const prices_a = ra.prices || {}, rsc_a = ra.resources || {};
+          const prices_b = rb.prices || {}, rsc_b = rb.resources || {};
+          const rscVal_a = Object.entries(rsc_a).reduce((s,[k,v])=>s+(v*(prices_a[k]||0)),0);
+          const rscVal_b = Object.entries(rsc_b).reduce((s,[k,v])=>s+(v*(prices_b[k]||0)),0);
+          av = (ra.turn_revenue||0) + rscVal_a;
+          bv = (rb.turn_revenue||0) + rscVal_b;
+        } else if (_sortCol === '_rev_gross') {
+          av = (_revCache[a.id]||{}).gross_income || 0;
+          bv = (_revCache[b.id]||{}).gross_income || 0;
+        } else if (_sortCol === '_rev_tax') {
+          av = (_revCache[a.id]||{}).alliance_tax || 0;
+          bv = (_revCache[b.id]||{}).alliance_tax || 0;
+        } else {
+          av = get(a,_sortCol) ?? -Infinity;
+          bv = get(b,_sortCol) ?? -Infinity;
+        }
         if (typeof av === 'string') return _sortAsc ? av.localeCompare(bv) : bv.localeCompare(av);
         return _sortAsc ? av - bv : bv - av;
       });
   }
 
-  const COL_COUNT = 18;
+  const COL_COUNT = 13;
+
+  function revCellHTML(nationId) {
+    var r = _revCache[nationId];
+    if (!r) return '<span class="nat-rev-loading">\u2014</span>';
+    function fm(v) {
+      var s = v < 0 ? '-' : '';
+      return s + '$' + Math.abs(v).toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
+    }
+    var prices = r.prices || {}, rsc = r.resources || {};
+    var rscVal = Object.entries(rsc).reduce(function(s,kv){ return s + (kv[1] * (prices[kv[0]]||0)); }, 0);
+    var monNet = (r.turn_revenue||0) + rscVal;
+    var gross  = (r.gross_income||0) + (r.color_bonus||0) + rscVal;
+    var tax    = r.alliance_tax||0;
+    var nc = monNet >= 0 ? 'nat-rev-pos-strong' : 'nat-rev-neg-strong';
+    return '<div class="nat-rev-cell-inner">' +
+      '<div class="nat-rev-cell-row"><span class="nat-rev-cell-lbl">Gross</span><span class="nat-rev-cell-val">' + fm(gross) + '</span></div>' +
+      '<div class="nat-rev-cell-row"><span class="nat-rev-cell-lbl">Net</span><span class="nat-rev-cell-val">' + fm(monNet) + '</span></div>' +
+      '<div class="nat-rev-cell-row"><span class="nat-rev-cell-lbl">Tax</span><span class="nat-rev-cell-val">' + fm(tax) + '</span></div>' +
+      '</div>';
+  }
 
   function renderTable() {
     const list = sortedFiltered();
@@ -183,12 +246,7 @@
         </td>
         <td>${fmt(Math.round(n.score||0))}</td>
         <td>${n.num_cities||0}</td>
-        <td>${fmt(n.soldiers||0)}</td>
-        <td>${fmt(n.tanks||0)}</td>
-        <td>${fmt(n.aircraft||0)}</td>
-        <td>${fmt(n.ships||0)}</td>
-        <td>${n.missiles||0}</td>
-        <td>${n.nukes||0}</td>
+        <td>${fmt(get(n,_dropdowns.units)||0)}</td>
         <td class="nat-mmr">${agg.mmr||'—'}</td>
         <td>${fmtF(get(n,_dropdowns.infra)||0)}</td>
         <td>${fmtF(get(n,_dropdowns.land)||0)}</td>
@@ -196,6 +254,7 @@
         <td>${fmt(get(n,_dropdowns.imps)||0)}</td>
         <td>${n.total_projects||0}</td>
         <td>${statusBadge(n)}</td>
+                <td class="nat-rev-cell">${revCellHTML(n.id)}</td>
       </tr>`);
 
       rows.push(`<tr class="nat-expand-row${isOpen?' nat-expand-open':''}" data-expand-id="${n.id}">
@@ -245,13 +304,311 @@
     // Highlight active dropdown group
     document.querySelectorAll('.nat-dropdown-th').forEach(th => {
       const g = th.dataset.group;
-      th.classList.toggle('nat-sort-active', _dropdowns[g] === _sortCol);
+      th.classList.toggle('nat-sort-active', _dropdowns[g] === _sortCol ||
+        (g === 'rev' && ['_rev_mon_net','_rev_gross','_rev_tax'].includes(_sortCol) && _dropdowns[g] === _sortCol));
     });
     document.getElementById('nat-sort-summary').textContent =
       `Sorted by ${_sortCol.replace('city_agg.','').replace(/_/g,' ')} ${_sortAsc?'↑':'↓'}`;
   }
 
+  // ── revenue helpers ───────────────────────────────────────────────────────
+  function buildRevBox(r) {
+    if (!r) return '<div class="nat-rev-loading">Revenue data unavailable</div>';
+    const RSC = {food:'Food',coal:'Coal',oil:'Oil',uranium:'Uranium',lead:'Lead',iron:'Iron',
+                 bauxite:'Bauxite',gasoline:'Gasoline',munitions:'Munitions',steel:'Steel',aluminum:'Aluminum'};
+    const prices  = r.prices    || {};
+    const rsc     = r.resources || {};
+    const TAX     = r.alliance_tax_rate  || 0.10;
+    const RTAX    = r.resource_tax_rate  || TAX;
+
+    // Per-turn base values
+    const gross    = r.gross_income       || 0;
+    const colorB   = r.color_bonus        || 0;
+    const milUp    = r.military_upkeep    || 0;
+    const impUp    = r.improvement_upkeep || 0;  // city improvements
+    const powUp    = r.power_upkeep       || 0;  // power plants
+    const rssUp    = r.rss_upkeep         || 0;  // resource building upkeep
+    const taxMoney = r.alliance_tax_money != null ? r.alliance_tax_money : (gross + colorB) * TAX;
+    const taxRsc   = r.alliance_tax_resources || 0;
+    const taxTotal = r.alliance_tax       || (taxMoney + taxRsc);
+    const netCash  = r.turn_revenue       || 0;
+
+    // Resource values per turn
+    const rscVal   = Object.entries(rsc).reduce((s,[k,v]) => s + (v * (prices[k]||0)), 0);
+    const monNet   = netCash + rscVal;  // full monetary net per turn
+
+    // Combined improvement upkeep = city improvements + power + resource buildings
+    const totalImpUp = impUp + powUp + rssUp;
+
+    const $m  = v => { const s=v<0?'-':''; return s+'$'+Math.abs(v).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}); };
+    const $n  = (v,d=2) => Number(v||0).toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});
+    const cls = v => v >= 0 ? 'nat-rev-pos' : 'nat-rev-neg';
+
+    // Resource rows — only non-zero, showing qty and value
+    function rscRows(mult) {
+      return Object.entries(RSC).map(([k,label]) => {
+        const amt = (rsc[k] || 0) * mult;
+        if (Math.abs(amt) < 0.001) return '';
+        const val = amt * (prices[k] || 0);
+        return `<div class="nat-rev-rsc-inline">
+          <img src="/static/Emojis/Resources/${k}.png" class="nat-icon-sm" alt="">
+          <span class="nat-rev-rsc-label">${label}</span>
+          <span class="${cls(amt)}">${amt>=0?'+':''}${$n(amt)} <span class="nat-rev-price">(${$m(val)})</span></span>
+        </div>`;
+      }).join('');
+    }
+
+    // Build one time-period column
+    function periodCol(label, mult) {
+      const g   = gross   * mult;
+      const cb  = colorB  * mult;
+      const rv  = rscVal  * mult;
+      const tm  = taxMoney* mult;
+      const tr  = taxRsc  * mult;
+      const tt  = taxTotal* mult;
+      const mu  = milUp   * mult;
+      const iu  = totalImpUp * mult;
+      const nc  = netCash * mult;
+      const mn  = monNet  * mult;
+
+      return `<div class="nat-rev-col">
+        <div class="nat-rev-col-title">${label}</div>
+
+        <div class="nat-rev-sub-title">💰 Income</div>
+        <div class="nat-rev-row"><span>National Tax</span><strong>${$m(g)}</strong></div>
+        <div class="nat-rev-row"><span>Color Bonus</span><strong>${$m(cb)}</strong></div>
+        <div class="nat-rev-row nat-rev-row-hdr"><span>Resources</span><strong>${$m(rv)}</strong></div>
+        <div class="nat-rev-rsc-list">${rscRows(mult)}</div>
+        <div class="nat-rev-row nat-rev-sub-total"><span>Gross Income</span><strong>${$m(g+cb+rv)}</strong></div>
+
+        <div class="nat-rev-sub-title" style="margin-top:0.6rem">📉 Expenses</div>
+        <div class="nat-rev-row"><span>Alliance Tax (${(TAX*100).toFixed(0)}% money)</span><strong class="nat-rev-neg">-${$m(tm)}</strong></div>
+        <div class="nat-rev-row"><span>Military Upkeep</span><strong class="nat-rev-neg">-${$m(mu)}</strong></div>
+        <div class="nat-rev-row"><span>Improvement Upkeep</span><strong class="nat-rev-neg">-${$m(iu)}</strong></div>
+        <div class="nat-rev-row nat-rev-sub-total"><span>Total Expenses</span><strong class="nat-rev-neg">-${$m(tm+mu+iu)}</strong></div>
+
+        <div class="nat-rev-sub-title" style="margin-top:0.6rem">📊 Net</div>
+        <div class="nat-rev-row nat-rev-total"><span>Cash Net</span><strong class="${nc >= 0 ? 'nat-rev-pos-strong' : 'nat-rev-neg-strong'}">${$m(nc)}</strong></div>
+        ${tr > 0 ? `<div class="nat-rev-row nat-rev-info"><span>Resource Tax Value (${(RTAX*100).toFixed(0)}%)</span><span class="nat-rev-info-val">${$m(tr)}</span></div>` : ''}
+        <div class="nat-rev-row nat-rev-total"><span>Monetary Net</span><strong class="${mn >= 0 ? 'nat-rev-pos-strong' : 'nat-rev-neg-strong'}">${$m(mn)}</strong></div>
+      </div>`;
+    }
+
+    return `<div class="nat-rev-grid">
+      ${periodCol('⏱ Per Turn',  1)}
+      ${periodCol('📅 Per Day (×12)',  12)}
+      ${periodCol('📆 Per Week (×84)', 84)}
+    </div>`;
+  }
+
+  function populateOverviewRevenue() {
+    const el = document.getElementById('ov-rev-content');
+    if (!el) return;
+    if (!_revData) { el.innerHTML = '<div class="nat-rev-loading">Loading revenue…</div>'; return; }
+
+    const nations = _revData.nations || [];
+    const count   = nations.length || 1;
+    const $m = v => { const s=v<0?'-':''; return s+'$'+Math.abs(v).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}); };
+    const $n = v => Number(v||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+    const sum = k => nations.reduce((s,n)=>s+(n[k]||0),0);
+    const sumRsc = k => nations.reduce((s,n)=>s+((n.resources||{})[k]||0),0);
+    const sumRscVal = k => nations.reduce((s,n)=>s+((n.resources||{})[k]||0)*((n.prices||{})[k]||0),0);
+    const avgPrice = k => { const p=nations.filter(n=>(n.prices||{})[k]); return p.length ? p.reduce((s,n)=>s+(n.prices[k]||0),0)/p.length : 0; };
+
+    // Aggregate totals
+    const totalGross    = sum('gross_income');
+    const totalColorB   = sum('color_bonus');
+    const totalMilUp    = sum('military_upkeep');
+    const totalImpUp    = sum('improvement_upkeep');
+    const totalPowUp    = sum('power_upkeep');
+    const totalRssUp    = sum('rss_upkeep');
+    
+    // Alliance tax totals - only from nations on black color (alliance color)
+    const blackNations = nations.filter(n => (n.color || '').toLowerCase() === 'black');
+    const sumBlack = k => blackNations.reduce((s,n)=>s+(n[k]||0),0);
+    const sumBlackRsc = k => blackNations.reduce((s,n)=>s+((n.resources||{})[k]||0),0);
+    
+    const totalTaxMoney = sumBlack('alliance_tax_money');
+    const totalTaxRsc   = sumBlack('alliance_tax_resources');
+    const totalTax      = sumBlack('alliance_tax');
+    const totalNetTurn  = sum('turn_revenue');
+    const totalNetDay   = sum('day_revenue');
+
+    // Resource totals (gross, pre-tax)
+    const RSC = {food:'Food',coal:'Coal',oil:'Oil',uranium:'Uranium',lead:'Lead',
+                 iron:'Iron',bauxite:'Bauxite',gasoline:'Gasoline',munitions:'Munitions',
+                 steel:'Steel',aluminum:'Aluminum'};
+    const rscRows = Object.entries(RSC).map(([k,label]) => {
+      const qty = sumRsc(k);
+      if (Math.abs(qty) < 0.01) return '';
+      const val = sumRscVal(k);
+      const price = avgPrice(k);
+      const cls = qty >= 0 ? 'nat-rev-pos' : 'nat-rev-neg';
+      return `<div class="ov-rev-rsc-row">
+        <img src="/static/Emojis/Resources/${k}.png" class="nat-icon-sm" alt="">
+        <span class="ov-rev-rsc-label">${label}</span>
+        <span class="${cls}">${qty>=0?'+':''}${$n(qty)}/t</span>
+        <span class="nat-rev-price">@ ${$n(price)}</span>
+        <span class="${cls}">${$m(val)}/t</span>
+      </div>`;
+    }).join('');
+    const totalRscVal = Object.keys(RSC).reduce((s,k)=>s+sumRscVal(k),0);
+
+    // Top 5 earners
+    const top5HTML = nations.slice(0,5).map((n,i) => `
+      <div class="ov-rev-earner">
+        <span class="ov-rev-rank">#${i+1}</span>
+        ${n.flag?`<img src="${n.flag}" class="nat-flag" alt="">`:''}
+        <span class="ov-rev-name">${n.nation_name||'Unknown'}</span>
+        <span class="ov-rev-amt nat-rev-pos-strong">${$m(n.turn_revenue)}/t</span>
+        <span class="ov-rev-amt-day">${$m(n.day_revenue)}/day</span>
+      </div>`).join('');
+
+    el.innerHTML = `
+      <div class="ov-rev-6box-grid">
+
+        <!-- Alliance Rev Turn -->
+        <div class="ov-rev-section ov-rev-section-rev">
+          <div class="ov-rev-section-title">💰 Alliance Rev Turn</div>
+          <div class="ov-rev-kv"><span>National Tax Revenue</span><strong>${$m(totalGross)}</strong></div>
+          <div class="ov-rev-kv"><span>Color Bonuses</span><strong>${$m(totalColorB)}</strong></div>
+          <div class="ov-rev-kv ov-rev-kv-hdr"><span>Resource Production</span><strong>${$m(totalRscVal)}</strong></div>
+          <div class="ov-rev-rsc-list">${rscRows||'<span class="nat-rev-loading">No resource data</span>'}</div>
+          <div class="ov-rev-kv ov-rev-kv-total"><span>Total Revenue</span><strong class="nat-rev-pos-strong">${$m(totalGross+totalColorB+totalRscVal)}</strong></div>
+        </div>
+
+        <!-- Alliance Rev Day -->
+        <div class="ov-rev-section ov-rev-section-rev">
+          <div class="ov-rev-section-title">💰 Alliance Rev Day</div>
+          <div class="ov-rev-kv"><span>National Tax Revenue</span><strong>${$m(totalGross*12)}</strong></div>
+          <div class="ov-rev-kv"><span>Color Bonuses</span><strong>${$m(totalColorB*12)}</strong></div>
+          <div class="ov-rev-kv ov-rev-kv-hdr"><span>Resource Production</span><strong>${$m(totalRscVal*12)}</strong></div>
+          <div class="ov-rev-rsc-list">${Object.entries(RSC).map(([k,label]) => {
+            const qty = sumRsc(k) * 12;
+            if (Math.abs(qty) < 0.01) return '';
+            const val = sumRscVal(k) * 12;
+            const price = avgPrice(k);
+            const cls = qty >= 0 ? 'nat-rev-pos' : 'nat-rev-neg';
+            return `<div class="ov-rev-rsc-row">
+              <img src="/static/Emojis/Resources/${k}.png" class="nat-icon-sm" alt="">
+              <span class="ov-rev-rsc-label">${label}</span>
+              <span class="${cls}">${qty>=0?'+':''}${$n(qty)}/day</span>
+              <span class="nat-rev-price">@ ${$n(price)}</span>
+              <span class="${cls}">${$m(val)}/day</span>
+            </div>`;
+          }).join('')||'<span class="nat-rev-loading">No resource data</span>'}</div>
+          <div class="ov-rev-kv ov-rev-kv-total"><span>Total Revenue</span><strong class="nat-rev-pos-strong">${$m((totalGross+totalColorB+totalRscVal)*12)}</strong></div>
+        </div>
+
+        <!-- Alliance Rev Week -->
+        <div class="ov-rev-section ov-rev-section-rev">
+          <div class="ov-rev-section-title">💰 Alliance Rev Week</div>
+          <div class="ov-rev-kv"><span>National Tax Revenue</span><strong>${$m(totalGross*84)}</strong></div>
+          <div class="ov-rev-kv"><span>Color Bonuses</span><strong>${$m(totalColorB*84)}</strong></div>
+          <div class="ov-rev-kv ov-rev-kv-hdr"><span>Resource Production</span><strong>${$m(totalRscVal*84)}</strong></div>
+          <div class="ov-rev-rsc-list">${Object.entries(RSC).map(([k,label]) => {
+            const qty = sumRsc(k) * 84;
+            if (Math.abs(qty) < 0.01) return '';
+            const val = sumRscVal(k) * 84;
+            const price = avgPrice(k);
+            const cls = qty >= 0 ? 'nat-rev-pos' : 'nat-rev-neg';
+            return `<div class="ov-rev-rsc-row">
+              <img src="/static/Emojis/Resources/${k}.png" class="nat-icon-sm" alt="">
+              <span class="ov-rev-rsc-label">${label}</span>
+              <span class="${cls}">${qty>=0?'+':''}${$n(qty)}/week</span>
+              <span class="nat-rev-price">@ ${$n(price)}</span>
+              <span class="${cls}">${$m(val)}/week</span>
+            </div>`;
+          }).join('')||'<span class="nat-rev-loading">No resource data</span>'}</div>
+          <div class="ov-rev-kv ov-rev-kv-total"><span>Total Revenue</span><strong class="nat-rev-pos-strong">${$m((totalGross+totalColorB+totalRscVal)*84)}</strong></div>
+        </div>
+
+        <!-- Alliance Tax Turn -->
+        <div class="ov-rev-section ov-rev-section-tax">
+          <div class="ov-rev-section-title">🏦 Alliance Tax Turn (Black Nations Only)</div>
+          <div class="ov-rev-kv"><span>Money Tax (10%)</span><strong>${$m(totalTaxMoney)}</strong></div>
+          <div class="ov-rev-kv ov-rev-kv-hdr"><span>Resource Tax (10%)</span><strong>${$m(totalTaxRsc)}</strong></div>
+          <div class="ov-rev-rsc-list">${Object.entries(RSC).map(([k,label]) => {
+            const qty = sumBlackRsc(k) * 0.1; // 10% tax rate, only from black nations
+            if (Math.abs(qty) < 0.001) return '';
+            const val = qty * avgPrice(k);
+            const cls = qty >= 0 ? 'nat-rev-pos' : 'nat-rev-neg';
+            return `<div class="ov-rev-rsc-row">
+              <img src="/static/Emojis/Resources/${k}.png" class="nat-icon-sm" alt="">
+              <span class="ov-rev-rsc-label">${label}</span>
+              <span class="${cls}">${qty>=0?'+':''}${$n(qty)}/t</span>
+              <span class="nat-rev-price">@ ${$n(avgPrice(k))}</span>
+              <span class="${cls}">${$m(val)}/t</span>
+            </div>`;
+          }).join('')||'<span class="nat-rev-loading">No resource data</span>'}</div>
+          <div class="ov-rev-kv ov-rev-kv-total"><span>Total Tax Value</span><strong class="nat-rev-pos-strong">${$m(totalTax)}</strong></div>
+        </div>
+
+        <!-- Alliance Tax Day -->
+        <div class="ov-rev-section ov-rev-section-tax">
+          <div class="ov-rev-section-title">🏦 Alliance Tax Day (Black Nations Only)</div>
+          <div class="ov-rev-kv"><span>Money Tax (10%)</span><strong>${$m(totalTaxMoney*12)}</strong></div>
+          <div class="ov-rev-kv ov-rev-kv-hdr"><span>Resource Tax (10%)</span><strong>${$m(totalTaxRsc*12)}</strong></div>
+          <div class="ov-rev-rsc-list">${Object.entries(RSC).map(([k,label]) => {
+            const qty = sumBlackRsc(k) * 0.1 * 12; // 10% tax rate * 12 turns per day, only from black nations
+            if (Math.abs(qty) < 0.001) return '';
+            const val = qty * avgPrice(k);
+            const cls = qty >= 0 ? 'nat-rev-pos' : 'nat-rev-neg';
+            return `<div class="ov-rev-rsc-row">
+              <img src="/static/Emojis/Resources/${k}.png" class="nat-icon-sm" alt="">
+              <span class="ov-rev-rsc-label">${label}</span>
+              <span class="${cls}">${qty>=0?'+':''}${$n(qty)}/day</span>
+              <span class="nat-rev-price">@ ${$n(avgPrice(k))}</span>
+              <span class="${cls}">${$m(val)}/day</span>
+            </div>`;
+          }).join('')||'<span class="nat-rev-loading">No resource data</span>'}</div>
+          <div class="ov-rev-kv ov-rev-kv-total"><span>Total Tax Value</span><strong class="nat-rev-pos-strong">${$m(totalTax*12)}</strong></div>
+        </div>
+
+        <!-- Alliance Tax Week -->
+        <div class="ov-rev-section ov-rev-section-tax">
+          <div class="ov-rev-section-title">🏦 Alliance Tax Week (Black Nations Only)</div>
+          <div class="ov-rev-kv"><span>Money Tax (10%)</span><strong>${$m(totalTaxMoney*84)}</strong></div>
+          <div class="ov-rev-kv ov-rev-kv-hdr"><span>Resource Tax (10%)</span><strong>${$m(totalTaxRsc*84)}</strong></div>
+          <div class="ov-rev-rsc-list">${Object.entries(RSC).map(([k,label]) => {
+            const qty = sumBlackRsc(k) * 0.1 * 84; // 10% tax rate * 84 turns per week, only from black nations
+            if (Math.abs(qty) < 0.001) return '';
+            const val = qty * avgPrice(k);
+            const cls = qty >= 0 ? 'nat-rev-pos' : 'nat-rev-neg';
+            return `<div class="ov-rev-rsc-row">
+              <img src="/static/Emojis/Resources/${k}.png" class="nat-icon-sm" alt="">
+              <span class="ov-rev-rsc-label">${label}</span>
+              <span class="${cls}">${qty>=0?'+':''}${$n(qty)}/week</span>
+              <span class="nat-rev-price">@ ${$n(avgPrice(k))}</span>
+              <span class="${cls}">${$m(val)}/week</span>
+            </div>`;
+          }).join('')||'<span class="nat-rev-loading">No resource data</span>'}</div>
+          <div class="ov-rev-kv ov-rev-kv-total"><span>Total Tax Value</span><strong class="nat-rev-pos-strong">${$m(totalTax*84)}</strong></div>
+        </div>
+
+      </div>`;
+  }
+
   // ── fetch ─────────────────────────────────────────────────────────────────
+  async function fetchRevenue() {
+    try {
+      const res = await fetch('/api/watch/revenue');
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      _revData = data;
+      _revCache = {};
+      (data.nations || []).forEach(r => { _revCache[r.nation_id] = r; });
+      // Re-render open detail panel if any
+      if (_expandedId && _detailCache[_expandedId]) {
+        renderTable();
+      }
+      // Populate overview revenue box if overview is active
+      populateOverviewRevenue();
+    } catch(e) {
+      console.warn('Revenue fetch failed:', e.message);
+    }
+  }
+
   async function fetchNations() {
     const status = document.getElementById('nat-status');
     status.style.display = 'block'; status.className = 'nat-status';
@@ -267,6 +624,7 @@
       renderTable();
       if (_currentView === 'overview') {
         document.getElementById('nat-overview-content').innerHTML = buildOverviewHTML(_nations);
+        populateOverviewRevenue();
       }
     } catch(e) {
       status.className = 'nat-status nat-status-error';
@@ -393,6 +751,10 @@
           <div class="nat-detail-section-title">🔬 Projects</div>
           <div class="nat-proj-wrap">${ownedProjects||'<p class="nat-no-data">No projects</p>'}</div>
         </div>
+        <div class="nat-detail-section nat-detail-section-full">
+          <div class="nat-detail-section-title">💰 Revenue</div>
+          ${buildRevBox(_revCache[n.id])}
+        </div>
         ${cities.length?`
         <div class="nat-detail-section nat-detail-section-full">
           <div class="nat-detail-section-title">🏙️ Cities (${cities.length})</div>
@@ -432,6 +794,7 @@
     document.querySelectorAll('.nat-view-tab').forEach(t => t.classList.toggle('active', t.dataset.view === view));
     if (view === 'overview' && _nations.length) {
       document.getElementById('nat-overview-content').innerHTML = buildOverviewHTML(_nations);
+      populateOverviewRevenue();
     }
   }
 
@@ -599,6 +962,12 @@
         <div class="ov-dist">${cityDistHTML}</div>
       </div>
 
+      <!-- Alliance Revenue (moved below Infrastructure and City Distribution) -->
+      <div class="ov-card ov-card-full" id="ov-rev-box">
+        <div class="ov-card-title">💰 Alliance Revenue</div>
+        <div id="ov-rev-content">Loading…</div>
+      </div>
+
       <!-- Projects (full width) -->
       <div class="ov-card ov-card-full">
         <div class="ov-card-title">🔬 Project Counts (active members)</div>
@@ -613,6 +982,7 @@
     if (e.detail.page !== 'nations.html') return;
 
     fetchNations();
+    fetchRevenue();
     document.getElementById('nat-refresh').addEventListener('click', fetchNations);
     document.getElementById('nat-search').addEventListener('input', function() { _search=this.value; renderTable(); });
 
@@ -632,12 +1002,17 @@
     });
 
     // Dropdown sort groups
-    ['infra','land','wars','imps'].forEach(group => {
+    ['units','infra','land','wars','imps','rev'].forEach(group => {
       const sel = document.getElementById(`${group}-select`);
       const btn = document.querySelector(`.nat-sort-dir[data-group="${group}"]`);
       sel.addEventListener('change', () => {
         _dropdowns[group] = sel.value;
         _sortCol = sel.value; _sortAsc = _dropdownAsc[group];
+        // Update units emoji image when unit type changes
+        if (group === 'units') {
+          const img = sel.options[sel.selectedIndex].dataset.img;
+          document.getElementById('units-emoji').src = '/static/Emojis/Military/' + img;
+        }
         updateSortHeaders(); renderTable();
       });
       btn.addEventListener('click', (ev) => {

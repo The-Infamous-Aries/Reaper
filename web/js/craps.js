@@ -44,6 +44,40 @@ function init() {
     bindEvents();
 }
 
+// ── Session recovery ──────────────────────────────────────────────────────────
+// If the server session was lost (e.g. server restart) but the JS still has
+// _state, silently re-create the session and retry the original action.
+async function _recoverSession() {
+    if (!_state) return false;
+    try {
+        const r = await fetch('/api/casino/craps/start', {
+            method: 'POST',
+            headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({
+                fun_mode:   _state.fun_mode   || false,
+                dice_color: _state.dice_color || 'Red'
+            })
+        });
+        if (!r.ok) return false;
+        const d = await r.json();
+        // Restore bets that were active before the session was lost
+        const prevBets = (_state.bets || []).slice();
+        _state = d;
+        // Re-place any bets that were on the table
+        for (const b of prevBets) {
+            try {
+                const br = await fetch('/api/casino/craps/bet', {
+                    method: 'POST',
+                    headers: {'Content-Type':'application/json'},
+                    body: JSON.stringify({ type: b.type, amount: b.amount })
+                });
+                if (br.ok) _state = await br.json();
+            } catch { /* best-effort */ }
+        }
+        return true;
+    } catch { return false; }
+}
+
 async function loadXP() {
     try {
         const r = await fetch('/api/casino/xp');
@@ -185,7 +219,25 @@ async function confirmBet() {
             body: JSON.stringify({ type: _pendingBet, amount })
         });
         const d = await r.json();
-        if (!r.ok) { showError(d.error || 'Bet failed'); return; }
+        if (!r.ok) {
+            // Auto-recover lost session then retry
+            if (r.status === 400 && d.error === 'No active session') {
+                const recovered = await _recoverSession();
+                if (recovered) {
+                    const r2 = await fetch('/api/casino/craps/bet', {
+                        method: 'POST',
+                        headers: {'Content-Type':'application/json'},
+                        body: JSON.stringify({ type: _pendingBet, amount })
+                    });
+                    const d2 = await r2.json();
+                    if (!r2.ok) { showError(d2.error || 'Bet failed'); return; }
+                    _state = d2;
+                    renderGame(_state);
+                    return;
+                }
+            }
+            showError(d.error || 'Bet failed'); return;
+        }
         _state = d;
         renderGame(_state);
     } catch(e) { showError(e.message); }
@@ -233,12 +285,26 @@ async function roll() {
     if (d2el) d2el.classList.add('rolling');
 
     try {
-        const r = await fetch('/api/casino/craps/roll', {
+        let r = await fetch('/api/casino/craps/roll', {
             method: 'POST',
             headers: {'Content-Type':'application/json'},
             body: '{}'
         });
-        const d = await r.json();
+        let d = await r.json();
+
+        // Auto-recover lost session then retry roll
+        if (!r.ok && r.status === 400 && d.error === 'No active session') {
+            const recovered = await _recoverSession();
+            if (recovered) {
+                r = await fetch('/api/casino/craps/roll', {
+                    method: 'POST',
+                    headers: {'Content-Type':'application/json'},
+                    body: '{}'
+                });
+                d = await r.json();
+            }
+        }
+
         if (!r.ok) { showError(d.error || 'Roll failed'); return; }
         _state = d;
 
@@ -268,10 +334,18 @@ async function roll() {
 // ── Clear bets ────────────────────────────────────────────────────────────────
 async function clearBets() {
     try {
-        const r = await fetch('/api/casino/craps/clear_bets', {
+        let r = await fetch('/api/casino/craps/clear_bets', {
             method: 'POST', headers: {'Content-Type':'application/json'}, body: '{}'
         });
-        const d = await r.json();
+        let d = await r.json();
+        if (!r.ok && r.status === 400 && d.error === 'No active session') {
+            const recovered = await _recoverSession();
+            if (recovered) {
+                // After recovery bets are already cleared (new session has no bets)
+                renderGame(_state);
+                return;
+            }
+        }
         if (!r.ok) { showError(d.error || 'Clear failed'); return; }
         _state = d;
         renderGame(_state);
@@ -284,11 +358,12 @@ async function clearBets() {
 
 // ── Quit ──────────────────────────────────────────────────────────────────────
 async function quit() {
+    const wasBetting = _state && !_state.fun_mode;
     try {
         await fetch('/api/casino/craps/quit', { method:'POST', headers:{'Content-Type':'application/json'}, body:'{}' });
     } catch { /* silent */ }
     _state = null;
-    if (!_state?.fun_mode) loadXP();
+    if (wasBetting) loadXP();
     showSetup();
 }
 
