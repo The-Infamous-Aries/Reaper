@@ -918,3 +918,160 @@ async def get_watch_nation_detail(nation_id: int):
     except Exception as e:
         logger.error(f"get_watch_nation_detail({nation_id}) error: {e}", exc_info=True)
         return {"error": str(e)}
+
+
+@router.get("/watch/revenue")
+async def get_watch_revenue():
+    """Calculate and return revenue for all Night's Watch nations."""
+    try:
+        from Systems.Functions.night_watch_nations_db import NightWatchNationsDB
+        from Systems.PnW.Util.rev_correct import calculate_full_revenue_with_query
+        from Systems.Functions.database_manager import get_latest_resource_prices, get_latest_game_data, get_latest_game_info
+        from datetime import datetime, timezone
+
+        logger.info("Starting revenue calculation for all nations")
+        
+        db = NightWatchNationsDB(NATIONS_DB_PATH)
+        nations = await db.get_all_nations()
+        logger.info(f"Loaded {len(nations)} nations from database")
+
+        # Load shared revenue context from DB (no API calls)
+        market_prices = None
+        try:
+            price_data = await get_latest_resource_prices()
+            if price_data:
+                market_prices = {res: p['avg'] for res, p in price_data.items()}
+                logger.info(f"Loaded market prices for {len(market_prices)} resources")
+        except Exception as e:
+            logger.warning(f"Could not load prices from DB: {e}")
+
+        color_map = {}
+        try:
+            colors = await get_latest_game_data("colors")
+            if colors:
+                color_map = {c['color'].lower(): float(c.get('turn_bonus', 0)) for c in colors}
+                logger.info(f"Loaded color bonuses for {len(color_map)} colors")
+        except Exception as e:
+            logger.warning(f"Could not load colors from DB: {e}")
+
+        game_date = None
+        try:
+            gi = await get_latest_game_info()
+            if gi:
+                raw = gi.get('game_date')
+                if raw:
+                    parsed = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+                    game_date = parsed.replace(tzinfo=timezone.utc) if parsed.tzinfo is None else parsed
+                    logger.info(f"Loaded game date: {game_date}")
+        except Exception as e:
+            logger.warning(f"Could not load game_info from DB: {e}")
+
+        # Calculate revenue for each nation
+        revenue_results = []
+        alliance_total_turn = 0.0
+        alliance_total_day = 0.0
+        alliance_tax_total_turn = 0.0
+        alliance_tax_total_day = 0.0
+        failed_calculations = 0
+
+        for i, nation in enumerate(nations):
+            try:
+                # Add cities to nation data
+                nation['cities'] = await db.get_cities_for_nation(int(nation['id']))
+                
+                # Detect war status (DB nations don't have wars list, use counts)
+                at_war = (nation.get('offensive_wars_count', 0) > 0 or 
+                         nation.get('defensive_wars_count', 0) > 0)
+                
+                # Get color bonus
+                color = nation.get('color', 'beige').lower()
+                color_bonus = color_map.get(color, 0.0)
+                
+                # Calculate revenue
+                full_revenue_data = await calculate_full_revenue_with_query(
+                    nation_data=nation,
+                    query_instance=None,
+                    is_war=at_war,
+                    radiation_index=nation.get("radiation_index", 1000.0),
+                    domestic_policy=nation.get("domestic_policy", ""),
+                    color_bonus=color_bonus,
+                    market_prices=market_prices,
+                    game_date=game_date,
+                )
+
+                turn_revenue = full_revenue_data['net_income']
+                day_revenue = turn_revenue * 12
+                alliance_tax_turn = full_revenue_data.get('alliance_tax_turn', 0)
+                alliance_tax_day = alliance_tax_turn * 12
+
+                alliance_total_turn += turn_revenue
+                alliance_total_day += day_revenue
+                
+                # Only add to alliance tax totals if nation is on black color (alliance color).
+                # Clamp to 0 — negative tax values must never reduce the alliance total.
+                if color == 'black':
+                    alliance_tax_total_turn += max(0.0, alliance_tax_turn)
+                    alliance_tax_total_day += max(0.0, alliance_tax_day)
+
+                revenue_results.append({
+                    'nation_id': nation['id'],
+                    'nation_name': nation.get('nation_name', 'Unknown'),
+                    'leader_name': nation.get('leader_name', ''),
+                    'flag': nation.get('flag', ''),
+                    'color': color,
+                    'num_cities': nation.get('num_cities', 0),
+                    'score': nation.get('score', 0),
+                    'turn_revenue': turn_revenue,
+                    'day_revenue': day_revenue,
+                    'color_bonus': color_bonus,
+                    'population': full_revenue_data.get('nationpop', 0),
+                    'gross_income': full_revenue_data.get('gross_income', 0),
+                    'military_upkeep': full_revenue_data.get('military_upkeep_turn', 0),
+                    'improvement_upkeep': full_revenue_data.get('improvement_upkeep_turn', 0),
+                    'power_upkeep': full_revenue_data.get('power_upkeep_turn', 0),
+                    'rss_upkeep': full_revenue_data.get('rss_upkeep_turn', 0),
+                    'alliance_tax': max(0.0, full_revenue_data.get('alliance_tax_turn', 0)),
+                    'alliance_tax_money': max(0.0, full_revenue_data.get('alliance_tax_money_turn', 0)),
+                    'alliance_tax_resources': max(0.0, full_revenue_data.get('alliance_tax_resource_turn', 0)),
+                    'alliance_tax_rate': full_revenue_data.get('alliance_tax_rate', 0.10),
+                    'resource_tax_rate': full_revenue_data.get('resource_tax_rate', 0.10),
+                    'resources': full_revenue_data.get('resources', {}),
+                    'prices': full_revenue_data.get('prices', market_prices or {}),
+                })
+
+                if (i + 1) % 10 == 0:
+                    logger.info(f"Processed {i + 1}/{len(nations)} nations")
+
+            except Exception as e:
+                failed_calculations += 1
+                logger.warning(f"Error calculating revenue for nation {nation.get('nation_name', 'Unknown')} (ID: {nation.get('id', 'Unknown')}): {e}")
+                continue
+
+        # Sort by turn revenue descending
+        revenue_results.sort(key=lambda x: x['turn_revenue'], reverse=True)
+
+        logger.info(f"Revenue calculation complete: {len(revenue_results)} successful, {failed_calculations} failed")
+        logger.info(f"Alliance totals: ${alliance_total_turn:,.2f}/turn, ${alliance_total_day:,.2f}/day")
+        logger.info(f"Alliance tax totals (black nations only): ${alliance_tax_total_turn:,.2f}/turn, ${alliance_tax_total_day:,.2f}/day")
+
+        return {
+            "nations": revenue_results,
+            "alliance_total_turn": alliance_total_turn,
+            "alliance_total_day": alliance_total_day,
+            "alliance_tax_total_turn": alliance_tax_total_turn,
+            "alliance_tax_total_day": alliance_tax_total_day,
+            "count": len(revenue_results),
+            "last_updated": datetime.now(timezone.utc).isoformat(),
+            "debug_info": {
+                "total_nations_in_db": len(nations),
+                "successful_calculations": len(revenue_results),
+                "failed_calculations": failed_calculations,
+                "has_market_prices": market_prices is not None,
+                "has_color_data": len(color_map) > 0,
+                "has_game_date": game_date is not None
+            }
+        }
+
+    except Exception as e:
+        logger.error(f"get_watch_revenue error: {e}", exc_info=True)
+        return {"nations": [], "alliance_total_turn": 0, "alliance_total_day": 0, "alliance_tax_total_turn": 0, "alliance_tax_total_day": 0, "count": 0, "error": str(e)}

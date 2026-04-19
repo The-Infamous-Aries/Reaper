@@ -29,7 +29,8 @@ async def get_library_document(doc_name: str):
             "Basic Building Guide": "Basic Building Guide", 
             "Beige Cycle Guide": "Beige Cycle Guide",
             "Weapon Efficiency Guide": "Weapon Efficiency Guide",
-            "Snipe": "Snipe"
+            "Snipe": "Snipe",
+            "Pet Guide": "Pet Guide",
         }
         
         # Get the actual filename (replace underscores with spaces for consistency)

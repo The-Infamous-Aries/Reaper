@@ -1,0 +1,227 @@
+/* ── Scratch Cards ─────────────────────────────────────────────────────────── */
+
+/* Card selection grid */
+.sc-card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 10px;
+    margin-bottom: 4px;
+}
+
+.sc-card-btn {
+    background: linear-gradient(135deg, rgba(15,15,15,0.92), rgba(25,20,10,0.92));
+    border: 2px solid rgba(255,215,0,0.18);
+    border-radius: 12px;
+    padding: 14px 10px;
+    cursor: pointer;
+    transition: transform 0.18s, box-shadow 0.18s, border-color 0.18s;
+    text-align: center;
+    color: var(--text-primary);
+    position: relative;
+    overflow: hidden;
+}
+.sc-card-btn:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 0 18px rgba(255,215,0,0.25);
+    border-color: rgba(255,215,0,0.45);
+}
+.sc-card-btn.active {
+    border-color: var(--gold-primary);
+    box-shadow: 0 0 22px var(--gold-glow);
+    background: linear-gradient(135deg, rgba(255,215,0,0.12), rgba(255,180,0,0.06));
+}
+.sc-card-icon {
+    font-size: 1.8rem;
+    margin-bottom: 6px;
+}
+.sc-card-name {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.72rem;
+    color: var(--gold-primary);
+    margin-bottom: 4px;
+}
+.sc-card-desc {
+    font-size: 0.62rem;
+    color: var(--text-secondary);
+    line-height: 1.4;
+}
+.sc-card-grid-badge {
+    font-size: 0.58rem;
+    background: rgba(255,215,0,0.12);
+    border: 1px solid rgba(255,215,0,0.3);
+    color: var(--gold-secondary);
+    border-radius: 4px;
+    padding: 1px 5px;
+    margin-top: 5px;
+    display: inline-block;
+}
+
+/* ── Scratch area ─────────────────────────────────────────────────────────── */
+.sc-scratch-area {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 16px 0;
+}
+
+/* 1×3 grid */
+.sc-grid-1x3 {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+}
+
+/* 3×3 grid */
+.sc-grid-3x3 {
+    display: grid;
+    grid-template-columns: repeat(3, 90px);
+    grid-template-rows: repeat(3, 90px);
+    gap: 8px;
+}
+
+/* Individual cell */
+.sc-cell {
+    width: 90px;
+    height: 90px;
+    border-radius: 10px;
+    border: 2px solid rgba(255,215,0,0.2);
+    background: rgba(10,10,10,0.8);
+    position: relative;
+    overflow: hidden;
+    cursor: pointer;
+    transition: border-color 0.2s;
+}
+.sc-cell:hover .sc-scratch-cover {
+    opacity: 0.85;
+}
+.sc-cell.revealed {
+    border-color: rgba(255,215,0,0.4);
+    cursor: default;
+}
+.sc-cell.win-cell {
+    border-color: var(--gold-primary);
+    box-shadow: 0 0 14px var(--gold-glow);
+    animation: scWinPulse 0.6s ease;
+}
+@keyframes scWinPulse {
+    0%   { transform: scale(1); }
+    40%  { transform: scale(1.08); }
+    100% { transform: scale(1); }
+}
+
+/* Scratch cover (the grey overlay) */
+.sc-scratch-cover {
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+        45deg,
+        rgba(80,80,80,0.9) 0px,
+        rgba(60,60,60,0.9) 4px,
+        rgba(90,90,90,0.9) 8px
+    );
+    border-radius: 8px;
+    z-index: 2;
+    transition: opacity 0.35s ease, transform 0.35s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.4rem;
+    color: rgba(255,255,255,0.3);
+}
+.sc-scratch-cover::after {
+    content: "✦";
+}
+.sc-cell.revealed .sc-scratch-cover {
+    opacity: 0;
+    transform: scale(1.15);
+    pointer-events: none;
+}
+
+/* Cell inner (the emoji) */
+.sc-cell-inner {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1;
+}
+.sc-cell-inner img {
+    width: 56px;
+    height: 56px;
+    object-fit: contain;
+    image-rendering: crisp-edges;
+}
+
+/* ── Result area ──────────────────────────────────────────────────────────── */
+.sc-result-text {
+    text-align: center;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    padding: 10px;
+    border-radius: 8px;
+    background: rgba(255,255,255,0.04);
+}
+.sc-result-text.win {
+    color: var(--gold-primary);
+    background: rgba(255,215,0,0.08);
+    text-shadow: 0 0 10px var(--gold-glow);
+}
+.sc-result-text.lose {
+    color: var(--text-secondary);
+}
+
+.sc-result-winnings {
+    text-align: center;
+    margin-top: 8px;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 1.3rem;
+    color: var(--gold-primary);
+    text-shadow: 0 0 12px var(--gold-glow);
+}
+
+.sc-bonus-badge {
+    text-align: center;
+    margin-top: 8px;
+    font-size: 0.82rem;
+    color: #ff9f43;
+    background: rgba(255,159,67,0.12);
+    border: 1px solid rgba(255,159,67,0.4);
+    border-radius: 8px;
+    padding: 6px 14px;
+    font-weight: 600;
+}
+
+/* ── Payout table in card desc ────────────────────────────────────────────── */
+.sc-payout-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.65rem;
+    color: var(--text-secondary);
+    margin-top: 3px;
+}
+.sc-payout-row span:last-child {
+    color: var(--gold-secondary);
+    font-weight: 600;
+}
+
+/* ── Responsive ───────────────────────────────────────────────────────────── */
+@media (max-width: 480px) {
+    .sc-grid-3x3 {
+        grid-template-columns: repeat(3, 76px);
+        grid-template-rows: repeat(3, 76px);
+        gap: 6px;
+    }
+    .sc-cell {
+        width: 76px;
+        height: 76px;
+    }
+    .sc-cell-inner img {
+        width: 46px;
+        height: 46px;
+    }
+    .sc-card-grid {
+        grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    }
+}

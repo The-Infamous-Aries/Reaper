@@ -1,0 +1,316 @@
+/* ── Wheel of Pets ─────────────────────────────────────────────────────────── */
+
+/* ── Two-column layout ───────────────────────────────────────────────────── */
+.wop-layout {
+    display: flex;
+    gap: 24px;
+    align-items: flex-start;
+    flex-wrap: wrap;
+}
+
+/* ── Wheel column ────────────────────────────────────────────────────────── */
+.wop-wheel-col {
+    position: relative;
+    flex: 0 0 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+/* Pointer triangle above wheel */
+.wop-pointer-wrap {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    margin-bottom: -2px;
+    z-index: 10;
+    position: relative;
+}
+.wop-pointer-triangle {
+    width: 0;
+    height: 0;
+    border-left: 15px solid transparent;
+    border-right: 15px solid transparent;
+    border-top: 28px solid var(--gold-primary);
+    filter: drop-shadow(0 0 10px rgba(255,215,0,0.95));
+    animation: wopPointerBounce 1.6s ease-in-out infinite;
+}
+@keyframes wopPointerBounce {
+    0%,100% { transform: translateY(0); }
+    50%      { transform: translateY(-6px); }
+}
+
+/* Canvas wrapper */
+.wop-canvas-wrap {
+    position: relative;
+    display: inline-block;
+    cursor: crosshair;
+}
+.wop-canvas-wrap canvas {
+    display: block;
+    border-radius: 50%;
+    box-shadow:
+        0 0 0 3px rgba(255,215,0,0.45),
+        0 0 0 7px rgba(255,215,0,0.10),
+        0 0 45px rgba(255,215,0,0.18),
+        0 0 90px rgba(255,215,0,0.06);
+    transition: box-shadow 0.35s;
+    max-width: 100%;
+    height: auto;
+}
+.wop-canvas-wrap.spinning canvas {
+    box-shadow:
+        0 0 0 4px rgba(255,215,0,0.85),
+        0 0 0 10px rgba(255,215,0,0.25),
+        0 0 65px rgba(255,215,0,0.55),
+        0 0 130px rgba(255,215,0,0.20);
+    cursor: not-allowed;
+}
+
+/* Centre hub — larger now that the wheel is hollow */
+.wop-hub {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 40% 35%, #2a2a2a, #111);
+    border: 3px solid rgba(255,215,0,0.55);
+    box-shadow: 0 0 18px rgba(255,215,0,0.4), inset 0 0 12px rgba(0,0,0,0.65);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.7rem;
+    z-index: 6;
+    pointer-events: none;
+    transition: transform 0.3s;
+}
+.wop-canvas-wrap.spinning .wop-hub {
+    animation: wopHubSpin 0.55s linear infinite;
+}
+@keyframes wopHubSpin {
+    to { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+/* Hover tooltip */
+.wop-hover-tip {
+    position: absolute;
+    bottom: -38px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0,0,0,0.88);
+    border: 1px solid rgba(255,215,0,0.45);
+    border-radius: 6px;
+    padding: 4px 12px;
+    font-size: 0.74rem;
+    color: var(--gold-primary);
+    white-space: nowrap;
+    pointer-events: none;
+    z-index: 20;
+    font-family: 'Orbitron', sans-serif;
+}
+
+/* ── Sidebar ─────────────────────────────────────────────────────────────── */
+.wop-sidebar {
+    flex: 1 1 230px;
+    min-width: 210px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+/* Selected pet box */
+.wop-selected-box {
+    background: rgba(255,215,0,0.04);
+    border: 1.5px solid rgba(255,215,0,0.2);
+    border-radius: 10px;
+    padding: 12px 14px;
+    min-height: 68px;
+    display: flex;
+    align-items: center;
+    transition: border-color 0.25s, background 0.25s;
+}
+.wop-selected-box.has-pet {
+    border-color: rgba(255,215,0,0.6);
+    background: rgba(255,215,0,0.08);
+}
+.wop-selected-label {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    font-style: italic;
+}
+.wop-selected-pet {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+}
+.wop-sel-img {
+    width: 50px;
+    height: 50px;
+    object-fit: contain;
+    border-radius: 8px;
+    border: 1.5px solid rgba(255,215,0,0.4);
+    background: rgba(0,0,0,0.3);
+    padding: 3px;
+    flex-shrink: 0;
+}
+.wop-sel-name {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.85rem;
+    color: var(--gold-primary);
+    font-weight: 700;
+}
+.wop-sel-sub {
+    font-size: 0.66rem;
+    color: var(--text-secondary);
+    margin-top: 3px;
+}
+
+/* Payout row */
+.wop-payout-row {
+    display: flex;
+    gap: 8px;
+}
+.wop-payout-item {
+    flex: 1;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,215,0,0.15);
+    border-radius: 8px;
+    padding: 8px 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+.wop-payout-item--own { border-color: rgba(255,165,0,0.35); background: rgba(255,165,0,0.04); }
+.wop-payout-label { font-size: 0.63rem; color: var(--text-secondary); }
+.wop-payout-val {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.8rem;
+    color: var(--gold-primary);
+    font-weight: 700;
+}
+
+/* Spin button */
+.wop-spin-btn {
+    width: 100%;
+    text-align: center;
+    font-size: 1rem;
+    padding: 13px;
+    background: linear-gradient(135deg, rgba(255,215,0,0.22), rgba(255,165,0,0.12));
+    border-color: rgba(255,215,0,0.65);
+    letter-spacing: 2px;
+}
+.wop-spin-btn:not(:disabled):hover {
+    background: linear-gradient(135deg, rgba(255,215,0,0.38), rgba(255,165,0,0.22));
+    box-shadow: 0 0 22px rgba(255,215,0,0.55);
+    transform: translateY(-2px);
+}
+.wop-spin-btn.spinning-state {
+    animation: wopSpinBtnPulse 0.8s ease-in-out infinite;
+    pointer-events: none;
+}
+@keyframes wopSpinBtnPulse {
+    0%,100% { box-shadow: 0 0 8px rgba(255,215,0,0.3); }
+    50%      { box-shadow: 0 0 26px rgba(255,215,0,0.75); }
+}
+
+/* ── Result card ─────────────────────────────────────────────────────────── */
+.wop-result {
+    border-radius: 12px;
+    border: 2px solid rgba(255,215,0,0.3);
+    background: rgba(255,215,0,0.04);
+    overflow: hidden;
+    animation: wopResultIn 0.45s cubic-bezier(0.34,1.56,0.64,1);
+}
+@keyframes wopResultIn {
+    from { opacity:0; transform:scale(0.88) translateY(8px); }
+    to   { opacity:1; transform:scale(1)    translateY(0); }
+}
+.wop-result--win  { border-color: rgba(46,204,113,0.65); background: rgba(46,204,113,0.06); }
+.wop-result--own  {
+    border-color: rgba(255,215,0,0.9);
+    background: rgba(255,215,0,0.1);
+    box-shadow: 0 0 30px rgba(255,215,0,0.38);
+}
+.wop-result--loss { border-color: rgba(231,76,60,0.45); background: rgba(231,76,60,0.05); }
+
+.wop-result-inner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 16px 12px 10px;
+    gap: 6px;
+}
+.wop-res-img {
+    width: 68px;
+    height: 68px;
+    object-fit: contain;
+    border-radius: 10px;
+    border: 2px solid rgba(255,215,0,0.45);
+    background: rgba(0,0,0,0.3);
+    padding: 4px;
+    animation: wopResImgPop 0.5s cubic-bezier(0.34,1.56,0.64,1);
+}
+@keyframes wopResImgPop {
+    from { transform: scale(0.4) rotate(-20deg); opacity:0; }
+    to   { transform: scale(1)   rotate(0deg);   opacity:1; }
+}
+.wop-res-name {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.88rem;
+    color: var(--gold-primary);
+    font-weight: 700;
+}
+.wop-res-text {
+    font-size: 0.8rem;
+    color: var(--text-primary);
+    text-align: center;
+    line-height: 1.45;
+}
+.wop-res-xp {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--gold-primary);
+    text-shadow: 0 0 12px var(--gold-glow);
+}
+
+/* Play-again row */
+.wop-again-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    padding: 10px 12px;
+    border-top: 1px solid rgba(255,215,0,0.12);
+    flex-wrap: wrap;
+}
+.wop-again-btn {
+    flex: 1;
+    text-align: center;
+    font-size: 0.84rem;
+    padding: 9px 12px;
+}
+
+/* ── Confetti ────────────────────────────────────────────────────────────── */
+.wop-confetti {
+    position: fixed;
+    border-radius: 2px;
+    pointer-events: none;
+    z-index: 9999;
+    animation: wopConfettiFall linear forwards;
+}
+@keyframes wopConfettiFall {
+    0%   { opacity:1; transform: translateY(0)    rotate(0deg); }
+    100% { opacity:0; transform: translateY(520px) rotate(820deg); }
+}
+
+/* ── Responsive ──────────────────────────────────────────────────────────── */
+@media (max-width: 700px) {
+    .wop-layout { flex-direction: column; align-items: center; }
+    .wop-canvas-wrap canvas { width: 320px !important; height: 320px !important; }
+    .wop-hub { width: 52px; height: 52px; font-size: 1.2rem; }
+    .wop-sidebar { width: 100%; max-width: 500px; }
+}

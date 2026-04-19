@@ -1,0 +1,347 @@
+/* ── Mega Keno ─────────────────────────────────────────────────────────────── */
+
+/* ── Section labels ──────────────────────────────────────────────────────── */
+.keno-section-label {
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+    margin-bottom: 6px;
+}
+
+/* ── Line blocks (Type / Element / Pet rows) ─────────────────────────────── */
+.keno-line-block {
+    background: rgba(255,215,0,0.03);
+    border: 1px solid rgba(255,215,0,0.12);
+    border-radius: 10px;
+    padding: 14px;
+}
+.keno-line-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+}
+.keno-line-title {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.78rem;
+    color: var(--gold-primary);
+}
+.keno-line-hint {
+    font-size: 0.65rem;
+    color: var(--text-secondary);
+    margin-left: auto;
+}
+.keno-line-badge {
+    font-size: 0.6rem;
+    font-family: 'Orbitron', sans-serif;
+    font-weight: 700;
+    letter-spacing: 1px;
+    border-radius: 4px;
+    padding: 2px 7px;
+}
+.keno-line-badge--type    { background: rgba(100,200,255,0.15); color: #64c8ff; border: 1px solid rgba(100,200,255,0.35); }
+.keno-line-badge--element { background: rgba(180,100,255,0.15); color: #b464ff; border: 1px solid rgba(180,100,255,0.35); }
+.keno-line-badge--pet     { background: rgba(255,215,0,0.15);   color: var(--gold-primary); border: 1px solid rgba(255,215,0,0.35); }
+
+/* ── Pick rows (Type & Element) ──────────────────────────────────────────── */
+.keno-pick-row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+.keno-pick-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
+    padding: 8px 10px;
+    border-radius: 10px;
+    border: 2px solid rgba(255,215,0,0.15);
+    background: rgba(255,255,255,0.03);
+    transition: all 0.18s;
+    min-width: 64px;
+    user-select: none;
+}
+.keno-pick-item:hover {
+    border-color: rgba(255,215,0,0.45);
+    background: rgba(255,215,0,0.07);
+}
+.keno-pick-item.selected {
+    border-color: var(--gold-primary);
+    background: rgba(255,215,0,0.14);
+    box-shadow: 0 0 10px var(--gold-glow);
+}
+.keno-pick-item img {
+    width: 36px;
+    height: 36px;
+    object-fit: contain;
+    image-rendering: auto;
+}
+.keno-pick-label {
+    font-size: 0.6rem;
+    color: var(--text-secondary);
+    text-align: center;
+    line-height: 1.2;
+}
+.keno-pick-item.selected .keno-pick-label { color: var(--gold-secondary); }
+
+/* ── Pet grid ────────────────────────────────────────────────────────────── */
+.keno-selection-info {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+}
+.keno-pet-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(62px, 1fr));
+    gap: 6px;
+    max-height: 380px;
+    overflow-y: auto;
+    padding: 4px 2px;
+}
+.keno-pet-grid::-webkit-scrollbar { width: 4px; }
+.keno-pet-grid::-webkit-scrollbar-track { background: transparent; }
+.keno-pet-grid::-webkit-scrollbar-thumb { background: rgba(255,215,0,0.25); border-radius: 4px; }
+
+.keno-pet-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    cursor: pointer;
+    padding: 6px 4px;
+    border-radius: 8px;
+    border: 2px solid rgba(255,215,0,0.1);
+    background: rgba(255,255,255,0.02);
+    transition: all 0.15s;
+    user-select: none;
+}
+.keno-pet-item:hover {
+    border-color: rgba(255,215,0,0.4);
+    background: rgba(255,215,0,0.06);
+}
+.keno-pet-item.selected {
+    border-color: var(--gold-primary);
+    background: rgba(255,215,0,0.13);
+    box-shadow: 0 0 8px var(--gold-glow);
+}
+.keno-pet-item.disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+.keno-pet-item img {
+    width: 34px;
+    height: 34px;
+    object-fit: contain;
+    image-rendering: auto;
+}
+.keno-pet-name {
+    font-size: 0.52rem;
+    color: var(--text-secondary);
+    text-align: center;
+    line-height: 1.2;
+    word-break: break-word;
+}
+.keno-pet-item.selected .keno-pet-name { color: var(--gold-secondary); }
+
+/* ── Payout bar ──────────────────────────────────────────────────────────── */
+.keno-payout-bar {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    background: rgba(0,0,0,0.3);
+    border-radius: 10px;
+    padding: 10px 14px;
+    border: 1px solid rgba(255,215,0,0.15);
+}
+.keno-payout-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex: 1;
+    min-width: 70px;
+}
+.keno-payout-label {
+    font-size: 0.6rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+.keno-payout-value {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.82rem;
+    color: var(--gold-primary);
+}
+.keno-payout-value--bonus { color: #b464ff; text-shadow: 0 0 8px rgba(180,100,255,0.6); }
+.keno-payout-value--mega  { color: #ff6464; text-shadow: 0 0 10px rgba(255,100,100,0.7); }
+.keno-payout-value--total {
+    color: var(--gold-primary);
+    font-size: 1rem;
+    text-shadow: 0 0 12px var(--gold-glow);
+}
+
+/* ── In-place bot draw states ────────────────────────────────────────────── */
+
+/* Scanning: everything dims while bot is picking */
+.keno-pet-item.bot-scanning,
+.keno-pick-item.bot-scanning {
+    opacity: 0.28;
+    transition: opacity 0.2s;
+}
+
+/* Bot drew this tile (not a player hit) — teal tint */
+.keno-pet-item.bot-drawn {
+    border-color: rgba(100,220,255,0.55);
+    background: rgba(100,220,255,0.08);
+    box-shadow: 0 0 6px rgba(100,220,255,0.3);
+    opacity: 1;
+    transition: all 0.2s;
+}
+
+/* Bot drew this AND player picked it — green hit */
+.keno-pet-item.bot-hit {
+    border-color: #4cff88;
+    background: rgba(76,255,136,0.15);
+    box-shadow: 0 0 14px rgba(76,255,136,0.6);
+    opacity: 1;
+    animation: kenoPetHit 0.45s cubic-bezier(0.34,1.56,0.64,1);
+}
+@keyframes kenoPetHit {
+    0%   { transform: scale(1); }
+    40%  { transform: scale(1.22); }
+    100% { transform: scale(1); }
+}
+.keno-pet-item.bot-hit .keno-pet-name { color: #4cff88; }
+
+/* Player picked it but bot didn't draw it — red miss */
+.keno-pet-item.bot-miss {
+    border-color: rgba(255,80,80,0.5);
+    background: rgba(255,80,80,0.07);
+    opacity: 0.55;
+    transition: all 0.25s;
+}
+.keno-pet-item.bot-miss .keno-pet-name { color: rgba(255,100,100,0.7); }
+
+/* ── Element row draw states (fancier) ───────────────────────────────────── */
+.keno-pick-item.bot-drawn--elem {
+    border-color: rgba(180,100,255,0.45);
+    background: rgba(180,100,255,0.08);
+    box-shadow: 0 0 8px rgba(180,100,255,0.3);
+    opacity: 1;
+    transition: all 0.25s;
+}
+
+.keno-pick-item.bot-hit--elem {
+    border-color: #b464ff;
+    background: rgba(180,100,255,0.2);
+    box-shadow: 0 0 18px rgba(180,100,255,0.75), 0 0 36px rgba(180,100,255,0.3);
+    opacity: 1;
+    animation: kenoElemHit 0.55s cubic-bezier(0.34,1.56,0.64,1);
+}
+@keyframes kenoElemHit {
+    0%   { transform: scale(1) rotate(0deg); }
+    25%  { transform: scale(1.3) rotate(-4deg); }
+    60%  { transform: scale(1.18) rotate(3deg); }
+    100% { transform: scale(1) rotate(0deg); }
+}
+.keno-pick-item.bot-hit--elem .keno-pick-label { color: #b464ff; }
+
+.keno-pick-item.bot-miss {
+    border-color: rgba(255,80,80,0.4);
+    background: rgba(255,80,80,0.06);
+    opacity: 0.5;
+    transition: all 0.25s;
+}
+
+/* ── Type row MEGA draw states (most dramatic) ───────────────────────────── */
+.keno-pick-item.mega-cycling {
+    border-color: #ffd700;
+    background: rgba(255,215,0,0.18);
+    box-shadow: 0 0 20px rgba(255,215,0,0.7), 0 0 40px rgba(255,100,100,0.3);
+    transform: scale(1.12);
+    transition: all 0.07s;
+}
+
+.keno-pick-item.bot-hit--mega {
+    border-color: #ff6464;
+    background: rgba(255,100,100,0.2);
+    box-shadow: 0 0 30px rgba(255,100,100,0.8), 0 0 60px rgba(255,215,0,0.5);
+    animation: kenoMegaHit 1s cubic-bezier(0.34,1.56,0.64,1) forwards,
+               kenoMegaPulse 0.9s ease 1s infinite alternate;
+}
+@keyframes kenoMegaHit {
+    0%   { transform: scale(1); }
+    30%  { transform: scale(1.45); }
+    55%  { transform: scale(1.25); }
+    75%  { transform: scale(1.35); }
+    100% { transform: scale(1.15); }
+}
+@keyframes kenoMegaPulse {
+    from { box-shadow: 0 0 30px rgba(255,100,100,0.8), 0 0 60px rgba(255,215,0,0.5); }
+    to   { box-shadow: 0 0 50px rgba(255,100,100,1),   0 0 90px rgba(255,215,0,0.8); }
+}
+.keno-pick-item.bot-hit--mega .keno-pick-label { color: #ff6464; font-weight: 700; }
+
+/* ── Result text ─────────────────────────────────────────────────────────── */
+.keno-result-text {
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+    text-align: center;
+    min-height: 20px;
+}
+
+/* ── Final result ────────────────────────────────────────────────────────── */
+.keno-final-block {
+    text-align: center;
+    padding: 18px;
+    border-radius: 14px;
+    background: rgba(255,215,0,0.05);
+    border: 2px solid rgba(255,215,0,0.3);
+    animation: casinoPanelIn 0.4s ease;
+}
+.keno-final-text {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 1rem;
+    color: var(--gold-primary);
+    text-shadow: 0 0 14px var(--gold-glow);
+    margin-bottom: 8px;
+}
+.keno-final-winnings {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 1.4rem;
+    color: var(--gold-primary);
+    text-shadow: 0 0 20px var(--gold-glow);
+}
+
+/* ── Bonus phase entrance animations (kept for potential future use) ─────── */
+@keyframes bonusPhaseIn {
+    0%   { opacity: 0; transform: scale(0.85) translateY(20px); }
+    60%  { transform: scale(1.03) translateY(-4px); }
+    100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+@keyframes megaPhaseIn {
+    0%   { opacity: 0; transform: scale(0.7) rotate(-3deg); }
+    50%  { transform: scale(1.06) rotate(1deg); }
+    100% { opacity: 1; transform: scale(1) rotate(0deg); }
+}
+
+/* ── Particle burst (JS-driven) ──────────────────────────────────────────── */
+.keno-particle {
+    position: fixed;
+    pointer-events: none;
+    border-radius: 50%;
+    z-index: 9999;
+    animation: kenoParticle 1.2s ease-out forwards;
+}
+@keyframes kenoParticle {
+    0%   { opacity: 1; transform: translate(0,0) scale(1); }
+    100% { opacity: 0; transform: translate(var(--dx), var(--dy)) scale(0.2); }
+}
+
+/* ── Responsive ──────────────────────────────────────────────────────────── */
+@media (max-width: 576px) {
+    .keno-pet-grid { grid-template-columns: repeat(auto-fill, minmax(54px, 1fr)); }
+    .keno-payout-bar { gap: 4px; }
+    .keno-payout-item { min-width: 55px; }
+}

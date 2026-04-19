@@ -1,0 +1,700 @@
+/* ── Pet Powerball ─────────────────────────────────────────────────────────── */
+
+/* ── Jackpot banner ──────────────────────────────────────────────────────── */
+.pb-jackpot-banner {
+    background: linear-gradient(135deg, rgba(255,215,0,0.12), rgba(255,100,0,0.08));
+    border: 2px solid rgba(255,215,0,0.45);
+    border-radius: 14px;
+    padding: 18px 22px;
+    text-align: center;
+    margin-bottom: 20px;
+    position: relative;
+    overflow: hidden;
+}
+.pb-jackpot-banner::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+        45deg,
+        transparent,
+        transparent 18px,
+        rgba(255,215,0,0.03) 18px,
+        rgba(255,215,0,0.03) 36px
+    );
+    pointer-events: none;
+}
+.pb-jackpot-label {
+    font-size: 0.72rem;
+    color: var(--text-secondary);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    font-family: 'Orbitron', sans-serif;
+    margin-bottom: 4px;
+}
+.pb-jackpot-amount {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 2.2rem;
+    font-weight: 900;
+    color: var(--gold-primary);
+    text-shadow: 0 0 20px var(--gold-glow), 0 0 40px rgba(255,215,0,0.3);
+    letter-spacing: 2px;
+    animation: pbJackpotPulse 2.5s ease-in-out infinite;
+}
+@keyframes pbJackpotPulse {
+    0%,100% { text-shadow: 0 0 20px var(--gold-glow), 0 0 40px rgba(255,215,0,0.3); }
+    50%      { text-shadow: 0 0 35px var(--gold-glow), 0 0 70px rgba(255,215,0,0.5); }
+}
+.pb-jackpot-sub {
+    font-size: 0.72rem;
+    color: var(--text-secondary);
+    margin-top: 4px;
+}
+.pb-draw-countdown {
+    display: inline-block;
+    margin-top: 8px;
+    background: rgba(255,215,0,0.1);
+    border: 1px solid rgba(255,215,0,0.3);
+    border-radius: 6px;
+    padding: 4px 12px;
+    font-size: 0.75rem;
+    color: var(--gold-secondary);
+    font-family: 'Orbitron', sans-serif;
+}
+
+/* ── Two-column layout ───────────────────────────────────────────────────── */
+.pb-layout {
+    display: flex;
+    gap: 20px;
+    align-items: flex-start;
+    flex-wrap: wrap;
+}
+.pb-main-col {
+    flex: 1 1 480px;
+    min-width: 300px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+.pb-side-col {
+    flex: 0 0 280px;
+    min-width: 240px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+/* ── Section panels ──────────────────────────────────────────────────────── */
+.pb-section {
+    background: linear-gradient(135deg, rgba(15,15,15,0.95), rgba(20,20,20,0.95));
+    border: 1.5px solid rgba(255,215,0,0.2);
+    border-radius: 12px;
+    padding: 16px;
+}
+.pb-section-title {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.8rem;
+    color: var(--gold-primary);
+    text-shadow: 0 0 8px var(--gold-glow);
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.pb-section-badge {
+    font-size: 0.6rem;
+    background: rgba(255,215,0,0.12);
+    border: 1px solid rgba(255,215,0,0.3);
+    border-radius: 4px;
+    padding: 2px 7px;
+    color: var(--gold-secondary);
+    font-family: sans-serif;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+}
+
+/* ── Step indicator ──────────────────────────────────────────────────────── */
+.pb-steps {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+}
+.pb-step {
+    flex: 1;
+    min-width: 80px;
+    text-align: center;
+    padding: 8px 6px;
+    border-radius: 8px;
+    border: 1.5px solid rgba(255,215,0,0.15);
+    background: rgba(255,255,255,0.02);
+    font-size: 0.65rem;
+    color: var(--text-secondary);
+    transition: all 0.2s;
+}
+.pb-step.active {
+    border-color: var(--gold-primary);
+    background: rgba(255,215,0,0.1);
+    color: var(--gold-primary);
+    box-shadow: 0 0 8px var(--gold-glow);
+}
+.pb-step.done {
+    border-color: rgba(46,204,113,0.5);
+    background: rgba(46,204,113,0.07);
+    color: #2ecc71;
+}
+.pb-step-num {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.9rem;
+    font-weight: 700;
+    display: block;
+    margin-bottom: 2px;
+}
+
+/* ── Pet picker grid ─────────────────────────────────────────────────────── */
+.pb-pet-search {
+    margin-bottom: 8px;
+}
+.pb-pet-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(62px, 1fr));
+    gap: 5px;
+    max-height: 280px;
+    overflow-y: auto;
+    padding: 2px;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255,215,0,0.3) transparent;
+}
+.pb-pet-grid::-webkit-scrollbar { width: 4px; }
+.pb-pet-grid::-webkit-scrollbar-thumb { background: rgba(255,215,0,0.3); border-radius: 4px; }
+
+.pb-pet-tile {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    padding: 5px 3px;
+    border-radius: 7px;
+    border: 1.5px solid rgba(255,215,0,0.1);
+    background: rgba(255,255,255,0.02);
+    cursor: pointer;
+    transition: all 0.15s;
+    user-select: none;
+    position: relative;
+}
+.pb-pet-tile:hover {
+    border-color: rgba(255,215,0,0.45);
+    background: rgba(255,215,0,0.07);
+    transform: translateY(-1px);
+}
+.pb-pet-tile.selected {
+    border-color: var(--gold-primary);
+    background: rgba(255,215,0,0.14);
+    box-shadow: 0 0 8px var(--gold-glow);
+}
+.pb-pet-tile.disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+.pb-pet-tile.hidden { display: none; }
+.pb-pet-tile img {
+    width: 34px;
+    height: 34px;
+    object-fit: contain;
+}
+.pb-pet-tile span {
+    font-size: 0.5rem;
+    color: var(--text-secondary);
+    text-align: center;
+    line-height: 1.2;
+    word-break: break-word;
+}
+.pb-pet-tile.selected span { color: var(--gold-primary); }
+/* Slot number badge on selected tiles */
+.pb-pet-slot-badge {
+    position: absolute;
+    top: 2px;
+    right: 3px;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--gold-primary);
+    color: #000;
+    font-size: 0.55rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Orbitron', sans-serif;
+}
+
+/* ── Selected pets row ───────────────────────────────────────────────────── */
+.pb-selected-row {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+}
+.pb-selected-slot {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    width: 58px;
+    padding: 6px 4px;
+    border-radius: 8px;
+    border: 1.5px dashed rgba(255,215,0,0.25);
+    background: rgba(255,255,255,0.02);
+    min-height: 68px;
+    transition: all 0.2s;
+    cursor: pointer;
+}
+.pb-selected-slot.filled {
+    border-style: solid;
+    border-color: rgba(255,215,0,0.5);
+    background: rgba(255,215,0,0.07);
+}
+.pb-selected-slot.filled:hover {
+    border-color: rgba(231,76,60,0.6);
+    background: rgba(231,76,60,0.07);
+}
+.pb-selected-slot img {
+    width: 32px;
+    height: 32px;
+    object-fit: contain;
+}
+.pb-selected-slot .pb-slot-num {
+    font-size: 0.55rem;
+    color: var(--text-secondary);
+    font-family: 'Orbitron', sans-serif;
+}
+.pb-selected-slot .pb-slot-name {
+    font-size: 0.5rem;
+    color: var(--gold-secondary);
+    text-align: center;
+    line-height: 1.2;
+}
+.pb-selected-slot .pb-slot-empty {
+    font-size: 0.55rem;
+    color: rgba(255,255,255,0.2);
+    margin-top: 4px;
+}
+
+/* ── Element picker ──────────────────────────────────────────────────────── */
+.pb-em-toggle-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    background: rgba(255,165,0,0.05);
+    border: 1px solid rgba(255,165,0,0.2);
+}
+.pb-em-label {
+    flex: 1;
+}
+.pb-em-label-title {
+    font-size: 0.78rem;
+    color: var(--gold-secondary);
+    font-weight: 600;
+}
+.pb-em-label-sub {
+    font-size: 0.65rem;
+    color: var(--text-secondary);
+    margin-top: 2px;
+}
+.pb-em-cost-badge {
+    font-size: 0.65rem;
+    background: rgba(255,165,0,0.15);
+    border: 1px solid rgba(255,165,0,0.35);
+    border-radius: 5px;
+    padding: 3px 8px;
+    color: #ffa500;
+    font-family: 'Orbitron', sans-serif;
+    white-space: nowrap;
+}
+
+.pb-elem-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(58px, 1fr));
+    gap: 5px;
+}
+.pb-elem-tile {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    padding: 6px 4px;
+    border-radius: 7px;
+    border: 1.5px solid rgba(255,165,0,0.15);
+    background: rgba(255,255,255,0.02);
+    cursor: pointer;
+    transition: all 0.15s;
+    user-select: none;
+    opacity: 0.45;
+    pointer-events: none;
+}
+.pb-elem-tile.enabled {
+    opacity: 1;
+    pointer-events: auto;
+}
+.pb-elem-tile.enabled:hover {
+    border-color: rgba(255,165,0,0.5);
+    background: rgba(255,165,0,0.08);
+}
+.pb-elem-tile.selected {
+    border-color: #ffa500;
+    background: rgba(255,165,0,0.15);
+    box-shadow: 0 0 10px rgba(255,165,0,0.4);
+}
+.pb-elem-tile img {
+    width: 30px;
+    height: 30px;
+    object-fit: contain;
+}
+.pb-elem-tile span {
+    font-size: 0.5rem;
+    color: var(--text-secondary);
+    text-align: center;
+}
+.pb-elem-tile.selected span { color: #ffa500; }
+
+/* ── Cost summary ────────────────────────────────────────────────────────── */
+.pb-cost-box {
+    background: rgba(255,215,0,0.04);
+    border: 1px solid rgba(255,215,0,0.2);
+    border-radius: 8px;
+    padding: 10px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    font-size: 0.75rem;
+}
+.pb-cost-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: var(--text-secondary);
+}
+.pb-cost-row.total {
+    border-top: 1px solid rgba(255,215,0,0.15);
+    padding-top: 6px;
+    margin-top: 2px;
+    color: var(--gold-primary);
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.82rem;
+    font-weight: 700;
+}
+.pb-cost-val { color: var(--gold-primary); font-weight: 600; }
+
+/* ── Buy button ──────────────────────────────────────────────────────────── */
+.pb-buy-btn {
+    width: 100%;
+    text-align: center;
+    font-size: 0.95rem;
+    padding: 13px;
+    background: linear-gradient(135deg, rgba(255,215,0,0.22), rgba(255,165,0,0.12));
+    border-color: rgba(255,215,0,0.65);
+    letter-spacing: 1px;
+    font-family: 'Orbitron', sans-serif;
+}
+.pb-buy-btn:not(:disabled):hover {
+    background: linear-gradient(135deg, rgba(255,215,0,0.38), rgba(255,165,0,0.22));
+    box-shadow: 0 0 22px rgba(255,215,0,0.55);
+    transform: translateY(-2px);
+}
+
+/* ── Ticket display (after purchase) ─────────────────────────────────────── */
+.pb-ticket {
+    background: linear-gradient(135deg, rgba(20,15,0,0.97), rgba(30,20,0,0.97));
+    border: 2px solid rgba(255,215,0,0.55);
+    border-radius: 14px;
+    padding: 18px;
+    position: relative;
+    overflow: hidden;
+    animation: pbTicketIn 0.4s cubic-bezier(0.34,1.56,0.64,1);
+}
+@keyframes pbTicketIn {
+    from { opacity:0; transform:scale(0.9) translateY(10px); }
+    to   { opacity:1; transform:scale(1)   translateY(0); }
+}
+.pb-ticket::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+        -45deg, transparent, transparent 12px,
+        rgba(255,215,0,0.025) 12px, rgba(255,215,0,0.025) 24px
+    );
+    pointer-events: none;
+}
+.pb-ticket-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+.pb-ticket-title {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.85rem;
+    color: var(--gold-primary);
+    text-shadow: 0 0 8px var(--gold-glow);
+}
+.pb-ticket-date {
+    font-size: 0.65rem;
+    color: var(--text-secondary);
+    font-family: 'Orbitron', sans-serif;
+}
+.pb-ticket-pets {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+}
+.pb-ticket-pet {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    width: 52px;
+    padding: 5px 3px;
+    border-radius: 7px;
+    border: 1.5px solid rgba(255,215,0,0.35);
+    background: rgba(255,215,0,0.06);
+}
+.pb-ticket-pet img {
+    width: 30px;
+    height: 30px;
+    object-fit: contain;
+}
+.pb-ticket-pet span {
+    font-size: 0.48rem;
+    color: var(--gold-secondary);
+    text-align: center;
+}
+.pb-ticket-em {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    border-radius: 7px;
+    border: 1.5px solid rgba(255,165,0,0.4);
+    background: rgba(255,165,0,0.07);
+    font-size: 0.7rem;
+    color: #ffa500;
+    margin-bottom: 10px;
+}
+.pb-ticket-em img {
+    width: 24px;
+    height: 24px;
+    object-fit: contain;
+}
+.pb-ticket-no-em {
+    font-size: 0.65rem;
+    color: var(--text-secondary);
+    margin-bottom: 10px;
+    font-style: italic;
+}
+.pb-ticket-cost {
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    text-align: right;
+}
+.pb-ticket-cost strong { color: var(--gold-primary); }
+
+/* ── Payout table ────────────────────────────────────────────────────────── */
+.pb-payout-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.7rem;
+}
+.pb-payout-table th {
+    color: var(--text-secondary);
+    font-weight: 600;
+    padding: 4px 6px;
+    text-align: left;
+    border-bottom: 1px solid rgba(255,215,0,0.15);
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.6rem;
+    letter-spacing: 0.5px;
+}
+.pb-payout-table td {
+    padding: 5px 6px;
+    color: var(--text-secondary);
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+.pb-payout-table tr:last-child td { border-bottom: none; }
+.pb-payout-table .tier-mega td { color: var(--gold-primary); font-weight: 700; }
+.pb-payout-table .tier-1 td { color: #f39c12; }
+.pb-payout-table .tier-2em td { color: #9b59b6; }
+.pb-payout-table .tier-2 td { color: #3498db; }
+.pb-payout-table .tier-3em td { color: #2ecc71; }
+.pb-payout-table .tier-3 td { color: var(--text-secondary); }
+.pb-payout-xp { color: var(--gold-primary) !important; font-weight: 600; }
+
+/* ── Last draw result ────────────────────────────────────────────────────── */
+.pb-last-draw {
+    font-size: 0.72rem;
+}
+.pb-last-draw-pets {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+    margin: 8px 0;
+}
+.pb-last-draw-pet {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    width: 44px;
+}
+.pb-last-draw-pet img {
+    width: 28px;
+    height: 28px;
+    object-fit: contain;
+    border-radius: 5px;
+    border: 1px solid rgba(255,215,0,0.3);
+    background: rgba(0,0,0,0.3);
+    padding: 2px;
+}
+.pb-last-draw-pet span {
+    font-size: 0.45rem;
+    color: var(--text-secondary);
+    text-align: center;
+}
+.pb-last-draw-em {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.68rem;
+    color: #ffa500;
+    margin-bottom: 6px;
+}
+.pb-last-draw-em img {
+    width: 22px;
+    height: 22px;
+    object-fit: contain;
+}
+.pb-no-winners {
+    font-size: 0.68rem;
+    color: var(--text-secondary);
+    font-style: italic;
+    margin-top: 4px;
+}
+.pb-winner-chip {
+    display: inline-block;
+    background: rgba(255,215,0,0.1);
+    border: 1px solid rgba(255,215,0,0.3);
+    border-radius: 5px;
+    padding: 2px 8px;
+    font-size: 0.65rem;
+    color: var(--gold-secondary);
+    margin: 2px;
+}
+.pb-winner-chip.mega { background: rgba(255,215,0,0.2); border-color: var(--gold-primary); color: var(--gold-primary); font-weight: 700; }
+
+/* ── Draw animation overlay ──────────────────────────────────────────────── */
+.pb-draw-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.88);
+    z-index: 9000;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    animation: pbOverlayIn 0.3s ease;
+}
+@keyframes pbOverlayIn {
+    from { opacity:0; }
+    to   { opacity:1; }
+}
+.pb-draw-title {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 1.4rem;
+    color: var(--gold-primary);
+    text-shadow: 0 0 20px var(--gold-glow);
+    letter-spacing: 3px;
+    text-align: center;
+}
+.pb-draw-balls {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+.pb-draw-ball {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, rgba(255,255,255,0.15), rgba(0,0,0,0.6));
+    border: 3px solid rgba(255,215,0,0.6);
+    box-shadow: 0 0 20px rgba(255,215,0,0.3), inset 0 0 15px rgba(0,0,0,0.5);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    opacity: 0;
+    transform: scale(0.3) rotate(-180deg);
+    transition: all 0.5s cubic-bezier(0.34,1.56,0.64,1);
+}
+.pb-draw-ball.revealed {
+    opacity: 1;
+    transform: scale(1) rotate(0deg);
+}
+.pb-draw-ball img {
+    width: 38px;
+    height: 38px;
+    object-fit: contain;
+}
+.pb-draw-ball span {
+    font-size: 0.5rem;
+    color: rgba(255,215,0,0.9);
+    text-align: center;
+    font-weight: 600;
+}
+.pb-draw-ball.em-ball {
+    border-color: #ffa500;
+    box-shadow: 0 0 20px rgba(255,165,0,0.5), inset 0 0 15px rgba(0,0,0,0.5);
+    background: radial-gradient(circle at 35% 30%, rgba(255,165,0,0.2), rgba(0,0,0,0.6));
+}
+.pb-draw-ball.em-ball span { color: #ffa500; }
+.pb-draw-result-text {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 1rem;
+    color: var(--text-primary);
+    text-align: center;
+    max-width: 500px;
+    padding: 0 20px;
+}
+.pb-draw-result-text.win  { color: #2ecc71; text-shadow: 0 0 12px rgba(46,204,113,0.6); }
+.pb-draw-result-text.mega { color: var(--gold-primary); text-shadow: 0 0 20px var(--gold-glow); font-size: 1.3rem; }
+.pb-draw-close-btn {
+    margin-top: 10px;
+}
+
+/* ── Confetti ────────────────────────────────────────────────────────────── */
+.pb-confetti {
+    position: fixed;
+    border-radius: 2px;
+    pointer-events: none;
+    z-index: 9999;
+    animation: pbConfettiFall linear forwards;
+}
+@keyframes pbConfettiFall {
+    0%   { opacity:1; transform: translateY(0)    rotate(0deg); }
+    100% { opacity:0; transform: translateY(520px) rotate(820deg); }
+}
+
+/* ── Responsive ──────────────────────────────────────────────────────────── */
+@media (max-width: 700px) {
+    .pb-layout { flex-direction: column; }
+    .pb-side-col { width: 100%; flex: none; }
+    .pb-jackpot-amount { font-size: 1.6rem; }
+    .pb-pet-grid { max-height: 200px; }
+}

@@ -1,0 +1,565 @@
+/* ── Tasks Page ─────────────────────────────────────────────────────────── */
+
+.tasks-page {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 24px 16px 48px;
+}
+
+/* ── Header box ───────────────────────────────────────────────────────────── */
+
+.tasks-header-box {
+  margin-bottom: 28px;
+  background: rgba(10, 10, 15, 0.82);
+  border: 1px solid rgba(255,215,0,0.28);
+  border-radius: 14px;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  box-shadow: 0 0 20px rgba(255,215,0,0.05);
+}
+
+.tasks-header-inner {
+  padding: 18px 20px 16px;
+}
+
+.tasks-title-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.tasks-title {
+  font-family: 'Cinzel', serif;
+  font-size: 1.6rem;
+  color: var(--gold-primary, #ffd700);
+  margin: 0;
+}
+
+.tasks-subtitle {
+  color: var(--text-secondary, #aaa);
+  font-size: 0.88rem;
+  margin: 0;
+  line-height: 1.55;
+}
+
+.tasks-dm-btn {
+  background: rgba(255,215,0,0.1);
+  border: 1px solid rgba(255,215,0,0.3);
+  color: var(--gold-primary, #ffd700);
+  border-radius: 8px;
+  padding: 6px 10px;
+  cursor: pointer;
+  transition: background 0.2s;
+  margin-left: auto;
+}
+.tasks-dm-btn:hover { background: rgba(255,215,0,0.2); }
+
+/* ── Grid ─────────────────────────────────────────────────────────────────── */
+
+.tasks-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 16px;
+}
+
+/* ── Card ─────────────────────────────────────────────────────────────────── */
+
+.task-card {
+  background: rgba(10, 10, 15, 0.82);
+  border: 1px solid rgba(255,215,0,0.25);
+  border-radius: 14px;
+  padding: 18px 16px 14px;
+  display: flex;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  flex-direction: column;
+  gap: 10px;
+  position: relative;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.task-card:hover {
+  border-color: rgba(255,215,0,0.35);
+  box-shadow: 0 0 14px rgba(255,215,0,0.08);
+}
+
+.task-card.completed {
+  border-color: rgba(80,200,80,0.4);
+  background: rgba(80,200,80,0.05);
+}
+
+.task-card.on-cooldown {
+  border-color: rgba(150,150,150,0.2);
+  background: rgba(0,0,0,0.15);
+  opacity: 0.75;
+}
+
+/* Label */
+.task-label {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-primary, #eee);
+  line-height: 1.35;
+  padding-right: 28px;
+}
+
+/* Progress bar */
+.task-progress-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.task-progress-bar-bg {
+  background: rgba(255,255,255,0.08);
+  border-radius: 6px;
+  height: 10px;
+  overflow: hidden;
+  width: 100%;
+}
+
+/* Base fill — starts very dim, brightens as pct increases via JS-set filter */
+.task-progress-bar-fill {
+  height: 100%;
+  border-radius: 6px;
+  background: linear-gradient(90deg, #ffd700, #ffaa00);
+  transition: width 0.4s ease, filter 0.4s ease;
+  min-width: 4px;
+  /* default dim state (0%) — overridden by data-pct via CSS attr() trick below */
+  filter: brightness(0.35) saturate(0.5);
+}
+
+/* Brightness steps driven by data-pct attribute */
+.task-progress-bar-fill[data-pct="0"]                              { filter: brightness(0.35) saturate(0.5); }
+.task-progress-bar-fill[data-pct^="1"],
+.task-progress-bar-fill[data-pct^="2"]                            { filter: brightness(0.45) saturate(0.6); }
+.task-progress-bar-fill[data-pct^="3"],
+.task-progress-bar-fill[data-pct^="4"]                            { filter: brightness(0.6)  saturate(0.75); }
+.task-progress-bar-fill[data-pct^="5"]                            { filter: brightness(0.75) saturate(0.85); }
+.task-progress-bar-fill[data-pct^="6"],
+.task-progress-bar-fill[data-pct^="7"]                            { filter: brightness(0.88) saturate(0.95); }
+.task-progress-bar-fill[data-pct^="8"],
+.task-progress-bar-fill[data-pct^="9"]                            { filter: brightness(1.0)  saturate(1.1); }
+.task-progress-bar-fill[data-pct="100"]                           { filter: brightness(1.15) saturate(1.3); }
+
+.task-card.completed .task-progress-bar-fill,
+.task-card.claim-ready .task-progress-bar-fill {
+  background: linear-gradient(90deg, #50c850, #30a030);
+  filter: brightness(1.15) saturate(1.3) !important;
+}
+
+.task-progress-text {
+  font-size: 0.75rem;
+  color: var(--text-secondary, #aaa);
+  text-align: right;
+}
+
+/* Reward badge */
+.task-reward {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+  color: var(--gold-secondary, #d4af37);
+  background: rgba(255,215,0,0.07);
+  border: 1px solid rgba(255,215,0,0.15);
+  border-radius: 8px;
+  padding: 4px 10px;
+  width: fit-content;
+}
+
+.task-reward-icon { font-size: 1rem; }
+
+/* Cooldown display */
+.task-cooldown-display {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 20px 0;
+  color: var(--text-secondary, #888);
+}
+
+.task-cooldown-timer {
+  font-family: 'Orbitron', monospace;
+  font-size: 1.1rem;
+  color: var(--gold-secondary, #d4af37);
+}
+
+.task-cooldown-label {
+  font-size: 0.75rem;
+  opacity: 0.7;
+}
+
+/* Completed overlay */
+.task-complete-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.82rem;
+  color: #50c850;
+  font-weight: 600;
+}
+
+/* Reward row — reward badge + dismiss button side by side */
+.task-reward-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+/* Dismiss button — small ❌ icon only */
+.task-dismiss-btn {
+  background: rgba(180, 30, 30, 0.18);
+  border: 1px solid rgba(255, 80, 80, 0.45);
+  color: rgba(255, 100, 100, 0.85);
+  border-radius: 7px;
+  padding: 4px 8px;
+  font-size: 0.8rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+.task-dismiss-btn:hover {
+  background: rgba(200, 40, 40, 0.32);
+  border-color: rgba(255, 80, 80, 0.75);
+  color: #ff6464;
+}
+
+/* Claim reward button */
+.task-claim-btn {
+  background: linear-gradient(135deg, rgba(255,215,0,0.18), rgba(255,165,0,0.1));
+  border: 1px solid rgba(255,215,0,0.6);
+  color: var(--gold-primary, #ffd700);
+  border-radius: 8px;
+  padding: 7px 14px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  align-self: flex-start;
+  margin-top: 2px;
+  animation: claimPulse 2s ease-in-out infinite;
+}
+.task-claim-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, rgba(255,215,0,0.32), rgba(255,165,0,0.2));
+  box-shadow: 0 0 14px rgba(255,215,0,0.5);
+  transform: translateY(-1px);
+}
+.task-claim-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  animation: none;
+}
+@keyframes claimPulse {
+  0%, 100% { box-shadow: 0 0 6px rgba(255,215,0,0.3); }
+  50%       { box-shadow: 0 0 18px rgba(255,215,0,0.65); }
+}
+
+/* Claim-ready card state */
+.task-card.claim-ready {
+  border-color: rgba(255,215,0,0.55);
+  background: rgba(255,215,0,0.05);
+  box-shadow: 0 0 16px rgba(255,215,0,0.1);
+}
+.task-card.claim-ready .task-progress-bar-fill {
+  background: linear-gradient(90deg, #50c850, #30a030);
+}
+
+/* Claim daily goal button */
+.task-claim-goal-btn {
+  background: linear-gradient(135deg, rgba(255,215,0,0.22), rgba(255,140,0,0.14));
+  border: 2px solid rgba(255,215,0,0.7);
+  color: var(--gold-primary, #ffd700);
+  border-radius: 10px;
+  padding: 9px 20px;
+  font-size: 0.88rem;
+  font-family: 'Orbitron', monospace;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  width: 100%;
+  text-align: center;
+  animation: claimPulse 1.8s ease-in-out infinite;
+}
+.task-claim-goal-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, rgba(255,215,0,0.38), rgba(255,140,0,0.25));
+  box-shadow: 0 0 22px rgba(255,215,0,0.55);
+  transform: translateY(-1px);
+}
+.task-claim-goal-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  animation: none;
+}
+
+/* Goal-ready state (completed, not yet claimed) */
+.goal-card.goal-ready {
+  border-color: rgba(255,215,0,0.65);
+  box-shadow: 0 0 28px rgba(255,215,0,0.15);
+  animation: goalReadyPulse 2.5s ease-in-out infinite;
+}
+@keyframes goalReadyPulse {
+  0%, 100% { box-shadow: 0 0 20px rgba(255,215,0,0.12); }
+  50%       { box-shadow: 0 0 40px rgba(255,215,0,0.28); }
+}
+
+/* ── Empty state ──────────────────────────────────────────────────────────── */
+
+.tasks-empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--text-secondary, #aaa);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ── Modal ────────────────────────────────────────────────────────────────── */
+
+.tasks-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.65);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tasks-modal {
+  background: var(--bg-card, #1a1a2e);
+  border: 1px solid rgba(255,215,0,0.25);
+  border-radius: 16px;
+  width: min(420px, 92vw);
+  overflow: hidden;
+}
+
+.tasks-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid rgba(255,255,255,0.07);
+}
+
+.tasks-modal-header h3 {
+  margin: 0;
+  font-size: 1.05rem;
+  color: var(--gold-primary, #ffd700);
+}
+
+.tasks-modal-close {
+  background: none;
+  border: none;
+  color: var(--text-secondary, #aaa);
+  cursor: pointer;
+  font-size: 1rem;
+  padding: 4px 8px;
+}
+.tasks-modal-close:hover { color: #fff; }
+
+.tasks-modal-body {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.tasks-modal-hint {
+  font-size: 0.82rem;
+  color: var(--text-secondary, #aaa);
+  margin: 0 0 8px;
+}
+
+.tasks-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.9rem;
+  color: var(--text-primary, #eee);
+  cursor: pointer;
+}
+
+.tasks-radio-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 0.85rem;
+  color: var(--text-primary, #ddd);
+  cursor: pointer;
+  line-height: 1.4;
+}
+
+.tasks-radio-row input { margin-top: 3px; accent-color: #ffd700; }
+
+/* Toggle switch */
+.tasks-switch { position: relative; display: inline-block; width: 44px; height: 24px; }
+.tasks-switch input { opacity: 0; width: 0; height: 0; }
+.tasks-slider {
+  position: absolute; inset: 0;
+  background: rgba(255,255,255,0.15);
+  border-radius: 24px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.tasks-slider:before {
+  content: "";
+  position: absolute;
+  width: 18px; height: 18px;
+  left: 3px; bottom: 3px;
+  background: #fff;
+  border-radius: 50%;
+  transition: transform 0.2s;
+}
+.tasks-switch input:checked + .tasks-slider { background: #ffd700; }
+.tasks-switch input:checked + .tasks-slider:before { transform: translateX(20px); }
+
+.tasks-modal-footer {
+  padding: 14px 20px;
+  border-top: 1px solid rgba(255,255,255,0.07);
+  display: flex;
+  justify-content: flex-end;
+}
+
+.tasks-btn {
+  border: none;
+  border-radius: 8px;
+  padding: 8px 20px;
+  font-size: 0.88rem;
+  cursor: pointer;
+  font-weight: 600;
+  transition: opacity 0.2s;
+}
+.tasks-btn:hover { opacity: 0.85; }
+.tasks-btn-primary { background: #ffd700; color: #111; }
+
+/* ── Daily Goal Section ───────────────────────────────────────────────────── */
+
+.tasks-goal-section {
+  margin-bottom: 28px;
+}
+
+.goal-card {
+  background: linear-gradient(135deg, rgba(10,10,15,0.88) 0%, rgba(20,15,5,0.88) 100%);
+  border: 1px solid rgba(255,215,0,0.35);
+  border-radius: 16px;
+  padding: 20px 22px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  position: relative;
+  box-shadow: 0 0 24px rgba(255,215,0,0.06);
+  transition: border-color 0.2s, box-shadow 0.2s;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+.goal-card:hover {
+  border-color: rgba(255,215,0,0.55);
+  box-shadow: 0 0 32px rgba(255,215,0,0.1);
+}
+
+.goal-card.completed {
+  border-color: rgba(80,200,80,0.5);
+  background: linear-gradient(135deg, rgba(80,200,80,0.07) 0%, rgba(40,160,40,0.04) 100%);
+  box-shadow: 0 0 24px rgba(80,200,80,0.08);
+}
+
+.goal-card-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.goal-badge {
+  font-family: 'Orbitron', monospace;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: #111;
+  background: linear-gradient(90deg, #ffd700, #ffaa00);
+  border-radius: 6px;
+  padding: 3px 10px;
+}
+
+.goal-streak {
+  font-size: 0.82rem;
+  color: var(--gold-secondary, #d4af37);
+  font-weight: 600;
+}
+
+.goal-streak-new {
+  color: var(--text-secondary, #aaa);
+  font-weight: 400;
+}
+
+.goal-title {
+  font-family: 'Cinzel', serif;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--gold-primary, #ffd700);
+  line-height: 1.3;
+}
+
+.goal-reward-preview {
+  font-size: 0.85rem;
+  color: var(--text-secondary, #aaa);
+}
+
+.goal-reward-preview strong {
+  color: var(--gold-secondary, #d4af37);
+}
+
+.goal-bar-fill {
+  background: linear-gradient(90deg, #ffd700, #ff8c00) !important;
+  filter: brightness(1.0) saturate(1.1);
+}
+
+/* Goal bar brightness steps */
+.goal-bar-fill[data-pct="0"]                              { filter: brightness(0.35) saturate(0.5); }
+.goal-bar-fill[data-pct^="1"],
+.goal-bar-fill[data-pct^="2"]                             { filter: brightness(0.45) saturate(0.6); }
+.goal-bar-fill[data-pct^="3"],
+.goal-bar-fill[data-pct^="4"]                             { filter: brightness(0.6)  saturate(0.75); }
+.goal-bar-fill[data-pct^="5"]                             { filter: brightness(0.75) saturate(0.85); }
+.goal-bar-fill[data-pct^="6"],
+.goal-bar-fill[data-pct^="7"]                             { filter: brightness(0.88) saturate(0.95); }
+.goal-bar-fill[data-pct^="8"],
+.goal-bar-fill[data-pct^="9"]                             { filter: brightness(1.0)  saturate(1.1); }
+.goal-bar-fill[data-pct="100"]                            { filter: brightness(1.15) saturate(1.3); }
+
+.goal-card.completed .goal-bar-fill {
+  background: linear-gradient(90deg, #50c850, #30a030) !important;
+  filter: brightness(1.15) saturate(1.3);
+}
+
+.goal-reset-row {
+  font-size: 0.78rem;
+  color: var(--text-secondary, #888);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.goal-reset-timer {
+  font-family: 'Orbitron', monospace;
+  font-size: 0.78rem;
+  color: var(--gold-secondary, #d4af37);
+}
+
+/* Section label above regular tasks */
+.tasks-grid-label {
+  font-size: 0.72rem;
+  font-family: 'Orbitron', monospace;
+  letter-spacing: 2px;
+  color: var(--text-secondary, #888);
+  text-transform: uppercase;
+  margin-bottom: 12px;
+}

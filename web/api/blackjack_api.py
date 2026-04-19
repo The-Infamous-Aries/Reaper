@@ -60,7 +60,8 @@ def _hand_value(hand: List[str]):
     while total > 21 and aces:
         total -= 10
         aces  -= 1
-    return total, False
+    is_soft = aces > 0 and total <= 21
+    return total, is_soft
 
 def _card_img(code: str) -> str:
     return f"/static/Emojis/Cards/{code}.png"
@@ -250,15 +251,20 @@ async def bj_hit(request: Request):
 
         val, _ = _hand_value(game[hand_key])
         if val > 21:
-            # Bust — if split hand active, switch back to main or end
+            # Bust — determine what to do next
             if active == "split":
-                game["active_hand"] = "main"
-                # If main is also done, go to dealer
+                # Split hand busted — check if main hand is still playable
                 main_val, _ = _hand_value(game["player_hand"])
                 if main_val > 21:
+                    # Both hands busted — go to dealer to settle
                     await _finish_dealer(game, request)
+                else:
+                    # Main hand still active — switch back to it
+                    game["active_hand"] = "main"
             else:
+                # Main hand busted
                 if game.get("split_hand"):
+                    # Still have split hand to play
                     game["active_hand"] = "split"
                 else:
                     await _finish_dealer(game, request)

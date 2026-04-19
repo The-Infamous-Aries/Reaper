@@ -1,4 +1,4 @@
-/* ── Casino Page — uses dashboard theme variables ─────────────────────────── */
+﻿/* ── Casino Page — uses dashboard theme variables ─────────────────────────── */
 
 .casino-title {
     font-family: 'Orbitron', sans-serif;
@@ -268,3 +268,4 @@
     .casino-diff-grid { grid-template-columns: repeat(2, 1fr); }
     .casino-reel-col { width: 80px; height: 160px; }
 }
+

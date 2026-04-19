@@ -76,6 +76,8 @@ def _compute_total_xp(pet: dict) -> int:
 
 # ── Game factory ──────────────────────────────────────────────────────────────
 
+BOT_STACK = 999_999_999  # Bots have effectively infinite chips
+
 def _new_game(buy_in: int, fun_mode: bool, num_bots: int) -> dict:
     """
     seats: list of {id, name, is_bot, hole, folded, left, stack, round_bet, acted}
@@ -88,12 +90,12 @@ def _new_game(buy_in: int, fun_mode: bool, num_bots: int) -> dict:
         "hole": [], "folded": False, "left": False,
         "stack": buy_in, "round_bet": 0, "acted": False
     })
-    # Bots
+    # Bots — always have effectively infinite stacks so they never bust
     for i in range(min(num_bots, 4)):
         seats.append({
             "id": f"bot_{i}", "name": BOT_NAMES[i], "is_bot": True,
             "hole": [], "folded": False, "left": False,
-            "stack": buy_in, "round_bet": 0, "acted": False
+            "stack": BOT_STACK, "round_bet": 0, "acted": False
         })
 
     return {
@@ -130,6 +132,11 @@ def _game_response(game: dict, player_seat: int = 0) -> dict:
             or stage == "showdown"
             or (stage not in ("idle","preflop","flop","turn","river") )
         )
+        # Display bot stacks as "∞" if they have the sentinel value
+        display_stack = s["stack"]
+        if s.get("is_bot") and display_stack >= BOT_STACK // 2:
+            display_stack = -1  # sentinel for "infinite" — JS will render as ∞
+
         seats_out.append({
             "id":        s["id"],
             "name":      s["name"],
@@ -138,7 +145,7 @@ def _game_response(game: dict, player_seat: int = 0) -> dict:
             "hole_count": len(s["hole"]),
             "folded":    s["folded"],
             "left":      s["left"],
-            "stack":     s["stack"],
+            "stack":     display_stack,
             "round_bet": s["round_bet"],
             "acted":     s["acted"],
             "is_active_turn": (i == game["action_idx"] and stage not in ("idle","showdown")),
@@ -159,6 +166,7 @@ def _game_response(game: dict, player_seat: int = 0) -> dict:
     actions = _valid_actions(game, player_seat)
 
     return {
+        "active":       True,
         "stage":        stage,
         "pot":          game["pot"],
         "current_bet":  game["current_bet"],
@@ -172,6 +180,8 @@ def _game_response(game: dict, player_seat: int = 0) -> dict:
         "hand_num":     game["hand_num"],
         "fun_mode":     game["fun_mode"],
         "dealer_idx":   game["dealer_idx"],
+        "buy_in":       game["buy_in"],
+        "num_bots":     len([s for s in game["seats"] if s.get("is_bot")]),
     }
 
 def _valid_actions(game: dict, seat_idx: int) -> List[str]:
@@ -437,13 +447,13 @@ def _run_bots_until_player(game: dict, player_seat: int = 0):
             # After advancing, check again
             continue
         cur = game["action_idx"]
-        if cur == player_seat and not game["seats"][player_seat]["folded"]:
-            break  # Player's turn
+        # If current seat is already acted or inactive, advance to next
         s = game["seats"][cur]
         if s["folded"] or s["left"] or s["acted"]:
-            # Skip to next
             game["action_idx"] = _next_active_after(game, cur)
             continue
+        if cur == player_seat and not s["folded"]:
+            break  # Player's turn
         if s["is_bot"]:
             _bot_act(game, cur)
             # Advance action_idx
@@ -499,8 +509,10 @@ async def holdem_action(request: Request):
     user_id = str(user["id"])
 
     game = _get_game(request.session)
-    if not game or game["stage"] in ("idle", "showdown"):
-        return JSONResponse({"error": "No active hand"}, status_code=400)
+    if not game:
+        return JSONResponse({"error": "No active session"}, status_code=400)
+    if game["stage"] in ("idle", "showdown"):
+        return JSONResponse({"error": "No active hand — click Next Hand to continue"}, status_code=400)
 
     try:
         body   = await request.json()
@@ -576,31 +588,40 @@ async def holdem_next_hand(request: Request):
         return JSONResponse({"error": "No active session"}, status_code=400)
 
     async with _get_user_lock(user_id):
-        # Remove busted players (stack == 0)
-        game["seats"] = [s for s in game["seats"] if s["stack"] > 0 or s["id"] == "player"]
-
-        # If player is busted, settle and end
         player = game["seats"][0]
+
+        # If player is busted, offer a re-buy (top up to original buy-in)
         if player["stack"] <= 0:
+            rebuy_amount = game["buy_in"]
             if not game["fun_mode"]:
-                await user_data_manager.update_pet_gambling_stats(
-                    user_id, "holdem", -game["buy_in"], bet_amount=game["buy_in"]
-                )
-            _clear_game(request.session)
-            return JSONResponse({"error": "You are out of chips. Game over.", "game_over": True})
+                pet = await user_data_manager.get_pet_data_async(user_id)
+                if not pet or _compute_total_xp(pet) < rebuy_amount:
+                    # Truly can't afford — cash out and end
+                    _clear_game(request.session)
+                    return JSONResponse({"error": "You are out of chips and cannot re-buy.", "game_over": True})
+                await LootCalculator.apply_xp_change(int(user_id), -rebuy_amount, source="holdem_buyin")
+            player["stack"] = rebuy_amount
+            _add_log(game, f"You re-bought for {rebuy_amount} XP.")
+
+        # Replenish any bot that somehow ran low (shouldn't happen with BOT_STACK, but safety net)
+        for s in game["seats"]:
+            if s.get("is_bot") and s["stack"] < BIG_BLIND * 10:
+                s["stack"] = BOT_STACK
+
+        # Remove any non-bot, non-player seats that busted (multi-player rooms only)
+        game["seats"] = [
+            s for s in game["seats"]
+            if s.get("is_bot") or s["id"] == "player" or s["stack"] > 0
+        ]
 
         if len(game["seats"]) < 2:
-            # Player won everything
-            winnings = player["stack"] - game["buy_in"]
-            if not game["fun_mode"] and winnings > 0:
-                await LootCalculator.apply_xp_change(int(user_id), player["stack"], source="holdem_win")
-            if not game["fun_mode"]:
-                await user_data_manager.update_pet_gambling_stats(
-                    user_id, "holdem", winnings, bet_amount=game["buy_in"]
-                )
+            # Shouldn't happen since bots never bust, but handle gracefully
+            stack = player["stack"]
+            if not game["fun_mode"] and stack > 0:
+                await LootCalculator.apply_xp_change(int(user_id), stack, source="holdem_win")
             _clear_game(request.session)
-            return JSONResponse({"game_over": True, "won": player["stack"],
-                                 "message": f"You won! Cashing out {player['stack']} XP."})
+            return JSONResponse({"game_over": True, "won": stack,
+                                 "message": f"No opponents left. Cashing out {stack} XP."})
 
         _deal_hand(game)
         _run_bots_until_player(game)
@@ -643,9 +664,7 @@ async def holdem_state(request: Request):
     game = _get_game(request.session)
     if not game:
         return JSONResponse({"active": False})
-    resp = _game_response(game)
-    resp["active"] = True
-    return JSONResponse(resp)
+    return JSONResponse(_game_response(game))
 
 
 # ── Shared room game state (room_id → game) ───────────────────────────────────
@@ -682,7 +701,6 @@ async def holdem_room_state(request: Request):
         None
     )
     resp = _game_response(game, player_seat=player_seat if player_seat is not None else 0)
-    resp["active"]      = True
     resp["player_seat"] = player_seat  # None if observer
     return JSONResponse(resp)
 
@@ -748,8 +766,10 @@ async def holdem_room_action(request: Request):
 
     async with _get_room_lock(room_id):
         game = _room_games.get(room_id)
-        if not game or game["stage"] in ("idle", "showdown"):
-            return JSONResponse({"error": "No active hand"}, status_code=400)
+        if not game:
+            return JSONResponse({"error": "No active session"}, status_code=400)
+        if game["stage"] in ("idle", "showdown"):
+            return JSONResponse({"error": "No active hand — click Next Hand to continue"}, status_code=400)
 
         # Find this user's seat
         player_seat = next(
@@ -854,6 +874,28 @@ async def holdem_room_next_hand(request: Request):
         player_seat = next(
             (i for i, s in enumerate(game["seats"]) if s.get("user_id") == user_id), 0
         )
+
+        # Handle player re-buy if busted
+        if game["seats"] and player_seat < len(game["seats"]):
+            player = game["seats"][player_seat]
+            if player["stack"] <= 0:
+                rebuy_amount = game["buy_in"]
+                if not game["fun_mode"]:
+                    pet = await user_data_manager.get_pet_data_async(user_id)
+                    if not pet or _compute_total_xp(pet) < rebuy_amount:
+                        # Can't afford re-buy — remove player
+                        game["seats"][player_seat]["left"] = True
+                        game["seats"][player_seat]["stack"] = 0
+                        return JSONResponse({"game_over": True, "won": 0,
+                                             "message": "You are out of chips and cannot re-buy."})
+                    await LootCalculator.apply_xp_change(int(user_id), -rebuy_amount, source="holdem_buyin")
+                player["stack"] = rebuy_amount
+                _add_log(game, f"{player['name']} re-bought for {rebuy_amount} XP.")
+
+        # Replenish bot stacks
+        for s in game["seats"]:
+            if s.get("is_bot") and s["stack"] < BIG_BLIND * 10:
+                s["stack"] = BOT_STACK
 
         if len(game["seats"]) < 2:
             # Settle and end

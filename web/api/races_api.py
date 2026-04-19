@@ -30,22 +30,59 @@ def _get_user_lock(user_id: str) -> asyncio.Lock:
         _user_locks[user_id] = asyncio.Lock()
     return _user_locks[user_id]
 
-# ── Session helpers ───────────────────────────────────────────────────────────
+# ── Server-side game store (keyed by user_id) ─────────────────────────────────
+# Storing game state server-side instead of in the session cookie prevents
+# concurrent requests (e.g. discord/user profile refresh) from overwriting
+# the cookie and losing the active game state.
+_game_store: Dict[str, dict] = {}
 
 def _get_game(session) -> Optional[dict]:
-    return session.get("races_game")
+    """Look up game state by user_id from the server-side store."""
+    user = session.get("discord_user")
+    if not user:
+        return None
+    return _game_store.get(str(user.get("id")))
 
 def _set_game(session, game: dict):
-    session["races_game"] = game
+    """Persist game state server-side, keyed by user_id."""
+    user = session.get("discord_user")
+    if not user:
+        return
+    _game_store[str(user.get("id"))] = game
 
 def _clear_game(session):
-    session.pop("races_game", None)
+    """Remove game state for this user from the server-side store."""
+    user = session.get("discord_user")
+    if not user:
+        return
+    _game_store.pop(str(user.get("id")), None)
+
+def _get_game_for_user(user_id: str) -> Optional[dict]:
+    """Direct lookup by user_id (used inside locked sections)."""
+    return _game_store.get(user_id)
+
+def _set_game_for_user(user_id: str, game: dict):
+    """Direct store by user_id (used inside locked sections)."""
+    _game_store[user_id] = game
+
+def _clear_game_for_user(user_id: str):
+    """Direct clear by user_id (used inside locked sections)."""
+    _game_store.pop(user_id, None)
 
 # ── Constants (mirrors races.py) ──────────────────────────────────────────────
 
 MAX_SEGMENTS   = 10
-DIFF_MULTS     = {"apprentice": 0.8, "journeyman": 1.0, "senior": 1.2}
+# diff_mult controls bot stat ADVANTAGE over the player (>1 = harder bots)
+DIFF_MULTS     = {"apprentice": 0.85, "journeyman": 1.15, "senior": 1.5}
 PAYOUT_MULTS   = {"apprentice": 1.25, "journeyman": 2.0, "senior": 3.0}
+
+# Absolute bot stat ranges per difficulty — independent of player stats
+# so a high-level player can't trivially beat "easy" bots
+BOT_STAT_RANGES = {
+    "apprentice": (1.0, 4.0),   # weak bots — player should win ~60-65%
+    "journeyman": (3.0, 8.0),   # mid bots  — roughly even odds
+    "senior":     (6.0, 14.0),  # strong bots — player wins ~35-40%
+}
 
 BOT_NAMES = ["Ace", "Blaze", "Chip", "Duke"]
 
@@ -92,6 +129,9 @@ def _simulate_race(racers: List[dict], target_ticks: int = 60) -> List[List[int]
       2. Set segment_threshold so the fastest racer crosses MAX_SEGMENTS in
          exactly target_ticks ticks on average.
       3. Run the simulation tick-by-tick, recording progress snapshots.
+
+    Returns (ticks, finish_tick) where finish_tick[i] is the tick index when
+    racer i crossed MAX_SEGMENTS (or MAX_TICKS if they never finished).
     """
     import math
 
@@ -110,13 +150,14 @@ def _simulate_race(racers: List[dict], target_ticks: int = 60) -> List[List[int]
     segment_threshold = (fastest * target_ticks) / MAX_SEGMENTS
 
     # Step 3 — simulate
-    progress = [0] * len(racers)
-    accum    = [0.0] * len(racers)
-    finished = [False] * len(racers)
+    progress  = [0] * len(racers)
+    accum     = [0.0] * len(racers)
+    finished  = [False] * len(racers)
+    finish_tick = [None] * len(racers)  # tick index when each racer finished
     ticks: List[List[int]] = []
 
     MAX_TICKS = target_ticks * 4  # safety ceiling
-    for _ in range(MAX_TICKS):
+    for tick_idx in range(MAX_TICKS):
         for i, racer in enumerate(racers):
             if finished[i]:
                 continue
@@ -127,12 +168,18 @@ def _simulate_race(racers: List[dict], target_ticks: int = 60) -> List[List[int]
                 progress[i] += 1
             if progress[i] >= MAX_SEGMENTS:
                 finished[i] = True
+                finish_tick[i] = tick_idx
 
         ticks.append(list(progress))
         if all(finished):
             break
 
-    return ticks
+    # Fill in finish_tick for any racer that never reached MAX_SEGMENTS
+    for i in range(len(racers)):
+        if finish_tick[i] is None:
+            finish_tick[i] = MAX_TICKS
+
+    return ticks, finish_tick
 
 # ── Endpoints ─────────────────────────────────────────────────────────────────
 
@@ -162,7 +209,6 @@ async def races_start(request: Request):
     async with _get_user_lock(user_id):
         return await _races_start_inner(request, user_id, difficulty, bet, fun_mode)
 
-
 async def _races_start_inner(request: Request, user_id: str, difficulty: str, bet: int, fun_mode: bool):
     # Load player pet
     pet = await user_data_manager.get_pet_data_async(user_id)
@@ -178,7 +224,7 @@ async def _races_start_inner(request: Request, user_id: str, difficulty: str, be
         await LootCalculator.apply_xp_change(int(user_id), -bet, source="race_bet")
 
     # Existing session — carry over win streak
-    existing = _get_game(request.session)
+    existing = _get_game_for_user(user_id)
     win_streak  = existing["win_streak"]  if existing else 0
     pending_xp  = existing["pending_xp"]  if existing else 0
     pending_keys = existing["pending_keys"] if existing else []
@@ -188,7 +234,6 @@ async def _races_start_inner(request: Request, user_id: str, difficulty: str, be
 
     # Build racers
     player_species = str(pet.get("species", "Cat"))
-    diff_mult = DIFF_MULTS[difficulty]
 
     racers = [{
         "id":      "player",
@@ -204,12 +249,29 @@ async def _races_start_inner(request: Request, user_id: str, difficulty: str, be
     }]
 
     used_species = {player_species}
+
+    # Scale bot stats relative to the player's speed stats so difficulty is always felt
+    # Easy:    bots run at 75–90% of player stats  → player should win most of the time
+    # Average: bots run at 90–110% of player stats → roughly even
+    # Hard:    bots run at 110–130% of player stats → player needs to be lucky
+    player_dex = float(pet.get("DEX", 1))
+    player_ene = float(pet.get("ENE", 1))
+    player_hap = float(pet.get("HAP", 1))
+
+    DIFF_SCALE = {
+        "apprentice": (0.75, 0.90),
+        "journeyman": (0.90, 1.10),
+        "senior":     (1.10, 1.30),
+        # web aliases
+        "easy":       (0.75, 0.90),
+        "average":    (0.90, 1.10),
+        "hard":       (1.10, 1.30),
+    }
+    scale_lo, scale_hi = DIFF_SCALE.get(difficulty, (0.90, 1.10))
+
     for i in range(3):
         sp = random.choice([s for s in ALL_PETS if s not in used_species] or ALL_PETS)
         used_species.add(sp)
-        base_dex = float(pet.get("DEX", 1))
-        base_ene = float(pet.get("ENE", 1))
-        base_hap = float(pet.get("HAP", 1))
         racers.append({
             "id":      f"bot_{i}",
             "name":    BOT_NAMES[i],
@@ -217,9 +279,9 @@ async def _races_start_inner(request: Request, user_id: str, difficulty: str, be
             "img":     f"/static/Emojis/Pets/{sp}.png",
             "is_player": False,
             "stats": {
-                "DEX": max(1.0, base_dex * diff_mult + random.uniform(-2, 2)),
-                "ENE": max(1.0, base_ene * diff_mult + random.uniform(-2, 2)),
-                "HAP": max(1.0, base_hap * diff_mult + random.uniform(-2, 2)),
+                "DEX": max(1.0, player_dex * random.uniform(scale_lo, scale_hi)),
+                "ENE": max(1.0, player_ene * random.uniform(scale_lo, scale_hi)),
+                "HAP": max(1.0, player_hap * random.uniform(scale_lo, scale_hi)),
             }
         })
 
@@ -227,11 +289,10 @@ async def _races_start_inner(request: Request, user_id: str, difficulty: str, be
     target_ticks = {"apprentice": 55, "journeyman": 65, "senior": 75}.get(difficulty, 60)
 
     # Simulate
-    ticks = _simulate_race(racers, target_ticks=target_ticks)
+    ticks, finish_tick = _simulate_race(racers, target_ticks=target_ticks)
 
-    # Determine finish order from final tick
-    final = ticks[-1] if ticks else [0] * len(racers)
-    finish_order = sorted(range(len(racers)), key=lambda i: -final[i])
+    # Determine finish order by who crossed the line first (lowest finish_tick wins)
+    finish_order = sorted(range(len(racers)), key=lambda i: finish_tick[i])
     winner_idx   = finish_order[0]
     player_won   = racers[winner_idx]["is_player"]
 
@@ -256,11 +317,7 @@ async def _races_start_inner(request: Request, user_id: str, difficulty: str, be
         else:
             pending_keys.append("Key1")
     else:
-        # Track loss immediately — bet is already deducted and won't be returned
-        if not fun_mode:
-            await user_data_manager.update_pet_gambling_stats(
-                user_id, "races", -bet, bet_amount=bet
-            )
+        # Loss will be tracked when session ends (cashout/quit) to avoid double-counting
         win_streak   = 0
         pending_xp   = 0
         pending_keys = []
@@ -277,7 +334,26 @@ async def _races_start_inner(request: Request, user_id: str, difficulty: str, be
         "winner_species": racers[winner_idx]["species"],
         "total_bet_this_streak": total_bet_this_streak if player_won else 0,
     }
-    _set_game(request.session, game)
+    _set_game_for_user(user_id, game)
+
+    # ── Per-race stat tracking (races_played + races_won/lost per race) ───────
+    if not fun_mode:
+        try:
+            xp_delta = win_amount if player_won else -bet
+            await user_data_manager.update_pet_gambling_stats(
+                user_id, "races", xp_delta, bet_amount=bet
+            )
+        except Exception as e:
+            logger.debug(f"races per-race stat error: {e}")
+
+    # ── Task tracking ─────────────────────────────────────────────────────────
+    try:
+        from web.api.tasks_api import record_action as _task_record
+        await _task_record(user_id, "race_play")
+        if player_won:
+            await _task_record(user_id, "race_win")
+    except Exception as e:
+        logger.debug(f"races task tracking error: {e}")
 
     # Racer info for client (strip stats)
     racer_info = [{"id": r["id"], "name": r["name"], "species": r["species"],
@@ -308,7 +384,7 @@ async def races_cashout(request: Request):
         return JSONResponse({"error": "Not logged in"}, status_code=401)
     user_id = str(user["id"])
 
-    game = _get_game(request.session)
+    game = _get_game_for_user(user_id)
     if not game:
         return JSONResponse({"error": "No active session"}, status_code=400)
 
@@ -320,12 +396,7 @@ async def races_cashout(request: Request):
         if not fun_mode and pending_xp > 0:
             await LootCalculator.apply_xp_change(int(user_id), pending_xp, source="race_win")
 
-        if not fun_mode:
-            total_bet = game.get("total_bet_this_streak", game.get("bet", 0))
-            net = pending_xp - total_bet
-            await user_data_manager.update_pet_gambling_stats(
-                user_id, "races", net, bet_amount=total_bet
-            )
+        # Stats are now tracked per-race in _races_start_inner — no double-count here
 
         if not fun_mode and pending_keys:
             pet = await user_data_manager.get_pet_data_async(user_id)
@@ -335,7 +406,7 @@ async def races_cashout(request: Request):
                         int(user_id), {"name": key_name, "type": "Key"}, pet
                     )
 
-        _clear_game(request.session)
+        _clear_game_for_user(user_id)
         return JSONResponse({
             "ok":          True,
             "cashed_xp":   pending_xp,
@@ -350,7 +421,10 @@ async def races_quit(request: Request):
     user = request.session.get("discord_user")
     if not user:
         return JSONResponse({"error": "Not logged in"}, status_code=401)
-    _clear_game(request.session)
+    user_id = str(user["id"])
+
+    # Stats already tracked per-race — just clear the session
+    _clear_game_for_user(user_id)
     return JSONResponse({"ok": True})
 
 
@@ -430,7 +504,6 @@ async def races_room_start(request: Request):
         if user_id not in seated_users:
             seated_users = [user_id] + seated_users
 
-        diff_mult = DIFF_MULTS[difficulty]
         racers = []
         racer_bets: Dict[str, int] = {}  # user_id → bet amount
 
@@ -463,10 +536,7 @@ async def races_room_start(request: Request):
 
         # Add bots to fill up to 4 racers
         used_species = {r["species"] for r in racers}
-        host_pet = await user_data_manager.get_pet_data_async(user_id)
-        base_dex = float(host_pet.get("DEX", 1)) if host_pet else 1.0
-        base_ene = float(host_pet.get("ENE", 1)) if host_pet else 1.0
-        base_hap = float(host_pet.get("HAP", 1)) if host_pet else 1.0
+        stat_lo, stat_hi = BOT_STAT_RANGES[difficulty]
 
         while len(racers) < 4:
             sp = random.choice([s for s in ALL_PETS if s not in used_species] or ALL_PETS)
@@ -479,17 +549,16 @@ async def races_room_start(request: Request):
                 "img":       f"/static/Emojis/Pets/{sp}.png",
                 "is_player": False,
                 "stats": {
-                    "DEX": max(1.0, base_dex * diff_mult + random.uniform(-2, 2)),
-                    "ENE": max(1.0, base_ene * diff_mult + random.uniform(-2, 2)),
-                    "HAP": max(1.0, base_hap * diff_mult + random.uniform(-2, 2)),
+                    "DEX": random.uniform(stat_lo, stat_hi),
+                    "ENE": random.uniform(stat_lo, stat_hi),
+                    "HAP": random.uniform(stat_lo, stat_hi),
                 }
             })
 
         target_ticks = {"apprentice": 55, "journeyman": 65, "senior": 75}.get(difficulty, 60)
-        ticks = _simulate_race(racers, target_ticks=target_ticks)
+        ticks, finish_tick = _simulate_race(racers, target_ticks=target_ticks)
 
-        final = ticks[-1] if ticks else [0] * len(racers)
-        finish_order = sorted(range(len(racers)), key=lambda i: -final[i])
+        finish_order = sorted(range(len(racers)), key=lambda i: finish_tick[i])
         winner_idx   = finish_order[0]
         winner       = racers[winner_idx]
 

@@ -132,6 +132,13 @@ async def coinflip(request: Request):
     except Exception:
         pass
 
+    # Task tracking — coin_flip (counts every flip, win or lose)
+    try:
+        from web.api.tasks_api import record_action as _task_record
+        await _task_record(user_id, "coin_flip")
+    except Exception:
+        pass
+
     return JSONResponse({
         "result":     result,
         "won":        won,

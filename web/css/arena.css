@@ -665,3 +665,140 @@
     color: var(--text-secondary);
     line-height: 1.5;
 }
+
+/* ── Boss Battle ─────────────────────────────────────────────────────────── */
+
+/* Room grid status colors for boss states */
+.u-room-status.boss-wait { color: #ff6b35; }
+.u-room-status.boss-live { color: #ff4500; animation: bossLivePulse 1s ease-in-out infinite; }
+@keyframes bossLivePulse { 0%,100% { opacity:1; } 50% { opacity:0.5; } }
+
+/* Boss mode button */
+.arena-btn.boss-mode-btn {
+    border-color: rgba(255,107,53,0.6);
+    color: #ff6b35;
+}
+.arena-btn.boss-mode-btn:hover {
+    background: rgba(255,107,53,0.15);
+    border-color: #ff6b35;
+    box-shadow: 0 0 12px rgba(255,107,53,0.4);
+}
+
+/* Boss info box in join panel */
+.boss-info-box {
+    background: rgba(255,107,53,0.06);
+    border: 1px solid rgba(255,107,53,0.25);
+    border-radius: 8px;
+    padding: 12px 14px;
+    margin-bottom: 14px;
+}
+
+/* Boss HP section */
+.boss-hp-section {
+    background: rgba(255,107,53,0.06);
+    border: 1px solid rgba(255,107,53,0.2);
+    border-radius: 10px;
+    padding: 10px 14px;
+    margin-bottom: 12px;
+}
+
+/* Boss waiting room */
+.boss-waiting-info {
+    background: rgba(255,107,53,0.05);
+    border: 1px solid rgba(255,107,53,0.2);
+    border-radius: 10px;
+    padding: 12px;
+    margin-bottom: 14px;
+}
+
+/* Boss player slots (waiting room + join panel) */
+.boss-player-slots {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    margin-bottom: 12px;
+}
+.boss-player-slot {
+    background: rgba(0,0,0,0.3);
+    border: 1px solid rgba(255,107,53,0.2);
+    border-radius: 8px;
+    padding: 8px 6px;
+    text-align: center;
+    min-height: 72px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+}
+.boss-player-slot.filled { border-color: rgba(255,107,53,0.45); }
+.boss-player-slot.empty  { border-style: dashed; opacity: 0.5; }
+.boss-player-slot img    { width: 32px; height: 32px; border-radius: 50%; border: 1px solid rgba(255,107,53,0.4); object-fit: cover; }
+.boss-player-slot .bps-name { font-size: 0.62rem; color: var(--text-primary); font-weight: 600; }
+.boss-player-slot .bps-pet  { font-size: 0.58rem; color: var(--text-secondary); }
+.boss-player-slot span { font-size: 1.2rem; color: rgba(255,107,53,0.3); }
+
+/* Boss players row (in-battle) */
+.boss-players-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+    gap: 8px;
+    margin-bottom: 12px;
+}
+.boss-player-card {
+    background: rgba(0,0,0,0.35);
+    border: 1px solid rgba(255,215,0,0.15);
+    border-radius: 8px;
+    padding: 8px 6px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+/* Defend target selector */
+.boss-defend-section {
+    background: rgba(52,152,219,0.06);
+    border: 1px solid rgba(52,152,219,0.2);
+    border-radius: 8px;
+    padding: 8px 12px;
+    margin-bottom: 10px;
+}
+.boss-defend-btn {
+    background: rgba(0,0,0,0.3);
+    border: 1px solid rgba(52,152,219,0.3);
+    border-radius: 6px;
+    color: var(--text-secondary);
+    font-size: 0.7rem;
+    padding: 4px 10px;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+.boss-defend-btn:hover { border-color: rgba(52,152,219,0.6); color: #3498db; }
+.boss-defend-btn.active {
+    background: rgba(52,152,219,0.15);
+    border-color: #3498db;
+    color: #3498db;
+    box-shadow: 0 0 8px rgba(52,152,219,0.3);
+}
+
+/* Room grid boss_waiting state */
+.u-room.boss_waiting {
+    border-color: rgba(255,107,53,0.5);
+    box-shadow: 0 0 10px rgba(255,107,53,0.2);
+    animation: bossWaitPulse 1.8s ease-in-out infinite;
+}
+@keyframes bossWaitPulse {
+    0%,100% { box-shadow: 0 0 10px rgba(255,107,53,0.3); }
+    50%      { box-shadow: 0 0 22px rgba(255,107,53,0.7), 0 0 40px rgba(255,69,0,0.2); }
+}
+.u-room.boss_battle {
+    border-color: rgba(255,69,0,0.7);
+    animation: bossBattlePulse 0.9s ease-in-out infinite;
+}
+@keyframes bossBattlePulse {
+    0%,100% { box-shadow: 0 0 10px rgba(255,69,0,0.4); }
+    50%      { box-shadow: 0 0 24px rgba(255,69,0,0.8); }
+}

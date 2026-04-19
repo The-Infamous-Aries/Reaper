@@ -97,6 +97,10 @@ td:first-child { color:var(--gold-primary); }
   border-radius: 0; overflow: hidden;
   height: 100%;
 }
+.nat-units-label {
+  display: flex; align-items: center; padding: 0 0.4rem 0 0.5rem;
+  border-right: 1px solid rgba(255,215,0,0.15); flex-shrink: 0;
+}
 .nat-sort-select {
   flex: 1; appearance: none; border: none; background: transparent;
   color: var(--gold-primary); font-size: 0.72rem; font-weight: 700;
@@ -105,6 +109,12 @@ td:first-child { color:var(--gold-primary); }
 }
 .nat-sort-select:focus { outline: none; }
 .nat-sort-select option { background: #1a1400; color: var(--gold-primary); }
+/* Force dark background on the open dropdown panel (works in most browsers) */
+.nat-sort-select,
+.nat-sort-select option {
+  background-color: #1a1400;
+  color: var(--gold-primary);
+}
 .nat-sort-dir {
   border: none; border-left: 1px solid rgba(255,215,0,0.2);
   background: linear-gradient(45deg,#b8860b,#ffd700);
@@ -237,3 +247,216 @@ td:first-child { color:var(--gold-primary); }
   .ov-grid { grid-template-columns: 1fr; }
   .ov-proj-grid { grid-template-columns: 1fr; }
 }
+
+/* ── Revenue box in nation detail ──────────────────────────────────────── */
+.nat-rev-loading { color: var(--text-secondary); font-size: 0.82rem; padding: 0.5rem 0; }
+
+/* Muted positive/negative — used on resource rows and sub-totals */
+.nat-rev-pos { color: #c8e6c9; font-weight: 600; }
+.nat-rev-neg { color: #ef9a9a; font-weight: 600; }
+
+/* Strong positive/negative — reserved for final net totals only */
+.nat-rev-pos-strong { color: #00c864; font-weight: 700; }
+.nat-rev-neg-strong { color: #e74c3c; font-weight: 700; }
+
+.nat-rev-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+}
+@media (max-width: 900px) {
+  .nat-rev-grid { grid-template-columns: 1fr; }
+}
+.nat-rev-col {
+  background: rgba(8,6,2,0.82);
+  border: 1px solid rgba(255,215,0,0.15);
+  border-radius: 0.4rem;
+  padding: 0.75rem 0.9rem;
+}
+.nat-rev-col-title {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--gold-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 0.5rem;
+  padding-bottom: 0.35rem;
+  border-bottom: 2px solid rgba(255,215,0,0.25);
+}
+.nat-rev-sub-title {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--gold-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 0.4rem 0 0.25rem;
+}
+.nat-rev-sub-total {
+  margin-top: 0.3rem;
+  padding-top: 0.3rem;
+  border-top: 1px solid rgba(255,215,0,0.15);
+  font-size: 0.82rem;
+}
+.nat-rev-sub-total span { color: var(--text-primary) !important; font-weight: 600; }
+.nat-rev-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.8rem;
+  padding: 0.18rem 0;
+}
+.nat-rev-row span { color: var(--text-secondary); }
+.nat-rev-row-hdr {
+  margin-top: 0.35rem;
+  padding-top: 0.35rem;
+  border-top: 1px solid rgba(255,215,0,0.1);
+}
+.nat-rev-total {
+  margin-top: 0.4rem;
+  padding-top: 0.4rem;
+  border-top: 1px solid rgba(255,215,0,0.2);
+  font-size: 0.84rem;
+}
+.nat-rev-total span { color: var(--text-primary) !important; font-weight: 600; }
+
+.nat-rev-info {
+  margin-top: 0.2rem;
+  padding-top: 0.2rem;
+  font-size: 0.76rem;
+  border-top: 1px solid rgba(255,215,0,0.08);
+}
+.nat-rev-info span { color: var(--text-secondary) !important; font-style: italic; }
+.nat-rev-info-val { color: var(--text-secondary) !important; font-weight: 400; }
+
+.nat-rev-rsc-list { margin: 0.2rem 0 0.2rem 0.25rem; display: grid; gap: 0.15rem; }
+.nat-rev-rsc-row, .nat-rev-rsc-inline {
+  display: grid;
+  grid-template-columns: 16px 1fr auto;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.75rem;
+  padding: 0.1rem 0;
+}
+.nat-rev-rsc-inline .nat-rev-rsc-label {
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+}
+.nat-rev-rsc-inline span:last-child { text-align: right; }
+.nat-rev-price { color: var(--text-secondary); font-size: 0.7rem; }
+
+/* ── Alliance revenue box in overview ──────────────────────────────────── */
+#ov-rev-box {
+  border-color: rgba(255,215,0,0.5) !important;
+  background: linear-gradient(135deg, rgba(34,27,9,0.96), rgba(11,11,11,0.92)) !important;
+}
+#ov-rev-box .ov-card-title {
+  font-size: 1rem;
+  color: var(--gold-primary);
+}
+
+.ov-rev-main-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1rem;
+}
+
+/* New 6-box grid for alliance revenue */
+.ov-rev-6box-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+}
+@media (max-width: 1200px) {
+  .ov-rev-6box-grid { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 768px) {
+  .ov-rev-6box-grid { grid-template-columns: 1fr; }
+}
+.ov-rev-section {
+  background: rgba(10,8,3,0.75);
+  border: 1px solid rgba(255,215,0,0.15);
+  border-radius: 0.4rem;
+  padding: 0.85rem 1rem;
+}
+.ov-rev-section-tax {
+  border-color: rgba(255,215,0,0.25);
+  background: rgba(12,10,4,0.82);
+}
+.ov-rev-section-rev {
+  border-color: rgba(255,215,0,0.2);
+  background: rgba(10,8,3,0.82);
+}
+.ov-rev-section-title {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--gold-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 0.5rem;
+  padding-bottom: 0.35rem;
+  border-bottom: 1px solid rgba(255,215,0,0.12);
+}
+.ov-rev-kv {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.8rem;
+  padding: 0.18rem 0;
+}
+.ov-rev-kv span { color: var(--text-secondary); }
+.ov-rev-kv strong { font-weight: 600; }
+.ov-rev-kv-hdr {
+  margin-top: 0.35rem;
+  padding-top: 0.35rem;
+  border-top: 1px solid rgba(255,215,0,0.1);
+}
+.ov-rev-kv-total {
+  margin-top: 0.4rem;
+  padding-top: 0.4rem;
+  border-top: 1px solid rgba(255,215,0,0.2);
+  font-size: 0.84rem;
+  margin-bottom: 0.25rem;
+}
+.ov-rev-kv-total span { color: var(--text-primary) !important; font-weight: 600; }
+
+.ov-rev-rsc-list { margin: 0.2rem 0 0.2rem 0.25rem; display: grid; gap: 0.15rem; }
+.ov-rev-rsc-row {
+  display: grid;
+  grid-template-columns: 16px 1fr auto auto auto;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.75rem;
+  padding: 0.1rem 0;
+}
+.ov-rev-rsc-label {
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+}
+.ov-rev-earner {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.3rem 0.4rem;
+  border-radius: 0.3rem;
+  background: rgba(255,215,0,0.04);
+  border: 1px solid rgba(255,215,0,0.08);
+  margin-bottom: 0.25rem;
+  font-size: 0.78rem;
+}
+.ov-rev-rank { font-weight: 700; color: var(--gold-primary); min-width: 1.6rem; }
+.ov-rev-name { flex: 1; color: var(--text-primary); }
+.ov-rev-amt { font-weight: 600; font-size: 0.78rem; }
+.ov-rev-amt-day { color: var(--text-secondary); font-size: 0.72rem; }
+
+/* ── Revenue cell in collapsed nation row ──────────────────────────────── */
+.nat-rev-cell { white-space: nowrap; min-width: 9rem; }
+.nat-rev-cell-inner { display: flex; flex-direction: column; gap: 0.1rem; }
+.nat-rev-cell-row {
+  display: flex; justify-content: space-between; align-items: center;
+  gap: 0.5rem; font-size: 0.74rem;
+}
+.nat-rev-cell-lbl {
+  font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.04em;
+  color: var(--text-secondary); min-width: 2.4rem;
+}
+.nat-rev-cell-val { color: var(--text-secondary); font-weight: 500; }

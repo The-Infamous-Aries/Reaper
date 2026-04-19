@@ -73,6 +73,8 @@ def _new_game(fun_mode: bool, dice_color: str) -> dict:
         "bets":        [],           # [{type, amount}]
         "log":         [],           # list of result strings (newest first, max 8)
         "xp_balance":  0,            # refreshed from server on each roll
+        "headline":    "Place your bets, then roll!",
+        "event":       "",
     }
 
 def _add_log(game: dict, msg: str):
@@ -82,6 +84,7 @@ def _add_log(game: dict, msg: str):
 
 def _game_response(game: dict) -> dict:
     return {
+        "active":      True,
         "fun_mode":    game["fun_mode"],
         "dice_color":  game["dice_color"],
         "phase":       game["phase"],
@@ -93,6 +96,8 @@ def _game_response(game: dict) -> dict:
         "bets":        game["bets"],
         "log":         game["log"],
         "total_bet":   sum(b["amount"] for b in game["bets"]),
+        "headline":    game.get("headline", "Place your bets, then roll!"),
+        "event":       game.get("event", ""),
     }
 
 # ── Resolve bets (mirrors _resolve_bets exactly) ──────────────────────────────
@@ -396,6 +401,10 @@ async def _craps_roll_inner(game: dict, request: Request, user_id: str):
         sign = "+" if resolution["xp_change"] > 0 else ""
         log_parts.append(f"Net: {sign}{resolution['xp_change']} XP")
     _add_log(game, " · ".join(log_parts))
+
+    # Persist headline and event so state endpoint can return them
+    game["headline"] = headline
+    game["event"]    = event
 
     _set_game(request.session, game)
 

@@ -6,7 +6,7 @@ from typing import Any, Dict, List, Optional
 
 # Third-Party Imports
 import httpx
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
@@ -426,7 +426,7 @@ async def get_astrology_signs(request: AstrologyRequest):
         )
 
 @router.get("/astrology/horoscope")
-async def get_horoscope(sign: str, day: str = "today"):
+async def get_horoscope(request: Request, sign: str, day: str = "today"):
     """Get daily horoscope for a zodiac sign."""
     try:
         # Validate sign
@@ -468,7 +468,17 @@ async def get_horoscope(sign: str, day: str = "today"):
             "stats": stats,
             "sign_data": sign_data
         }
-        
+
+        # Task tracking — get_horoscope (once per day, only for "today")
+        if day == "today":
+            user = request.session.get("discord_user")
+            if user and user.get("id"):
+                try:
+                    from web.api.tasks_api import record_action as _task_record
+                    await _task_record(str(user["id"]), "get_horoscope")
+                except Exception as e:
+                    logger.warning(f"get_horoscope task tracking failed for {user.get('id')}: {e}")
+
         return JSONResponse(content=response)
         
     except Exception as e:

@@ -513,5 +513,22 @@ async def get_universe_graph(alliance: Optional[str] = None, alliance_ids: Optio
 async def get_resource_prices_endpoint():
     """Return current buy/sell resource prices for the cost calculator."""
     from Systems.PnW.Util.war_calc import get_resource_prices
+    from Systems.Functions.database_manager import get_latest_resource_prices, get_latest_resource_timestamp
     prices = await get_resource_prices()
-    return JSONResponse({"sell": prices.get("sell", {}), "buy": prices.get("buy", {})})
+
+    # Build per-resource data object that the JS expects: { data: { coal: { sell, buy }, ... }, timestamp }
+    sell = prices.get("sell", {})
+    buy  = prices.get("buy",  {})
+    all_resources = set(sell.keys()) | set(buy.keys())
+    data = {
+        res: {"sell": sell.get(res, 0), "buy": buy.get(res, 0)}
+        for res in all_resources
+    }
+
+    # Include the DB timestamp so the UI can show how fresh the data is
+    try:
+        ts = await get_latest_resource_timestamp()
+    except Exception:
+        ts = None
+
+    return JSONResponse({"data": data, "sell": sell, "buy": buy, "timestamp": ts})
