@@ -369,21 +369,23 @@ class GoodEvilSystem(commands.Cog):
         except Exception as e:
             await ctx.send(f"❌ Compliment system error: {e}", ephemeral=True)
 
-    @commands.hybrid_command(name="crow", description="Fetch a random crow photo or GIF")
+    @commands.hybrid_command(name="random", description="Fetch a fully random photo or GIF")
     @discord.app_commands.describe(type="Choose JPG for a photo or GIF for an animation")
     @discord.app_commands.choices(type=[
         discord.app_commands.Choice(name="JPG", value="jpg"),
         discord.app_commands.Choice(name="GIF", value="gif")
     ])
-    async def crow(self, ctx: commands.Context, type: str):
+    async def random_media(self, ctx: commands.Context, type: str):
         await ctx.defer()
         send_method = ctx.interaction.followup.send if ctx.interaction else ctx.send
 
-        async def get_pixabay_crow():
+        async def get_pixabay_random():
             if not PIXABAY_KEY:
                 logger.warning("PIXABAY_KEY not set.")
                 return None
-            url = f"https://pixabay.com/api/?key={PIXABAY_KEY}&q=crow&image_type=photo&per_page=200&category=animals"
+            # Use a random page offset to get truly varied results
+            page = random.randint(1, 20)
+            url = f"https://pixabay.com/api/?key={PIXABAY_KEY}&image_type=photo&per_page=200&page={page}&order=latest"
             try:
                 async with aiohttp.ClientSession() as session:
                     async with session.get(url) as response:
@@ -392,7 +394,7 @@ class GoodEvilSystem(commands.Cog):
                             if data.get('hits'):
                                 return random.choice(data['hits'])['webformatURL']
                             else:
-                                logger.info(f"Pixabay API returned no hits for query: crow")
+                                logger.info("Pixabay API returned no hits for random query")
                                 return None
                         else:
                             logger.error(f"Pixabay API request failed with status {response.status}: {await response.text()}")
@@ -400,60 +402,51 @@ class GoodEvilSystem(commands.Cog):
             except aiohttp.ClientError as e:
                 logger.error(f"Aiohttp client error calling Pixabay API: {e}")
                 return None
-            return None
 
-        async def get_giphy_crow():
+        async def get_giphy_random():
             if not GIPHY_KEY:
                 logger.warning("GIPHY_KEY not set.")
                 return None
-
-            search_queries = ["crow bird", "raven bird", "black bird"]
-            
-            for query in search_queries:
-                url = f"https://api.giphy.com/v1/gifs/search?api_key={GIPHY_KEY}&q={query}&limit=50&rating=g"
-                try:
-                    async with aiohttp.ClientSession() as session:
-                        async with session.get(url) as response:
-                            if response.status == 200:
-                                data = await response.json()
-                                if data.get('data'):
-                                    gif = random.choice(data['data'])
-                                    logger.info(f"Found Giphy GIF with query: '{query}'")
-                                    return gif['images']['original']['url']
-                                else:
-                                    logger.info(f"Giphy API returned no data for query: {query}")
+            url = f"https://api.giphy.com/v1/gifs/random?api_key={GIPHY_KEY}&rating=g"
+            try:
+                async with aiohttp.ClientSession() as session:
+                    async with session.get(url) as response:
+                        if response.status == 200:
+                            data = await response.json()
+                            if data.get('data'):
+                                return data['data']['images']['original']['url']
                             else:
-                                logger.error(f"Giphy API request failed with status {response.status} for query '{query}': {await response.text()}")
-                except aiohttp.ClientError as e:
-                    logger.error(f"Aiohttp client error calling Giphy API for query '{query}': {e}")
-            
-            return None
+                                logger.info("Giphy random endpoint returned no data")
+                                return None
+                        else:
+                            logger.error(f"Giphy API request failed with status {response.status}: {await response.text()}")
+                            return None
+            except aiohttp.ClientError as e:
+                logger.error(f"Aiohttp client error calling Giphy API: {e}")
+                return None
 
         try:
             link = None
             if type == "jpg":
-                link = await get_pixabay_crow()
+                link = await get_pixabay_random()
             else:
-                link = await get_giphy_crow()
+                link = await get_giphy_random()
 
             if link:
                 file_extension = link.split('.')[-1].split('?')[0]
-                filename = f"crow.{file_extension}"
+                filename = f"random.{file_extension}"
                 image_file = await self._fetch_image_as_file(link, filename)
 
                 if image_file:
-                    crow_emojis = emoji_mod.category_mentions("Crows")
-                    random_crow_emoji = random.choice(crow_emojis) if crow_emojis else ""
-                    message_text = f"# {random_crow_emoji}\n**Caw Caw!** Your crow {'picture' if type == 'jpg' else 'gif'} arrives."
-                    await send_method(content=message_text, file=image_file)
+                    await send_method(file=image_file)
                 else:
-                    await send_method("Sorry, I couldn't download the crow image. Please try again.")
+                    await send_method("Sorry, I couldn't download the image. Please try again.")
             else:
-                await send_method(f"The crows are being shy! I couldn't find a crow picture or gif. Please try again!")
+                await send_method("Couldn't find a random image right now. Please try again!")
 
         except Exception as e:
-            logger.error(f"An unexpected error occurred in the crow command: {e}", exc_info=True)
-            await send_method("Something went wrong while fetching your crow. The error has been logged.")
+            logger.error(f"An unexpected error occurred in the random command: {e}", exc_info=True)
+            await send_method("Something went wrong while fetching your image. The error has been logged.")
 
 async def setup(bot):
     await bot.add_cog(GoodEvilSystem(bot))
