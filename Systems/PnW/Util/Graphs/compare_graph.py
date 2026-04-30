@@ -270,7 +270,7 @@ def create_interactive_comparison_page(home_individual_stats, away_individual_st
         const plotDiv = document.getElementById('plot');
         const initialFigure = {figure_json};
         const military_traces_indices = Array.from({{length: {len(military_traces)}}}, (_, i) => i);
-        const nation_traces_indices = Array.from({{length: {len(nation_traces)}}}, (_, i) => i + {len(military_traces)};
+        const nation_traces_indices = Array.from({{length: {len(nation_traces)}}}, (_, i) => i + {len(military_traces)});
 
         let current_view = 'military';
         let active_hover_boxes = new Map(); // Store active hover boxes
@@ -286,9 +286,10 @@ def create_interactive_comparison_page(home_individual_stats, away_individual_st
             const visibility_update = initialFigure.data.map((trace, index) => {{
                 if (traces_to_show_indices.includes(index)) {{
                     if (current_view === 'military') {{
-                        return alliance_visibility[trace.name];
+                        // Match by legendgroup (alliance name) or show all if no match found
+                        const traceName = trace.legendgroup || trace.name || '';
+                        return alliance_visibility.hasOwnProperty(traceName) ? alliance_visibility[traceName] : true;
                     }} else {{
-                        // For nations view, show lines based on side toggle
                         const side = trace.name === 'Home' ? 'home' : 'away';
                         const side_toggle = document.getElementById(`side-toggle-${{side}}`);
                         return side_toggle ? side_toggle.checked : true;
@@ -324,22 +325,25 @@ def create_interactive_comparison_page(home_individual_stats, away_individual_st
                     // Get all alliances for this unit and type
                     const home_alliances = {json.dumps(home_individual_stats)};
                     const away_alliances = {json.dumps(away_individual_stats)};
+                    const stat_keys_js = {json.dumps(stat_keys)};
                     
                     let breakdown_html = `<strong>${{unit_type}} (${{current_type}})</strong><br><br>`;
                     breakdown_html += `<strong>Home Side:</strong><br>`;
                     
                     home_alliances.forEach(alliance => {{
-                        if (alliance.stats.daily_military && alliance.stats.daily_military[`${{current_type.toLowerCase()}}_${stat_keys[unit_type.toLowerCase()]}]) {{
-                            const count = alliance.stats.daily_military[`${{current_type.toLowerCase()}}_${stat_keys[unit_type.toLowerCase()]}`];
-                            breakdown_html += `${{alliance.name}}: ${{count:,.0f}}<br>`;
+                        const key = `${{current_type.toLowerCase()}}_${{stat_keys_js[unit_type] || unit_type.toLowerCase()}}`;
+                        if (alliance.stats.daily_military && alliance.stats.daily_military[key]) {{
+                            const count = alliance.stats.daily_military[key];
+                            breakdown_html += `${{alliance.name}}: ${{count.toLocaleString()}}<br>`;
                         }}
                     }});
                     
                     breakdown_html += `<br><strong>Away Side:</strong><br>`;
                     away_alliances.forEach(alliance => {{
-                        if (alliance.stats.daily_military && alliance.stats.daily_military[`${{current_type.toLowerCase()}}_${stat_keys[unit_type.toLowerCase()]}]) {{
-                            const count = alliance.stats.daily_military[`${{current_type.toLowerCase()}}_${stat_keys[unit_type.toLowerCase()]}`];
-                            breakdown_html += `${{alliance.name}}: ${{count:,.0f}}<br>`;
+                        const key = `${{current_type.toLowerCase()}}_${{stat_keys_js[unit_type] || unit_type.toLowerCase()}}`;
+                        if (alliance.stats.daily_military && alliance.stats.daily_military[key]) {{
+                            const count = alliance.stats.daily_military[key];
+                            breakdown_html += `${{alliance.name}}: ${{count.toLocaleString()}}<br>`;
                         }}
                     }});
                     
@@ -463,7 +467,8 @@ def create_interactive_comparison_page(home_individual_stats, away_individual_st
             <title>Interactive Alliance Comparison</title>
             <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
             <style>
-                body {{ font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; margin: 0; background-color: #f8f9fa; }}
+                body {{ font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; margin: 0; background-color: #f8f9fa; height: 100%; overflow: hidden; }}
+                html {{ height: 100%; }}
                 #container {{ display: flex; flex-direction: row; height: 100vh; }}
                 #sidebar {{ width: 25%; height: 100%; overflow-y: auto; background-color: #fff; border-right: 1px solid #dee2e6; box-shadow: 0 0 10px rgba(0,0,0,0.05); padding: 20px; }}
                 #plot {{ width: 75%; height: 100%; position: relative; }}

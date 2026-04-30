@@ -1,18 +1,27 @@
 from discord.ext import commands
-from discord import Embed
+from discord import Embed, File
 from Systems.PnW.Util.query import get_color_info as api_get_color_info
-from Systems.Functions.emoji import CATEGORIES, mention
 import discord
 from datetime import datetime
 from typing import Optional
 from Systems.PnW.Util.query import create_v3_query_instance, V3GraphQuery
 from Systems.Functions.config import PANDW_API_KEY
-from Systems.Functions import emoji as emoji_mod
 import logging
 from PIL import Image, ImageDraw, ImageFont
 import io
+import os
 import random
 import colorsys
+from Systems.Functions.emoji import category_mentions, mention
+
+
+class TempEmojiMod:
+    def __init__(self, bot):
+        self.bot = bot
+
+    def mention(self, emoji_name: str) -> Optional[str]:
+        """Get proper emoji mention using the Systems.Functions.emoji module."""
+        return mention(emoji_name)
 
 class Colors(commands.Cog):
     def __init__(self, bot):
@@ -49,6 +58,7 @@ class Colors(commands.Cog):
     @commands.hybrid_command(name="turn_bonuses", description="Shows turn bonuses for all color blocs")
     async def turn_bonuses(self, ctx):
         """Display turn bonuses for all color blocs in a rich embed"""
+        await ctx.defer()
         # Sync color data from API
         color_data = await self.sync_color_data()
         
@@ -56,62 +66,72 @@ class Colors(commands.Cog):
             await ctx.send("No color information found from the API.")
             return
         
-        # Create mapping from color name to emoji
-        color_emoji_map = {}
-        for emoji_name in CATEGORIES.get("Colors", []):
-            if emoji_name.endswith("T"):
-                # Extract base color name (remove 'T' suffix and convert to lowercase)
-                base_color = emoji_name[:-1].lower()
-                emoji = mention(emoji_name)
-                if emoji:
-                    color_emoji_map[base_color] = emoji
+        # Map full color names to abbreviated names from emoji module
+        full_to_abbr_map = {
+            "beige": "be",
+            "aqua": "aq", 
+            "black": "bla",
+            "blue": "blu",
+            "brown": "br",
+            "gold": "go",
+            "green": "gr",
+            "lavender": "la",
+            "maroon": "mar",
+            "mint": "mi",
+            "olive": "ol",
+            "lime": "li",
+            "orange": "or",
+            "pink": "pi",
+            "purple": "pu",
+            "red": "re",
+            "turquoise": "tu",
+            "white": "wh",
+            "yellow": "ye",
+            "grey": "gra",  # Map grey to green abbreviation (gr)
+            "gray": "gra"   # Map gray to green abbreviation (gr)
+        }
         
-        # Ensure both 'grey' and 'gray' map to the same emoji for consistency
-        if 'grey' in color_emoji_map and 'gray' not in color_emoji_map:
-            color_emoji_map['gray'] = color_emoji_map['grey']
-        elif 'gray' in color_emoji_map and 'grey' not in color_emoji_map:
-            color_emoji_map['grey'] = color_emoji_map['gray']
+        # Map abbreviated names to hex colors
+        abbr_to_hex_map = {
+            "be": 0xDDDDDD,  # beige
+            "aq": 0x00FFFF,  # aqua
+            "bla": 0x000000, # black
+            "blu": 0x0000FF, # blue
+            "br": 0xA52A2A,  # brown
+            "go": 0xFFD700,  # gold
+            "gr": 0x00FF00,  # green (also used for grey/gray)
+            "la": 0xE6E6FA,  # lavender
+            "mar": 0x800000, # maroon
+            "mi": 0x98FF98,  # mint
+            "ol": 0x808000,  # olive
+            "li": 0x00FF00,  # lime
+            "or": 0xFFA500,  # orange
+            "pi": 0xFFC0CB,  # pink
+            "pu": 0x800080,  # purple
+            "re": 0xFF0000,  # red
+            "tu": 0x40E0D0,  # turquoise
+            "wh": 0xFFFFFF,  # white
+            "ye": 0xFFFF00   # yellow
+        }
         
         # Find the color with the highest turn bonus (for embed color)
         max_bonus = 0
-        max_bonus_color = None
+        max_bonus_abbr = None
         for color_info in color_data:
             turn_bonus = color_info.get('turn_bonus', 0)
             if turn_bonus > max_bonus:
                 max_bonus = turn_bonus
-                max_bonus_color = color_info.get('color', '').lower()
+                full_color_name = color_info.get('color', '').lower()
+                max_bonus_abbr = full_to_abbr_map.get(full_color_name, 'wh')  # Default to white
         
         # Get embed color based on the highest bonus color
-        embed_color = 0x000000  # Default to black
-        if max_bonus_color:
-            # Map color name to hex color
-            color_hex_map = {
-                "white": 0xFFFFFF,
-                "grey": 0x808080,
-                "gray": 0x808080,  # Also handle gray
-                "black": 0x000000,
-                "gold": 0xFFD700,
-                "pink": 0xFFC0CB,
-                "brown": 0xA52A2A,
-                "mint": 0x98FF98,
-                "green": 0x00FF00,
-                "aqua": 0x00FFFF,
-                "lavender": 0xE6E6FA,
-                "lime": 0x00FF00,
-                "maroon": 0x800000,
-                "olive": 0x808000,
-                "yellow": 0xFFFF00,
-                "turquoise": 0x40E0D0,
-                "red": 0xFF0000,
-                "purple": 0x800080,
-                "orange": 0xFFA500,
-                "blue": 0x0000FF,
-                "beige": 0xDDDDDD
-            }
-            embed_color = color_hex_map.get(max_bonus_color, 0x000000)
+        embed_color = abbr_to_hex_map.get(max_bonus_abbr, 0xFFFFFF)
         
         # Sort color_data by turn_bonus in descending order (highest first)
         color_data.sort(key=lambda x: x.get('turn_bonus', 0), reverse=True)
+        
+        # Get color emojis from emoji module
+        color_emojis = category_mentions("Colors")
         
         # Create embed with color matching the highest bonus
         embed = Embed(
@@ -120,36 +140,36 @@ class Colors(commands.Cog):
             color=embed_color
         )
         
-        # Add each color bloc info to the embed (now sorted)
         for color_info in color_data:
-            bloc_name = color_info.get('bloc_name', 'Unknown')
-            turn_bonus = color_info.get('turn_bonus', 0)
-            color_name = color_info.get('color', '').lower()
+            full_color_name = color_info.get('color', '').lower()
+            abbr_color = full_to_abbr_map.get(full_color_name, 'wh')
             
-            # Get emoji for this color, with fallback for grey/gray
-            emoji = color_emoji_map.get(color_name, "🎨")
-            if emoji == "🎨":
-                # Try alternative spelling for grey/gray
-                if color_name == "grey":
-                    emoji = color_emoji_map.get("gray", "🎨")
-                elif color_name == "gray":
-                    emoji = color_emoji_map.get("grey", "🎨")
+            # Get the emoji directly using the mention function
+            color_emoji = mention(abbr_color)
             
-            embed.add_field(
-                name=f"{emoji} {bloc_name}",
-                value=f"Turn Bonus: ${turn_bonus}",
-                inline=False
-            )
-        
+            if color_emoji:
+                embed.add_field(
+                    name=f"{color_emoji} {color_info.get('bloc_name', 'Unknown')}",
+                    value=f"Turn Bonus: ${color_info.get('turn_bonus', 0)}",
+                    inline=False
+                )
+            else:
+                embed.add_field(
+                    name=f"🎨 {color_info.get('bloc_name', 'Unknown')}",
+                    value=f"Turn Bonus: ${color_info.get('turn_bonus', 0)}",
+                    inline=False
+                )
+
         await ctx.send(embed=embed)
 
 class GameInfoCog(commands.Cog):
     """Cog for displaying Politics & War game information."""
     
-    def __init__(self, bot: commands.Bot, query_instance: Optional[V3GraphQuery] = None):
+    def __init__(self, bot: commands.Bot, *, emoji_mod, query_instance: Optional[V3GraphQuery] = None):
         self.bot = bot
         self.api_key = PANDW_API_KEY
         self.logger = logging.getLogger(__name__)
+        self.emoji_mod = emoji_mod
         if not self.logger.handlers:
             handler = logging.StreamHandler()
             formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -313,18 +333,18 @@ class GameInfoCog(commands.Cog):
             chart_buffer = self._generate_radiation_pie_chart(radiation, continent_names)
             file = discord.File(chart_buffer, filename="radiation_chart.png")
             
-            # Get World category emojis from emoji module
+            # Get World category emojis from emoji module - use direct mention() calls for efficiency
             world_emojis = {
-                'na': emoji_mod.mention('na') or '🌎',
-                'sa': emoji_mod.mention('sa') or '🌍',
-                'europe': emoji_mod.mention('europe') or '🏰',
-                'africa': emoji_mod.mention('africa') or '🦁',
-                'asia': emoji_mod.mention('asia') or '🏯',
-                'australia': emoji_mod.mention('australia') or '🦘',
-                'arctic': emoji_mod.mention('arctic') or '🐧',
-                'globe': emoji_mod.mention('globe') or '🌍',
-                'radioactive': emoji_mod.mention('radioactive') or '☢️',
-                'cities': emoji_mod.mention('cities') or '🏙️'
+                'na': mention('na') or '🌎',
+                'sa': mention('sa') or '🌍',
+                'europe': mention('europe') or '🏰',
+                'africa': mention('africa') or '🦁',
+                'asia': mention('asia') or '🏯',
+                'australia': mention('australia') or '🦘',
+                'arctic': mention('arctic') or '🐧',
+                'globe': mention('globe') or '🌍',
+                'radioactive': mention('radioactive') or '☢️',
+                'cities': mention('cities') or '🏙️'
             }
             
             # Format the game date for readability
@@ -421,5 +441,6 @@ class GameInfoCog(commands.Cog):
             await ctx.send(embed=embed)
 
 async def setup(bot):
+    emoji_mod = TempEmojiMod(bot)
     await bot.add_cog(Colors(bot))
-    await bot.add_cog(GameInfoCog(bot))
+    await bot.add_cog(GameInfoCog(bot, emoji_mod=emoji_mod))

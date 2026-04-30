@@ -1,6 +1,7 @@
 import logging
 from typing import List, Optional
 from Systems.PnW.Util.query import get_trade_resource_values
+from Systems.Functions.database_manager import get_latest_resource_prices
 
 WAR_SUMMARY_THRESHOLD = 5
 
@@ -45,7 +46,20 @@ IMPROVEMENT_COSTS = {
 }
 
 async def get_resource_prices() -> dict:
-    """Get current resource prices from trade data."""
+    """Get current resource prices from the timed-query DB cache (updated every 15 min).
+    Falls back to a live API call only if the DB has no data yet."""
+    try:
+        db_prices = await get_latest_resource_prices()
+        if db_prices:
+            prices = {"sell": {}, "buy": {}}
+            for resource, data in db_prices.items():
+                prices["sell"][resource.lower()] = data.get("sell", 0)
+                prices["buy"][resource.lower()] = data.get("buy", 0)
+            return prices
+    except Exception as e:
+        logging.warning(f"Could not read resource prices from DB, falling back to API: {e}")
+
+    # Fallback — DB empty or unavailable
     try:
         trade_data = await get_trade_resource_values()
         prices = {"sell": {}, "buy": {}}
@@ -55,7 +69,7 @@ async def get_resource_prices() -> dict:
                 prices["buy"][resource['resource'].lower()] = resource.get('best_buy_offer', {}).get('price', 0)
         return prices
     except Exception as e:
-        logging.error(f"Error fetching resource prices: {e}")
+        logging.error(f"Error fetching resource prices from API: {e}")
         return {"sell": {}, "buy": {}}
 
 def calculate_unit_cost(unit_type: str, resource_prices: dict) -> float:
@@ -92,6 +106,20 @@ async def calculate_single_war_costs(war: dict, resource_prices: dict, team1_id_
     """Calculate the costs for a single war."""
     return await calculate_war_costs([war], resource_prices, team1_id_set=team1_id_set, team2_id_set=team2_id_set)
 
+
+def _get_war_unit_total(war: dict, prefix: str, unit: str) -> float:
+    """Return the war-level total for a unit, falling back to missiles/nukes used when losses are not stored separately."""
+    lost_value = war.get(f"{prefix}{unit}_lost", 0)
+    if lost_value:
+        return lost_value
+
+    if unit == "missiles":
+        return war.get(f"{prefix}missiles_used", 0) or 0
+    if unit == "nukes":
+        return war.get(f"{prefix}nukes_used", 0) or 0
+
+    return 0
+
 async def calculate_war_costs(wars_data: List[dict], resource_prices: dict, team1_id_set: Optional[set] = None, team2_id_set: Optional[set] = None) -> dict:
     """Calculate total war costs for team1 and team2."""
     costs = {
@@ -115,6 +143,15 @@ async def calculate_war_costs(wars_data: List[dict], resource_prices: dict, team
     str_team2_ids = {str(i) for i in team2_id_set} if team2_id_set else set()
 
     for war in wars_data:
+        per_war_detailed_units = {
+            "team1": {"missiles": 0, "nukes": 0},
+            "team2": {"missiles": 0, "nukes": 0},
+        }
+        per_war_detailed_infra = {
+            "team1": {"levels": 0, "value": 0},
+            "team2": {"levels": 0, "value": 0},
+        }
+
         # Determine which side of the war corresponds to Team1 and Team2
         war_att_ids = {int(war[key]) for key in ('att_id', 'att_alliance_id') if war.get(key)}
         war_def_ids = {int(war[key]) for key in ('def_id', 'def_alliance_id') if war.get(key)}
@@ -189,6 +226,7 @@ async def calculate_war_costs(wars_data: List[dict], resource_prices: dict, team
                 costs[bucket]["units"]['missiles'] = costs[bucket]["units"].get('missiles', {'lost': 0, 'cost': 0})
                 costs[bucket]["units"]['missiles']['lost'] += missiles_used
                 costs[bucket]["units"]['missiles']['cost'] += cost
+                per_war_detailed_units[bucket]['missiles'] += missiles_used
 
         # Process nuclear strikes
         for strike in war.get('nuclear_strikes', []):
@@ -240,6 +278,7 @@ async def calculate_war_costs(wars_data: List[dict], resource_prices: dict, team
                 costs[bucket]["units"]['nukes'] = costs[bucket]["units"].get('nukes', {'lost': 0, 'cost': 0})
                 costs[bucket]["units"]['nukes']['lost'] += nukes_used
                 costs[bucket]["units"]['nukes']['cost'] += cost
+                per_war_detailed_units[bucket]['nukes'] += nukes_used
 
         # Process ground battle loot and destruction
         for attack in war.get('attacks', []):
@@ -266,8 +305,8 @@ async def calculate_war_costs(wars_data: List[dict], resource_prices: dict, team
             
             # Process loot
             # Per user request, ensure money_stolen is included in total loot
-            money_stolen = attack.get('money_stolen', 0)
-            money_looted = attack.get('money_looted', 0)
+            money_stolen = attack.get('money_stolen') or 0
+            money_looted = attack.get('money_looted') or 0
             total_money_looted = money_stolen + money_looted
             # Exclude intra-team loot from being counted as lost
             if is_attack_from_team1 and any(str(def_id) in str_team1_ids for def_id in [attack.get('def_id'), attack.get('def_alliance_id')]):
@@ -279,7 +318,7 @@ async def calculate_war_costs(wars_data: List[dict], resource_prices: dict, team
                     costs[pov_bucket]["loot_received"] += total_money_looted
 
                 for res in ['coal', 'oil', 'uranium', 'iron', 'bauxite', 'lead', 'gasoline', 'munitions', 'steel', 'aluminum', 'food']:
-                    looted = attack.get(f'{res}_looted', 0)
+                    looted = attack.get(f'{res}_looted') or 0
                     if looted > 0:
                         value = looted * resource_prices["sell"].get(res, 0)
                         costs[opp_bucket]["resource_loot_lost"][res] = costs[opp_bucket]["resource_loot_lost"].get(res, 0) + value
@@ -295,34 +334,38 @@ async def calculate_war_costs(wars_data: List[dict], resource_prices: dict, team
                 costs[opp_bucket]['money_destroyed'] += money_destroyed
 
             # Process missile losses
-            att_missiles_lost = attack.get('att_missiles_lost', 0)
+            att_missiles_lost = attack.get('att_missiles_lost') or 0
             if att_missiles_lost > 0:
                 cost = calculate_unit_cost('missiles', resource_prices["buy"]) * att_missiles_lost
                 costs[pov_bucket]["units"]['missiles'] = costs[pov_bucket]["units"].get('missiles', {'lost': 0, 'cost': 0})
                 costs[pov_bucket]["units"]['missiles']['lost'] += att_missiles_lost
                 costs[pov_bucket]["units"]['missiles']['cost'] += cost
+                per_war_detailed_units[pov_bucket]['missiles'] += att_missiles_lost
 
-            def_missiles_lost = attack.get('def_missiles_lost', 0)
+            def_missiles_lost = attack.get('def_missiles_lost') or 0
             if def_missiles_lost > 0:
                 cost = calculate_unit_cost('missiles', resource_prices["buy"]) * def_missiles_lost
                 costs[opp_bucket]["units"]['missiles'] = costs[opp_bucket]["units"].get('missiles', {'lost': 0, 'cost': 0})
                 costs[opp_bucket]["units"]['missiles']['lost'] += def_missiles_lost
                 costs[opp_bucket]["units"]['missiles']['cost'] += cost
+                per_war_detailed_units[opp_bucket]['missiles'] += def_missiles_lost
 
             # Process nuke losses
-            att_nukes_lost = attack.get('att_nukes_lost', 0)
+            att_nukes_lost = attack.get('att_nukes_lost') or 0
             if att_nukes_lost > 0:
                 cost = calculate_unit_cost('nukes', resource_prices["buy"]) * att_nukes_lost
                 costs[pov_bucket]["units"]['nukes'] = costs[pov_bucket]["units"].get('nukes', {'lost': 0, 'cost': 0})
                 costs[pov_bucket]["units"]['nukes']['lost'] += att_nukes_lost
                 costs[pov_bucket]["units"]['nukes']['cost'] += cost
+                per_war_detailed_units[pov_bucket]['nukes'] += att_nukes_lost
             
-            def_nukes_lost = attack.get('def_nukes_lost', 0)
+            def_nukes_lost = attack.get('def_nukes_lost') or 0
             if def_nukes_lost > 0:
                 cost = calculate_unit_cost('nukes', resource_prices["buy"]) * def_nukes_lost
                 costs[opp_bucket]["units"]['nukes'] = costs[opp_bucket]["units"].get('nukes', {'lost': 0, 'cost': 0})
                 costs[opp_bucket]["units"]['nukes']['lost'] += def_nukes_lost
                 costs[opp_bucket]["units"]['nukes']['cost'] += cost
+                per_war_detailed_units[opp_bucket]['nukes'] += def_nukes_lost
 
             # Process improvement destruction
             if attack.get('improvements_destroyed'):
@@ -330,11 +373,21 @@ async def calculate_war_costs(wars_data: List[dict], resource_prices: dict, team
                     imp = imp_raw.lower().replace(' ', '_')
                     costs[opp_bucket]['improvements_destroyed'][imp] = costs[opp_bucket]['improvements_destroyed'].get(imp, 0) + 1
 
+            # Attack-level infra fields represent the defender's infra loss from this attack.
+            infra_destroyed = attack.get('infra_destroyed') or 0
+            infra_destroyed_value = attack.get('infra_destroyed_value') or 0
+            if infra_destroyed or infra_destroyed_value:
+                costs[opp_bucket]["infra_lost_levels"] += infra_destroyed
+                costs[opp_bucket]["infra_lost_value"] += infra_destroyed_value
+                per_war_detailed_infra[opp_bucket]["levels"] += infra_destroyed
+                per_war_detailed_infra[opp_bucket]["value"] += infra_destroyed_value
+
         
         # Process overall war-level stats for Team 1
         for unit in ["soldiers", "tanks", "aircraft", "ships", "missiles", "nukes"]:
-            units_lost = war.get(f"{team1_prefix}{unit}_lost", 0)
-
+            units_lost = _get_war_unit_total(war, team1_prefix, unit)
+            if unit in {"missiles", "nukes"}:
+                units_lost = max(units_lost - per_war_detailed_units["team1"][unit], 0)
 
             if units_lost > 0:
                 cost = calculate_unit_cost(unit, resource_prices["buy"]) * units_lost
@@ -345,14 +398,17 @@ async def calculate_war_costs(wars_data: List[dict], resource_prices: dict, team
         costs['team1']["consumption"]["munitions"] += war.get(f"{team1_prefix}mun_used", 0)
         costs['team1']["consumption"]["gasoline"] += war.get(f"{team1_prefix}gas_used", 0)
 
-        costs['team1']["infra_lost_levels"] += war.get(f"{team2_prefix}infra_destroyed", 0)
-        costs['team1']["infra_lost_value"] += war.get(f"{team2_prefix}infra_destroyed_value", 0)
+        team1_war_infra_levels = war.get(f"{team2_prefix}infra_destroyed", 0) or 0
+        team1_war_infra_value = war.get(f"{team2_prefix}infra_destroyed_value", 0) or 0
+        costs['team1']["infra_lost_levels"] += max(team1_war_infra_levels - per_war_detailed_infra["team1"]["levels"], 0)
+        costs['team1']["infra_lost_value"] += max(team1_war_infra_value - per_war_detailed_infra["team1"]["value"], 0)
 
 
         # Process overall war-level stats for Team 2
         for unit in ["soldiers", "tanks", "aircraft", "ships", "missiles", "nukes"]:
-            units_lost = war.get(f"{team2_prefix}{unit}_lost", 0)
-
+            units_lost = _get_war_unit_total(war, team2_prefix, unit)
+            if unit in {"missiles", "nukes"}:
+                units_lost = max(units_lost - per_war_detailed_units["team2"][unit], 0)
 
             if units_lost > 0:
                 cost = calculate_unit_cost(unit, resource_prices["buy"]) * units_lost
@@ -363,8 +419,10 @@ async def calculate_war_costs(wars_data: List[dict], resource_prices: dict, team
         costs['team2']["consumption"]["munitions"] += war.get(f"{team2_prefix}mun_used", 0)
         costs['team2']["consumption"]["gasoline"] += war.get(f"{team2_prefix}gas_used", 0)
 
-        costs['team2']["infra_lost_levels"] += war.get(f"{team1_prefix}infra_destroyed", 0)
-        costs['team2']["infra_lost_value"] += war.get(f"{team1_prefix}infra_destroyed_value", 0)
+        team2_war_infra_levels = war.get(f"{team1_prefix}infra_destroyed", 0) or 0
+        team2_war_infra_value = war.get(f"{team1_prefix}infra_destroyed_value", 0) or 0
+        costs['team2']["infra_lost_levels"] += max(team2_war_infra_levels - per_war_detailed_infra["team2"]["levels"], 0)
+        costs['team2']["infra_lost_value"] += max(team2_war_infra_value - per_war_detailed_infra["team2"]["value"], 0)
 
 
     # Calculate total improvement costs from aggregated counts

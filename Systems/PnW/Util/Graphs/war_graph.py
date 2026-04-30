@@ -134,13 +134,18 @@ class WarGraphGenerator:
 
         fig.update_layout(
             title_text=f"Interactive War Breakdown for {alliance_name}",
-            height=1200, # Taller graph
+            height=None,
+            autosize=True,
             paper_bgcolor="rgba(48,51,57,255)",
             font={"color": "white"},
         )
         
-        # Generate HTML content
-        html_content = pio.to_html(fig, full_html=True)
+        # Generate HTML content - inject full-height CSS so it fills the iframe
+        raw_html = pio.to_html(fig, full_html=True, config={"responsive": True})
+        html_content = raw_html.replace(
+            '<head>',
+            '<head><style>html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#303339;} .plotly-graph-div{width:100%!important;height:100vh!important;}</style>'
+        )
         
         # Save to file for web access in Wars directory
         from datetime import datetime
@@ -160,7 +165,7 @@ class WarGraphGenerator:
         with open(html_file_path, 'w', encoding='utf-8') as f:
             f.write(html_content)
         
-        return html_filename
+        return html_content
 
 
 # Create a singleton instance for easy import

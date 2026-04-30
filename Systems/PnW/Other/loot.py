@@ -106,7 +106,7 @@ class Loot(commands.Cog):
             intel_data = {}
             
             # Extract money value
-            money_pattern = r'\$([0-9,]+(?:\.[0-9]{2})?)'
+            money_pattern = r'has\s+\$([\d,]+(?:\.\d+)?)'
             money_match = re.search(money_pattern, content)
             if money_match:
                 intel_data['money'] = float(money_match.group(1).replace(',', ''))
@@ -238,27 +238,38 @@ class Loot(commands.Cog):
             return {}
 
     async def _get_trade_values(self) -> Optional[List[Dict[str, Any]]]:
-        """Get current trade values from the API."""
+        """Get current trade values from the reaper.db database.
+        
+        This method now uses cached data from the database instead of making
+        API queries each time, improving performance and reducing API usage.
+        """
         try:
-            # Try to get the query system from existing cogs
-            for cog_name in ['SnipeGuide', 'Alliance']:
-                cog = self.bot.get_cog(cog_name)
-                if cog and hasattr(cog, 'query'):
-                    return await cog.query.get_trade_resource_values()
+            from Systems.Functions.database_manager import get_latest_resource_prices
             
-            # Fallback: try to import and create query instance
-            try:
-                from Systems.PnW.Util.query import create_v3_query_instance
-                from Systems.Functions.config import PANDW_API_KEY
-                
-                query = create_v3_query_instance(api_key=PANDW_API_KEY)
-                return await query.get_trade_resource_values()
-            except Exception as e:
-                print(f"Could not create query instance: {e}")
+            # Get latest prices from database
+            price_data = await get_latest_resource_prices()
+            if not price_data:
+                print("No resource price data available in database")
                 return None
+            
+            # Convert database format to expected format
+            trade_values = []
+            for resource, prices in price_data.items():
+                trade_values.append({
+                    'resource': resource,
+                    'best_sell_offer': {
+                        'price': prices['sell']
+                    },
+                    'best_buy_offer': {
+                        'price': prices['buy']
+                    },
+                    'avg_price': prices['avg']
+                })
+            
+            return trade_values
 
         except Exception as e:
-            print(f"Error getting trade values: {e}")
+            print(f"Error getting trade values from database: {e}")
             return None
 
     def _calculate_loot_values(self, loot_data: Dict[str, float], trade_data: List[Dict[str, Any]]) -> Dict[str, Any]:
@@ -312,7 +323,7 @@ class Loot(commands.Cog):
         try:
             embed = discord.Embed(
                 title="🔮 Projected Loot Summary",
-                description="Potential loot based on different policy combinations",
+                description="Potential loot based on different policy combinations (using cached prices)",
                 color=discord.Color.purple()
             )
 
@@ -397,7 +408,7 @@ class Loot(commands.Cog):
         try:
             embed = discord.Embed(
                 title="💰 War Loot Summary",
-                description="Looted resource values calculated using best sell offers",
+                description="Looted resource values calculated using cached best sell prices",
                 color=discord.Color.gold()
             )
 

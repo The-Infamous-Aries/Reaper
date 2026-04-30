@@ -20,6 +20,7 @@ except ImportError:
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 from Systems.PnW.Util.query import create_v3_query_instance, V3GraphQuery, NationResourceStat
 from Systems.Functions.config import PANDW_API_KEY
+from Systems.Functions.database_manager import get_latest_resource_prices
 import Systems.Functions.emoji as emoji_mod
 
 class ResourceCog(commands.Cog):
@@ -675,11 +676,14 @@ class ResourceCog(commands.Cog):
         refined_resources = {"GASOLINE", "MUNITIONS", "STEEL", "ALUMINUM"}
         special_resources = {"CREDIT"}
 
+        # Build price_map from data (used for non-conversion modes; conversion uses pre-built price_map passed in)
         price_map = {}
-        if price_type == "best buy offer": # User is selling, so they get the best price a buyer is offering
+        if price_type == "selling":  # User is selling → use best_buy_price (highest buyer offer)
             price_map = {str(item.get("resource") or "").upper(): float(item.get("best_buy_offer", {}).get("price") or 0) for item in data}
-        elif price_type == "best sell offer": # User is buying, so they pay the best price a seller is offering
+        elif price_type == "buying":  # User is buying → use best_sell_price (lowest seller offer)
             price_map = {str(item.get("resource") or "").upper(): float(item.get("best_sell_offer", {}).get("price") or 0) for item in data}
+        else:  # average or fallback
+            price_map = {str(item.get("resource") or "").upper(): float(item.get("average_price") or 0) for item in data}
 
         def fmt_name(r: str) -> str:
             return r.capitalize() if r else r
@@ -692,9 +696,17 @@ class ResourceCog(commands.Cog):
             if not provided:
                 return discord.Embed(description="No resources provided for conversion.", color=discord.Color.red())
 
+            # Determine label for price type
+            if price_type == "selling":
+                price_label = "Best Buy Offer (you're selling)"
+            elif price_type == "buying":
+                price_label = "Best Sell Offer (you're buying)"
+            else:
+                price_label = "Average Price"
+
             # Build conversion embed with per-resource breakdown and totals
             embed = discord.Embed(
-                description="Convert resource units into money using average price",
+                description=f"Convert resource units into money using {price_label}",
                 color=discord.Color.blurple(),
             )
             try:
@@ -888,12 +900,13 @@ class ResourceCog(commands.Cog):
         credit="Units of Credit to convert"
     )
     @app_commands.describe(
-        price_type="Choose 'Selling' (Best Buy Offer) or 'Buying' (Best Sell Offer)"
+        price_type="Choose 'I'm Selling' (best buy offer) or 'I'm Buying' (best sell offer)"
     )
     @app_commands.choices(
         price_type=[
-            app_commands.Choice(name="Selling", value="best buy offer"),
-            app_commands.Choice(name="Buying", value="best sell offer"),
+            app_commands.Choice(name="I'm Selling (Best Buy Offer)", value="selling"),
+            app_commands.Choice(name="I'm Buying (Best Sell Offer)", value="buying"),
+            app_commands.Choice(name="Average Price", value="average"),
         ]
     )
     async def convert(
@@ -914,15 +927,34 @@ class ResourceCog(commands.Cog):
         price_type: str = "average",
     ):
         """Convert a resource amount to its value."""
-        try:
-            if not self.query_instance:
-                await ctx.send("Trade query is unavailable. Please try again later.")
-                return
+        # Defer immediately to prevent Discord interaction timeout
+        if hasattr(ctx, 'interaction') and ctx.interaction is not None:
+            await ctx.interaction.response.defer()
 
-            data = await self.query_instance.get_trade_resource_values()
-            if not data:
-                await ctx.send("Could not fetch trade values from the API.")
-                return
+        try:
+            # Build price_map from DB (fast, updated every 15 min), fallback to API
+            db_prices = await get_latest_resource_prices()
+            if db_prices:
+                # Build normalized price_map_data from DB regardless of price_type
+                # (price_type selection happens inside _build_trade_embed)
+                price_map_data = [
+                    {
+                        "resource": res.upper(),
+                        "best_buy_offer": {"price": vals.get("buy", 0)},
+                        "best_sell_offer": {"price": vals.get("sell", 0)},
+                        "average_price": vals.get("avg", 0),
+                    }
+                    for res, vals in db_prices.items()
+                ]
+            else:
+                # Fallback to live API
+                if not self.query_instance:
+                    await ctx.send("Trade query is unavailable. Please try again later.")
+                    return
+                price_map_data = await self.query_instance.get_trade_resource_values()
+                if not price_map_data:
+                    await ctx.send("Could not fetch trade values.")
+                    return
 
             emoji_map = emoji_mod.resource_codes()
             prefer_emoji = True
@@ -943,7 +975,7 @@ class ResourceCog(commands.Cog):
             }
 
             embed = await self._build_trade_embed(
-                data,
+                price_map_data,
                 "conversion",
                 amounts_map,
                 emoji_map,
@@ -955,9 +987,19 @@ class ResourceCog(commands.Cog):
                 await ctx.send("Provide units for any resource fields to convert, e.g., /trade convert iron:200 oil:50")
                 return
 
-            await ctx.send(embed=embed)
-        except Exception:
-            await ctx.send("An unexpected error occurred while building the trade values embed.")
+            if hasattr(ctx, 'interaction') and ctx.interaction is not None:
+                await ctx.interaction.followup.send(embed=embed)
+            else:
+                await ctx.send(embed=embed)
+        except Exception as e:
+            err_msg = "An unexpected error occurred while building the trade values embed."
+            try:
+                if hasattr(ctx, 'interaction') and ctx.interaction is not None:
+                    await ctx.interaction.followup.send(err_msg)
+                else:
+                    await ctx.send(err_msg)
+            except Exception:
+                pass
 
 async def setup(bot: commands.Bot):
     """Setup function to add the ResourceCog to the bot."""

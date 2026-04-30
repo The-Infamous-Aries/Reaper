@@ -5,6 +5,7 @@ import importlib
 from discord.ext import commands
 
 from Systems.Functions import emoji as emoji_mod
+from Systems.PnW.EA.colors import TempEmojiMod
 from Systems.PnW.Util.query import create_v3_query_instance, V3GraphQuery
 from Systems.PnW.Util.calc import AllianceCalculator
 from Systems.Functions.utils import initialize_service_ports, cleanup_service_ports
@@ -30,6 +31,8 @@ PNW_COGS = {
         ("Systems.PnW.EA.colors", "GameInfoCog"),
         ("Systems.PnW.EA.resource", "ResourceCog"),
         ("Systems.PnW.EA.rev", "RevenueCommand"),
+        ("Systems.PnW.EA.rss_alerts", "RssAlerts"),
+        ("Systems.PnW.EA.rev_optimizer", "RevenueOptimizer"),
     ],
     # FA (Foreign Affairs) Cogs
     "FA": [
@@ -45,12 +48,20 @@ PNW_COGS = {
         ("Systems.PnW.MA.war_costs_bd", "WarsBD"),
         ("Systems.PnW.MA.war_net_bd", "WarsNetBD"),
         ("Systems.PnW.MA.units", "Units"),
+        ("Systems.PnW.MA.weapon_eff", "WeaponEfficiency"),
+        ("Systems.PnW.MA.war_sim", "WarSimCog"),
+        ("Systems.PnW.MA.raids", "Raids"),
+        ("Systems.PnW.MA.offshore", "Offshore"),
+        ("Systems.PnW.MA.rankings", "Rankings"),
+        ("Systems.PnW.MA.compare_wars", "CompareWars"),
     ],
     # Other Cogs
     "Other": [
         ("Systems.PnW.Other.baseball", "BaseballCog"),
         ("Systems.PnW.Other.loot", "Loot"),
         ("Systems.PnW.Other.activity", "Activity"),
+        ("Systems.PnW.timed_queries", "TimedQueries"),
+        ("Systems.PnW.Other.theme", "ThemeCog")
     ]
 }
 
@@ -122,7 +133,8 @@ async def setup(bot: commands.Bot):
                             if class_name == "ResourceStocks":
                                 instance = cog_class(bot, alliance_cog.query_system, alliance_cog.calc_system)
                             else:
-                                instance = cog_class(bot, alliance_cog.query_system)
+                                emoji_mod_instance = TempEmojiMod(bot)
+                                instance = cog_class(bot, emoji_mod=emoji_mod_instance, query_instance=alliance_cog.query_system)
                         else:
                             logger.warning(f"AllianceManager not found, loading {class_name} without dependencies")
                             instance = cog_class(bot)
@@ -150,10 +162,10 @@ async def setup(bot: commands.Bot):
 
                 elif category == "MA":
                     # MA cogs that need AllianceManager dependencies
-                    if class_name in ["Finder", "Loot", "Units"]:
+                    if class_name in ["Finder", "Loot", "Units", "WeaponsEfficiency", "Raids"]:
                         alliance_cog = bot.get_cog("AllianceManager")
                         if alliance_cog:
-                            if class_name == "Finder":
+                            if class_name in ["Finder", "Raids"]:
                                 instance = cog_class(bot, alliance_cog.query_system)
                             else:
                                 instance = cog_class(bot, alliance_cog.query_system, alliance_cog.calc_system)
@@ -165,8 +177,15 @@ async def setup(bot: commands.Bot):
                         instance = cog_class(bot)
 
                 elif category == "Other":
-                    # Other cogs (no special dependencies)
-                    instance = cog_class(bot)
+                    if class_name == "TimedQueries":
+                        alliance_cog = bot.get_cog("AllianceManager")
+                        if alliance_cog:
+                            instance = cog_class(bot, alliance_cog.query_system)
+                        else:
+                            logger.warning(f"AllianceManager not found, loading {class_name} without dependencies")
+                            instance = cog_class(bot)
+                    else:
+                        instance = cog_class(bot)
 
                 await bot.add_cog(instance)
                 logger.info(f"Successfully loaded PnW cog: {class_name} ({category})")

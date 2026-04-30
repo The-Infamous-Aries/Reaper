@@ -1,4 +1,4 @@
-import discord
+﻿import discord
 from discord.ext import commands
 from discord import app_commands
 from typing import List, Dict, Any, Optional, Callable, Literal
@@ -9,6 +9,14 @@ import os
 import sys
 
 from Systems.Functions import emoji as emoji_mod
+from Systems.Functions.irs_nations_db import IRSNationsDB
+from Systems.Functions.db_paths import NW_NATIONS_DB
+from Systems.Functions.nation_emoji_store import get_nation_emoji, strip_emoji_prefix
+from pathlib import Path
+
+DATABASE_FILE = NW_NATIONS_DB
+NIGHTS_WATCH_ALLIANCE_ID = 14225
+NIGHTS_WATCH_ALLIANCE_NAME = "Nights Watch"
 
 def _nation_link(n: Dict[str, Any]) -> str:
     """Return markdown link to a nation's PnW page."""
@@ -62,10 +70,31 @@ class AuditManager(commands.Cog):
             return []
 
     async def _get_combined_nations(self, center_id: int) -> List[Dict[str, Any]]:
-        """Fetch nations for the specified alliance."""
+        """Fetch nations for the specified alliance — DB for IRS, API otherwise."""
+        if center_id == NIGHTS_WATCH_ALLIANCE_ID:
+            try:
+                db = IRSNationsDB(str(DATABASE_FILE))
+                db_nations = await db.get_all_nations()
+                for nation in db_nations:
+                    nation['cities'] = await db.get_cities_for_nation(int(nation['id']))
+                self.logger.info(f"Loaded {len(db_nations)} IRS nations from DB")
+                return db_nations
+            except Exception as e:
+                self.logger.error(f"DB load failed, falling back to API: {e}")
         cy = await self._get_alliance_nations(center_id, force_refresh=True)
-        # AllianceManager returns nations for the specific alliance; no extra filter needed.
         return cy or []
+
+    async def _alliance_autocomplete(self, interaction: discord.Interaction, current: str) -> List[app_commands.Choice[str]]:
+        """Autocomplete for alliance — All alliances from local databases."""
+        try:
+            from Systems.Functions.autocomplete_utils import alliance_autocomplete
+            return await alliance_autocomplete(current, include_nw=True, limit=25)
+        except Exception as e:
+            logger.error(f"Error in audit alliance autocomplete: {e}")
+            # Fallback to just IRS
+            if not current or current.lower() in NIGHTS_WATCH_ALLIANCE_NAME.lower():
+                return [app_commands.Choice(name=f"💰 {NIGHTS_WATCH_ALLIANCE_NAME}", value=NIGHTS_WATCH_ALLIANCE_NAME)]
+            return []
 
     def _filter_active_members(self, nations: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """Exclude applicants and vacation mode for resource checks."""
@@ -450,19 +479,18 @@ class AuditManager(commands.Cog):
         return category_embeds
 
     @app_commands.describe(
-        view="Select what to display: Food & Uranium, Inactives, Color, or MMR Build",
+        view="Select what to display: Inactives, Color, or MMR Build",
+        alliance="Alliance name or ID",
         mmr_mode="If MMR Build is selected, choose Basic or Max"
     )
     @app_commands.choices(view=[
-        app_commands.Choice(name="Food & Uranium", value="resources"),
         app_commands.Choice(name="Inactives", value="inactives"),
         app_commands.Choice(name="Color", value="color"),
         app_commands.Choice(name="MMR Build", value="mmr"),
     ])
-    @app_commands.autocomplete(mmr_mode=_mmr_mode_autocomplete)
-    @app_commands.describe(alliance="Alliance name or ID")
+    @app_commands.autocomplete(mmr_mode=_mmr_mode_autocomplete, alliance=_alliance_autocomplete)
     @commands.hybrid_command(name="audit", description="Audit alliance issues")  # type: ignore
-    async def audit_command(self, ctx: commands.Context, view: Literal["resources", "inactives", "color", "mmr"], alliance: Optional[str] = None, mmr_mode: Optional[Literal["basic", "max"]] = "basic"):
+    async def audit_command(self, ctx: commands.Context, view: Literal["inactives", "color", "mmr"], alliance: Optional[str] = None, mmr_mode: Optional[Literal["basic", "max"]] = "basic"):
 
         """Generate an "Audit Issues" embed listing issue categories as nation links."""
         try:
@@ -480,26 +508,32 @@ class AuditManager(commands.Cog):
                 if alliance_cog and hasattr(alliance_cog, 'query_system') and alliance_cog.query_system:
                     arg = (alliance or "").strip()
                     if arg:
-                        resolved = await alliance_cog.query_system.resolve_alliance(arg)
-                        try:
-                            if resolved and isinstance(resolved, dict) and resolved.get('id'):
-                                center_id = int(str(resolved.get('id')))
-                                center_name = (resolved.get('name') or '').strip() or None
-                                center_color = (resolved.get('color') or '').strip().lower() or None
-                            elif arg.isdigit():
-                                center_id = int(arg)
-                            else:
+                        # IRS shortcut — no API call needed
+                        nw_arg = arg.lower().replace("🌙 ", "").strip()
+                        if nw_arg in ("Nights Watch", "nights watch", "nw"):
+                            center_id = NIGHTS_WATCH_ALLIANCE_ID
+                            center_name = NIGHTS_WATCH_ALLIANCE_NAME
+                        else:
+                            resolved = await alliance_cog.query_system.resolve_alliance(arg)
+                            try:
+                                if resolved and isinstance(resolved, dict) and resolved.get('id'):
+                                    center_id = int(str(resolved.get('id')))
+                                    center_name = (resolved.get('name') or '').strip() or None
+                                    center_color = (resolved.get('color') or '').strip().lower() or None
+                                elif arg.isdigit():
+                                    center_id = int(arg)
+                                else:
+                                    center_id = None
+                            except Exception:
                                 center_id = None
-                        except Exception:
-                            center_id = None
 
-                        if not center_id or int(center_id) <= 0:
-                            msg = "❌ Could not resolve alliance. Enter a valid name or ID."
-                            if hasattr(ctx, 'interaction') and ctx.interaction:
-                                await ctx.interaction.followup.send(msg)
-                            else:
-                                await ctx.reply(msg)
-                            return
+                            if not center_id or int(center_id) <= 0:
+                                msg = "❌ Could not resolve alliance. Enter a valid name or ID."
+                                if hasattr(ctx, 'interaction') and ctx.interaction:
+                                    await ctx.interaction.followup.send(msg)
+                                else:
+                                    await ctx.reply(msg)
+                                return
                     else:
                         if self.default_alliance_id:
                             center_id = int(self.default_alliance_id)
@@ -587,10 +621,6 @@ class AuditManager(commands.Cog):
                     else:
                         await ctx.reply(embed=embed)
                     return
-            food_lt_10k = [n for n in active_members if 0 < (n.get('food', 0) or 0) < 50000]
-            uran_lt_500 = [n for n in active_members if 0 < (n.get('uranium', 0) or 0) < 1000]
-            food_zero = [n for n in active_members if (n.get('food', 0) or 0) == 0]
-            uran_zero = [n for n in active_members if (n.get('uranium', 0) or 0) == 0]
             alliance_color: Optional[str] = None
             if center_id:
                 resolved_alliance_details = await self.query_instance.resolve_alliance(center_id)
@@ -638,24 +668,7 @@ class AuditManager(commands.Cog):
 
             view_key = view
 
-            if view_key == "resources":
-                await self._add_category_fields(
-                    embed,
-                    "Food < 50,000",
-                    emoji_mod.mention('food_1') or "🍞",
-                    food_lt_10k,
-                    suffix_builder=lambda n: f"- {int(n.get('food', 0)):,}"
-                )
-                await self._add_category_fields(
-                    embed,
-                    "Uranium < 1,000",
-                    emoji_mod.mention('uranium_1') or "☢️",
-                    uran_lt_500,
-                    suffix_builder=lambda n: f"- {int(n.get('uranium', 0)):,}"
-                )
-                await self._add_category_fields(embed, "Food = 0", "🚫", food_zero)
-                await self._add_category_fields(embed, "Uranium = 0", "🚫", uran_zero)
-            elif view_key == "inactives":
+            if view_key == "inactives":
                 await self._add_category_fields(embed, "Inactive 7-13 days", "⏲️", inactive_7_to_13, with_days=True)
                 await self._add_category_fields(embed, "Inactive 14-23 days", "⚠️", inactive_14_to_23, with_days=True)
                 await self._add_category_fields(embed, "Inactive 24+ days", "🛑", inactive_24_plus, with_days=True)

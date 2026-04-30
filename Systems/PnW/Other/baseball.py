@@ -1,19 +1,24 @@
-import discord
+﻿import discord
 from discord.ext import commands
 from discord import app_commands
 import os
 import sys
 import logging
 import traceback
-from typing import Dict, Any, Optional
+from typing import Dict, Any, List, Optional
 from datetime import datetime
+from pathlib import Path
 
 # Add parent directories to path for imports
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 from Systems.Functions.config import PANDW_API_KEY
 from Systems.PnW.Util.query import create_v3_query_instance, V3GraphQuery
-
+from Systems.Functions.irs_nations_db import IRSNationsDB
+from Systems.Functions.db_paths import NW_NATIONS_DB
 from Systems.Functions import emoji as emoji_mod
+from Systems.Functions.nation_emoji_store import get_nation_emoji, strip_emoji_prefix
+
+DATABASE_FILE = NW_NATIONS_DB
 
 # Setup logging
 logger = logging.getLogger(__name__)
@@ -203,8 +208,18 @@ class BaseballCog(commands.Cog):
                 color=discord.Color.red()
             )
 
+    async def nation_autocomplete(self, interaction: discord.Interaction, current: str) -> List[app_commands.Choice[str]]:
+        """Autocomplete for team — All nations from local databases."""
+        try:
+            from Systems.Functions.autocomplete_utils import nation_autocomplete
+            return await nation_autocomplete(current, nw_only=False, limit=25)
+        except Exception as e:
+            logger.error(f"Error in baseball nation autocomplete: {e}")
+            return []
+
     @app_commands.command(name='baseball', description='Show baseball team information for a nation')
     @app_commands.describe(team='Nation name, leader name, or nation ID to query')
+    @app_commands.autocomplete(team=nation_autocomplete)
     async def baseball_team(self, interaction: discord.Interaction, team: str):
         """Show baseball team information for a nation."""
         try:

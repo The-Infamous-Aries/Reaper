@@ -1,5 +1,6 @@
-import discord
+﻿import discord
 from discord.ext import commands
+from discord import app_commands
 import os
 import aiofiles
 from collections import defaultdict
@@ -64,12 +65,28 @@ from Systems.Functions.user_data_manager import UserDataManager
 
 from Systems.PnW.Util.calc import AllianceCalculator, AllianceStats, ImprovementsStats
 from Systems.PnW.Util.query import V3GraphQuery
+from Systems.Functions.irs_nations_db import IRSNationsDB
+from Systems.Functions.db_paths import NW_NATIONS_DB, GLOBAL_NATIONS_DB
 
 BlocAllianceManager = None
 
 # Define constants for default alliance (can be configured)
 DEFAULT_ALLIANCE_ID = os.getenv("DEFAULT_ALLIANCE_ID", "14635")
 DEFAULT_ALLIANCE_NAME = os.getenv("DEFAULT_ALLIANCE_NAME", "Death Before Dishonor")
+NIGHTS_WATCH_ALLIANCE_ID = "14225"
+NIGHTS_WATCH_ALLIANCE_NAME = "Nights Watch"
+DATABASE_FILE = NW_NATIONS_DB
+
+
+def _get_global_nations_db():
+    """Lazy-load GlobalNationsDB — avoids import errors if harvester isn't installed."""
+    try:
+        from PnWHarvester.db.global_nations_db import GlobalNationsDB
+        if GLOBAL_NATIONS_DB.exists():
+            return GlobalNationsDB(str(GLOBAL_NATIONS_DB))
+    except Exception:
+        pass
+    return None
 
 class FullMillView(discord.ui.View):
     """View for displaying Full Mill calculations and alliance data."""
@@ -1261,7 +1278,21 @@ class AllianceManager(commands.Cog):
 
     # testalliance command removed
 
+    async def alliance_autocomplete(self, interaction: discord.Interaction, current: str) -> List[app_commands.Choice[str]]:
+        """Autocomplete for alliance command — All alliances from local databases."""
+        try:
+            from Systems.Functions.autocomplete_utils import alliance_autocomplete
+            return await alliance_autocomplete(current, include_nw=True, limit=25)
+        except Exception as e:
+            logger.error(f"Error in alliance autocomplete: {e}")
+            # Fallback to just IRS
+            if not current or current.lower() in NIGHTS_WATCH_ALLIANCE_NAME.lower():
+                return [app_commands.Choice(name=f"💰 {NIGHTS_WATCH_ALLIANCE_NAME}", value=NIGHTS_WATCH_ALLIANCE_NAME)]
+            return []
+
     @commands.hybrid_command(name='alliance', description='Display alliance overview')  # type: ignore
+    @app_commands.describe(alliance='Alliance name or ID')
+    @app_commands.autocomplete(alliance=alliance_autocomplete)
     async def alliance(self, ctx: commands.Context, alliance: Optional[str] = None):
         """Show alliance overview; DB4D shows resources-only, others show full fields."""
         try:
@@ -1286,19 +1317,23 @@ class AllianceManager(commands.Cog):
                 try:
                     target_id = str(int(arg))
                 except ValueError:
-                    # Should not happen if arg.isdigit() is true, but for safety
                     target_id = arg
             else:
-                try:
-                    if self.query_system:
-                        resolved = await self.query_system.resolve_alliance(arg)
-                        if resolved and isinstance(resolved, dict) and resolved.get('id'):
-                            target_id = str(resolved.get('id'))
-                            if resolved.get('name'):
-                                target_name = resolved.get('name')
-                except Exception as e:
-                    self.logger.error(f"Error resolving alliance '{arg}': {e}", exc_info=True)
-                    target_id = None
+                # IRS shortcut — no API call needed
+                if arg.lower() in ("Nights Watch", "nights watch", "nw"):
+                    target_id = NIGHTS_WATCH_ALLIANCE_ID
+                    target_name = NIGHTS_WATCH_ALLIANCE_NAME
+                else:
+                    try:
+                        if self.query_system:
+                            resolved = await self.query_system.resolve_alliance(arg)
+                            if resolved and isinstance(resolved, dict) and resolved.get('id'):
+                                target_id = str(resolved.get('id'))
+                                if resolved.get('name'):
+                                    target_name = resolved.get('name')
+                    except Exception as e:
+                        self.logger.error(f"Error resolving alliance '{arg}': {e}", exc_info=True)
+                        target_id = None
 
             if not target_id:
                 embed = discord.Embed(
@@ -1309,8 +1344,41 @@ class AllianceManager(commands.Cog):
                 await initial_msg.edit(content=None, embed=embed)
                 return
 
-            # Fetch nations via TTL cache
-            nations: List[Dict] = await self.get_alliance_nations(target_id, force_refresh=False)
+            # Fetch nations — use DB for IRS, GlobalNations.db for others, API as last resort
+            nations: List[Dict] = []
+            if target_id == NIGHTS_WATCH_ALLIANCE_ID:
+                try:
+                    db = IRSNationsDB(str(DATABASE_FILE))
+                    db_nations = await db.get_all_nations()
+                    for nation in db_nations:
+                        nation['cities'] = await db.get_cities_for_nation(int(nation['id']))
+                    nations = db_nations
+                    self.logger.info(f"Loaded {len(nations)} NW nations from IRSNationsDB")
+                except Exception as e:
+                    self.logger.error(f"IRSNationsDB load failed, falling back to API: {e}")
+                    nations = await self.get_alliance_nations(target_id, force_refresh=False)
+            else:
+                # Try GlobalNations.db first — no API call needed
+                global_db = _get_global_nations_db()
+                if global_db:
+                    try:
+                        db_nations = await global_db.get_nations_by_alliance(int(target_id))
+                        if db_nations:
+                            for nation in db_nations:
+                                nation['cities'] = await global_db.get_cities_for_nation(int(nation['id']))
+                                # Ensure alliance name is set for embed
+                                if not nation.get('alliance') and nation.get('alliance_name'):
+                                    nation['alliance'] = nation['alliance_name']
+                            nations = db_nations
+                            if not target_name and nations:
+                                target_name = nations[0].get('alliance_name') or target_name
+                            self.logger.info(f"Loaded {len(nations)} nations from GlobalNationsDB for alliance {target_id}")
+                    except Exception as e:
+                        self.logger.error(f"GlobalNationsDB load failed, falling back to API: {e}")
+
+                # Fall back to API if DB had nothing
+                if not nations:
+                    nations = await self.get_alliance_nations(target_id, force_refresh=False)
 
             if not nations:
                 await initial_msg.edit(content="❌ No alliance data available.")

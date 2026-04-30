@@ -18,6 +18,11 @@ from urllib.parse import quote
 
 import hashlib
 
+try:
+    from ...Functions.config import PANDW_API_V3_KEY
+except ImportError:
+    PANDW_API_V3_KEY = None
+
 # ZoneInfo fallback for Python < 3.9
 try:
     from zoneinfo import ZoneInfo
@@ -27,17 +32,9 @@ except Exception:
     except Exception:
         ZoneInfo = None
 
-# Add parent directory to path for config import
-sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
-try:
-    from Systems.Functions.config import PANDW_API_V3_KEY
-except ImportError:
-    sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
-    sys.path.append(os.path.dirname(os.path.dirname(__file__)))
-    from Systems.Functions.config import PANDW_API_V3_KEY
+
 
 class Radiation(TypedDict):
-    global_: float  # Use global_ to avoid reserved keyword conflict
     north_america: float
     south_america: float
     europe: float
@@ -52,6 +49,21 @@ class GameInfo(TypedDict):
     city_average: float
 
 class NationResourceStat(TypedDict):
+    date: str
+    money: str
+    food: str
+    steel: str
+    aluminum: str
+    gasoline: str
+    munitions: str
+    uranium: str
+    coal: str
+    oil: str
+    iron: str
+    bauxite: str
+    lead: str
+
+class ResourceStat(TypedDict):
     date: str
     money: str
     food: str
@@ -264,11 +276,12 @@ class V3GraphQuery:
         return default
 
     def _rate_limit_wait(self):
-        """Apply rate limiting between requests."""
+        """Apply rate limiting between requests (sync — called from thread via run_in_executor)."""
         elapsed = time.monotonic() - self._last_request_ts
         if elapsed < self._min_interval_seconds:
             time.sleep(self._min_interval_seconds - elapsed)
         self._last_request_ts = time.monotonic()
+
 
     def _make_request(self, query: str, timeout: int = 30, cache_ttl: float = 0) -> Dict[str, Any]:
         """Make HTTP request with caching and rate limiting."""
@@ -277,7 +290,7 @@ class V3GraphQuery:
         if self._is_cache_valid('queries', cache_key):
             return self._get_cache('queries', cache_key)
 
-        self.logger.info(f"GraphQL Query Sent: {query}", exc_info=True)
+        self.logger.debug(f"GraphQL Query Sent: {query}")
         self._rate_limit_wait()
         self.logger.debug(f"Sending GraphQL query: {query}")
         url = f"{self.base_url}?api_key={self.api_key}"
@@ -315,9 +328,14 @@ class V3GraphQuery:
         # Extract a few key parameters for a human-readable part of the filename
         readable_parts = []
         if 'alliance_id' in params and params['alliance_id']:
-            readable_parts.append(f"a{'_'.join(map(str, params['alliance_id']))}")
+            alliance_part = '_'.join(map(str, params['alliance_id']))
+            readable_parts.append(f"a{alliance_part[:48]}")
         if 'nation_id' in params and params['nation_id']:
-            readable_parts.append(f"n{'_'.join(map(str, params['nation_id']))}")
+            nation_ids = list(map(str, params['nation_id']))
+            nation_part = '_'.join(nation_ids[:8])
+            if len(nation_ids) > 8:
+                nation_part += f"_plus{len(nation_ids) - 8}"
+            readable_parts.append(f"n{nation_part[:64]}")
         if 'after' in params and params['after']:
             # A simplified date format for readability
             date_str = params['after'].split(' ')[0]
@@ -368,6 +386,22 @@ class V3GraphQuery:
         except Exception as e:
             self.logger.error(f"Batch query failed: {e}")
             return {alias: None for alias in queries.keys()}
+
+    async def get_master_update_data(self) -> Dict[str, Any]:
+        """Fetches game info, color data, and trade prices in a single batch query."""
+        try:
+            queries = {
+                "gameInfo": "game_info { game_date city_average radiation { global north_america south_america europe africa asia australia antarctica } }",
+                "colors": "colors { color bloc_name turn_bonus }",
+                "tradeInfo": "top_trade_info { resources { resource average_price best_buy_offer { price } best_sell_offer { price } } }",
+                "resourceStats": "resource_stats(first: 1, orderBy: { column: DATE, order: DESC }) { data { date money food steel aluminum gasoline munitions uranium coal oil iron bauxite lead } }"
+            }
+            
+            return await self.execute_batch(queries, cache_ttl=300)
+            
+        except Exception as e:
+            self.logger.error(f"Error getting master update data: {e}", exc_info=True)
+            return {}
 
     def _to_utc(self, dt: Optional[datetime]) -> Optional[datetime]:
         """Convert datetime to naive UTC."""
@@ -700,7 +734,6 @@ class V3GraphQuery:
             "att_gas_used def_gas_used "
             "att_mun_used def_mun_used "
             "att_infra_destroyed def_infra_destroyed "
-            "att_money_looted def_money_looted "
             "def_soldiers_lost att_soldiers_lost "
             "def_tanks_lost att_tanks_lost "
             "def_aircraft_lost att_aircraft_lost "
@@ -712,9 +745,11 @@ class V3GraphQuery:
         """Get standard war attack fields for GraphQL queries."""
         return (
             "id date att_id def_id type war_id "
+            "city_id success victor attcas1 defcas1 attcas2 defcas2 "
+            "city_infra_before infra_destroyed infra_destroyed_value "
             "money_stolen money_destroyed military_salvage_aluminum military_salvage_steel "
             "att_missiles_lost def_missiles_lost att_nukes_lost def_nukes_lost "
-            "improvements_destroyed "
+            "improvements_destroyed resistance_lost loot_info "
             "money_looted coal_looted oil_looted uranium_looted iron_looted "
             "bauxite_looted lead_looted gasoline_looted munitions_looted "
             "steel_looted aluminum_looted food_looted"
@@ -1176,6 +1211,111 @@ class V3GraphQuery:
             self.logger.error(f"Error retrieving treaties for alliances {alliance_ids}: {e}")
             return []
 
+    async def get_focused_treaties(self, center_alliance_id: int) -> Dict[str, Any]:
+        """
+        Fetch treaties for a center alliance (layer 0), all its direct treaty partners (layer 1),
+        and collect layer-2 partner IDs (for drawing connecting lines only, no 3rd-layer expansion).
+
+        Returns a dict with:
+          - center_id: int
+          - treaties: list of all unique treaty dicts (layers 0+1)
+          - layer0: {id} - center
+          - layer1: {id, ...} - direct partners
+          - layer2: {id, ...} - partners-of-partners (no further expansion)
+          - alliance_info: {id -> {name, acronym, color, score, flag}}
+        """
+        TREATY_TYPES = {'Protectorate', 'Extension', 'MDP', 'MDoAP', 'ODP', 'ODoAP'}
+
+        def _extract_treaties(data_result: Dict, alliance_id: int) -> List[Dict]:
+            alias = f"a{alliance_id}"
+            data_list = (data_result.get(alias) or {}).get('data') or []
+            if not data_list:
+                return []
+            return (data_list[0] or {}).get('treaties') or []
+
+        def _alliance_block(aid: int) -> str:
+            return f"""
+            a{aid}: alliances(id: {aid}) {{
+              data {{
+                treaties {{
+                  id date treaty_type turns_left
+                  alliance1_id alliance2_id approved
+                  alliance1 {{ id name acronym color score flag }}
+                  alliance2 {{ id name acronym color score flag }}
+                }}
+              }}
+            }}"""
+
+        # --- Layer 0: fetch center ---
+        query0 = "query {" + _alliance_block(center_alliance_id) + "}"
+        raw0 = await self._request_with_retries(query0, timeout=30)
+        center_treaties = _extract_treaties(raw0.get('data', {}), center_alliance_id)
+
+        # Collect layer-1 partner IDs and alliance info
+        alliance_info: Dict[int, Dict] = {}
+        layer1_ids: set = set()
+        seen_ids: set = {int(t['id']) for t in center_treaties if t.get('id')}
+
+        def _store_info(t: Dict):
+            for key in ('alliance1', 'alliance2'):
+                a = t.get(key) or {}
+                aid = a.get('id')
+                if aid:
+                    alliance_info[int(aid)] = {
+                        'name': a.get('name', str(aid)),
+                        'acronym': a.get('acronym', ''),
+                        'color': a.get('color', ''),
+                        'score': float(a.get('score') or 0),
+                        'flag': a.get('flag') or '',
+                    }
+
+        for t in center_treaties:
+            _store_info(t)
+            if t.get('treaty_type') in TREATY_TYPES:
+                a1 = t.get('alliance1_id')
+                a2 = t.get('alliance2_id')
+                partner = a2 if a1 == center_alliance_id else a1
+                if partner:
+                    layer1_ids.add(int(partner))
+
+        # --- Layer 1: batch-fetch all partners' treaties ---
+        all_treaties: List[Dict] = list(center_treaties)
+        layer2_ids: set = set()
+
+        if layer1_ids:
+            # Batch in chunks of 20 to avoid huge queries
+            layer1_list = list(layer1_ids)
+            chunk_size = 20
+            for i in range(0, len(layer1_list), chunk_size):
+                chunk = layer1_list[i:i + chunk_size]
+                query1 = "query {" + "".join(_alliance_block(aid) for aid in chunk) + "}"
+                raw1 = await self._request_with_retries(query1, timeout=45)
+                result1 = raw1.get('data', {})
+                for aid in chunk:
+                    partner_treaties = _extract_treaties(result1, aid)
+                    for t in partner_treaties:
+                        _store_info(t)
+                        tid = t.get('id')
+                        if tid and int(tid) not in seen_ids:
+                            seen_ids.add(int(tid))
+                            all_treaties.append(t)
+                        # Collect layer-2 IDs (partners of partners, not already in layer0/1)
+                        if t.get('treaty_type') in TREATY_TYPES:
+                            a1 = t.get('alliance1_id')
+                            a2 = t.get('alliance2_id')
+                            for pid in (a1, a2):
+                                if pid and int(pid) != center_alliance_id and int(pid) not in layer1_ids:
+                                    layer2_ids.add(int(pid))
+
+        return {
+            'center_id': center_alliance_id,
+            'treaties': all_treaties,
+            'layer0': {center_alliance_id},
+            'layer1': layer1_ids,
+            'layer2': layer2_ids,
+            'alliance_info': alliance_info,
+        }
+
     async def get_game_info(self, request_timeout: int = 30) -> Optional[GameInfo]:
         """Get game information like date, radiation, and city averages."""
         try:
@@ -1252,7 +1392,7 @@ class V3GraphQuery:
               }
             }
             """
-            data = await self._request_with_retries(query, timeout=30, cache_ttl=300)
+            data = await self._request_with_retries(query, timeout=60, cache_ttl=300)
             
             resource_list = (data.get('data') or {}).get('top_trade_info', {}).get('resources') or []
             
@@ -1629,6 +1769,158 @@ class V3GraphQuery:
             self.logger.error(f"Error getting nation resource stats: {e}")
             return None
 
+    async def _make_graphql_request(self, query: str, variables: Optional[Dict[str, Any]] = None, timeout: int = 30) -> Dict[str, Any]:
+        """Make an async GraphQL request that supports variables."""
+        
+        self.logger.debug(f"GraphQL Query Sent: {query} with vars {variables}")
+
+        url = f"{self.base_url}?api_key={self.api_key}"
+        payload = {"query": query}
+        if variables:
+            payload["variables"] = variables
+        
+        headers = dict(self._default_headers)
+
+        loop = asyncio.get_running_loop()
+        max_attempts = 3
+        for attempt in range(1, max_attempts + 1):
+            # Rate-limit: honour the minimum interval before every attempt,
+            # measured from when the *previous* request completed (not started).
+            elapsed = time.monotonic() - self._last_request_ts
+            if elapsed < self._min_interval_seconds:
+                await asyncio.sleep(self._min_interval_seconds - elapsed)
+
+            try:
+                fn = partial(self._session.post, url, json=payload, headers=headers, timeout=timeout)
+                resp = await loop.run_in_executor(None, fn)
+                self._last_request_ts = time.monotonic()  # record completion time
+                resp.raise_for_status()
+                break  # success
+            except requests.exceptions.Timeout as e:
+                self._last_request_ts = time.monotonic()
+                msg = str(e).replace(self.api_key, "API_KEY_REDACTED")
+                self.logger.warning(f"GraphQL request timed out (attempt {attempt}/{max_attempts}): {msg}")
+                if attempt == max_attempts:
+                    raise Exception(f"API Request Failed after {max_attempts} attempts: {msg}")
+                await asyncio.sleep(2 ** attempt)  # exponential backoff: 2s, 4s
+            except requests.exceptions.RequestException as e:
+                self._last_request_ts = time.monotonic()
+                msg = str(e).replace(self.api_key, "API_KEY_REDACTED")
+                # Retry on connection-level errors (reset, chunked encoding, etc.)
+                # but raise immediately on client errors (4xx) which won't self-heal.
+                is_http_error = isinstance(e, requests.exceptions.HTTPError)
+                if is_http_error or attempt == max_attempts:
+                    self.logger.error(f"GraphQL request failed: {msg}")
+                    raise Exception(f"API Request Failed: {msg}")
+                self.logger.warning(f"GraphQL request connection error (attempt {attempt}/{max_attempts}): {msg}")
+                await asyncio.sleep(2 ** attempt)
+
+        data = resp.json()
+        self.logger.debug(f"Received API response: {json.dumps(data, indent=2)}")
+
+        if isinstance(data, dict) and data.get("errors"):
+            errs = data.get("errors") or []
+            msg = errs[0].get("message") if errs and isinstance(errs[0], dict) else str(errs)
+            raise Exception(msg or "GraphQL error")
+        
+        return data.get('data', {})
+
+    async def get_total_resource_stats(self, after: Optional[datetime] = None) -> list[ResourceStat]:
+        """
+        Fetches the global resource stats (un-averaged) using the paginated resource_stats query.
+        Fetches all stats since the 'after' datetime.
+        """
+        after_str = after.strftime('%Y-%m-%d %H:%M:%S') if after else None
+        all_stats = []
+        page = 1
+        has_next_page = True
+
+        while has_next_page:
+            variables = {"page": page}
+            if after_str:
+                variables["after"] = after_str
+
+            query = """
+            query GetResourceStats($page: Int, $after: DateTime) {
+              resource_stats(first: 50, page: $page, after: $after, orderBy: { column: DATE, order: ASC }) {
+                paginatorInfo {
+                  hasMorePages
+                }
+                data {
+                  date
+                  money
+                  food
+                  steel
+                  aluminum
+                  gasoline
+                  munitions
+                  uranium
+                  coal
+                  oil
+                  iron
+                  bauxite
+                  lead
+                }
+              }
+            }
+            """
+            try:
+                response = await self._make_graphql_request(query=query, variables=variables)
+                if not response or 'resource_stats' not in response:
+                    self.logger.error("Failed to retrieve data from resource_stats endpoint.")
+                    break
+
+                paginator_info = response['resource_stats']['paginatorInfo']
+                data = response['resource_stats']['data']
+                
+                all_stats.extend(data)
+                
+                has_next_page = paginator_info.get('hasMorePages', False)
+                page += 1
+                await asyncio.sleep(0.2)  # Be nice to the API
+            except Exception as e:
+                self.logger.error(f"Error during resource_stats pagination: {e}")
+                break
+
+        self.logger.info(f"Fetched a total of {len(all_stats)} records from the resource_stats endpoint.")
+        return all_stats
+
+    async def get_latest_total_resource_stats(self) -> Optional[ResourceStat]:
+        """
+        Fetches only the most recent global resource stat.
+        """
+        query = """
+        query GetLatestResourceStat {
+          resource_stats(first: 1, orderBy: { column: DATE, order: DESC }) {
+            data {
+              date
+              money
+              food
+              steel
+              aluminum
+              gasoline
+              munitions
+              uranium
+              coal
+              oil
+              iron
+              bauxite
+              lead
+            }
+          }
+        }
+        """
+        try:
+            response = await self._make_graphql_request(query=query)
+            if not response or 'resource_stats' not in response or not response['resource_stats']['data']:
+                self.logger.warning("Could not retrieve latest resource stat.")
+                return None
+            
+            return response['resource_stats']['data'][0]
+        except Exception as e:
+            self.logger.error(f"Error fetching latest resource stat: {e}")
+            return None
+
     async def get_wars(self, alliance_id: Optional[List[int]] = None, nation_id: Optional[List[int]] = None,
                       active: Optional[bool] = None, status: Optional[str] = None, 
                       before: Optional[datetime] = None, after: Optional[datetime] = None,
@@ -1725,7 +2017,7 @@ class V3GraphQuery:
                 }}
                 """
                 
-                data = await self._request_with_retries(query, timeout=30, cache_ttl=300)
+                data = await self._request_with_retries(query, timeout=60, cache_ttl=300)
                 wars_paginator = (data.get('data') or {}).get('wars') if data else {}
                 if not wars_paginator or not wars_paginator.get('data'):
                     break
@@ -1759,7 +2051,7 @@ class V3GraphQuery:
         try:
             query = f"""
             query {{
-              wars(id: {war_id}) {{
+              wars(id: [{war_id}]) {{
                 data {{
                   attacks {{
                     {self._war_attack_fields()}
@@ -1893,4 +2185,3 @@ async def get_all_treaties(api_key: Optional[str] = None, logger: Optional[loggi
     """Convenience function to get all treaties."""
     query_instance = create_v3_query_instance(api_key=api_key, logger=logger)
     return await query_instance.get_all_treaties_paginated()
-

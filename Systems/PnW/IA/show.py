@@ -1,4 +1,4 @@
-import asyncio
+﻿import asyncio
 import discord
 from discord.ext import commands
 from discord import app_commands
@@ -17,6 +17,12 @@ from Systems.Functions.user_data_manager import UserDataManager
 from Systems.PnW.Util.calc import AllianceCalculator
 from Systems.Functions import emoji as emoji_mod
 from Systems.Functions.emoji import improvement_emoji_map, mention
+from Systems.Functions.irs_nations_db import IRSNationsDB
+from Systems.Functions.db_paths import NW_NATIONS_DB
+from Systems.Functions.nation_emoji_store import get_nation_emoji, strip_emoji_prefix
+from pathlib import Path
+
+DATABASE_FILE = NW_NATIONS_DB
 
 # Top-level autocomplete wrapper to bind correctly without relying on Cog method binding
 async def autocomplete_show_target(interaction: discord.Interaction, current: str) -> List[app_commands.Choice[str]]:
@@ -53,6 +59,11 @@ class ShowCog(commands.Cog):
             self._cached_military_analysis: Optional[Dict[str, Any]] = None
             self._cached_nation_id_for_military: Optional[str] = None
             
+            # Cache for autocomplete performance
+            self._nations_cache: List[Dict[str, Any]] = []
+            self._cache_timestamp: float = 0
+            self._cache_ttl: float = 300  # 5 minutes
+            
             # Initialize query instance
             try:
                 self.query_instance = create_v3_query_instance()
@@ -83,8 +94,98 @@ class ShowCog(commands.Cog):
             self.calculator = None
 
 
+    async def _get_nights_watch_nations(self) -> List[Dict[str, Any]]:
+        """Get all NW nations from the database with caching."""
+        import time
+        current_time = time.time()
+        
+        # Return cached data if still valid
+        if (self._nations_cache and 
+            current_time - self._cache_timestamp < self._cache_ttl):
+            return self._nations_cache
+        
+        try:
+            db = IRSNationsDB(str(DATABASE_FILE))
+            nations = await db.get_all_nations()
+            
+            # Update cache
+            self._nations_cache = nations
+            self._cache_timestamp = current_time
+            
+            return nations
+        except Exception as e:
+            self.logger.error(f"Error getting NW nations: {e}")
+            # Return cached data if available, even if expired
+            return self._nations_cache if self._nations_cache else []
+
+    async def refresh_nations_cache(self):
+        """Force refresh the nations cache."""
+        try:
+            db = IRSNationsDB(str(DATABASE_FILE))
+            nations = await db.get_all_nations()
+            
+            import time
+            self._nations_cache = nations
+            self._cache_timestamp = time.time()
+            
+            self.logger.info(f"Nations cache refreshed with {len(nations)} nations")
+        except Exception as e:
+            self.logger.error(f"Error refreshing nations cache: {e}")
+
+    async def _get_nation_from_db(self, query: str) -> Optional[Dict[str, Any]]:
+        """
+        Look up a nation from local DBs by name, leader name, or ID.
+        Checks GlobalNationsDB first (covers all nations), falls back to
+        IRSNationsDB for NW members. Returns None if not found in either.
+        """
+        try:
+            from PnWHarvester.db.global_nations_db import GlobalNationsDB
+            from Systems.Functions.db_paths import EP_NATIONS_DB, GLOBAL_NATIONS_DB
+
+            global_db = GlobalNationsDB(str(GLOBAL_NATIONS_DB))
+            ep_db     = IRSNationsDB(str(EP_NATIONS_DB))
+
+            async def _attach_cities(nation, db):
+                nation['cities'] = await db.get_cities_for_nation(int(nation['id']))
+                return nation
+
+            if query.isdigit():
+                nation_id = int(query)
+                nation = await global_db.get_nation(nation_id)
+                if nation:
+                    return await _attach_cities(nation, global_db)
+                # GlobalNations.db may not be populated yet — fall back to NW DB
+                nation = await ep_db.get_nation(nation_id)
+                if nation:
+                    return await _attach_cities(nation, ep_db)
+                return None
+
+            # Name search — GlobalNationsDB has an indexed get_nation_by_name
+            nation = await global_db.get_nation_by_name(query)
+            if nation:
+                return await _attach_cities(nation, global_db)
+
+            # Fall back to NW DB (covers case where GlobalNations.db isn't populated)
+            ep_nations = await ep_db.get_all_nations()
+            for n in ep_nations:
+                if (n.get('nation_name') or '').lower() == query.lower():
+                    return await _attach_cities(n, ep_db)
+
+            return None
+        except Exception as e:
+            self.logger.error(f"Error getting nation from DB: {e}")
+            return None
+
+    async def show_target_autocomplete(self, interaction: discord.Interaction, current: str) -> List[app_commands.Choice[str]]:
+        """Optimized autocomplete for show command — All nations from local databases."""
+        try:
+            from Systems.Functions.autocomplete_utils import nation_autocomplete
+            return await nation_autocomplete(current, nw_only=False, limit=25)
+        except Exception as e:
+            self.logger.error(f"Error in show autocomplete: {e}")
+            return []
+
     def _log_error(self, error_msg: str, exception: Optional[Exception] = None, context: str = ""):
-        """Centralized error logging with tracking."""
         try:
             self.error_count += 1
             
@@ -177,11 +278,82 @@ class ShowCog(commands.Cog):
             if ' ' in target_data or any(char in target_data for char in ['-', '_', '.', "'"]):
                 return None, 'nation_name'
             
-            # Otherwise, assume it's a leader name
-            return None, 'leader_name'
+            # For single-word inputs, try nation name first (more common case)
+            # Single words could be either nation names or leader names
+            return None, 'nation_name'
         except Exception as e:
             self._log_error(f"Error in parse_target_input: {str(e)}", e, "parse_target_input")
             return None, 'leader_name'
+
+    async def fetch_external_nation_with_wars(self, target_data: str, input_type: str) -> Optional[Dict[str, Any]]:
+        """
+        Fetch a non-EP nation from the P&W API including their last inactive war
+        and all attacks so loot can be calculated.  Marks the result with
+        _is_external=True so the view knows to show the Loot button.
+        """
+        if not self.query_instance:
+            return None
+        try:
+            nation_fields = self.query_instance._nation_fields()
+            war_attack_fields = (
+                "id date type att_id def_id "
+                "money_looted coal_looted oil_looted uranium_looted iron_looted "
+                "bauxite_looted lead_looted gasoline_looted munitions_looted "
+                "steel_looted aluminum_looted food_looted"
+            )
+            war_fields = (
+                "id date end_date war_type winner_id att_id def_id "
+                "att_money_looted def_money_looted "
+                f"attacks {{ {war_attack_fields} }}"
+            )
+
+            bankrec_fields = (
+                "id date sender_id sender_type receiver_id receiver_type "
+                "money coal oil uranium iron bauxite lead "
+                "gasoline munitions steel aluminum food"
+            )
+            bankrecs_fragment = (
+                f"bankrecs(limit:30 orderBy:{{column:DATE order:DESC}}) "
+                f"{{ {bankrec_fields} }}"
+            )
+
+            if input_type in ('nation_id', 'nation_link'):
+                gql = (
+                    f"{{ nations(first:1 id:{target_data}) "
+                    f"{{ data {{ {nation_fields} "
+                    f"wars(limit:1 status:INACTIVE orderBy:{{column:DATE order:DESC}}) "
+                    f"{{ {war_fields} }} "
+                    f"{bankrecs_fragment} }} }} }}"
+                )
+            elif input_type == 'nation_name':
+                safe = target_data.replace('"', '\\"')
+                gql = (
+                    f'{{ nations(first:1 nation_name:"{safe}") '
+                    f"{{ data {{ {nation_fields} "
+                    f"wars(limit:1 status:INACTIVE orderBy:{{column:DATE order:DESC}}) "
+                    f"{{ {war_fields} }} "
+                    f"{bankrecs_fragment} }} }} }}"
+                )
+            else:  # leader_name
+                safe = target_data.replace('"', '\\"')
+                gql = (
+                    f'{{ nations(first:1 leader_name:"{safe}") '
+                    f"{{ data {{ {nation_fields} "
+                    f"wars(limit:1 status:INACTIVE orderBy:{{column:DATE order:DESC}}) "
+                    f"{{ {war_fields} }} "
+                    f"{bankrecs_fragment} }} }} }}"
+                )
+
+            raw = await self.query_instance._request_with_retries(gql, timeout=30)
+            nations = (raw or {}).get('data', {}).get('nations', {}).get('data', [])
+            if not nations:
+                return None
+            nation = nations[0]
+            nation['_is_external'] = True
+            return nation
+        except Exception as e:
+            self._log_error("Error fetching external nation with wars", e, "fetch_external_nation_with_wars")
+            return None
 
     async def fetch_target_nation(self, target_data: str, input_type: str) -> Optional[Dict[str, Any]]:
         """
@@ -230,11 +402,23 @@ class ShowCog(commands.Cog):
                     target_nation = await self.query_instance.get_nation_by_id(str(nation_id))
                 elif input_type == 'nation_name':
                     target_nation = await self.query_instance.get_nation_by_name(target_data)
+                    # If nation name search fails and it's a single word, try leader name
+                    if not target_nation and ' ' not in target_data:
+                        self.logger.info(f"No nation found by name '{target_data}', trying as leader name")
+                        target_nation = await self.query_instance.get_nation_by_leader(target_data)
                 elif input_type == 'leader_name':
                     target_nation = await self.query_instance.get_nation_by_leader(target_data)
+                    # If leader name search fails and it's a single word, try nation name
+                    if not target_nation and ' ' not in target_data:
+                        self.logger.info(f"No nation found by leader name '{target_data}', trying as nation name")
+                        target_nation = await self.query_instance.get_nation_by_name(target_data)
                 
                 if not target_nation:
-                    self.logger.info(f"No nation found for {input_type}: {target_data}")
+                    # More specific logging for single-word inputs
+                    if ' ' not in target_data and input_type in ['nation_name', 'leader_name']:
+                        self.logger.info(f"No nation found for '{target_data}' as {input_type} (and tried alternative)")
+                    else:
+                        self.logger.info(f"No nation found for {input_type}: {target_data}")
                     return None
                 
                 self.logger.info(f"Successfully fetched nation: {target_nation.get('nation_name', 'Unknown')}")
@@ -353,14 +537,90 @@ class ShowCog(commands.Cog):
         city_status = "✅ Available" if stats.get('city_cooldown_remaining', 1) == 0 else f"❌ {stats.get('city_cooldown_remaining')} turns"
         project_status = "✅ Available" if stats.get('project_cooldown_remaining', 1) == 0 else f"❌ {stats.get('project_cooldown_remaining')} turns"
 
-        basic_stats_list = [
-            f"**Alliance:** {stats.get('alliance_name', 'None')}",
-            f"**Position:** {stats.get('alliance_position', 'Unknown')}",
-            f"**Vacation Mode:** {'Yes' if stats.get('is_vacation') else 'No'}",
-            f"**Color:** {stats.get('color', 'Unknown')}"
+        # Format policy/color values — strip enum prefix (e.g. "DomesticPolicy.OPEN_MARKETS" → "Open Markets")
+        def _fmt_enum(raw: str) -> str:
+            if not raw or raw.lower() == 'unknown':
+                return 'Unknown'
+            # Strip any "EnumClass." prefix
+            if '.' in raw:
+                raw = raw.split('.', 1)[-1]
+            return raw.replace('_', ' ').title()
+
+        raw_domestic = stats.get('domestic_policy', 'Unknown') or 'Unknown'
+        domestic_policy_fmt = _fmt_enum(raw_domestic)
+        raw_color = stats.get('color', 'Unknown') or 'Unknown'
+        color_fmt = raw_color.replace('_', ' ').title()
+
+        # Project slot calculation
+        total_infra_val = stats.get('total_infra', 0) or 0
+        infra_slots = int(total_infra_val // 4000)
+        base_slots = 1 + infra_slots
+
+        wars_won_val = stats.get('wars_won', 0) or 0
+        wars_lost_val = stats.get('wars_lost', 0) or 0
+        war_bonus = 1 if (wars_won_val + wars_lost_val) >= 100 else 0
+
+        rdc_bonus = 0
+        mrc_bonus = 0
+        if nation.get('research_and_development_center'):
+            rdc_bonus = 2  # adds 2 slots, costs 1 = net +1
+        if nation.get('military_research_center'):
+            mrc_bonus = 2  # adds 2 slots, costs 1 = net +1
+
+        total_project_slots = base_slots + war_bonus + rdc_bonus + mrc_bonus
+
+        # Count currently used project slots directly from nation dict fields
+        all_project_fields = [
+            'advanced_pirate_economy', 'central_intelligence_agency', 'fallout_shelter',
+            'guiding_satellite', 'iron_dome', 'military_doctrine', 'military_research_center',
+            'military_salvage', 'missile_launch_pad', 'nuclear_launch_facility',
+            'nuclear_research_facility', 'pirate_economy', 'propaganda_bureau', 'space_program',
+            'spy_satellite', 'surveillance_network', 'vital_defense_system',
+            'arms_stockpile', 'bauxite_works', 'clinical_research_center',
+            'emergency_gasoline_reserve', 'green_technologies', 'international_trade_center',
+            'iron_works', 'mass_irrigation', 'recycling_initiative',
+            'specialized_police_training_program', 'telecommunications_satellite',
+            'uranium_enrichment_program', 'activity_center', 'advanced_engineering_corps',
+            'arable_land_agency', 'bureau_of_domestic_affairs', 'center_for_civil_engineering',
+            'government_support_agency', 'research_and_development_center',
+            'mars_landing', 'moon_landing'
         ]
+        used_slots = sum(1 for f in all_project_fields if nation.get(f))
+
+        # Resolve alliance name — API nested object → DB flat field → alliance_id fallback
+        alliance_obj = nation.get('alliance') or {}
+        _raw_alliance_name = (
+            (alliance_obj.get('name') if isinstance(alliance_obj, dict) else None)
+            or stats.get('alliance_name')
+            or nation.get('alliance_name')
+        )
+        if not _raw_alliance_name:
+            _aid = nation.get('alliance_id') or (alliance_obj.get('id') if isinstance(alliance_obj, dict) else None)
+            if str(_aid or '') == '14225':
+                _raw_alliance_name = 'Nights Watch'
+        alliance_name = _raw_alliance_name or 'None'
+
+        # Strip enum prefix from alliance_position (e.g. "AlliancePositionEnum.MEMBER" → "Member")
+        raw_pos = stats.get('alliance_position', 'Unknown') or 'Unknown'
+        alliance_position_fmt = _fmt_enum(raw_pos)
+
+        # Nights Watch emoji for NW members
+        _ep_prefix = '🌙 ' if alliance_name == 'Nights Watch' else ''
+
+        basic_stats_list = [
+            f"**Alliance:** {_ep_prefix}{alliance_name}",
+        ]
+        if alliance_name and alliance_name.lower() not in ('none', 'no alliance', ''):
+            basic_stats_list.append(f"**Position:** {alliance_position_fmt}")
+        # Only show vacation mode line if actually in VM
+        if stats.get('is_vacation'):
+            vm_turns = stats.get('vacation_mode_turns', 0)
+            basic_stats_list.append(f"**Vacation Mode:** {vm_turns} turns")
+        basic_stats_list.append(f"**Color:** {color_fmt}")
         if stats.get('is_beige'):
             basic_stats_list.append(f"**Beige Turns:** {stats.get('beige_turns')}")
+        avg_infra = stats.get('avg_city_infra', 0)
+        total_infra_disp = stats.get('total_infra', 0)
         basic_stats_list.extend([
             f"**Discord:** {stats.get('discord_info', 'Not linked')}",
             f"**Last Active:** {stats.get('last_active_formatted', 'Unknown')}",
@@ -368,31 +628,13 @@ class ShowCog(commands.Cog):
             f"**New City:** {city_status}",
             f"**Cities:** {stats.get('num_cities', 0)}",
             f"**Powered Cities:** {stats.get('powered_cities_count', 0)}/{stats.get('total_cities', 0)}",
-            f"**Infra Tier:** {stats.get('infra_tier', 'Unknown')}",
-            f"**Total Infrastructure:** {stats.get('total_infra', 0):,.0f}",
-            f"**Avg Infrastructure/City:** {stats.get('avg_city_infra', 0):,.0f}",
-            f"**Domestic Policy:** {stats.get('domestic_policy', 'Unknown')}"
+            f"**Infra:** {avg_infra:,.0f} / {total_infra_disp:,.0f}",
+            f"**Domestic Policy:** {domestic_policy_fmt}",
+            f"**Project Slots:** {used_slots}/{total_project_slots}",
         ])
         embed.add_field(name=f"{emoji_mod.mention('Info') or '📊'} Basic Statistics", value="\n".join(basic_stats_list), inline=False)
 
-        # Get military analysis data
-        safe_money_looted = stats.get('money_looted', 0)
-        wars_won = stats.get('wars_won', 0)
-        wars_lost = stats.get('wars_lost', 0)
-        war_ratio = stats.get('war_win_ratio', 0.0)
-        mmr_string = (military_analysis.get('mmr_string', None) or 'N/A')
-
-        military_info = (
-            f"**War Policy:** {stats.get('war_policy', 'Unknown')}\n"
-            f"**Score:** {nation.get('score', 0):,}\n"
-            f"**MMR:** {mmr_string}\n"
-            f"**Espionage Available:** {'✅ Yes' if nation.get('espionage_available', False) else '❌ No'}\n"
-            f"**Money Looted:** ${safe_money_looted:,}\n"
-            f"**Wars Won:** {wars_won}\n"
-            f"**Wars Lost:** {wars_lost}\n"
-            f"**Win Rate:** {war_ratio:.1f}%"
-        )
-        embed.add_field(name=f"{emoji_mod.mention('wars') or '⚔️'} War Stats", value=military_info, inline=False)
+        # War Stats are shown on the Military page — not on the main embed
 
         try:
             if self.calculator:
@@ -500,6 +742,19 @@ class ShowCog(commands.Cog):
             
             nation_id, input_type = await self.parse_target_input(target)
             
+            # Strip any emoji prefix from autocomplete selection
+            clean_target = strip_emoji_prefix(target)
+
+            db_nation = await self._get_nation_from_db(clean_target)
+            if db_nation:
+                embed = await self.create_comprehensive_nation_embed(db_nation)
+                view = NationSearchView(ctx.author.id, self.bot, self, db_nation)
+                if is_slash and interaction is not None and hasattr(interaction, 'followup'):
+                    await interaction.followup.send(embed=embed, view=view)
+                else:
+                    await ctx.send(embed=embed, view=view)
+                return
+
             # Ensure nation_id is a string if it's used as target_data
             target_data_for_fetch = target if input_type in ['nation_name', 'leader_name'] else (str(nation_id) if nation_id is not None else None)
 
@@ -510,7 +765,10 @@ class ShowCog(commands.Cog):
                     await ctx.send("Could not parse target. Please provide a valid nation name, leader name, nation ID, or P&W link.")
                 return
 
-            nation_data = await self.fetch_target_nation(target_data_for_fetch, input_type)
+            nation_data = await self.fetch_external_nation_with_wars(target_data_for_fetch, input_type)
+            # Fallback to standard fetch if the war-enriched query fails
+            if not nation_data:
+                nation_data = await self.fetch_target_nation(target_data_for_fetch, input_type)
 
             if not nation_data:
                 embed = discord.Embed(
@@ -615,6 +873,58 @@ class NationSearchView(discord.ui.View):
             error_embed = discord.Embed(title="❌ Error", description=str(e), color=discord.Color.red())
             await interaction.followup.send(embed=error_embed, ephemeral=True) # type: ignore
 
+    @discord.ui.button(label="Revenue", style=discord.ButtonStyle.success, emoji="💰")
+    async def revenue_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        try:
+            await interaction.response.defer()
+            view = SearchNationRevenueView(self.author_id, self.bot, self.search_cog, self.nation)
+            embed = await view.generate_nation_revenue_embed()
+            if interaction.message:
+                if embed is not None:
+                    await interaction.followup.edit_message(message_id=interaction.message.id, embed=embed, view=view)
+                else:
+                    await interaction.followup.edit_message(message_id=interaction.message.id, content="Could not generate revenue embed.", view=view)
+            else:
+                if embed is not None:
+                    await interaction.followup.send(embed=embed, view=view)
+                else:
+                    await interaction.followup.send("Could not generate revenue embed.", ephemeral=True)
+        except Exception as e:
+            self.search_cog._log_error("Error opening Revenue view", e, "NationSearchView.revenue_button")
+            error_embed = discord.Embed(title="❌ Error", description=str(e), color=discord.Color.red())
+            await interaction.followup.send(embed=error_embed, ephemeral=True) # type: ignore
+
+    @discord.ui.button(label="Loot", style=discord.ButtonStyle.danger, emoji="⚔️")
+    async def loot_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        try:
+            await interaction.response.defer()
+            nation = self.nation
+            # If the nation was loaded from the local DB it won't have war/bankrec data.
+            # Fetch it from the API now so the loot calculation has everything it needs.
+            if not nation.get('_is_external'):
+                nation_id = nation.get('nation_id') or nation.get('id')
+                if nation_id:
+                    enriched = await self.search_cog.fetch_external_nation_with_wars(
+                        str(nation_id), 'nation_id'
+                    )
+                    if enriched:
+                        nation = enriched
+                    else:
+                        # Fallback: mark as external so loot view still attempts calculation
+                        nation = dict(nation)
+                        nation['_is_external'] = True
+            view = SearchNationLootView(self.author_id, self.bot, self.search_cog, nation)
+            prices = await view._get_prices()
+            embed = await view.generate_loot_embed(prices)
+            if interaction.message:
+                await interaction.followup.edit_message(message_id=interaction.message.id, embed=embed, view=view)
+            else:
+                await interaction.followup.send(embed=embed, view=view)
+        except Exception as e:
+            self.search_cog._log_error("Error opening Loot view", e, "NationSearchView.loot_button")
+            error_embed = discord.Embed(title="❌ Error", description=str(e), color=discord.Color.red())
+            await interaction.followup.send(embed=error_embed, ephemeral=True) # type: ignore
+
 
 class SearchNationMilitaryView(discord.ui.View):
     """View for displaying military analysis for a single nation (search context)."""
@@ -658,6 +968,34 @@ class SearchNationMilitaryView(discord.ui.View):
                 title=f"{emoji_mod.mention('Military') or '⚔️'} {nation_name} - Military",
                 color=discord.Color.dark_red()
             )
+
+            # ── War Stats (top of military page) ──────────────────────────────
+            def _fmt_enum(raw: str) -> str:
+                if not raw or raw.lower() == 'unknown':
+                    return 'Unknown'
+                if '.' in raw:
+                    raw = raw.split('.', 1)[-1]
+                return raw.replace('_', ' ').title()
+
+            raw_war_policy = self.nation.get('war_policy', 'Unknown') or 'Unknown'
+            war_policy_fmt = _fmt_enum(raw_war_policy)
+            money_looted_raw = float(self.nation.get('money_looted', 0) or 0)
+            wars_won_n = int(self.nation.get('wars_won', 0) or 0)
+            wars_lost_n = int(self.nation.get('wars_lost', 0) or 0)
+            total_wars_n = wars_won_n + wars_lost_n
+            win_rate_n = (wars_won_n / total_wars_n * 100) if total_wars_n > 0 else 0.0
+            mmr_str = military_data.get('mmr_string', None) or 'N/A'
+            war_stats_value = (
+                f"**War Policy:** {war_policy_fmt}\n"
+                f"**Score:** {self.nation.get('score', 0):,}\n"
+                f"**MMR:** {mmr_str}\n"
+                f"**Espionage Available:** {'✅ Yes' if self.nation.get('espionage_available', False) else '❌ No'}\n"
+                f"**Money Looted:** ${money_looted_raw:,.2f}\n"
+                f"**Wars Won:** {wars_won_n}\n"
+                f"**Wars Lost:** {wars_lost_n}\n"
+                f"**Win Rate:** {win_rate_n:.1f}%"
+            )
+            embed.add_field(name=f"{emoji_mod.mention('wars') or '⚔️'} War Stats", value=war_stats_value, inline=False)
 
             # Extract relevant data from military_data
             current_units = military_data.get('current_units', {})
@@ -811,13 +1149,21 @@ class SearchNationImprovementsView(discord.ui.View):
             nuclear_power = improvements.get('uranium_power', 0)
             wind_power = improvements.get('wind_power', 0)
             
-            power_improvements = [
-                f"{mention(improvement_emojis.get('coal_power'))} **Coal Power:** {coal_power:,}",
-                f"{mention(improvement_emojis.get('oil_power'))} **Oil Power:** {oil_power:,}",
-                f"{mention(improvement_emojis.get('uranium_power'))} **Nuclear Power:** {nuclear_power:,}",
-                f"{mention(improvement_emojis.get('wind_power'))} **Wind Power:** {wind_power:,}",
-            ]
-            embed.add_field(name=f"Power", value="\n".join(power_improvements), inline=False)
+            # Build power improvements list, only showing non-zero values
+            power_improvements = []
+            
+            if coal_power > 0:
+                power_improvements.append(f"{mention(improvement_emojis.get('coal_power_plant'))} **Coal Power:** {coal_power:,}")
+            if oil_power > 0:
+                power_improvements.append(f"{mention(improvement_emojis.get('oil_power_plant'))} **Oil Power:** {oil_power:,}")
+            if nuclear_power > 0:
+                power_improvements.append(f"{mention(improvement_emojis.get('nuclear_power_plant'))} **Nuclear Power:** {nuclear_power:,}")
+            if wind_power > 0:
+                power_improvements.append(f"{mention(improvement_emojis.get('wind_power_plant'))} **Wind Power:** {wind_power:,}")
+            
+            # Only add the Power field if there are power plants
+            if power_improvements:
+                embed.add_field(name=f"Power", value="\n".join(power_improvements), inline=False)
 
             # Military Improvements
             barracks = improvements.get('barracks', 0)
@@ -825,13 +1171,21 @@ class SearchNationImprovementsView(discord.ui.View):
             hangar = improvements.get('hangar', 0)
             drydock = improvements.get('drydock', 0)
             
-            military_improvements = [
-                f"{mention(improvement_emojis.get('barracks'))} **Barracks:** {barracks:,}",
-                f"{mention(improvement_emojis.get('factory'))} **Factories:** {factory:,}",
-                f"{mention(improvement_emojis.get('hangar'))} **Hangars:** {hangar:,}",
-                f"{mention(improvement_emojis.get('drydock'))} **Drydocks:** {drydock:,}"
-            ]
-            embed.add_field(name=f"Military", value="\n".join(military_improvements), inline=False)
+            # Build military improvements list, only showing non-zero values
+            military_improvements = []
+            
+            if barracks > 0:
+                military_improvements.append(f"{mention(improvement_emojis.get('barracks'))} **Barracks:** {barracks:,}")
+            if factory > 0:
+                military_improvements.append(f"{mention(improvement_emojis.get('factory'))} **Factories:** {factory:,}")
+            if hangar > 0:
+                military_improvements.append(f"{mention(improvement_emojis.get('hangar'))} **Hangars:** {hangar:,}")
+            if drydock > 0:
+                military_improvements.append(f"{mention(improvement_emojis.get('drydock'))} **Drydocks:** {drydock:,}")
+            
+            # Only add the Military field if there are military improvements
+            if military_improvements:
+                embed.add_field(name=f"Military", value="\n".join(military_improvements), inline=False)
 
             # Resource Improvements
             coal_mine = improvements.get('coal_mine', 0)
@@ -846,20 +1200,35 @@ class SearchNationImprovementsView(discord.ui.View):
             munitions_factory = improvements.get('munitions_factory', 0)
             oil_refinery = improvements.get('oil_refinery', 0)
             
-            resource_improvements = [
-                f"{mention(improvement_emojis.get('coal_mine'))} **Coal Mines:** {coal_mine:,}",
-                f"{mention(improvement_emojis.get('oil_well'))} **Oil Wells:** {oil_well:,}",
-                f"{mention(improvement_emojis.get('uranium_mine'))} **Uranium Mines:** {uranium_mine:,}",
-                f"{mention(improvement_emojis.get('iron_mine'))} **Iron Mines:** {iron_mine:,}",
-                f"{mention(improvement_emojis.get('bauxite_mine'))} **Bauxite Mines:** {bauxite_mine:,}",
-                f"{mention(improvement_emojis.get('lead_mine'))} **Lead Mines:** {lead_mine:,}",
-                f"{mention(improvement_emojis.get('farm'))} **Farms:** {farm:,}",
-                f"{mention(improvement_emojis.get('steel_mill'))} **Steel Mills:** {steel_mill:,}",
-                f"{mention(improvement_emojis.get('aluminum_refinery'))} **Aluminum Refineries:** {aluminum_refinery:,}",
-                f"{mention(improvement_emojis.get('munitions_factory'))} **Munitions Factories:** {munitions_factory:,}",
-                f"{mention(improvement_emojis.get('oil_refinery'))} **Oil Refineries:** {oil_refinery:,}",
-            ]
-            embed.add_field(name=f"Resources", value="\n".join(resource_improvements), inline=False)
+            # Build resource improvements list, only showing non-zero values
+            resource_improvements = []
+            
+            if coal_mine > 0:
+                resource_improvements.append(f"{mention(improvement_emojis.get('coal_mine'))} **Coal Mines:** {coal_mine:,}")
+            if oil_well > 0:
+                resource_improvements.append(f"{mention(improvement_emojis.get('oil_well'))} **Oil Wells:** {oil_well:,}")
+            if uranium_mine > 0:
+                resource_improvements.append(f"{mention(improvement_emojis.get('uranium_mine'))} **Uranium Mines:** {uranium_mine:,}")
+            if iron_mine > 0:
+                resource_improvements.append(f"{mention(improvement_emojis.get('iron_mine'))} **Iron Mines:** {iron_mine:,}")
+            if bauxite_mine > 0:
+                resource_improvements.append(f"{mention(improvement_emojis.get('bauxite_mine'))} **Bauxite Mines:** {bauxite_mine:,}")
+            if lead_mine > 0:
+                resource_improvements.append(f"{mention(improvement_emojis.get('lead_mine'))} **Lead Mines:** {lead_mine:,}")
+            if farm > 0:
+                resource_improvements.append(f"{mention(improvement_emojis.get('farm'))} **Farms:** {farm:,}")
+            if steel_mill > 0:
+                resource_improvements.append(f"{mention(improvement_emojis.get('steel_mill'))} **Steel Mills:** {steel_mill:,}")
+            if aluminum_refinery > 0:
+                resource_improvements.append(f"{mention(improvement_emojis.get('aluminum_refinery'))} **Aluminum Refineries:** {aluminum_refinery:,}")
+            if munitions_factory > 0:
+                resource_improvements.append(f"{mention(improvement_emojis.get('munitions_factory'))} **Munitions Factories:** {munitions_factory:,}")
+            if oil_refinery > 0:
+                resource_improvements.append(f"{mention(improvement_emojis.get('oil_refinery'))} **Oil Refineries:** {oil_refinery:,}")
+            
+            # Only add the Resources field if there are resource improvements
+            if resource_improvements:
+                embed.add_field(name=f"Resources", value="\n".join(resource_improvements), inline=False)
 
             # Civil Improvements
             police_station = improvements.get('police_station', 0)
@@ -871,17 +1240,29 @@ class SearchNationImprovementsView(discord.ui.View):
             shopping_mall = improvements.get('shopping_mall', 0)
             stadium = improvements.get('stadium', 0)
             
-            civil_improvements = [
-                f"{mention(improvement_emojis.get('police_station'))} **Police Stations:** {police_station:,}",
-                f"{mention(improvement_emojis.get('hospital'))} **Hospitals:** {hospital:,}",
-                f"{mention(improvement_emojis.get('recycling_center'))} **Recycling Centers:** {recycling_center:,}",
-                f"{mention(improvement_emojis.get('subway'))} **Subways:** {subway:,}",
-                f"{mention(improvement_emojis.get('supermarket'))} **Supermarkets:** {supermarket:,}",
-                f"{mention(improvement_emojis.get('bank'))} **Banks:** {bank:,}",
-                f"{mention(improvement_emojis.get('shopping_mall'))} **Shopping Malls:** {shopping_mall:,}",
-                f"{mention(improvement_emojis.get('stadium'))} **Stadiums:** {stadium:,}"
-            ]
-            embed.add_field(name=f"Econ", value="\n".join(civil_improvements), inline=False)
+            # Build civil improvements list, only showing non-zero values
+            civil_improvements = []
+            
+            if police_station > 0:
+                civil_improvements.append(f"{mention(improvement_emojis.get('police_station'))} **Police Stations:** {police_station:,}")
+            if hospital > 0:
+                civil_improvements.append(f"{mention(improvement_emojis.get('hospital'))} **Hospitals:** {hospital:,}")
+            if recycling_center > 0:
+                civil_improvements.append(f"{mention(improvement_emojis.get('recycling_center'))} **Recycling Centers:** {recycling_center:,}")
+            if subway > 0:
+                civil_improvements.append(f"{mention(improvement_emojis.get('subway'))} **Subways:** {subway:,}")
+            if supermarket > 0:
+                civil_improvements.append(f"{mention(improvement_emojis.get('supermarket'))} **Supermarkets:** {supermarket:,}")
+            if bank > 0:
+                civil_improvements.append(f"{mention(improvement_emojis.get('bank'))} **Banks:** {bank:,}")
+            if shopping_mall > 0:
+                civil_improvements.append(f"{mention(improvement_emojis.get('shopping_mall'))} **Shopping Malls:** {shopping_mall:,}")
+            if stadium > 0:
+                civil_improvements.append(f"{mention(improvement_emojis.get('stadium'))} **Stadiums:** {stadium:,}")
+            
+            # Only add the Econ field if there are civil improvements
+            if civil_improvements:
+                embed.add_field(name=f"Econ", value="\n".join(civil_improvements), inline=False)
 
             return embed
 
@@ -910,6 +1291,485 @@ class SearchNationImprovementsView(discord.ui.View):
             self.search_cog._log_error("Error in back_button (Improvements)", e, "SearchNationImprovementsView.back_button")
             error_embed = discord.Embed(title="❌ Error", description=str(e), color=discord.Color.red())
             await interaction.followup.send(embed=error_embed, ephemeral=True) # type: ignore
+
+class SearchNationRevenueView(discord.ui.View):
+    """View for displaying revenue breakdown for a single nation (reuses already-loaded nation data)."""
+
+    def __init__(self, author_id: int, bot: commands.Bot, search_cog: 'ShowCog', nation: Dict[str, Any]):
+        super().__init__()
+        self.author_id = author_id
+        self.bot = bot
+        self.search_cog = search_cog
+        self.nation = nation
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if interaction.user.id != self.author_id:
+            await interaction.response.send_message("You are not authorized to use this menu.", ephemeral=True)
+            return False
+        return True
+
+    async def generate_nation_revenue_embed(self) -> Optional[discord.Embed]:
+        """Generate a revenue embed using the existing nation data — no extra API/DB queries."""
+        try:
+            from Systems.PnW.EA.rev import RevenueCommand
+            from Systems.PnW.Util.rev_correct import calculate_full_revenue_with_query
+            from Systems.Functions.database_manager import get_latest_resource_prices, get_latest_game_data, get_latest_game_info
+            from datetime import timezone
+
+            nation_name = self.nation.get('nation_name', 'Unknown Nation')
+            nation_id = self.nation.get('nation_id') or self.nation.get('id')
+            flag_url = self.nation.get('flag_url') or self.nation.get('flag')
+            color_name = (self.nation.get('color') or 'beige').lower()
+
+            # Load context from DB (no API calls)
+            market_prices: Dict[str, float] = {}
+            color_map: Dict[str, float] = {}
+            game_date = None
+            try:
+                price_data = await get_latest_resource_prices()
+                if price_data:
+                    market_prices = {res: p['sell'] for res, p in price_data.items()}
+            except Exception:
+                pass
+            try:
+                colors = await get_latest_game_data("colors")
+                if colors:
+                    color_map = {c['color'].lower(): float(c.get('turn_bonus', 0)) for c in colors}
+            except Exception:
+                pass
+            try:
+                from datetime import datetime
+                gi = await get_latest_game_info()
+                if gi and gi.get('game_date'):
+                    parsed = datetime.fromisoformat(gi['game_date'].replace("Z", "+00:00"))
+                    game_date = parsed.replace(tzinfo=timezone.utc) if parsed.tzinfo is None else parsed
+            except Exception:
+                pass
+
+            color_bonus = color_map.get(color_name, 0.0)
+
+            # War detection
+            at_war = (
+                (self.nation.get('offensive_wars_count') or 0) > 0 or
+                (self.nation.get('defensive_wars_count') or 0) > 0
+            )
+            wars = self.nation.get('wars') or []
+            if wars:
+                at_war = any(w.get('turnsleft', 0) > 0 for w in wars)
+
+            rev_data = await calculate_full_revenue_with_query(
+                nation_data=self.nation,
+                query_instance=None,
+                is_war=at_war,
+                radiation_index=self.nation.get('radiation_index', 1000.0),
+                domestic_policy=self.nation.get('domestic_policy', ''),
+                color_bonus=color_bonus,
+                market_prices=market_prices or None,
+                game_date=game_date,
+            )
+
+            gross_cash_t = rev_data.get('gross_income', 0)
+            gross_cash_d = gross_cash_t * 12
+            mil_upkeep_t = rev_data.get('military_upkeep_turn', 0)
+            imp_upkeep_t = rev_data.get('improvement_upkeep_turn', 0)
+            alliance_tax_t = rev_data.get('alliance_tax_money_turn', 0)
+            alliance_tax_r = rev_data.get('alliance_tax_rate', 0)
+            net_after_tax_t = rev_data.get('net_income', 0)
+            resources = rev_data.get('resources', {})
+            prices = rev_data.get('prices', {})
+            population = rev_data.get('nationpop', 0)
+            color_bonus_t = rev_data.get('color_bonus_turn', 0)
+            total_mon_t = rev_data.get('monetary_net_num', gross_cash_t)
+
+            _COLOR_HEX = {
+                "beige": 0xDDDDDD, "white": 0xFFFFFF, "grey": 0x808080, "black": 0x000000,
+                "gold": 0xFFD700, "pink": 0xFFC0CB, "brown": 0xA52A2A, "mint": 0x98FF98,
+                "green": 0x00FF00, "aqua": 0x00FFFF, "lavender": 0xE6E6FA, "lime": 0x00FF00,
+                "maroon": 0x800000, "olive": 0x808000, "yellow": 0xFFFF00, "turquoise": 0x40E0D0,
+                "red": 0xFF0000, "purple": 0x800080, "orange": 0xFFA500, "blue": 0x0000FF,
+            }
+            embed_color = _COLOR_HEX.get(color_name, 0x2B2D31)
+
+            embed = discord.Embed(
+                title=f"Revenue: {nation_name}",
+                url=f"https://politicsandwar.com/nation/id={nation_id}" if nation_id else None,
+                color=embed_color,
+            )
+            if flag_url:
+                embed.set_thumbnail(url=flag_url)
+
+            def ftd(per_turn: float, prefix: str = '') -> str:
+                return f"{prefix}{per_turn:,.2f}/t\u2002|\u2002{prefix}{per_turn*12:,.2f}/d"
+
+            embed.description = (
+                f"**Population:** {population:,}\n"
+                f"**Color Bonus:** {ftd(color_bonus_t, '$')}"
+            )
+
+            embed.add_field(
+                name="Upkeep",
+                value=(
+                    f"**Military:** {ftd(-mil_upkeep_t, '$')}\n"
+                    f"**Improvement:** {ftd(-imp_upkeep_t, '$')}"
+                ),
+                inline=False,
+            )
+
+            tax_note = ""
+            if alliance_tax_r > 0:
+                tax_note = (
+                    f"\n*Tax ({alliance_tax_r*100:.0f}%): "
+                    f"-${alliance_tax_t:,.2f}/t "
+                    f"→ ${net_after_tax_t:,.2f}/t after tax*"
+                )
+            embed.add_field(
+                name="Net Income (Gross)",
+                value=f"**${gross_cash_t:,.2f}/t**\u2002|\u2002**${gross_cash_d:,.2f}/d**{tax_note}",
+                inline=False,
+            )
+
+            RESOURCE_ORDER = ['food', 'coal', 'oil', 'uranium', 'lead', 'iron', 'bauxite',
+                               'gasoline', 'munitions', 'steel', 'aluminum']
+            rss_lines = []
+            for rss in RESOURCE_ORDER:
+                amt_t = resources.get(rss, 0.0)
+                if amt_t == 0.0:
+                    continue
+                sign = "+" if amt_t >= 0 else ""
+                rss_emoji = emoji_mod.resource_emoji(rss) or rss.title()
+                rss_lines.append(f"{rss_emoji} {sign}{amt_t:,.2f}/t\u2002|\u2002{sign}{amt_t*12:,.2f}/d")
+            if rss_lines:
+                embed.add_field(name="Resource Net Income", value="\n".join(rss_lines), inline=False)
+
+            embed.add_field(
+                name="Total Monetary Value",
+                value=f"**${total_mon_t:,.2f}/t**\u2002|\u2002**${total_mon_t*12:,.2f}/d**",
+                inline=False,
+            )
+            embed.set_footer(text="Revenue shown gross (before alliance tax). Tax shown as informational only.")
+            return embed
+
+        except Exception as e:
+            self.search_cog._log_error("Error generating nation revenue embed", e, "SearchNationRevenueView.generate_nation_revenue_embed")
+            return discord.Embed(title="❌ Revenue Error", description=f"Failed to calculate revenue: {str(e)}", color=discord.Color.red())
+
+    @discord.ui.button(label="Back to Nation", style=discord.ButtonStyle.primary, emoji=emoji_mod.get_partial('Home') or "🏠")
+    async def back_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        try:
+            await interaction.response.defer()
+            view = NationSearchView(self.author_id, self.bot, self.search_cog, self.nation)
+            embed = await self.search_cog.create_comprehensive_nation_embed(self.nation)
+            if interaction.message:
+                if embed is not None:
+                    await interaction.followup.edit_message(message_id=interaction.message.id, embed=embed, view=view)
+                else:
+                    await interaction.followup.edit_message(message_id=interaction.message.id, content="Could not generate nation embed.", view=view)
+            else:
+                if embed is not None:
+                    await interaction.followup.send(embed=embed, view=view)
+                else:
+                    await interaction.followup.send("Could not generate nation embed.", ephemeral=True)
+        except Exception as e:
+            self.search_cog._log_error("Error in back_button (Revenue)", e, "SearchNationRevenueView.back_button")
+            error_embed = discord.Embed(title="❌ Error", description=str(e), color=discord.Color.red())
+            await interaction.followup.send(embed=error_embed, ephemeral=True) # type: ignore
+
+
+# ── Loot estimation view (external / non-EP nations only) ─────────────────────
+
+_LOOT_MULTIPLIERS = {
+    "war_type": {
+        "ordinary_war": 0.10,
+        "raid":         0.075,
+        "attrition_war":0.12,
+        "blockade":     0.05,
+    },
+    "offense": {"pirate": 1.4, "ape": 1.1},
+    "defense":  {"fortress": 0.9, "moneybags": 0.6, "turtle": 0.95, "pirate": 1.1},
+}
+_LOOT_RESOURCES = ["coal", "oil", "uranium", "iron", "bauxite", "lead",
+                   "gasoline", "munitions", "steel", "aluminum", "food"]
+_TURNS_PER_DAY  = 12
+
+
+def _loot_turns_since_last_looted(nation: Dict[str, Any]) -> int:
+    """Fallback: estimate turns since last loot from war data (used when no holdings row)."""
+    from datetime import timezone as _tz
+    nation_id = str(nation.get("id", ""))
+    for war in sorted(nation.get("wars") or [], key=lambda w: w.get("date") or "", reverse=True):
+        if str(war.get("def_id")) != nation_id or str(war.get("winner_id")) == nation_id:
+            continue
+        for dk in ("end_date", "date"):
+            raw = war.get(dk)
+            if raw:
+                try:
+                    dt = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+                    if dt.tzinfo is None:
+                        dt = dt.replace(tzinfo=_tz.utc)
+                    return max(0, int((datetime.now(_tz.utc) - dt).total_seconds() / 7200))
+                except Exception:
+                    pass
+        break
+    return 0
+
+
+def _loot_calc_pct(war_policy_def: str, att_pirate: bool, att_ape: bool) -> float:
+    """Calculate loot percentage for a raid given attacker/defender policies."""
+    base = 0.075  # raid base
+    att_mult = 1.4 if att_pirate else 1.0
+    if att_ape:
+        att_mult *= 1.1
+    def_mult = _LOOT_MULTIPLIERS["defense"].get((war_policy_def or "").lower(), 1.0)
+    return base * att_mult * def_mult
+
+
+async def _loot_calculate(nation: Dict[str, Any], prices: Dict[str, float]) -> Dict[str, Any]:
+    """
+    Holdings-only loot projection.
+
+    Reads holdings.db for the nation's current cash and resources.
+    Holdings are already net of all spending and transfers — no revenue
+    accumulation is added on top (that would double-count since deduct_spending
+    already tracks purchases).
+
+    Falls back to revenue-based estimation ONLY if no holdings row exists.
+    """
+    from Systems.Functions.db_paths import HOLDINGS_DB_STR
+    from PnWHarvester.db.holdings_db import HoldingsDB
+
+    nation_id  = int(nation.get("id") or nation.get("nation_id") or 0)
+    def_policy = (nation.get("war_policy") or "").lower()
+    if "." in def_policy:
+        def_policy = def_policy.rsplit(".", 1)[-1].lower()
+
+    holdings = None
+    if nation_id:
+        try:
+            hdb = HoldingsDB(HOLDINGS_DB_STR)
+            holdings = await hdb.get_holdings(nation_id)
+        except Exception as e:
+            import logging as _logging
+            _logging.getLogger(__name__).warning(f"_loot_calculate: holdings lookup failed for {nation_id}: {e}")
+
+    if holdings:
+        cash_pool      = max(0.0, float(holdings.get("money_held") or 0))
+        rss_pool       = {r: max(0.0, float(holdings.get(f"{r}_held") or 0)) for r in _LOOT_RESOURCES}
+        confidence     = holdings.get("confidence", "tracked")
+        last_loot_date = holdings.get("last_loot_date")
+    else:
+        # Fallback: revenue accumulation (no holdings row)
+        cash_pt = 0.0
+        rss_pt  = {r: 0.0 for r in _LOOT_RESOURCES}
+        if nation.get("cities"):
+            try:
+                from Systems.PnW.Util.rev_correct import calculate_full_revenue_with_query
+                rev     = await calculate_full_revenue_with_query(nation_data=nation, is_war=False)
+                cash_pt = float(rev.get("gross_income") or 0.0)
+                rss_pt  = {r: float((rev.get("resources") or {}).get(r) or 0.0) for r in _LOOT_RESOURCES}
+            except Exception:
+                pass
+        turns = _loot_turns_since_last_looted(nation)
+        if turns == 0:
+            turns = 7 * _TURNS_PER_DAY
+        eff_turns  = min(turns, 30 * _TURNS_PER_DAY)
+        cash_pool  = max(0.0, cash_pt * eff_turns)
+        rss_pool   = {r: max(0.0, rss_pt.get(r, 0) * eff_turns) for r in _LOOT_RESOURCES}
+        confidence = "estimated"
+        last_loot_date = None
+
+    rss_pool_value = sum(rss_pool[r] * prices.get(r, 0) for r in _LOOT_RESOURCES)
+    total_pool     = cash_pool + rss_pool_value
+
+    def _project(att_pirate: bool, att_ape: bool) -> Dict[str, float]:
+        pct       = _loot_calc_pct(def_policy, att_pirate, att_ape)
+        p_cash    = cash_pool * pct
+        p_rss     = {r: rss_pool[r] * pct for r in _LOOT_RESOURCES}
+        p_rss_val = sum(p_rss[r] * prices.get(r, 0) for r in _LOOT_RESOURCES)
+        return {
+            "pct":       pct,
+            "cash":      p_cash,
+            "rss":       p_rss,
+            "rss_value": p_rss_val,
+            "total":     p_cash + p_rss_val,
+        }
+
+    return {
+        "holdings":        holdings,
+        "confidence":      confidence,
+        "last_loot_date":  last_loot_date,
+        "cash_pool":       cash_pool,
+        "rss_pool":        rss_pool,
+        "rss_pool_value":  rss_pool_value,
+        "total_pool":      total_pool,
+        "def_policy":      def_policy,
+        "pirate_ape":      _project(True,  True),
+        "pirate_only":     _project(True,  False),
+        "no_pirate":       _project(False, False),
+    }
+
+
+class SearchNationLootView(discord.ui.View):
+    """Loot estimation view for non-EP nations (requires war+attack data from API)."""
+
+    def __init__(self, author_id: int, bot: commands.Bot, search_cog: 'ShowCog', nation: Dict[str, Any]):
+        super().__init__()
+        self.author_id = author_id
+        self.bot = bot
+        self.search_cog = search_cog
+        self.nation = nation
+        self._prices: Dict[str, float] = {}   # populated lazily
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if interaction.user.id != self.author_id:
+            await interaction.response.send_message("You are not authorized to use this menu.", ephemeral=True)
+            return False
+        return True
+
+    async def _get_prices(self) -> Dict[str, float]:
+        if self._prices:
+            return self._prices
+        try:
+            import Systems.Functions.database_manager as db_manager
+            raw = await db_manager.get_latest_resource_prices()
+            if raw:
+                self._prices = {k.lower(): v.get("sell", 0) for k, v in raw.items() if v.get("sell", 0) > 0}
+        except Exception:
+            pass
+        return self._prices
+
+    async def generate_loot_embed(self, prices: Optional[Dict[str, float]] = None) -> discord.Embed:
+        """Build the loot embed from holdings.db — shows actual holdings and loot scenarios."""
+        nation      = self.nation
+        nation_name = nation.get('nation_name', 'Unknown Nation')
+        nation_id   = nation.get('nation_id') or nation.get('id')
+        flag_url    = nation.get('flag_url') or nation.get('flag')
+
+        p      = prices or self._prices or {}
+        result = await _loot_calculate(nation, p)
+
+        holdings       = result["holdings"]
+        confidence     = result["confidence"]
+        last_loot_date = result["last_loot_date"]
+        cash_pool      = result["cash_pool"]
+        rss_pool       = result["rss_pool"]
+        rss_pool_value = result["rss_pool_value"]
+        total_pool     = result["total_pool"]
+        def_policy_raw = result["def_policy"]
+        pirate_ape     = result["pirate_ape"]
+        pirate_only    = result["pirate_only"]
+        no_pirate      = result["no_pirate"]
+
+        def _fmt_policy(raw: str) -> str:
+            if not raw:
+                return "Unknown"
+            if "." in raw:
+                raw = raw.rsplit(".", 1)[-1]
+            return raw.replace("_", " ").title()
+
+        def_policy_str = _fmt_policy(def_policy_raw)
+
+        embed = discord.Embed(
+            title=f"⚔️ Loot Estimate: {nation_name}",
+            url=f"https://politicsandwar.com/nation/id={nation_id}" if nation_id else None,
+            color=discord.Color.dark_gold(),
+        )
+        if flag_url:
+            embed.set_thumbnail(url=flag_url)
+
+        # ── Holdings snapshot ─────────────────────────────────────────────────
+        if holdings:
+            conf_label = {"fresh": "🟢 Fresh", "tracked": "🟡 Tracked", "estimated": "⚪ Estimated"}.get(confidence, confidence)
+            last_loot_str = "Unknown"
+            if last_loot_date:
+                try:
+                    from datetime import timezone as _tz
+                    ld = datetime.fromisoformat(str(last_loot_date).replace(" ", "T").replace("Z", "+00:00"))
+                    if ld.tzinfo is None:
+                        ld = ld.replace(tzinfo=_tz.utc)
+                    days_ago = (datetime.now(_tz.utc) - ld).days
+                    last_loot_str = f"{ld.strftime('%Y-%m-%d')} ({days_ago}d ago)"
+                except Exception:
+                    last_loot_str = str(last_loot_date)
+
+            embed.add_field(
+                name=f"🏦 Holdings ({conf_label})",
+                value=(
+                    f"**Cash:** ${cash_pool:,.2f}\n"
+                    f"**Resources:** ${rss_pool_value:,.2f}\n"
+                    f"**Total:** ${total_pool:,.2f}\n"
+                    f"**Last loot reset:** {last_loot_str}"
+                ),
+                inline=False,
+            )
+
+            # Resource breakdown — only show non-zero resources
+            rss_lines = []
+            for r in _LOOT_RESOURCES:
+                amt = rss_pool.get(r, 0)
+                if amt > 0.01:
+                    val = amt * p.get(r, 0)
+                    rss_lines.append(f"**{r.title()}:** {amt:,.2f} (${val:,.0f})")
+            if rss_lines:
+                embed.add_field(
+                    name="📦 Resource Holdings",
+                    value="\n".join(rss_lines) or "None",
+                    inline=False,
+                )
+        else:
+            embed.add_field(
+                name="🏦 Holdings",
+                value=f"⚪ No holdings data — using revenue estimate\n**Est. Cash Pool:** ${cash_pool:,.2f}\n**Est. Resource Pool:** ${rss_pool_value:,.2f}\n**Total:** ${total_pool:,.2f}",
+                inline=False,
+            )
+
+        # ── Loot scenarios ────────────────────────────────────────────────────
+        embed.add_field(
+            name=f"💰 Projected Loot (Defender: {def_policy_str})",
+            value=(
+                f"**Pirate + APE** ({pirate_ape['pct']*100:.1f}%): **${pirate_ape['total']:,.2f}**\n"
+                f"  ↳ Cash: ${pirate_ape['cash']:,.2f} | Resources: ${pirate_ape['rss_value']:,.2f}\n"
+                f"**Pirate only** ({pirate_only['pct']*100:.1f}%): **${pirate_only['total']:,.2f}**\n"
+                f"  ↳ Cash: ${pirate_only['cash']:,.2f} | Resources: ${pirate_only['rss_value']:,.2f}\n"
+                f"**No Pirate** ({no_pirate['pct']*100:.1f}%): **${no_pirate['total']:,.2f}**\n"
+                f"  ↳ Cash: ${no_pirate['cash']:,.2f} | Resources: ${no_pirate['rss_value']:,.2f}"
+            ),
+            inline=False,
+        )
+
+        # ── Nation context ────────────────────────────────────────────────────
+        score    = nation.get('score', 0)
+        cities   = nation.get('num_cities', 0)
+        def_wars = nation.get('defensive_wars_count', 0)
+        embed.add_field(
+            name="🏛️ Nation Info",
+            value=(
+                f"**Score:** {score:,}\n"
+                f"**Cities:** {cities}\n"
+                f"**War Policy:** {def_policy_str}\n"
+                f"**Active Def. Wars:** {def_wars}/3"
+            ),
+            inline=False,
+        )
+
+        source = "holdings.db + revenue" if holdings else "revenue estimate (no holdings row)"
+        embed.set_footer(text=f"Source: {source} | Loot % = base 7.5% × attacker policy × defender policy")
+        return embed
+
+    @discord.ui.button(label="Back to Nation", style=discord.ButtonStyle.primary, emoji=emoji_mod.get_partial('Home') or "🏠")
+    async def back_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        try:
+            await interaction.response.defer()
+            view = NationSearchView(self.author_id, self.bot, self.search_cog, self.nation)
+            embed = await self.search_cog.create_comprehensive_nation_embed(self.nation)
+            if interaction.message:
+                await interaction.followup.edit_message(message_id=interaction.message.id, embed=embed, view=view)
+            else:
+                await interaction.followup.send(embed=embed, view=view)
+        except Exception as e:
+            self.search_cog._log_error("Error in back_button (Loot)", e, "SearchNationLootView.back_button")
+            error_embed = discord.Embed(title="❌ Error", description=str(e), color=discord.Color.red())
+            await interaction.followup.send(embed=error_embed, ephemeral=True) # type: ignore
+
 
 async def setup(bot: commands.Bot):
     """Setup function to add the ShowCog to the bot."""

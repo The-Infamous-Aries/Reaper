@@ -118,14 +118,12 @@ class NationImprovementsStats(TypedDict):
     hangar: int
     drydock: int
 
-
 class BuildingRatios(TypedDict):
     barracks_ratio: float
     factories_ratio: float
     airforcebase_ratio: float
     drydock_ratio: float
     mmr_string: str
-
 
 IMPROVEMENT_KEYS = [
     'coalpower', 'oilpower', 'nuclearpower', 'windpower',
@@ -137,7 +135,67 @@ IMPROVEMENT_KEYS = [
 ]
 
 # Add parent directory to path for config import
-sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+PROJECT_FIELD_MAPPING = {
+    # Strategic Military Projects
+    'Iron Dome': 'iron_dome',
+    'Missile Launch Pad': 'missile_launch_pad',
+    'Nuclear Research Facility': 'nuclear_research_facility',
+    'Nuclear Launch Facility': 'nuclear_launch_facility',
+    'Vital Defense System': 'vital_defense_system',
+    'Propaganda Bureau': 'propaganda_bureau',
+    'Military Research Center': 'military_research_center',
+    'Space Program': 'space_program',
+    'Activity Center': 'activity_center',
+    'Advanced Engineering Corps': 'advanced_engineering_corps',
+    'Advanced Pirate Economy': 'advanced_pirate_economy',
+    'Arable Land Agency': 'arable_land_agency',
+    'Arms Stockpile': 'arms_stockpile',
+    'Bauxite Works': 'bauxite_works',
+    'Bureau of Domestic Affairs': 'bureau_of_domestic_affairs',
+    'Center Civil Engineering': 'center_for_civil_engineering',
+    'Clinical Research Center': 'clinical_research_center',
+    'Emergency Gasoline Reserve': 'emergency_gasoline_reserve',
+    'Fallout Shelter': 'fallout_shelter',
+    'Green Technologies': 'green_technologies',
+    'Government Support Agency': 'government_support_agency',
+    'Guiding Satellite': 'guiding_satellite',
+    'Central Intelligence Agency': 'central_intelligence_agency',
+    'International Trade Center': 'international_trade_center',
+    'Iron Works': 'iron_works',
+    'Mass Irrigation': 'mass_irrigation',
+    'Military Doctrine': 'military_doctrine',
+    'Military Salvage': 'military_salvage',
+    'Mars Landing': 'mars_landing',
+    'Moon Landing': 'moon_landing',
+    'Pirate Economy': 'pirate_economy',
+    'Recycling Initiative': 'recycling_initiative',
+    'Research & Development Center': 'research_and_development_center',
+    'Specialized Police Training Program': 'specialized_police_training_program',
+    'Spy Satellite': 'spy_satellite',
+    'Surveillance Network': 'surveillance_network',
+    'Telecommunications Satellite': 'telecommunications_satellite',
+    'Uranium Enrichment Program': 'uranium_enrichment_program'
+}
+
+def has_project(nation: Dict[str, Any], project_name: str) -> bool:
+    """Check if a nation has a specific project."""
+    if not isinstance(nation, dict):
+        return False
+    if not isinstance(project_name, str) or not project_name.strip():
+        return False
+    
+    field_name = PROJECT_FIELD_MAPPING.get(project_name)
+    if field_name:
+        return bool(nation.get(field_name, False))
+    
+    # Fallback for bitmask if individual fields are not present
+    project_bits = nation.get('project_bits')
+    if isinstance(project_bits, int):
+        # This part needs the actual bit values for each project, which are not currently defined.
+        # For now, we rely on the boolean fields.
+        pass
+        
+    return False
 
 class AllianceCalculator:
     def __init__(self, query_instance: Optional[V3GraphQuery] = None):
@@ -169,6 +227,10 @@ class AllianceCalculator:
             self.logger.warning(f"Input validation failed: {field_name} expected {expected_type}, got {type(data)}")
             return False
         return True
+    
+    def has_project(self, nation: Dict[str, Any], project_name: str) -> bool:
+        """Check if a nation has a specific project."""
+        return has_project(nation, project_name)
     
     def _safe_get(self, data: dict, key: str, default: Any = None, expected_type: Optional[type] = None) -> Any:
         try:
@@ -223,7 +285,7 @@ class AllianceCalculator:
                         improvements['bauxitemine'] += self._safe_get(city, 'bauxite_mine', 0, int)
                         improvements['leadmine'] += self._safe_get(city, 'lead_mine', 0, int)
                         improvements['farm'] += self._safe_get(city, 'farm', 0, int)
-                        improvements['gasrefinery'] += self._safe_get(city, 'gasrefinery', 0, int)
+                        improvements['gasrefinery'] += self._safe_get(city, 'oil_refinery', 0, int)
                         improvements['steelmill'] += self._safe_get(city, 'steel_mill', 0, int)
                         improvements['aluminumrefinery'] += self._safe_get(city, 'aluminum_refinery', 0, int)
                         improvements['munitionsfactory'] += self._safe_get(city, 'munitions_factory', 0, int)
@@ -237,7 +299,7 @@ class AllianceCalculator:
                         improvements['subway'] += self._safe_get(city, 'subway', 0, int)
                         improvements['recyclingcenter'] += self._safe_get(city, 'recycling_center', 0, int)
                         improvements['barracks'] += self._safe_get(city, 'barracks', 0, int)
-                        improvements['hangar'] += self._safe_get(city, 'airforcebase', 0, int)
+                        improvements['hangar'] += self._safe_get(city, 'hangar', 0, int)
                         improvements['drydock'] += self._safe_get(city, 'drydock', 0, int)             
                 except Exception as e:
                     self._log_error(f"Error processing improvements for nation: {e}", e, "_calculate_improvements_data_sync")
@@ -394,70 +456,6 @@ class AllianceCalculator:
             self._log_error("Error combining alliance nations for calculation", e, "_combine_alliance_nations_for_calc_sync")
             return []
     
-    def has_project(self, nation: Dict[str, Any], project_name: str) -> bool:
-        if not self._validate_input(nation, dict, "nation"):
-            # self.logger.warning("has_project: Invalid nation input")
-            return False    
-        if not self._validate_input(project_name, str, "project_name"):
-            # self.logger.warning("has_project: Invalid project_name input")
-            return False       
-        if not project_name.strip():
-            # self.logger.warning("has_project: Empty project_name provided")
-            return False        
-        try:
-            # self.logger.debug(f"has_project: Checking project '{project_name}'")
-            project_field_mapping = {
-                # Strategic Military Projects
-                'Iron Dome': 'iron_dome',
-                'Missile Launch Pad': 'missile_launch_pad',
-                'Nuclear Research Facility': 'nuclear_research_facility',
-                'Nuclear Launch Facility': 'nuclear_launch_facility',
-                'Vital Defense System': 'vital_defense_system',
-                'Propaganda Bureau': 'propaganda_bureau',
-                'Military Research Center': 'military_research_center',
-                'Space Program': 'space_program',
-                'Activity Center': 'activity_center',
-                'Advanced Engineering Corps': 'advanced_engineering_corps',
-                'Advanced Pirate Economy': 'advanced_pirate_economy',
-                'Arable Land Agency': 'arable_land_agency',
-                'Arms Stockpile': 'arms_stockpile',
-                'Bauxite Works': 'bauxite_works',
-                'Bureau of Domestic Affairs': 'bureau_of_domestic_affairs',
-                'Center Civil Engineering': 'center_for_civil_engineering',
-                'Clinical Research Center': 'clinical_research_center',
-                'Emergency Gasoline Reserve': 'emergency_gasoline_reserve',
-                'Fallout Shelter': 'fallout_shelter',
-                'Green Technologies': 'green_technologies',
-                'Government Support Agency': 'government_support_agency',
-                'Guiding Satellite': 'guiding_satellite',
-                'Central Intelligence Agency': 'central_intelligence_agency',
-                'International Trade Center': 'international_trade_center',
-                'Iron Works': 'iron_works',
-                'Mass Irrigation': 'mass_irrigation',
-                'Military Doctrine': 'military_doctrine',
-                'Military Salvage': 'military_salvage',
-                'Mars Landing': 'mars_landing',
-                'Moon Landing': 'moon_landing',
-                'Pirate Economy': 'pirate_economy',
-                'Recycling Initiative': 'recycling_initiative',
-                'Research & Development Center': 'research_and_development_center',
-                'Specialized Police Training Program': 'specialized_police_training_program',
-                'Spy Satellite': 'spy_satellite',
-                'Surveillance Network': 'surveillance_network',
-                'Telecommunications Satellite': 'telecommunications_satellite',
-                'Uranium Enrichment Program': 'uranium_enrichment_program'
-            }
-            field_name = project_field_mapping.get(project_name)
-            if field_name:
-                project_value = self._safe_get(nation, field_name, False, bool)
-                return project_value
-            else:
-                self.logger.warning(f"has_project: Unknown project name '{project_name}'")
-                return False        
-        except Exception as e:
-            self._log_error(f"Unexpected error checking project '{project_name}'", e, "has_project")
-            return False
-    
     def _get_active_nations_sync(self, nations: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         if not self._validate_input(nations, list, "nations"):
             self.logger.warning("get_active_nations: Invalid nations input, returning empty list")
@@ -501,6 +499,7 @@ class AllianceCalculator:
         if not self._validate_input(nation, dict, "nation"):
             return {}
 
+        military_data = None
         try:
             purchase_limits = self.calculate_military_purchase_limits(nation)
             daily_soldiers = purchase_limits.get('soldiers_daily', 0.0)
@@ -559,7 +558,10 @@ class AllianceCalculator:
             self._log_error("Error analyzing nation military", e, "analyze_nation_military")
             return {}
         finally:
-            self.logger.debug(f"Military data produced by analyze_nation_military: {military_data}")
+            if military_data is not None:
+                self.logger.debug(f"Military data produced by analyze_nation_military: {military_data}")
+            else:
+                self.logger.debug("Military data is None in analyze_nation_military")
 
     def _format_last_active_time(self, last_active_str: str) -> str:
         """Format last active time into human-readable format."""
@@ -669,9 +671,14 @@ class AllianceCalculator:
                 'nation_id': nation_id,
                 'nation_name': self._safe_get(nation, 'nation_name', 'Unknown Nation'),
                 'leader_name': self._safe_get(nation, 'leader_name', 'Unknown Leader'),
-                'alliance_name': self._safe_get(nation, 'alliance_name', 'None'),
+                'alliance_name': (
+                    (nation.get('alliance') or {}).get('name')
+                    or self._safe_get(nation, 'alliance_name', None)
+                    or ('Nights Watch' if str(self._safe_get(nation, 'alliance_id', '') or '') == '14225' else None)
+                ),
                 'alliance_position': self._safe_get(nation, 'alliance_position', 'Unknown').title(),
                 'flag_url': self._safe_get(nation, 'flag'),
+                'vacation_mode_turns': self._safe_get(nation, 'vacation_mode_turns', 0, int),
                 'is_vacation': self._safe_get(nation, 'vacation_mode_turns', 0, int) > 0,
                 'is_beige': self._safe_get(nation, 'color', '').lower() == 'beige',
                 'beige_turns': self._safe_get(nation, 'beige_turns', 0, int),
@@ -738,7 +745,7 @@ class AllianceCalculator:
         improvements_raw = {
             'coal_power': 0, 'oil_power': 0, 'nuclear_power': 0, 'wind_power': 0,
             'coal_mine': 0, 'oil_well': 0, 'uranium_mine': 0, 'iron_mine': 0, 'bauxite_mine': 0, 'lead_mine': 0, 'farm': 0,
-            'steel_mill': 0, 'aluminum_refinery': 0, 'munitions_factory': 0, 'gasrefinery': 0,
+            'steel_mill': 0, 'aluminum_refinery': 0, 'munitions_factory': 0, 'gasrefinery': 0, 'oil_refinery': 0,
             'police_station': 0, 'hospital': 0, 'recycling_center': 0, 'subway': 0,
             'supermarket': 0, 'bank': 0, 'shopping_mall': 0, 'stadium': 0,
             'barracks': 0, 'factory': 0, 'hangar': 0, 'drydock': 0
@@ -747,15 +754,46 @@ class AllianceCalculator:
         for city in cities:
             if not isinstance(city, dict):
                 continue
-            for key in improvements_raw:
-                improvements_raw[key] += self._safe_get(city, key, 0, int)
-        
-        # Compatibility for hangar key
-        if 'airforcebase' in cities[0]:
-             for city in cities:
-                if not isinstance(city, dict):
-                    continue
-                improvements_raw['hangar'] += self._safe_get(city, 'airforcebase', 0, int)
+            
+            # Power plants
+            improvements_raw['coal_power'] += int(city.get('coal_power', 0) or 0)
+            improvements_raw['oil_power'] += int(city.get('oil_power', 0) or 0)
+            improvements_raw['nuclear_power'] += int(city.get('nuclear_power', 0) or 0)
+            improvements_raw['wind_power'] += int(city.get('wind_power', 0) or 0)
+            
+            # Mines and farms
+            improvements_raw['coal_mine'] += int(city.get('coal_mine', 0) or 0)
+            improvements_raw['oil_well'] += int(city.get('oil_well', 0) or 0)
+            improvements_raw['uranium_mine'] += int(city.get('uranium_mine', 0) or 0)
+            improvements_raw['iron_mine'] += int(city.get('iron_mine', 0) or 0)
+            improvements_raw['bauxite_mine'] += int(city.get('bauxite_mine', 0) or 0)
+            improvements_raw['lead_mine'] += int(city.get('lead_mine', 0) or 0)
+            improvements_raw['farm'] += int(city.get('farm', 0) or 0)
+            
+            # Refineries and factories
+            improvements_raw['steel_mill'] += int(city.get('steel_mill', 0) or 0)
+            improvements_raw['aluminum_refinery'] += int(city.get('aluminum_refinery', 0) or 0)
+            improvements_raw['munitions_factory'] += int(city.get('munitions_factory', 0) or 0)
+            improvements_raw['oil_refinery'] += int(city.get('oil_refinery', 0) or 0)
+            
+            # Military improvements
+            improvements_raw['barracks'] += int(city.get('barracks', 0) or 0)
+            improvements_raw['factory'] += int(city.get('factory', 0) or 0)
+            improvements_raw['hangar'] += int(city.get('hangar', 0) or 0)
+            improvements_raw['drydock'] += int(city.get('drydock', 0) or 0)
+            
+            # Compatibility for airforcebase key
+            improvements_raw['hangar'] += int(city.get('airforcebase', 0) or 0)
+            
+            # Civil improvements
+            improvements_raw['police_station'] += int(city.get('police_station', 0) or 0)
+            improvements_raw['hospital'] += int(city.get('hospital', 0) or 0)
+            improvements_raw['recycling_center'] += int(city.get('recycling_center', 0) or 0)
+            improvements_raw['subway'] += int(city.get('subway', 0) or 0)
+            improvements_raw['supermarket'] += int(city.get('supermarket', 0) or 0)
+            improvements_raw['bank'] += int(city.get('bank', 0) or 0)
+            improvements_raw['shopping_mall'] += int(city.get('shopping_mall', 0) or 0)
+            improvements_raw['stadium'] += int(city.get('stadium', 0) or 0)
 
 
         total_power = improvements_raw['coal_power'] + improvements_raw['oil_power'] + improvements_raw['nuclear_power'] + improvements_raw['wind_power']
@@ -769,9 +807,6 @@ class AllianceCalculator:
             'avg_improvements_per_city': total_improvements / len(cities) if cities else 0.0
         }
         return results
-
-
-
 
     def get_infrastructure_tier(self, avg_infra: float) -> str:
         """Returns the infrastructure tier based on average infrastructure."""
@@ -1201,52 +1236,72 @@ class AllianceCalculator:
         total_drydocks = 0
         if isinstance(cities_data, list) and len(cities_data) > 0:
             for city in cities_data:
-                total_barracks += city.get('barracks', 0)
-                total_factories += city.get('factory', 0)
-                total_hangars += city.get('hangar', 0)
-                total_drydocks += city.get('drydock', 0)
+                total_barracks += city.get('barracks') or 0
+                total_factories += city.get('factory') or 0
+                total_hangars += city.get('hangar') or 0
+                total_drydocks += city.get('drydock') or 0
         else:
             avg_improvements_per_city = 2 
             total_barracks = num_cities * avg_improvements_per_city
             total_factories = num_cities * avg_improvements_per_city
             total_hangars = num_cities * avg_improvements_per_city
             total_drydocks = num_cities * avg_improvements_per_city
+
+        # Military Research levels (capacity upgrades)
+        # Always read from military_research dict; flat fields are legacy fallbacks
+        # military_research may be stored as a JSON string in the DB — parse it if needed
+        _mr_raw = nation.get('military_research') or {}
+        if isinstance(_mr_raw, str):
+            import json as _json
+            try:
+                _mr_raw = _json.loads(_mr_raw)
+            except Exception:
+                _mr_raw = {}
+        mr: dict = _mr_raw if isinstance(_mr_raw, dict) else {}
+        ground_cap_lvl = int(mr.get('ground_capacity', 0) or nation.get('ground_capacity', 0) or 0)
+        air_cap_lvl    = int(mr.get('air_capacity',    0) or nation.get('air_capacity',    0) or 0)
+        naval_cap_lvl  = int(mr.get('naval_capacity',  0) or nation.get('naval_capacity',  0) or 0)
+
+        # Per-level capacity bonuses (capped at max levels per spec)
+        # Ground: +3000 soldiers & +250 tanks per level (max 20 levels → 60k soldiers / 5000 tanks)
+        # Air:    +15 aircraft per level (max 20 levels → 300 aircraft)
+        # Naval:  +5 ships per level (max 20 levels → 100 ships)
+        ground_cap_lvl = min(ground_cap_lvl, 20)
+        air_cap_lvl    = min(air_cap_lvl,    20)
+        naval_cap_lvl  = min(naval_cap_lvl,  20)
+
+        soldier_cap_bonus  = ground_cap_lvl * 3000
+        tank_cap_bonus     = ground_cap_lvl * 250
+        aircraft_cap_bonus = air_cap_lvl    * 15
+        ship_cap_bonus     = naval_cap_lvl  * 5
+
         soldier_daily_limit = total_barracks * 1000 
         tank_daily_limit = total_factories * 50    
         aircraft_daily_limit = total_hangars * 3   
         ship_daily_limit = total_drydocks * 1
-        ground_research = nation.get('ground_research', 0)
-        air_research = nation.get('air_research', 0)
-        naval_research = nation.get('naval_research', 0)
-        aircraft_daily_limit += air_research * 15 
-        tank_daily_limit += ground_research * 250 
-        soldier_daily_limit += ground_research * 3000  
-        ship_daily_limit += naval_research * 5        
+
+        # Daily purchase limits also scale with capacity upgrades
+        soldier_daily_limit  += soldier_cap_bonus
+        tank_daily_limit     += tank_cap_bonus
+        aircraft_daily_limit += aircraft_cap_bonus
+        ship_daily_limit     += ship_cap_bonus
+
         if self.has_project(nation, 'Propaganda Bureau'):
             soldier_daily_limit = int(soldier_daily_limit * 1.10)
             tank_daily_limit = int(tank_daily_limit * 1.10)
             aircraft_daily_limit = int(aircraft_daily_limit * 1.10)
             ship_daily_limit = int(ship_daily_limit * 1.10)
+
         soldier_max_capacity = total_barracks * 3000 
         tank_max_capacity = total_factories * 250    
         aircraft_max_capacity = total_hangars * 15  
         ship_max_capacity = total_drydocks * 5    
-        aircraft_max_capacity += air_research * 15 
-        tank_max_capacity += ground_research * 250  
-        soldier_max_capacity += ground_research * 3000  
-        ship_max_capacity += naval_research * 5  
-        ground_bonus = nation.get('ground_capacity', 0) or 0
-        air_bonus = nation.get('air_capacity', 0) or 0
-        naval_bonus = nation.get('naval_capacity', 0) or 0
-        if not ground_bonus and not air_bonus and not naval_bonus:
-            military_research = nation.get('military_research', {})
-            ground_bonus = military_research.get('ground_capacity', 0) or 0
-            air_bonus = military_research.get('air_capacity', 0) or 0
-            naval_bonus = military_research.get('naval_capacity', 0) or 0
-        soldier_max_capacity += ground_bonus
-        tank_max_capacity += ground_bonus 
-        aircraft_max_capacity += air_bonus
-        ship_max_capacity += naval_bonus
+
+        soldier_max_capacity  += soldier_cap_bonus
+        tank_max_capacity     += tank_cap_bonus
+        aircraft_max_capacity += aircraft_cap_bonus
+        ship_max_capacity     += ship_cap_bonus
+
         missile_limit = 0
         nuke_limit = 0
         if self.has_project(nation, 'Missile Launch Pad'):
@@ -1260,7 +1315,7 @@ class AllianceCalculator:
                 self.has_project(nation, 'Space Program')):
                 nuke_limit = 2           
         self._log_message(
-            f"Aircraft Limits - total_hangars: {total_hangars}, air_research: {air_research}, air_bonus: {air_bonus}, aircraft_daily_limit: {aircraft_daily_limit}, aircraft_max_capacity: {aircraft_max_capacity}",
+            f"Aircraft Limits - total_hangars: {total_hangars}, air_cap_lvl: {air_cap_lvl}, aircraft_cap_bonus: {aircraft_cap_bonus}, aircraft_daily_limit: {aircraft_daily_limit}, aircraft_max_capacity: {aircraft_max_capacity}",
             level=logging.DEBUG,
             context="calculate_military_purchase_limits"
         )

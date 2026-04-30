@@ -417,6 +417,254 @@ class TreatyGraph:
         G.remove_nodes_from(nodes_to_remove)
         return G
 
+    def create_focused_map(self, focused_data: Dict[str, Any]) -> str:
+        """
+        Creates a focused 2D interactive treaty map centered on one alliance.
+        Layer 0 = center (largest), Layer 1 = direct partners, Layer 2 = partners-of-partners (smaller, for lines only).
+        Uses alliance flags as node images via Plotly scatter with image overlays.
+        """
+        center_id = focused_data['center_id']
+        layer1 = focused_data['layer1']
+        layer2 = focused_data['layer2']
+        treaties = focused_data['treaties']
+        alliance_info = focused_data['alliance_info']
+
+        TREATY_TYPES = {'Protectorate', 'Extension', 'MDP', 'MDoAP', 'ODP', 'ODoAP'}
+        TREATY_COLORS = {
+            'MDoAP': '#e74c3c', 'MDP': '#e67e22',
+            'ODoAP': '#3498db', 'ODP': '#2ecc71',
+            'Protectorate': '#9b59b6', 'Extension': '#9b59b6',
+        }
+        TREATY_WIDTHS = {'MDoAP': 4, 'MDP': 4, 'ODoAP': 2, 'ODP': 2, 'Protectorate': 3, 'Extension': 3}
+
+        # Build set of all nodes to show
+        all_node_ids = {center_id} | layer1 | layer2
+
+        # Build adjacency from treaties (only between nodes we're showing)
+        edges: Dict[tuple, Dict] = {}  # (a, b) -> {type, color, width}
+        for t in treaties:
+            tt = t.get('treaty_type')
+            if tt not in TREATY_TYPES:
+                continue
+            a1 = t.get('alliance1_id')
+            a2 = t.get('alliance2_id')
+            if not a1 or not a2:
+                continue
+            a1, a2 = int(a1), int(a2)
+            if a1 not in all_node_ids or a2 not in all_node_ids:
+                continue
+            key = (min(a1, a2), max(a1, a2))
+            w = TREATY_WIDTHS.get(tt, 1)
+            if key not in edges or w > edges[key]['width']:
+                edges[key] = {'type': tt, 'color': TREATY_COLORS.get(tt, '#aaaaaa'), 'width': w}
+
+        # Build networkx graph for layout
+        G = nx.Graph()
+        for nid in all_node_ids:
+            G.add_node(nid)
+        for (a, b) in edges:
+            G.add_edge(a, b)
+
+        # Force-directed layout, seed for reproducibility
+        pos = nx.spring_layout(G, seed=42, k=2.5, iterations=120)
+
+        # Node sizing by layer
+        def node_size(nid):
+            if nid == center_id: return 40
+            if nid in layer1: return 28
+            return 16
+
+        def node_opacity(nid):
+            if nid in layer2: return 0.55
+            return 1.0
+
+        # Build edge traces grouped by treaty type for legend
+        edge_traces = []
+        legend_added = set()
+        for (a, b), edata in edges.items():
+            x0, y0 = pos[a]
+            x1, y1 = pos[b]
+            tt = edata['type']
+            show_legend = tt not in legend_added
+            if show_legend:
+                legend_added.add(tt)
+            edge_traces.append(go.Scatter(
+                x=[x0, x1, None], y=[y0, y1, None],
+                mode='lines',
+                line=dict(color=edata['color'], width=edata['width']),
+                hoverinfo='none',
+                name=tt,
+                legendgroup=tt,
+                showlegend=show_legend,
+            ))
+
+        # Build node traces — one per layer for sizing
+        def _node_hover(nid):
+            info = alliance_info.get(nid, {})
+            name = info.get('name', str(nid))
+            score = info.get('score', 0)
+            layer = 'Center' if nid == center_id else ('Partner' if nid in layer1 else 'Extended')
+            partner_treaties = []
+            for t in treaties:
+                a1, a2 = t.get('alliance1_id'), t.get('alliance2_id')
+                if not a1 or not a2: continue
+                a1, a2 = int(a1), int(a2)
+                if a1 == nid or a2 == nid:
+                    other = a2 if a1 == nid else a1
+                    other_name = alliance_info.get(other, {}).get('name', str(other))
+                    tt = t.get('treaty_type', '')
+                    if tt in TREATY_TYPES:
+                        partner_treaties.append(f"{other_name} ({tt})")
+            treaty_lines = '<br>'.join(sorted(partner_treaties)[:20])
+            return f"<b>{name}</b><br>Score: {score:,.0f}<br>Layer: {layer}<br><br>{treaty_lines}"
+
+        for layer_ids, size, opacity, layer_name in [
+            ({center_id}, 40, 1.0, 'Center'),
+            (layer1, 28, 1.0, 'Partners'),
+            (layer2, 16, 0.55, 'Extended'),
+        ]:
+            nodes_in_layer = [nid for nid in layer_ids if nid in pos]
+            if not nodes_in_layer:
+                continue
+            xs = [pos[n][0] for n in nodes_in_layer]
+            ys = [pos[n][1] for n in nodes_in_layer]
+            colors = [self._get_alliance_color(alliance_info.get(n, {}).get('color', '')) for n in nodes_in_layer]
+            names = [alliance_info.get(n, {}).get('name', str(n)) for n in nodes_in_layer]
+            hovers = [_node_hover(n) for n in nodes_in_layer]
+            flags = [alliance_info.get(n, {}).get('flag', '') for n in nodes_in_layer]
+            edge_traces.append(go.Scatter(
+                x=xs, y=ys,
+                mode='markers+text',
+                marker=dict(size=size, color=colors, opacity=opacity,
+                            line=dict(width=2, color='#ffffff')),
+                text=names,
+                textposition='top center',
+                textfont=dict(size=9 if layer_name == 'Extended' else 11, color='#ffffff'),
+                hovertext=hovers,
+                hoverinfo='text',
+                name=layer_name,
+                customdata=[[n, alliance_info.get(n, {}).get('flag', '')] for n in nodes_in_layer],
+            ))
+
+        # Build flag images for Plotly layout.images (layer0 + layer1 only)
+        images = []
+        for nid in ([center_id] + list(layer1)):
+            if nid not in pos:
+                continue
+            flag = alliance_info.get(nid, {}).get('flag', '')
+            if not flag:
+                continue
+            x, y = pos[nid]
+            sz = 0.06 if nid == center_id else 0.04
+            images.append(dict(
+                source=flag,
+                xref='x', yref='y',
+                x=x, y=y,
+                sizex=sz, sizey=sz,
+                xanchor='center', yanchor='middle',
+                layer='above',
+            ))
+
+        center_name = alliance_info.get(center_id, {}).get('name', str(center_id))
+
+        # Build node metadata for JS flag overlay (flags via JS, not Plotly images which don't scale)
+        node_meta = {}
+        for layer_ids, layer_num in [({center_id}, 0), (layer1, 1), (layer2, 2)]:
+            for nid in layer_ids:
+                if nid not in pos:
+                    continue
+                info = alliance_info.get(nid, {})
+                node_meta[str(nid)] = {
+                    'flag': info.get('flag', ''),
+                    'name': info.get('name', str(nid)),
+                    'layer': layer_num,
+                }
+
+        fig = go.Figure(data=edge_traces)
+        fig.update_layout(
+            title=f'Treaty Universe — {center_name}',
+            showlegend=True,
+            legend=dict(x=1.01, y=1, bgcolor='rgba(0,0,0,0.5)', font=dict(color='white')),
+            hovermode='closest',
+            paper_bgcolor='#0f0f0f',
+            plot_bgcolor='#0f0f0f',
+            font=dict(color='white'),
+            xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+            yaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+            margin=dict(l=10, r=150, t=50, b=10),
+            autosize=True,
+        )
+
+        base_html = fig.to_html(full_html=True, config={'responsive': True, 'scrollZoom': True})
+
+        flag_data_json = json.dumps(node_meta)
+        pos_json = json.dumps({str(k): [float(v[0]), float(v[1])] for k, v in pos.items()})
+
+        inject = f"""
+<style>
+html, body {{ margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #0f0f0f; }}
+.plotly-graph-div {{ width: 100% !important; height: 100vh !important; }}
+.flag-overlay {{ position: absolute; pointer-events: none; border-radius: 50%; border: 2px solid rgba(255,255,255,0.7); overflow: hidden; transform: translate(-50%, -50%); box-shadow: 0 0 6px rgba(0,0,0,0.8); }}
+.flag-overlay img {{ width: 100%; height: 100%; object-fit: cover; display: block; }}
+#flag-container {{ position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; overflow: hidden; }}
+</style>
+<div id="flag-container"></div>
+<script>
+(function() {{
+  const flagData = {flag_data_json};
+  const posData = {pos_json};
+  const FLAG_SIZES = [34, 22, 0];
+
+  function placeFlagOverlays() {{
+    const gd = document.querySelector('.plotly-graph-div');
+    if (!gd || !gd._fullLayout) {{ setTimeout(placeFlagOverlays, 300); return; }}
+    const container = document.getElementById('flag-container');
+    container.innerHTML = '';
+    const layout = gd._fullLayout;
+    const xaxis = layout.xaxis, yaxis = layout.yaxis;
+    const dragLayer = gd.querySelector('.nsewdrag');
+    if (!dragLayer) {{ setTimeout(placeFlagOverlays, 300); return; }}
+    const rect = dragLayer.getBoundingClientRect();
+    const gdRect = gd.getBoundingClientRect();
+    const offsetX = rect.left - gdRect.left;
+    const offsetY = rect.top - gdRect.top;
+
+    for (const [nid, meta] of Object.entries(flagData)) {{
+      const sz = FLAG_SIZES[meta.layer];
+      if (!sz || !meta.flag) continue;
+      const xy = posData[nid];
+      if (!xy) continue;
+      const px = xaxis.l2p(xy[0]) + offsetX;
+      const py = yaxis.l2p(xy[1]) + offsetY;
+      const div = document.createElement('div');
+      div.className = 'flag-overlay';
+      div.style.width = sz + 'px';
+      div.style.height = sz + 'px';
+      div.style.left = px + 'px';
+      div.style.top = py + 'px';
+      const img = document.createElement('img');
+      img.src = meta.flag;
+      img.alt = meta.name;
+      img.onerror = () => div.remove();
+      div.appendChild(img);
+      container.appendChild(div);
+    }}
+  }}
+
+  document.addEventListener('DOMContentLoaded', () => setTimeout(placeFlagOverlays, 600));
+  window.addEventListener('resize', () => setTimeout(placeFlagOverlays, 150));
+  document.addEventListener('DOMContentLoaded', () => {{
+    const gd = document.querySelector('.plotly-graph-div');
+    if (gd) {{
+      gd.on('plotly_relayout', () => setTimeout(placeFlagOverlays, 80));
+      gd.on('plotly_afterplot', () => setTimeout(placeFlagOverlays, 150));
+    }}
+  }});
+}})();
+</script>"""
+
+        return base_html.replace('</body>', inject + '\n</body>')
+
     def create_interactive_map(self, G: nx.Graph, all_treaties: List[Dict[str, Any]], blocs: Dict[str, List[List[int]]] = None):
         """
         Creates an interactive 3D treaty map using Plotly with a summary of blocs.

@@ -238,63 +238,58 @@ class DestroyCog(commands.Cog):
                     total_hangars += city.get('hangar', 0)
                     total_drydocks += city.get('drydock', 0)
             else:
-                # Estimate based on num_cities
                 avg_improvements = 2
                 total_barracks = num_cities * avg_improvements
                 total_factories = num_cities * avg_improvements
                 total_hangars = num_cities * avg_improvements
                 total_drydocks = num_cities * avg_improvements
-            
+
+            # Military Research capacity levels
+            mr = nation.get('military_research') or {}
+            ground_cap_lvl = int(mr.get('ground_capacity', 0) or nation.get('ground_capacity', 0) or 0)
+            air_cap_lvl    = int(mr.get('air_capacity',    0) or nation.get('air_capacity',    0) or 0)
+            naval_cap_lvl  = int(mr.get('naval_capacity',  0) or nation.get('naval_capacity',  0) or 0)
+
+            # Cap at max 20 levels each
+            ground_cap_lvl = min(ground_cap_lvl, 20)
+            air_cap_lvl    = min(air_cap_lvl,    20)
+            naval_cap_lvl  = min(naval_cap_lvl,  20)
+
+            soldier_cap_bonus  = ground_cap_lvl * 3000
+            tank_cap_bonus     = ground_cap_lvl * 250
+            aircraft_cap_bonus = air_cap_lvl    * 15
+            ship_cap_bonus     = naval_cap_lvl  * 5
+
             # Base daily limits
             soldier_daily = total_barracks * 1000
-            tank_daily = total_factories * 50
+            tank_daily    = total_factories * 50
             aircraft_daily = total_hangars * 3
-            ship_daily = total_drydocks * 1
-            
-            # Add research bonuses
-            ground_research = nation.get('ground_research', 0)
-            air_research = nation.get('air_research', 0)
-            naval_research = nation.get('naval_research', 0)
-            
-            aircraft_daily += air_research * 15
-            tank_daily += ground_research * 250
-            soldier_daily += ground_research * 3000
-            ship_daily += naval_research * 5
-            
+            ship_daily    = total_drydocks * 1
+
+            # Apply capacity bonuses to daily limits
+            soldier_daily  += soldier_cap_bonus
+            tank_daily     += tank_cap_bonus
+            aircraft_daily += aircraft_cap_bonus
+            ship_daily     += ship_cap_bonus
+
             # Propaganda Bureau bonus
             if self.has_project(nation, 'Propaganda Bureau'):
-                soldier_daily = int(soldier_daily * 1.10)
-                tank_daily = int(tank_daily * 1.10)
+                soldier_daily  = int(soldier_daily  * 1.10)
+                tank_daily     = int(tank_daily     * 1.10)
                 aircraft_daily = int(aircraft_daily * 1.10)
-                ship_daily = int(ship_daily * 1.10)
-            
+                ship_daily     = int(ship_daily     * 1.10)
+
             # Max capacities
-            soldier_max = total_barracks * 3000
-            tank_max = total_factories * 250
+            soldier_max  = total_barracks * 3000
+            tank_max     = total_factories * 250
             aircraft_max = total_hangars * 15
-            ship_max = total_drydocks * 5
-            
-            aircraft_max += air_research * 15
-            tank_max += ground_research * 250
-            soldier_max += ground_research * 3000
-            ship_max += naval_research * 5
-            
-            # Add capacity bonuses
-            ground_bonus = nation.get('ground_capacity', 0) or 0
-            air_bonus = nation.get('air_capacity', 0) or 0
-            naval_bonus = nation.get('naval_capacity', 0) or 0
-            
-            if not any([ground_bonus, air_bonus, naval_bonus]):
-                military_research = nation.get('military_research', {})
-                ground_bonus = military_research.get('ground_capacity', 0) or 0
-                air_bonus = military_research.get('air_capacity', 0) or 0
-                naval_bonus = military_research.get('naval_capacity', 0) or 0
-            
-            soldier_max += ground_bonus
-            tank_max += ground_bonus
-            aircraft_max += air_bonus
-            ship_max += naval_bonus
-            
+            ship_max     = total_drydocks * 5
+
+            soldier_max  += soldier_cap_bonus
+            tank_max     += tank_cap_bonus
+            aircraft_max += aircraft_cap_bonus
+            ship_max     += ship_cap_bonus
+
             # Missile and nuke limits
             missile_limit = 0
             nuke_limit = 0
@@ -313,18 +308,18 @@ class DestroyCog(commands.Cog):
             
             return {
                 'soldiers_daily': soldier_daily,
-                'tanks_daily': tank_daily,
+                'tanks_daily':    tank_daily,
                 'aircraft_daily': aircraft_daily,
-                'ships_daily': ship_daily,
-                'missiles': missile_limit,
-                'nukes': nuke_limit,
-                'soldiers_max': soldier_max,
-                'tanks_max': tank_max,
-                'aircraft_max': aircraft_max,
-                'ships_max': ship_max,
+                'ships_daily':    ship_daily,
+                'missiles':       missile_limit,
+                'nukes':          nuke_limit,
+                'soldiers_max':   soldier_max,
+                'tanks_max':      tank_max,
+                'aircraft_max':   aircraft_max,
+                'ships_max':      ship_max,
                 'total_barracks': total_barracks,
                 'total_factories': total_factories,
-                'total_hangars': total_hangars,
+                'total_hangars':  total_hangars,
                 'total_drydocks': total_drydocks
             }
         except Exception as e:
@@ -1137,7 +1132,7 @@ class OptimalAttackersView:
                 discord_text = None
             message = f"{header_name}" + (f" ({discord_text})" if discord_text else "") + "\n"
             message += f"**c{num_cities:,}** with **{avg_infra_per_city:,.0f}** Infra\n"
-            message += f"Can be Spied: {'✅' if espionage_available else '❌'}\n"
+            message += f"Can Spy: {'✅' if espionage_available else '❌'}\n"
             message += f"Projects: {' '.join(projects_info) or 'None'}\n"
             message += f"**{SPY_EMOJI} Spies:** {safe_spies:,}\n"
             message += "**Units (Current/Max):**\n"
