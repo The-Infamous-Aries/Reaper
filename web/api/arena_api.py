@@ -167,11 +167,9 @@ async def join_room(request: Request, data: Dict[str, Any] = Body(...)):
 
     pet = await user_data_manager.get_pet_data_async(user_id)
     avatar_hash = user.get("avatar") or ""
-    avatar_url  = (
-        f"https://cdn.discordapp.com/avatars/{user_id}/{avatar_hash}.png"
-        if avatar_hash else
-        f"https://cdn.discordapp.com/embed/avatars/{int(user_id) % 5}.png"
-    )
+    
+    from Systems.Functions.discord_utils import get_discord_avatar_url
+    avatar_url = get_discord_avatar_url(user_id, avatar_hash, size=64)
 
     occupant = {
         "user_id":     user_id,
@@ -293,11 +291,10 @@ async def arena_pvp_battle(request: Request, data: Dict[str, Any] = Body(...)):
     # Add challenger to room
     pet = await user_data_manager.get_pet_data_async(user_id)
     avatar_hash = user.get("avatar") or ""
-    avatar_url  = (
-        f"https://cdn.discordapp.com/avatars/{user_id}/{avatar_hash}.png"
-        if avatar_hash else
-        f"https://cdn.discordapp.com/embed/avatars/{int(user_id) % 5}.png"
-    )
+    
+    from Systems.Functions.discord_utils import get_discord_avatar_url
+    avatar_url = get_discord_avatar_url(user_id, avatar_hash, size=64)
+    
     room.add_user({
         "user_id":     user_id,
         "username":    user.get("username", "Unknown"),
@@ -395,7 +392,7 @@ async def arena_boss_start(request: Request, data: Dict[str, Any] = Body(...)):
         p_elem = str(pet.get("element", "basic")).lower()
         p_elem2= str(pet.get("element2", "") or "").lower() or None
         p_spec = str(pet.get("species", "")).strip()
-        action_labels = DamageCalculator.get_action_labels(p_type, p_elem, p_spec)
+        action_labels = DamageCalculator.get_action_labels(p_type, p_elem, p_spec, custom_labels=pet.get("action_labels", {}))
 
         avg_atk += p_atk
         avg_def += p_def
@@ -807,7 +804,7 @@ async def arena_boss_action(request: Request, data: Dict[str, Any] = Body(...)):
                 if pet:
                     xp_mult = 1.5 if player["alive"] else 0.5
                     xp = int(200 * xp_mult * len(battle["players"]))
-                    await LootCalculator.apply_xp_change(int(uid), xp, "boss_win")
+                    await LootCalculator.apply_xp_change(int(uid), xp, "boss_battle")
                     player["xp_gained"] = xp
                     await user_data_manager.update_pet_battle_stats(
                         uid, "npc", wins=1 if player["alive"] else 0,

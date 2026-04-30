@@ -1,244 +1,127 @@
 ﻿# Pet System Guide
 
-## Overview
-
-Pets are your digital companions — living, growing creatures you raise, train, and battle with. Every pet has its own stats, element, type, and personality. You earn XP through battles, missions, quests, activities, and gambling. That XP levels your pet up, making it stronger over time.
-
-Everything about your pet is managed from the **My Pet Page** on the website. That's your home base — it shows your pet's full status and gives you access to every action you can take.
-
 ---
 
-## Stats & Health
+## Basics
 
-Every pet has six core stats that define how it performs in combat and activities.
+Pets are your personal companions on the website — living creatures you adopt, raise, and take into every activity the site has to offer. Each pet is unique: it has a species, a type (Land, Swimming, or Flying), one or two elements, six core stats, and a generated name. Everything about your pet is tied to your Discord account, so you need to be logged in to access it.
+
+### Adopting a Pet
+
+If you don't have a pet yet, go to the **My Pet** page and click **+ Adopt a Pet**. You'll be shown a selection of species to choose from. Each species has a fixed stat distribution and two specialization stats — the two stats that species naturally excels at. Once you pick a species, the system randomly assigns your pet a type (Land, Swimming, or Flying), an element (and sometimes a second element), and generates a name based on all of those. You can also enter a custom name during adoption if you prefer.
+
+Once adopted, your pet is permanent until you choose to release it.
+
+### The Six Stats
+
+Every pet has six core stats that define how it performs in everything from battles to casino games.
 
 | Stat | Name | What It Does |
 |------|------|--------------|
-| ATT | Attack | Raw damage output in battle |
-| DEF | Defense | Damage reduction when defending |
-| INT | Intelligence | Boosts smart/tactical actions |
-| DEX | Dexterity | Speed and precision-based actions |
-| HAP | Happiness | Contributes to max HP |
-| ENE | Energy | Contributes to max HP and stamina |
+| <img src="/static/Emojis/Pets/Deco/ATT.png" style="height:16px;vertical-align:middle"> ATT | Attack | Raw damage output in battle |
+| <img src="/static/Emojis/Pets/Deco/DEF.png" style="height:16px;vertical-align:middle"> DEF | Defense | Damage reduction when defending |
+| <img src="/static/Emojis/Pets/Deco/INT.png" style="height:16px;vertical-align:middle"> INT | Intelligence | Boosts smart/tactical actions |
+| <img src="/static/Emojis/Pets/Deco/DEX.png" style="height:16px;vertical-align:middle"> DEX | Dexterity | Speed and precision-based actions |
+| <img src="/static/Emojis/Pets/Deco/HAP.png" style="height:16px;vertical-align:middle"> HAP | Happiness | Contributes to max HP |
+| <img src="/static/Emojis/Pets/Deco/ENE.png" style="height:16px;vertical-align:middle"> ENE | Energy | Contributes to max HP and stamina |
 
-**Max HP Formula:** `((ATT + DEF + INT + DEX + HAP + ENE) ÷ 6 + HAP × ENE) × 10`
+**Max HP** is calculated as: `(stat_average + HAP × ENE) × 10`
 
-HAP and ENE are your primary health stats — they contribute to both the average and the multiplicative health component. A pet with HAP 20 and ENE 20 adds 400 to the formula before the ×10 multiplier, making them dramatically tankier.
+The stat average is the mean of all six stats. HAP and ENE are your primary health stats — they feed into both the average and the multiplicative part of the formula. A pet with HAP 20 and ENE 20 adds 400 to the formula before the ×10 multiplier, making them dramatically tankier than a pet with low HAP/ENE.
 
-**Computed combat stats** derived from your base stats:
-- `Attack power = ATT + DEX`
-- `Defense power = DEF + INT`
+**Combat stats** derived from your base stats:
+- Attack power = <img src="/static/Emojis/Pets/Deco/ATT.png" style="height:14px;vertical-align:middle"> ATT + <img src="/static/Emojis/Pets/Deco/DEX.png" style="height:14px;vertical-align:middle"> DEX
+- Defense power = <img src="/static/Emojis/Pets/Deco/DEF.png" style="height:14px;vertical-align:middle"> DEF + <img src="/static/Emojis/Pets/Deco/INT.png" style="height:14px;vertical-align:middle"> INT
 
-Stats grow by **5 points per level**, distributed randomly across all six stats. Equipment and potions can boost them further. On the pet card, specialization stats are shown in gold to distinguish them.
+### Specialization Stats
 
----
+Every species has two specialization stats — the stats it naturally excels at. These are baked into the species' base stat distribution and shown in gold on your pet card. Specializations matter for equipment: if your Hat's bonus stats both match your pet's specializations, you unlock the highest equipment multiplier tier.
 
-## Leveling & XP
+### Types and Elements
 
-XP is the currency of pet growth. Everything you do earns XP, and XP pushes your pet to the next level.
+**Types** form a triangle of advantages:
+- <img src="/static/Emojis/Pets/Deco/Flying.png" style="height:16px;vertical-align:middle"> **Flying** beats <img src="/static/Emojis/Pets/Deco/Land.png" style="height:16px;vertical-align:middle"> **Land**
+- <img src="/static/Emojis/Pets/Deco/Land.png" style="height:16px;vertical-align:middle"> **Land** beats <img src="/static/Emojis/Pets/Deco/Swimming.png" style="height:16px;vertical-align:middle"> **Swimming**
+- <img src="/static/Emojis/Pets/Deco/Swimming.png" style="height:16px;vertical-align:middle"> **Swimming** beats <img src="/static/Emojis/Pets/Deco/Flying.png" style="height:16px;vertical-align:middle"> **Flying**
 
-**XP Formula per level:** `200 × (1.03 ^ (level − 1))`
+Each type advantage gives +15% damage in battle.
 
-- Level 1 → 2 requires **200 XP**
+**Elements** — there are 13: Basic, Fire, Water, Electric, Ice, Plant, Rock, Air, Magic, Holy, Necro, Psychic, and Fighting. Most elements deal +10% damage against specific weaknesses. Basic is the exception — it deals −10% damage against everything. Your pet can have one or two elements. Dual-element pets are more versatile but rarely get the full bonus since the game averages across all element matchup combinations.
+
+**Element strengths (deals +10% damage against):**
+
+| Element | Strong Against |
+|---------|---------------|
+| <img src="/static/Emojis/Pets/Deco/Basic.png" style="height:16px;vertical-align:middle"> Basic | Nothing (−10% vs all) |
+| <img src="/static/Emojis/Pets/Deco/Fire.png" style="height:16px;vertical-align:middle"> Fire | Ice, Plant, Necro |
+| <img src="/static/Emojis/Pets/Deco/Water.png" style="height:16px;vertical-align:middle"> Water | Fire, Rock, Air |
+| <img src="/static/Emojis/Pets/Deco/Electric.png" style="height:16px;vertical-align:middle"> Electric | Water, Plant, Fighting |
+| <img src="/static/Emojis/Pets/Deco/Ice.png" style="height:16px;vertical-align:middle"> Ice | Air, Electric, Water |
+| <img src="/static/Emojis/Pets/Deco/Plant.png" style="height:16px;vertical-align:middle"> Plant | Water, Air, Psychic |
+| <img src="/static/Emojis/Pets/Deco/Rock.png" style="height:16px;vertical-align:middle"> Rock | Electric, Fire, Ice |
+| <img src="/static/Emojis/Pets/Deco/Air.png" style="height:16px;vertical-align:middle"> Air | Rock, Fighting, Electric |
+| <img src="/static/Emojis/Pets/Deco/Magic.png" style="height:16px;vertical-align:middle"> Magic | Psychic, Fighting, Fire |
+| <img src="/static/Emojis/Pets/Deco/Holy.png" style="height:16px;vertical-align:middle"> Holy | Necro, Magic, Rock |
+| <img src="/static/Emojis/Pets/Deco/Necro.png" style="height:16px;vertical-align:middle"> Necro | Holy, Magic, Plant |
+| <img src="/static/Emojis/Pets/Deco/Psychic.png" style="height:16px;vertical-align:middle"> Psychic | Holy, Necro, Magic |
+| <img src="/static/Emojis/Pets/Deco/Fighting.png" style="height:16px;vertical-align:middle"> Fighting | Ice, Psychic, Holy |
+
+### Leveling Up
+
+XP is how your pet grows. Everything you do earns XP, and when you accumulate enough, your pet levels up. Stats grow per level using a scaling formula: **3 × (1 + (level−1) ÷ 10) points per level gained**, distributed randomly across all six stats. At level 1–10 that's 3 points per level; at level 11–20 it's 6 points; at level 51–60 it's 18 points; at level 100+ it's 30+ points. The higher your level, the more stats you gain each time you level up.
+
+**XP required per level:** `200 × (1.03 ^ (level − 1))`
+
+- Level 1 → 2 costs 200 XP
 - Each level costs 3% more than the last
-- **Levels and XP continue forever — there is no cap**
+- There is no level cap — pets grow forever
 
-**XP Sources and approximate gains:**
+Stats also scale with level. Training, missions, quests, and most activities give +10% more XP per level above 1, so higher-level pets always benefit from doing the same activities.
 
-| Activity | XP Gained |
-|----------|-----------|
-| Play (no element match) | `5 × level` (±5) |
-| Play (1 element match) | `10 × level` (±5) |
-| Play (both elements match) | `15 × level` (±5) |
-| Train (Easy) | 50+ XP (90% success) |
-| Train (Average) | 100+ XP (70% success) |
-| Train (Hard) | 200+ XP (50% success) |
-| Mission (Easy) | 100+ XP (70% success) |
-| Mission (Average) | 250+ XP (50% success) |
-| Mission (Hard) | 500+ XP (30% success) |
-| Quest (stage success) | Scales with pet skill vs required skill |
-| PvP Win | `(damage_dealt ÷ 10) + (damage_taken ÷ 5)` |
-| PvP Loss | `(damage_dealt ÷ 15) + (damage_taken ÷ 10)` |
-| Survivor Series | `(rounds_survived × 10 + kills × 25) × max(1, level ÷ 5 + 1)` |
-| SS Winner bonus | `+200 × max(1, level ÷ 5 + 1)` |
+### Rank Badges
 
-All XP gains scale with your pet's level — there's a +10% bonus per level above 1 applied to training, missions, and quests. Losing a battle awards 10% of normal XP. Failing a mission can cost XP and cause a level down.
+Your pet earns a rank badge every 50 levels. Rank 1 unlocks at level 50, rank 2 at level 100, and so on — forever. There are 58 unique badge artworks. Once you pass rank 58 (level 2900+), the "Beyond" artwork displays, but your actual rank number keeps climbing with no ceiling.
 
 ---
 
-## Specialization Stats
+## Growth
 
-When you adopt a pet, it comes with two **specialization stats** — the two stats that species naturally excels at. These are baked into the species' base stat distribution and shown in gold on your pet card.
+### The My Pet Page
 
-For example:
-- **Cheetah** specializes in DEX + ATT — fastest attacker
-- **Beaver** specializes in DEF + INT — tough and smart
-- **Cardinal** specializes in HAP + DEX — happy and quick
-
-Specializations also matter for equipment — if your Hat's bonus stats match both of your pet's specializations, you unlock the highest equipment multiplier tier.
-
----
-
-## Rank Badges
-
-Your pet earns a rank badge based on its level. A new rank unlocks every 50 levels — **ranks continue forever with no cap**. The rank number displayed in your pet card's tooltip always reflects your true rank.
-
-The badge image shown uses one of 58 rank artwork tiers. Ranks 1–58 each have unique art. Once you pass rank 58 (level 2900+), the rank 58 "Beyond" artwork is displayed — but your actual rank number keeps climbing. There's no ceiling on how high your rank can go.
-
-Your pet's badge is also a generated 512×512 image you can view separately:
-- **Background** — your pet's type (Flying / Land / Swimming) emoji, enlarged to fill the canvas
-- **Corners** — your primary element emoji in the top-left and bottom-right; your secondary element (if you have one) in the top-right and bottom-left
-- **Center** — your species emoji, positioned based on type: Flying pets appear near the top, Swimming pets near the bottom, Land pets in the middle
-
----
-
-## My Pet Page
-
-The My Pet Page is your pet's homepage on the website. Everything you need to manage your pet lives here. You must be logged in with Discord to access it.
+The My Pet page is your pet's home base on the website. Everything you need to manage your pet lives here. You must be logged in with Discord to access it.
 
 ### The Pet Card
 
-The top of the page shows your pet card at a glance:
+The pet card sits on the left side of the page and shows your pet's full status at a glance:
+
 - **Pet image** (species icon) on the left
 - **Name, level badge, type icon, and element icon(s)** in the center
 - **Rank badge** on the right (appears once you reach level 50)
 - **XP progress bar** showing current XP vs XP needed for next level
-- **Equipment slots** — icons for your equipped Material (×2), Gem (×2), Monster (×2), and Hat (×1). Empty slots show a placeholder icon.
-- **Equipment bonus summary** — shows the total stat bonuses your equipment is currently providing, including the active multiplier
-- **Stats grid** — all six stats (ATT, DEF, INT, DEX, HAP, ENE) with equipment bonuses shown in green next to each. Specialization stats are highlighted.
-- **Combat stats row** — shows your computed ⚔️ ATK, 🛡️ DEF, and ❤️ HP values
+- **Equipment slots** — icons for your equipped Material (×2), Gem (×2), Monster (×2), and Hat (×1). Empty slots show a placeholder icon
+- **Equipment bonus summary** — the total stat bonuses your equipment is currently providing, including the active multiplier
+- **Stats grid** — all six stats with equipment bonuses shown in green next to each. Specialization stats are highlighted in gold
+- **Combat stats row** — your computed ⚔️ ATK, 🛡️ DEF, and ❤️ HP values
 - **Inventory** — a collapsible section below the stats showing all items you're holding, grouped by type
 
-### The Action Tabs
+### Equipment
 
-Below the pet card is a row of action tabs. Click any tab to switch to that panel:
+Equipment boosts your pet's stats while equipped. You have four slot types:
 
-**🏋️ Train** — Send your pet to train and earn XP. Pick Easy, Average, or Hard difficulty, then click "Start Training." Higher difficulty means more XP but a lower success chance. There's a 5-second cooldown between uses. A level-up popup appears if your pet levels up.
+| Slot | Max Equipped | Stats Boosted |
+|------|-------------|---------------|
+| Material | 2 | <img src="/static/Emojis/Pets/Deco/ATT.png" style="height:14px;vertical-align:middle"> ATT, <img src="/static/Emojis/Pets/Deco/DEF.png" style="height:14px;vertical-align:middle"> DEF, <img src="/static/Emojis/Pets/Deco/DEX.png" style="height:14px;vertical-align:middle"> DEX |
+| Gem | 2 | <img src="/static/Emojis/Pets/Deco/INT.png" style="height:14px;vertical-align:middle"> INT, <img src="/static/Emojis/Pets/Deco/HAP.png" style="height:14px;vertical-align:middle"> HAP, <img src="/static/Emojis/Pets/Deco/ENE.png" style="height:14px;vertical-align:middle"> ENE |
+| Monster | 2 | Mixed (varies by monster) |
+| Hat | 1 | Mixed (varies by hat) |
 
-**🗺️ Mission** — Send your pet on a mission for more XP and keys. Pick a difficulty, optionally enter a Gamble XP amount (risk XP for a bonus reward on success — you lose it on failure), then click "Launch Mission." Missions have a 5-second cooldown.
+**Materials** come in five rarities — Common (Dirt, Leaf, Sand), Uncommon (Bone, Fabric, Leather), Rare (Glass, Stone, Wood), Epic (Brick, Gold, Steel), and Mythic (Laser, Plutonium, Smart). Higher rarity means bigger stat bonuses.
 
-**🎮 Play** — Take your pet to a location to earn XP and keys. Click a location tile to select it (it highlights gold), then click "Go Play!" Matching your pet's element to the location gives 2× or 3× XP and better key drops. 5-second cooldown.
+**Gems** are named items (EmberHeart, FrostShard, etc.) that each give a different spread of INT, HAP, and ENE bonuses.
 
-**🗡️ Quest** — AI-generated 5-stage quests. Select a location and difficulty, then click "Begin Quest." Each stage shows an event description and three choices — each choice is tied to a pair of your pet's stats (ATT/DEF, INT/DEX, or HAP/ENE). Your pet's stat level vs the required skill determines your success chance. Some stages can trigger a live battle if you fail a skill check. Quests have a 5-second cooldown to start.
+**Monsters** are named creatures (Wirm, Dodl, Drak, etc.) that each give a different spread across all six stats.
 
-**📦 Loot Market** — Spend keys to open chests. Click a chest tier to select it (highlighted gold), set the amount (1–10), then click "Open Chest." Chest 4 also asks you to pick a guaranteed item type (Material, Gem, Monster, Potion, or Hat) before opening.
-
-**✏️ Rename** — Change your pet's name (up to 32 characters, alphanumeric + basic punctuation) and customize your three battle action labels (Attack, Defense, Charge). Fill in what you want and click "Save Changes."
-
-**💀 Release Pet** — Permanently delete your pet. Type your pet's exact name in the confirmation box and click "Release Pet." This cannot be undone — all stats, inventory, and history are lost. You can adopt a new pet afterwards.
-
-### Inventory Panel
-
-The inventory collapsible on the pet card shows all items you're holding, grouped by category (Materials, Gems, Monsters, Hats, Potions, Keys). Each item shows its icon, name, count, and rarity color.
-
-**To equip an item** (Material, Gem, Monster, or Hat): click the item in your inventory. A confirmation prompt appears — confirm to equip it. The item moves from your inventory to the equipment slot. If the slot is full, the oldest item is automatically returned to your inventory.
-
-**To unequip an item**: click the equipped item icon in the equipment slots section of the pet card. It returns to your inventory.
-
-**To use a potion**: click the potion in your inventory. A confirmation prompt appears showing what the potion does. Confirm to consume it — the effect is applied permanently to your pet's stats immediately. The potion is removed from your inventory.
-
-Items stack up to 99 per type. If your inventory is full when you earn a new item, it converts to XP instead (`level × 100 XP` per overflow item).
-
----
-
-## How Combat Works
-
-Combat is turn-based. Each turn, every participant picks one of three actions simultaneously. Actions resolve at the same time.
-
-**The three actions:**
-- **Attack** — Deal damage to your target
-- **Defend** — Reduce incoming damage and potentially reflect it back
-- **Charge** — Build up a damage multiplier for a future attack
-
-**Damage formula:**
-1. Roll a d20 (1–20)
-2. `Raw Attack = roll × (ATT + DEX)`
-3. `Final Attack = Raw Attack × Charge Multiplier × Type Bonus × Element Bonus`
-4. If target is **defending**: roll their d20, compute `Defense = roll × (DEF + INT)`, then `Damage = max(1, Final Attack − Defense)`. If defense exceeds attack, the excess becomes **parry damage** reflected back at the attacker.
-5. If target is **charging**: `Damage = Final Attack × 1.25` (25% vulnerability bonus)
-6. If target is **attacking**: `Damage = max(1, Final Attack)` (no reduction)
-
----
-
-## The Three Actions
-
-**Attack**
-Rolls a d20 and multiplies by your `ATT + DEX`. The result is scaled by your charge multiplier and any type/element bonuses. If the target is also attacking, your full damage lands. If they're defending, their defense roll reduces it. If they're charging, they take 25% extra.
-
-**Defend**
-Rolls a d20 and multiplies by your `DEF + INT`. If your defense roll exceeds the attacker's attack roll, the excess becomes **parry damage** reflected back at them. Defending is most powerful against charged attacks — a well-timed defend can completely negate and punish a charge release.
-
-**Charge**
-Deals zero damage this turn but advances your charge multiplier along the progression: **1.0 → 2.0 → 3.0 → 4.0 → 5.0**. Your next attack uses the accumulated multiplier. While charging you take 25% extra damage from any attack that lands.
-
----
-
-## The Charge Mechanic
-
-Each turn you choose Charge instead of attacking, your multiplier advances:
-
-| Charges Held | Multiplier |
-|-------------|-----------|
-| 0 (fresh) | 1.0× |
-| 1 turn | 2.0× |
-| 2 turns | 3.0× |
-| 3 turns | 4.0× |
-| 4 turns (max) | 5.0× |
-
-A 5× charge can be devastating against an undefended target. But getting hit while charging deals 25% bonus damage to you, and a fully-defended parry reflects the excess back. Use charge when you know your opponent is attacking — not when they're likely to defend.
-
----
-
-## Type & Element Advantages
-
-Every pet has a **type** (category) and one or two **elements**. Both affect combat damage.
-
-### Types (Categories)
-
-There are three types forming a triangle:
-
-| Attacker | Defender | Bonus |
-|----------|----------|-------|
-| Flying | Land | +15% damage |
-| Land | Swimming | +15% damage |
-| Swimming | Flying | +15% damage |
-
-### Elements
-
-There are 13 elements. Most deal **+10% damage** against specific weaknesses. Basic deals **−10% damage** against everything.
-
-| Element | Strong Against | Weak To |
-|---------|---------------|---------|
-| Basic | Nothing (−10% vs all) | — |
-| Fire | Ice, Plant, Necro | Water, Rock |
-| Water | Fire, Rock, Air | Electric, Plant |
-| Electric | Water, Plant, Fighting | Rock, Air |
-| Ice | Air, Electric, Water | Fire, Rock, Fighting |
-| Plant | Water, Air, Psychic | Fire, Ice, Necro |
-| Rock | Electric, Fire, Ice | Water, Air, Holy |
-| Air | Rock, Fighting, Electric | Ice, Water, Plant |
-| Magic | Psychic, Fighting, Fire | Necro, Holy |
-| Holy | Necro, Magic, Rock | Psychic, Fighting |
-| Necro | Holy, Magic, Plant | Fire, Psychic |
-| Psychic | Holy, Necro, Magic | Necro, Magic |
-| Fighting | Ice, Psychic, Holy | Electric, Air, Magic |
-
-**Dual elements:** If your pet has two elements, the game averages the bonuses from all attacker/defender element combinations. Dual-element pets are more versatile but rarely get the full +10% bonus.
-
----
-
-## Equipment & Inventory
-
-Equipment boosts your pet's stats permanently while equipped. You find equipment through battles, quests, activities, and chests. All items are managed from the inventory panel on your My Pet Page.
-
-### Equipment Slots
-
-| Slot | Max Equipped | Stat Bonuses |
-|------|-------------|--------------|
-| Material | 2 | ATT, DEF, DEX |
-| Gem | 2 | INT, HAP, ENE |
-| Monster | 2 | Mixed (varies) |
-| Hat | 1 | Mixed (varies) |
+**Hats** are named headwear (Fedora, Sorcerer Hat, Tricorne, etc.) that each give bonuses to two specific stats. The Sorcerer Hat gives +25 INT. The Santa Hat gives +25 HAP. Most give +15 to one stat and +10 to another.
 
 ### Equipment Multiplier System
 
@@ -246,229 +129,210 @@ Equipment bonuses scale based on how well you've built your loadout:
 
 | Condition | Multiplier |
 |-----------|-----------|
-| Singles only (no pairs) | 1× |
-| Any matching pair (e.g. 2× same Material) | 2× on that pair's items |
+| Singles only (no matching pairs) | 1× |
+| Any matching pair (e.g. 2× same Material) | 2× on that pair |
 | Full Set (Material pair + Gem pair + Monster pair + Hat) | 3× on everything |
 | Full Set + hat's bonus stats both match your pet's specializations | 4× on everything |
 
-**Level bonus:** Every 50 levels adds +1 to the final multiplier. A level 100 pet with a full set gets 3 + 2 = **5×**. A level 150 pet with full set + both hat specs matching gets 4 + 3 = **7×**.
+**Level bonus:** Every 50 levels adds +1 to the final multiplier. A level 100 pet with a full set gets 3 + 2 = **5×**. A level 150 pet with full set and matching hat specs gets 4 + 3 = **7×**.
 
-The optimal setup is two of the same Material, two of the same Gem, two of the same Monster, and a Hat whose bonus stats match your pet's specializations.
+The optimal setup is two of the same Material, two of the same Gem, two of the same Monster, and a Hat whose bonus stats match your pet's two specialization stats.
 
-### Material Rarities
+### Inventory
 
-| Rarity | Examples | Bonus Range |
-|--------|---------|-------------|
-| Common | Dirt, Leaf, Sand | +1 to one stat |
-| Uncommon | Bone, Fabric, Leather | +1–2 to multiple stats |
-| Rare | Glass, Stone, Wood | +2–3 to multiple stats |
-| Epic | Brick, Gold, Steel | +3–4 to multiple stats |
-| Mythic | Laser, Plutonium, Smart | +4–5 to multiple stats |
+The inventory panel on the pet card shows all items you're holding, grouped by category (Materials, Gems, Monsters, Hats, Potions, Keys, Chests). Each item shows its icon, name, count, and rarity color.
+
+**To equip an item** (Material, Gem, Monster, or Hat): click the item in your inventory. A confirmation prompt appears — confirm to equip it. The item moves from your inventory to the equipment slot. If the slot is already full, the oldest item is automatically returned to your inventory.
+
+**To unequip an item**: click the equipped item icon in the equipment slots section of the pet card. It returns to your inventory.
+
+**To use a potion**: click the potion in your inventory. A confirmation prompt shows what the potion does. Confirm to consume it — the effect applies permanently to your pet's stats immediately. The potion is removed from your inventory.
+
+Items stack up to 99 per type. If your inventory is full when you earn a new item, it converts to XP instead (`level × 100 XP` per overflow item).
 
 ### Potions
 
-Potions are consumable items that permanently boost your pet's stats. Use them from the inventory panel on your My Pet Page — click the potion, confirm, and the effect applies instantly.
+Potions are consumable items that permanently boost your pet's stats. Use them from the inventory panel.
 
-| Potion Type | Effect |
-|-------------|--------|
-| ATT/DEF/DEX/INT/HAP/ENE Potion | +3 to that specific stat |
-| Elemental Potion (e.g. Fire Potion) | +5 to 3 random stats (single element pet) or +3 to 4 random stats (dual element) — only usable by matching element pets |
+| Potion | Effect |
+|--------|--------|
+| <img src="/static/Emojis/Pets/Deco/ATT.png" style="height:14px;vertical-align:middle"> ATT / <img src="/static/Emojis/Pets/Deco/DEF.png" style="height:14px;vertical-align:middle"> DEF / <img src="/static/Emojis/Pets/Deco/DEX.png" style="height:14px;vertical-align:middle"> DEX / <img src="/static/Emojis/Pets/Deco/INT.png" style="height:14px;vertical-align:middle"> INT / <img src="/static/Emojis/Pets/Deco/HAP.png" style="height:14px;vertical-align:middle"> HAP / <img src="/static/Emojis/Pets/Deco/ENE.png" style="height:14px;vertical-align:middle"> ENE Potion | +3 to that specific stat |
+| Elemental Potion (e.g. <img src="/static/Emojis/Pets/Deco/Fire.png" style="height:14px;vertical-align:middle"> Fire Potion) | +5 to 3 random stats (single element) or +3 to 4 random stats (dual element) — only usable by matching element pets |
 | S1 / S2 / S3 Potion | +1 / +2 / +3 to 2 random stats |
 | Luck Potion | +1–5 to all 6 stats (random per stat) |
 | Mega Potion | +10 to all 6 stats |
-| Health Potion | +10 to HAP and ENE |
-| Greater Health Potion | +15 to HAP and ENE |
-| Lesser Health Potion | +5 to HAP and ENE |
-| XP Potion | Grants `100 × level` XP |
+| Lesser / Health / Greater Health Potion | +5 / +10 / +15 to <img src="/static/Emojis/Pets/Deco/HAP.png" style="height:14px;vertical-align:middle"> HAP and <img src="/static/Emojis/Pets/Deco/ENE.png" style="height:14px;vertical-align:middle"> ENE |
 | Lesser XP Potion | Grants `50 × level` XP |
+| XP Potion | Grants `100 × level` XP |
 
----
+### How to Obtain Items
 
-## Activities
+Items come from almost everything you do:
 
-Activities are accessed from the **Play tab** on your My Pet Page. Select a location tile, then click "Go Play!" Your pet visits that location and earns XP and keys based on how well its element matches the location's specialty.
+- **Chests** — opened in the Loot Market tab using keys. The main source of Materials, Gems, Monsters, Hats, and Potions
+- **Battles** — winning NPC battles and boss battles drops items
+- **Quests** — completing quest stages and finding loot chests during quests
+- **Tasks** — daily task rewards include keys and chests
+- **Missions** — completing missions drops keys
+- **Play** — visiting locations drops keys, and boss encounters during play drop keys
+- **Casino win streaks** — races, blackjack, craps, and hold'em all reward keys on win streaks
+- **Item Board** — buy items directly from other players using XP
 
-**Locations:** Camp, Bonfire, Beach, Forest, Hot Air Balloon, Cruiseship, Mountain, Gym, Graveyard, Festival, Glacier, Pyramids
+### Keys and Chests
 
-| Element Match | XP Multiplier | Key Bonus |
-|---------------|--------------|-----------|
-| No match | 1× | 75% chance for 1 key |
-| 1 element matches | 2× | Guaranteed 1 key + 25% chance for 1–2 more |
-| Both elements match | 3× | Guaranteed 1 key + 50% chance for 1–2 more |
-
-There's also a **5% chance** of a boss encounter during play. The boss is generated based on the location's elements and your pet's stats. Defeating it rewards 5× normal XP and one of each key type (Key1, Key2, Key3).
-
-Play has a 5-second cooldown between uses.
-
----
-
-## Keys & Chests
-
-Keys drop from activities, quests, missions, and gambling win streaks. Spend them in the **Loot Market tab** on your My Pet Page — select a chest tier, set the amount, and click "Open Chest."
+Keys are the currency for opening chests. Spend them in the **Loot Market tab** on your My Pet page — select a chest tier, set the amount (1–10), and click "Open Chest."
 
 | Chest | Key Required | Loot |
 |-------|-------------|------|
-| Chest 1 | 1× Key1 | 1 Common or Uncommon item |
-| Chest 2 | 1× Key2 | 1 Rare item |
-| Chest 3 | 1× Key3 | 1 Epic item |
-| Chest 4 | 1× Key1 + Key2 + Key3 | 1 item of your chosen type + 1 Uncommon or better |
+| <img src="/static/Emojis/Pets/Equipment/chest1.png" style="height:15px;vertical-align:middle"> Chest 1 | 1× <img src="/static/Emojis/Pets/Equipment/Key1.png" style="height:15px;vertical-align:middle"> Key1 | 1 Common or Uncommon item |
+| <img src="/static/Emojis/Pets/Equipment/chest2.png" style="height:15px;vertical-align:middle"> Chest 2 | 1× <img src="/static/Emojis/Pets/Equipment/Key2.png" style="height:15px;vertical-align:middle"> Key2 | 1 Rare item |
+| <img src="/static/Emojis/Pets/Equipment/chest3.png" style="height:15px;vertical-align:middle"> Chest 3 | 1× <img src="/static/Emojis/Pets/Equipment/Key3.png" style="height:15px;vertical-align:middle"> Key3 | 1 Epic item |
+| <img src="/static/Emojis/Pets/Equipment/chest4.png" style="height:15px;vertical-align:middle"> Chest 4 | 1× <img src="/static/Emojis/Pets/Equipment/Key1.png" style="height:15px;vertical-align:middle"> Key1 + <img src="/static/Emojis/Pets/Equipment/Key2.png" style="height:15px;vertical-align:middle"> Key2 + <img src="/static/Emojis/Pets/Equipment/Key3.png" style="height:15px;vertical-align:middle"> Key3 | 1 item of your chosen type + 1 Uncommon or better |
 
-**Mission key drops:**
+Chest 4 asks you to pick a guaranteed item type (Material, Gem, Monster, Potion, or Hat) before opening.
 
-| Difficulty | Keys |
-|------------|------|
-| Easy | 33% chance for Key1 |
-| Average | Key1 + Key2 |
-| Hard | Key1 + Key2 + Key3 |
+If a task rewards you a chest directly, it lands in your inventory and does not require keys to open — just click it.
 
-**Race win streak keys:**
+### Abilities
 
-| Win Streak | Keys Awarded |
-|------------|-------------|
-| 1–2 wins | 1× Key1 |
-| 3–5 wins | 1× Key2 |
-| 6–8 wins | 1× Key3 |
-| 9+ wins | 1× Key1 + Key2 + Key3 |
+Abilities are an endgame feature for high-level pets. They let you trade levels for permanent bonuses.
 
-Race winnings multiply too: 3+ streak = 2× payout, 6+ streak = 4× payout, 9+ streak = 8× payout. Keys and XP are held as pending until you cash out — losing resets everything.
+**How it works:**
+1. Spend 500 levels to purchase 1 ability point
+2. Spend 1 ability point on a stat mastery to unlock that branch
+3. Spend remaining points on any abilities in unlocked branches
 
-**Table game win streak keys (Blackjack, Craps, Hold'em):**
+**Stat Mastery** gives a permanent multiplier to that stat: each point spent adds +0.1× (so 1 point = 1.1×, 10 points = 2.0×).
 
-| Win Streak | Keys Awarded |
-|------------|-------------|
-| 1 win | 1× Key1 |
-| 2 wins | 2× Key1 |
-| 3 wins | 1× Key2 |
-| 4 wins | 2× Key2 |
-| 5 wins | 1× Key3 |
-| 6 wins | 2× Key3 |
-| 7+ wins | 3× Key1 + 3× Key2 + 3× Key3 (Jackpot!) |
+**Advantage Mastery** adds a flat bonus to your type or element advantage multiplier when you have the advantage.
 
-**Slots key drops** (chance-based, not streak-based):
+**Abilities** are grouped into 6 branches by stat (<img src="/static/Emojis/Pets/Deco/ATT.png" style="height:14px;vertical-align:middle"> ATT, <img src="/static/Emojis/Pets/Deco/DEF.png" style="height:14px;vertical-align:middle"> DEF, <img src="/static/Emojis/Pets/Deco/INT.png" style="height:14px;vertical-align:middle"> INT, <img src="/static/Emojis/Pets/Deco/DEX.png" style="height:14px;vertical-align:middle"> DEX, <img src="/static/Emojis/Pets/Deco/HAP.png" style="height:14px;vertical-align:middle"> HAP, <img src="/static/Emojis/Pets/Deco/ENE.png" style="height:14px;vertical-align:middle"> ENE). Each ability has up to 5 levels, costs 1 point per level, and scales linearly. Examples:
+- <img src="/static/Emojis/Pets/Deco/ATT.png" style="height:13px;vertical-align:middle"> ATT branch: NPC Crusher (more damage vs NPCs), PvP Striker (more damage in PvP), critical hit chance and multiplier
+- <img src="/static/Emojis/Pets/Deco/DEF.png" style="height:13px;vertical-align:middle"> DEF branch: NPC Shield (less damage from NPCs), PvP Guard (less damage in PvP), charge protection
+- <img src="/static/Emojis/Pets/Deco/INT.png" style="height:13px;vertical-align:middle"> INT branch: XP multipliers for all 8 activities
+- <img src="/static/Emojis/Pets/Deco/DEX.png" style="height:13px;vertical-align:middle"> DEX branch: race speed boost, casino loss reduction
+- <img src="/static/Emojis/Pets/Deco/HAP.png" style="height:13px;vertical-align:middle"> HAP branch: battle health bonus, casino win bonuses
+- <img src="/static/Emojis/Pets/Deco/ENE.png" style="height:13px;vertical-align:middle"> ENE branch: battle health bonus, charge limit increase, speed boost
 
-| Difficulty | Key Drop Chance |
-|------------|----------------|
-| Very Easy / Easy | 0% |
-| Medium | 5% |
-| Hard | 10% |
-| Very Hard / Insanity | 20% |
+There are 49 abilities × 5 levels = 245 total ability points to spend. Full completion costs 122,500 levels. You must have at least 1 point in a stat mastery to unlock abilities in that branch.
 
 ---
 
-## Tasks
+## Interactions
 
-Tasks are daily objectives that give you a concrete goal and reward you with **Keys or Chests** for completing them. Every player gets **5 task slots**, each holding a unique task generated just for you — no one else sees your tasks.
+### Training
 
-Open the **Tasks page** from the sidebar to view all five slots at a glance.
+Go to the **Train tab** on your My Pet page. Pick Easy, Average, or Hard difficulty, then pick which stat you want to train (<img src="/static/Emojis/Pets/Deco/ATT.png" style="height:14px;vertical-align:middle"> ATT, <img src="/static/Emojis/Pets/Deco/DEF.png" style="height:14px;vertical-align:middle"> DEF, <img src="/static/Emojis/Pets/Deco/INT.png" style="height:14px;vertical-align:middle"> INT, <img src="/static/Emojis/Pets/Deco/DEX.png" style="height:14px;vertical-align:middle"> DEX, <img src="/static/Emojis/Pets/Deco/HAP.png" style="height:14px;vertical-align:middle"> HAP, or <img src="/static/Emojis/Pets/Deco/ENE.png" style="height:14px;vertical-align:middle"> ENE), then click "Start Training." Training directly increases or decreases a chosen stat — it does not award XP. Higher difficulty means a bigger stat change but a lower success chance. On failure, the stat decreases by the same amount it would have increased. There's a 5-second cooldown between uses.
 
-### How Tasks Work
+| Difficulty | Stat Change | Success Chance |
+|------------|-------------|----------------|
+| Easy | 1 × equipment multiplier | 75% |
+| Average | 3 × equipment multiplier | 60% |
+| Hard | 5 × equipment multiplier | 45% |
 
-Each task card shows:
-- **What to do** — a short objective like *"Play with your pet 2 time(s)"* or *"Win 1 NPC battle(s)"*
-- **Progress bar** — fills accurately as you complete the required actions
-- **Reward** — the key or chest you'll receive on completion, shown upfront so you can decide if it's worth your time
+Your equipment multiplier scales the change — a full matching set at level 100 (5× multiplier) means a successful Hard training adds 25 to your chosen stat.
 
-Tasks track your actions automatically. Just do the thing — play, train, battle, open a chest, use a potion — and the bar updates in real time.
+### Missions
 
-### Task Types
+Go to the **Mission tab**. Pick a difficulty, optionally enter a Gamble XP amount (risk XP for a bonus reward on success — you lose it on failure), then click "Launch Mission." Missions have a 5-second cooldown.
 
-Tasks ask you to do **any pet interaction except Kill**, ranging from 1 to 5 repetitions depending on the action. Rarer or harder actions require fewer repetitions and reward better loot.
+| Difficulty | Base XP | Success Chance | Key Drop Chance (per key) |
+|------------|---------|----------------|--------------------------|
+| Easy | 100+ XP | 70% | 50% per <img src="/static/Emojis/Pets/Equipment/Key1.png" style="height:14px;vertical-align:middle"> key |
+| Average | 250+ XP | 50% | 65% per <img src="/static/Emojis/Pets/Equipment/Key2.png" style="height:14px;vertical-align:middle"> key |
+| Hard | 500+ XP | 30% | 75% per <img src="/static/Emojis/Pets/Equipment/Key3.png" style="height:14px;vertical-align:middle"> key |
 
-| Action | Count Range | Notes |
-|--------|------------|-------|
-| Play | 1–3 | Any location counts |
-| Train | 1–3 | Any difficulty counts |
-| Mission | 1–3 | Success required |
-| Win NPC Battle | 1–2 | Must win; losses don't count |
-| Complete Quest | 1–2 | Must finish successfully |
-| Gift Item to Bazaar | 1 | Post any item to the Item Board |
-| Win Boss Battle | 1 | Must survive to the end |
-| Rename Action | 1 | See below |
-| Use Potion | 1–3 | Any potion counts |
-| Equip Item | 1–3 | Any equippable item counts |
-| Open Chest | 1–2 | Any chest tier counts |
-| Consume Item | 1–3 | Any consumable counts |
+Each of the three keys (<img src="/static/Emojis/Pets/Equipment/Key1.png" style="height:14px;vertical-align:middle"> Key1, <img src="/static/Emojis/Pets/Equipment/Key2.png" style="height:14px;vertical-align:middle"> Key2, <img src="/static/Emojis/Pets/Equipment/Key3.png" style="height:14px;vertical-align:middle"> Key3) rolls independently at the listed chance — so on a Hard mission you might get all three, two, one, or none. XP scales with your pet's level (+10% per level above 1). Failing a mission only costs XP if you gambled — the gamble amount is lost on failure.
 
-**Rename tasks** are phrased as *"Pet is tired of {action} — rename it"* where `{action}` is one of your three battle labels (Attack, Defense, or Charge). Go to the **Rename tab** on your My Pet page, update that specific action label, and save — the task completes and the bar fills automatically. You don't need to change your pet's name.
+### Play
 
-### Rewards
+Go to the **Play tab**. Click a location tile to select it (it highlights gold), then click "Go Play!" Matching your pet's element to the location gives more XP and better key drops. 5-second cooldown. Base XP is `5 × your pet's level` before any element multiplier.
 
-Each task has its reward shown on the card before you start. Rewards scale with how demanding the task is:
+Locations: <img src="/static/Emojis/Pets/Deco/camping.png" style="height:14px;vertical-align:middle"> Camp, <img src="/static/Emojis/Pets/Deco/bonfire.png" style="height:14px;vertical-align:middle"> Bonfire, <img src="/static/Emojis/Pets/Deco/beach.png" style="height:14px;vertical-align:middle"> Beach, <img src="/static/Emojis/Pets/Deco/forest.png" style="height:14px;vertical-align:middle"> Forest, <img src="/static/Emojis/Pets/Deco/hotairballoon.png" style="height:14px;vertical-align:middle"> Hot Air Balloon, <img src="/static/Emojis/Pets/Deco/cruiseship.png" style="height:14px;vertical-align:middle"> Cruiseship, <img src="/static/Emojis/Pets/Deco/mountain.png" style="height:14px;vertical-align:middle"> Mountain, <img src="/static/Emojis/Pets/Deco/gym.png" style="height:14px;vertical-align:middle"> Gym, <img src="/static/Emojis/Pets/Deco/graveyard.png" style="height:14px;vertical-align:middle"> Graveyard, <img src="/static/Emojis/Pets/Deco/festival.png" style="height:14px;vertical-align:middle"> Festival, <img src="/static/Emojis/Pets/Deco/glacier.png" style="height:14px;vertical-align:middle"> Glacier, <img src="/static/Emojis/Pets/Deco/pyramids.png" style="height:14px;vertical-align:middle"> Pyramids
 
-| Reward Tier | What You Can Get |
-|-------------|-----------------|
-| Low | 1× Key1, Key2, or Key3 |
-| Mid | 1–2× Keys (mix of tiers), rare chance at Chest 1 |
-| High | 2–3× Keys (higher tiers), chance at Chest 2 or Chest 3 |
-| Top | 2–3× Keys or Chest 2 / Chest 3 / Chest 4 |
+| Element Match | XP | Key Drops |
+|---------------|----|-----------|
+| No match (or Basic element) | 5 × level | 75% chance for 1 random key |
+| 1 element matches | 10 × level | Guaranteed 1 key + 25% chance for 1–2 more |
+| Both elements match | 15 × level | Guaranteed 1 key + 50% chance for 1–2 more |
 
-Boss battles and quests sit at the top tier. Gifting, missions, and NPC battles sit in the mid tier. Play, train, equip, and consume sit at the low tier. The reward is always shown on the card — you'll never be surprised.
+There's also a **5% chance** of a boss encounter during play. The boss is generated based on the location's elements and your pet's stats. Defeating it rewards 5× normal XP and one of each key type.
 
-### Opening Chest Rewards from Inventory
+### Quests
 
-If a task rewards you a chest, it lands directly in your **inventory** on the My Pet page. Chests in your inventory **do not require keys to open** — they're already yours. Click the chest in your inventory panel to open it immediately. Chest 4 will ask you to pick an item type first (Material, Gem, Monster, Potion, or Hat), then opens with the same loot table as the Loot Market.
+Go to the **Quest tab**. Select a location and difficulty, then click "Begin Quest." Quests are AI-generated 5-stage adventures unique to your location and difficulty choice.
 
-### Cooldowns
+Each stage shows an event description and three choices. Each choice is tied to a pair of your pet's stats (ATT/DEF, INT/DEX, or HAP/ENE). Your pet's stat level vs the required skill determines your success chance. Some stages can trigger a live battle if you fail a skill check. Stage 4 may contain a mimic chest — if the chest seems suspicious, the ATT/DEF option lets you fight it for double loot.
 
-| Event | Cooldown |
-|-------|---------|
-| Task completed | 4 hours before a new task fills that slot |
-| Task dismissed | 1 hour before a new task fills that slot |
+Quests have a 5-second cooldown to start.
 
-You can dismiss any task you don't want by clicking **Dismiss** on its card. The slot goes on a 1-hour cooldown, then a fresh task appears. Completing a task triggers a 4-hour cooldown on that slot before the next one generates.
+### NPC Battles
 
-### DM Notifications
+NPC battles are turn-based fights against computer-controlled monsters. Access them from the **Battle** section. Choose an enemy type and rarity, then fight.
 
-The Tasks page has a 🔔 bell button in the top-right corner. Click it to configure Discord DM notifications for when your task slots refresh:
+**The three actions:**
+- **<img src="/static/Emojis/Pets/Deco/ATT.png" style="height:14px;vertical-align:middle"> Attack** — Roll a d20, multiply by your ATT + DEX, apply charge multiplier and type/element bonuses. Full damage lands if the target is also attacking. If the target is charging, they take 25% extra damage.
+- **<img src="/static/Emojis/Pets/Deco/DEF.png" style="height:14px;vertical-align:middle"> Defend** — Roll a d20, multiply by your DEF + INT. If your defense value exceeds the attacker's attack value, the excess becomes parry damage reflected back at them. If defense equals attack, no damage is dealt either way. Defending while being charged at is especially powerful.
+- **<img src="/static/Emojis/Pets/Deco/ENE.png" style="height:14px;vertical-align:middle"> Charge** — Deal zero damage this turn but advance your charge multiplier: 1.0 → 2.0 → 3.0 → 4.0 → 5.0 (max). While charging you take 25% extra damage from any attack that lands. The ENE ability branch can raise your charge cap beyond 5.
 
-| Mode | When You Get Pinged |
-|------|-------------------|
-| Off | Never |
-| Each slot | Once per slot, as soon as it refreshes with a new task |
-| All slots | Only when all 5 slots have refreshed — one single DM instead of five |
+Winning NPC battles drops items and XP. Losing awards reduced XP.
 
-The **All slots** mode is recommended if you don't want to be spammed — you'll get one ping when everything is ready.
+### Boss Battles
 
----
+Boss battles are harder NPC fights with bigger rewards. They can be triggered during Play (5% chance) or accessed directly. Bosses have 2.5–4× your pet's HP and deal scaled damage. Defeating a boss rewards 5× normal XP and one of each key type.
 
-## The Floor (Multiplayer)
-
-The Floor is the multiplayer hub where you challenge other players' pets directly. Open a lobby from the website, set the max number of opponents (1–9), and other players can join.
-
-**Battle modes:**
-- **1v1** — Two players, head to head
-- **Free-For-All (FFA)** — 3+ players, last pet standing wins
-
-**Relationship effects on damage:**
-
-| Relationship | Damage Modifier |
-|-------------|----------------|
-| Friends (mutual) | Both deal 0.8× damage |
-| Foe (mutual) | Both deal 1.2× damage |
-| Enemy (mutual) | Both deal 1.5× damage |
-| Best Friends | Cannot battle each other |
-
-Relationships must be **mutual** to take effect. You can also create bracket tournaments (4, 8, or 16 players) — the organizer sets the size, players register, and matches run automatically.
-
-**Boss Battles (multiplayer):**
+In multiplayer boss battles, relationships affect your damage:
 - Best Friends fighting together: +25% damage
 - Friends fighting together: +10% damage
 - Foes fighting together: −15% damage
 - Enemies cannot participate in the same boss battle
 
----
+### PvP Battles (The Floor)
 
-## The Pet Casino
+The Floor is the multiplayer hub where you challenge other players' pets. Open a lobby from the website, set the max number of opponents (1–9), and other players can join. Battle modes are 1v1 or Free-For-All (last pet standing wins).
 
-The Pet Casino is a collection of XP-based gambling games accessible from the website. All bets are placed in XP — you win or lose XP based on the outcome. Winning streaks also reward keys.
+Relationships affect PvP damage (both sides must have the same relationship for it to apply):
+- Friends: both deal 0.8× damage
+- Foes: both deal 1.2× damage
+- Enemies: both deal 1.5× damage
+- Best Friends: cannot battle each other
 
----
+You can also create bracket tournaments (4, 8, or 16 players) — the organizer sets the size, players register, and matches run automatically.
 
-## Slot Machine
+### Survivor Series (Survive)
 
-Spin the reels and match symbols to win XP. Choose a difficulty and bet amount, then spin.
+Survivor Series is a web-based battle royale where your pet competes against other players and AI opponents in a shared arena. Open the **Survive** page to join or start a game.
 
-**Difficulties and payouts (net multiplier on bet):**
+**Starting a game:** Once at least 2 real players have joined, any player can click **Start Game** to begin a 15-minute countdown. NPCs are added immediately. When the countdown ends, Round 1 fires. Every subsequent round fires 15 minutes after the previous one.
+
+**The arena map** is divided into 12 elemental zones (<img src="/static/Emojis/Pets/Deco/Fire.png" style="height:14px;vertical-align:middle"> Fire, <img src="/static/Emojis/Pets/Deco/Water.png" style="height:14px;vertical-align:middle"> Water, <img src="/static/Emojis/Pets/Deco/Ice.png" style="height:14px;vertical-align:middle"> Ice, <img src="/static/Emojis/Pets/Deco/Plant.png" style="height:14px;vertical-align:middle"> Plant, <img src="/static/Emojis/Pets/Deco/Air.png" style="height:14px;vertical-align:middle"> Air, <img src="/static/Emojis/Pets/Deco/Electric.png" style="height:14px;vertical-align:middle"> Electric, <img src="/static/Emojis/Pets/Deco/Magic.png" style="height:14px;vertical-align:middle"> Magic, <img src="/static/Emojis/Pets/Deco/Holy.png" style="height:14px;vertical-align:middle"> Holy, <img src="/static/Emojis/Pets/Deco/Necro.png" style="height:14px;vertical-align:middle"> Necro, <img src="/static/Emojis/Pets/Deco/Fighting.png" style="height:14px;vertical-align:middle"> Fighting, <img src="/static/Emojis/Pets/Deco/Rock.png" style="height:14px;vertical-align:middle"> Rock, <img src="/static/Emojis/Pets/Deco/Basic.png" style="height:14px;vertical-align:middle"> Basic), each with unique animated terrain. You can scroll to zoom, drag to pan, and use filter buttons to view specific pets or relationships.
+
+**Survive Score** is your core stat: `level ÷ equipment_multiplier ÷ 10`. Higher level = stronger. Higher equipment multiplier = weaker. Equipment actually hurts you in Survivor Series — unequip everything for the best score.
+
+**Charge system:** Every round a pet avoids combat, they build a charge stack (max 5, up to 1.5× multiplier). When they fight, the multiplier applies to their combat power and resets.
+
+**Combat:** Win probability is based on the ratio of each pet's Elimination Score (Survive Score × type/element advantages × charge multiplier), clamped between 5%–95%. Close fights compress toward 50%.
+
+**Encounter chances per zone:**
+- Enemies in the same zone: always fight (100%)
+- Foes in the same zone: 90%
+- Strangers (3+ in zone): 85%
+- Strangers (2 in zone): 65%
+- Friends: 40%
+- Best Friends: 20%
+- A dominant pet (score > 1.5× opponent) adds +15% encounter chance
+
+**Movement:** Pets prioritize chasing enemies, staying with best friends, hunting weaker pets if dominant, fleeing stronger strangers, and defaulting to their preferred element zones. After several rounds with no eliminations, arena pressure forces pets into fewer zones to guarantee encounters happen. Pets can also form temporary deals (truces) to gang up on a common threat.
+
+**Advanced mechanics:** Pets that rack up 3+ kills enter a rampage state. Pets that are wounded fight at −20% score. Pets in the bottom 10% of scores get a +25% "last stand" bonus. Environmental events can damage or force-move pets in affected zones.
+
+**XP rewards at game end:** `(rounds_survived × 10 + kills × 25) × max(1, level ÷ 5 + 1)`. The winner also gets `+200 × max(1, level ÷ 5 + 1)`.
+
+### Casino Games
+
+All casino games use XP as the currency. You win or lose XP based on the outcome. Win streaks also reward keys.
+
+**Slot Machine** — Spin the reels and match symbols to win XP. Choose a difficulty and bet amount, then spin. Higher difficulty = fewer symbols = harder to match = bigger payout. There's also a Fun Mode that lets you play with no XP changes. Insanity mode uses two separate reels — an element reel and a pet species reel — and you need to match your own pet's element on the element reel and your own species on the species reel simultaneously for the top payout.
 
 | Difficulty | 3-Match Payout | 2-Match Payout |
 |------------|---------------|----------------|
@@ -479,252 +343,131 @@ Spin the reels and match symbols to win XP. Choose a difficulty and bet amount, 
 | Very Hard | 1,061× | ~0.49× |
 | Insanity | 2,500,000,000× (both reels) | 220,000× (both reels) |
 
-Higher difficulty = fewer symbols = harder to match = bigger payout. Insanity mode uses dual reels — you need to match on both simultaneously. There's also a Fun mode with no XP changes.
+Slots also have a chance to drop keys on wins: Medium = 5%, Hard = 10%, Very Hard / Insanity = 20%.
 
-Bet range: **10–100,000 XP**
+**Pet Races** — Race your pet against bots and bet XP. Choose a difficulty (Apprentice, Journeyman, or Senior) and whether to play in simulation mode (instant result vs AI) or lobby mode (wait for real players). Race speed is determined by your pet's DEX, ENE, and HAP stats using a log-scale formula with randomness. Win streaks multiply your payout and reward keys. Winnings accumulate as pending XP — you must cash out to receive them. Losing wipes all pending XP and keys.
 
----
+| Difficulty | Base Payout | Bot Strength |
+|------------|------------|--------------|
+| Apprentice | 1.25× bet | Weak (you win ~60–65%) |
+| Journeyman | 2.0× bet | Medium (~even odds) |
+| Senior | 3.0× bet | Strong (you win ~35–40%) |
 
-## Pet Races
+**Win streak multipliers and key drops:**
 
-Race your pet against others (or bots) and bet XP on the outcome. Choose simulation mode (vs AI bots) or lobby mode (vs real players).
+| Win Streak | Payout Multiplier | Key Awarded |
+|------------|------------------|-------------|
+| 1–2 wins | 1× | <img src="/static/Emojis/Pets/Equipment/Key1.png" style="height:14px;vertical-align:middle"> Key1 |
+| 3–5 wins | 2× | <img src="/static/Emojis/Pets/Equipment/Key2.png" style="height:14px;vertical-align:middle"> Key2 |
+| 6–8 wins | 4× | <img src="/static/Emojis/Pets/Equipment/Key3.png" style="height:14px;vertical-align:middle"> Key3 |
+| 9+ wins | 8× | <img src="/static/Emojis/Pets/Equipment/Key1.png" style="height:14px;vertical-align:middle"> Key1 + <img src="/static/Emojis/Pets/Equipment/Key2.png" style="height:14px;vertical-align:middle"> Key2 + <img src="/static/Emojis/Pets/Equipment/Key3.png" style="height:14px;vertical-align:middle"> Key3 |
 
-**Payout multipliers by difficulty:**
+**Blackjack** — Classic blackjack. Get closer to 21 than the dealer without going over. Play solo or with up to 3 AI bots. Supports split hands (up to 4) and double down. Win streaks reward keys — a 7+ win streak triggers a jackpot key drop.
 
-| Difficulty | Base Payout |
-|------------|------------|
-| Apprentice | 1.25× bet |
-| Journeyman | 2.0× bet |
-| Senior | 3.0× bet |
+**Craps** — Roll dice and bet on outcomes. Choose your dice color. Available bets include Pass Line, Don't Pass, Field, Place bets (4–10), Any 7, and Hard ways (4/6/8/10). Win streaks reward keys.
 
-**Win streak multipliers stack on top:**
+**Texas Hold'em** — Full Texas Hold'em poker with XP as the bankroll. Set a buy-in, add 0–3 AI bots, and play through Pre-deal → Pre-flop → Flop → Turn → River. Actions each round: Bet/Raise, Call/Check, or Fold. Win streaks reward keys.
 
-| Streak | Streak Multiplier |
-|--------|-----------------|
-| 1–2 wins | 1× |
-| 3–5 wins | 2× |
-| 6–8 wins | 4× |
-| 9+ wins | 8× |
+**Casino win streak keys:**
 
-A Senior race with a 9+ win streak pays `bet × 3.0 × 8 = 24×`. Winnings accumulate as pending XP — you must **cash out** to receive them. Losing wipes all pending XP and keys.
+| Win Streak | Keys Awarded |
+|------------|-------------|
+| 1 win | 1× <img src="/static/Emojis/Pets/Equipment/Key1.png" style="height:14px;vertical-align:middle"> Key1 |
+| 2 wins | 2× <img src="/static/Emojis/Pets/Equipment/Key1.png" style="height:14px;vertical-align:middle"> Key1 |
+| 3 wins | 1× <img src="/static/Emojis/Pets/Equipment/Key2.png" style="height:14px;vertical-align:middle"> Key2 |
+| 4 wins | 2× <img src="/static/Emojis/Pets/Equipment/Key2.png" style="height:14px;vertical-align:middle"> Key2 |
+| 5 wins | 1× <img src="/static/Emojis/Pets/Equipment/Key3.png" style="height:14px;vertical-align:middle"> Key3 |
+| 6 wins | 2× <img src="/static/Emojis/Pets/Equipment/Key3.png" style="height:14px;vertical-align:middle"> Key3 |
+| 7+ wins | 3× <img src="/static/Emojis/Pets/Equipment/Key1.png" style="height:14px;vertical-align:middle"> Key1 + 3× <img src="/static/Emojis/Pets/Equipment/Key2.png" style="height:14px;vertical-align:middle"> Key2 + 3× <img src="/static/Emojis/Pets/Equipment/Key3.png" style="height:14px;vertical-align:middle"> Key3 (Jackpot!) |
 
-Race speed is determined by your pet's DEX, ENE, and HAP stats using a logarithmic formula with randomness.
+### Pet Stock Market
 
----
-
-## Blackjack
-
-Classic blackjack. Get closer to 21 than the dealer without going over. Play solo or with up to 3 AI bots. Betting or Fun mode available.
-
-- Split hands (up to 4 hands total)
-- Double down on 2-card hands (betting mode only)
-- Ace = 11 (or 1 if it would bust you). Face cards = 10.
-
-Win streaks reward keys. A 7+ win streak triggers a jackpot key drop.
-
----
-
-## Craps
-
-Roll dice and bet on outcomes. Choose your dice color (Red, Orange, Blue, Yellow, Pink, Green, Purple, or Random).
-
-**Available bets:**
-
-| Bet | How to Win |
-|-----|-----------|
-| Pass Line | Roll 7 or 11 on come-out, or hit your point before rolling 7 |
-| Don't Pass | Opposite of Pass Line |
-| Field | Roll 2, 3, 4, 9, 10, 11, or 12 (one roll) |
-| Place 4–10 | Roll that number before a 7 |
-| Any 7 | Roll a 7 (one roll) |
-| Hard 4/6/8/10 | Roll the hard way (doubles) before a 7 or easy version |
-
----
-
-## Texas Hold'em
-
-Full Texas Hold'em poker with XP as the bankroll. Set a buy-in amount, add 0–3 AI bots, and play through Pre-deal → Pre-flop → Flop → Turn → River. Actions each round: Bet/Raise, Call/Check, or Fold. The AI bots use real poker logic.
-
----
-
-## Mini-Games
-
-Quick mini-game activities embedded in quests:
-
-- **Mimic Chests** — During quests, some chests are mimics. Choosing the ATT/DEF option lets you fight it for double loot. Other choices mean you escape with nothing.
-- **Hostile Pet Encounters** — Scare off or evade enemy pets during quests. Fail the skill check and you fight a live turn-based battle directly in the quest panel.
-- **Boss Encounters** — 5% chance during Play to trigger a boss fight for big rewards.
-
----
-
-## Survivor Series
-
-Survivor Series is a web-based battle royale where your pet competes against other players' pets and AI opponents in a shared arena. Rounds fire automatically every 15 minutes.
-
-### Starting a Game
-
-- Open the **Survive** page. If a lobby is open, click **⚔️ Join Game**.
-- Once at least 2 real players have joined, any player can click **🚀 Start Game** to begin a 15-minute countdown.
-- NPCs are added immediately when the game is started and appear on the map.
-- When the countdown ends, **Round 1 fires immediately**. Every subsequent round fires 15 minutes after the previous one.
-- Your custom battle action names (set via the Rename tab on My Pet) are used in all round narratives.
-
-### The Arena Map
-
-The map fills the page and is always visible when a game is active or in the lobby. It's divided into 12 elemental zones — each with a unique animated terrain:
-
-| Zone | Visual Theme |
-|------|-------------|
-| Fire | Molten lava floor, rising flame particles with hot white cores |
-| Water | Deep ocean with caustic light patterns, flowing stream particles |
-| Ice | Frozen lake with hexagonal crystal grid, falling 6-pointed snowflakes |
-| Plant | Dense forest floor with dappled light, swaying grass blades |
-| Air | Open sky with volumetric cloud layers, drifting cloud puffs |
-| Electric | Storm cell with branching lightning tree, plasma spark particles |
-| Magic | Arcane ritual circle with pentagram and rune dial, rising glowing motes |
-| Holy | Divine light with god rays and marble floor, golden light motes with cross sparkles |
-| Necro | Near-black void with spectral fog and bone fragments, drifting soul wisps |
-| Fighting | Dojo tatami mat with center combat ring, random comic impact bursts (POW! BAM!) |
-| Rock | Stone quarry with strata layers and mineral veins |
-| Basic | Worn cobblestone courtyard, slow drifting dust motes |
-
-**Map controls:**
-- **Scroll** to zoom, **drag** to pan, **⟳ Fit** to reset the view
-- **Filter buttons** — All / Players / NPCs / Alive / Eliminated / Relationships
-- **Relationships filter** — click a pet icon first, then switch to Relationships to see only that pet and everyone they have a relationship with. Colored lines show the type: gold = Best Friend, green = Friend, orange dashed = Foe, red dashed = Enemy
-- **Click any pet icon** to open their detail panel showing Survive Score, kill count, who eliminated them, and a full round-by-round activity feed
-
-**Stats bar** (above the map) shows alive count, eliminated count, the alive/eliminated progress bar, player/NPC breakdown, and the countdown to the next round.
-
-### Survive Score
-
-`Survive Score = level ÷ equipment_multiplier ÷ 10`
-
-This is the core stat for both movement decisions and combat. Higher level = higher score = stronger. Higher equipment multiplier = lower score = weaker. **Equipment hurts you in the Survivor Series** — the multiplier divides your score.
-
-| Example | Level | Multiplier | Survive Score |
-|---------|-------|-----------|--------------|
-| No equipment | 500 | 1 | 50.0 |
-| Full set, level 50 | 500 | 13 | ~3.8 |
-| Level 100 bonus | 100 | 1 | 10.0 |
-
-The equipment multiplier is calculated exactly as on the My Pet page:
-- No pairs, no full set → **1×** (+ level bonus)
-- Full set (Material pair + Gem pair + Monster pair + Hat) → **3×** (+ level bonus)
-- Full set + both hat bonus stats match your pet's specializations → **4×** (+ level bonus)
-- Every 50 levels adds **+1** to the multiplier
-
-### Charge System
-
-Every round a pet avoids combat, they build up a **charge stack** (max 5). This is shown in the Live Feed as `[Charge ×1.3]` and uses your pet's custom Charge action name in the narrative.
-
-| Rounds Without Combat | Charge Multiplier |
-|----------------------|------------------|
-| 0 | 1.0× |
-| 1 | 1.1× |
-| 2 | 1.2× |
-| 3 | 1.3× |
-| 4 | 1.4× |
-| 5+ (cap) | 1.5× |
-
-When a pet fights, their charge multiplier is applied to their Elimination Score for that combat, then **reset to 0**. A pet that has avoided combat for 5 rounds hits with 1.5× their normal combat power. Pets with high charge stacks show increasingly dramatic narrative lines — "radiates barely-contained energy" at 3+ stacks.
-
-### Combat Resolution
-
-**Elimination Score** (used only in combat, not movement):
-
-`Elimination Score = Survive Score × 1.2^advantages × 0.8^disadvantages × charge_multiplier`
-
-Each type or element advantage multiplies by **1.2×**, each disadvantage by **0.8×**. Advantages are counted across 5 axes: type triangle, primary vs primary element, element2 vs primary, primary vs element2, element2 vs element2.
-
-Win probability = ratio of elimination scores, clamped **5%–95%**. When scores are within 15% of each other, the probability compresses toward 50% — close fights are genuinely tense. Both pets fight simultaneously; the winner is determined by who has the higher final score.
-
-**Action selection in eliminations:**
-- **Winner** — releases their Charge action if they had stacks; otherwise uses Attack (if ATT ≥ DEF) or Defend (if DEF > ATT)
-- **Loser** — uses Defend (parry attempt, `_PARRY_SUCCESS_THEN_BREAK` narrative) if DEF > ATT; otherwise uses Attack (`_PARRY_FAIL` narrative)
-- All action names use your **custom saved labels** from the Rename tab first, then species defaults, then element/category fallbacks
-
-### Movement Rules (per round)
-
-Each pet chooses a zone to move to based on this priority order:
-
-1. **Enemies** — always chase, always fight regardless of anything else
-2. **Best Friends** — stay in the same zone while more than 10% of pets remain
-3. **Dominant pets** (Survive Score > 2× median) — actively hunt the weakest stranger in range
-4. **Flee** — score-gap-weighted flee from stronger strangers; boldness from kills (×0.15 per kill, cap 0.75) reduces flee chance
-5. **Foes** — roam preferred zones freely, no avoidance
-6. **Friends** — avoid their zones while more than 25% of pets remain
-7. **Default** — element-preferred zones, weighted toward top preference
-
-### Encounter Chances
-
-When multiple pets share a zone, an encounter may or may not happen:
-
-| Relationship | Encounter Chance |
-|-------------|-----------------|
-| Enemies | 100% (always fight) |
-| Foes | 80% |
-| Strangers (3+ in zone) | 68% |
-| Strangers (2 in zone) | 55% |
-| Friends | 25% |
-| Best Friends | 10% |
-
-A dominant pet (score > 1.5× opponent) adds +15% to encounter chance. If no encounter happens, the pet gets a solo action line and their charge stack increments.
-
-### Group Combat
-
-Pets can fight in groups when relationships allow it:
-- **Strangers/enemies/foes** — 1v1 only
-- **Friends** — up to 2v2
-- **Best Friends** — up to 4v4
-
-Group combat uses the average elimination score of each side vs the strongest representative of the opposing side.
-
-### Best Friend Victory
-
-If 2–4 Best Friends are the last pets standing, they have a chance at **shared victory**:
-- 2 BFs remaining: 60% chance
-- 3 BFs remaining: 40% chance
-- 4 BFs remaining: 25% chance
-- If this exact group previously shared a group elimination together: **100% chance**
-
-All surviving Best Friends are declared co-champions.
-
-### Live Feed
-
-Every action and elimination is broadcast in real time. Solo action lines show the pet's action name, location, and behaviour context. Elimination lines include the opener, action names, element/type advantage lines, relationship closing, score-gap commentary, and kill-count flavour. When no game is active, the feed shows the last game's full round-by-round history.
-
-### XP Rewards
-
-All real players earn XP at game end:
-
-`XP = (rounds_survived × 10 + kills × 25) × max(1, level ÷ 5 + 1)`
-
-Winner also gets: `+200 × max(1, level ÷ 5 + 1)`
-
----
-
-## Pet Stock Market
-
-The Pet Stock Market is a web-based XP investment system. Buy and sell tokens representing pet types and elements, with prices updating every 15 minutes.
+The Pet Stock Market is an XP investment system. Buy and sell tokens representing pet types and elements, with prices updating every 15 minutes.
 
 **Tokens available:**
-- 3 type tokens: Land, Swimming, Flying (base price: 250 XP each)
-- 13 element tokens: Basic, Fire, Water, Electric, Ice, Plant, Rock, Air, Magic, Holy, Necro, Psychic, Fighting (base price: 500 XP each)
+- 3 type tokens: <img src="/static/Emojis/Pets/Deco/Land.png" style="height:14px;vertical-align:middle"> Land, <img src="/static/Emojis/Pets/Deco/Swimming.png" style="height:14px;vertical-align:middle"> Swimming, <img src="/static/Emojis/Pets/Deco/Flying.png" style="height:14px;vertical-align:middle"> Flying (base price: 250 XP each)
+- 13 element tokens: <img src="/static/Emojis/Pets/Deco/Basic.png" style="height:14px;vertical-align:middle"> Basic, <img src="/static/Emojis/Pets/Deco/Fire.png" style="height:14px;vertical-align:middle"> Fire, <img src="/static/Emojis/Pets/Deco/Water.png" style="height:14px;vertical-align:middle"> Water, <img src="/static/Emojis/Pets/Deco/Electric.png" style="height:14px;vertical-align:middle"> Electric, <img src="/static/Emojis/Pets/Deco/Ice.png" style="height:14px;vertical-align:middle"> Ice, <img src="/static/Emojis/Pets/Deco/Plant.png" style="height:14px;vertical-align:middle"> Plant, <img src="/static/Emojis/Pets/Deco/Rock.png" style="height:14px;vertical-align:middle"> Rock, <img src="/static/Emojis/Pets/Deco/Air.png" style="height:14px;vertical-align:middle"> Air, <img src="/static/Emojis/Pets/Deco/Magic.png" style="height:14px;vertical-align:middle"> Magic, <img src="/static/Emojis/Pets/Deco/Holy.png" style="height:14px;vertical-align:middle"> Holy, <img src="/static/Emojis/Pets/Deco/Necro.png" style="height:14px;vertical-align:middle"> Necro, <img src="/static/Emojis/Pets/Deco/Psychic.png" style="height:14px;vertical-align:middle"> Psychic, <img src="/static/Emojis/Pets/Deco/Fighting.png" style="height:14px;vertical-align:middle"> Fighting (base price: 500 XP each)
 
-**Buying:** Costs XP from your pet. Non-matching tokens cost more:
-- Token matches your pet's type or element: **1× price**
-- Token doesn't match, single-element pet: **2× price**
-- Token doesn't match, dual-element pet: **3× price**
+**Buying** costs XP from your pet. Tokens that don't match your pet's type or element cost more:
+- Matches your pet's type or element: 1× price
+- Doesn't match, single-element pet: 2× price
+- Doesn't match, dual-element pet: 3× price
 
 Buying deducts XP directly — your pet can level down if you spend enough.
 
-**Selling:** Always at the current market price with no multiplier. Selling adds XP to your pet and can trigger level-ups.
+**Selling** always happens at the current market price with no multiplier. Selling adds XP to your pet and can trigger level-ups.
 
-**Price dynamics (every 15 minutes):**
-- Random drift: elements ±20%, types ±12% per tick
-- 10% chance of a momentum spike adding extra ±12% volatility
-- Buy pressure pushes prices up; sell pressure pushes them down
-- Market events fire regularly — Minor events every tick, Major events on 85% of days (active for 2–8 hours), Holiday events on special dates
+**Price dynamics** update every 15 minutes: random drift (elements ±20%, types ±12%), momentum spikes (10% chance of extra ±12% volatility), buy/sell pressure from other players, and market events (Minor events every tick, Major events on 85% of days, Holiday events on special dates).
 
 Track your P&L from the market page — it shows XP spent, XP received from sells, unrealised value of held tokens, and net profit/loss.
+
+### Item Board
+
+The Item Board (Bazaar) is a player-to-player marketplace where you can buy and sell items using XP. Access it from the sidebar.
+
+**To post an item:** Go to the Item Board and list an item from your inventory. Set a price in XP and choose whether to price it in XP or as a gift. Your listing goes live immediately and other players can see it in real time.
+
+**To buy an item:** Browse the board, find what you want, and click to purchase. The XP is deducted from your pet and added to the seller's pet. The seller gets a Discord DM notification when their item sells.
+
+Posting an item on the Item Board also counts toward the "Post an item on the Item Board" daily task.
+
+### Tasks
+
+Tasks are daily objectives that reward you with keys or chests for completing them. Open the **Tasks page** from the sidebar to view your slots.
+
+You have **7 task slots total:**
+- **Slot 0 — Daily Goal:** Complete 10 daily tasks to earn a chest reward. The chest tier improves with your streak — completing the goal on consecutive days upgrades it from Chest 1 up to Chest 4. Missing a day resets your streak.
+- **Slots 1–6 — Regular Tasks:** Six individual tasks, each with its own objective and reward. All slots reset at UTC midnight every day.
+
+Each task card shows what to do, a progress bar that fills as you complete the required actions, and the reward shown upfront. Tasks track your actions automatically — just do the thing and the bar updates in real time.
+
+**Task types include:** Play, Train, Mission, Win NPC Battle, Complete Quest, Post Item to Item Board, Win Boss Battle, Rename a battle action, Use Potion, Equip Item, Open Chest, Consume Item, Buy/Sell Pet Stock Tokens, Play Slots, Play Keno, Coin Flip, Get Horoscope, Race, Join/Survive/Eliminate in Survivor Series, Buy Powerball Ticket, Scratch Tickets.
+
+**Rename tasks** are phrased as "Pet is tired of {action} — rename it." Go to the Rename tab on your My Pet page, update that specific battle action label (Attack, Defense, or Charge), and save. The task completes automatically.
+
+**Rewards scale with difficulty:**
+
+| Reward Tier | What You Can Get |
+|-------------|-----------------|
+| Low | 1× <img src="/static/Emojis/Pets/Equipment/Key1.png" style="height:14px;vertical-align:middle"> Key1, <img src="/static/Emojis/Pets/Equipment/Key2.png" style="height:14px;vertical-align:middle"> Key2, or <img src="/static/Emojis/Pets/Equipment/Key3.png" style="height:14px;vertical-align:middle"> Key3 |
+| Mid | 1–2× Keys (mix of tiers), rare chance at <img src="/static/Emojis/Pets/Equipment/chest1.png" style="height:14px;vertical-align:middle"> Chest 1 |
+| High | 2–3× Keys (higher tiers), chance at <img src="/static/Emojis/Pets/Equipment/chest2.png" style="height:14px;vertical-align:middle"> Chest 2 or <img src="/static/Emojis/Pets/Equipment/chest3.png" style="height:14px;vertical-align:middle"> Chest 3 |
+| Top | 2–3× Keys or <img src="/static/Emojis/Pets/Equipment/chest2.png" style="height:14px;vertical-align:middle"> Chest 2 / <img src="/static/Emojis/Pets/Equipment/chest3.png" style="height:14px;vertical-align:middle"> Chest 3 / <img src="/static/Emojis/Pets/Equipment/chest4.png" style="height:14px;vertical-align:middle"> Chest 4 |
+
+**Cooldowns:** All regular task slots reset at UTC midnight. If you complete a task before midnight, that slot stays completed until the reset. You can dismiss any task you don't want — dismissed slots also wait for the midnight reset.
+
+**DM Notifications:** Click the 🔔 bell button on the Tasks page to configure Discord DM pings when your task slots refresh. Options are Off, Each Slot (one ping per slot as it refreshes), or All Slots (one ping when all slots are ready).
+
+---
+
+## Hints
+
+**Build for your specializations.** Your pet's two specialization stats are shown in gold on the pet card. Focus your potions and equipment on boosting those stats — they're what your species is built around, and matching your Hat's bonus stats to both specializations unlocks the 4× equipment multiplier.
+
+**Aim for a full matching set.** Two of the same Material, two of the same Gem, two of the same Monster, and a Hat. That's the full set and gets you 3× on all equipment bonuses. Add the matching Hat specs and you're at 4×. Every 50 levels adds another +1 on top of that.
+
+**<img src="/static/Emojis/Pets/Deco/HAP.png" style="height:14px;vertical-align:middle"> HAP and <img src="/static/Emojis/Pets/Deco/ENE.png" style="height:14px;vertical-align:middle"> ENE are your health stats.** If you want a tankier pet that survives longer in battles and Survivor Series, prioritize HAP and ENE. They feed into both the average and the multiplicative part of the HP formula — small increases go a long way.
+
+**Training is a stat tool, not an XP tool.** Training directly changes a chosen stat — it doesn't award XP. Use it to fine-tune your build. Hard training with a high equipment multiplier can add huge amounts to a stat on a single success, but failure costs the same amount, so be careful.
+
+**Match your element when playing locations.** Always check which element a location favors before hitting Play. A matching element gives 2–3× XP and better key drops. Over time this makes a huge difference in how fast you level and how many chests you open.
+
+**Hard missions are worth it at higher levels.** The 30% success chance sounds rough, but Hard missions give each key an independent 75% drop chance and award 500+ base XP scaled by your level. At higher levels, a successful Hard mission is one of the best XP-per-action activities in the game. And since only gambled XP is lost on failure, you can run them risk-free without gambling.
+
+**Don't sleep on the Item Board.** If you're getting duplicate Materials or Gems you don't need, post them on the Item Board instead of letting them overflow to XP. You'll earn more XP from the sale than from the overflow conversion, and another player gets something useful.
+
+**In Survivor Series, unequip everything.** Your Survive Score is `level ÷ equipment_multiplier ÷ 10`. Equipment multipliers divide your score, making you weaker. A level 500 pet with no equipment has a score of 50. The same pet with a full set has a score of ~3.8. Go in naked.
+
+**Let charge stacks build in Survivor Series.** Every round you avoid combat, your charge multiplier grows (up to 1.5× at 5 rounds). If you can stay out of fights early, you'll hit much harder when you finally engage.
+
+**In turn-based battles, Defend beats Charge.** If you read that your opponent is about to release a big charge, defending can completely negate it and reflect the excess back as parry damage. Charge is powerful but predictable — experienced players will punish it.
+
+**Use the Ability Tree for endgame.** Once your pet is high level, the Ability Tree lets you trade 500 levels per ability point for permanent bonuses. The <img src="/static/Emojis/Pets/Deco/INT.png" style="height:13px;vertical-align:middle"> INT branch gives XP multipliers for all 8 activities — unlocking those early makes every subsequent activity more efficient. The <img src="/static/Emojis/Pets/Deco/DEX.png" style="height:13px;vertical-align:middle"> DEX branch reduces casino losses, which matters if you play the casino regularly.
+
+**Win streaks in the casino compound fast.** A 7+ win streak in Blackjack, Craps, or Hold'em gives a jackpot key drop (3× <img src="/static/Emojis/Pets/Equipment/Key1.png" style="height:13px;vertical-align:middle"> Key1 + 3× <img src="/static/Emojis/Pets/Equipment/Key2.png" style="height:13px;vertical-align:middle"> Key2 + 3× <img src="/static/Emojis/Pets/Equipment/Key3.png" style="height:13px;vertical-align:middle"> Key3). If you're on a streak, consider playing conservatively to protect it rather than going for big bets.
+
+**Race on Senior difficulty with a streak.** A Senior race with a 9+ win streak pays `bet × 3.0 × 8 = 24×`. Build your streak on Apprentice first, then switch to Senior once you're confident. Remember: losing wipes all pending XP and keys, so cash out before you get greedy.
+
+**Complete your Daily Goal every day.** The Daily Goal (slot 0 on the Tasks page) asks you to complete 10 tasks. Do it on consecutive days and the chest reward upgrades — from Chest 1 up to Chest 4 the longer your streak runs. Missing a day resets it.
+
+**Relationships change how you play.** Setting someone as a Foe means you both deal 1.2× damage to each other in PvP — useful if you want harder fights. Setting someone as an Enemy means 1.5× damage both ways. Best Friends can't battle each other but get +25% damage when fighting bosses together.

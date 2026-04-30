@@ -39,21 +39,27 @@ document.addEventListener('DOMContentLoaded', function() {
             </div>
         </div>
         <div class="col-md-4 mb-4">
-            <div class="home-card" onclick="loadPage('nations')" style="cursor: pointer;">
-                <h4><img src="/static/Emojis/Menu/crow.png" class="home-card-icon"> The Watch</h4>
-                <p>The full Night's Watch member roster — score, cities, military, MMR, projects, and improvements for every nation. Click any row to expand a detailed nation report. Sort by anything. Fear everyone.</p>
+            <div class="home-card" onclick="loadPage('nations')" style="cursor: pointer;" data-restricted="true">
+                <h4><img src="/static/Emojis/Menu/irs.png" class="home-card-icon"> The Watch</h4>
+                <p>The full Nights Watch member roster — score, cities, military, MMR, projects, and improvements for every nation. Click any row to expand a detailed nation report. Sort by anything. Fear everyone.</p>
             </div>
         </div>
         <div class="col-md-4 mb-4">
-            <div class="home-card" onclick="loadPage('watch')" style="cursor: pointer;">
+            <div class="home-card" onclick="loadPage('watch')" style="cursor: pointer;" data-restricted="true">
                 <h4><img src="/static/Emojis/Menu/wars.png" class="home-card-icon"> War Stats</h4>
                 <p>The alliance war ledger that names names. See who's actually fighting, who's burning infra, who's looting, and who's just vibing while everyone else bleeds. Sortable by everything.</p>
             </div>
         </div>
         <div class="col-md-4 mb-4">
-            <div class="home-card" onclick="loadPage('leaderboard')" style="cursor: pointer;">
+            <div class="home-card" onclick="loadPage('leaderboard')" style="cursor: pointer;" data-restricted="true">
                 <h4><img src="/static/Emojis/Menu/leaderboard.png" class="home-card-icon"> Leaderboards</h4>
                 <p>Who dealt the most damage? Who looted the most? Who ate the most missiles like a champ? The monthly and weekly hall of fame — or shame — depending on which side of the war you're on.</p>
+            </div>
+        </div>
+        <div class="col-md-4 mb-4">
+            <div class="home-card" onclick="loadPage('raids')" style="cursor: pointer;" data-restricted="true">
+                <h4><img src="/static/Emojis/Menu/pirate.png" class="home-card-icon"> Raid Finder</h4>
+                <p>Find the juiciest raid targets in your war range. Filter by activity, military strength, beige status, and minimum loot. Estimated loot includes projected value plus accumulated revenue since their last war. Set beige expiry alerts to get a DM 15 minutes before they leave beige.</p>
             </div>
         </div>
         <div class="col-md-4 mb-4">
@@ -65,7 +71,7 @@ document.addEventListener('DOMContentLoaded', function() {
         <div class="col-md-4 mb-4">
             <div class="home-card" onclick="loadPage('comparison')" style="cursor: pointer;">
                 <h4><img src="/static/Emojis/Menu/comparison.png" class="home-card-icon"> Comparison</h4>
-                <p>Stack any two alliances side by side and watch the numbers fight. Military, production, projects, improvements, city distribution — all in one rich breakdown. Night's Watch pre-loaded, obviously.</p>
+                <p>Stack any two alliances side by side and watch the numbers fight. Military, production, projects, improvements, city distribution — all in one rich breakdown. Nights Watch pre-loaded, obviously.</p>
             </div>
         </div>
         <div class="col-md-4 mb-4">
@@ -236,11 +242,176 @@ document.addEventListener('DOMContentLoaded', function() {
 </div>
 
 <script>
-function loadPage(pageName) {
-    if (typeof navigateTo === 'function') {
-        navigateTo(pageName);
+const _HP_RESTRICTED = new Set(['nations', 'watch', 'leaderboard', 'raids']);
+
+// ── Access-denied modal ────────────────────────────────────────────────────
+function _showAccessModal(pageName) {
+    if (document.getElementById('hp-access-modal')) return; // already open
+
+    const lines = [
+        "Oh, you sweet summer child. 🌸",
+        "This page is classified intel — NW eyes only.",
+        "You're gonna need to slide into <strong>Aries'</strong> DMs on Discord and ask nicely.",
+        "He <em>may</em> respond. He <em>may</em> be busy plotting world domination.",
+        "Either way, that's your problem now. 🫡",
+    ];
+
+    const overlay = document.createElement('div');
+    overlay.id = 'hp-access-modal';
+    overlay.style.cssText = `
+        position:fixed;inset:0;z-index:99999;
+        display:flex;align-items:center;justify-content:center;
+        background:rgba(0,0,0,0.75);backdrop-filter:blur(4px);
+        animation:hp-modal-fade-in 0.2s ease;
+    `;
+
+    overlay.innerHTML = `
+        <style>
+            @keyframes hp-modal-fade-in { from{opacity:0;transform:scale(0.92)} to{opacity:1;transform:scale(1)} }
+            @keyframes hp-modal-shake { 0%,100%{transform:translateX(0)} 20%,60%{transform:translateX(-6px)} 40%,80%{transform:translateX(6px)} }
+            #hp-access-modal-box {
+                background:linear-gradient(160deg,rgba(20,15,5,0.98),rgba(10,8,3,0.98));
+                border:1px solid rgba(255,215,0,0.35);
+                border-radius:1.2rem;
+                box-shadow:0 0 60px rgba(255,215,0,0.15),0 20px 60px rgba(0,0,0,0.8);
+                padding:2.5rem 2.5rem 2rem;
+                max-width:480px;width:90%;
+                text-align:center;
+                position:relative;
+            }
+            #hp-access-modal-box .hp-modal-lock {
+                font-size:3.5rem;margin-bottom:0.5rem;
+                animation:hp-modal-shake 0.5s ease 0.3s;
+                display:block;
+            }
+            #hp-access-modal-box h2 {
+                color:var(--gold-primary,#ffd700);
+                font-size:1.3rem;font-weight:800;
+                letter-spacing:0.04em;margin:0 0 1rem;
+                text-shadow:0 0 12px rgba(255,215,0,0.4);
+            }
+            #hp-access-modal-box .hp-modal-lines {
+                color:rgba(240,240,240,0.88);
+                font-size:0.88rem;line-height:1.7;
+                margin-bottom:1.5rem;
+            }
+            #hp-access-modal-box .hp-modal-lines p { margin:0.25rem 0; }
+            #hp-access-modal-box .hp-modal-tag {
+                display:inline-block;
+                background:rgba(255,215,0,0.12);
+                border:1px solid rgba(255,215,0,0.4);
+                color:var(--gold-primary,#ffd700);
+                border-radius:999px;
+                padding:0.35rem 1rem;
+                font-size:0.82rem;font-weight:700;
+                letter-spacing:0.05em;
+                margin-bottom:1.5rem;
+            }
+            #hp-access-modal-box .hp-modal-close {
+                background:linear-gradient(45deg,#ffd700,#ffed4e);
+                color:#1a1a1a;border:none;border-radius:999px;
+                padding:0.55rem 1.8rem;font-weight:800;
+                font-size:0.9rem;cursor:pointer;
+                transition:opacity 0.15s,transform 0.15s;
+            }
+            #hp-access-modal-box .hp-modal-close:hover { opacity:0.85;transform:scale(1.04); }
+            #hp-access-modal-box .hp-modal-sub {
+                margin-top:0.75rem;
+                font-size:0.72rem;color:rgba(255,255,255,0.35);
+            }
+        </style>
+        <div id="hp-access-modal-box">
+            <span class="hp-modal-lock">🔒</span>
+            <h2>Access Denied, Wanderer</h2>
+            <div class="hp-modal-lines">
+                ${lines.map(l => `<p>${l}</p>`).join('')}
+            </div>
+            <div class="hp-modal-tag">📨 DM @Aries on Discord</div>
+            <br>
+            <button class="hp-modal-close" id="hp-modal-close-btn">Got it, I'll beg</button>
+            <p class="hp-modal-sub">Results not guaranteed. Aries is a busy man.</p>
+        </div>
+    `;
+
+    document.body.appendChild(overlay);
+
+    // Close on button click
+    document.getElementById('hp-modal-close-btn').addEventListener('click', () => overlay.remove());
+    // Close on backdrop click
+    overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+    // Close on Escape
+    const _esc = e => { if (e.key === 'Escape') { overlay.remove(); document.removeEventListener('keydown', _esc); } };
+    document.addEventListener('keydown', _esc);
+}
+
+function loadPage(pageName, scriptPath, scriptType, cssPath) {
+    // Block restricted pages — show modal instead of navigating
+    const isRestricted = _HP_RESTRICTED.has(pageName);
+    const hasAccess = typeof _canView === 'function'
+        ? _canView(pageName)
+        : (typeof _pageAccessGranted !== 'undefined' && _pageAccessGranted);
+
+    if (isRestricted && !hasAccess) {
+        _showAccessModal(pageName);
+        return;
+    }
+
+    // Check if we're in the dashboard context with navigateTo available
+    if (typeof navigateTo === 'function' && typeof window.loadPageDirect === 'function') {
+        window.loadPageDirect(pageName, scriptPath, scriptType, cssPath);
+
+        const url = new URL(window.location);
+        url.searchParams.set('page', pageName);
+        ['script', 'scriptType', 'css'].forEach(k => url.searchParams.delete(k));
+        if (scriptPath) url.searchParams.set('script', scriptPath);
+        if (scriptType && scriptType !== 'script') url.searchParams.set('scriptType', scriptType);
+        if (cssPath) url.searchParams.set('css', cssPath);
+        history.pushState({ page: pageName }, '', url.toString());
+
+        document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+        const activeLink = document.querySelector(`.nav-link[data-page='${pageName}']`);
+        if (activeLink) activeLink.classList.add('active');
     } else {
-        window.location.href = `dashboard.html?page=${pageName}`;
+        let url = `dashboard.html?page=${pageName}`;
+        if (scriptPath) url += `&script=${encodeURIComponent(scriptPath)}`;
+        if (scriptType && scriptType !== 'script') url += `&scriptType=${encodeURIComponent(scriptType)}`;
+        if (cssPath) url += `&css=${encodeURIComponent(cssPath)}`;
+        window.location.href = url;
     }
 }
+
+// Apply lock styling to restricted cards based on current access state
+function _applyHomepageCardLocks() {
+    document.querySelectorAll('.home-card[data-restricted="true"]').forEach(card => {
+        const onclick = card.getAttribute('onclick') || '';
+        const pageMatch = onclick.match(/loadPage\('(\w+)'/);
+        const page = pageMatch ? pageMatch[1] : null;
+        const granted = page
+            ? (typeof _canView === 'function' ? _canView(page) : (typeof _pageAccessGranted !== 'undefined' && _pageAccessGranted))
+            : false;
+
+        if (granted) {
+            card.classList.remove('home-card-locked');
+            card.style.opacity = '';
+            card.style.cursor = 'pointer';
+        } else {
+            card.classList.add('home-card-locked');
+            card.style.opacity = '0.45';
+            card.style.cursor = 'not-allowed';
+        }
+    });
+}
+
+// Run once on load, and again whenever access state updates
+document.addEventListener('DOMContentLoaded', function () {
+    _applyHomepageCardLocks();
+    let _tries = 0;
+    const _poll = setInterval(function () {
+        _tries++;
+        _applyHomepageCardLocks();
+        if (_tries >= 20 || (typeof _pageAccessChecked !== 'undefined' && _pageAccessChecked)) {
+            clearInterval(_poll);
+        }
+    }, 150);
+});
 </script>

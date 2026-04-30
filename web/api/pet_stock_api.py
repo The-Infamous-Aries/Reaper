@@ -100,9 +100,8 @@ async def buy_token(request: Request):
     status = 200 if result.get("ok") else 400
     if result.get("ok"):
         try:
-            from web.api.tasks_api import record_action as _task_record
-            for _ in range(quantity):
-                await _task_record(user_id, "buy_token")
+            from web.api.tasks_api import tasks_db as _tasks_db
+            await _tasks_db.update_progress_by(user_id, "buy_token", quantity)
         except Exception:
             pass
     return JSONResponse(content=result, status_code=status)
@@ -131,9 +130,121 @@ async def sell_token(request: Request):
     status = 200 if result.get("ok") else 400
     if result.get("ok"):
         try:
-            from web.api.tasks_api import record_action as _task_record
-            for _ in range(quantity):
-                await _task_record(user_id, "sell_token")
+            from web.api.tasks_api import tasks_db as _tasks_db
+            await _tasks_db.update_progress_by(user_id, "sell_token", quantity)
+        except Exception:
+            pass
+    return JSONResponse(content=result, status_code=status)
+
+
+@router.post("/pet-stock/buy-all")
+async def buy_all_token(request: Request):
+    """Buy as many tokens as possible up to the 100,000 cap."""
+    user = request.session.get("discord_user")
+    if not user:
+        return JSONResponse(content={"error": "Not logged in"}, status_code=401)
+    user_id = str(user.get("id"))
+
+    try:
+        body: Dict[str, Any] = await request.json()
+        token = str(body.get("token", "")).lower()
+        logger.info(f"buy_all_token: user_id={user_id}, token='{token}', body={body}")
+    except Exception as e:
+        logger.error(f"buy_all_token: Invalid request body: {e}")
+        return JSONResponse(content={"error": "Invalid request body"}, status_code=400)
+
+    from Systems.Functions.user_data_manager import user_data_manager
+    pet_data = await user_data_manager.get_pet_data_async(user_id)
+    if not pet_data:
+        logger.error(f"buy_all_token: User {user_id} has no pet")
+        return JSONResponse(content={"error": "You don't have a pet"}, status_code=400)
+
+    logger.info(f"buy_all_token: Calling engine.buy_all_token for user {user_id}, token '{token}'")
+    result = await engine.buy_all_token(user_id, token, pet_data)
+    logger.info(f"buy_all_token: Engine result: {result}")
+    status = 200 if result.get("ok") else 400
+    if result.get("ok"):
+        try:
+            from web.api.tasks_api import tasks_db as _tasks_db
+            await _tasks_db.update_progress_by(user_id, "buy_token", result.get("new_qty", 0))
+        except Exception:
+            pass
+    return JSONResponse(content=result, status_code=status)
+
+
+@router.post("/pet-stock/buy-max")
+async def buy_max_all_tokens(request: Request):
+    """Buy 100,000 of each token type (up to 1,600,000 total tokens)."""
+    user = request.session.get("discord_user")
+    if not user:
+        return JSONResponse(content={"error": "Not logged in"}, status_code=401)
+    user_id = str(user.get("id"))
+
+    from Systems.Functions.user_data_manager import user_data_manager
+    pet_data = await user_data_manager.get_pet_data_async(user_id)
+    if not pet_data:
+        return JSONResponse(content={"error": "You don't have a pet"}, status_code=400)
+
+    result = await engine.buy_max_all_tokens(user_id, pet_data)
+    status = 200 if result.get("ok") else 400
+    if result.get("ok"):
+        try:
+            from web.api.tasks_api import tasks_db as _tasks_db
+            await _tasks_db.update_progress_by(user_id, "buy_token", result.get("total_bought", 0))
+        except Exception:
+            pass
+    return JSONResponse(content=result, status_code=status)
+
+
+@router.post("/pet-stock/sell-max")
+async def sell_max_all_tokens(request: Request):
+    """Sell all held tokens of all types."""
+    user = request.session.get("discord_user")
+    if not user:
+        return JSONResponse(content={"error": "Not logged in"}, status_code=401)
+    user_id = str(user.get("id"))
+
+    from Systems.Functions.user_data_manager import user_data_manager
+    pet_data = await user_data_manager.get_pet_data_async(user_id)
+    if not pet_data:
+        return JSONResponse(content={"error": "You don't have a pet"}, status_code=400)
+
+    result = await engine.sell_max_all_tokens(user_id, pet_data)
+    status = 200 if result.get("ok") else 400
+    if result.get("ok"):
+        try:
+            from web.api.tasks_api import tasks_db as _tasks_db
+            await _tasks_db.update_progress_by(user_id, "sell_token", result.get("total_payout", 0))
+        except Exception:
+            pass
+    return JSONResponse(content=result, status_code=status)
+
+
+@router.post("/pet-stock/sell-all")
+async def sell_all_token(request: Request):
+    """Sell all held tokens of a given type."""
+    user = request.session.get("discord_user")
+    if not user:
+        return JSONResponse(content={"error": "Not logged in"}, status_code=401)
+    user_id = str(user.get("id"))
+
+    try:
+        body: Dict[str, Any] = await request.json()
+        token = str(body.get("token", "")).lower()
+    except Exception:
+        return JSONResponse(content={"error": "Invalid request body"}, status_code=400)
+
+    from Systems.Functions.user_data_manager import user_data_manager
+    pet_data = await user_data_manager.get_pet_data_async(user_id)
+    if not pet_data:
+        return JSONResponse(content={"error": "You don't have a pet"}, status_code=400)
+
+    result = await engine.sell_all_token(user_id, token, pet_data)
+    status = 200 if result.get("ok") else 400
+    if result.get("ok"):
+        try:
+            from web.api.tasks_api import tasks_db as _tasks_db
+            await _tasks_db.update_progress_by(user_id, "sell_token", result.get("payout", 0))
         except Exception:
             pass
     return JSONResponse(content=result, status_code=status)

@@ -305,7 +305,7 @@ async def _fetch_horoscope_data(sign: str, day: str = "today") -> tuple[Optional
     return text, stats
 
 @router.get("/horoscope-proxy")
-async def horoscope_proxy(sign: str, day: str = "today"):
+async def horoscope_proxy(request: Request, sign: str, day: str = "today"):
     """Proxy for the external horoscope API to avoid CORS issues."""
     try:
         # Validate sign
@@ -349,6 +349,17 @@ async def horoscope_proxy(sign: str, day: str = "today"):
                     "horoscope": api_data["data"]["horoscope"],
                     "sunsign": api_data["data"]["sign"]
                 }
+
+                # Task tracking — get_horoscope (once per day, only for "today")
+                if day.lower() == "today":
+                    user = request.session.get("discord_user")
+                    if user and user.get("id"):
+                        try:
+                            from web.api.tasks_api import record_action as _task_record
+                            await _task_record(str(user["id"]), "get_horoscope")
+                        except Exception as e:
+                            logger.warning(f"horoscope-proxy task tracking failed for {user.get('id')}: {e}")
+
                 return JSONResponse(content=transformed_data)
             else:
                 return JSONResponse(content=api_data)

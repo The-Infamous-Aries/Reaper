@@ -4,7 +4,7 @@
   <div class="card rev-controls">
     <div class="card-header">
       <div>
-        <p class="rev-kicker">Night's Watch</p>
+        <p class="rev-kicker">Nights Watch</p>
         <p class="rev-title">Alliance Revenue</p>
       </div>
       <div class="rev-header-right">
@@ -159,20 +159,16 @@
       _filtered = [..._nations];
       _expanded = null;
 
-      const TAX_RATE = 0.10;
-      // Ensure 10% tax is applied if backend didn't compute it
+      // turn_revenue from API = net cash after all upkeeps, before tax (matches Discord embed)
+      // alliance_tax is informational only — already computed server-side
       _nations.forEach(n => {
-        if (!n.alliance_tax || n.alliance_tax === 0) {
-          n.alliance_tax = (n.gross_income || 0) * TAX_RATE;
-          n.turn_revenue = (n.gross_income || 0) - n.alliance_tax
-            - (n.military_upkeep||0) - (n.improvement_upkeep||0)
-            - (n.power_upkeep||0) - (n.rss_upkeep||0);
-          n.day_revenue  = n.turn_revenue * 12;
-        }
-        n.alliance_tax_rate = n.alliance_tax_rate || TAX_RATE;
+        n.alliance_tax      = n.alliance_tax      || (n.gross_income || 0) * 0.10;
+        n.alliance_tax_rate = n.alliance_tax_rate || 0.10;
+        // day_revenue is already set server-side; ensure consistency
+        n.day_revenue = (n.turn_revenue || 0) * 12;
       });
 
-      // Re-sort after tax adjustment
+      // Re-sort after any adjustments
       _nations.sort((a,b) => b.turn_revenue - a.turn_revenue);
       _filtered = [..._nations];
 
@@ -224,42 +220,39 @@
       </div>`;
     }).join('');
 
-    const rscTotalVal = Object.entries(rsc).reduce((s,[k,v])=>s+(v*(prices[k]||0)),0);
-    const grossMoney  = n.gross_income || 0;
-    const totalGross  = grossMoney + rscTotalVal;
-    const taxAmt      = n.alliance_tax || 0;
-    const milUp       = n.military_upkeep    || 0;
-    const impUp       = n.improvement_upkeep || 0;
-    const powUp       = n.power_upkeep       || 0;
-    const rssUp       = n.rss_upkeep         || 0;
-    const totalExp    = taxAmt + milUp + impUp + powUp + rssUp;
-    const netTurn     = n.turn_revenue || 0;
+    const rscTotalVal  = Object.entries(rsc).reduce((s,[k,v])=>s+(v*(prices[k]||0)),0);
+    // gross_income = net cash after all upkeeps, before tax (matches Discord "Net Income (Gross)")
+    const grossMoney   = n.gross_income || 0;
+    // total_monetary_value = gross_income + net resource value (matches Discord "Total Monetary Value")
+    const totalMon     = n.total_monetary_value != null ? n.total_monetary_value : (grossMoney + rscTotalVal);
+    const taxAmt       = n.alliance_tax || 0;
+    const milUp        = n.military_upkeep    || 0;
+    const impUp        = n.improvement_upkeep || 0;
+    const netTurn      = n.turn_revenue || 0;
 
     return `<div class="rev-detail-wrap">
       <div class="rev-detail-grid">
 
-        <!-- Income breakdown -->
+        <!-- Income breakdown — mirrors Discord embed -->
         <div class="rev-detail-section">
           <div class="rev-detail-section-title">💰 Income (per turn)</div>
           <div class="rev-detail-kv">
-            <div class="rev-detail-row"><span>National Tax Revenue</span><strong class="rev-positive">${$m(grossMoney)}</strong></div>
+            <div class="rev-detail-row"><span>Net Income (Gross)</span><strong class="rev-positive">${$m(grossMoney)}</strong></div>
             <div class="rev-detail-row"><span>Color Bonus</span><strong class="rev-positive">${$m(n.color_bonus||0)}</strong></div>
-            ${rscRows ? `<div class="rev-detail-row rev-detail-row-header"><span>Resource Production</span><strong class="rev-positive">${$m(rscTotalVal)}</strong></div>
+            ${rscRows ? `<div class="rev-detail-row rev-detail-row-header"><span>Resource Net Income</span><strong class="${rscTotalVal>=0?'rev-positive':'rev-negative'}">${$m(rscTotalVal)}</strong></div>
             <div class="rev-detail-rsc-list">${rscRows}</div>` : ''}
-            <div class="rev-detail-row rev-detail-total"><span>Total Gross</span><strong class="rev-positive">${$m(totalGross)}</strong></div>
+            <div class="rev-detail-row rev-detail-total"><span>Total Monetary Value</span><strong class="${totalMon>=0?'rev-positive':'rev-negative'}">${$m(totalMon)}</strong></div>
           </div>
         </div>
 
         <!-- Expenses breakdown -->
         <div class="rev-detail-section">
-          <div class="rev-detail-section-title">📉 Expenses (per turn)</div>
+          <div class="rev-detail-section-title">📉 Upkeep (per turn)</div>
           <div class="rev-detail-kv">
-            <div class="rev-detail-row"><span>Alliance Tax (${(TAX*100).toFixed(0)}%)</span><strong class="rev-negative">-${$m(taxAmt)}</strong></div>
             <div class="rev-detail-row"><span>Military Upkeep</span><strong class="rev-negative">-${$m(milUp)}</strong></div>
             <div class="rev-detail-row"><span>Improvement Upkeep</span><strong class="rev-negative">-${$m(impUp)}</strong></div>
-            <div class="rev-detail-row"><span>Power Upkeep</span><strong class="rev-negative">-${$m(powUp)}</strong></div>
-            <div class="rev-detail-row"><span>Resource Upkeep</span><strong class="rev-negative">-${$m(rssUp)}</strong></div>
-            <div class="rev-detail-row rev-detail-total"><span>Total Expenses</span><strong class="rev-negative">-${$m(totalExp)}</strong></div>
+            <div class="rev-detail-row rev-detail-total"><span>Gross Upkeep</span><strong class="rev-negative">-${$m(milUp+impUp)}</strong></div>
+            <div class="rev-detail-row" style="margin-top:.5rem"><span>Alliance Tax (${(TAX*100).toFixed(0)}%, info only)</span><strong class="rev-negative">-${$m(taxAmt)}</strong></div>
           </div>
         </div>
 

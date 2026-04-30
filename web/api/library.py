@@ -1,4 +1,5 @@
 from fastapi import APIRouter, HTTPException, Response
+import asyncio
 import os
 import logging
 from fastapi.responses import JSONResponse
@@ -51,8 +52,7 @@ async def get_library_document(doc_name: str):
             logger.warning(f"Directory contents: {os.listdir(web_dir) if os.path.exists(web_dir) else 'Directory does not exist'}")
             raise HTTPException(status_code=404, detail=f"Document '{doc_name}' not found.")
 
-        with open(file_path, "r", encoding="utf-8") as f:
-            content = f.read()
+        content = await asyncio.to_thread(lambda: open(file_path, "r", encoding="utf-8").read())
 
         logger.info(f"Serving document: {file_path} ({len(content)} characters)")
         return Response(content=content, media_type="text/markdown; charset=utf-8")

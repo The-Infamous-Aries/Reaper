@@ -55,13 +55,13 @@ def _compute_total_xp(pet: dict) -> int:
     exp = int(pet.get("experience", 0))
     return int(LootCalculator.get_total_experience_for_level(lvl)) + exp
 
-async def _deduct(user_id: str, amount: int) -> bool:
+async def _deduct(user_id: str, amount: int, source: str = "minigame_bet") -> bool:
     pet = await user_data_manager.get_pet_data_async(user_id)
     if not pet:
         return False
     if amount > _compute_total_xp(pet):
         return False
-    await LootCalculator.apply_xp_change(int(user_id), -amount, source="minigame_bet")
+    await LootCalculator.apply_xp_change(int(user_id), -amount, source=source)
     return True
 
 async def _payout(user_id: str, amount: int, source: str):
@@ -97,7 +97,7 @@ async def coinflip(request: Request):
     if not fun_mode:
         if bet < 10:
             return JSONResponse({"error": "Minimum bet is 10 XP"}, status_code=400)
-        ok = await _deduct(user_id, bet)
+        ok = await _deduct(user_id, bet, source="coinflip_bet")
         if not ok:
             return JSONResponse({"error": "Insufficient XP"}, status_code=400)
 
@@ -184,7 +184,7 @@ async def rps_play(request: Request):
     if not fun_mode:
         if bet < 10:
             return JSONResponse({"error": "Minimum bet is 10 XP"}, status_code=400)
-        ok = await _deduct(user_id, bet)
+        ok = await _deduct(user_id, bet, source="rps_bet")
         if not ok:
             return JSONResponse({"error": "Insufficient XP"}, status_code=400)
 
@@ -267,7 +267,7 @@ async def rps_pvp_challenge(request: Request):
         return JSONResponse({"error": "Minimum wager is 10 XP"}, status_code=400)
 
     if not fun_mode:
-        ok = await _deduct(user_id, wager)
+        ok = await _deduct(user_id, wager, source="rps_bet")
         if not ok:
             return JSONResponse({"error": "Insufficient XP"}, status_code=400)
 
@@ -312,7 +312,7 @@ async def rps_pvp_accept(request: Request):
             return JSONResponse({"error": "Cannot accept your own challenge"}, status_code=400)
 
         if not match["fun_mode"]:
-            ok = await _deduct(user_id, match["wager"])
+            ok = await _deduct(user_id, match["wager"], source="rps_bet")
             if not ok:
                 return JSONResponse({"error": "Insufficient XP"}, status_code=400)
 
@@ -457,7 +457,7 @@ async def coinflip_observer_bet(request: Request):
     if not fun_mode:
         if amount < 10:
             return JSONResponse({"error": "Minimum bet is 10 XP"}, status_code=400)
-        ok = await _deduct(user_id, amount)
+        ok = await _deduct(user_id, amount, source="coinflip_bet")
         if not ok:
             return JSONResponse({"error": "Insufficient XP"}, status_code=400)
 

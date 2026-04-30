@@ -382,8 +382,10 @@ async def play_keno(request: Request):
             return await _play_keno_inner(user_id, bet_amount, fun_mode,
                                           picked_type, picked_elements, picked_pets)
     except Exception as e:
-        logger.error(f"Keno play error: {e}", exc_info=True)
-        return JSONResponse(content={"error": "Keno play failed"}, status_code=500)
+        import traceback
+        tb = traceback.format_exc()
+        logger.error(f"Keno play error: {e}\nFull traceback:\n{tb}")
+        return JSONResponse(content={"error": "Keno play failed", "detail": str(e)}, status_code=500)
 
 
 async def _play_keno_inner(user_id: str, bet_amount: int, fun_mode: bool,
@@ -441,7 +443,33 @@ async def _play_keno_inner(user_id: str, bet_amount: int, fun_mode: bool,
     total_winnings   = int(base_payout * total_multiplier) if not fun_mode else 0
 
     if not fun_mode and total_winnings > 0:
-        await LootCalculator.apply_xp_change(int(user_id), total_winnings, source="keno_win")
+        # Apply ability tree effects
+        modified_winnings = total_winnings
+        try:
+            pet_data = await user_data_manager.get_pet_data_async(user_id)
+            if pet_data:
+                from Systems.Pets.Logic.ability_tree import get_ability_effect
+                # Apply casino win bonus
+                win_mult = get_ability_effect(pet_data, "casino_xp_gain_mult", game="keno")
+                if win_mult != 1.0:
+                    modified_winnings = int(total_winnings * win_mult)
+        except Exception:
+            pass
+        
+        await LootCalculator.apply_xp_change(int(user_id), modified_winnings, source="keno_win")
+    elif not fun_mode:
+        # Apply loss reduction for losses
+        try:
+            pet_data = await user_data_manager.get_pet_data_async(user_id)
+            if pet_data:
+                from Systems.Pets.Logic.ability_tree import get_ability_effect
+                loss_reduction = get_ability_effect(pet_data, "casino_xp_loss_reduction", game="keno")
+                if loss_reduction > 0:
+                    refund = int(bet_amount * loss_reduction)
+                    if refund > 0:
+                        await LootCalculator.apply_xp_change(int(user_id), refund, source="keno_loss_reduction")
+        except Exception:
+            pass
 
     if not fun_mode:
         net = total_winnings - bet_amount
@@ -479,6 +507,8 @@ async def _play_keno_inner(user_id: str, bet_amount: int, fun_mode: bool,
 
 # ── WHEEL OF PETS ENDPOINTS ──────────────────────────────────────────────────
 
+# ── WHEEL MODES DATA ──────────────────────────────────────────────────────────
+
 # All 103 pet species — must match info.json keys exactly
 WHEEL_PETS: List[str] = [
     'Alligator','Ant','Anteater','Axolotl','Badger','Bat','Beaver','Bee','Beetle','Bison',
@@ -495,13 +525,244 @@ WHEEL_PETS: List[str] = [
     'Whale','Wolf','Yak','Zebra',
 ]
 
+# Monsters - From equipment.json
+WHEEL_MONSTERS: List[str] = [
+    'Wirm','Dodl','Dwim','Zhy','Felr','Drak','Bliz','Smuj','Dvod','Neri',
+    'Fwit','Plat','Mok','Jlum','Itle','Dwep','Krep','Bood','Lozd','Yoa',
+    'Nad','Ztuk','Gufi','Rowr','Jle','Zlik','Sili','Pir','Qizi'
+]
+
+# Materials - From equipment.json
+WHEEL_MATERIALS: List[str] = [
+    'Dirt','Leaf','Sand','Bone','Fabric','Leather','Glass','Stone','Wood',
+    'Brick','Gold','Steel','Laser','Plutonium','Smart'
+]
+
+# Gems - From equipment.json
+WHEEL_GEMS: List[str] = [
+    'EmberHeart','MintGaze','EmeraldSoul','ForestEye','SolarSphere','SkySpire',
+    'ZephyrShard','AzureApex','MagmaDiamond','PrismaticFlux','FrostShard','EmberCube',
+    'JadeSlab','FluxDiamond','MoonQuartz','FuryRose','SolarCore','VoidSpark',
+    'GildedPrism','OceanTear'
+]
+
+# Hats - From equipment.json
+WHEEL_HATS: List[str] = [
+    'Boater','Aviator','Ushanka','Bearskin','Turban','Bowler','Beret','Nursing Cap',
+    'Gat','Peaked Cap','Stovepipe','Capotain','Keffiyeh','Mortarboard','Fool\'s Cap',
+    'Safety Helmet','Pith Helmet','Toque','Rice Hat','Beanie','Santa Hat','Ballcap',
+    'Fez','Service Cap','Tricorne','Mitre','Sombrero','Fedora','Sorcerer Hat','Cattleman'
+]
+
+# Potions - From equipment.json
+WHEEL_POTIONS: List[str] = [
+    'ATT Potion','DEF Potion','DEX Potion','ENE Potion','HAP Potion','INT Potion',
+    'Air Potion','Basic Potion','Electric Potion','Fighting Potion','Fire Potion',
+    'Holy Potion','Ice Potion','Magic Potion','Necro Potion','Plant Potion',
+    'Psychic Potion','Rock Potion','Water Potion','S1 Potion','S2 Potion','S3 Potion',
+    'Luck Potion','Mega Potion','Greater Health Potion','Health Potion',
+    'Lesser Health Potion','XP Potion','Lesser XP Potion'
+]
+
+# Equipment filename mappings for items that have different display names vs filenames
+EQUIPMENT_FILENAME_MAP = {
+    'Nursing Cap': 'nursing',
+    'Peaked Cap': 'peaked',
+    'Fool\'s Cap': 'fool',
+    'Safety Helmet': 'safety',
+    'Pith Helmet': 'pith',
+    'Rice Hat': 'rice',
+    'Santa Hat': 'santa',
+    'Service Cap': 'service',
+    'Sorcerer Hat': 'sorcerer',
+    'ATT Potion': 'att_potion',
+    'DEF Potion': 'def_potion',
+    'DEX Potion': 'dex_potion',
+    'ENE Potion': 'ene_potion',
+    'HAP Potion': 'hap_potion',
+    'INT Potion': 'int_potion',
+    'Air Potion': 'air_potion',
+    'Basic Potion': 'basic_potion',
+    'Electric Potion': 'electric_potion',
+    'Fighting Potion': 'fighting_potion',
+    'Fire Potion': 'fire_potion',
+    'Holy Potion': 'holy_potion',
+    'Ice Potion': 'ice_potion',
+    'Magic Potion': 'magic_potion',
+    'Necro Potion': 'necro_potion',
+    'Plant Potion': 'plant_potion',
+    'Psychic Potion': 'psychic_potion',
+    'Rock Potion': 'rock_potion',
+    'Water Potion': 'water_potion',
+    'S1 Potion': 's1_potion',
+    'S2 Potion': 's2_potion',
+    'S3 Potion': 's3_potion',
+    'Luck Potion': 'luck_potion',
+    'Mega Potion': 'mega_potion',
+    'Greater Health Potion': 'greater_health_potion',
+    'Health Potion': 'health_potion',
+    'Lesser Health Potion': 'lesser_health_potion',
+    'XP Potion': 'xp_potion',
+    'Lesser XP Potion': 'lesser_xp_potion'
+}
+
+# Elements - From Deco folder
+WHEEL_ELEMENTS: List[str] = [
+    'Air','Basic','Electric','Fighting','Fire','Flying','Holy','Ice',
+    'Magic','Necro','Plant','Psychic','Rock','Water'
+]
+
+# Stats - From Deco folder  
+WHEEL_STATS: List[str] = [
+    'ATT','DEF','DEX','ENE','HAP','INT'
+]
+
+# Units - Military units (using available PnW military emojis)
+WHEEL_UNITS: List[str] = [
+    'Soldier','Tank','Jet','Ship','Missile','Bomb','Spy'
+]
+
+# Resources - PnW Resources (using available PnW resource emojis)
+WHEEL_RESOURCES: List[str] = [
+    'Aluminum','Bauxite','Coal','Credit','Food','Gasoline','Iron','Lead','Munitions','Oil','Steel','Uranium'
+]
+
+# Mode configuration
+WHEEL_MODES = {
+    'pets': {
+        'items': WHEEL_PETS,
+        'path_template': '/static/Emojis/Pets/{}.png',
+        'title': 'Wheel of Pets',
+        'subtitle': 'Click a segment · Place your bet · Spin to win',
+        'description': '103 pets · equal odds · 5% house edge'
+    },
+    'monsters': {
+        'items': WHEEL_MONSTERS,
+        'path_template': '/static/Emojis/Pets/Equipment/{}.png',
+        'title': 'Wheel of Monsters',
+        'subtitle': 'Summon your creature · Place your bet · Spin to win',
+        'description': f'{len(WHEEL_MONSTERS)} monsters · equal odds · 5% house edge'
+    },
+    'materials': {
+        'items': WHEEL_MATERIALS,
+        'path_template': '/static/Emojis/Pets/Equipment/{}.png',
+        'title': 'Wheel of Materials',
+        'subtitle': 'Choose your material · Place your bet · Spin to win',
+        'description': f'{len(WHEEL_MATERIALS)} materials · equal odds · 5% house edge'
+    },
+    'gems': {
+        'items': WHEEL_GEMS,
+        'path_template': '/static/Emojis/Pets/Equipment/{}.png',
+        'title': 'Wheel of Gems',
+        'subtitle': 'Select your gem · Place your bet · Spin to win',
+        'description': f'{len(WHEEL_GEMS)} gems · equal odds · 5% house edge'
+    },
+    'hats': {
+        'items': WHEEL_HATS,
+        'path_template': '/static/Emojis/Pets/Equipment/{}.png',
+        'title': 'Wheel of Hats',
+        'subtitle': 'Pick your headwear · Place your bet · Spin to win',
+        'description': f'{len(WHEEL_HATS)} hats · equal odds · 5% house edge'
+    },
+    'potions': {
+        'items': WHEEL_POTIONS,
+        'path_template': '/static/Emojis/Pets/Equipment/{}.png',
+        'title': 'Wheel of Potions',
+        'subtitle': 'Brew your fortune · Place your bet · Spin to win',
+        'description': f'{len(WHEEL_POTIONS)} potions · equal odds · 5% house edge'
+    },
+    'elements': {
+        'items': WHEEL_ELEMENTS,
+        'path_template': '/static/Emojis/Pets/Deco/{}.png',
+        'title': 'Wheel of Elements',
+        'subtitle': 'Harness the elements · Place your bet · Spin to win',
+        'description': f'{len(WHEEL_ELEMENTS)} elements · equal odds · 5% house edge'
+    },
+    'stats': {
+        'items': WHEEL_STATS,
+        'path_template': '/static/Emojis/Pets/Deco/{}.png',
+        'title': 'Wheel of Stats',
+        'subtitle': 'Boost your attributes · Place your bet · Spin to win',
+        'description': f'{len(WHEEL_STATS)} stats · equal odds · 5% house edge'
+    },
+    'units': {
+        'items': WHEEL_UNITS,
+        'path_template': '/static/Emojis/Military/{}.png',
+        'title': 'Wheel of Units',
+        'subtitle': 'Deploy your forces · Place your bet · Spin to win',
+        'description': f'{len(WHEEL_UNITS)} units · equal odds · 5% house edge'
+    },
+    'resources': {
+        'items': WHEEL_RESOURCES,
+        'path_template': '/static/Emojis/Resources/{}.png',
+        'title': 'Wheel of Resources',
+        'subtitle': 'Trade resources · Place your bet · Spin to win',
+        'description': f'{len(WHEEL_RESOURCES)} resources · equal odds · 5% house edge'
+    }
+}
+
+# Unicode emoji mappings for modes that use emoji: paths
+EMOJI_MAPPINGS = {
+    # Monsters
+    'Dragon': '🐉', 'Phoenix': '🔥', 'Unicorn': '🦄', 'Griffin': '🦅', 'Kraken': '🐙', 'Hydra': '🐍',
+    'Basilisk': '🐍', 'Chimera': '🦁', 'Sphinx': '🗿', 'Minotaur': '🐂', 'Centaur': '🏹', 'Pegasus': '🐴',
+    'Banshee': '👻', 'Vampire': '🧛', 'Werewolf': '🐺', 'Zombie': '🧟', 'Ghost': '👻', 'Demon': '😈',
+    'Angel': '😇', 'Fairy': '🧚', 'Goblin': '👺', 'Orc': '👹', 'Troll': '👹', 'Giant': '🗿',
+    'Cyclops': '👁️', 'Medusa': '🐍', 'Harpy': '🦅', 'Siren': '🧜', 'Djinn': '🧞', 'Elemental': '🌪️',
+    'Golem': '🗿', 'Lich': '💀', 'Necromancer': '🧙', 'Wizard': '🧙', 'Witch': '🧙', 'Warlock': '🧙',
+    'Paladin': '⚔️', 'Knight': '🛡️', 'Rogue': '🗡️', 'Archer': '🏹', 'Barbarian': '🪓', 'Monk': '🥋',
+    'Druid': '🌿', 'Ranger': '🏹', 'Bard': '🎵', 'Cleric': '✨', 'Sorcerer': '🔮', 'Artificer': '🔧',
+    'Fighter': '⚔️', 'Beastmaster': '🐺', 'Summoner': '🔮', 'Enchanter': '✨', 'Illusionist': '🎭',
+    'Diviner': '🔮', 'Transmuter': '⚗️', 'Evoker': '⚡', 'Abjurer': '🛡️', 'Conjurer': '🌟',
+    
+    # Materials
+    'Wood': '🪵', 'Stone': '🪨', 'Iron': '⚙️', 'Gold': '🥇', 'Silver': '🥈', 'Copper': '🟤',
+    'Bronze': '🟫', 'Steel': '⚙️', 'Platinum': '⚪', 'Diamond': '💎', 'Ruby': '🔴', 'Emerald': '🟢',
+    'Sapphire': '🔵', 'Amethyst': '🟣', 'Topaz': '🟡', 'Opal': '⚪', 'Pearl': '🤍', 'Jade': '🟢',
+    'Obsidian': '⚫', 'Quartz': '⚪', 'Crystal': '💎', 'Glass': '🪟', 'Clay': '🟫', 'Sand': '🟨',
+    'Marble': '⚪', 'Granite': '🪨', 'Limestone': '🤍', 'Slate': '⬛', 'Brick': '🧱', 'Concrete': '🏗️',
+    'Leather': '🟫', 'Cloth': '🧵', 'Silk': '🕸️', 'Cotton': '☁️', 'Wool': '🐑', 'Linen': '🤍',
+    'Hemp': '🌿', 'Rope': '🪢', 'Chain': '⛓️', 'Wire': '🔗', 'Plastic': '🟡', 'Rubber': '⚫',
+    'Paper': '📄', 'Cardboard': '📦', 'Foam': '☁️', 'Resin': '🟡', 'Wax': '🕯️', 'Oil': '🛢️',
+    'Tar': '⚫', 'Pitch': '⚫',
+    
+    # Gems
+    'Garnet': '🔴', 'Peridot': '🟢', 'Aquamarine': '🔵', 'Citrine': '🟡', 'Tourmaline': '🌈',
+    'Moonstone': '🌙', 'Sunstone': '☀️', 'Labradorite': '🌈', 'Onyx': '⚫', 'Agate': '🟫',
+    'Jasper': '🟫', 'Carnelian': '🟠', 'Bloodstone': '🔴', 'Hematite': '⚫', 'Malachite': '🟢',
+    'Turquoise': '🔵', 'Lapis': '🔵', 'Sodalite': '🔵', 'Fluorite': '🟣', 'Calcite': '⚪',
+    'Pyrite': '🟡', 'Quartz': '⚪', 'Rose Quartz': '🩷', 'Smoky Quartz': '🟫', 'Clear Quartz': '⚪',
+    'Aventurine': '🟢', 'Tiger Eye': '🟡', 'Volcanic Glass': '⚫', 'Amber': '🟡', 'Coral': '🪸',
+    'Jet': '⚫', 'Ivory': '🤍',
+    
+    # Hats
+    'Crown': '👑', 'Tiara': '👑', 'Helmet': '⛑️', 'Cap': '🧢', 'Beanie': '🧢', 'Beret': '🎩',
+    'Fedora': '🎩', 'Sombrero': '👒', 'Cowboy Hat': '🤠', 'Top Hat': '🎩', 'Bowler Hat': '🎩',
+    'Baseball Cap': '🧢', 'Trucker Hat': '🧢', 'Snapback': '🧢', 'Bucket Hat': '👒', 'Sun Hat': '👒',
+    'Visor': '🧢', 'Headband': '🎽', 'Bandana': '🎽', 'Turban': '👳', 'Fez': '🎩', 'Tam': '🧢',
+    'Cloche': '👒', 'Pillbox': '👒', 'Boater': '👒', 'Panama': '👒', 'Pork Pie': '🎩',
+    'Trilby': '🎩', 'Homburg': '🎩', 'Deerstalker': '🎩', 'Ushanka': '🧢', 'Balaclava': '🎿',
+    'Ski Mask': '🎿', 'Hard Hat': '⛑️', 'Chef Hat': '👨‍🍳', 'Nurse Cap': '👩‍⚕️', 'Graduation Cap': '🎓',
+    'Wizard Hat': '🧙', 'Witch Hat': '🧙‍♀️', 'Santa Hat': '🎅', 'Party Hat': '🎉', 'Jester Hat': '🃏',
+    'Viking Helmet': '⚔️',
+    
+    # Elements
+    'Fire': '🔥', 'Water': '💧', 'Earth': '🌍', 'Air': '💨', 'Lightning': '⚡', 'Ice': '🧊',
+    'Light': '💡', 'Dark': '🌑', 'Metal': '⚙️', 'Wood': '🌳', 'Spirit': '👻', 'Void': '🕳️',
+    'Plasma': '⚡', 'Energy': '⚡', 'Gravity': '🌌', 'Time': '⏰', 'Space': '🌌', 'Mind': '🧠',
+    'Soul': '👻', 'Life': '🌱', 'Death': '💀', 'Chaos': '🌪️', 'Order': '⚖️', 'Nature': '🌿',
+    'Magic': '✨', 'Divine': '✨', 'Infernal': '🔥', 'Celestial': '⭐', 'Abyssal': '🕳️', 'Primal': '🌋',
+    'Arcane': '🔮', 'Holy': '✨', 'Shadow': '🌑', 'Frost': '❄️', 'Storm': '⛈️', 'Earthquake': '🌍',
+    'Tsunami': '🌊', 'Volcano': '🌋', 'Hurricane': '🌪️', 'Blizzard': '❄️'
+}
+
 _WHEEL_HOUSE_EDGE = 0.95   # 5 % house edge
 _WHEEL_OWN_PET_MULT = 2.0  # 2× bonus if winner == your pet species
 
 
 @casino_api.get('/casino/wheel/pets')
 def get_wheel_pets():
-    """Return the full list of pets on the wheel with their image paths."""
+    """Return the full list of pets on the wheel with their image paths. (Legacy endpoint)"""
     return JSONResponse(content={
         'pets': [{'name': p, 'path': f'/static/Emojis/Pets/{p}.png'} for p in WHEEL_PETS],
         'count': len(WHEEL_PETS),
@@ -510,9 +771,61 @@ def get_wheel_pets():
     })
 
 
+@casino_api.get('/casino/wheel/modes')
+def get_wheel_modes():
+    """Return all available wheel modes and their configurations."""
+    return JSONResponse(content={
+        'modes': {
+            mode_id: {
+                'title': config['title'],
+                'subtitle': config['subtitle'],
+                'description': config['description'],
+                'count': len(config['items'])
+            }
+            for mode_id, config in WHEEL_MODES.items()
+        }
+    })
+
+
+@casino_api.get('/casino/wheel/items/{mode}')
+def get_wheel_items(mode: str):
+    """Return the items for a specific wheel mode."""
+    if mode not in WHEEL_MODES:
+        return JSONResponse(content={"error": "Invalid mode"}, status_code=400)
+    
+    config = WHEEL_MODES[mode]
+    items = []
+    
+    for item in config['items']:
+        if config['path_template'].startswith('emoji:'):
+            # Use Unicode emoji
+            emoji = EMOJI_MAPPINGS.get(item, '❓')
+            path = f'emoji:{emoji}'
+        elif 'Equipment' in config['path_template']:
+            # Use equipment emoji with filename mapping
+            filename = EQUIPMENT_FILENAME_MAP.get(item, item)
+            path = config['path_template'].format(filename)
+        else:
+            # Use image file with lowercase name
+            path = config['path_template'].format(item.lower())
+        
+        items.append({'name': item, 'path': path})
+    
+    return JSONResponse(content={
+        'mode': mode,
+        'title': config['title'],
+        'subtitle': config['subtitle'],
+        'description': config['description'],
+        'items': items,
+        'count': len(items),
+        'house_edge': _WHEEL_HOUSE_EDGE,
+        'own_pet_mult': _WHEEL_OWN_PET_MULT,
+    })
+
+
 @casino_api.post('/casino/wheel/spin')
 async def spin_wheel(request: Request):
-    """Spin the Wheel of Pets. Body: {bet_amount, chosen_pet, fun_mode}."""
+    """Spin the Wheel. Body: {bet_amount, chosen_item, mode, fun_mode}."""
     try:
         data = await request.json()
         session_user = request.session.get("discord_user")
@@ -520,22 +833,27 @@ async def spin_wheel(request: Request):
             return JSONResponse(content={"error": "Not logged in"}, status_code=401)
         user_id = str(session_user.get("id"))
 
-        bet_amount  = int(data.get('bet_amount', 0))
-        chosen_pet  = str(data.get('chosen_pet', ''))
-        fun_mode    = bool(data.get('fun_mode', False))
+        bet_amount   = int(data.get('bet_amount', 0))
+        chosen_item  = str(data.get('chosen_item', data.get('chosen_pet', '')))  # Support both old and new param names
+        mode         = str(data.get('mode', 'pets'))
+        fun_mode     = bool(data.get('fun_mode', False))
 
-        if chosen_pet not in WHEEL_PETS:
-            return JSONResponse(content={"error": "Invalid pet selection"}, status_code=400)
+        if mode not in WHEEL_MODES:
+            return JSONResponse(content={"error": "Invalid mode"}, status_code=400)
+        
+        mode_config = WHEEL_MODES[mode]
+        if chosen_item not in mode_config['items']:
+            return JSONResponse(content={"error": "Invalid item selection"}, status_code=400)
 
         async with _get_user_lock(user_id):
-            return await _spin_wheel_inner(user_id, bet_amount, chosen_pet, fun_mode)
+            return await _spin_wheel_inner(user_id, bet_amount, chosen_item, mode, fun_mode)
 
     except Exception as e:
         logger.error(f"Wheel spin error: {e}", exc_info=True)
         return JSONResponse(content={"error": "Spin failed"}, status_code=500)
 
 
-async def _spin_wheel_inner(user_id: str, bet_amount: int, chosen_pet: str, fun_mode: bool):
+async def _spin_wheel_inner(user_id: str, bet_amount: int, chosen_item: str, mode: str, fun_mode: bool):
     pet_data = await user_data_manager.get_pet_data_async(user_id)
     if not pet_data:
         return JSONResponse(content={"error": "No pet found"}, status_code=404)
@@ -549,29 +867,64 @@ async def _spin_wheel_inner(user_id: str, bet_amount: int, chosen_pet: str, fun_
         await LootCalculator.apply_xp_change(int(user_id), -bet_amount, source="wheel_bet")
 
     # Determine winner
-    winner = random.choice(WHEEL_PETS)
-    winner_index = WHEEL_PETS.index(winner)
+    mode_config = WHEEL_MODES[mode]
+    winner = random.choice(mode_config['items'])
+    winner_index = mode_config['items'].index(winner)
 
+    # Get winner path
+    if mode_config['path_template'].startswith('emoji:'):
+        winner_path = f'emoji:{EMOJI_MAPPINGS.get(winner, "❓")}'
+    elif 'Equipment' in mode_config['path_template']:
+        filename = EQUIPMENT_FILENAME_MAP.get(winner, winner)
+        winner_path = mode_config['path_template'].format(filename)
+    else:
+        winner_path = mode_config['path_template'].format(winner.lower())
+
+    # For pets mode, check own pet bonus
     own_species = str(pet_data.get("species", "Cat"))
-    won = winner == chosen_pet
-    own_pet_bonus = won and (winner == own_species)
+    won = winner == chosen_item
+    own_pet_bonus = won and (mode == 'pets' and winner == own_species)
 
     winnings = 0
     if won:
-        base_win = int(bet_amount * len(WHEEL_PETS) * _WHEEL_HOUSE_EDGE)
+        base_win = int(bet_amount * len(mode_config['items']) * _WHEEL_HOUSE_EDGE)
         winnings = int(base_win * _WHEEL_OWN_PET_MULT) if own_pet_bonus else base_win
 
     if not fun_mode and winnings > 0:
-        await LootCalculator.apply_xp_change(int(user_id), winnings, source="wheel_win")
+        # Apply ability tree effects
+        modified_winnings = winnings
+        try:
+            pet_data = await user_data_manager.get_pet_data_async(user_id)
+            if pet_data:
+                from Systems.Pets.Logic.ability_tree import get_ability_effect
+                # Apply casino win bonus
+                win_mult = get_ability_effect(pet_data, "casino_xp_gain_mult", game="wheel_of_pets")
+                if win_mult != 1.0:
+                    modified_winnings = int(winnings * win_mult)
+        except Exception:
+            pass
+        
+        await LootCalculator.apply_xp_change(int(user_id), modified_winnings, source="wheel_win")
+    elif not fun_mode:
+        # Apply loss reduction for losses
+        try:
+            pet_data = await user_data_manager.get_pet_data_async(user_id)
+            if pet_data:
+                from Systems.Pets.Logic.ability_tree import get_ability_effect
+                loss_reduction = get_ability_effect(pet_data, "casino_xp_loss_reduction", game="wheel_of_pets")
+                if loss_reduction > 0:
+                    refund = int(bet_amount * loss_reduction)
+                    if refund > 0:
+                        await LootCalculator.apply_xp_change(int(user_id), refund, source="wheel_loss_reduction")
+        except Exception:
+            pass
 
     if not fun_mode:
         net = winnings - bet_amount
         await user_data_manager.update_pet_gambling_stats(
-            user_id, "wheel_of_pets", net, bet_amount=bet_amount,
+            user_id, f"wheel_of_{mode}", net, bet_amount=bet_amount,
             extra_data={"own_pet_jackpots": 1 if own_pet_bonus else 0}
         )
-
-    # Task tracking — play_wheel is not a tracked task action, nothing to record here
 
     if won and own_pet_bonus:
         result_text = f"⭐ OWN PET JACKPOT! {winner} landed — 2× bonus!"
@@ -583,14 +936,15 @@ async def _spin_wheel_inner(user_id: str, bet_amount: int, chosen_pet: str, fun_
     return JSONResponse(content={
         'winner':        winner,
         'winner_index':  winner_index,
-        'winner_path':   f'/static/Emojis/Pets/{winner}.png',
-        'chosen_pet':    chosen_pet,
+        'winner_path':   winner_path,
+        'chosen_item':   chosen_item,
         'own_species':   own_species,
         'won':           won,
         'own_pet_bonus': own_pet_bonus,
         'winnings':      winnings if not fun_mode else 0,
         'result_text':   result_text,
         'fun_mode':      fun_mode,
+        'mode':          mode,
     })
 
 

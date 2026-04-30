@@ -146,34 +146,46 @@ async def world_pets(request: Request):
             display_name = display_names.get(uid_str, "")
             username = display_name or usernames.get(uid_str, "")
 
-            # If we're still missing avatar or display name, try the bot's in-memory cache
-            if bot and (not avatar_hash or not username):
+            # If we're still missing avatar or display name, try fresh sync then bot cache
+            if bot and (not avatar_hash or not username or username == "Unknown"):
                 try:
-                    discord_user = bot.get_user(int(uid_str))
-                    if discord_user:
-                        if not avatar_hash and discord_user.avatar:
-                            avatar_hash = discord_user.avatar.key
-                        if not username:
-                            username = getattr(discord_user, "global_name", None) or discord_user.name or "Unknown"
-                        elif not display_name:
-                            # Prefer global_name over stored username
-                            gn = getattr(discord_user, "global_name", None)
-                            if gn:
-                                username = gn
-                except Exception:
-                    pass
+                    # First try to sync fresh data from Discord
+                    from Systems.Functions.discord_user_sync import sync_user_from_bot
+                    fresh_data = await sync_user_from_bot(uid_str, bot)
+                    if fresh_data:
+                        if not avatar_hash:
+                            avatar_hash = fresh_data.get('avatar') or ""
+                        if not username or username == "Unknown":
+                            username = fresh_data.get('global_name') or fresh_data.get('username') or username
+                except Exception as e:
+                    logger.warning(f"Failed to sync user data for {uid_str}: {e}")
+                
+                # Fallback to bot's in-memory cache
+                if not avatar_hash or not username or username == "Unknown":
+                    try:
+                        discord_user = bot.get_user(int(uid_str))
+                        if discord_user:
+                            if not avatar_hash and discord_user.avatar:
+                                avatar_hash = discord_user.avatar.key
+                            if not username or username == "Unknown":
+                                username = getattr(discord_user, "global_name", None) or discord_user.name or "Unknown"
+                            elif not display_name:
+                                # Prefer global_name over stored username
+                                gn = getattr(discord_user, "global_name", None)
+                                if gn:
+                                    username = gn
+                    except Exception:
+                        pass
 
             if not username:
                 username = "Unknown"
 
             if avatar_hash:
-                avatar_url = f"https://cdn.discordapp.com/avatars/{uid}/{avatar_hash}.webp?size=64"
+                from Systems.Functions.discord_utils import get_discord_avatar_url
+                avatar_url = get_discord_avatar_url(uid_str, avatar_hash, size=64)
             else:
-                try:
-                    bucket = (int(uid_str) >> 22) % 5
-                except (ValueError, TypeError):
-                    bucket = 0
-                avatar_url = f"https://cdn.discordapp.com/embed/avatars/{bucket}.png"
+                from Systems.Functions.discord_utils import get_discord_avatar_url
+                avatar_url = get_discord_avatar_url(uid_str, None, size=64)
 
             # Relationship info (only for other users)
             relationship_to_user = user_relationships.get(str(uid))
@@ -366,76 +378,66 @@ async def gift_item(request: Request, data: GiftRequest):
         current_user_id = _current_user_id(request)
         if not current_user_id:
             raise HTTPException(status_code=401, detail="Not logged in")
-        
+
         if current_user_id == data.target_user_id:
             raise HTTPException(status_code=400, detail="Cannot gift to yourself")
-        
+
+        qty = max(1, int(data.quantity or 1))
+
         # Get current user's pet
         current_pet = await pets_db.get_pet_data(current_user_id)
         if not current_pet:
             raise HTTPException(status_code=404, detail="You don't have a pet")
-        
+
         # Get target user's pet
         target_pet = await pets_db.get_pet_data(data.target_user_id)
         if not target_pet:
             raise HTTPException(status_code=404, detail="Target user doesn't have a pet")
-        
-        # Check if current user has the item
+
+        # Find item in sender's inventory (uses "count" field)
         inventory = current_pet.get("inventory", [])
-        item_found = False
-        remaining_quantity = data.quantity
-        
-        for item in inventory[:]:  # Create a copy to iterate over
-            if item.get("name") == data.item_name:
-                available_quantity = item.get("quantity", 1)
-                if available_quantity >= remaining_quantity:
-                    # Remove the item(s) from current user
-                    if available_quantity == remaining_quantity:
-                        inventory.remove(item)
-                    else:
-                        item["quantity"] = available_quantity - remaining_quantity
-                    item_found = True
-                    break
-                else:
-                    # Not enough quantity
-                    raise HTTPException(status_code=400, detail=f"Not enough {data.item_name} in inventory")
-        
-        if not item_found:
+        item_idx = next(
+            (i for i, it in enumerate(inventory)
+             if it.get("name", "").lower() == data.item_name.lower()),
+            None,
+        )
+        if item_idx is None:
             raise HTTPException(status_code=404, detail=f"Item '{data.item_name}' not found in your inventory")
-        
-        # Add item to target user's inventory
-        target_inventory = target_pet.get("inventory", [])
-        
-        # Check if target already has this item
-        target_item_found = False
-        for item in target_inventory:
-            if item.get("name") == data.item_name:
-                item["quantity"] = item.get("quantity", 1) + data.quantity
-                target_item_found = True
-                break
-        
-        if not target_item_found:
-            # Add new item to target inventory
-            # Find the item template from current user's inventory to get full item data
-            gift_item_data = None
-            for item in current_pet.get("inventory", []):
-                if item.get("name") == data.item_name:
-                    gift_item_data = dict(item)
-                    gift_item_data["quantity"] = data.quantity
-                    break
-            
-            if gift_item_data:
-                target_inventory.append(gift_item_data)
-        
-        # Save both pets
+
+        item = inventory[item_idx]
+        available = int(item.get("count", 1))
+        if available < qty:
+            raise HTTPException(status_code=400, detail=f"Not enough {data.item_name} (have {available}, want {qty})")
+
+        # Snapshot item template before modifying inventory
+        gift_item_data = {**item, "count": qty}
+
+        # Deduct from sender
+        if available == qty:
+            inventory.pop(item_idx)
+        else:
+            inventory[item_idx] = {**item, "count": available - qty}
+        current_pet["inventory"] = inventory
         await pets_db.save_pet_data(current_user_id, current_pet)
-        await pets_db.save_pet_data(data.target_user_id, target_pet)
-        
+
+        # Add to recipient via LootCalculator so stacking/limits are respected
+        from Systems.Pets.Logic.pet_brain import LootCalculator
+        await LootCalculator.add_item_to_inventory(int(data.target_user_id), gift_item_data, target_pet)
+
+        logger.info(f"Gift: {current_user_id} → {data.target_user_id}: {qty}x {data.item_name}")
+
+        # Task tracking — fire once per gift action (not per item count)
+        try:
+            from web.api.tasks_api import record_action as _task_record
+            await _task_record(current_user_id, "gift")
+        except Exception as exc:
+            logger.warning(f"gift task tracking failed: {exc}")
+
         return JSONResponse({
-            "success": True, 
-            "message": f"Gifted {data.quantity}x {data.item_name} to user"
+            "success": True,
+            "message": f"Gifted {qty}x {data.item_name} successfully",
         })
-    
+
     except HTTPException:
         raise
     except Exception as e:

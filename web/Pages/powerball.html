@@ -7,7 +7,7 @@
     <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-1">
         <div>
             <div class="casino-title">🎟️ Pet Powerball</div>
-            <div class="casino-subtitle">Daily Jackpot · Drawn at Midnight UTC · Pot Grows Every Ticket</div>
+            <div class="casino-subtitle">Daily Jackpot · Drawn at Midnight UTC · Pot Grows 2.5x When No Major Winners</div>
         </div>
         <div class="casino-xp-badge">
             <span style="color:var(--text-secondary);font-size:0.75rem">Your XP</span>
@@ -52,7 +52,7 @@
         <div class="pb-jackpot-banner">
             <div class="pb-jackpot-label">🏆 Today's Jackpot</div>
             <div class="pb-jackpot-amount" id="pb-pot-display">—</div>
-            <div class="pb-jackpot-sub">Grows with every ticket sold · Rolls over if no MEGA winner</div>
+            <div class="pb-jackpot-sub">Grows 2.5x when no major winners · House matches every ticket</div>
             <div class="pb-draw-countdown">⏰ Next draw: <span id="pb-countdown">—</span></div>
         </div>
 
@@ -176,7 +176,7 @@
                                 <span id="pb-cost-total">—</span>
                             </div>
                             <div class="pb-cost-row" style="font-size:0.62rem;color:var(--text-secondary)">
-                                <span>80% goes to the jackpot pot</span>
+                                <span>House matches your ticket cost into the pot</span>
                                 <span id="pb-cost-pot-contrib">—</span>
                             </div>
                         </div>
@@ -196,66 +196,86 @@
             <!-- ── RIGHT: Sidebar ── -->
             <div class="pb-side-col">
 
-                <!-- Payout table -->
-                <div class="pb-section">
-                    <div class="pb-section-title">💰 Payout Table</div>
+                <!-- Combined info panel -->
+                <div class="pb-section" id="pb-info-panel">
+
+                    <!-- Last draw result (top, always shown if available) -->
+                    <div id="pb-last-draw-section" style="display:none">
+                        <div class="pb-section-title" style="margin-bottom:8px">📋 Last Draw</div>
+                        <div id="pb-last-draw-content" class="pb-last-draw"></div>
+                        <hr style="border-color:rgba(255,215,0,0.12);margin:12px 0">
+                    </div>
+
+                    <!-- Payout table -->
+                    <div class="pb-section-title" style="margin-bottom:8px">💰 Payout Table</div>
                     <table class="pb-payout-table">
                         <thead>
                             <tr>
                                 <th>Match</th>
-                                <th>Payout</th>
+                                <th>%</th>
+                                <th>~XP</th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr class="tier-mega">
-                                <td>5 Pets + ⚡ Element</td>
-                                <td class="pb-payout-xp">🏆 Full Pot</td>
+                                <td>5 Pets + ⚡</td>
+                                <td>100%</td>
+                                <td class="pb-payout-xp" id="pb-pay-mega-xp">—</td>
                             </tr>
                             <tr class="tier-1">
-                                <td>5 Pets (no EM)</td>
-                                <td class="pb-payout-xp">25% of Pot</td>
+                                <td>5 Pets</td>
+                                <td>25%</td>
+                                <td class="pb-payout-xp" id="pb-pay-1-xp">—</td>
                             </tr>
                             <tr class="tier-2em">
-                                <td>4 Pets + ⚡ Element</td>
-                                <td class="pb-payout-xp" id="pb-pay-2em">—</td>
+                                <td>4 Pets + ⚡</td>
+                                <td>10%</td>
+                                <td class="pb-payout-xp" id="pb-pay-2em-xp">—</td>
                             </tr>
                             <tr class="tier-2">
-                                <td>4 Pets (no EM)</td>
-                                <td class="pb-payout-xp" id="pb-pay-2">—</td>
+                                <td>4 Pets</td>
+                                <td>5%</td>
+                                <td class="pb-payout-xp" id="pb-pay-2-xp">—</td>
                             </tr>
                             <tr class="tier-3em">
-                                <td>3 Pets + ⚡ Element</td>
-                                <td class="pb-payout-xp" id="pb-pay-3em">—</td>
+                                <td>3 Pets + ⚡</td>
+                                <td>2%</td>
+                                <td class="pb-payout-xp" id="pb-pay-3em-xp">—</td>
                             </tr>
                             <tr class="tier-3">
-                                <td>3 Pets (no EM)</td>
-                                <td class="pb-payout-xp" id="pb-pay-3">—</td>
+                                <td>3 Pets</td>
+                                <td>1%</td>
+                                <td class="pb-payout-xp" id="pb-pay-3-xp">—</td>
                             </tr>
                         </tbody>
                     </table>
-                    <div style="font-size:0.6rem;color:var(--text-secondary);margin-top:8px">
-                        Pets must match in exact draw order. EM = Elemental Multiplier Ball.
+                    <div style="font-size:0.58rem;color:var(--text-secondary);margin-top:6px">
+                        Pets must match in exact draw order. ~XP updates with pot size.
                     </div>
-                </div>
 
-                <!-- Last draw result -->
-                <div class="pb-section" id="pb-last-draw-section" style="display:none">
-                    <div class="pb-section-title">📋 Last Draw</div>
-                    <div id="pb-last-draw-content" class="pb-last-draw"></div>
-                </div>
+                    <hr style="border-color:rgba(255,215,0,0.12);margin:12px 0">
 
-                <!-- How to play -->
-                <div class="pb-section">
-                    <div class="pb-section-title">📖 How to Play</div>
-                    <div style="font-size:0.68rem;color:var(--text-secondary);line-height:1.7">
-                        <div>1. Pick <strong style="color:var(--gold-secondary)">5 pets in order</strong> — order matters!</div>
-                        <div>2. Optionally add an <strong style="color:#ffa500">Elemental Ball</strong> for a chance at the full jackpot.</div>
-                        <div>3. Ticket cost = <strong style="color:var(--gold-secondary)">Level × Equipment × 500 XP</strong></div>
-                        <div>4. 80% of your ticket cost goes into the pot.</div>
-                        <div>5. Drawing happens at <strong style="color:var(--gold-secondary)">midnight UTC</strong> every day.</div>
-                        <div>6. No winner = pot <strong style="color:var(--gold-secondary)">rolls over</strong> to tomorrow!</div>
+                    <!-- Rollover info -->
+                    <div class="pb-section-title" style="margin-bottom:8px">🚀 Rollover</div>
+                    <div style="font-size:0.67rem;color:var(--text-secondary);line-height:1.7">
+                        <div>🏆 <strong style="color:#e74c3c">MEGA</strong> (5+⚡): Full pot, resets to 50K</div>
+                        <div>🥇 <strong style="color:#f39c12">TIER1</strong> (5 pets): 25% of pot stays</div>
+                        <div>📈 <strong style="color:#27ae60">No Major Winners</strong>: Pot × <strong style="color:var(--gold-secondary)">2.5</strong></div>
                     </div>
-                </div>
+
+                    <hr style="border-color:rgba(255,215,0,0.12);margin:12px 0">
+
+                    <!-- How to play -->
+                    <div class="pb-section-title" style="margin-bottom:8px">📖 How to Play</div>
+                    <div style="font-size:0.67rem;color:var(--text-secondary);line-height:1.8">
+                        <div>1. Pick <strong style="color:var(--gold-secondary)">5 pets in order</strong></div>
+                        <div>2. Optionally add an <strong style="color:#ffa500">Elemental Ball</strong></div>
+                        <div>3. Cost = <strong style="color:var(--gold-secondary)">Level × Equip × 500 XP</strong></div>
+                        <div>4. House <strong style="color:var(--gold-secondary)">matches your cost</strong> into pot</div>
+                        <div>5. Draw at <strong style="color:var(--gold-secondary)">midnight UTC</strong> daily</div>
+                    </div>
+
+                </div><!-- /info-panel -->
 
             </div><!-- /side-col -->
         </div><!-- /layout -->
@@ -271,4 +291,4 @@
 
 </div>
 
-<script src="/js/powerball.js?v=20260419a"></script>
+<script src="/js/powerball.js?v=20260423a"></script>

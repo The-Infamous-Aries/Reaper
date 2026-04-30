@@ -6,12 +6,29 @@
     <!-- Header -->
     <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-1">
         <div>
-            <div class="casino-title">🎡 Wheel of Pets</div>
-            <div class="casino-subtitle">Click a segment · Place your bet · Spin to win</div>
+            <div class="casino-title" id="wop-title">🎡 Wheel of Pets</div>
+            <div class="casino-subtitle" id="wop-subtitle">Click a segment · Place your bet · Spin to win</div>
         </div>
         <div class="casino-xp-badge">
             <span style="color:var(--text-secondary);font-size:0.75rem">Your XP</span>
             <span id="wop-xp-display" class="casino-xp-amount">—</span>
+        </div>
+    </div>
+
+    <!-- Mode Selector -->
+    <div class="wop-mode-selector mb-3">
+        <div style="font-size:0.82rem;color:var(--gold-secondary);font-weight:600;margin-bottom:8px">Choose Your Wheel</div>
+        <div class="wop-mode-buttons">
+            <button class="wop-mode-btn active" data-mode="pets">🐾 Pets</button>
+            <button class="wop-mode-btn" data-mode="monsters">👹 Monsters</button>
+            <button class="wop-mode-btn" data-mode="materials">🪨 Materials</button>
+            <button class="wop-mode-btn" data-mode="gems">💎 Gems</button>
+            <button class="wop-mode-btn" data-mode="hats">🎩 Hats</button>
+            <button class="wop-mode-btn" data-mode="potions">🧪 Potions</button>
+            <button class="wop-mode-btn" data-mode="elements">⚡ Elements</button>
+            <button class="wop-mode-btn" data-mode="stats">📊 Stats</button>
+            <button class="wop-mode-btn" data-mode="units">⚔️ Units</button>
+            <button class="wop-mode-btn" data-mode="resources">🛢️ Resources</button>
         </div>
     </div>
 
@@ -100,7 +117,7 @@
                         <span class="wop-payout-val" id="wop-pay-own">—</span>
                     </div>
                 </div>
-                <div style="font-size:0.65rem;color:var(--text-secondary);margin-bottom:10px;text-align:center">
+                <div id="wop-description" style="font-size:0.65rem;color:var(--text-secondary);margin-bottom:10px;text-align:center">
                     103 pets · equal odds · 5% house edge
                 </div>
 
@@ -132,7 +149,7 @@
                     </div>
                     <div class="wop-again-row">
                         <button id="wop-again-btn"  class="casino-btn wop-again-btn">🎡 Spin Again</button>
-                        <button id="wop-change-btn" class="casino-btn-sm">Change Pet</button>
+                        <button id="wop-change-btn" class="casino-btn-sm">Change Selection</button>
                     </div>
                 </div>
 

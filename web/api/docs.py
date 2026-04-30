@@ -1,4 +1,5 @@
 import re
+import asyncio
 """
 README, License, and Dependencies API Endpoints
 Provides documentation content for the about page.
@@ -15,6 +16,18 @@ logger = logging.getLogger("Reaper.DocsAPI")
 
 # Calculate project root directory
 project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+# Cache static doc files — read once, serve forever
+_doc_cache: dict = {}
+
+def _read_file(path: str) -> str:
+    with open(path, "r", encoding="utf-8") as f:
+        return f.read()
+
+async def _get_file(path: str) -> str:
+    if path not in _doc_cache:
+        _doc_cache[path] = await asyncio.to_thread(_read_file, path)
+    return _doc_cache[path]
 
 def convert_markdown_to_html(text):
     """Convert Discord markdown to HTML for web display."""
@@ -82,7 +95,7 @@ async def get_readme():
             raise HTTPException(status_code=404, detail="README.md not found")
         
         with open(readme_path, "r", encoding="utf-8") as f:
-            readme_content = f.read()
+            readme_content = await _get_file(readme_path)
         
         html_content = convert_markdown_to_html(readme_content)
         logger.info("Successfully served README content")
@@ -102,7 +115,7 @@ async def get_license():
             raise HTTPException(status_code=404, detail="LICENSE.txt not found")
         
         with open(license_path, "r", encoding="utf-8") as f:
-            license_content = f.read()
+            license_content = await _get_file(license_path)
         
         logger.info("Successfully served license content")
         return JSONResponse(content={"content": license_content}, status_code=200)
@@ -121,7 +134,7 @@ async def get_dependencies():
             raise HTTPException(status_code=404, detail="requirements.txt not found")
         
         with open(requirements_path, "r", encoding="utf-8") as f:
-            requirements_content = f.read()
+            requirements_content = await _get_file(requirements_path)
         
         # Parse requirements by category
         categories = {}
@@ -185,7 +198,7 @@ async def get_package_json():
             raise HTTPException(status_code=404, detail="package.json not found")
         
         with open(package_json_path, "r", encoding="utf-8") as f:
-            package_data = json.load(f)
+            package_data = json.loads(await _get_file(package_json_path))
         
         # Extract dependencies sections
         categories = {}

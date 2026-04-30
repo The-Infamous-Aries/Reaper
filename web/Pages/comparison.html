@@ -1,19 +1,54 @@
 <link rel="stylesheet" href="/css/comparison.css">
+<style>
+  .cmp-ac-wrap { position: relative; }
+  .cmp-ac-dropdown {
+    position: absolute; top: 100%; left: 0; right: 0; z-index: 1050;
+    background: #1a1a2e; border: 1px solid rgba(184,134,11,0.4);
+    border-radius: 0 0 6px 6px; max-height: 220px; overflow-y: auto;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.5); display: none;
+  }
+  .cmp-ac-dropdown.open { display: block; }
+  .cmp-ac-item {
+    padding: 7px 12px; cursor: pointer; font-size: 0.88rem;
+    color: #d4af37; border-bottom: 1px solid rgba(184,134,11,0.1);
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .cmp-ac-item:last-child { border-bottom: none; }
+  .cmp-ac-item:hover, .cmp-ac-item.active { background: rgba(184,134,11,0.15); }
+  .cmp-ac-count { font-size: 0.75rem; color: #888; margin-left: 8px; }
+  .cmp-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 5px; min-height: 0; }
+  .cmp-tag {
+    background: rgba(184,134,11,0.2); border: 1px solid rgba(184,134,11,0.4);
+    border-radius: 4px; padding: 2px 8px; font-size: 0.8rem; color: #d4af37;
+    display: flex; align-items: center; gap: 4px;
+  }
+  .cmp-tag-x { cursor: pointer; opacity: 0.7; font-size: 0.9rem; line-height: 1; }
+  .cmp-tag-x:hover { opacity: 1; }
+</style>
 
 <div class="cmp-page">
   <div class="cmp-card mb-4">
     <div class="row g-2 align-items-end">
       <div class="col-md-5">
         <label class="cmp-label">Home Alliance(s)</label>
-        <input type="text" id="cmp-home" class="form-control cmp-input"
-               placeholder="Name, ID, or comma-separated" value="Night's Watch">
-        <div class="cmp-hint">Pre-filled with Night's Watch — edit freely</div>
+        <div class="cmp-ac-wrap">
+          <input type="text" id="cmp-home" class="form-control cmp-input"
+                 placeholder="Type to search alliances..." autocomplete="off">
+          <div class="cmp-ac-dropdown" id="cmp-home-drop"></div>
+        </div>
+        <div class="cmp-tags" id="cmp-home-tags"></div>
+        <div class="cmp-hint">Search by name or ID — add multiple alliances</div>
       </div>
       <div class="col-md-1 text-center cmp-vs-big">VS</div>
       <div class="col-md-5">
         <label class="cmp-label">Away Alliance(s)</label>
-        <input type="text" id="cmp-away" class="form-control cmp-input"
-               placeholder="Name, ID, or comma-separated">
+        <div class="cmp-ac-wrap">
+          <input type="text" id="cmp-away" class="form-control cmp-input"
+                 placeholder="Type to search alliances..." autocomplete="off">
+          <div class="cmp-ac-dropdown" id="cmp-away-drop"></div>
+        </div>
+        <div class="cmp-tags" id="cmp-away-tags"></div>
+        <div class="cmp-hint">Search by name or ID — add multiple alliances</div>
       </div>
       <div class="col-md-1">
         <button id="cmp-run" class="btn btn-gold w-100">Compare</button>
@@ -359,13 +394,150 @@
   function showError(msg)   { document.getElementById('cmp-loading').style.display='none'; document.getElementById('cmp-error').style.display='block'; document.getElementById('cmp-error-msg').textContent=msg; }
   function showResults()    { document.getElementById('cmp-loading').style.display='none'; document.getElementById('cmp-results').style.display='block'; }
 
+  // ── Autocomplete tag-picker ───────────────────────────────────────────────
+  const _sides = {
+    home: { tags: [], inputId: 'cmp-home', dropId: 'cmp-home-drop', tagsId: 'cmp-home-tags' },
+    away: { tags: [], inputId: 'cmp-away', dropId: 'cmp-away-drop', tagsId: 'cmp-away-tags' },
+  };
+
+  // Pre-seed Home with Nights Watch
+  _sides.home.tags.push({ id: 14225, name: 'Nights Watch' });
+
+  let _acCache = null;
+  let _acTimer  = null;
+
+  async function _fetchAlliances(q) {
+    try {
+      const res = await fetch('/api/pnw/alliances?q=' + encodeURIComponent(q));
+      if (!res.ok) return [];
+      return await res.json();
+    } catch(e) { return []; }
+  }
+
+  function _renderTags(side) {
+    const s = _sides[side];
+    const el = document.getElementById(s.tagsId);
+    el.innerHTML = s.tags.map((t, i) =>
+      '<span class="cmp-tag">' + t.name +
+      '<span class="cmp-tag-x" data-side="' + side + '" data-idx="' + i + '" title="Remove">\u2715</span></span>'
+    ).join('');
+    el.querySelectorAll('.cmp-tag-x').forEach(function(x) {
+      x.addEventListener('click', function() {
+        _sides[x.dataset.side].tags.splice(parseInt(x.dataset.idx), 1);
+        _renderTags(x.dataset.side);
+      });
+    });
+  }
+
+  function _closeDrop(side) {
+    const drop = document.getElementById(_sides[side].dropId);
+    drop.classList.remove('open');
+    drop.innerHTML = '';
+  }
+
+  function _openDrop(side, items) {
+    const s = _sides[side];
+    const drop = document.getElementById(s.dropId);
+    if (!items.length) { _closeDrop(side); return; }
+    drop.innerHTML = items.map(function(a) {
+      return '<div class="cmp-ac-item" data-side="' + side + '" data-id="' + a.id + '" data-name="' + a.name.replace(/"/g,'&quot;') + '">' +
+        '<span>' + a.name + '</span>' +
+        '<span class="cmp-ac-count">' + (a.member_count ? a.member_count + ' members' : 'ID ' + a.id) + '</span>' +
+        '</div>';
+    }).join('');
+    drop.querySelectorAll('.cmp-ac-item').forEach(function(item) {
+      item.addEventListener('mousedown', function(ev) {
+        ev.preventDefault();
+        var side2 = item.dataset.side;
+        var entry = { id: parseInt(item.dataset.id), name: item.dataset.name };
+        if (!_sides[side2].tags.find(function(t) { return t.id === entry.id; })) {
+          _sides[side2].tags.push(entry);
+          _renderTags(side2);
+        }
+        document.getElementById(_sides[side2].inputId).value = '';
+        _closeDrop(side2);
+      });
+    });
+    drop.classList.add('open');
+  }
+
+  function _setupAC(side) {
+    var s = _sides[side];
+    var input = document.getElementById(s.inputId);
+
+    input.addEventListener('input', function() {
+      clearTimeout(_acTimer);
+      var q = input.value.trim();
+      if (!q) { _closeDrop(side); return; }
+      _acTimer = setTimeout(async function() {
+        var results = await _fetchAlliances(q);
+        _openDrop(side, results.slice(0, 20));
+      }, 200);
+    });
+
+    input.addEventListener('focus', async function() {
+      var q = input.value.trim();
+      if (!q) {
+        if (!_acCache) _acCache = await _fetchAlliances('');
+        _openDrop(side, (_acCache || []).slice(0, 20));
+      }
+    });
+
+    input.addEventListener('blur', function() {
+      setTimeout(function() { _closeDrop(side); }, 150);
+    });
+
+    input.addEventListener('keydown', function(ev) {
+      var drop = document.getElementById(s.dropId);
+      var items = drop.querySelectorAll('.cmp-ac-item');
+      var active = drop.querySelector('.cmp-ac-item.active');
+      if (ev.key === 'ArrowDown') {
+        ev.preventDefault();
+        var next = active ? active.nextElementSibling : items[0];
+        if (active) active.classList.remove('active');
+        if (next) next.classList.add('active');
+      } else if (ev.key === 'ArrowUp') {
+        ev.preventDefault();
+        var prev = active ? active.previousElementSibling : items[items.length - 1];
+        if (active) active.classList.remove('active');
+        if (prev) prev.classList.add('active');
+      } else if (ev.key === 'Enter') {
+        if (active) {
+          ev.preventDefault();
+          var entry = { id: parseInt(active.dataset.id), name: active.dataset.name };
+          if (!_sides[side].tags.find(function(t) { return t.id === entry.id; })) {
+            _sides[side].tags.push(entry);
+            _renderTags(side);
+          }
+          input.value = '';
+          _closeDrop(side);
+        } else {
+          runComparison();
+        }
+      } else if (ev.key === 'Escape') {
+        _closeDrop(side);
+      }
+    });
+  }
+
   async function runComparison() {
-    const hv=document.getElementById('cmp-home').value.trim(), av=document.getElementById('cmp-away').value.trim();
-    if (!hv||!av) { showError('Fill in both Home and Away fields.'); return; }
+    var homeTags = _sides.home.tags;
+    var awayTags = _sides.away.tags;
+    var homeInput = document.getElementById('cmp-home').value.trim();
+    var awayInput = document.getElementById('cmp-away').value.trim();
+
+    var homeStr = homeTags.map(function(t) { return t.id; }).join(',');
+    var awayStr = awayTags.map(function(t) { return t.id; }).join(',');
+
+    // Fall back to raw text if no tags selected
+    if (!homeStr && homeInput) homeStr = homeInput;
+    if (!awayStr && awayInput) awayStr = awayInput;
+
+    if (!homeStr || !awayStr) { showError('Add at least one alliance to each side.'); return; }
     showLoading('Querying PnW API for alliance member data...');
     try {
-      const res = await fetch(`/api/pnw/compare_data?${new URLSearchParams({home_alliance_ids:hv,away_alliance_ids:av})}`);
-      if (!res.ok) { const e=await res.json().catch(()=>({detail:res.statusText})); throw new Error(e.detail||`HTTP ${res.status}`); }
+      const res = await fetch('/api/pnw/compare_data?' + new URLSearchParams({home_alliance_ids:homeStr,away_alliance_ids:awayStr}));
+      if (!res.ok) { const e=await res.json().catch(()=>({detail:res.statusText})); throw new Error(e.detail||'HTTP ' + res.status); }
       const data = await res.json();
       _home=data.home; _away=data.away;
       document.getElementById('cmp-scorecards').innerHTML = buildScorecards(_home,_away);
@@ -378,8 +550,17 @@
 
   document.addEventListener('dashboardPageLoaded', function(e) {
     if (e.detail.page !== 'comparison.html') return;
+
+    // Render initial tags
+    _renderTags('home');
+    _renderTags('away');
+
+    // Wire up autocomplete
+    _setupAC('home');
+    _setupAC('away');
+
     document.getElementById('cmp-run').addEventListener('click', runComparison);
-    ['cmp-home','cmp-away'].forEach(id=>document.getElementById(id).addEventListener('keydown',ev=>{if(ev.key==='Enter')runComparison();}));
+
     document.querySelectorAll('#cmpTabs .nav-link').forEach(btn=>btn.addEventListener('click',function(){
       document.querySelectorAll('#cmpTabs .nav-link').forEach(b=>b.classList.remove('active'));
       this.classList.add('active'); renderTab(this.dataset.tab);

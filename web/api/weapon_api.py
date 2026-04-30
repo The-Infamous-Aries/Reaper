@@ -1,9 +1,9 @@
-"""
+﻿"""
 Weapon Efficiency API — Theory and Targeted modes.
 Mirrors the /weapon_eff Discord command logic for the web dashboard.
 
-Nation and alliance targeted queries are cached in WeaponCache.db for 1 hour
-so repeated page loads don't hammer the PnW API.
+Nation and alliance data is read directly from GlobalNations.db or
+NWNations.db, falling back to the live PnW API if not found locally.
 """
 import math
 import logging
@@ -18,10 +18,109 @@ from Systems.PnW.MA.weapon_eff import (
     calc_infra_value,
     find_required_infra,
 )
-from Systems.Functions.weapon_cache_db import get_cache
+from Systems.Functions.db_paths import GLOBAL_NATIONS_DB, NW_NATIONS_DB
 
 router = APIRouter()
 logger = logging.getLogger("Reaper.WebServer.WeaponAPI")
+
+
+# ── DB-first nation/alliance resolution ──────────────────────────────────────
+
+async def _get_nation_with_cities(target: str) -> Optional[dict]:
+    """
+    Resolve a nation by name or ID, preferring local DBs over the live API.
+    Checks GlobalNations.db first (all game nations), then NWNations.db,
+    then falls back to the PnW API. Always attaches cities to the returned dict.
+    """
+    # Try GlobalNations.db first
+    if GLOBAL_NATIONS_DB.exists():
+        try:
+            from PnWHarvester.db.global_nations_db import GlobalNationsDB
+            gdb = GlobalNationsDB(str(GLOBAL_NATIONS_DB))
+            nation = (await gdb.get_nation(int(target))
+                      if target.isdigit()
+                      else await gdb.get_nation_by_name(target))
+            if nation:
+                nation['cities'] = await gdb.get_cities_for_nation(int(nation['id']))
+                if nation['cities']:
+                    return nation
+        except Exception as e:
+            logger.debug(f"GlobalNationsDB lookup failed for '{target}': {e}")
+
+    # Try NWNations.db
+    if NW_NATIONS_DB.exists():
+        try:
+            from Systems.Functions.irs_nations_db import IRSNationsDB
+            nwdb = IRSNationsDB(str(NW_NATIONS_DB))
+            nation = (await nwdb.get_nation(int(target))
+                      if target.isdigit()
+                      else None)
+            if not nation:
+                # NW DB doesn't have get_nation_by_name — scan all_nations
+                all_nw = await nwdb.get_all_nations()
+                nation = next((n for n in all_nw
+                               if n.get('nation_name', '').lower() == target.lower()), None)
+            if nation:
+                nation['cities'] = await nwdb.get_cities_for_nation(int(nation['id']))
+                if nation['cities']:
+                    return nation
+        except Exception as e:
+            logger.debug(f"NWNationsDB lookup failed for '{target}': {e}")
+
+    # Fall back to live API
+    query = create_v3_query_instance()
+    return (await query.get_nation_by_id(target)
+            if target.isdigit()
+            else await query.get_nation_by_name(target))
+
+
+async def _get_alliance_nations_with_cities(target: str) -> tuple[Optional[dict], list]:
+    """
+    Resolve an alliance and its nations with cities, preferring GlobalNations.db.
+    Returns (alliance_info_dict, list_of_nations).
+    alliance_info_dict has keys: id, name.
+    """
+    # Try GlobalNations.db
+    if GLOBAL_NATIONS_DB.exists():
+        try:
+            from PnWHarvester.db.global_nations_db import GlobalNationsDB
+            gdb = GlobalNationsDB(str(GLOBAL_NATIONS_DB))
+
+            # Resolve alliance_id from name or numeric id
+            alliance_id_int = None
+            alliance_name   = target
+            if target.isdigit():
+                alliance_id_int = int(target)
+            else:
+                alliances = await gdb.get_distinct_alliances(target)
+                for a in alliances:
+                    if (a.get('alliance_name') or '').lower() == target.lower():
+                        alliance_id_int = a['alliance_id']
+                        alliance_name   = a.get('alliance_name') or target
+                        break
+                if not alliance_id_int and alliances:
+                    alliance_id_int = alliances[0]['alliance_id']
+                    alliance_name   = alliances[0].get('alliance_name') or target
+
+            if alliance_id_int:
+                nations = await gdb.get_nations_by_alliance(alliance_id_int)
+                if nations:
+                    # Attach cities to each nation
+                    for nation in nations:
+                        nation['cities'] = await gdb.get_cities_for_nation(int(nation['id']))
+                    nations = [n for n in nations if n.get('cities')]
+                    if nations:
+                        return {'id': str(alliance_id_int), 'name': alliance_name}, nations
+        except Exception as e:
+            logger.debug(f"GlobalNationsDB alliance lookup failed for '{target}': {e}")
+
+    # Fall back to live API
+    query = create_v3_query_instance()
+    resolved = await query.resolve_alliance(target)
+    if not resolved or not resolved.get('id'):
+        return None, []
+    nations = await query.get_alliance_nations(str(resolved['id']), force_refresh=True) or []
+    return resolved, nations
 
 
 # ── Shared helpers ────────────────────────────────────────────────────────────
@@ -339,21 +438,9 @@ async def weapon_theory(infra: Optional[float] = None, pop_density: Optional[flo
 # ── Targeted — Nation endpoint ────────────────────────────────────────────────
 
 @router.get("/weapons/targeted/nation")
-async def weapon_targeted_nation(target: str, force_refresh: bool = False):
-    """
-    Targeted mode for a single nation.
-    Cached for 1 hour in WeaponCache.db. Pass force_refresh=true to bust.
-    """
+async def weapon_targeted_nation(target: str):
+    """Targeted mode for a single nation. Reads from GlobalNations.db or NWNations.db, falls back to API."""
     try:
-        cache = get_cache()
-        cache_key = target.lower().strip()
-
-        if not force_refresh:
-            cached = await cache.get('nation', cache_key)
-            if cached:
-                logger.info("WeaponAPI nation cache HIT: %s", target)
-                return JSONResponse(cached)
-
         resource_prices = await get_resource_prices()
         if not resource_prices or 'sell' not in resource_prices:
             return JSONResponse({"error": "Unable to fetch resource prices."}, status_code=503)
@@ -361,16 +448,12 @@ async def weapon_targeted_nation(target: str, force_refresh: bool = False):
         nuke_cost    = calculate_unit_cost('nukes',    resource_prices['sell'])
         missile_cost = calculate_unit_cost('missiles', resource_prices['sell'])
 
-        query = create_v3_query_instance()
-        nation = (await query.get_nation_by_id(target)
-                  if target.isdigit()
-                  else await query.get_nation_by_name(target))
+        nation = await _get_nation_with_cities(target)
         if not nation:
             return JSONResponse({"error": f"Nation '{target}' not found."}, status_code=404)
 
         payload = _build_nation_payload(nation, missile_cost, nuke_cost)
-        await cache.set('nation', cache_key, payload)
-        logger.info("WeaponAPI nation cache SET: %s (%d cities)", target, len(payload['cities']))
+        logger.info("WeaponAPI nation: %s (%d cities)", target, len(payload['cities']))
         return JSONResponse(payload)
 
     except Exception as e:
@@ -381,21 +464,9 @@ async def weapon_targeted_nation(target: str, force_refresh: bool = False):
 # ── Targeted — Alliance endpoint ──────────────────────────────────────────────
 
 @router.get("/weapons/targeted/alliance")
-async def weapon_targeted_alliance(target: str, force_refresh: bool = False):
-    """
-    Targeted mode for an alliance.
-    Cached for 1 hour in WeaponCache.db. Pass force_refresh=true to bust.
-    """
+async def weapon_targeted_alliance(target: str):
+    """Targeted mode for an alliance. Reads from GlobalNations.db, falls back to API."""
     try:
-        cache = get_cache()
-        cache_key = target.lower().strip()
-
-        if not force_refresh:
-            cached = await cache.get('alliance', cache_key)
-            if cached:
-                logger.info("WeaponAPI alliance cache HIT: %s (%d nations)", target, cached.get('nation_count', 0))
-                return JSONResponse(cached)
-
         resource_prices = await get_resource_prices()
         if not resource_prices or 'sell' not in resource_prices:
             return JSONResponse({"error": "Unable to fetch resource prices."}, status_code=503)
@@ -403,17 +474,14 @@ async def weapon_targeted_alliance(target: str, force_refresh: bool = False):
         nuke_cost    = calculate_unit_cost('nukes',    resource_prices['sell'])
         missile_cost = calculate_unit_cost('missiles', resource_prices['sell'])
 
-        query = create_v3_query_instance()
-        resolved = await query.resolve_alliance(target)
-        if not resolved or not resolved.get('id'):
+        alliance_info, nations = await _get_alliance_nations_with_cities(target)
+        if not alliance_info:
             return JSONResponse({"error": f"Alliance '{target}' not found."}, status_code=404)
-
-        alliance_id   = str(resolved['id'])
-        alliance_name = resolved.get('name', target)
-
-        nations = await query.get_alliance_nations(alliance_id, force_refresh=True)
         if not nations:
-            return JSONResponse({"error": f"No nations found in '{alliance_name}'."}, status_code=404)
+            return JSONResponse({"error": f"No nations found in '{alliance_info.get('name', target)}'."}, status_code=404)
+
+        alliance_id   = str(alliance_info['id'])
+        alliance_name = alliance_info.get('name', target)
 
         nations_out = []
         for nation in nations:
@@ -433,26 +501,9 @@ async def weapon_targeted_alliance(target: str, force_refresh: bool = False):
             'nations':       nations_out,
         }
 
-        await cache.set('alliance', cache_key, payload)
-        logger.info("WeaponAPI alliance cache SET: %s (%d nations)", alliance_name, len(nations_out))
+        logger.info("WeaponAPI alliance: %s (%d nations)", alliance_name, len(nations_out))
         return JSONResponse(payload)
 
     except Exception as e:
         logger.error(f"weapon_targeted_alliance error: {e}", exc_info=True)
         return JSONResponse({"error": str(e)}, status_code=500)
-
-
-# ── Cache status endpoint ─────────────────────────────────────────────────────
-
-@router.get("/weapons/cache/stats")
-async def weapon_cache_stats():
-    """Returns cache stats — useful for debugging."""
-    stats = await get_cache().stats()
-    return JSONResponse(stats)
-
-
-@router.delete("/weapons/cache/{cache_type}/{key}")
-async def weapon_cache_invalidate(cache_type: str, key: str):
-    """Manually invalidate a specific cache entry."""
-    ok = await get_cache().invalidate(cache_type, key)
-    return JSONResponse({"ok": ok})

@@ -21,6 +21,9 @@
 
     <hr class="ss-divider">
 
+    <!-- Status banner -->
+    <div id="ss-status-banner" class="ss-status-banner ss-status-none">No Active Game</div>
+
     <!-- Countdown (shown during countdown phase) -->
     <div id="ss-countdown-wrap" style="display:none">
         <div class="ss-countdown" id="ss-countdown-timer">1:00:00</div>
@@ -49,11 +52,6 @@
                     <div class="d-flex align-items-center gap-2">
                         <h6 style="margin:0;font-size:0.8rem">🗺️ Arena Map</h6>
                         <span id="ss-map-round-label" style="font-size:0.68rem;color:var(--text-secondary)"></span>
-                    </div>
-                    <div class="d-flex align-items-center gap-1">
-                        <button class="ss-btn ss-btn-secondary" onclick="ssMapZoomIn()"   style="font-size:0.75rem;padding:1px 8px;line-height:1.4" title="Zoom in">+</button>
-                        <button class="ss-btn ss-btn-secondary" onclick="ssMapZoomOut()"  style="font-size:0.75rem;padding:1px 8px;line-height:1.4" title="Zoom out">−</button>
-                        <button class="ss-btn ss-btn-secondary" onclick="ssMapReset()"    style="font-size:0.6rem;padding:2px 8px">⟳ Fit</button>
                     </div>
                 </div>
 
@@ -98,7 +96,7 @@
                 </div>
 
                 <div style="padding:0;position:relative;overflow:hidden;background:#07070f;flex:1;min-height:400px">
-                    <canvas id="ss-map-canvas" style="display:block;width:100%;height:100%;cursor:grab;touch-action:none;position:absolute;inset:0"></canvas>
+                    <canvas id="ss-map-canvas" style="display:block;width:100%;height:100%;cursor:default;touch-action:none;position:absolute;inset:0"></canvas>
                     <!-- Tooltip -->
                     <div id="ss-map-tooltip" style="position:absolute;pointer-events:none;display:none;z-index:10"></div>
                     <!-- Zone focus back button (shown when zoomed into a room) -->
@@ -137,9 +135,8 @@
                         </div>
                         <div id="ss-map-pet-panel-body" style="flex:1;overflow-y:auto;padding:10px 12px;font-size:0.7rem;color:rgba(200,200,200,0.85)"></div>
                     </div>
-                    <!-- Zoom hint -->
+                    <!-- Zone hint -->
                     <div id="ss-map-zoom-hint" style="position:absolute;bottom:6px;right:8px;font-size:0.55rem;color:rgba(255,255,255,0.3);pointer-events:none;text-align:right">
-                        scroll to zoom · drag to pan<br>
                         <span style="font-size:0.5rem">click a zone to enter it</span>
                     </div>
                 </div>
@@ -261,53 +258,205 @@
         border:2px solid var(--gold-primary);
         clip-path:polygon(0 16px,16px 0,calc(100% - 16px) 0,100% 16px,100% calc(100% - 16px),calc(100% - 16px) 100%,16px 100%,0 calc(100% - 16px));
         box-shadow:0 0 40px var(--gold-glow);
-        padding:2rem;max-width:480px;width:90%;position:relative">
+        padding:2rem;max-width:600px;width:95%;position:relative;max-height:90vh;overflow-y:auto;">
 
-        <div style="font-family:Orbitron,sans-serif;font-size:1rem;font-weight:700;color:var(--gold-primary);text-shadow:0 0 8px var(--gold-glow);margin-bottom:1.2rem;letter-spacing:1px">
-            🚀 Start Survivor Series
+        <div style="font-family:Orbitron,sans-serif;font-size:1.1rem;font-weight:700;color:var(--gold-primary);text-shadow:0 0 8px var(--gold-glow);margin-bottom:0.3rem;letter-spacing:1px;text-align:center">
+            🚀 Pet Survive - Start Menu
         </div>
-        <div style="margin-bottom:1.2rem">
-            <div class="d-flex justify-content-between align-items-center mb-1">
-                <label style="font-size:0.8rem;color:var(--text-secondary);font-weight:600">NPC Participants</label>
-                <span id="sm-npc-val" style="font-family:Orbitron,sans-serif;font-size:1rem;font-weight:900;color:var(--gold-primary);min-width:2.5rem;text-align:right">0</span>
+        <div style="font-size:0.65rem;color:var(--text-secondary);text-transform:uppercase;letter-spacing:2px;margin-bottom:1.5rem;text-align:center">
+            Configure your battle royale settings
+        </div>
+
+        <!-- Game Mode Selection -->
+        <div style="margin-bottom:1.5rem">
+            <div style="font-size:0.8rem;color:var(--gold-secondary);font-weight:600;margin-bottom:0.5rem">🎮 Game Mode</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem">
+                <button id="sm-mode-classic" class="ss-mode-btn active" onclick="ssSetGameMode('classic')" style="
+                    background:rgba(255,215,0,0.1);border:2px solid var(--gold-primary);color:var(--gold-primary);
+                    padding:0.6rem;border-radius:6px;font-size:0.75rem;cursor:pointer;transition:all 0.2s;
+                    font-family:Orbitron,sans-serif;font-weight:600">
+                    ⚔️ Classic Battle Royale
+                </button>
+                <button id="sm-mode-quick" class="ss-mode-btn" onclick="ssSetGameMode('quick')" style="
+                    background:rgba(0,0,0,0.3);border:2px solid rgba(255,255,255,0.2);color:var(--text-secondary);
+                    padding:0.6rem;border-radius:6px;font-size:0.75rem;cursor:pointer;transition:all 0.2s;
+                    font-family:Orbitron,sans-serif;font-weight:600">
+                    ⚡ Quick Match (10min rounds)
+                </button>
             </div>
-            <input type="range" id="sm-npc-slider" min="0" max="98" value="0" step="1"
+        </div>
+
+        <!-- Difficulty Selection -->
+        <div style="margin-bottom:1.5rem">
+            <div style="font-size:0.8rem;color:var(--gold-secondary);font-weight:600;margin-bottom:0.5rem">⚡ NPC Difficulty</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0.5rem">
+                <button id="sm-diff-easy" class="ss-diff-btn" onclick="ssSetDifficulty('easy')" style="
+                    background:rgba(76,175,80,0.1);border:2px solid rgba(76,175,80,0.3);color:#4caf50;
+                    padding:0.5rem;border-radius:6px;font-size:0.7rem;cursor:pointer;transition:all 0.2s;
+                    font-family:Orbitron,sans-serif;font-weight:600">
+                    🟢 Easy
+                </button>
+                <button id="sm-diff-normal" class="ss-diff-btn active" onclick="ssSetDifficulty('normal')" style="
+                    background:rgba(255,193,7,0.1);border:2px solid rgba(255,193,7,0.5);color:#ffc107;
+                    padding:0.5rem;border-radius:6px;font-size:0.7rem;cursor:pointer;transition:all 0.2s;
+                    font-family:Orbitron,sans-serif;font-weight:600">
+                    🟡 Normal
+                </button>
+                <button id="sm-diff-hard" class="ss-diff-btn" onclick="ssSetDifficulty('hard')" style="
+                    background:rgba(244,67,54,0.1);border:2px solid rgba(244,67,54,0.3);color:#f44336;
+                    padding:0.5rem;border-radius:6px;font-size:0.7rem;cursor:pointer;transition:all 0.2s;
+                    font-family:Orbitron,sans-serif;font-weight:600">
+                    🔴 Hard
+                </button>
+            </div>
+            <div style="font-size:0.65rem;color:var(--text-secondary);margin-top:0.3rem;line-height:1.4">
+                <span id="sm-diff-desc">NPCs will be calibrated to player levels with balanced stats</span>
+            </div>
+        </div>
+
+        <!-- Pet Selection Method -->
+        <div style="margin-bottom:1.5rem">
+            <div style="font-size:0.8rem;color:var(--gold-secondary);font-weight:600;margin-bottom:0.5rem">👥 Pet Selection</div>
+            
+            <!-- Add All User Pets toggle -->
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.8rem;padding:10px 14px;background:rgba(0,0,0,0.4);border:1px solid rgba(255,215,0,0.2);border-radius:6px">
+                <div>
+                    <div style="font-size:0.75rem;color:var(--gold-secondary);font-weight:600">Add All User Pets</div>
+                    <div style="font-size:0.6rem;color:var(--text-secondary);margin-top:2px">Includes every registered pet automatically</div>
+                </div>
+                <label style="position:relative;display:inline-block;width:42px;height:22px;flex-shrink:0;margin-left:12px">
+                    <input type="checkbox" id="sm-add-all-toggle" onchange="ssToggleAddAll()" style="opacity:0;width:0;height:0">
+                    <span onclick="this.previousElementSibling.click()" style="
+                        position:absolute;cursor:pointer;inset:0;
+                        background:rgba(255,255,255,0.1);border-radius:22px;transition:.2s;
+                        border:1px solid rgba(255,215,0,0.3)">
+                    </span>
+                </label>
+            </div>
+
+            <!-- Manual Pet Selection -->
+            <div id="sm-manual-selection" style="display:block">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.5rem">
+                    <span style="font-size:0.75rem;color:var(--text-secondary)">Select Specific Pets</span>
+                    <button onclick="ssOpenPetSelector()" style="
+                        background:rgba(255,215,0,0.1);border:1px solid rgba(255,215,0,0.3);color:var(--gold-primary);
+                        padding:0.3rem 0.8rem;border-radius:4px;font-size:0.65rem;cursor:pointer;
+                        font-family:Orbitron,sans-serif">+ Add Pets</button>
+                </div>
+                <div id="sm-selected-pets" style="
+                    min-height:60px;max-height:120px;overflow-y:auto;
+                    background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.1);
+                    border-radius:6px;padding:0.5rem">
+                    <div style="font-size:0.65rem;color:var(--text-secondary);text-align:center;padding:1rem">
+                        No pets selected. Click "Add Pets" to choose specific pets.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- NPC Configuration -->
+        <div style="margin-bottom:1.5rem">
+            <div class="d-flex justify-content-between align-items-center mb-1">
+                <label style="font-size:0.8rem;color:var(--gold-secondary);font-weight:600">🤖 NPC Count</label>
+                <span id="sm-npc-val" style="font-family:Orbitron,sans-serif;font-size:1rem;font-weight:900;color:var(--gold-primary);min-width:2.5rem;text-align:right">10</span>
+            </div>
+            <input type="range" id="sm-npc-slider" min="0" max="99" value="10" step="1"
                    oninput="ssModalSliderChange()"
                    style="width:100%;accent-color:var(--gold-primary);cursor:pointer">
             <div class="d-flex justify-content-between" style="font-size:0.6rem;color:var(--text-secondary);margin-top:2px">
                 <span>0 NPCs</span>
-                <span id="sm-slider-max-label">max 98</span>
+                <span id="sm-slider-max-label">max 99</span>
             </div>
         </div>
+
+        <!-- Game Summary -->
         <div style="
             background:rgba(0,0,0,0.4);border:1px solid rgba(255,215,0,0.2);
-            border-radius:6px;padding:10px 14px;margin-bottom:1.2rem;
-            display:flex;gap:1.5rem;flex-wrap:wrap">
-            <div style="text-align:center;flex:1">
+            border-radius:6px;padding:12px 16px;margin-bottom:1.5rem;
+            display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;text-align:center">
+            <div>
                 <div style="font-size:0.6rem;color:var(--text-secondary);text-transform:uppercase;letter-spacing:1px">Players</div>
-                <div id="sm-real-count" style="font-family:Orbitron,sans-serif;font-size:1.1rem;font-weight:900;color:#4caf50">0</div>
+                <div id="sm-real-count" style="font-family:Orbitron,sans-serif;font-size:1.1rem;font-weight:900;color:#4caf50">1</div>
             </div>
-            <div style="text-align:center;flex:1">
+            <div>
                 <div style="font-size:0.6rem;color:var(--text-secondary);text-transform:uppercase;letter-spacing:1px">NPCs</div>
-                <div id="sm-npc-count" style="font-family:Orbitron,sans-serif;font-size:1.1rem;font-weight:900;color:var(--text-secondary)">0</div>
+                <div id="sm-npc-count" style="font-family:Orbitron,sans-serif;font-size:1.1rem;font-weight:900;color:var(--text-secondary)">10</div>
             </div>
-            <div style="text-align:center;flex:1">
+            <div>
                 <div style="font-size:0.6rem;color:var(--text-secondary);text-transform:uppercase;letter-spacing:1px">Total</div>
-                <div id="sm-total-count" style="font-family:Orbitron,sans-serif;font-size:1.1rem;font-weight:900;color:var(--gold-primary)">0</div>
+                <div id="sm-total-count" style="font-family:Orbitron,sans-serif;font-size:1.1rem;font-weight:900;color:var(--gold-primary)">11</div>
             </div>
         </div>
-        <div style="font-size:0.72rem;color:var(--text-secondary);margin-bottom:1.2rem;line-height:1.5">
-            NPCs are generated immediately and appear in the lobby.
-            The game begins <strong style="color:var(--gold-secondary)">15 minutes</strong> after you click Start —
-            Round 1 fires immediately when the countdown ends, then every
-            <strong style="color:var(--gold-secondary)">15 minutes</strong> after that.
+
+        <!-- Game Info -->
+        <div style="font-size:0.7rem;color:var(--text-secondary);margin-bottom:1.5rem;line-height:1.5;text-align:center">
+            <div style="margin-bottom:0.5rem">
+                ⏱️ Game begins <strong style="color:var(--gold-secondary)">15 minutes</strong> after start
+            </div>
+            <div>
+                🔄 Rounds fire every <strong style="color:var(--gold-secondary)">15 minutes</strong> • 
+                🏆 Last pet standing wins
+            </div>
         </div>
+
+        <!-- Action Buttons -->
         <div class="d-flex gap-2 justify-content-end">
-            <button class="ss-btn ss-btn-secondary" onclick="ssCloseStartModal()" style="font-size:0.8rem;padding:0.45rem 1.2rem">Cancel</button>
-            <button class="ss-btn" id="sm-confirm-btn" onclick="ssConfirmStart()" style="font-size:0.8rem;padding:0.45rem 1.4rem">⚔️ Start</button>
+            <button class="ss-btn ss-btn-secondary" onclick="ssCloseStartModal()" style="font-size:0.8rem;padding:0.5rem 1.2rem">Cancel</button>
+            <button class="ss-btn" id="sm-confirm-btn" onclick="ssConfirmStart()" style="font-size:0.8rem;padding:0.5rem 1.4rem">⚔️ Start Battle</button>
         </div>
     </div>
 </div>
 
-<script src="/js/survive.js"></script>
-<script src="/js/ss_map.js"></script>
+<!-- ── Pet Selection Modal ───────────────────────────────────────────────────── -->
+<div id="ss-pet-selector-modal" style="
+    display:none;position:fixed;inset:0;z-index:10000;
+    background:rgba(0,0,0,0.8);backdrop-filter:blur(4px);
+    align-items:center;justify-content:center;">
+    <div style="
+        background:linear-gradient(135deg,rgba(15,15,15,0.98),rgba(20,20,20,0.98));
+        border:2px solid var(--gold-primary);
+        clip-path:polygon(0 16px,16px 0,calc(100% - 16px) 0,100% 16px,100% calc(100% - 16px),calc(100% - 16px) 100%,16px 100%,0 calc(100% - 16px));
+        box-shadow:0 0 40px var(--gold-glow);
+        padding:1.5rem;max-width:500px;width:90%;position:relative;max-height:80vh;overflow:hidden;display:flex;flex-direction:column">
+
+        <div style="font-family:Orbitron,sans-serif;font-size:1rem;font-weight:700;color:var(--gold-primary);text-shadow:0 0 8px var(--gold-glow);margin-bottom:1rem;letter-spacing:1px;text-align:center">
+            🎯 Select Pets
+        </div>
+
+        <!-- Search -->
+        <div style="margin-bottom:1rem">
+            <input type="text" id="ps-search" placeholder="Search by username or pet name..." onkeyup="ssFilterPets()" style="
+                width:100%;padding:0.6rem;background:rgba(0,0,0,0.4);border:1px solid rgba(255,215,0,0.3);
+                border-radius:6px;color:var(--text-primary);font-size:0.8rem">
+        </div>
+
+        <!-- Pet List -->
+        <div id="ps-pet-list" style="
+            flex:1;overflow-y:auto;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.1);
+            border-radius:6px;padding:0.5rem;margin-bottom:1rem;min-height:200px">
+            <div style="text-align:center;padding:2rem;color:var(--text-secondary);font-size:0.75rem">
+                Loading pets...
+            </div>
+        </div>
+
+        <!-- Selected Count -->
+        <div style="text-align:center;margin-bottom:1rem;font-size:0.75rem;color:var(--text-secondary)">
+            <span id="ps-selected-count">0</span> pets selected
+        </div>
+
+        <!-- Actions -->
+        <div class="d-flex gap-2 justify-content-end">
+            <button onclick="ssClearSelectedPets()" style="
+                background:rgba(244,67,54,0.1);border:1px solid rgba(244,67,54,0.3);color:#f44336;
+                padding:0.4rem 1rem;border-radius:4px;font-size:0.75rem;cursor:pointer">Clear All</button>
+            <button onclick="ssClosePetSelector()" style="
+                background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.2);color:var(--text-secondary);
+                padding:0.4rem 1rem;border-radius:4px;font-size:0.75rem;cursor:pointer">Cancel</button>
+            <button onclick="ssConfirmPetSelection()" style="
+                background:rgba(255,215,0,0.1);border:1px solid rgba(255,215,0,0.5);color:var(--gold-primary);
+                padding:0.4rem 1.2rem;border-radius:4px;font-size:0.75rem;cursor:pointer;font-weight:600">Done</button>
+        </div>
+    </div>
+</div>
+
+<script src="/js/survive.js?v=20260425-final"></script>

@@ -217,11 +217,9 @@ async def casino_join(request: Request, data: Dict[str, Any] = Body(...)):
 
     pet = await user_data_manager.get_pet_data_async(user_id)
     avatar_hash = user.get("avatar") or ""
-    avatar_url = (
-        f"https://cdn.discordapp.com/avatars/{user_id}/{avatar_hash}.png"
-        if avatar_hash else
-        f"https://cdn.discordapp.com/embed/avatars/{int(user_id) % 5}.png"
-    )
+    
+    from Systems.Functions.discord_utils import get_discord_avatar_url
+    avatar_url = get_discord_avatar_url(user_id, avatar_hash, size=64)
 
     info = {
         "user_id":     user_id,
@@ -267,11 +265,9 @@ async def casino_observe(request: Request, data: Dict[str, Any] = Body(...)):
 
     pet = await user_data_manager.get_pet_data_async(user_id)
     avatar_hash = user.get("avatar") or ""
-    avatar_url = (
-        f"https://cdn.discordapp.com/avatars/{user_id}/{avatar_hash}.png"
-        if avatar_hash else
-        f"https://cdn.discordapp.com/embed/avatars/{int(user_id) % 5}.png"
-    )
+    
+    from Systems.Functions.discord_utils import get_discord_avatar_url
+    avatar_url = get_discord_avatar_url(user_id, avatar_hash, size=64)
 
     info = {
         "user_id":     user_id,

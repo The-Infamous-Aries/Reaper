@@ -1,7 +1,12 @@
 from fastapi import APIRouter, HTTPException, Request, Body
 from Systems.Functions.user_data_manager import user_data_manager
 from Systems.Pets.Logic.pet_brain import StatsCalculator, LootCalculator
+from Systems.Pets.Logic.ability_tree import (
+    get_tree_state, spend_stat_mastery, spend_advantage_mastery,
+    unlock_ability, purchase_ability_point, STATS, ADVANTAGE_MASTERY_KEYS
+)
 from fastapi.responses import JSONResponse
+import asyncio
 import json
 import os
 import logging
@@ -59,6 +64,15 @@ def _load_json(path: str) -> Any:
     with open(path, "r", encoding="utf-8") as f:
         return json.load(f)
 
+# Cache for JSON files loaded by _load_json — avoids repeated disk reads
+_json_file_cache: dict = {}
+
+async def _load_json_cached(path: str) -> Any:
+    """Load a JSON file, caching the result in memory after first read."""
+    if path not in _json_file_cache:
+        _json_file_cache[path] = await asyncio.to_thread(_load_json, path)
+    return _json_file_cache[path]
+
 
 def validate_pet_name(name: str) -> tuple[bool, str]:
     if not name or not name.strip():
@@ -93,13 +107,36 @@ async def test_pets_endpoint():
     })
 
 
+@router.get("/pets/my-pet")
+async def get_my_pet(request: Request):
+    """Get the current user's pet data"""
+    user = request.session.get("discord_user")
+    if not user:
+        return JSONResponse(content={"error": "Not logged in"}, status_code=401)
+    
+    user_id = str(user.get("id"))
+    try:
+        pet = await user_data_manager.get_pet_data_async(user_id)
+        if not pet:
+            raise HTTPException(status_code=404, detail="No pet found")
+        
+        # Enrich with computed stats and XP info
+        enriched_pet = _enrich_pet(pet)
+        return JSONResponse(content=enriched_pet)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"get_my_pet error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 # ── Pet species / equipment data ─────────────────────────────────────────────
 
 @router.get("/pets-data")
 async def get_pets_data():
     try:
         path = os.path.join(project_root, "Systems", "Pets", "Logic", "info.json")
-        return JSONResponse(content=_load_json(path))
+        return JSONResponse(content=await _load_json_cached(path))
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="Pets data file not found")
     except Exception as e:
@@ -111,7 +148,7 @@ async def get_pets_data():
 async def get_equipment_data():
     try:
         path = os.path.join(project_root, "Systems", "Pets", "Logic", "equipment.json")
-        return JSONResponse(content=_load_json(path))
+        return JSONResponse(content=await _load_json_cached(path))
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="Equipment data file not found")
     except Exception as e:
@@ -123,7 +160,7 @@ async def get_equipment_data():
 async def get_available_pets():
     try:
         path = os.path.join(project_root, "Systems", "Pets", "Logic", "info.json")
-        pets_data = _load_json(path)
+        pets_data = await _load_json_cached(path)
         species_list = []
         for species_key, species_data in pets_data.get("Pets", {}).items():
             base_stats = species_data.get("Stats", {})
@@ -165,6 +202,44 @@ async def get_user_pet(request: Request):
     except Exception as e:
         logger.error(f"get_user_pet error: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to fetch user pet data")
+
+
+@router.get("/pets/all")
+async def get_all_pets(request: Request):
+    """Get all pets for Pet Survive start menu selection"""
+    user = request.session.get("discord_user")
+    if not user:
+        return JSONResponse(content={"error": "Not logged in"}, status_code=401)
+    
+    try:
+        from Systems.Functions.pets_db import pets_db
+        all_user_ids = await pets_db.get_user_ids_with_pets()
+        
+        pets = []
+        for user_id in all_user_ids:
+            try:
+                pet_data = await user_data_manager.get_pet_data_async(str(user_id))
+                if pet_data:
+                    # Get username from pet data or use fallback
+                    username = pet_data.get("username") or f"User_{user_id}"
+                    
+                    pets.append({
+                        "user_id": str(user_id),
+                        "username": username,
+                        "pet_name": pet_data.get("name", "Unnamed Pet"),
+                        "species": pet_data.get("species", "Cat"),
+                        "level": pet_data.get("level", 1),
+                        "element": pet_data.get("element", "basic"),
+                        "element2": pet_data.get("element2"),
+                    })
+            except Exception as e:
+                logger.debug(f"Error loading pet for user {user_id}: {e}")
+                continue
+        
+        return JSONResponse(content={"pets": pets})
+    except Exception as e:
+        logger.error(f"get_all_pets error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to fetch pets data")
 
 
 # ── Adoption ──────────────────────────────────────────────────────────────────
@@ -287,16 +362,15 @@ async def rename_pet(request: Request, data: Dict[str, Any] = Body(...)):
         await user_data_manager.save_pet_data(str(user_id), user.get("username", "Unknown"), pet)
         logger.info(f"Pet renamed for user {user_id}: {new_name}")
 
-        # Task tracking — figure out which battle action was renamed (if any)
+        # Task tracking — record once per renamed action so all three can satisfy tasks
         try:
             from web.api.tasks_api import record_action as _task_record
-            renamed_action = None
             if actions:
                 for key in ("Attack", "Defense", "Charge"):
                     if (actions.get(key) or "").strip():
-                        renamed_action = key
-                        break
-            await _task_record(str(user_id), "rename", meta={"battle_action": renamed_action} if renamed_action else None)
+                        await _task_record(str(user_id), "rename", meta={"battle_action": key})
+            else:
+                await _task_record(str(user_id), "rename", meta=None)
         except Exception:
             pass
 
@@ -360,36 +434,63 @@ async def train_pet(request: Request, data: Dict[str, Any] = Body(...)):
             raise HTTPException(status_code=404, detail="No pet found")
 
         difficulty = data.get("difficulty", "Easy")
+        stat       = data.get("stat", "").upper()
+
         if difficulty not in ("Easy", "Average", "Hard"):
             raise HTTPException(status_code=400, detail="Invalid difficulty")
 
+        valid_stats = ("ATT", "DEF", "INT", "DEX", "HAP", "ENE")
+        if stat not in valid_stats:
+            raise HTTPException(status_code=400, detail="Invalid stat. Choose ATT, DEF, INT, DEX, HAP, or ENE.")
+
+        # Difficulty config: (success_chance, stat_multiplier)
+        diff_cfg = {
+            "Easy":    (0.75, 1),
+            "Average": (0.60, 3),
+            "Hard":    (0.45, 5),
+        }
+        success_chance, stat_mult = diff_cfg[difficulty]
+
+        # Equipment multiplier scales the stat change
+        equip_mult = int(StatsCalculator.get_equipment_xp_multiplier(pet))
+        equip_mult = max(1, equip_mult)
+        change_amount = stat_mult * equip_mult
+
         import random
-        success_chance = {"Easy": 0.9, "Average": 0.7, "Hard": 0.5}[difficulty]
-        base_xp_map    = {"Easy": 50,  "Average": 100, "Hard": 200}
+        success = random.random() < success_chance
 
-        pet_level = int(pet.get("level", 1))
-
-        if random.random() < success_chance:
-            xp = _level_scaled_xp(base_xp_map[difficulty], pet_level)
-            from Systems.Pets.pets_system import add_experience
-            _, lvl_data = await add_experience(int(user_id), xp, "training")
-            await _aset_cooldown("train", user_id)
-            result = {
-                "success": True,
-                "outcome": f"🏋️ Training successful! Gained {xp} XP (Lv.{pet_level} bonus applied).",
-                "xp": xp,
-                "level_up": lvl_data if (lvl_data and lvl_data.get("new_level", 0) > lvl_data.get("old_level", 0)) else None,
-            }
-            try:
-                from web.api.tasks_api import record_action as _task_record
-                await _task_record(user_id, "train")
-            except Exception:
-                pass
+        current_val = int(pet.get(stat, 0))
+        if success:
+            pet[stat] = current_val + change_amount
+            outcome = (
+                f"💪 Training successful! {stat} increased by +{change_amount} "
+                f"({stat_mult} × {equip_mult}x equipment multiplier)."
+            )
         else:
-            await _aset_cooldown("train", user_id)
-            result = {"success": False, "outcome": "❌ Training failed — your pet got away safely.", "xp": 0, "level_up": None}
+            new_val = max(1, current_val - change_amount)
+            actual_loss = current_val - new_val
+            pet[stat] = new_val
+            outcome = (
+                f"😓 Training failed. {stat} decreased by -{actual_loss} "
+                f"({stat_mult} × {equip_mult}x equipment multiplier)."
+            )
 
-        # Return refreshed pet
+        await user_data_manager.save_pet_data(user_id, pet.get("name", "Pet"), pet)
+        await _aset_cooldown("train", user_id)
+
+        try:
+            from web.api.tasks_api import record_action as _task_record
+            await _task_record(user_id, "train")
+        except Exception:
+            pass
+
+        result = {
+            "success": success,
+            "outcome": outcome,
+            "stat": stat,
+            "change": change_amount if success else -actual_loss,
+            "new_value": int(pet.get(stat, 0)),
+        }
         result["pet"] = _enrich_pet(await user_data_manager.get_pet_data_async(user_id))
         return JSONResponse(content=result)
 
@@ -517,10 +618,9 @@ async def play_pet(request: Request, data: Dict[str, Any] = Body(...)):
         from Systems.Pets.pets_system import add_experience
         import json as _json, os as _os
 
-        # Load locations data
+        # Load locations data (cached after first read)
         loc_path = _os.path.join(project_root, "Systems", "Pets", "Logic", "locations_play.json")
-        with open(loc_path) as f:
-            loc_data = _json.load(f)
+        loc_data = await _load_json_cached(loc_path)
 
         loc_info       = loc_data.get("locations", {}).get(location, {})
         place_specials = loc_info.get("Special", {})
@@ -739,8 +839,8 @@ async def quest_choice(request: Request, data: Dict[str, Any] = Body(...)):
             stage_name = stage["stage_name"]
             sub_type   = stage.get("sub_type")
 
-        # Stat check
-        stat_map = {1: ("ATT","DEF"), 2: ("INT","DEX"), 3: ("HAP","ENE")}
+        # Stat check - Updated mapping for better thematic coherence
+        stat_map = {1: ("ATT","DEF"), 2: ("DEX","INT"), 3: ("ENE","HAP")}
         stat1, stat2 = stat_map.get(choice_num, ("ATT","DEF"))
         pet_skill    = (pet.get(stat1, 0) + pet.get(stat2, 0)) / 2
 
@@ -808,16 +908,19 @@ async def quest_choice(request: Request, data: Dict[str, Any] = Body(...)):
                 loot_mult = {"Apprentice": 1, "Journeyman": 2, "Senior": 3}[diff]
                 base_amt  = _random.randint(1, 3) * loot_mult
                 if sub_type == "mimic":
-                    if choice_num == 1:
+                    if choice_num == 1:  # ATT/DEF choice - best for fighting mimics
                         loot_amt    = base_amt * 2
-                        outcome_msg = "⚔️ You overpowered the mimic and found double loot!"
+                        outcome_msg = "⚔️ Your forceful approach revealed the chest's true nature - it was a disguised creature! You defeated it and claimed double loot!"
                     else:
                         loot_amt    = 0
-                        outcome_msg = "🪤 It was a mimic! You barely escaped."
-                else:
+                        outcome_msg = "🪤 The chest suddenly snapped shut with rows of teeth! You barely escaped the creature's jaws but found no treasure."
+                else:  # real_chest
                     double_choice = stage.get("double_loot_choice", -1)
                     loot_amt      = base_amt * 2 if choice_num == double_choice else base_amt
-                    outcome_msg   = f"📦 You opened the chest and found {'double ' if choice_num == double_choice else ''}loot!"
+                    if choice_num == double_choice:
+                        outcome_msg = f"📦 Your skillful approach paid off! You found a hidden compartment with double loot!"
+                    else:
+                        outcome_msg = f"📦 You successfully opened the chest and found treasure inside!"
 
                 if loot_amt > 0:
                     loot_gained = _generate_quest_loot_web(loot_amt, diff)
@@ -1560,7 +1663,7 @@ async def battle_npc_start(request: Request, data: Dict[str, Any] = Body(...)):
 
             e_species = ""
             try:
-                _info = _load_json(os.path.join(project_root, "Systems", "Pets", "Logic", "info.json"))
+                _info = await _load_json_cached(os.path.join(project_root, "Systems", "Pets", "Logic", "info.json"))
                 _all_species = list(_info.get("Pets", {}).keys())
                 if _all_species:
                     e_species = _random.choice(_all_species)
@@ -1577,7 +1680,7 @@ async def battle_npc_start(request: Request, data: Dict[str, Any] = Body(...)):
             except Exception:
                 enemy_name = f"{e_elem.title()} {e_type.title()} Foe"
 
-        action_labels = DamageCalculator.get_action_labels(p_type, p_elem, p_spec)
+        action_labels = DamageCalculator.get_action_labels(p_type, p_elem, p_spec, custom_labels=pet.get("action_labels", {}))
 
         # Build flat ordered equipment list for display: Monster, Gem, Material, Hat, Material, Gem, Monster
         def _equip_items(pet: dict) -> list:
@@ -1826,7 +1929,7 @@ async def battle_npc_turn(request: Request, data: Dict[str, Any] = Body(...)):
             if pet:
                 old_level = int(pet.get("level", 1))
                 loot_result = await LootCalculator.calculate_loot(
-                    user_id=int(user_id), pet_data=pet, source="battle",
+                    user_id=int(user_id), pet_data=pet, source="npc_battle",
                     difficulty=difficulty, winner_level=old_level, is_winner=player_won
                 )
                 await user_data_manager.update_pet_battle_stats(
@@ -1836,7 +1939,8 @@ async def battle_npc_turn(request: Request, data: Dict[str, Any] = Body(...)):
                 )
                 refreshed_pet = _enrich_pet(await user_data_manager.get_pet_data_async(user_id))
                 new_level = int(refreshed_pet.get("level", 1)) if refreshed_pet else old_level
-                if new_level != old_level:
+                level_change = loot_result.get("level_change")
+                if level_change is None and new_level != old_level:
                     level_change = {"old_level": old_level, "new_level": new_level, "gains": {}}
                 # Task tracking
                 try:
@@ -1962,7 +2066,7 @@ async def battle_npc(request: Request, data: Dict[str, Any] = Body(...)):
         e_last_action = None
 
         # Action labels for the player's pet
-        action_labels = DamageCalculator.get_action_labels(p_type, p_elem, p_spec)
+        action_labels = DamageCalculator.get_action_labels(p_type, p_elem, p_spec, custom_labels=pet.get("action_labels", {}))
 
         for turn_num in range(1, MAX_TURNS + 1):
             if cur_p_hp <= 0 or cur_e_hp <= 0:
@@ -2086,7 +2190,7 @@ async def battle_npc(request: Request, data: Dict[str, Any] = Body(...)):
         loot_result = await LootCalculator.calculate_loot(
             user_id=int(user_id),
             pet_data=pet,
-            source="battle",
+            source="npc_battle",
             difficulty=difficulty,
             winner_level=int(pet.get("level", 1)),
             is_winner=player_won
@@ -2116,14 +2220,11 @@ async def battle_npc(request: Request, data: Dict[str, Any] = Body(...)):
         )
 
         # ── Level change data for popup ───────────────────────────────────────
-        level_change = None
-        for msg in loot_result.get("messages", []):
-            pass  # messages already contain level info
-        # Re-fetch to get updated pet
         refreshed = _enrich_pet(await user_data_manager.get_pet_data_async(user_id))
         old_level = int(pet.get("level", 1))
         new_level = int(refreshed.get("level", 1)) if refreshed else old_level
-        if new_level != old_level:
+        level_change = loot_result.get("level_change")
+        if level_change is None and new_level != old_level:
             level_change = {"old_level": old_level, "new_level": new_level, "gains": {}}
 
         return JSONResponse(content={
@@ -2216,7 +2317,7 @@ async def _run_npc_battle_sim(user_id: str, difficulty: str) -> dict:
     cur_p_hp, cur_e_hp = p_hp, e_hp
     p_charge, e_charge = 1.0, 1.0
     p_last_action = e_last_action = None
-    action_labels = DamageCalculator.get_action_labels(p_type, p_elem, p_spec)
+    action_labels = DamageCalculator.get_action_labels(p_type, p_elem, p_spec, custom_labels=pet.get("action_labels", {}))
 
     for turn_num in range(1, MAX_TURNS + 1):
         if cur_p_hp <= 0 or cur_e_hp <= 0:
@@ -2289,7 +2390,7 @@ async def _run_npc_battle_sim(user_id: str, difficulty: str) -> dict:
 
     player_won = cur_p_hp > 0 and cur_e_hp <= 0
     loot_result = await LootCalculator.calculate_loot(
-        user_id=int(user_id), pet_data=pet, source="battle",
+        user_id=int(user_id), pet_data=pet, source="npc_battle",
         difficulty=difficulty, winner_level=int(pet.get("level", 1)), is_winner=player_won,
     )
     await user_data_manager.update_pet_battle_stats(
@@ -2300,7 +2401,9 @@ async def _run_npc_battle_sim(user_id: str, difficulty: str) -> dict:
     refreshed = _enrich_pet(await user_data_manager.get_pet_data_async(user_id))
     old_level  = int(pet.get("level", 1))
     new_level  = int(refreshed.get("level", 1)) if refreshed else old_level
-    level_change = {"old_level": old_level, "new_level": new_level} if new_level != old_level else None
+    level_change = loot_result.get("level_change")
+    if level_change is None and new_level != old_level:
+        level_change = {"old_level": old_level, "new_level": new_level, "gains": {}}
 
     return {
         "won": player_won, "turns": turns,
@@ -2386,8 +2489,8 @@ async def _run_pvp_battle_sim(user_id: str, challenger_id: str) -> dict:
     winner_pet  = pet_a if hp_a > 0 else pet_b
     loser_pet   = pet_b if hp_a > 0 else pet_a
 
-    win_loot  = await LootCalculator.calculate_loot(int(winner_id), winner_pet, "pvp", "normal", int(winner_pet.get("level",1)), int(loser_pet.get("level",1)), True)
-    loss_loot = await LootCalculator.calculate_loot(int(loser_id),  loser_pet,  "pvp", "normal", int(winner_pet.get("level",1)), int(loser_pet.get("level",1)), False)
+    win_loot  = await LootCalculator.calculate_loot(int(winner_id), winner_pet, "pvp_battle", "normal", int(winner_pet.get("level",1)), int(loser_pet.get("level",1)), True)
+    loss_loot = await LootCalculator.calculate_loot(int(loser_id),  loser_pet,  "pvp_battle", "normal", int(winner_pet.get("level",1)), int(loser_pet.get("level",1)), False)
 
     log.append(f"🏆 {winner_pet['name']} wins! +{win_loot['xp_gained']} XP")
     log.append(f"💀 {loser_pet['name']} defeated. +{loss_loot['xp_gained']} XP")
@@ -2397,4 +2500,136 @@ async def _run_pvp_battle_sim(user_id: str, challenger_id: str) -> dict:
         "winner_name": winner_pet["name"], "loser_name": loser_pet["name"],
         "turns": turns, "log": log,
         "winner_xp": win_loot["xp_gained"], "loser_xp": loss_loot["xp_gained"],
+        "level_change": win_loot.get("level_change"),
     }
+
+
+# ── Ability & Stat Mastery Tree ───────────────────────────────────────────────
+
+@router.get("/pets/ability-tree")
+async def get_ability_tree(request: Request):
+    """Return the full ability tree state for the current user's pet."""
+    user = request.session.get("discord_user")
+    if not user:
+        raise HTTPException(status_code=401, detail="Not logged in")
+    user_id = str(user.get("id"))
+    pet = await user_data_manager.get_pet_data_async(user_id)
+    if not pet:
+        raise HTTPException(status_code=404, detail="No pet found")
+    # initialize_ability_tree may add fields to pet; save if anything was added
+    had_tree = "ability_points" in pet and "stat_mastery" in pet and "abilities" in pet
+    state = get_tree_state(pet)  # calls initialize_ability_tree internally
+    if not had_tree:
+        await user_data_manager.save_pet_data(user_id, pet.get("name", "Pet"), pet)
+    return JSONResponse(content=state)
+
+
+@router.post("/pets/ability-tree/mastery")
+async def spend_mastery_points(request: Request, data: Dict[str, Any] = Body(...)):
+    """
+    Spend ability points on stat mastery.
+    Body: { "stat": "ATT", "points": 1 }
+    """
+    user = request.session.get("discord_user")
+    if not user:
+        raise HTTPException(status_code=401, detail="Not logged in")
+    user_id = str(user.get("id"))
+
+    stat   = str(data.get("stat", "")).upper()
+    points = int(data.get("points", 1))
+
+    if stat not in STATS:
+        raise HTTPException(status_code=400, detail=f"Invalid stat: {stat}")
+    if points < 1:
+        raise HTTPException(status_code=400, detail="Points must be >= 1")
+
+    pet = await user_data_manager.get_pet_data_async(user_id)
+    if not pet:
+        raise HTTPException(status_code=404, detail="No pet found")
+
+    success, message = spend_stat_mastery(pet, stat, points)
+    if not success:
+        return JSONResponse(content={"ok": False, "message": message}, status_code=400)
+
+    await user_data_manager.save_pet_data(user_id, pet.get("name", "Pet"), pet)
+    return JSONResponse(content={"ok": True, "message": message, "tree": get_tree_state(pet)})
+
+
+@router.post("/pets/ability-tree/advantage-mastery")
+async def spend_advantage_mastery_points(request: Request, data: Dict[str, Any] = Body(...)):
+    """
+    Spend ability points on advantage mastery (type or element).
+    Body: { "key": "type", "points": 1 }
+    """
+    user = request.session.get("discord_user")
+    if not user:
+        raise HTTPException(status_code=401, detail="Not logged in")
+    user_id = str(user.get("id"))
+
+    key    = str(data.get("key", "")).lower()
+    points = int(data.get("points", 1))
+
+    if key not in ADVANTAGE_MASTERY_KEYS:
+        raise HTTPException(status_code=400, detail=f"Invalid advantage mastery key: {key}. Valid: {ADVANTAGE_MASTERY_KEYS}")
+    if points < 1:
+        raise HTTPException(status_code=400, detail="Points must be >= 1")
+
+    pet = await user_data_manager.get_pet_data_async(user_id)
+    if not pet:
+        raise HTTPException(status_code=404, detail="No pet found")
+
+    success, message = spend_advantage_mastery(pet, key, points)
+    if not success:
+        return JSONResponse(content={"ok": False, "message": message}, status_code=400)
+
+    await user_data_manager.save_pet_data(user_id, pet.get("name", "Pet"), pet)
+    return JSONResponse(content={"ok": True, "message": message, "tree": get_tree_state(pet)})
+
+
+@router.post("/pets/ability-tree/unlock")
+async def unlock_ability_endpoint(request: Request, data: Dict[str, Any] = Body(...)):
+    """
+    Unlock an ability.
+    Body: { "ability_id": "att_strike" }
+    """
+    user = request.session.get("discord_user")
+    if not user:
+        raise HTTPException(status_code=401, detail="Not logged in")
+    user_id = str(user.get("id"))
+
+    ability_id = str(data.get("ability_id", ""))
+    if not ability_id:
+        raise HTTPException(status_code=400, detail="ability_id is required")
+
+    pet = await user_data_manager.get_pet_data_async(user_id)
+    if not pet:
+        raise HTTPException(status_code=404, detail="No pet found")
+
+    success, message = unlock_ability(pet, ability_id)
+    if not success:
+        return JSONResponse(content={"ok": False, "message": message}, status_code=400)
+
+    await user_data_manager.save_pet_data(user_id, pet.get("name", "Pet"), pet)
+    return JSONResponse(content={"ok": True, "message": message, "tree": get_tree_state(pet)})
+
+
+@router.post("/pets/ability-tree/purchase")
+async def purchase_ability_point_endpoint(request: Request):
+    """
+    Purchase 1 ability point by spending 500 levels.
+    """
+    user = request.session.get("discord_user")
+    if not user:
+        raise HTTPException(status_code=401, detail="Not logged in")
+    user_id = str(user.get("id"))
+
+    pet = await user_data_manager.get_pet_data_async(user_id)
+    if not pet:
+        raise HTTPException(status_code=404, detail="No pet found")
+
+    success, message = purchase_ability_point(pet)
+    if not success:
+        return JSONResponse(content={"ok": False, "message": message}, status_code=400)
+
+    await user_data_manager.save_pet_data(user_id, pet.get("name", "Pet"), pet)
+    return JSONResponse(content={"ok": True, "message": message, "tree": get_tree_state(pet)})

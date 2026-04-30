@@ -26,8 +26,28 @@ from web.api import ss_brain as _brain
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
+
+class _SetEncoder(json.JSONEncoder):
+    """JSON encoder that converts sets to sorted lists."""
+    def default(self, o: Any) -> Any:
+        if isinstance(o, set):
+            return sorted(o, key=str)
+        return super().default(o)
+
 # ── In-memory game state ──────────────────────────────────────────────────────
 _ss_game: Optional[Dict[str, Any]] = None
+
+
+def _convert_sets_to_lists(obj: Any) -> Any:
+    """Recursively convert sets to lists for JSON serialization."""
+    if isinstance(obj, set):
+        return list(obj)
+    elif isinstance(obj, dict):
+        return {key: _convert_sets_to_lists(value) for key, value in obj.items()}
+    elif isinstance(obj, list):
+        return [_convert_sets_to_lists(item) for item in obj]
+    else:
+        return obj
 _ss_lock = asyncio.Lock()
 _sse_subscribers: List[asyncio.Queue] = []
 
@@ -47,17 +67,23 @@ async def _load_state():
     """Load persisted game state on startup. Resumes lobby/countdown/running games."""
     global _ss_game, _round_task
     try:
+        logger.info("SS _load_state: Starting state restoration from database")
         await ss_db.ensure_ready()
         game = await ss_db.load_active()
+        logger.info(f"SS _load_state: Database returned game: {game is not None}")
         if not game:
+            logger.info("SS _load_state: No active game in database")
             return
         status = game.get("status", "none")
+        logger.info(f"SS _load_state: Game status: {status}")
         if status in ("none", "finished"):
+            logger.info("SS _load_state: Game status is none/finished, not restoring")
             return
 
         # Restore all active states: lobby, countdown, running
         _ss_game = game
         _patch_participant_multipliers(_ss_game)
+        logger.info(f"SS _load_state: Restored game with {len(game.get('participants', []))} participants")
 
         # Ensure map fields exist for restored games (backward compat with old saves)
         if "map_positions" not in _ss_game or not _ss_game["map_positions"]:
@@ -87,7 +113,7 @@ async def _load_state():
                 logger.info("SS _load_state: round loop resumed")
 
     except Exception as e:
-        logger.error(f"SS load_state error: {e}")
+        logger.error(f"SS load_state error: {e}", exc_info=True)
 
 
 async def _resume_countdown(remaining_secs: float):
@@ -281,13 +307,16 @@ def _compute_pet_multiplier(pet: Dict[str, Any]) -> int:
 
 def _patch_participant_multipliers(game: Dict[str, Any]) -> None:
     """
-    Back-fill the 'multiplier' field on any participant that's missing it.
-    Called whenever a game is loaded from DB so old saves work correctly.
+    Back-fill the 'multiplier' and 'ss_ability_mult' fields on any participant
+    that's missing them. Called whenever a game is loaded from DB so old saves
+    work correctly.
     NPCs already have their multiplier baked in at creation time.
     Real players need it recomputed from their stored pet data snapshot —
     we can't async-fetch here, so we derive it from whatever equipment data
     is already embedded in the participant record (none for real players in
     old saves, so we fall back to level-only calculation).
+    ss_ability_mult defaults to 1.0 (no bonus) until _refresh_participant_abilities
+    runs before the next round and fetches fresh pet data.
     """
     for p in game.get("participants", []):
         if "multiplier" not in p or p["multiplier"] is None:
@@ -296,6 +325,17 @@ def _patch_participant_multipliers(game: Dict[str, Any]) -> None:
             # No equipment data in participant record — use level-only multiplier.
             # Real players will get the full value next time they join a fresh game.
             p["multiplier"] = max(1, 1 + level_bonus)
+        # Back-fill ss_ability_mult for saves that predate this field.
+        # _refresh_participant_abilities() will correct real players' values
+        # before the next round fires.
+        if "ss_ability_mult" not in p or p["ss_ability_mult"] is None:
+            p["ss_ability_mult"] = 1.0
+        if "stat_mastery_mult" not in p or p["stat_mastery_mult"] is None:
+            p["stat_mastery_mult"] = 1.0
+        if "adv_mastery_type" not in p or p["adv_mastery_type"] is None:
+            p["adv_mastery_type"] = 0.0
+        if "adv_mastery_element" not in p or p["adv_mastery_element"] is None:
+            p["adv_mastery_element"] = 0.0
 
 
 async def _build_participant_record(user_id: int, username: str) -> Dict[str, Any]:
@@ -303,32 +343,62 @@ async def _build_participant_record(user_id: int, username: str) -> Dict[str, An
     pet = await user_data_manager.get_pet_data_async(str(user_id))
     multiplier = _compute_pet_multiplier(pet) if pet else 1
 
+    # Apply Survivor Spirit ability: boost score multiplier.
+    # NOTE: 'multiplier' in the participant record is a DIVISOR in survive_score()
+    # (survive_score = level / multiplier / 10). We store the ability bonus
+    # separately as 'ss_ability_mult' so survive_score() can multiply by it
+    # rather than dividing, giving the correct score boost.
+    ss_ability_mult = 1.0
+    stat_mastery_mult = 1.0
+    adv_mastery_type = 0.0
+    adv_mastery_element = 0.0
+    if pet:
+        try:
+            from Systems.Pets.Logic.ability_tree import (
+                get_ability_effect, get_all_mastery_multipliers,
+                get_advantage_mastery_bonus, STATS,
+            )
+            ss_mult = get_ability_effect(pet, "survive_score_mult")
+            if ss_mult != 1.0:
+                ss_ability_mult = ss_mult
+
+            # Stat mastery: average of all stat mastery multipliers
+            mults = get_all_mastery_multipliers(pet)
+            avg = sum(mults.values()) / len(mults) if mults else 1.0
+            if avg != 1.0:
+                stat_mastery_mult = avg
+
+            # Advantage mastery: flat bonus added to the 1.2 base advantage multiplier
+            adv_mastery_type    = get_advantage_mastery_bonus(pet, "type")
+            adv_mastery_element = get_advantage_mastery_bonus(pet, "element")
+        except Exception:
+            pass
+
     # Build Discord avatar URL from stored hash (set by discord_auth on login)
     avatar_hash = (pet or {}).get("discord_avatar", "")
-    if avatar_hash:
-        avatar_url = f"https://cdn.discordapp.com/avatars/{user_id}/{avatar_hash}.webp?size=64"
-    else:
-        try:
-            bucket = (int(user_id) >> 22) % 5
-        except (ValueError, TypeError):
-            bucket = 0
-        avatar_url = f"https://cdn.discordapp.com/embed/avatars/{bucket}.png"
+    
+    from Systems.Functions.discord_utils import get_discord_avatar_url
+    avatar_url = get_discord_avatar_url(user_id, avatar_hash, size=64)
 
     return {
-        "user_id":       str(user_id),
-        "username":      username,
-        "avatar_url":    avatar_url,
-        "pet_name":      (pet or {}).get("name", username),
-        "species":       (pet or {}).get("species", "Cat"),
-        "element":       (pet or {}).get("element", "basic"),
-        "element2":      (pet or {}).get("element2", ""),
-        "category":      (pet or {}).get("category", "land"),
-        "level":         int((pet or {}).get("level", 1)),
-        "multiplier":    multiplier,
-        "has_pet":       pet is not None,
+        "user_id":              str(user_id),
+        "username":             username,
+        "avatar_url":           avatar_url,
+        "pet_name":             (pet or {}).get("name", username),
+        "species":              (pet or {}).get("species", "Cat"),
+        "element":              (pet or {}).get("element", "basic"),
+        "element2":             (pet or {}).get("element2", ""),
+        "category":             (pet or {}).get("category", "land"),
+        "level":                int((pet or {}).get("level", 1)),
+        "multiplier":           multiplier,
+        "ss_ability_mult":      ss_ability_mult,      # survive_score_mult ability bonus
+        "stat_mastery_mult":    stat_mastery_mult,     # average stat mastery multiplier
+        "adv_mastery_type":     adv_mastery_type,      # flat bonus to type advantage (1.2 base)
+        "adv_mastery_element":  adv_mastery_element,   # flat bonus to element advantage (1.2 base)
+        "has_pet":              pet is not None,
         # Custom battle action labels saved via /pets/rename
         # Keys: "attack", "defense", "charge"  (lowercase, matching pet_brain lookup)
-        "action_labels": (pet or {}).get("action_labels", {}),
+        "action_labels":        (pet or {}).get("action_labels", {}),
     }
 
 
@@ -417,7 +487,7 @@ def _get_npc_species_pool() -> List[str]:
 _NPC_SPECIES_POOL: Optional[List[str]] = None
 _NPC_NAMES_SHUFFLED: Optional[List[str]] = None  # Shuffled once per game for uniqueness
 
-def _make_npc(idx: int) -> Dict[str, Any]:
+def _make_npc(idx: int, level_min: int = 1, level_max: int = 500) -> Dict[str, Any]:
     global _NPC_SPECIES_POOL, _NPC_NAMES_SHUFFLED
     if _NPC_SPECIES_POOL is None:
         _NPC_SPECIES_POOL = _get_npc_species_pool()
@@ -428,18 +498,16 @@ def _make_npc(idx: int) -> Dict[str, Any]:
     # Use idx directly (no modulo) — we have 300+ names now
     name = _NPC_NAMES_SHUFFLED[idx] if idx < len(_NPC_NAMES_SHUFFLED) else f"NPC_{idx}"
     species = random.choice(_NPC_SPECIES_POOL)
-    # NPC levels span a wide range so Survive Scores are varied and meaningful
-    level = random.randint(1, 5000)
+    # NPC levels are calibrated to the real player range passed in
+    level = random.randint(max(1, level_min), max(1, level_max))
 
-    # Simulate realistic equipment multiplier:
-    #   level_bonus = level // 50
-    #   set_mult: weighted toward lower values (most pets don't have full sets)
+    # Simulate realistic equipment multiplier using only valid set_mult values
+    # that real pets can actually have: 1 (no set), 3 (full set), 4 (full set + hat specs).
+    # set_mult=2 was invalid and produced artificially low multipliers (inflated scores).
     level_bonus = level // 50
     roll = random.random()
-    if roll < 0.40:
-        set_mult = 1   # no set / singles only
-    elif roll < 0.65:
-        set_mult = 2   # has a pair
+    if roll < 0.55:
+        set_mult = 1   # no full set (most common)
     elif roll < 0.85:
         set_mult = 3   # full set
     else:
@@ -457,6 +525,7 @@ def _make_npc(idx: int) -> Dict[str, Any]:
         "category": random.choice(_CATEGORIES),
         "level": level,
         "multiplier": multiplier,
+        "ss_ability_mult": 1.0,  # NPCs have no abilities; field kept for schema consistency
         "has_pet": True,
         "is_npc": True,
     }
@@ -741,20 +810,24 @@ async def ss_map(request: Request):
                     except Exception:
                         pass
 
-                if avatar_hash:
-                    fresh_avatar_url = f"https://cdn.discordapp.com/avatars/{uid}/{avatar_hash}.webp?size=64"
-                else:
-                    try:
-                        bucket = (int(uid) >> 22) % 5
-                    except (ValueError, TypeError):
-                        bucket = 0
-                    fresh_avatar_url = f"https://cdn.discordapp.com/embed/avatars/{bucket}.png"
+                from Systems.Functions.discord_utils import get_discord_avatar_url
+                fresh_avatar_url = get_discord_avatar_url(uid, avatar_hash, size=64)
 
+                live_mult = _compute_pet_multiplier(pet)
+                live_ss_ability_mult = 1.0
+                try:
+                    from Systems.Pets.Logic.ability_tree import get_ability_effect
+                    ss_mult = get_ability_effect(pet, "survive_score_mult")
+                    if ss_mult != 1.0:
+                        live_ss_ability_mult = ss_mult
+                except Exception:
+                    pass
                 live_data[str(uid)] = {
-                    "level":          int(pet.get("level", 1)),
-                    "multiplier":     _compute_pet_multiplier(pet),
-                    "specializations": pet.get("specializations") or pet.get("specs") or [],
-                    "avatar_url":     fresh_avatar_url,
+                    "level":            int(pet.get("level", 1)),
+                    "multiplier":       live_mult,
+                    "ss_ability_mult":  live_ss_ability_mult,
+                    "specializations":  pet.get("specializations") or pet.get("specs") or [],
+                    "avatar_url":       fresh_avatar_url,
                 }
         except Exception:
             pass
@@ -765,10 +838,11 @@ async def ss_map(request: Request):
         uid = str(p["user_id"])
         if uid in live_data:
             p = dict(p)  # shallow copy — don't touch game state
-            p["level"]          = live_data[uid]["level"]
-            p["multiplier"]     = live_data[uid]["multiplier"]
+            p["level"]           = live_data[uid]["level"]
+            p["multiplier"]      = live_data[uid]["multiplier"]
+            p["ss_ability_mult"] = live_data[uid]["ss_ability_mult"]
             p["specializations"] = live_data[uid]["specializations"]
-            p["avatar_url"]     = live_data[uid]["avatar_url"]
+            p["avatar_url"]      = live_data[uid]["avatar_url"]
         merged_participants.append(p)
 
     response_data["participants"] = merged_participants
@@ -800,11 +874,111 @@ async def _round_loop():
             await _fire_round()
 
 
+async def _refresh_participant_abilities(game: Dict[str, Any]) -> None:
+    """
+    Refresh ss_ability_mult, stat_mastery_mult, and advantage mastery bonuses
+    for all alive participants with current pet data.
+    This ensures abilities/masteries unlocked/upgraded after joining are properly applied.
+    """
+    from Systems.Functions.user_data_manager import user_data_manager
+    from Systems.Pets.Logic.ability_tree import (
+        get_ability_effect, get_all_mastery_multipliers,
+        get_advantage_mastery_bonus,
+    )
+    
+    participants = game.get("participants", [])
+    alive_ids = set(str(uid) for uid in game.get("alive_ids", []))
+    
+    refreshed_count = 0
+    updated_count = 0
+    
+    for participant in participants:
+        user_id = str(participant.get("user_id", ""))
+        
+        # Skip NPCs and eliminated players for performance
+        if user_id.startswith("npc_") or user_id not in alive_ids:
+            continue
+            
+        try:
+            # Get fresh pet data
+            pet = await user_data_manager.get_pet_data_async(user_id)
+            if not pet:
+                continue
+                
+            # Store old values for comparison
+            old_ss_ability_mult   = participant.get("ss_ability_mult", 1.0)
+            old_stat_mastery_mult = participant.get("stat_mastery_mult", 1.0)
+            old_level             = participant.get("level", 1)
+            old_multiplier        = participant.get("multiplier", 1)
+                
+            # Recalculate survive_score_mult ability
+            ss_ability_mult = 1.0
+            try:
+                ss_mult = get_ability_effect(pet, "survive_score_mult")
+                if ss_mult != 1.0:
+                    ss_ability_mult = ss_mult
+            except Exception:
+                pass
+
+            # Recalculate stat mastery multiplier (average of all stat masteries)
+            stat_mastery_mult = 1.0
+            try:
+                mults = get_all_mastery_multipliers(pet)
+                avg = sum(mults.values()) / len(mults) if mults else 1.0
+                if avg != 1.0:
+                    stat_mastery_mult = avg
+            except Exception:
+                pass
+
+            # Recalculate advantage mastery bonuses
+            adv_mastery_type = 0.0
+            adv_mastery_element = 0.0
+            try:
+                adv_mastery_type    = get_advantage_mastery_bonus(pet, "type")
+                adv_mastery_element = get_advantage_mastery_bonus(pet, "element")
+            except Exception:
+                pass
+            
+            # Update participant record with fresh data
+            participant["ss_ability_mult"]     = ss_ability_mult
+            participant["stat_mastery_mult"]   = stat_mastery_mult
+            participant["adv_mastery_type"]    = adv_mastery_type
+            participant["adv_mastery_element"] = adv_mastery_element
+            participant["level"]               = int(pet.get("level", 1))
+            participant["multiplier"]          = _compute_pet_multiplier(pet)
+            
+            refreshed_count += 1
+            
+            # Log if any values changed
+            if (abs(old_ss_ability_mult - ss_ability_mult) > 0.001 or
+                abs(old_stat_mastery_mult - stat_mastery_mult) > 0.001 or
+                old_level != participant["level"] or
+                old_multiplier != participant["multiplier"]):
+                updated_count += 1
+                logger.info(
+                    f"SS ability refresh for {user_id}: "
+                    f"ss_ability_mult {old_ss_ability_mult:.3f} -> {ss_ability_mult:.3f}, "
+                    f"stat_mastery_mult {old_stat_mastery_mult:.3f} -> {stat_mastery_mult:.3f}, "
+                    f"adv_type {adv_mastery_type:.2f}, adv_elem {adv_mastery_element:.2f}, "
+                    f"level {old_level} -> {participant['level']}, "
+                    f"multiplier {old_multiplier} -> {participant['multiplier']}"
+                )
+            
+        except Exception as e:
+            logger.debug(f"Failed to refresh abilities for user {user_id}: {e}")
+    
+    if refreshed_count > 0:
+        logger.info(f"SS ability refresh complete: {refreshed_count} participants refreshed, {updated_count} had changes")
+
+
 async def _fire_round():
     """Process one round and broadcast results. Must be called under _ss_lock."""
     global _ss_game, _round_task
     if _ss_game is None:
         return
+
+    # Refresh ability data for all alive participants before processing the round
+    await _refresh_participant_abilities(_ss_game)
 
     _ss_game["round_index"] = _ss_game.get("round_index", 0) + 1
     result = _process_round_logic(_ss_game)
@@ -1106,6 +1280,10 @@ async def _countdown_then_start():
     async with _ss_lock:
         if _ss_game is None or _ss_game["status"] != "countdown":
             return
+        
+        # Refresh ability data for all participants before the game starts
+        await _refresh_participant_abilities(_ss_game)
+        
         _ss_game["status"] = "running"
         _ss_game["start_time"] = datetime.now().isoformat()
         _ss_game["round_index"] = 0
@@ -1135,13 +1313,17 @@ async def _countdown_then_start():
 async def ss_state(request: Request):
     """Return full current game state, falling back to DB if in-memory state is not yet loaded."""
     global _ss_game, _round_task
+    logger.info(f"SS ss_state called: _ss_game is {'None' if _ss_game is None else 'loaded'}")
     async with _ss_lock:
         if _ss_game is None:
+            logger.info("SS ss_state: _ss_game is None, attempting lazy-load from DB")
             # Race condition guard: _load_state runs as a task on startup and may not
             # have completed yet when the first page load hits this endpoint.
             try:
                 game = await ss_db.load_active()
+                logger.info(f"SS ss_state: DB load_active returned: {game is not None}")
                 if game and game.get("status") not in ("none", "finished", None):
+                    logger.info(f"SS ss_state: Restoring game with status {game.get('status')}")
                     _ss_game = game
                     _patch_participant_multipliers(_ss_game)
                     if not _ss_game.get("map_positions") and _ss_game.get("participants"):
@@ -1159,8 +1341,10 @@ async def ss_state(request: Request):
                     elif game.get("status") == "countdown":
                         remaining = int(game.get("countdown_end", 0)) - int(time.time())
                         asyncio.create_task(_resume_countdown(max(0, remaining)))
+                else:
+                    logger.info(f"SS ss_state: Game not suitable for restore: {game.get('status') if game else 'None'}")
             except Exception as e:
-                logger.error(f"SS state lazy-load error: {e}")
+                logger.error(f"SS state lazy-load error: {e}", exc_info=True)
 
         # Self-heal: if game is running but round loop died, restart it
         if (_ss_game and _ss_game.get("status") == "running"
@@ -1173,8 +1357,12 @@ async def ss_state(request: Request):
             logger.warning("SS ss_state: round loop was dead — restarted")
 
         if _ss_game is None:
+            logger.info("SS ss_state: Returning status 'none' because _ss_game is still None")
             return JSONResponse({"status": "none"})
-        return JSONResponse(_ss_game)
+        # Convert sets to lists for JSON serialization
+        logger.info(f"SS ss_state: Returning game with status {_ss_game.get('status')}")
+        serializable_game = _convert_sets_to_lists(_ss_game)
+        return JSONResponse(serializable_game)
 
 
 @router.post("/ss/join")
@@ -1240,9 +1428,14 @@ async def ss_join(request: Request):
 @router.post("/ss/start")
 async def ss_start(request: Request):
     """
-    Any joined user can start the game if 2+ real users are in the lobby.
-    Body: { npc_count: int }  — 0 to 100, capped so total participants ≤ 100.
-    Generates NPCs immediately (visible in lobby), sends DMs, begins 1-hour countdown.
+    Enhanced Pet Survive start with full configuration options.
+    Body: { 
+        npc_count: int, 
+        add_all_user_pets: bool,
+        game_mode: str,
+        difficulty: str,
+        selected_pets: list
+    }
     """
     global _ss_game
     user = request.session.get("discord_user")
@@ -1254,59 +1447,156 @@ async def ss_start(request: Request):
     try:
         body = await request.json()
         npc_count = int(body.get("npc_count", 0))
+        add_all_user_pets = bool(body.get("add_all_user_pets", False))
+        game_mode = str(body.get("game_mode", "classic"))
+        difficulty = str(body.get("difficulty", "normal"))
+        selected_pets = body.get("selected_pets", [])
     except Exception:
         npc_count = 0
+        add_all_user_pets = False
+        game_mode = "classic"
+        difficulty = "normal"
+        selected_pets = []
 
     async with _ss_lock:
         if _ss_game is None or _ss_game["status"] != "lobby":
             return JSONResponse({"error": "No lobby to start"}, status_code=400)
 
         real_users = [p for p in _ss_game["participants"] if not p.get("is_npc")]
-        if len(real_users) < 2:
-            return JSONResponse({"error": "Need at least 2 players to start"}, status_code=400)
+        if len(real_users) < 1:
+            return JSONResponse({"error": "Need at least 1 player to start"}, status_code=400)
 
         if not any(p["user_id"] == user_id for p in real_users):
             return JSONResponse({"error": "You must be in the lobby to start"}, status_code=403)
+
+        # Store game configuration
+        _ss_game["game_mode"] = game_mode
+        _ss_game["difficulty"] = difficulty
+
+        # ── Add Selected Pets (if not adding all) ─────────────────────────────
+        if not add_all_user_pets and selected_pets:
+            already_in = {p["user_id"] for p in _ss_game["participants"]}
+            added_selected = 0
+            for pet_user_id in selected_pets:
+                if len(_ss_game["participants"]) >= 100:
+                    break
+                uid = str(pet_user_id)
+                if uid in already_in:
+                    continue
+                try:
+                    pet = await user_data_manager.get_pet_data_async(uid)
+                    if not pet:
+                        continue
+                    uname = pet.get("username") or pet.get("name") or f"User_{uid}"
+                    participant = await _build_participant_record(int(uid), uname)
+                    _ss_game["participants"].append(participant)
+                    _ss_game["alive_ids"].append(uid)
+                    _add_participant_map_position(_ss_game, participant)
+                    already_in.add(uid)
+                    added_selected += 1
+                except Exception as e:
+                    logger.debug(f"SS add selected pet {uid}: {e}")
+
+        # ── Add All User Pets ─────────────────────────────────────────────────
+        elif add_all_user_pets:
+            try:
+                from Systems.Functions.pets_db import pets_db
+                all_user_ids = await pets_db.get_user_ids_with_pets()
+                already_in = {p["user_id"] for p in _ss_game["participants"]}
+                added_users = 0
+                for uid in all_user_ids:
+                    if len(_ss_game["participants"]) >= 100:
+                        break
+                    if uid in already_in:
+                        continue
+                    try:
+                        pet = await user_data_manager.get_pet_data_async(uid)
+                        if not pet:
+                            continue
+                        uname = pet.get("username") or pet.get("name") or f"User_{uid}"
+                        participant = await _build_participant_record(int(uid), uname)
+                        _ss_game["participants"].append(participant)
+                        _ss_game["alive_ids"].append(uid)
+                        _add_participant_map_position(_ss_game, participant)
+                        already_in.add(uid)
+                        added_users += 1
+                    except Exception as e:
+                        logger.debug(f"SS add_all_user_pets: skipping uid {uid}: {e}")
+            except Exception as e:
+                logger.warning(f"SS add_all_user_pets failed: {e}")
+
+        # ── Calibrate NPC levels based on difficulty ──────────────────────────
+        real_levels = [p["level"] for p in _ss_game["participants"] if not p.get("is_npc") and p.get("level")]
+        if real_levels:
+            avg_level = sum(real_levels) / len(real_levels)
+            min_level = min(real_levels)
+            max_level = max(real_levels)
+            
+            # Adjust NPC levels based on difficulty
+            if difficulty == "easy":
+                lvl_min = max(1, int(min_level * 0.6))
+                lvl_max = max(1, int(avg_level * 0.8))
+            elif difficulty == "hard":
+                lvl_min = max(1, int(avg_level * 1.2))
+                lvl_max = max(1, int(max_level * 1.5))
+            else:  # normal
+                lvl_min = max(1, int(min_level * 0.8))
+                lvl_max = max(1, int(max_level * 1.2))
+        else:
+            lvl_min, lvl_max = 1, 500
 
         # Clamp NPC count: total must not exceed 100
         max_npcs = max(0, 100 - len(_ss_game["participants"]))
         npc_count = max(0, min(npc_count, max_npcs))
 
-        # Generate NPCs now so they appear in the lobby immediately
-        # Reset the shuffled name list so each game gets a fresh unique set
+        # Generate NPCs with difficulty-adjusted levels
         global _NPC_NAMES_SHUFFLED
         _NPC_NAMES_SHUFFLED = None
         existing_npc_ids = {p["user_id"] for p in _ss_game["participants"] if p.get("is_npc")}
         npc_idx = len(existing_npc_ids)
         for i in range(npc_count):
-            npc = _make_npc(npc_idx + i)
+            npc = _make_npc(npc_idx + i, level_min=lvl_min, level_max=lvl_max)
             _ss_game["participants"].append(npc)
             _ss_game["alive_ids"].append(npc["user_id"])
-            # Add map position immediately so NPCs appear on the map right away
             _add_participant_map_position(_ss_game, npc)
 
         _ss_game["status"] = "countdown"
         _ss_game["started_by"] = user_id
-        _ss_game["countdown_end"] = int(time.time()) + 900
+        
+        # Adjust countdown time based on game mode
+        countdown_time = 300 if game_mode == "quick" else 900  # 5 min for quick, 15 min for classic
+        _ss_game["countdown_end"] = int(time.time()) + countdown_time
 
-        participant_ids = [p["user_id"] for p in real_users]
-        participant_names = [p["pet_name"] for p in _ss_game["participants"]]
         total_count = len(_ss_game["participants"])
+        real_count = len([p for p in _ss_game["participants"] if not p.get("is_npc")])
 
-        await _add_feed(f"🚀 Game starting in 15 minutes! {total_count} participants ({npc_count} NPCs). Round 1 fires immediately when the countdown ends. DMs sent.", "system")
+        mode_text = "Quick Match" if game_mode == "quick" else "Classic Battle Royale"
+        diff_text = difficulty.title()
+        countdown_min = countdown_time // 60
+        
+        await _add_feed(f"🚀 {mode_text} ({diff_text}) starting in {countdown_min} minutes! {total_count} participants ({real_count} players, {npc_count} NPCs).", "system")
         await _broadcast("countdown_started", {
             "countdown_end": _ss_game["countdown_end"],
             "started_by": user_id,
             "participants": _ss_game["participants"],
             "alive_ids": list(_ss_game["alive_ids"]),
             "npc_count": npc_count,
+            "game_mode": game_mode,
+            "difficulty": difficulty,
         })
         await _save_state()
 
     # Start countdown task
     asyncio.create_task(_countdown_then_start())
 
-    return JSONResponse({"ok": True, "countdown_end": _ss_game["countdown_end"], "total": total_count, "npc_count": npc_count})
+    return JSONResponse({
+        "ok": True, 
+        "countdown_end": _ss_game["countdown_end"], 
+        "total": total_count, 
+        "npc_count": npc_count,
+        "game_mode": game_mode,
+        "difficulty": difficulty
+    })
 
 
 @router.post("/ss/leave")
@@ -1339,6 +1629,25 @@ async def ss_admin_kick_round(request: Request):
         _round_task = asyncio.create_task(_round_loop())
         return JSONResponse({"ok": True, "action": "loop_restarted_and_round_queued"})
     return JSONResponse({"ok": True, "action": "next_round_at_set_to_now"})
+
+
+@router.post("/ss/admin/refresh_abilities")
+async def ss_admin_refresh_abilities(request: Request):
+    """Admin: manually refresh all participant abilities with current pet data."""
+    global _ss_game
+    user = request.session.get("discord_user")
+    if not user:
+        return JSONResponse({"error": "Not logged in"}, status_code=401)
+
+    async with _ss_lock:
+        if _ss_game is None:
+            return JSONResponse({"error": "No active game"}, status_code=400)
+        
+        # Refresh abilities for all participants
+        await _refresh_participant_abilities(_ss_game)
+        await _save_state()
+
+    return JSONResponse({"ok": True, "message": "Abilities refreshed for all participants"})
 
 
 @router.post("/ss/reset")
@@ -1406,9 +1715,12 @@ async def ss_events(request: Request):
         global _ss_game, _round_task
         async with _ss_lock:
             init_state = _ss_game
+            logger.info(f"SS SSE init: _ss_game is {'None' if _ss_game is None else 'loaded'}")
             if init_state is None:
+                logger.info("SS SSE init: _ss_game is None, attempting DB load")
                 try:
                     game = await ss_db.load_active()
+                    logger.info(f"SS SSE init: DB load_active returned: {game is not None}")
                     if game and game.get("status") not in ("none", "finished", None):
                         _ss_game = game
                         _patch_participant_multipliers(_ss_game)
@@ -1421,10 +1733,13 @@ async def ss_events(request: Request):
                         elif game.get("status") == "countdown":
                             remaining = int(game.get("countdown_end", 0)) - int(time.time())
                             asyncio.create_task(_resume_countdown(max(0, remaining)))
+                    else:
+                        logger.info(f"SS SSE init: Game not suitable for restore: {game.get('status') if game else 'None'}")
                 except Exception as _e:
-                    logger.debug(f"SS SSE init lazy-load error: {_e}")
+                    logger.error(f"SS SSE init lazy-load error: {_e}")
             state = init_state or {"status": "none"}
-        yield f"data: {json.dumps({'event': 'init', 'data': state})}\n\n"
+            logger.info(f"SS SSE init: Sending state with status: {state.get('status')}")
+        yield f"data: {json.dumps({'event': 'init', 'data': state}, cls=_SetEncoder)}\n\n"
 
         try:
             while True:
@@ -1432,7 +1747,7 @@ async def ss_events(request: Request):
                     break
                 try:
                     msg = await asyncio.wait_for(queue.get(), timeout=25)
-                    yield f"data: {json.dumps(msg)}\n\n"
+                    yield f"data: {json.dumps(msg, cls=_SetEncoder)}\n\n"
                 except asyncio.TimeoutError:
                     yield ": keepalive\n\n"
         finally:

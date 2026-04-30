@@ -108,15 +108,25 @@ def _compute_total_xp(pet: dict) -> int:
     exp = int(pet.get("experience", 0))
     return int(LootCalculator.get_total_experience_for_level(lvl)) + exp
 
-def _pet_speed(stats: dict) -> float:
+def _pet_speed(stats: dict, pet_data: dict = None) -> float:
     """Return a randomised speed value for one tick. Stats influence variance and mean."""
     dex = float(stats.get("DEX", 1))
     ene = float(stats.get("ENE", 1))
     hap = float(stats.get("HAP", 1))
+    
+    # Apply ability tree speed multipliers
+    speed_multiplier = 1.0
+    if pet_data:
+        try:
+            from Systems.Pets.Logic.ability_tree import get_ability_effect
+            speed_multiplier = get_ability_effect(pet_data, "speed_multiplier")
+        except Exception:
+            pass
+    
     # Use log-scale so high stats don't explode the value
     import math
     base = (math.log1p(dex) + math.log1p(ene) + math.log1p(hap)) / 3.0
-    return base * random.uniform(0.6, 1.4)
+    return base * speed_multiplier * random.uniform(0.6, 1.4)
 
 
 def _simulate_race(racers: List[dict], target_ticks: int = 60) -> List[List[int]]:
@@ -136,13 +146,23 @@ def _simulate_race(racers: List[dict], target_ticks: int = 60) -> List[List[int]
     import math
 
     # Step 1 — estimate mean speed per racer (no randomness yet)
-    def mean_speed(stats: dict) -> float:
+    def mean_speed(stats: dict, pet_data: dict = None) -> float:
         dex = float(stats.get("DEX", 1))
         ene = float(stats.get("ENE", 1))
         hap = float(stats.get("HAP", 1))
-        return (math.log1p(dex) + math.log1p(ene) + math.log1p(hap)) / 3.0
+        
+        # Apply ability tree speed multipliers
+        speed_multiplier = 1.0
+        if pet_data:
+            try:
+                from Systems.Pets.Logic.ability_tree import get_ability_effect
+                speed_multiplier = get_ability_effect(pet_data, "speed_multiplier")
+            except Exception:
+                pass
+        
+        return (math.log1p(dex) + math.log1p(ene) + math.log1p(hap)) / 3.0 * speed_multiplier
 
-    speeds = [mean_speed(r["stats"]) for r in racers]
+    speeds = [mean_speed(r["stats"], r.get("pet_data")) for r in racers]
     fastest = max(speeds) if speeds else 1.0
 
     # Step 2 — threshold so fastest racer finishes in ~target_ticks ticks
@@ -161,7 +181,7 @@ def _simulate_race(racers: List[dict], target_ticks: int = 60) -> List[List[int]
         for i, racer in enumerate(racers):
             if finished[i]:
                 continue
-            spd = _pet_speed(racer["stats"])
+            spd = _pet_speed(racer["stats"], racer.get("pet_data"))
             accum[i] += spd
             while accum[i] >= segment_threshold and progress[i] < MAX_SEGMENTS:
                 accum[i] -= segment_threshold
@@ -241,6 +261,7 @@ async def _races_start_inner(request: Request, user_id: str, difficulty: str, be
         "species": player_species,
         "img":     f"/static/Emojis/Pets/{player_species}.png",
         "is_player": True,
+        "pet_data": pet,  # Include pet data for ability tree effects
         "stats": {
             "DEX": float(pet.get("DEX", 1)),
             "ENE": float(pet.get("ENE", 1)),

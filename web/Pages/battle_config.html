@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Battle Configuration - Pet Battle System</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            color: #ffffff;
+            min-height: 100vh;
+        }
+        .config-card {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 215, 0, 0.3);
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+        }
+        .form-control, .form-select {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 215, 0, 0.3);
+            color: #ffffff;
+        }
+        .form-control:focus, .form-select:focus {
+            background: rgba(255, 255, 255, 0.15);
+            border-color: #ffd700;
+            box-shadow: 0 0 0 0.2rem rgba(255, 215, 0, 0.25);
+            color: #ffffff;
+        }
+        .btn-primary {
+            background: linear-gradient(45deg, #ffd700, #ffed4e);
+            border: none;
+            color: #000;
+            font-weight: bold;
+        }
+        .btn-secondary {
+            background: rgba(108, 117, 125, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .alert {
+            border: none;
+            border-radius: 10px;
+        }
+        .test-results {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 15px;
+        }
+        .stat-comparison {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .stat-comparison:last-child {
+            border-bottom: none;
+        }
+        .scaling-indicator {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.8em;
+            font-weight: bold;
+        }
+        .scaling-active {
+            background: rgba(40, 167, 69, 0.8);
+            color: white;
+        }
+        .scaling-inactive {
+            background: rgba(220, 53, 69, 0.8);
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mt-4">
+        <div class="row">
+            <div class="col-12">
+                <h1 class="text-center mb-4">
+                    ⚔️ Battle Scaling Configuration
+                </h1>
+                <p class="text-center text-muted mb-4">
+                    Configure the battle scaling system to balance high-level pet combat
+                </p>
+            </div>
+        </div>
+
+        <!-- Status Alert -->
+        <div id="statusAlert" class="alert" style="display: none;"></div>
+
+        <div class="row">
+            <!-- Configuration Panel -->
+            <div class="col-lg-6">
+                <div class="config-card p-4 mb-4">
+                    <h3 class="mb-3">⚙️ Scaling Settings</h3>
+                    
+                    <form id="configForm">
+                        <!-- Enable/Disable Scaling -->
+                        <div class="mb-3">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="scalingEnabled">
+                                <label class="form-check-label" for="scalingEnabled">
+                                    Enable Battle Scaling
+                                </label>
+                            </div>
+                            <small class="text-muted">When enabled, applies logarithmic scaling to prevent extreme battle lengths</small>
+                        </div>
+
+                        <!-- Scaling Threshold -->
+                        <div class="mb-3">
+                            <label for="scalingThreshold" class="form-label">Scaling Threshold Level</label>
+                            <input type="number" class="form-control" id="scalingThreshold" min="1" max="1000">
+                            <small class="text-muted">Scaling applies to battles involving pets at or above this level</small>
+                        </div>
+
+                        <!-- Health Scaling Factor -->
+                        <div class="mb-3">
+                            <label for="healthLogFactor" class="form-label">Health Scaling Factor</label>
+                            <input type="number" class="form-control" id="healthLogFactor" step="0.1" min="0.1" max="10">
+                            <small class="text-muted">Controls how quickly health grows with level (lower = slower growth)</small>
+                        </div>
+
+                        <!-- Damage Scaling Factor -->
+                        <div class="mb-3">
+                            <label for="damageLogFactor" class="form-label">Damage Scaling Factor</label>
+                            <input type="number" class="form-control" id="damageLogFactor" step="0.1" min="0.1" max="10">
+                            <small class="text-muted">Controls how quickly damage grows with level (lower = slower growth)</small>
+                        </div>
+
+                        <!-- Health Cap -->
+                        <div class="mb-3">
+                            <label for="maxHealthCap" class="form-label">Maximum Health Cap</label>
+                            <input type="number" class="form-control" id="maxHealthCap" min="1000" max="1000000">
+                            <small class="text-muted">Maximum health any pet can have in battle</small>
+                        </div>
+
+                        <!-- Damage Cap -->
+                        <div class="mb-3">
+                            <label for="maxDamageCap" class="form-label">Maximum Damage Cap</label>
+                            <input type="number" class="form-control" id="maxDamageCap" min="100" max="100000">
+                            <small class="text-muted">Maximum damage any single attack can deal</small>
+                        </div>
+
+                        <!-- Speed Multiplier -->
+                        <div class="mb-3">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="speedMultiplierEnabled">
+                                <label class="form-check-label" for="speedMultiplierEnabled">
+                                    Enable Speed Multiplier
+                                </label>
+                            </div>
+                            <small class="text-muted">Applies damage multipliers at very high levels for faster battles</small>
+                        </div>
+
+                        <!-- Emergency Scaling -->
+                        <div class="mb-3">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="emergencyScalingEnabled">
+                                <label class="form-check-label" for="emergencyScalingEnabled">
+                                    Enable Emergency Scaling
+                                </label>
+                            </div>
+                            <small class="text-muted">Applies additional scaling if battles would take too long</small>
+                        </div>
+
+                        <!-- Max Battle Turns -->
+                        <div class="mb-3">
+                            <label for="maxBattleTurns" class="form-label">Maximum Battle Turns</label>
+                            <input type="number" class="form-control" id="maxBattleTurns" min="5" max="100">
+                            <small class="text-muted">Target maximum turns before emergency scaling kicks in</small>
+                        </div>
+
+                        <!-- Show Messages -->
+                        <div class="mb-4">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="showScalingMessages">
+                                <label class="form-check-label" for="showScalingMessages">
+                                    Show Scaling Messages
+                                </label>
+                            </div>
+                            <small class="text-muted">Display scaling notifications to users during battles</small>
+                        </div>
+
+                        <!-- Action Buttons -->
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary">Save Configuration</button>
+                            <button type="button" class="btn btn-secondary" id="resetBtn">Reset to Defaults</button>
+                            <button type="button" class="btn btn-info" id="testBtn">Test Scaling</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Test Panel -->
+            <div class="col-lg-6">
+                <div class="config-card p-4 mb-4">
+                    <h3 class="mb-3">🧪 Test Scaling</h3>
+                    
+                    <div class="row mb-3">
+                        <div class="col-6">
+                            <label for="testLevel1" class="form-label">Pet 1 Level</label>
+                            <input type="number" class="form-control" id="testLevel1" value="500" min="1" max="10000">
+                        </div>
+                        <div class="col-6">
+                            <label for="testLevel2" class="form-label">Pet 2 Level</label>
+                            <input type="number" class="form-control" id="testLevel2" value="500" min="1" max="10000">
+                        </div>
+                    </div>
+
+                    <div id="testResults" class="test-results" style="display: none;">
+                        <h5>Test Results</h5>
+                        <div id="scalingStatus" class="mb-3"></div>
+                        <div id="battleStats"></div>
+                    </div>
+                </div>
+
+                <!-- Current Status -->
+                <div class="config-card p-4">
+                    <h3 class="mb-3">📊 Current Status</h3>
+                    <div id="currentStatus">
+                        <div class="text-center">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let currentConfig = {};
+
+        // Load configuration on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            loadConfiguration();
+        });
+
+        // Form submission
+        document.getElementById('configForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            saveConfiguration();
+        });
+
+        // Reset button
+        document.getElementById('resetBtn').addEventListener('click', function() {
+            if (confirm('Are you sure you want to reset to default configuration?')) {
+                resetConfiguration();
+            }
+        });
+
+        // Test button
+        document.getElementById('testBtn').addEventListener('click', function() {
+            testScaling();
+        });
+
+        // Auto-test when levels change
+        document.getElementById('testLevel1').addEventListener('input', testScaling);
+        document.getElementById('testLevel2').addEventListener('input', testScaling);
+
+        async function loadConfiguration() {
+            try {
+                const response = await fetch('/api/battle/config');
+                const data = await response.json();
+                
+                if (data.success) {
+                    currentConfig = data.config;
+                    populateForm(data.config);
+                    updateStatus(data.config);
+                } else {
+                    showAlert('Error loading configuration: ' + data.error, 'danger');
+                }
+            } catch (error) {
+                showAlert('Failed to load configuration: ' + error.message, 'danger');
+            }
+        }
+
+        function populateForm(config) {
+            document.getElementById('scalingEnabled').checked = config.scaling_enabled || false;
+            document.getElementById('scalingThreshold').value = config.scaling_threshold || 50;
+            document.getElementById('healthLogFactor').value = config.health_log_factor || 2.0;
+            document.getElementById('damageLogFactor').value = config.damage_log_factor || 1.8;
+            document.getElementById('maxHealthCap').value = config.max_health_cap || 50000;
+            document.getElementById('maxDamageCap').value = config.max_damage_cap || 15000;
+            document.getElementById('speedMultiplierEnabled').checked = config.speed_multiplier_enabled !== false;
+            document.getElementById('emergencyScalingEnabled').checked = config.emergency_scaling_enabled !== false;
+            document.getElementById('maxBattleTurns').value = config.max_battle_turns || 25;
+            document.getElementById('showScalingMessages').checked = config.show_scaling_messages !== false;
+        }
+
+        async function saveConfiguration() {
+            const config = {
+                scaling_enabled: document.getElementById('scalingEnabled').checked,
+                scaling_threshold: parseInt(document.getElementById('scalingThreshold').value),
+                health_log_factor: parseFloat(document.getElementById('healthLogFactor').value),
+                damage_log_factor: parseFloat(document.getElementById('damageLogFactor').value),
+                max_health_cap: parseInt(document.getElementById('maxHealthCap').value),
+                max_damage_cap: parseInt(document.getElementById('maxDamageCap').value),
+                speed_multiplier_enabled: document.getElementById('speedMultiplierEnabled').checked,
+                emergency_scaling_enabled: document.getElementById('emergencyScalingEnabled').checked,
+                max_battle_turns: parseInt(document.getElementById('maxBattleTurns').value),
+                show_scaling_messages: document.getElementById('showScalingMessages').checked
+            };
+
+            try {
+                const response = await fetch('/api/battle/config', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(config)
+                });
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    showAlert('Configuration saved successfully!', 'success');
+                    currentConfig = data.config;
+                    updateStatus(data.config);
+                } else {
+                    showAlert('Error saving configuration: ' + data.error, 'danger');
+                }
+            } catch (error) {
+                showAlert('Failed to save configuration: ' + error.message, 'danger');
+            }
+        }
+
+        async function resetConfiguration() {
+            try {
+                const response = await fetch('/api/battle/config/reset', {
+                    method: 'POST'
+                });
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    showAlert('Configuration reset to defaults!', 'success');
+                    currentConfig = data.config;
+                    populateForm(data.config);
+                    updateStatus(data.config);
+                } else {
+                    showAlert('Error resetting configuration: ' + data.error, 'danger');
+                }
+            } catch (error) {
+                showAlert('Failed to reset configuration: ' + error.message, 'danger');
+            }
+        }
+
+        async function testScaling() {
+            const level1 = parseInt(document.getElementById('testLevel1').value) || 500;
+            const level2 = parseInt(document.getElementById('testLevel2').value) || 500;
+
+            try {
+                const response = await fetch(`/api/battle/scaling/test?level1=${level1}&level2=${level2}`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    displayTestResults(data);
+                } else {
+                    showAlert('Error testing scaling: ' + data.error, 'danger');
+                }
+            } catch (error) {
+                showAlert('Failed to test scaling: ' + error.message, 'danger');
+            }
+        }
+
+        function displayTestResults(data) {
+            const resultsDiv = document.getElementById('testResults');
+            const statusDiv = document.getElementById('scalingStatus');
+            const statsDiv = document.getElementById('battleStats');
+
+            // Scaling status
+            const scalingClass = data.scaling_enabled ? 'scaling-active' : 'scaling-inactive';
+            const scalingText = data.scaling_enabled ? 'ACTIVE' : 'INACTIVE';
+            statusDiv.innerHTML = `
+                <div class="scaling-indicator ${scalingClass}">${scalingText}</div>
+                ${data.explanation ? `<div class="mt-2">${data.explanation}</div>` : ''}
+            `;
+
+            // Battle stats
+            statsDiv.innerHTML = `
+                <div class="stat-comparison">
+                    <span>Pet 1 Health:</span>
+                    <span>${data.health.pet1_scaled.toLocaleString()} HP</span>
+                </div>
+                <div class="stat-comparison">
+                    <span>Pet 2 Health:</span>
+                    <span>${data.health.pet2_scaled.toLocaleString()} HP</span>
+                </div>
+                <div class="stat-comparison">
+                    <span>Pet 1 Damage:</span>
+                    <span>${data.damage.pet1_scaled.toLocaleString()}</span>
+                </div>
+                <div class="stat-comparison">
+                    <span>Pet 2 Damage:</span>
+                    <span>${data.damage.pet2_scaled.toLocaleString()}</span>
+                </div>
+                <div class="stat-comparison">
+                    <span>Speed Multiplier:</span>
+                    <span>${data.battle_info.speed_multiplier}x</span>
+                </div>
+                <div class="stat-comparison">
+                    <span>Estimated Turns:</span>
+                    <span>${data.battle_info.estimated_turns}</span>
+                </div>
+            `;
+
+            resultsDiv.style.display = 'block';
+        }
+
+        function updateStatus(config) {
+            const statusDiv = document.getElementById('currentStatus');
+            const scalingClass = config.scaling_enabled ? 'scaling-active' : 'scaling-inactive';
+            const scalingText = config.scaling_enabled ? 'ENABLED' : 'DISABLED';
+            
+            statusDiv.innerHTML = `
+                <div class="stat-comparison">
+                    <span>Battle Scaling:</span>
+                    <span class="scaling-indicator ${scalingClass}">${scalingText}</span>
+                </div>
+                <div class="stat-comparison">
+                    <span>Threshold Level:</span>
+                    <span>${config.scaling_threshold}</span>
+                </div>
+                <div class="stat-comparison">
+                    <span>Max Health:</span>
+                    <span>${config.max_health_cap.toLocaleString()}</span>
+                </div>
+                <div class="stat-comparison">
+                    <span>Max Damage:</span>
+                    <span>${config.max_damage_cap.toLocaleString()}</span>
+                </div>
+                <div class="stat-comparison">
+                    <span>Speed Multiplier:</span>
+                    <span>${config.speed_multiplier_enabled ? 'Enabled' : 'Disabled'}</span>
+                </div>
+                <div class="stat-comparison">
+                    <span>Emergency Scaling:</span>
+                    <span>${config.emergency_scaling_enabled ? 'Enabled' : 'Disabled'}</span>
+                </div>
+            `;
+        }
+
+        function showAlert(message, type) {
+            const alertDiv = document.getElementById('statusAlert');
+            alertDiv.className = `alert alert-${type}`;
+            alertDiv.textContent = message;
+            alertDiv.style.display = 'block';
+            
+            // Auto-hide after 5 seconds
+            setTimeout(() => {
+                alertDiv.style.display = 'none';
+            }, 5000);
+        }
+    </script>
+</body>
+</html>

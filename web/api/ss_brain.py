@@ -245,7 +245,18 @@ def _norm_cat(cat: str) -> str:
 def survive_score(info: Dict) -> float:
     level      = max(1, int(info.get("level", 1)))
     multiplier = max(1, int(info.get("multiplier", 1)))
-    return level / multiplier / 10
+    base = level / multiplier / 10
+    # Apply survive_score_mult ability bonus (stored separately — it multiplies
+    # the score directly rather than going through the divisor field)
+    ss_ability_mult = float(info.get("ss_ability_mult", 1.0))
+    if ss_ability_mult != 1.0:
+        base *= ss_ability_mult
+    # Apply stat mastery multiplier (average of all stat mastery multipliers,
+    # representing overall combat readiness from endgame stat investment)
+    stat_mastery_mult = float(info.get("stat_mastery_mult", 1.0))
+    if stat_mastery_mult != 1.0:
+        base *= stat_mastery_mult
+    return base
 
 
 def charge_multiplier(charge_stacks: int) -> float:
@@ -324,10 +335,31 @@ def elimination_score(
     """
     base    = survive_score(info)
     net_adv = count_advantages(info, opponent)
-    if net_adv >= 0:
-        score = base * (1.2 ** net_adv)
+
+    # Advantage mastery bonuses: flat additions to the 1.2 base advantage multiplier
+    # when the attacker has the advantage. Stored as adv_mastery_type and adv_mastery_element
+    # on the participant record (each = points_spent * 0.1).
+    adv_type_bonus = float(info.get("adv_mastery_type", 0.0))
+    adv_elem_bonus = float(info.get("adv_mastery_element", 0.0))
+
+    if net_adv == 0:
+        score = base
+    elif net_adv > 0:
+        # Build per-axis multiplier incorporating mastery bonuses.
+        # Type axis (axis 1) gets adv_type_bonus; element axes (2-5) get adv_elem_bonus.
+        # We approximate by splitting net_adv into type vs element contributions.
+        cat_a = _norm_cat(info.get("category", "land"))
+        cat_b = _norm_cat(opponent.get("category", "land"))
+        type_adv = 1 if _TYPE_STRONG.get(cat_a) == cat_b else 0
+        elem_adv = net_adv - type_adv  # remaining advantages are element-based
+
+        type_mult = (1.2 + adv_type_bonus) ** type_adv if type_adv > 0 else 1.0
+        elem_mult = (1.2 + adv_elem_bonus) ** elem_adv if elem_adv > 0 else 1.0
+        score = base * type_mult * elem_mult
     else:
+        # Disadvantages use the plain 0.8 multiplier (mastery only helps when winning)
         score = base * (0.8 ** abs(net_adv))
+
     score *= charge_multiplier(attacker_charge)
 
     # Zone tenure bonus — fighting in your own held zone
@@ -2090,6 +2122,7 @@ def choose_zone(
     is_wounded    = uid in wounded_set
     is_rampage    = kills >= _RAMPAGE_THRESHOLD
     is_last_stand = uid in last_stand_set
+    is_broken_down = _is_broken_down(game, uid) if game else False
 
     def _zone_of(other: str) -> str:
         oz = cur_positions.get(other)
@@ -2997,7 +3030,81 @@ def process_round(game: Dict[str, Any]) -> Dict[str, Any]:
         game["_env_damaged"].clear()
     if "_env_evacuated" in game:
         game["_env_evacuated"].clear()
-    
+
+    # ── Post-round 10 NPC-only rush ───────────────────────────────────────────
+    # If all user pets are gone after round 10, the remaining NPCs fight it out
+    # immediately in a rapid-fire sequence so the game ends this round rather
+    # than grinding through many more movement-only rounds.
+    if current_round >= 10 and len(game["alive_ids"]) > 1:
+        remaining_alive = list(game["alive_ids"])
+        user_pets_alive = [
+            uid for uid in remaining_alive
+            if not p_map.get(uid, {}).get("is_npc", False)
+            and not str(uid).startswith("npc_")
+        ]
+        if not user_pets_alive:
+            # All remaining contestants are NPCs — collapse them to a winner now
+            _RUSH_INTROS = [
+                "☠️ With no survivors left from the real world, the NPCs turn on each other in a final frenzy!",
+                "🌑 The arena grows quiet — only the wild ones remain. They settle it now.",
+                "⚡ No human pets remain. The NPC survivors clash in a brutal last stand!",
+                "🔥 The crowd demands a winner. The remaining beasts tear into each other!",
+            ]
+            actions.append(random.choice(_RUSH_INTROS))
+
+            rush_alive = list(game["alive_ids"])
+            random.shuffle(rush_alive)
+
+            while len(rush_alive) > 1:
+                uid_a = rush_alive[0]
+                uid_b = rush_alive[1]
+
+                win_p = elim_win_prob(
+                    uid_a, uid_b, p_map,
+                    charge_a=charge_stacks.get(uid_a, 0),
+                    charge_b=charge_stacks.get(uid_b, 0),
+                    wounded_a=(uid_a in wounded_map) or _is_environmentally_damaged(game, uid_a),
+                    wounded_b=(uid_b in wounded_map) or _is_environmentally_damaged(game, uid_b),
+                    last_stand_a=(uid_a in last_stand_set),
+                    last_stand_b=(uid_b in last_stand_set),
+                    fight_zone="basic",
+                    zone_tenure_map=zone_tenure,
+                )
+                a_wins = random.random() < win_p
+                winner_id, loser_id = (uid_a, uid_b) if a_wins else (uid_b, uid_a)
+                actual_win_p = win_p if a_wins else (1.0 - win_p)
+
+                elim_text = _build_elim_text(
+                    [winner_id], [loser_id], p_map, rel_map, "basic",
+                    scores=scores, kill_counts=kill_counts, win_prob=actual_win_p,
+                    winner_charge=charge_stacks.get(winner_id, 0),
+                    loser_charge=charge_stacks.get(loser_id, 0),
+                )
+                eliminations.append(elim_text)
+                charge_stacks[winner_id] = 0
+                charge_stacks[loser_id] = 0
+
+                if loser_id in game["alive_ids"]:
+                    game["alive_ids"].remove(loser_id)
+                    newly_eliminated.append(loser_id)
+                    info = p_map.get(loser_id, {})
+                    killer_info = p_map.get(winner_id, {})
+                    game["eliminated"].append({
+                        "user_id":            loser_id,
+                        "username":           info.get("username", loser_id),
+                        "pet_name":           _pname(info),
+                        "species":            info.get("species", "Cat"),
+                        "round":              current_round,
+                        "text":               elim_text,
+                        "is_npc":             info.get("is_npc", False),
+                        "eliminated_by":      _pname(killer_info),
+                        "eliminated_by_uid":  winner_id,
+                        "eliminated_by_uids": [winner_id],
+                    })
+                    kill_counts[winner_id] = kill_counts.get(winner_id, 0) + 1
+
+                rush_alive = list(game["alive_ids"])
+
     # ── Generate enhanced round summary ───────────────────────────────────────
     round_summary = _generate_round_summary(
         game, current_round, newly_eliminated, len(alive), 

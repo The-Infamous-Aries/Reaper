@@ -1,4 +1,4 @@
-
+﻿
 from fastapi import APIRouter, HTTPException, Request, Response
 from fastapi.responses import HTMLResponse, JSONResponse
 import logging
@@ -7,6 +7,8 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple, Union, cast, Sequence
 
 from Systems.Functions.utils import get_web_public_url
+from Systems.Functions.db_paths import EP_WARS_DB_STR as WATCH_DB_PATH, EP_NATIONS_DB_STR as EP_NATIONS_DB_PATH
+from PnWHarvester.db.global_nations_db import GlobalNationsDB as _GlobalNationsDB
 from Systems.PnW.Util.calc import AllianceCalculator
 from Systems.PnW.Util.Graphs.compare_graph import create_interactive_comparison_page
 from Systems.PnW.Util.query import create_v3_query_instance
@@ -53,9 +55,9 @@ async def _resolve_targets(text: str, query_instance) -> List[Tuple[Optional[int
         return out
     parts = [p.strip() for p in str(text).split(',') if p.strip()]
     for part in parts:
-        # Short-circuit Night's Watch — it lives in a local DB, not the PnW API
+        # Short-circuit NW — it lives in a local DB, not the PnW API
         if _is_nights_watch(part):
-            out.append((WATCH_ALLIANCE_ID, "Night's Watch"))
+            out.append((WATCH_ALLIANCE_ID, "Nights Watch"))
             continue
         aid, name = _parse_alliance_identifier(part)
         if isinstance(aid, int) and aid > 0:
@@ -84,6 +86,41 @@ async def get_nation_info(nation_id: str, request: Request):
         "flag": nation.get("flag"),
         "leader_name": nation.get("leader_name"),
     })
+
+@router.get("/pnw/alliances")
+async def search_alliances(q: str = ""):
+    """Return alliances from the local DB for autocomplete dropdowns.
+    Searches both the EP (Nights Watch) DB and the Global Nations DB,
+    merges results, and returns them sorted by member count descending."""
+    from Systems.Functions.db_paths import GLOBAL_NATIONS_DB_STR as GLOBAL_NATIONS_DB_PATH
+    results: dict[int, dict] = {}
+
+    async def _query_db(db_path: str) -> None:
+        try:
+            db = _GlobalNationsDB(db_path)
+            rows = await db.get_distinct_alliances(q)
+            for row in rows:
+                aid = row.get("alliance_id")
+                if not aid:
+                    continue
+                if aid not in results or (row.get("member_count", 0) or 0) > (results[aid].get("member_count", 0) or 0):
+                    results[aid] = {
+                        "id": aid,
+                        "name": row.get("alliance_name") or f"Alliance {aid}",
+                        "member_count": row.get("member_count", 0),
+                    }
+        except Exception as e:
+            logger.warning(f"search_alliances: error querying {db_path}: {e}")
+
+    import asyncio as _asyncio
+    await _asyncio.gather(
+        _query_db(EP_NATIONS_DB_PATH),
+        _query_db(GLOBAL_NATIONS_DB_PATH),
+    )
+
+    sorted_results = sorted(results.values(), key=lambda x: x.get("member_count", 0) or 0, reverse=True)
+    return JSONResponse(sorted_results[:100])
+
 @router.get("/pnw/compare_data")
 async def get_compare_data(home_alliance_ids: str, away_alliance_ids: str):
     """Returns rich JSON comparison data matching the Discord embed output."""
@@ -103,7 +140,18 @@ async def get_compare_data(home_alliance_ids: str, away_alliance_ids: str):
 
     async def _build_data(alliance_id: int, alliance_name: str) -> Optional[dict]:
         try:
-            nations = await query_instance.get_alliance_nations(str(alliance_id))
+            # NW lives in the local DB — use it directly
+            if alliance_id == WATCH_ALLIANCE_ID:
+                ep_db = _GlobalNationsDB(EP_NATIONS_DB_PATH)
+                nations = await ep_db.get_nations_by_alliance(WATCH_ALLIANCE_ID)
+                # Attach cities from the local DB so improvements/city calcs work
+                for nation in nations:
+                    nation_id = nation.get('id')
+                    if nation_id:
+                        nation['cities'] = await ep_db.get_cities_for_nation(int(nation_id))
+                logger.info(f"Loaded {len(nations)} EP nations from local DB for compare")
+            else:
+                nations = await query_instance.get_alliance_nations(str(alliance_id))
             if not nations:
                 logger.warning(f"No nations found for alliance {alliance_id} ({alliance_name})")
                 return None
@@ -358,15 +406,14 @@ async def get_compare_graph(home_alliance_ids: str, away_alliance_ids: str):
 
     return HTMLResponse(content=html_content)
 
-WATCH_DB_PATH = "c:\\Users\\codyr\\DiscordBots\\Reaper\\Databases\\NightWatchWars.db"
 WATCH_ALLIANCE_ID = 14225
-NIGHTS_WATCH_ALIASES = {"nights watch", "night's watch", "nightswatch", "nw", "14225"}
+NIGHTS_WATCH_ALIASES = {"nights watch", "nightswatch", "nw", "14225"}
 
 def _is_nights_watch(alliance: str) -> bool:
     return alliance.strip().lower() in NIGHTS_WATCH_ALIASES
 
 def _normalize_nw_wars(wars: list) -> list:
-    """Inject nested 'attacker'/'defender' dicts into flat NightsWatch DB war rows
+    """Inject nested 'attacker'/'defender' dicts into flat NW DB war rows
     so they match the structure expected by _get_nation_breakdown."""
     normalized = []
     for war in wars:
@@ -392,21 +439,21 @@ async def get_war_costs_graph(alliance: str, time: str, force_refresh: bool = Fa
     resource_prices = await get_resource_prices()
 
     if _is_nights_watch(alliance):
-        from Systems.Functions.night_watch_wars_db import NightWatchWarsDB
+        from Systems.Functions.irs_wars_db import IRSWarsDB
         from web.api.watch_api import _attach_war_attacks
         from datetime import date as date_type
-        db = NightWatchWarsDB(WATCH_DB_PATH)
+        db = IRSWarsDB(WATCH_DB_PATH)
         start_date = after_datetime.date()
         end_date = datetime.now(timezone.utc).date()
         att_wars = await db.get_wars_by_alliance_in_range(WATCH_ALLIANCE_ID, role='attacker', start_date=start_date, end_date=end_date)
         def_wars = await db.get_wars_by_alliance_in_range(WATCH_ALLIANCE_ID, role='defender', start_date=start_date, end_date=end_date)
         all_wars = list({w['id']: w for w in (att_wars + def_wars)}.values())
         if not all_wars:
-            return HTMLResponse(content=f"<h1>No Wars Found</h1><p>No Night's Watch wars found in the last {time}.</p>", status_code=404)
+            return HTMLResponse(content=f"<h1>No Wars Found</h1><p>No Nights Watch wars found in the last {time}.</p>", status_code=404)
         all_wars = await _attach_war_attacks(db, all_wars)
         all_wars = _normalize_nw_wars(all_wars)
         alliance_id = WATCH_ALLIANCE_ID
-        alliance_display = "Night's Watch"
+        alliance_display = "Nights Watch"
     else:
         query_instance = create_v3_query_instance()
         resolved_alliance_ids = await query_instance.resolve_entities([alliance], 'alliance')
@@ -439,20 +486,20 @@ async def get_war_net_graph(alliance: str, time: str, force_refresh: bool = Fals
     resource_prices = await get_resource_prices()
 
     if _is_nights_watch(alliance):
-        from Systems.Functions.night_watch_wars_db import NightWatchWarsDB
+        from Systems.Functions.irs_wars_db import IRSWarsDB
         from web.api.watch_api import _attach_war_attacks
-        db = NightWatchWarsDB(WATCH_DB_PATH)
+        db = IRSWarsDB(WATCH_DB_PATH)
         start_date = after_datetime.date()
         end_date = datetime.now(timezone.utc).date()
         att_wars = await db.get_wars_by_alliance_in_range(WATCH_ALLIANCE_ID, role='attacker', start_date=start_date, end_date=end_date)
         def_wars = await db.get_wars_by_alliance_in_range(WATCH_ALLIANCE_ID, role='defender', start_date=start_date, end_date=end_date)
         all_wars = list({w['id']: w for w in (att_wars + def_wars)}.values())
         if not all_wars:
-            return HTMLResponse(content=f"<h1>No Wars Found</h1><p>No Night's Watch wars found in the last {time}.</p>", status_code=404)
+            return HTMLResponse(content=f"<h1>No Wars Found</h1><p>No Nights Watch wars found in the last {time}.</p>", status_code=404)
         all_wars = await _attach_war_attacks(db, all_wars)
         all_wars = _normalize_nw_wars(all_wars)
         alliance_id = WATCH_ALLIANCE_ID
-        alliance_display = "Night's Watch"
+        alliance_display = "Nights Watch"
     else:
         query_instance = create_v3_query_instance()
         resolved_alliance_ids = await query_instance.resolve_entities([alliance], 'alliance')

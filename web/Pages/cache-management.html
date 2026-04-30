@@ -1,0 +1,187 @@
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card bg-dark text-light">
+                <div class="card-header">
+                    <h3><i class="fas fa-sync-alt"></i> Cache Management</h3>
+                    <p class="mb-0">Manage Cloudflare cache to fix loading issues when not in developer mode</p>
+                </div>
+                <div class="card-body">
+                    <!-- Cache Status -->
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <div class="card bg-secondary">
+                                <div class="card-body">
+                                    <h5><i class="fas fa-info-circle"></i> Cache Status</h5>
+                                    <div id="cache-status">
+                                        <div class="spinner-border spinner-border-sm" role="status">
+                                            <span class="visually-hidden">Loading...</span>
+                                        </div>
+                                        Checking cache status...
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card bg-secondary">
+                                <div class="card-body">
+                                    <h5><i class="fas fa-tools"></i> Quick Actions</h5>
+                                    <button class="btn btn-warning btn-sm me-2" onclick="bustClientCache()">
+                                        <i class="fas fa-refresh"></i> Bust Browser Cache
+                                    </button>
+                                    <button class="btn btn-info btn-sm" onclick="reloadCurrentPage()">
+                                        <i class="fas fa-redo"></i> Reload Page
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Cache Purge Options -->
+                    <div class="row mb-4">
+                        <div class="col-md-4">
+                            <div class="card bg-secondary">
+                                <div class="card-body text-center">
+                                    <h5><i class="fas fa-broom text-danger"></i> Purge All Cache</h5>
+                                    <p class="small">Clears all cached content. Use when major issues occur.</p>
+                                    <button class="btn btn-danger" onclick="purgeAllCache()">
+                                        <i class="fas fa-trash-alt"></i> Purge Everything
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card bg-secondary">
+                                <div class="card-body text-center">
+                                    <h5><i class="fas fa-tachometer-alt text-warning"></i> Purge Dashboard</h5>
+                                    <p class="small">Clears dashboard CSS, JS, and HTML files only.</p>
+                                    <button class="btn btn-warning" onclick="purgeDashboardCache()">
+                                        <i class="fas fa-sync"></i> Purge Dashboard
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card bg-secondary">
+                                <div class="card-body text-center">
+                                    <h5><i class="fas fa-code text-info"></i> Development Mode</h5>
+                                    <p class="small">Toggle Cloudflare development mode (bypasses cache).</p>
+                                    <button class="btn btn-success" id="dev-mode-btn" onclick="toggleDevelopmentMode()">
+                                        <i class="fas fa-toggle-off"></i> Enable Dev Mode
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Custom File Purge -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <div class="card bg-secondary">
+                                <div class="card-body">
+                                    <h5><i class="fas fa-file-code"></i> Purge Specific Files</h5>
+                                    <div class="row">
+                                        <div class="col-md-8">
+                                            <textarea class="form-control bg-dark text-light" id="files-to-purge" rows="3" 
+                                                placeholder="Enter URLs to purge (one per line):&#10;https://reaper.qzz.io/css/dashboard.css&#10;https://reaper.qzz.io/js/dashboard.js"></textarea>
+                                        </div>
+                                        <div class="col-md-4 d-flex align-items-center">
+                                            <button class="btn btn-primary w-100" onclick="purgeSpecificFiles()">
+                                                <i class="fas fa-trash"></i> Purge Files
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Cache Tags -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <div class="card bg-secondary">
+                                <div class="card-body">
+                                    <h5><i class="fas fa-tags"></i> Purge by Cache Tags</h5>
+                                    <div class="row">
+                                        <div class="col-md-3">
+                                            <button class="btn btn-outline-light w-100 mb-2" onclick="purgeByTag('stylesheets-scripts')">
+                                                CSS & JS Files
+                                            </button>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <button class="btn btn-outline-light w-100 mb-2" onclick="purgeByTag('html-pages')">
+                                                HTML Pages
+                                            </button>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <button class="btn btn-outline-light w-100 mb-2" onclick="purgeByTag('static-assets')">
+                                                Static Assets
+                                            </button>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <button class="btn btn-outline-light w-100 mb-2" onclick="purgeByTag('misc-static')">
+                                                Misc Static
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Activity Log -->
+                    <div class="row">
+                        <div class="col-12">
+                            <div class="card bg-secondary">
+                                <div class="card-body">
+                                    <h5><i class="fas fa-list"></i> Activity Log</h5>
+                                    <div id="activity-log" class="bg-dark p-3 rounded" style="height: 200px; overflow-y: auto; font-family: monospace; font-size: 0.9em;">
+                                        <div class="text-muted">Cache management activity will appear here...</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.card {
+    border: 1px solid #444;
+}
+
+.card-header {
+    border-bottom: 1px solid #444;
+}
+
+.btn:disabled {
+    opacity: 0.6;
+}
+
+#activity-log {
+    color: #00ff00;
+}
+
+.log-entry {
+    margin-bottom: 5px;
+}
+
+.log-success {
+    color: #28a745;
+}
+
+.log-error {
+    color: #dc3545;
+}
+
+.log-info {
+    color: #17a2b8;
+}
+
+.log-warning {
+    color: #ffc107;
+}
+</style>

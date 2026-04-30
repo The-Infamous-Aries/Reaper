@@ -8,6 +8,14 @@ from fastapi.responses import JSONResponse
 import logging
 import os
 
+def _groq_available() -> bool:
+    """Return True if a GROQ_API_KEY is configured."""
+    try:
+        from Systems.Functions.config import GROQ_API_KEY
+        return bool(GROQ_API_KEY)
+    except Exception:
+        return False
+
 router = APIRouter()
 logger = logging.getLogger("Reaper.BotInfoAPI")
 
@@ -65,7 +73,7 @@ async def get_bot_info():
                 "license": "Custom EULA",
                 "avatar_url": avatar_url,
                 "banner_url": banner_url,
-                "groq_api_available": False,
+                "groq_api_available": _groq_available(),
                 "groq_api_key": ""
             })
         else:
@@ -77,7 +85,7 @@ async def get_bot_info():
                 "license": "Custom EULA",
                 "avatar_url": "/static/Images/reaper.png",  # Use local image as fallback
                 "banner_url": None,
-                "groq_api_available": False,
+                "groq_api_available": _groq_available(),
                 "groq_api_key": ""
             }
         

@@ -12,7 +12,7 @@ import logging
 router = APIRouter()
 logger = logging.getLogger("Reaper.AlertsAPI")
 
-ALERTS_DB = "c:/Users/codyr/DiscordBots/Reaper/Databases/alerts.db"
+from Systems.Functions.db_paths import ALERTS_DB_STR as ALERTS_DB
 
 VALID_RESOURCES = {
     "food", "coal", "oil", "uranium", "lead", "iron",

@@ -206,58 +206,19 @@
 (function () {
 
     // ── Nav section labels keyed by the first word(s) of each h2 ─────────────
+    // Keys must match the START of the h2 text in Pet Guide.md exactly.
     const NAV_SECTIONS = {
-        'Overview':         'Basics',
-        'Stats':            'Basics',
-        'Leveling':         'Basics',
-        'Specialization':   'Basics',
-        'Rank':             'Basics',
-        'My Pet':           'Basics',
-        'How Combat':       'Combat',
-        'The Three':        'Combat',
-        'The Charge':       'Combat',
-        'Type &':           'Combat',
-        'Equipment':        'Growth',
-        'Activities':       'Growth',
-        'Keys':             'Growth',
-        'Tasks':            'Growth',
-        'The Floor':        'Multiplayer',
-        'The Pet Casino':   'Casino',
-        'Slot':             'Casino',
-        'Pet Races':        'Casino',
-        'Blackjack':        'Casino',
-        'Craps':            'Casino',
-        'Texas':            'Casino',
-        'Mini-Games':       'Casino',
-        'Survivor':         'Other',
-        'Pet Stock':        'Other',
+        'Basics':       'Guide',
+        'Growth':       'Guide',
+        'Interactions': 'Guide',
+        'Hints':        'Guide',
     };
 
     const NAV_ICONS = {
-        'Overview':         '🐾',
-        'Stats':            '📊',
-        'Leveling':         '⬆️',
-        'Specialization':   '⭐',
-        'Rank':             '🏅',
-        'My Pet':           '🐾',
-        'How Combat':       '⚔️',
-        'The Three':        '🎮',
-        'The Charge':       '⚡',
-        'Type &':           '🔥',
-        'Equipment':        '🎒',
-        'Activities':       '🗺️',
-        'Keys':             '🗝️',
-        'Tasks':            '🗡️',
-        'The Floor':        '🏟️',
-        'The Pet Casino':   '🎰',
-        'Slot':             '🎰',
-        'Pet Races':        '🏁',
-        'Blackjack':        '🃏',
-        'Craps':            '🎲',
-        'Texas':            '♠️',
-        'Mini-Games':       '🎮',
-        'Survivor':         '⚔️',
-        'Pet Stock':        '📈',
+        'Basics':       '🐾',
+        'Growth':       '📈',
+        'Interactions': '⚔️',
+        'Hints':        '💡',
     };
 
     function slugify(text) {
@@ -265,6 +226,8 @@
     }
 
     function getNavKey(title) {
+        // Exact match first, then startsWith for safety
+        if (NAV_SECTIONS[title]) return title;
         for (const key of Object.keys(NAV_SECTIONS)) {
             if (title.startsWith(key)) return key;
         }
@@ -277,29 +240,47 @@
         let currentSection = null;
 
         headings.forEach(function (h) {
-            // The section wrapper div carries the id (moved there by wrapSections).
-            // Walk up to find it.
-            const sectionEl = h.closest('.wap-section[id]');
-            const sectionId = sectionEl ? sectionEl.id : '';
-            if (!sectionId) return;
+            const isH2 = h.tagName === 'H2';
+            const isH3 = h.tagName === 'H3';
 
-            const key = getNavKey(h.textContent.trim());
-            const section = key ? NAV_SECTIONS[key] : null;
-            const icon   = key ? (NAV_ICONS[key] || '') : '';
+            if (isH2) {
+                const sectionEl = h.closest('.wap-section[id]');
+                const sectionId = sectionEl ? sectionEl.id : '';
+                if (!sectionId) return;
 
-            if (section && section !== currentSection) {
-                const div = document.createElement('div');
-                div.className = 'nav-section';
-                div.textContent = section;
-                nav.appendChild(div);
-                currentSection = section;
+                const key = getNavKey(h.textContent.trim());
+                const section = key ? NAV_SECTIONS[key] : null;
+                const icon   = key ? (NAV_ICONS[key] || '') : '';
+
+                if (section && section !== currentSection) {
+                    const div = document.createElement('div');
+                    div.className = 'nav-section';
+                    div.textContent = section;
+                    nav.appendChild(div);
+                    currentSection = section;
+                }
+
+                const a = document.createElement('a');
+                a.href = 'javascript:void(0)';
+                a.dataset.target = sectionId;
+                a.style.fontWeight = '700';
+                a.style.fontSize = '0.76rem';
+                a.style.color = 'var(--gold-secondary)';
+                a.textContent = (icon ? icon + ' ' : '') + h.textContent.trim();
+                nav.appendChild(a);
+
+            } else if (isH3) {
+                const id = h.id;
+                if (!id) return;
+                const a = document.createElement('a');
+                a.href = 'javascript:void(0)';
+                a.dataset.targetH3 = id;
+                a.style.paddingLeft = '22px';
+                a.style.fontSize = '0.70rem';
+                // textContent strips any img tags — gives clean nav label
+                a.textContent = '· ' + h.textContent.trim();
+                nav.appendChild(a);
             }
-
-            const a = document.createElement('a');
-            a.href = 'javascript:void(0)';
-            a.dataset.target = sectionId;
-            a.textContent = (icon ? icon + ' ' : '') + h.textContent.trim();
-            nav.appendChild(a);
         });
     }
 
@@ -327,7 +308,7 @@
                 node.removeAttribute('id'); // id moves to wrapper
                 body.insertBefore(current, node);
                 current.appendChild(node);
-            } else if (node.tagName === 'HR') {
+            } else if (node.nodeType === Node.ELEMENT_NODE && node.tagName === 'HR') {
                 current = null; // HR acts as section separator — don't include it
                 if (node.parentNode) node.parentNode.removeChild(node);
             } else if (current) {
@@ -346,18 +327,19 @@
             if (!res.ok) throw new Error('HTTP ' + res.status);
             const md = await res.text();
 
-            // Render markdown
+            // Render markdown — gfm enables tables; raw HTML (img tags) passes through by default
+            marked.use({ gfm: true, breaks: false });
             body.innerHTML = marked.parse(md);
 
-            // Assign IDs to all h2 headings
-            const headings = body.querySelectorAll('h2');
-            headings.forEach(function (h) {
+            // Assign IDs to all h2 and h3 headings before wrapping
+            body.querySelectorAll('h2, h3').forEach(function (h) {
                 h.id = slugify(h.textContent.trim());
             });
 
             applyWarnClass();
-            wrapSections(headings);
-            buildNav(document.querySelectorAll('.wap-section h2'));
+            // wrapSections moves h2s into .wap-section divs; h3 IDs stay intact inside
+            wrapSections(body.querySelectorAll('h2'));
+            buildNav(document.querySelectorAll('.wap-section h2, .wap-section h3'));
 
             loading.style.display = 'none';
             initScrollSpy();
@@ -428,6 +410,13 @@
             a.addEventListener('click', function (e) {
                 e.preventDefault();
                 e.stopPropagation();
+                // h3 sub-links use data-target-h3
+                const h3Id = a.dataset.targetH3;
+                if (h3Id) {
+                    const target = document.getElementById(h3Id);
+                    if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    return;
+                }
                 const target = document.getElementById(a.dataset.target);
                 if (target) {
                     target.scrollIntoView({ behavior: 'smooth', block: 'start' });

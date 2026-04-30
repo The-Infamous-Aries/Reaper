@@ -1,0 +1,482 @@
+﻿<link rel="stylesheet" href="/css/rev_optimizer.css">
+
+<div class="ro-shell">
+
+  <!-- Controls -->
+  <div class="card ro-controls">
+    <div class="card-header">
+      <div>
+        <p class="ro-kicker">Politics &amp; War</p>
+        <p class="ro-title">📈 Revenue Optimizer</p>
+      </div>
+      <div class="ro-header-right">
+        <div class="ro-type-tabs">
+          <button class="ro-type-tab active" data-type="auto">Auto</button>
+          <button class="ro-type-tab" data-type="nation">Nation</button>
+          <button class="ro-type-tab" data-type="alliance">Alliance</button>
+        </div>
+      </div>
+    </div>
+    <div class="card-body" style="padding-top:0.5rem;">
+      <div class="ro-input-row">
+        <div class="ro-ac-wrap">
+          <input type="text" id="ro-query" class="ro-input"
+                 placeholder="Nation name / ID  or  Alliance name / ID"
+                 autocomplete="off">
+          <div id="ro-dropdown" class="ro-ac-dropdown" style="display:none;"></div>
+        </div>
+        <button id="ro-run" class="btn btn-gold btn-sm">Analyze</button>
+        <button id="ro-refresh" class="btn btn-sm"
+                style="background:rgba(255,215,0,0.08);border:1px solid rgba(255,215,0,0.3);color:var(--gold-secondary);font-size:0.75rem;"
+                title="Force refresh">↻ Refresh</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="ro-status" class="ro-status" style="display:none;"></div>
+  <div id="ro-output" class="ro-content-wrapper" style="display:none;"></div>
+
+</div>
+
+<script>
+(function () {
+  // ── Helpers ────────────────────────────────────────────────────────────────
+  const $ = id => document.getElementById(id);
+  const fmt  = n => (n == null ? '—' : Number(n).toLocaleString(undefined, {maximumFractionDigits: 0}));
+  const fmtF = (n, d=1) => (n == null ? '—' : Number(n).toLocaleString(undefined, {minimumFractionDigits:d, maximumFractionDigits:d}));
+  const fmtG = v => {
+    if (v == null) return '—';
+    const s = v >= 0 ? '+' : '';
+    return `${s}${fmt(v)}/day`;
+  };
+  const fmtC = v => {
+    if (!v || v <= 0) return 'free';
+    if (v >= 1_000_000) return `${(v/1_000_000).toFixed(2)}M`;
+    return `${fmt(v)}`;
+  };
+  const fmtP = (days, gainDay) => {
+    if (!days || days > 1e9) return '';
+    if (days <= 30 || Math.abs(gainDay) >= 500_000) {
+      if (days < 1) return ' <em>(< 1d ROI)</em>';
+      return ` <em>(${Math.round(days)}d ROI)</em>`;
+    }
+    return '';
+  };
+  const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+  const TYPE_BADGE = {
+    improvement: '<span class="ro-type-badge ro-type-imp">Civil</span>',
+    resource:    '<span class="ro-type-badge ro-type-rss">Resource</span>',
+    infrastructure: '<span class="ro-type-badge ro-type-infra">Infra</span>',
+    land:        '<span class="ro-type-badge ro-type-land">Land</span>',
+    rebuild:     '<span class="ro-type-badge ro-type-rebuild">Rebuild</span>',
+  };
+
+  // ── State ──────────────────────────────────────────────────────────────────
+  let _type = 'auto';
+  let _lastQuery = '';
+  let _expanded = new Set();
+
+  // ── EP Nations Autocomplete ────────────────────────────────────────────────
+  let _epNations = null;
+  let _acIdx = -1;
+
+  async function loadEpNations() {
+    if (_epNations) return _epNations;
+    try {
+      const r = await fetch('/api/revopt/ep_nations');
+      _epNations = await r.json();
+    } catch (e) { _epNations = []; }
+    return _epNations;
+  }
+
+  function positionDropdown() {
+    const inp = $('ro-query');
+    const dd  = $('ro-dropdown');
+    if (!inp || !dd || dd.style.display === 'none') return;
+    const r = inp.getBoundingClientRect();
+    dd.style.top   = (r.bottom + 4) + 'px';
+    dd.style.left  = r.left + 'px';
+    dd.style.width = r.width + 'px';
+  }
+
+  function buildDropdown(val) {
+    const dd = $('ro-dropdown');
+    if (!dd) return;
+    dd.innerHTML = '';
+    _acIdx = -1;
+    const items = [];
+    const low = val.toLowerCase();
+
+    // Always offer "Nights Watch (Alliance)" when input is empty or matches
+    if (!low || 'nights watch'.includes(low) || low === 'nw') {
+      items.push({ label: '🌙 Nights Watch — whole alliance', value: 'Nights Watch', type: 'alliance' });
+    }
+
+    // Filter EP nations by name or leader
+    if (_epNations) {
+      for (const n of _epNations) {
+        const nm  = (n.nation_name || '').toLowerCase();
+        const ldr = (n.leader_name || '').toLowerCase();
+        if (!low || nm.includes(low) || ldr.includes(low)) {
+          const label = `🌐 ${n.nation_name}${n.leader_name ? ' (' + n.leader_name + ')' : ''}`;
+          items.push({ label, value: n.nation_name, type: 'nation' });
+        }
+        if (items.length >= 13) break;
+      }
+    }
+
+    if (!items.length) { dd.style.display = 'none'; return; }
+
+    items.forEach((item, i) => {
+      const el = document.createElement('div');
+      el.className = 'ro-ac-item' + (item.type === 'alliance' ? ' ro-ac-alliance' : '');
+      el.textContent = item.label;
+      el.addEventListener('mousedown', ev => {
+        ev.preventDefault();
+        $('ro-query').value = item.value;
+        const tab = item.type === 'alliance' ? 'alliance' : 'nation';
+        document.querySelectorAll('.ro-type-tab').forEach(b => b.classList.remove('active'));
+        document.querySelector(`.ro-type-tab[data-type="${tab}"]`).classList.add('active');
+        _type = tab;
+        dd.style.display = 'none';
+        run(false);
+      });
+      dd.appendChild(el);
+    });
+    dd.style.display = 'block';
+    positionDropdown();
+  }
+
+  function initAC() {
+    const inp = $('ro-query');
+    const dd  = $('ro-dropdown');
+    if (!inp || !dd) return;
+
+    inp.addEventListener('focus', async () => { await loadEpNations(); buildDropdown(inp.value.trim()); });
+    inp.addEventListener('input', async () => { await loadEpNations(); buildDropdown(inp.value.trim()); });
+
+    window.addEventListener('scroll', positionDropdown, true);
+    window.addEventListener('resize', positionDropdown);
+
+    inp.addEventListener('keydown', e => {
+      const items = dd.querySelectorAll('.ro-ac-item');
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        _acIdx = Math.min(_acIdx + 1, items.length - 1);
+        items.forEach((el, i) => el.classList.toggle('ro-ac-active', i === _acIdx));
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        _acIdx = Math.max(_acIdx - 1, 0);
+        items.forEach((el, i) => el.classList.toggle('ro-ac-active', i === _acIdx));
+      } else if (e.key === 'Enter') {
+        if (_acIdx >= 0 && items[_acIdx]) {
+          items[_acIdx].dispatchEvent(new MouseEvent('mousedown'));
+        } else {
+          dd.style.display = 'none';
+          run(false);
+        }
+      } else if (e.key === 'Escape') {
+        dd.style.display = 'none';
+      }
+    });
+
+    document.addEventListener('click', ev => {
+      if (!inp.contains(ev.target) && !dd.contains(ev.target)) dd.style.display = 'none';
+    });
+  }
+
+  // Init on load and SPA navigation
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initAC);
+  else initAC();
+  document.addEventListener('dashboardPageLoaded', () => { loadEpNations(); initAC(); });
+
+  // ── Type tabs ──────────────────────────────────────────────────────────────
+  document.querySelectorAll('.ro-type-tab').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.ro-type-tab').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      _type = btn.dataset.type;
+    });
+  });
+
+  // ── Run / Refresh ──────────────────────────────────────────────────────────
+  $('ro-run').addEventListener('click', () => run(false));
+  $('ro-refresh').addEventListener('click', () => run(true));
+
+  function run(refresh) {
+    const q = $('ro-query').value.trim();
+    if (!q) return;
+    _lastQuery = q;
+    _expanded.clear();
+    fetch(`/api/revopt/analyze?query=${encodeURIComponent(q)}&type=${_type}&refresh=${refresh}`)
+      .then(r => r.json())
+      .then(render)
+      .catch(err => showStatus('Error: ' + err.message, true));
+    showStatus('Analyzing…', false);
+    $('ro-output').style.display = 'none';
+  }
+
+  function showStatus(msg, isError) {
+    const el = $('ro-status');
+    el.textContent = msg;
+    el.className = 'ro-status' + (isError ? ' ro-status-error' : '');
+    el.style.display = 'block';
+  }
+
+  // ── Main render ────────────────────────────────────────────────────────────
+  function render(data) {
+    if (data.error) { showStatus('❌ ' + data.error, true); return; }
+    $('ro-status').style.display = 'none';
+    const out = $('ro-output');
+    out.style.display = 'block';
+
+    if (data.type === 'alliance') {
+      out.innerHTML = renderAlliance(data);
+    } else {
+      out.innerHTML = renderSingleNation(data.nations[0], data.prices);
+    }
+    attachExpandHandlers();
+  }
+
+  // ── Alliance view ──────────────────────────────────────────────────────────
+  function renderAlliance(data) {
+    const nations = data.nations || [];
+    const totalCash = nations.reduce((s, n) => s + (n.current_net || 0), 0);
+    const totalMon  = nations.reduce((s, n) => s + (n.current_monetary || 0), 0);
+
+    const allFree = nations.flatMap(n =>
+      (n.top_suggestions || []).filter(s => !s.cost || s.cost === 0)
+    ).sort((a,b) => (b.gain_per_day||0) - (a.gain_per_day||0));
+    const totalFreeGain = allFree.slice(0,20).reduce((s,x) => s + (x.gain_per_day||0), 0);
+
+    let html = `
+      <div class="ro-alliance-header">
+          <div>
+            <div class="ro-alliance-title">Alliance Revenue Optimizer — ${esc(data.query)}</div>
+            <div class="ro-alliance-meta">${nations.length} nations analyzed</div>
+          </div>
+          <div class="ro-rev-row">
+            <span class="ro-rev-badge label">Alliance totals:</span>
+            <span class="ro-rev-badge cash">${fmt(totalCash*12)}/day cash</span>
+            <span class="ro-rev-badge mon">${fmt(totalMon*12)}/day w/ resources</span>
+            ${totalFreeGain > 0 ? `<span class="ro-rev-badge" style="border-color:rgba(0,200,100,0.4);color:#00c864;">+${fmt(totalFreeGain)}/day free-slot potential</span>` : ''}
+        </div>
+      </div>
+      <div class="ro-nation-list">`;
+
+    for (const n of nations) {
+      html += renderNationRow(n, data.prices);
+    }
+    html += '</div>';
+    return html;
+  }
+
+  function renderNationRow(n, prices) {
+    const topSugg = (n.top_suggestions || []).slice(0, 3);
+    const bestGain = topSugg[0]?.gain_per_day || 0;
+
+    return `
+      <div class="ro-nation-row" data-nation-id="${n.nation_id}">
+        <div class="ro-nation-header">
+          ${n.flag ? `<img class="ro-nation-flag" src="${esc(n.flag)}" alt="" onerror="this.style.display='none'">` : ''}
+          <div>
+            <div class="ro-nation-name">${esc(n.nation_name)}</div>
+            <div class="ro-nation-leader">${esc(n.leader_name || '')}</div>
+          </div>
+          <div class="ro-nation-cities">${n.num_cities} cities</div>
+          <div class="ro-nation-rev-summary">
+            <span class="ro-mini-badge">${fmt(n.current_net*12)}/day</span>
+            <span class="ro-mini-badge mon">${fmt(n.current_monetary*12)}/day w/rss</span>
+            ${bestGain > 0 ? `<span class="ro-mini-badge gain">+${fmt(bestGain)}/day best</span>` : '<span class="ro-mini-badge neutral">optimized</span>'}
+          </div>
+          <span class="ro-chevron">▼</span>
+        </div>
+        <div class="ro-nation-detail">
+          ${renderNationDetail(n, prices)}
+        </div>
+      </div>`;
+  }
+
+  // ── Single nation view ─────────────────────────────────────────────────────
+  function renderSingleNation(n, prices) {
+    return `
+      <div class="ro-content-wrapper">
+        <div class="ro-single-header">
+        ${n.flag ? `<img class="ro-single-flag" src="${esc(n.flag)}" alt="" onerror="this.style.display='none'">` : ''}
+        <div>
+          <div class="ro-single-name">${esc(n.nation_name)}</div>
+          <div class="ro-single-leader">${esc(n.leader_name || '')}</div>
+        </div>
+        <div class="ro-rev-row" style="margin:0;margin-left:auto;">
+          <span class="ro-rev-badge cash">${fmt(n.current_net*12)}/day cash</span>
+          <span class="ro-rev-badge mon">${fmt(n.current_monetary*12)}/day w/ resources</span>
+        </div>
+      </div>
+        <div style="margin-top:0.5rem;">
+          ${renderNationDetail(n, prices)}
+        </div>
+      </div>`;
+  }
+
+  // ── Nation detail (shared by both views) ───────────────────────────────────
+  function renderNationDetail(n, prices) {
+    let html = '';
+
+    html += `<div class="ro-section-label">🏙️ City Health</div><div class="ro-city-grid">`;
+    for (const ca of (n.city_analyses || [])) {
+      const s = ca.stats || {};
+      const slotPct = s.slots_total > 0 ? (s.slots_used / s.slots_total * 100) : 0;
+      const crimeWarn = s.crime > 5 ? 'warn' : 'ok';
+      const disWarn   = s.disease > 3 ? 'warn' : 'ok';
+      const pollWarn  = s.pollution > 50 ? 'warn' : '';
+      html += `
+        <div class="ro-city-card">
+          <div class="ro-city-name">${esc(ca.name)}</div>
+          <div class="ro-city-stats">
+            <span class="ro-city-stat">Infra <span>${fmtF(ca.infra,0)}</span></span>
+            <span class="ro-city-stat">Land <span>${fmtF(ca.land,0)}</span></span>
+            <span class="ro-city-stat">Pop <span>${fmt(s.population)}</span></span>
+            <span class="ro-city-stat">Com <span>${fmtF(s.commerce,0)}/${n.max_commerce||100}</span></span>
+            <span class="ro-city-stat ${crimeWarn}">Crime <span>${fmtF(s.crime,1)}%</span></span>
+            <span class="ro-city-stat ${disWarn}">Disease <span>${fmtF(s.disease,1)}%</span></span>
+            ${s.pollution > 0 ? `<span class="ro-city-stat ${pollWarn}">Poll <span>${fmtF(s.pollution,0)}</span></span>` : ''}
+          </div>
+          <div class="ro-slots-bar">
+            <div class="ro-slots-track"><div class="ro-slots-fill" style="width:${slotPct.toFixed(1)}%"></div></div>
+            <span class="ro-slots-label">Slots ${s.slots_used}/${s.slots_total}</span>
+          </div>
+        </div>`;
+    }
+    html += '</div>';
+
+    const topSugg = (n.top_suggestions || []).slice(0, 15);
+    if (topSugg.length > 0) {
+      html += `<div class="ro-section-label">🏆 Top Revenue Actions</div>`;
+      html += renderSuggTable(topSugg);
+    }
+
+    const citiesWithSugg = (n.city_analyses || []).filter(ca => ca.suggestions?.length > 0);
+    if (citiesWithSugg.length > 0) {
+      html += `<div class="ro-section-label">🏗️ Per-City Breakdown</div>`;
+      for (const ca of citiesWithSugg) {
+        html += `<div style="margin-bottom:0.6rem;">
+          <div style="font-size:0.78rem;font-weight:700;color:var(--gold-secondary);margin-bottom:0.2rem;">
+            ${esc(ca.name)} — ${fmtF(ca.infra,0)} infra | ${fmtF(ca.land,0)} land | Slots ${ca.stats?.slots_used}/${ca.stats?.slots_total}
+          </div>`;
+        html += renderSuggTable(ca.suggestions.slice(0, 8));
+        html += '</div>';
+      }
+    }
+
+    const projPos = (n.project_suggestions || []).filter(p => p.gain_per_day > 0);
+    if (projPos.length > 0) {
+      html += `<div class="ro-section-label">🔬 Project Suggestions</div>`;
+      html += `<div style="font-size:0.72rem;color:var(--text-secondary);margin-bottom:0.35rem;">Revenue-positive projects — buy these first</div>`;
+      html += `<div class="ro-proj-grid">`;
+      for (const p of projPos.slice(0, 12)) {
+        const payStr = fmtP(p.payoff_days, p.gain_per_day);
+        html += `
+          <div class="ro-proj-card positive">
+            <div class="ro-proj-name">${esc(p.project)}</div>
+            <div class="ro-proj-gain ro-gain-pos">${fmtG(p.gain_per_day)}</div>
+            <div class="ro-proj-meta">Cost: ${fmtC(p.cost)}${payStr ? ' · ' + payStr.replace(/<[^>]+>/g,'') : ''}</div>
+            <div class="ro-proj-reason">${esc(p.reason || '')}</div>
+          </div>`;
+      }
+      html += '</div>';
+    }
+
+    const freePot = (n.top_suggestions || []).filter(s => !s.cost || s.cost === 0)
+                      .slice(0,10).reduce((s,x) => s + (x.gain_per_day||0), 0);
+    const allPot  = (n.top_suggestions || []).slice(0,15).reduce((s,x) => s + (x.gain_per_day||0), 0);
+    const bestProj = projPos[0];
+
+    html += `
+      <div class="ro-summary-bar">
+        <div class="ro-summary-item">
+          <span class="ro-summary-label">Current Revenue</span>
+          <span class="ro-summary-value">${fmt(n.current_net*12)}</span>
+        </div>
+        <div class="ro-summary-item">
+          <span class="ro-summary-label">With Resources</span>
+          <span class="ro-summary-value">${fmt(n.current_monetary*12)}</span>
+        </div>
+        ${freePot > 0 ? `
+        <div class="ro-summary-item">
+          <span class="ro-summary-label">Free-slot potential</span>
+          <span class="ro-summary-value green">+${fmt(freePot)}/day</span>
+        </div>` : ''}
+        ${allPot > 0 ? `
+        <div class="ro-summary-item">
+          <span class="ro-summary-label">Max potential (top 15)</span>
+          <span class="ro-summary-value green">+${fmt(allPot)}/day</span>
+        </div>` : ''}
+        ${bestProj ? `
+        <div class="ro-summary-item">
+          <span class="ro-summary-label">Best project</span>
+          <span class="ro-summary-value" style="font-size:0.78rem;">${esc(bestProj.project)}</span>
+        </div>` : ''}
+      </div>`;
+
+    return html;
+  }
+
+  // ── Suggestion table renderer ──────────────────────────────────────────────
+  function renderSuggTable(suggs) {
+    if (!suggs || suggs.length === 0) return '<p style="font-size:0.78rem;color:var(--text-secondary);">No suggestions — fully optimized.</p>';
+    let html = `
+      <table class="ro-sugg-table">
+        <thead>
+          <tr>
+            <th>Type</th><th>City</th><th>Action</th><th>Gain/day</th><th>Cost</th><th>Details</th>
+          </tr>
+        </thead>
+        <tbody>`;
+    for (const s of suggs) {
+      const badge   = TYPE_BADGE[s.type] || `<span class="ro-type-badge">${esc(s.type)}</span>`;
+      const gainCls = (s.gain_per_day || 0) >= 0 ? 'ro-gain-pos' : 'ro-gain-neg';
+      const addStr  = s.add > 1 ? `×${s.add}` : '+1';
+      const impName = IMP_DISPLAY[s.improvement] || s.improvement || '';
+      const actionStr = s.type === 'rebuild'
+        ? `${addStr} <strong>${esc(impName)}</strong> (rebuild)`
+        : `${addStr} <strong>${esc(impName)}</strong>`;
+      const payStr  = fmtP(s.payoff_days, s.gain_per_day);
+      const costStr = s.cost > 0 ? `<span class="ro-cost">${fmtC(s.cost)}</span>` : '<span class="ro-cost">free</span>';
+      html += `
+        <tr>
+          <td>${badge}</td>
+          <td style="white-space:nowrap;">${esc(s.city || '')}</td>
+          <td style="white-space:nowrap;">${actionStr}</td>
+          <td class="${gainCls}" style="white-space:nowrap;">${fmtG(s.gain_per_day)}${payStr}</td>
+          <td>${costStr}</td>
+          <td class="ro-reason">${esc(s.reason || '')}</td>
+        </tr>`;
+    }
+    html += '</tbody></table>';
+    return html;
+  }
+
+  // ── Expand/collapse ────────────────────────────────────────────────────────
+  function attachExpandHandlers() {
+    document.querySelectorAll('.ro-nation-header').forEach(hdr => {
+      hdr.addEventListener('click', () => {
+        hdr.closest('.ro-nation-row').classList.toggle('ro-expanded');
+      });
+    });
+  }
+
+  // ── Improvement display names ──────────────────────────────────────────────
+  const IMP_DISPLAY = {
+    stadium:'Stadium', shopping_mall:'Shopping Mall', subway:'Subway',
+    bank:'Bank', supermarket:'Supermarket', police_station:'Police Station',
+    hospital:'Hospital', recycling_center:'Recycling Center',
+    coal_mine:'Coal Mine', oil_well:'Oil Well', bauxite_mine:'Bauxite Mine',
+    iron_mine:'Iron Mine', lead_mine:'Lead Mine', uranium_mine:'Uranium Mine',
+    oil_refinery:'Oil Refinery', steel_mill:'Steel Mill',
+    aluminum_refinery:'Aluminum Refinery', munitions_factory:'Munitions Factory',
+    farm:'Farm', infrastructure:'Infrastructure', land:'Land',
+  };
+
+})();
+</script>

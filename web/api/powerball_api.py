@@ -10,12 +10,12 @@ Ticket structure
 
 Matching rules (order matters — must match exact draw order)
 ------------------------------------------------------------
-  3 pets match (no EM)   → Tier 3 payout
-  3 pets + EM match      → Tier 3 × EM_MULT
-  4 pets match (no EM)   → Tier 2 payout
-  4 pets + EM match      → Tier 2 × EM_MULT
-  5 pets match (no EM)   → Tier 1 payout  (fixed % of pot)
-  5 pets + EM match      → MEGA JACKPOT   (full pot)
+  3 pets match (no EM)   → 1% of pot
+  3 pets + EM match      → 2% of pot
+  4 pets match (no EM)   → 5% of pot
+  4 pets + EM match      → 10% of pot
+  5 pets match (no EM)   → 25% of pot
+  5 pets + EM match      → MEGA JACKPOT (full pot)
 
 Ticket cost
 -----------
@@ -24,10 +24,17 @@ Ticket cost
 
 Pot mechanics
 -------------
-  • 80 % of every ticket purchase goes into the pot.
-  • Tier 3 / Tier 2 payouts are fixed XP amounts (not from pot).
-  • Tier 1 (5-match, no EM) pays 25 % of the pot.
-  • MEGA JACKPOT (5-match + EM) pays 100 % of the pot.
+  • The house MATCHES every ticket cost 1-for-1 into the pot.
+    e.g. a 1,000,000 XP ticket → 1,000,000 XP added to the pot.
+  • Every player's contribution is matched, so the pot grows by the
+    sum of ALL ticket costs (house matches each one individually).
+  • All partial-match tiers (3–4 pets) pay a % of the pot at draw time.
+  • Tier 3 (3 pets, no EM) pays 1% of the pot.
+  • Tier 3 EM (3 pets + EM) pays 2% of the pot.
+  • Tier 2 (4 pets, no EM) pays 5% of the pot.
+  • Tier 2 EM (4 pets + EM) pays 10% of the pot.
+  • Tier 1 (5-match, no EM) pays 25% of the pot.
+  • MEGA JACKPOT (5-match + EM) pays 100% of the pot.
   • If no winner at midnight the pot rolls over to the next day.
   • After a MEGA win the pot resets to a seed of 50,000 XP.
 """
@@ -53,18 +60,19 @@ router = APIRouter()
 
 # ── Constants ─────────────────────────────────────────────────────────────────
 
-DB_PATH = "c:/Users/codyr/DiscordBots/Reaper/Databases/powerball.db"
+from Systems.Functions.db_paths import POWERBALL_DB_STR as DB_PATH
 POT_SEED = 50_000          # XP seeded into a fresh pot after a MEGA win
-POT_TICKET_SHARE = 0.80    # fraction of ticket cost added to pot
+POT_TICKET_SHARE = 1.0     # house matches 100% of ticket cost into the pot (1-for-1)
+POT_NO_WINNER_MULT = 2.5   # multiplier applied to pot when no MEGA/TIER1 winners
 TICKET_BASE_MULT = 500     # base multiplier: level × equip_mult × 500
 EM_SURCHARGE = 1.5         # ticket costs 50 % more when EM is included
 
-# Fixed payouts for partial matches (not from pot)
-TIER3_PAYOUT = 5_000       # 3 pets match (no EM)
-TIER3_EM_PAYOUT = 15_000   # 3 pets + EM match
-TIER2_PAYOUT = 50_000      # 4 pets match (no EM)
-TIER2_EM_PAYOUT = 150_000  # 4 pets + EM match
-TIER1_POT_SHARE = 0.25     # 5 pets match (no EM) → 25 % of pot
+# Pot-percentage payouts for all tiers (no hardcoded XP amounts)
+TIER3_POT_SHARE    = 0.01   # 3 pets match (no EM)   → 1% of pot
+TIER3_EM_POT_SHARE = 0.02   # 3 pets + EM match      → 2% of pot
+TIER2_POT_SHARE    = 0.05   # 4 pets match (no EM)   → 5% of pot
+TIER2_EM_POT_SHARE = 0.10   # 4 pets + EM match      → 10% of pot
+TIER1_POT_SHARE    = 0.25   # 5 pets match (no EM)   → 25% of pot
 
 ALL_PETS: List[str] = [
     "Alligator","Ant","Anteater","Axolotl","Badger","Bat","Beaver","Bee","Beetle","Bison",
@@ -96,8 +104,35 @@ def _get_user_lock(uid: str) -> asyncio.Lock:
 
 # ── DB helpers ─────────────────────────────────────────────────────────────────
 
+DRAW_LOCK_SECONDS = 300  # 5 minutes before/after midnight UTC
+
+
 def _utc_today() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%d")
+
+
+def _draw_lock_status() -> tuple[bool, str]:
+    """Return (is_locked, draw_date_to_sell_for).
+
+    Locked window: 5 min before midnight UTC (pre-draw) and 5 min after
+    midnight UTC (post-draw settling).  Outside that window:
+      - Before midnight  → sell for today's draw date
+      - After the 5-min post-draw window → sell for tomorrow's draw date
+    """
+    now = datetime.now(timezone.utc)
+    # Seconds elapsed since midnight UTC today
+    seconds_since_midnight = now.hour * 3600 + now.minute * 60 + now.second
+    # Seconds until next midnight UTC
+    seconds_until_midnight = 86400 - seconds_since_midnight
+
+    if seconds_until_midnight <= DRAW_LOCK_SECONDS:
+        # Pre-draw lock: within 5 min BEFORE midnight
+        return True, _next_draw_date(now.strftime("%Y-%m-%d"))
+    if seconds_since_midnight < DRAW_LOCK_SECONDS:
+        # Post-draw lock: within 5 min AFTER midnight
+        return True, now.strftime("%Y-%m-%d")
+    # Normal window — sell for today
+    return False, now.strftime("%Y-%m-%d")
 
 
 async def _ensure_db():
@@ -143,7 +178,12 @@ async def _ensure_db():
 
 
 async def _get_or_create_pot(draw_date: str) -> Dict[str, Any]:
-    """Return the pot row for draw_date, creating it if needed."""
+    """Return the pot row for draw_date, creating it if needed.
+
+    When creating a new row the starting amount is inherited from the most
+    recent previous draw's pot_after value so the pot always rolls over
+    correctly even across server restarts.
+    """
     async with aiosqlite.connect(DB_PATH) as db:
         db.row_factory = aiosqlite.Row
         async with db.execute(
@@ -154,13 +194,21 @@ async def _get_or_create_pot(draw_date: str) -> Dict[str, Any]:
         if row:
             return {"pot_xp": row["pot_xp"], "drawn": bool(row["drawn"]),
                     "draw_result": json.loads(row["draw_result"]) if row["draw_result"] else None}
-        # New day — seed the pot
+
+        # New day — inherit pot_after from the most recent completed draw,
+        # falling back to POT_SEED only if there is no prior draw at all.
+        async with db.execute(
+            "SELECT pot_after FROM pb_draws ORDER BY draw_date DESC LIMIT 1"
+        ) as cur:
+            prev = await cur.fetchone()
+        seed = int(prev["pot_after"]) if prev else POT_SEED
+
         await db.execute(
             "INSERT INTO pb_pot(draw_date, pot_xp, drawn) VALUES(?,?,0)",
-            (draw_date, POT_SEED)
+            (draw_date, seed)
         )
         await db.commit()
-        return {"pot_xp": POT_SEED, "drawn": False, "draw_result": None}
+        return {"pot_xp": seed, "drawn": False, "draw_result": None}
 
 
 async def _add_to_pot(draw_date: str, amount: int):
@@ -262,6 +310,68 @@ def _score_ticket(ticket_pets: List[str], ticket_elem: Optional[str],
     return {"pet_matches": pet_matches, "em_match": em_match, "tier": tier}
 
 
+async def update_current_pot_for_multiplier():
+    """
+    One-time function to apply the 2.5x multiplier to the current active pot
+    if there were no major winners in recent draws.
+    """
+    await _ensure_db()
+    today = _utc_today()
+    
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        
+        # Find the next undrawn pot (should be tomorrow or later)
+        async with db.execute(
+            "SELECT draw_date, pot_xp, drawn FROM pb_pot WHERE drawn = 0 AND draw_date > ? ORDER BY draw_date ASC LIMIT 1",
+            (today,)
+        ) as cur:
+            current_pot = await cur.fetchone()
+        
+        if not current_pot:
+            logger.info("No undrawn pot found")
+            return None
+            
+        pot_date = current_pot["draw_date"]
+        logger.info(f"Found undrawn pot for {pot_date}: {current_pot['pot_xp']:,} XP")
+            
+        # Check recent draws to see if there were major winners
+        async with db.execute(
+            "SELECT winners FROM pb_draws ORDER BY draw_date DESC LIMIT 3"
+        ) as cur:
+            recent_draws = await cur.fetchall()
+            
+        if recent_draws:
+            # Check if any recent draw had major winners
+            had_major_winners = False
+            for draw in recent_draws:
+                winners = json.loads(draw["winners"]) if draw["winners"] else []
+                major_winners = [w for w in winners if w["tier"] in ["MEGA", "TIER1"]]
+                if major_winners:
+                    had_major_winners = True
+                    break
+            
+            if not had_major_winners:
+                # No major winners in recent draws, apply multiplier
+                old_pot = current_pot["pot_xp"]
+                new_pot = int(old_pot * POT_NO_WINNER_MULT)
+                
+                await db.execute(
+                    "UPDATE pb_pot SET pot_xp=? WHERE draw_date=?",
+                    (new_pot, pot_date)
+                )
+                await db.commit()
+                
+                logger.info(f"Updated pot for {pot_date} from {old_pot:,} to {new_pot:,} XP (2.5x multiplier applied)")
+                return {"old_pot": old_pot, "new_pot": new_pot, "pot_date": pot_date}
+            else:
+                logger.info("Recent draws had major winners, no multiplier needed")
+        else:
+            logger.info("No previous draws found")
+    
+    return None
+
+
 async def run_daily_draw(draw_date: Optional[str] = None) -> Dict[str, Any]:
     """
     Execute the daily Powerball draw for draw_date (defaults to today UTC).
@@ -293,36 +403,39 @@ async def run_daily_draw(draw_date: Optional[str] = None) -> Dict[str, Any]:
         if score["tier"] != "NONE":
             scored.append({**t, **score})
 
-    # Calculate payouts — MEGA / TIER1 come from pot; others are fixed
-    mega_winners = [s for s in scored if s["tier"] == "MEGA"]
+    # Calculate payouts — all tiers come from pot percentage
+    mega_winners  = [s for s in scored if s["tier"] == "MEGA"]
     tier1_winners = [s for s in scored if s["tier"] == "TIER1"]
 
-    # Determine pot payouts
+    # Determine pot payouts for top tiers
     if mega_winners:
         # Split full pot among MEGA winners
-        share = pot_before // len(mega_winners) if mega_winners else 0
+        share = pot_before // len(mega_winners)
         for w in mega_winners:
             w["payout"] = share
         pot_after = POT_SEED   # reset to seed
     elif tier1_winners:
-        # Split 25 % of pot among TIER1 winners
+        # Split 25% of pot among TIER1 winners
         tier1_pool = int(pot_before * TIER1_POT_SHARE)
-        share = tier1_pool // len(tier1_winners) if tier1_winners else 0
+        share = tier1_pool // len(tier1_winners)
         for w in tier1_winners:
             w["payout"] = share
         pot_after = pot_before - tier1_pool
-    # else pot rolls over unchanged
+    else:
+        # No MEGA or TIER1 winners — pot grows 2.5x
+        pot_after = int(pot_before * POT_NO_WINNER_MULT)
+        logger.info(f"Powerball: No major winners, pot grows from {pot_before:,} to {pot_after:,} XP (2.5x multiplier)")
 
-    # Fixed payouts for lower tiers
-    FIXED = {
-        "TIER2_EM": TIER2_EM_PAYOUT,
-        "TIER2":    TIER2_PAYOUT,
-        "TIER3_EM": TIER3_EM_PAYOUT,
-        "TIER3":    TIER3_PAYOUT,
+    # Pot-percentage payouts for lower tiers (each winner gets their own share of the pot)
+    POT_PCT = {
+        "TIER2_EM": TIER2_EM_POT_SHARE,
+        "TIER2":    TIER2_POT_SHARE,
+        "TIER3_EM": TIER3_EM_POT_SHARE,
+        "TIER3":    TIER3_POT_SHARE,
     }
     for s in scored:
-        if s["tier"] in FIXED:
-            s["payout"] = FIXED[s["tier"]]
+        if s["tier"] in POT_PCT:
+            s["payout"] = max(1, int(pot_before * POT_PCT[s["tier"]]))
 
     # Deliver payouts
     for s in scored:
@@ -396,14 +509,29 @@ def _next_draw_date(from_date: str) -> str:
 
 @router.get("/powerball/info")
 async def get_powerball_info(request: Request):
-    """Return current pot, draw date, and whether the user already has a ticket."""
+    """Return current pot, draw date, and whether the user already has a ticket.
+
+    If today's draw has already happened we automatically advance to tomorrow's
+    draw so players can immediately buy a ticket for the next round.
+    """
     user = request.session.get("discord_user")
     if not user:
         return JSONResponse({"error": "Not logged in"}, status_code=401)
     user_id = str(user.get("id"))
 
     await _ensure_db()
-    draw_date = _utc_today()
+    today = _utc_today()
+
+    draw_locked, sell_date = _draw_lock_status()
+
+    # If the sell_date pot is already drawn (edge case: lock window after draw
+    # ran but sell_date still points to today), advance to next draw.
+    sell_pot = await _get_or_create_pot(sell_date)
+    if sell_pot["drawn"]:
+        draw_date = _next_draw_date(sell_date)
+    else:
+        draw_date = sell_date
+
     pot = await _get_or_create_pot(draw_date)
     ticket = await _get_ticket_for_user(user_id, draw_date)
 
@@ -415,20 +543,19 @@ async def get_powerball_info(request: Request):
     cost_with_em, _ = _compute_ticket_cost(pet_data, True)
     total_xp = _compute_total_xp(pet_data)
 
-    # Last draw result (yesterday)
-    from datetime import timedelta
-    yesterday = (datetime.now(timezone.utc) - timedelta(days=1)).strftime("%Y-%m-%d")
+    # Last draw result — most recent completed draw
     last_draw: Optional[Dict] = None
     async with aiosqlite.connect(DB_PATH) as db:
         db.row_factory = aiosqlite.Row
         async with db.execute(
-            "SELECT drawn_pets, drawn_element, pot_before, pot_after, winner_count, winners, drawn_at "
-            "FROM pb_draws WHERE draw_date=?", (yesterday,)
+            "SELECT draw_date, drawn_pets, drawn_element, pot_before, pot_after, "
+            "winner_count, winners, drawn_at "
+            "FROM pb_draws ORDER BY draw_date DESC LIMIT 1"
         ) as cur:
             row = await cur.fetchone()
     if row:
         last_draw = {
-            "draw_date":     yesterday,
+            "draw_date":     row["draw_date"],
             "drawn_pets":    json.loads(row["drawn_pets"]),
             "drawn_element": row["drawn_element"],
             "pot_before":    row["pot_before"],
@@ -441,6 +568,7 @@ async def get_powerball_info(request: Request):
     return JSONResponse({
         "has_pet":       True,
         "draw_date":     draw_date,
+        "draw_locked":   draw_locked,
         "pot_xp":        pot["pot_xp"],
         "already_drawn": pot["drawn"],
         "ticket":        ticket,
@@ -453,12 +581,19 @@ async def get_powerball_info(request: Request):
         "elements":      [{"name": e, "path": _elem_img(e)} for e in ALL_ELEMENTS],
         "last_draw":     last_draw,
         "payouts": {
-            "TIER3":    TIER3_PAYOUT,
-            "TIER3_EM": TIER3_EM_PAYOUT,
-            "TIER2":    TIER2_PAYOUT,
-            "TIER2_EM": TIER2_EM_PAYOUT,
-            "TIER1":    "25% of pot",
+            "TIER3":    f"{int(TIER3_POT_SHARE*100)}% of pot",
+            "TIER3_EM": f"{int(TIER3_EM_POT_SHARE*100)}% of pot",
+            "TIER2":    f"{int(TIER2_POT_SHARE*100)}% of pot",
+            "TIER2_EM": f"{int(TIER2_EM_POT_SHARE*100)}% of pot",
+            "TIER1":    f"{int(TIER1_POT_SHARE*100)}% of pot",
             "MEGA":     "100% of pot",
+            # Live XP estimates based on current pot
+            "TIER3_xp":    int(pot["pot_xp"] * TIER3_POT_SHARE),
+            "TIER3_EM_xp": int(pot["pot_xp"] * TIER3_EM_POT_SHARE),
+            "TIER2_xp":    int(pot["pot_xp"] * TIER2_POT_SHARE),
+            "TIER2_EM_xp": int(pot["pot_xp"] * TIER2_EM_POT_SHARE),
+            "TIER1_xp":    int(pot["pot_xp"] * TIER1_POT_SHARE),
+            "MEGA_xp":     pot["pot_xp"],
         },
     })
 
@@ -494,13 +629,21 @@ async def buy_ticket(request: Request):
         return JSONResponse({"error": "Invalid element"}, status_code=400)
 
     await _ensure_db()
-    draw_date = _utc_today()
+    draw_locked, draw_date = _draw_lock_status()
 
     async with _get_user_lock(user_id):
-        # Check pot not already drawn
+        # Block purchases during the ±5-minute draw window
+        if draw_locked:
+            return JSONResponse(
+                {"error": "Tickets are paused around draw time. Try again in a few minutes!"},
+                status_code=400,
+            )
+
+        # Check pot not already drawn (safety net)
         pot = await _get_or_create_pot(draw_date)
         if pot["drawn"]:
-            return JSONResponse({"error": "Today's draw has already happened. Wait for tomorrow!"}, status_code=400)
+            draw_date = _next_draw_date(draw_date)
+            pot = await _get_or_create_pot(draw_date)
 
         # Check existing ticket
         existing = await _get_ticket_for_user(user_id, draw_date)
@@ -524,7 +667,7 @@ async def buy_ticket(request: Request):
         # Deduct XP
         await LootCalculator.apply_xp_change(int(user_id), -cost, source="powerball_ticket")
 
-        # Add 80 % to pot
+        # Add 100% to pot (house matches ticket cost 1-for-1)
         pot_contrib = int(cost * POT_TICKET_SHARE)
         await _add_to_pot(draw_date, pot_contrib)
 
@@ -626,3 +769,31 @@ async def get_my_tickets(request: Request):
             "purchased_at": r["purchased_at"],
         })
     return JSONResponse({"tickets": tickets})
+
+
+@router.post("/admin/update-pot-multiplier")
+async def admin_update_pot_multiplier(request: Request):
+    """Admin endpoint to apply 2.5x multiplier to current pot if no major winners."""
+    user = request.session.get("discord_user")
+    if not user:
+        return JSONResponse({"error": "Not logged in"}, status_code=401)
+    
+    # Add admin check here if needed
+    # user_id = str(user.get("id"))
+    # if user_id not in ADMIN_USER_IDS:
+    #     return JSONResponse({"error": "Admin access required"}, status_code=403)
+    
+    result = await update_current_pot_for_multiplier()
+    if result:
+        return JSONResponse({
+            "success": True,
+            "message": f"Pot for {result['pot_date']} updated from {result['old_pot']:,} to {result['new_pot']:,} XP",
+            "old_pot": result["old_pot"],
+            "new_pot": result["new_pot"],
+            "pot_date": result["pot_date"]
+        })
+    else:
+        return JSONResponse({
+            "success": False,
+            "message": "No pot update needed (already drawn, had major winners, or no pot found)"
+        })

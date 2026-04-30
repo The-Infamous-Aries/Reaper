@@ -16,6 +16,16 @@
         </div>
     </div>
 
+    <!-- Global Actions -->
+    <div class="ps-global-actions mb-4">
+        <button class="ps-global-btn ps-buy-max-btn" onclick="psShowBuyMaxConfirm()">
+            💰 Buy MAX (100k each)
+        </button>
+        <button class="ps-global-btn ps-sell-max-btn" onclick="psShowSellMaxConfirm()">
+            💸 Sell MAX (everything)
+        </button>
+    </div>
+
     <!-- Types Section -->
     <div class="mb-4">
         <div class="ps-grid" id="ps-grid-types"></div>
@@ -31,26 +41,103 @@
         <div class="ps-modal-backdrop" id="ps-modal-backdrop"></div>
         <div class="ps-modal-box">
             <div class="ps-modal-header">
-                <span id="ps-modal-title">Trade Token</span>
+                <div class="ps-modal-header-left">
+                    <img id="ps-modal-icon" src="" alt="" class="ps-modal-icon">
+                    <span id="ps-modal-title">Trade Token</span>
+                </div>
                 <button class="rss-modal-close" id="ps-modal-close">&times;</button>
             </div>
-            <div class="ps-modal-body">
-                <div class="ps-modal-info" id="ps-modal-info"></div>
-                <div class="ps-modal-tabs">
-                    <button class="ps-tab-btn active" id="ps-buy-tab" onclick="psModalTab('buy')">Buy</button>
-                    <button class="ps-tab-btn" id="ps-sell-tab" onclick="psModalTab('sell')">Sell</button>
-                </div>
-                <div class="ps-modal-trade" id="ps-modal-trade">
-                    <label class="ps-qty-label">Quantity</label>
+
+            <!-- Token stats bar -->
+            <div class="ps-modal-stats" id="ps-modal-stats"></div>
+
+            <!-- Affinity badge -->
+            <div class="ps-modal-affinity" id="ps-modal-affinity"></div>
+
+            <!-- Side-by-side buy / sell panels -->
+            <div class="ps-modal-panels">
+
+                <!-- BUY panel -->
+                <div class="ps-panel ps-panel-buy">
+                    <div class="ps-panel-title">Buy</div>
                     <div class="ps-qty-row">
-                        <button class="ps-qty-btn" onclick="psAdjQty(-1)">−</button>
-                        <input type="number" id="ps-qty-input" class="ps-qty-input" value="1" min="1" max="9999">
-                        <button class="ps-qty-btn" onclick="psAdjQty(1)">+</button>
+                        <button class="ps-qty-btn" onclick="psAdjQty('buy', -1)">−</button>
+                        <input type="number" id="ps-buy-qty" class="ps-qty-input" value="1" min="1" max="100000" oninput="psUpdatePreviews()">
+                        <button class="ps-qty-btn" onclick="psAdjQty('buy', 1)">+</button>
                     </div>
-                    <div class="ps-cost-preview" id="ps-cost-preview"></div>
-                    <button class="ps-confirm-btn" id="ps-confirm-btn" onclick="psConfirmTrade()">Confirm</button>
-                    <p id="ps-trade-status" class="ps-trade-status"></p>
+                    <div class="ps-cost-preview" id="ps-buy-preview"></div>
+                    <div class="ps-panel-actions">
+                        <button class="ps-confirm-btn ps-buy-btn" id="ps-buy-btn" onclick="psDoTrade('buy')">Buy</button>
+                        <button class="ps-bulk-btn ps-buymax-btn" id="ps-buymax-btn" onclick="psDoBulk('buy')">Buy Max</button>
+                    </div>
                 </div>
+
+                <div class="ps-panel-divider"></div>
+
+                <!-- SELL panel -->
+                <div class="ps-panel ps-panel-sell">
+                    <div class="ps-panel-title">Sell</div>
+                    <div class="ps-qty-row">
+                        <button class="ps-qty-btn" onclick="psAdjQty('sell', -1)">−</button>
+                        <input type="number" id="ps-sell-qty" class="ps-qty-input" value="1" min="1" max="100000" oninput="psUpdatePreviews()">
+                        <button class="ps-qty-btn" onclick="psAdjQty('sell', 1)">+</button>
+                    </div>
+                    <div class="ps-cost-preview" id="ps-sell-preview"></div>
+                    <div class="ps-panel-actions">
+                        <button class="ps-confirm-btn ps-sell-confirm-btn" id="ps-sell-btn" onclick="psDoTrade('sell')">Sell</button>
+                        <button class="ps-bulk-btn ps-sellall-btn" id="ps-sellall-btn" onclick="psDoBulk('sell')">Sell All</button>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Status message -->
+            <p id="ps-trade-status" class="ps-trade-status"></p>
+        </div>
+    </div>
+
+    <!-- Buy MAX Confirmation Modal -->
+    <div id="ps-buymax-modal" style="display:none">
+        <div class="ps-modal-backdrop" onclick="psCloseBuyMaxModal()"></div>
+        <div class="ps-modal-box ps-confirm-modal">
+            <div class="ps-modal-header">
+                <div class="ps-modal-header-left">
+                    <span class="ps-modal-icon">💰</span>
+                    <span>Buy MAX Confirmation</span>
+                </div>
+                <button class="rss-modal-close" onclick="psCloseBuyMaxModal()">&times;</button>
+            </div>
+            <div class="ps-confirm-content">
+                <p>This will attempt to buy <strong>100,000 of each token type</strong> (up to 1,600,000 total tokens).</p>
+                <div id="ps-buymax-preview" class="ps-confirm-preview"></div>
+                <p class="ps-confirm-warning">⚠️ This action cannot be undone. Are you sure?</p>
+            </div>
+            <div class="ps-confirm-actions">
+                <button class="ps-confirm-btn ps-confirm-yes" onclick="psExecuteBuyMax()">Yes, Buy MAX</button>
+                <button class="ps-confirm-btn ps-confirm-no" onclick="psCloseBuyMaxModal()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sell MAX Confirmation Modal -->
+    <div id="ps-sellmax-modal" style="display:none">
+        <div class="ps-modal-backdrop" onclick="psCloseSellMaxModal()"></div>
+        <div class="ps-modal-box ps-confirm-modal">
+            <div class="ps-modal-header">
+                <div class="ps-modal-header-left">
+                    <span class="ps-modal-icon">💸</span>
+                    <span>Sell MAX Confirmation</span>
+                </div>
+                <button class="rss-modal-close" onclick="psCloseSellMaxModal()">&times;</button>
+            </div>
+            <div class="ps-confirm-content">
+                <p>This will sell <strong>ALL of your tokens</strong> across all types.</p>
+                <div id="ps-sellmax-preview" class="ps-confirm-preview"></div>
+                <p class="ps-confirm-warning">⚠️ This action cannot be undone. Are you sure?</p>
+            </div>
+            <div class="ps-confirm-actions">
+                <button class="ps-confirm-btn ps-confirm-yes" onclick="psExecuteSellMax()">Yes, Sell ALL</button>
+                <button class="ps-confirm-btn ps-confirm-no" onclick="psCloseSellMaxModal()">Cancel</button>
             </div>
         </div>
     </div>

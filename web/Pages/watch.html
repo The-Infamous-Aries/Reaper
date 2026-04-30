@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Night's Watch - War Stats</title>
+    <title>Nights Watch - War Stats</title>
     <link rel="stylesheet" href="/css/main.css">
     <link rel="stylesheet" href="/css/watch.css">
 </head>
@@ -15,12 +15,18 @@
                 <div class="watch-range-panel">
                     <div class="watch-range-topline">
                         <div>
-                            <p class="watch-kicker">Night Watch Ledger</p>
+                            <p class="watch-kicker">NW Ledger</p>
                             <p class="watch-range-title">Slide the two markers to choose the war date window.</p>
                         </div>
-                        <div class="watch-range-count">
-                            <span id="watch-war-count">0</span>
-                            <span>Wars in Range</span>
+                        <div class="watch-topline-right">
+                            <div class="watch-mode-toggle" role="group" aria-label="War view mode">
+                                <button id="watch-mode-alliance" class="watch-mode-btn is-active" type="button" data-mode="alliance">Alliance Wars</button>
+                                <button id="watch-mode-nations" class="watch-mode-btn" type="button" data-mode="nations">All Nations</button>
+                            </div>
+                            <div class="watch-range-count">
+                                <span id="watch-war-count">0</span>
+                                <span>Wars in Range</span>
+                            </div>
                         </div>
                     </div>
                     <div class="watch-range-labels">
@@ -51,9 +57,14 @@
             </div>
         </div>
         <div id="watch-status" role="status" aria-live="polite"></div>
-        <div class="card watch-table-card">
+
+        <!-- ── Alliance totals panel (shown in Alliance Wars mode) ── -->
+        <div id="watch-alliance-panel" style="display:none"></div>
+
+        <!-- ── Nations table (shown in All Nations mode) ── -->
+        <div class="card watch-table-card" id="watch-table-card">
             <div class="card-header">
-                <span>Alliance Breakdown</span>
+                <span id="watch-table-title">Alliance Breakdown</span>
                 <span id="watch-sort-summary">Sorted by Gross Cost (descending)</span>
             </div>
             <div class="card-body">
