@@ -10,6 +10,13 @@ import aiohttp
 from PIL import Image
 from Systems.Functions import emoji as emoji_mod
 
+# --- PATH SETUP ---
+JSON_PATH = "Systems/Astrology/Tarot/tarot-images.json"
+IMAGE_DIR = "Systems/Astrology/Tarot/cards/"
+
+# --- Import API Key from Config ---
+from Systems.Functions.config import GROQ_API_KEY
+
 async def draw_tarot(spread: str = "1 Card"):
     """Draws tarot cards and returns the reading data."""
     # 1. Load data safely
@@ -46,11 +53,13 @@ async def draw_tarot(spread: str = "1 Card"):
     # 4. Prepare card info
     cards_info = []
     images_to_stitch = []
+    reversed_flags = []
     
     for i, card in enumerate(drawn_cards):
         pos_name, transition = positions[i]
         
         is_reversed = random.choice([True, False])
+        reversed_flags.append(is_reversed)
         orient_str = " (Reversed)" if is_reversed else ""
         
         meaning_list = card['meanings']['shadow'] if is_reversed else card['meanings']['light']
@@ -88,7 +97,7 @@ async def draw_tarot(spread: str = "1 Card"):
         dominant_energy = get_dominant_energy(drawn_cards)
     
     # 6. Generate AI-powered summary
-    ai_summary = await generate_tarot_summary(spread, drawn_cards, positions)
+    ai_summary = await generate_tarot_summary(spread, drawn_cards, positions, reversed_flags)
     
     # 7. Stitch images
     stitched_image_bytes = None
@@ -120,13 +129,6 @@ async def draw_tarot(spread: str = "1 Card"):
     return reading_data
 
 
-# --- PATH SETUP (Using your defined structure) ---
-JSON_PATH = "Systems/Astrology/Tarot/tarot-images.json"
-IMAGE_DIR = "Systems/Astrology/Tarot/cards/"
-
-# --- Import API Key from Config ---
-from Systems.Functions.config import GROQ_API_KEY
-
 # --- HELPER FUNCTION: Calculate Reading Vibe ---
 def get_dominant_energy(drawn_cards):
     suits = {"wands": 0, "cups": 0, "swords": 0, "pentacles": 0, "major": 0}
@@ -149,11 +151,16 @@ def get_dominant_energy(drawn_cards):
     return f"{emoji_mod.mention('zodiac') or '⚖️'} **Balanced Energy:** A mix of emotional, physical, and mental forces are at play."
 
 # --- AI TAROT SUMMARY GENERATOR ---
-async def generate_tarot_summary(spread_type: str, cards: list, positions: list):
-    """Generates an AI-powered tarot reading summary using the Groq API."""
+async def generate_tarot_summary(spread_type: str, cards: list, positions: list, reversed_flags: list = None):
+    """Generates an AI-powered tarot reading summary using the Groq API.
+    
+    reversed_flags: optional list of booleans matching cards, so the summary
+    uses the same orientations that were actually drawn.
+    """
     card_info = []
     for i, card in enumerate(cards):
-        is_reversed = random.choice([True, False])
+        # Use the actual reversal state if provided, otherwise randomise
+        is_reversed = reversed_flags[i] if (reversed_flags and i < len(reversed_flags)) else random.choice([True, False])
         orientation = " (Reversed)" if is_reversed else ""
         meaning_list = card['meanings']['shadow'] if is_reversed else card['meanings']['light']
         fortune = random.choice(card['fortune_telling'])
@@ -253,11 +260,17 @@ async def generate_tarot_summary(spread_type: str, cards: list, positions: list)
 
 # --- PAGINATION VIEW ---
 class TarotPaginationView(discord.ui.View):
-    def __init__(self, reading_data: dict, stitched_image: discord.File = None):
+    def __init__(self, reading_data: dict, stitched_bytes: bytes = None):
         super().__init__(timeout=180)  # 3 minute timeout
         self.reading_data = reading_data
-        self.stitched_image = stitched_image
+        self.stitched_bytes = stitched_bytes  # raw PNG bytes; recreate File each send
         self.current_page = 0  # 0 = cards, 1 = summary
+
+    def _make_file(self):
+        """Return a fresh discord.File from the stored bytes, or None."""
+        if self.stitched_bytes:
+            return discord.File(io.BytesIO(self.stitched_bytes), filename="spread.png")
+        return None
         
     def build_embed(self):
         if self.current_page == 0:
@@ -326,12 +339,14 @@ class TarotPaginationView(discord.ui.View):
     @discord.ui.button(label='Cards', style=discord.ButtonStyle.primary, emoji='🃏')
     async def show_cards(self, interaction: discord.Interaction, button: discord.ui.Button):
         self.current_page = 0
-        embed = self.build_embed()
-        if self.stitched_image:
+        embed = self.build_cards_embed()
+        f = self._make_file()
+        if f:
             embed.set_image(url="attachment://spread.png")
+            await interaction.response.edit_message(embed=embed, attachments=[f], view=self)
         else:
             embed.set_image(url=None)
-        await interaction.response.edit_message(embed=embed, attachments=[self.stitched_image] if self.stitched_image else [], view=self)
+            await interaction.response.edit_message(embed=embed, attachments=[], view=self)
     
     @discord.ui.button(label='Summary', style=discord.ButtonStyle.success, emoji='✨')
     async def show_summary(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -388,11 +403,13 @@ class Tarot(commands.Cog):
         # 4. Prepare card info for pagination
         cards_info = []
         images_to_stitch = []
+        reversed_flags = []
         
         for i, card in enumerate(drawn_cards):
             pos_name, transition = positions[i]
             
             is_reversed = random.choice([True, False])
+            reversed_flags.append(is_reversed)
             orient_str = " (Reversed)" if is_reversed else ""
             
             meaning_list = card['meanings']['shadow'] if is_reversed else card['meanings']['light']
@@ -427,10 +444,10 @@ class Tarot(commands.Cog):
             dominant_energy = get_dominant_energy(drawn_cards)
         
         # 6. Generate AI-powered summary
-        ai_summary = await generate_tarot_summary(spread, drawn_cards, positions)
+        ai_summary = await generate_tarot_summary(spread, drawn_cards, positions, reversed_flags)
         
         # 7. Stitch images
-        stitched_file = None
+        stitched_bytes = None
         if images_to_stitch:
             padding = 10
             total_width = sum(img.width for img in images_to_stitch) + (padding * (num_cards - 1))
@@ -444,8 +461,7 @@ class Tarot(commands.Cog):
                 
             buffer = io.BytesIO()
             stitched_image.save(buffer, format="PNG")
-            buffer.seek(0)
-            stitched_file = discord.File(buffer, filename="spread.png")
+            stitched_bytes = buffer.getvalue()
         
         # 8. Prepare reading data for pagination
         reading_data = {
@@ -455,12 +471,13 @@ class Tarot(commands.Cog):
             'ai_summary': ai_summary
         }
         
-        # 9. Create pagination view
-        view = TarotPaginationView(reading_data, stitched_file)
+        # 9. Create pagination view (pass raw bytes so the view can recreate File objects)
+        view = TarotPaginationView(reading_data, stitched_bytes)
         initial_embed = view.build_cards_embed()
         
-        if stitched_file:
-            await ctx.send(file=stitched_file, embed=initial_embed, view=view)
+        if stitched_bytes:
+            initial_embed.set_image(url="attachment://spread.png")
+            await ctx.send(file=discord.File(io.BytesIO(stitched_bytes), filename="spread.png"), embed=initial_embed, view=view)
         else:
             await ctx.send(embed=initial_embed, view=view)
 

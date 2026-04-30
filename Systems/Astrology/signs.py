@@ -1,4 +1,5 @@
 import json
+import logging
 import re
 import asyncio
 import random
@@ -14,6 +15,8 @@ try:
     import aiohttp
 except Exception:
     aiohttp = None
+
+logger = logging.getLogger("AstrologyCog")
 
 CHINESE_NEW_YEAR_DATES = {
     1900: date(1900, 1, 31), 1901: date(1901, 2, 19), 1902: date(1902, 2, 8), 1903: date(1903, 1, 29),
@@ -684,11 +687,19 @@ class AstrologyCog(commands.Cog):
             return
         
         embed = self._build_horoscope_embed(match, text, stats, sign_data, day_str)
-        
+
         if ctx.interaction:
             await ctx.interaction.followup.send(embed=embed)
         else:
             await ctx.send(embed=embed)
+
+        # Task tracking — get_horoscope (only counts for "today")
+        if day_str == "today":
+            try:
+                from Systems.Functions.tasks_db import tasks_db
+                await tasks_db.update_progress(str(ctx.author.id), "get_horoscope")
+            except Exception as _e:
+                logger.warning(f"horoscope task tracking failed for {ctx.author.id}: {_e}")
 
     async def year_autocomplete(
         self,
