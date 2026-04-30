@@ -1,0 +1,34 @@
+{
+  "name": "reaper",
+  "version": "1.0.0",
+  "description": "> **A comprehensive, self-hosted Discord bot featuring advanced Pet systems, Politics & War tools, and interactive entertainment.**",
+  "main": "index.js",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "minify:js": "terser web/js/fun_views.js -o web/js/fun_views.min.js -c -m",
+    "minify:css": "cssnano web/css/fun_views.css web/css/fun_views.min.css",
+    "copy:libs": "cpx \"node_modules/three/build/three.min.js\" web/js && cpx \"node_modules/three-globe/dist/three-globe.min.js\" web/js && cpx \"node_modules/three/examples/jsm/controls/OrbitControls.js\" web/js && cpx \"node_modules/gsap/dist/gsap.min.js\" web/js && cpx \"node_modules/gsap/dist/MotionPathPlugin.min.js\" web/js && cpx \"node_modules/bootstrap/dist/css/bootstrap.min.css\" web/css"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "@3d-dice/dice-box": "^1.1.4",
+    "@3d-dice/theme-gemstone": "^0.2.0",
+    "@3d-dice/theme-rock": "^0.2.0",
+    "@3d-dice/theme-wooden": "^0.2.0",
+    "bootstrap": "^5.3.3",
+    "gsap": "^3.14.2",
+    "three": "^0.183.2",
+    "three-globe": "^2.45.1"
+  },
+  "devDependencies": {
+    "cpx": "^1.5.0",
+    "cssnano-cli": "^1.0.5",
+    "terser": "^5.46.1"
+  }
+}

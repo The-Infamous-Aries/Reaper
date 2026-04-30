@@ -238,14 +238,25 @@ Contains the HTML files for the different pages of the web interface. Each page 
 - **tarot.html**: An interactive tarot reading page that complements the bot's tarot reading feature.
 - **what_are_pets.html**: An introductory page that explains the Pets system to new users.
 
-##### Pages/Animations
-**Directory:** `web/Pages/Animations/`
+##### CSS Files
+**Directory:** `web/css/`
 
-Contains CSS and JavaScript files responsible for creating dynamic and engaging animations on various web pages, enhancing the user experience.
+Contains CSS files responsible for creating dynamic and engaging animations on various web pages, enhancing the user experience.
 
 - **fun_views.css**: Styles for the fun system's animations.
-- **fun_views.js**: JavaScript logic for the fun system's animations.
 - **library.css**: Custom styles for the library page.
+- **casino_views.css**: Styles for the casino system's animations.
+- **casino_slots.css**: Styles for the slot machine functionality.
+
+##### JavaScript Files
+**Directory:** `web/js/`
+
+Contains JavaScript files for dynamic functionality:
+
+- **casino_views.js**: JavaScript logic for the casino system's animations.
+- **fun_views.js**: JavaScript logic for the fun system's animations.
+- **casino_dice.js**: JavaScript logic for dice rolling functionality.
+- **casino_slots.js**: JavaScript logic for slot machine functionality.
 
 ##### Pages/Library
 **Directory:** `web/Pages/Library/`
