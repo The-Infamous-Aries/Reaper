@@ -1,0 +1,79 @@
+{
+    "stages": [
+        {
+            "stage_name": "Entering Location",
+            "event": "You stand at the entrance of the Gym, a dimly lit cavern filled with the sounds of clanging weights and grunting beasts. The air is thick with the smell of sweat and leather. Your adventure begins here!",
+            "difficulty_modifier": 1.0,
+            "choices": {
+                "1": "Test your strength against the entrance guard (ATT).",
+                "2": "Sneak past the guard undetected (DEX).",
+                "3": "Beg for scraps from a nearby trainer (HAP)"
+            }
+        },
+        {
+            "stage_name": "Looking Around",
+            "event": "You take a moment to survey your surroundings. The Gym stretches out before you, filled with rows of cages containing various beasts and exotic creatures.",
+            "difficulty_modifier": 1.0,
+            "choices": {
+                "1": "Scan the crowds for any signs of danger (DEF).",
+                "2": "Use your keen senses to track any scents or sounds (INT).",
+                "3": "Search for a way to gain an advantage, like a hidden platform or secret passage (ENE)"
+            }
+        },
+        {
+            "stage_name": "Avoiding Hostile Pets",
+            "sub_type": "scare_off",
+            "event": "A %%HOSTILE_PET%% appears before you, its eyes fixed menacingly on you. It lets out a fierce growl, baring its teeth. You must choose how to react.",
+            "difficulty_modifier": 1.2,
+            "choices": {
+                "1": "Roar back at the beast, trying to outdo its ferocity (ATT).",
+                "2": "Stand firm and unafraid, challenging the beast to come closer (DEF).",
+                "3": "Rapidly scurry around, pretending to be a tiny mouse (HAP)"
+            }
+        },
+        {
+            "stage_name": "Avoiding Hostile Pets",
+            "sub_type": "evade",
+            "event": "A %%HOSTILE_PET%% charges towards you, jaws open wide. The air rushes past as you swiftly dodge to the side, narrowly avoiding its snapping maw.",
+            "difficulty_modifier": 1.1,
+            "choices": {
+                "1": "Swiftly dash around the pet's path, trying to evade its attacks (DEX).",
+                "2": "Use your intellect to predict the pet's movements, avoiding its attacks with ease (INT).",
+                "3": "Stuck to the spot, frozen in terror at the pet's ferocity (HAP)"
+            }
+        },
+        {
+            "stage_name": "Locating a FREE to open Loot Chest",
+            "sub_type": "mimic",
+            "event": "A mysterious chest sits innocently on a nearby pedestal. However, your keen senses suspect something might be amiss... Could this be a mimic in disguise?",
+            "difficulty_modifier": 1.3,
+            "choices": {
+                "1": "Crush the chest with brute force, ignoring any potential traps (ATT).",
+                "2": "Examine the lock for any visible traps or hidden mechanisms (DEX).",
+                "3": "Kick the chest with abandon, hoping for the best (HAP)"
+            }
+        },
+        {
+            "stage_name": "Locating a FREE to open Loot Chest",
+            "sub_type": "real_chest",
+            "event": "You come across a genuine-looking chest, adorned with intricate locks and symbols. It seems like the perfect place to rest.",
+            "difficulty_modifier": 1.3,
+            "double_loot_choice": 3,
+            "choices": {
+                "1": "Force the chest open with brute strength (ATT).",
+                "2": "Carefully pick the lock, hoping not to set off any alarms (DEX).",
+                "3": "Open the chest with finesse and precision (HAP)"
+            }
+        },
+        {
+            "stage_name": "Exiting Location",
+            "event": "With your treasure in hand, you turn to leave the Gym. As you exit, the sounds of clanging weights and grunting beasts grow fainter. But do you dare gaze back?",
+            "difficulty_modifier": 1.0,
+            "choices": {
+                "1": "Cast a worried glance back at the entrance (DEF).",
+                "2": "Feel a rush of excitement at your accomplishment (INT).",
+                "3": "Turn back around, eager to plan your next adventure (ENE)"
+            }
+        }
+    ]
+}

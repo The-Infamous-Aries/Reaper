@@ -1,0 +1,79 @@
+{
+    "stages": [
+        {
+            "stage_name": "Entering Location",
+            "event": "You enter the Graveyard. The air is eerie and filled with an unsettling feeling.",
+            "difficulty_modifier": 1.0,
+            "choices": {
+                "1": "Your ATT is high and you can easily defend yourself, proceed.",
+                "2": "You notice something shiny on the ground, can you pick it up?",
+                "3": "Your ENE is low, do you feel weak?"
+            }
+        },
+        {
+            "stage_name": "Looking Around",
+            "event": "You look around and notice that the Graveyard is filled with old, crumbling tombs and mausoleums.",
+            "difficulty_modifier": 1.0,
+            "choices": {
+                "1": "You feel threatened by the surroundings, do you defend yourself?",
+                "2": "You're curious about the history of the Graveyard, can you learn more?",
+                "3": "Your HAP is high, you feel at peace."
+            }
+        },
+        {
+            "stage_name": "Avoiding Hostile Pets",
+            "sub_type": "scare_off",
+            "event": "A Ghost blocks your path! Can you scare it away?",
+            "difficulty_modifier": 1.2,
+            "choices": {
+                "1": "Use your high ATT to scare the Ghost away.",
+                "2": "Try to intimidate the Ghost with your high DEX.",
+                "3": "Show the Ghost your energy reserves to calm it down."
+            }
+        },
+        {
+            "stage_name": "Avoiding Hostile Pets",
+            "sub_type": "evade",
+            "event": "The Zombie charges at you! Can you dodge?",
+            "difficulty_modifier": 1.2,
+            "choices": {
+                "1": "Quickly defend yourself with your high DEF.",
+                "2": "Try to outmaneuver the Zombie with your high DEX.",
+                "3": "Use your high ENE to boost your speed."
+            }
+        },
+        {
+            "stage_name": "Locating a FREE to open Loot Chest",
+            "sub_type": "mimic",
+            "event": "You stumble upon a pedestal with a mysterious object on top of it.",
+            "difficulty_modifier": 1.3,
+            "choices": {
+                "1": "Examine the object closely, can you figure out what it is?",
+                "2": "Try to pick up the object, can you move it?",
+                "3": "Use your high INT to analyze the object."
+            }
+        },
+        {
+            "stage_name": "Locating a FREE to open Loot Chest",
+            "sub_type": "real_chest",
+            "event": "You come across a mysterious chest in the distance. It looks abandoned.",
+            "difficulty_modifier": 1.3,
+            "double_loot_choice": 2,
+            "choices": {
+                "1": "Open the chest and claim your loot.",
+                "2": "Try to find a hidden mechanism to open the chest.",
+                "3": "Use your high HAP to sense if the chest contains anything valuable."
+            }
+        },
+        {
+            "stage_name": "Exiting Location",
+            "event": "You've completed your journey through the Graveyard. It's time to leave.",
+            "difficulty_modifier": 1.0,
+            "choices": {
+                "1": "Head back home, you've had enough of the Graveyard.",
+                "2": "Explore other areas of the Graveyard, there might be more to find.",
+                "3": "Return to your pet supplies and restock."
+            }
+        }
+    ]
+}

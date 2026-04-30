@@ -1,0 +1,79 @@
+{
+    "stages": [
+        {
+            "stage_name": "Entering Location",
+            "event": "You step into the scorching desert sand, the towering Pyramids of Giza standing before you. The blistering sun beats down relentlessly as you survey the ancient structures. The air is thick with anticipation.",
+            "difficulty_modifier": 1.0,
+            "choices": {
+                "1": "Push forward, using your strength to force a path through the dense sand (ATT/DEF)",
+                "2": "Use your agility to quickly scan the area, spotting potential hidden dangers (DEX/INT)",
+                "3": "Breathe deeply, centering yourself in the oppressive heat, and mentally prepare for the challenges ahead (ENE/HAP)"
+            }
+        },
+        {
+            "stage_name": "Looking Around",
+            "event": "As you explore the Pyramids, the intricate hieroglyphs on the walls seem to come alive, telling the stories of pharaohs past. You notice a small, narrow passage that appears hidden from view, inviting curiosity.",
+            "difficulty_modifier": 1.0,
+            "choices": {
+                "1": "Cautiously make your way through the passage, using your physical strength to navigate the tight spaces (ATT/DEF)",
+                "2": "Carefully investigate the hieroglyphs, using your intelligence to decipher their secrets (DEX/INT)",
+                "3": "Patiently observe the surroundings, waiting for any hidden mechanisms to reveal themselves (ENE/HAP)"
+            }
+        },
+        {
+            "stage_name": "Avoiding Hostile Pets",
+            "sub_type": "scare_off",
+            "event": "A fierce Scarab Scarab blocks your path through the Pyramids! It looks aggressive and territorial.",
+            "difficulty_modifier": 1.2,
+            "choices": {
+                "1": "Make a loud, intimidating display, using your strength to threaten the Scarab (ATT/DEF)",
+                "2": "Use your cunning to create a diversion, distracting the Scarab and clearing a path (DEX/INT)",
+                "3": "Stand your ground, exuding confidence and calmness, to deter the Scarab (ENE/HAP)"
+            }
+        },
+        {
+            "stage_name": "Avoiding Hostile Pets",
+            "sub_type": "evade",
+            "event": "The Jackal Jackal charges at you across the Pyramids! You need to escape quickly!",
+            "difficulty_modifier": 1.2,
+            "choices": {
+                "1": "Forcefully sprint away, using your strength to outrun the Jackal (ATT/DEF)",
+                "2": "Use your agility to dodge between pillars, evading the Jackal's attacks (DEX/INT)",
+                "3": "Retreat calmly and steadily, using your endurance to conserve energy (ENE/HAP)"
+            }
+        },
+        {
+            "stage_name": "Locating a FREE to open Loot Chest",
+            "sub_type": "mimic",
+            "event": "The chest seems to shift slightly, its lock looking unusually organic. Something feels off about this chest... but it might be worth checking out.",
+            "difficulty_modifier": 1.3,
+            "choices": {
+                "1": "Directly force the chest open, using your strength to break the lock (ATT/DEF)",
+                "2": "Examine the chest carefully, searching for hidden mechanisms or clues (DEX/INT)",
+                "3": "Wait patiently, observing the chest for any further unusual behavior (ENE/HAP)"
+            }
+        },
+        {
+            "stage_name": "Locating a FREE to open Loot Chest",
+            "sub_type": "real_chest",
+            "event": "You stumble upon a genuine treasure chest, adorned with intricate hieroglyphs and a sturdy lock.",
+            "difficulty_modifier": 1.3,
+            "double_loot_choice": 2,
+            "choices": {
+                "1": "Forcefully open the chest, using your strength to break the lock (ATT/DEF)",
+                "2": "Use your skillful hands to pick the lock, potentially doubling your loot (DEX/INT)",
+                "3": "Patiently search the chest, checking for any hidden compartments or secret loot (ENE/HAP)"
+            }
+        },
+        {
+            "stage_name": "Exiting Location",
+            "event": "You emerge from the Pyramids, the golden sunlight warming your fur as you gaze back at the ancient structures. You feel a sense of accomplishment, knowing you've overcome the challenges within.",
+            "difficulty_modifier": 1.0,
+            "choices": {
+                "1": "Make a strong exit, using your strength to assert dominance (ATT/DEF)",
+                "2": "Elegantly exit the Pyramids, using your agility to move with poise (DEX/INT)",
+                "3": "Celebrate your victory with energetic enthusiasm, drawing the attention of other Pyramids visitors (ENE/HAP)"
+            }
+        }
+    ]
+}

@@ -1,0 +1,79 @@
+{
+    "stages": [
+        {
+            "stage_name": "Entering Location",
+            "event": "You arrive at the Glacier, a frozen wasteland. The air is crisp and the snow crunches beneath your paws. A winding path beckons you to proceed.",
+            "difficulty_modifier": 0.9,
+            "choices": {
+                "1": "ATT (Attack) to explore",
+                "2": "DEX (Dexterity) to search for hidden dangers",
+                "3": "ENE (Energy) to conserve"
+            }
+        },
+        {
+            "stage_name": "Looking Around",
+            "event": "You're now halfway up the first slope. You see the path leading up to a peak of snow and ice.",
+            "difficulty_modifier": 1.0,
+            "choices": {
+                "1": "DEF (Defense) to protect your back",
+                "2": "INT (Intelligence) to analyze the surroundings",
+                "3": "HAP (Happiness) to boost your spirits"
+            }
+        },
+        {
+            "stage_name": "Avoiding Hostile Pets",
+            "sub_type": "scare_off",
+            "event": "A Snowy Wolverine blocks your path! Can you scare it away?",
+            "difficulty_modifier": 1.2,
+            "choices": {
+                "1": "ATT (Attack) to scare",
+                "2": "DEX (Dexterity) to try and outmaneuver",
+                "3": "ENE (Energy) to conserve"
+            }
+        },
+        {
+            "stage_name": "Avoiding Hostile Pets",
+            "sub_type": "evade",
+            "event": "The Snowy Wolverine charges at you! Can you dodge?",
+            "difficulty_modifier": 1.2,
+            "choices": {
+                "1": "DEF (Defense) to block",
+                "2": "DEX (Dexterity) to dodge the attack",
+                "3": "HAP (Happiness) to boost your reflexes"
+            }
+        },
+        {
+            "stage_name": "Locating a FREE to open Loot Chest",
+            "sub_type": "mimic",
+            "event": "An ice chest stands in the snow. Can you figure out its secret?",
+            "difficulty_modifier": 1.3,
+            "choices": {
+                "1": "INT (Intelligence) to analyze",
+                "2": "DEX (Dexterity) to look for hidden clues",
+                "3": "ENE (Energy) to stay focused"
+            }
+        },
+        {
+            "stage_name": "Locating a FREE to open Loot Chest",
+            "sub_type": "real_chest",
+            "event": "You found an actual chest. But wait, it seems to be slightly different from the others. It's twice the size! It will reward double loot upon opening. But which items to choose?",
+            "difficulty_modifier": 1.3,
+            "double_loot_choice": 2,
+            "choices": {
+                "1": "INT (Intelligence) to choose wisely",
+                "2": "DEX (Dexterity) to pick quickly",
+                "3": "ENE (Energy) to conserve"
+            }
+        },
+        {
+            "stage_name": "Exiting Location",
+            "event": "You're getting tired and cold. You should probably get back to your shelter.",
+            "difficulty_modifier": 1.0,
+            "choices": {
+                "1": "ATT (Attack) to fight the cold",
+                "2": "DEX (Dexterity) to find a shortcut",
+                "3": "HAP (Happiness) to warm yourself up with a snack"
+            }
+        }
+    ]
+}

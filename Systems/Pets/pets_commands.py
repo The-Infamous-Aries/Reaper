@@ -40,6 +40,7 @@ from .PetGames.craps import CrapsSession
 from .PetGames.holdem import HoldemSession
 from .PetGames.blackjack import BlackjackSession
 from .PetGames.slots import SlotMachineView, compute_total_xp
+from .PetGames.wheel_of_pets import WheelOfPetsView
 
 logger = logging.getLogger(__name__)
 
@@ -285,6 +286,26 @@ class PetCommandsCog(commands.Cog):
             logger.error(f"Error in slots command: {e}")
             await ctx.send("❌ Failed to start slots.")
 
+    @commands.hybrid_command(name="wheel", description="Spin the Wheel of Pets — bet XP on which pet lands!")
+    async def wheel_of_pets(self: "PetCommandsCog", ctx: commands.Context) -> None:
+        """Start a Wheel of Pets session. The player can keep spinning without leaving the page."""
+        try:
+            pet = await user_data_manager.get_pet_data_async(str(ctx.author.id), ctx.author.display_name)
+            if not pet:
+                await ctx.send(
+                    f"{emoji_mod.mention('Deny') or '❌'} You need a pet to play the Wheel of Pets. "
+                    "Use `/pet_shop` to adopt one first."
+                )
+                return
+
+            view = WheelOfPetsView(self.bot, ctx.author)
+            msg = await ctx.send(embed=view._lobby_embed(), view=view)
+            view.message = msg
+
+        except Exception as exc:
+            logger.error(f"Error in wheel_of_pets command: {exc}", exc_info=True)
+            await ctx.send("❌ Failed to start the Wheel of Pets. Please try again.")
+
     @app_commands.command(name="play", description="Let your pet play in various locations!")
     @app_commands.describe(
         place="Choose a place for your pet to play"
@@ -298,6 +319,13 @@ class PetCommandsCog(commands.Cog):
 
         if not pet_data:
             await interaction.response.send_message("You don't have a pet yet! Use `/pet adopt` to get one.", ephemeral=True)
+            return
+
+        # ── Cooldown check ────────────────────────────────────────────────────
+        on_cd, remaining = self.pet_system._is_command_on_cooldown('play', interaction.user.id)
+        if on_cd:
+            mins, secs = divmod(remaining, 60)
+            await interaction.response.send_message(f"⏳ Play is on cooldown. Try again in {mins}m {secs}s.", ephemeral=True)
             return
 
         # 5% chance for a boss encounter
@@ -322,7 +350,7 @@ class PetCommandsCog(commands.Cog):
         place_specials = outcome_data.get("Special", {})
         outcome_messages_list = []
 
-        xp_multiplier, keys_to_award_names = LootCalculator.calculate_play_loot(pet_element, pet_element2, place_specials)
+        xp_gained, keys_to_award_names = LootCalculator.calculate_play_loot(pet_element, pet_element2, place_specials, pet_data.get("level", 1))
 
         final_outcome_message = LootCalculator.get_play_outcome_message(
             pet_element,
@@ -336,9 +364,7 @@ class PetCommandsCog(commands.Cog):
             element2_emoji
         )
 
-        pet_level = old_pet_level  # Use captured pre-XP level for XP calculation
-        base_xp = 5 * pet_level  # Use robust XP formula!
-        xp_gained = base_xp * xp_multiplier
+        # xp_gained is already the flat value from calculate_play_loot
 
         # Increment play attempts
         await user_data_manager.increment_pet_stats(user_id_str, {"play_attempts": 1})
@@ -350,13 +376,15 @@ class PetCommandsCog(commands.Cog):
             keys_awarded_emojis.append(self.get_emoji_by_name(key_name))
 
         # Award XP
-        success, _ = await user_data_manager.add_pet_experience(interaction.user.id, xp_gained, "play")
+        leveled, change_data = await LootCalculator.apply_xp_change(interaction.user.id, xp_gained, "play")
+        self.pet_system.set_command_cooldown('play', interaction.user.id)
 
         # RELOAD pet data after XP change to get correct new stats!
         pet_data = await user_data_manager.get_pet_data_async(str(interaction.user.id), interaction.user.display_name)
         new_pet_level = pet_data.get("level", 1)
 
-        response_message = f"{final_outcome_message}\n\nYour pet gained {xp_gained} XP and received {', '.join(keys_awarded_emojis)}!"
+        key_str = f" and received {', '.join(keys_awarded_emojis)}" if keys_awarded_emojis else ""
+        response_message = f"{final_outcome_message}\n\nYour pet gained {xp_gained} XP{key_str}!"
         await interaction.response.send_message(response_message)
 
         # Level up embed
@@ -365,7 +393,8 @@ class PetCommandsCog(commands.Cog):
             await interaction.followup.send(embed=level_up_embed)
         # Level down embed (optional)
         elif new_pet_level < old_pet_level:
-            level_down_embed = await LootCalculator.create_level_down_embed(pet_data, old_pet_level, new_pet_level, "play", abs(xp_gained))
+            losses = change_data.get("losses") if change_data else None
+            level_down_embed = await LootCalculator.create_level_down_embed(pet_data, old_pet_level, new_pet_level, "play", abs(xp_gained), losses)
             await interaction.followup.send(embed=level_down_embed)
 
     @commands.hybrid_command(name='equip', description='Equip items to your pet (Material, Gems, Monsters, Hat)')
@@ -571,10 +600,10 @@ class PetCommandsCog(commands.Cog):
             title=f"{emoji_mod.mention('market') or '🗝️'} Loot Market",
             description="Welcome to the Loot Market! Spend your keys to open chests.\n\n"
                         "**Chest Tiers:**\n"
-                        f"{emoji_mod.mention('chest1') or '📦'} **Chest 1:** Costs 1 {emoji_mod.mention('Key1') or 'Key1'} -> 1 Random Item\n"
-                        f"{emoji_mod.mention('chest2') or '📦'} **Chest 2:** Costs 1 {emoji_mod.mention('Key2') or 'Key2'} -> 2 Random Items\n"
-                        f"{emoji_mod.mention('chest3') or '📦'} **Chest 3:** Costs 1 {emoji_mod.mention('Key3') or 'Key3'} -> 3 Random Items\n"
-                        f"{emoji_mod.mention('chest4') or '📦'} **Chest 4:** Costs 1 of Each Key -> 1 Selected + 3 Random Items",
+                        f"{emoji_mod.mention('chest1') or '📦'} **Chest 1:** Costs 1 {emoji_mod.mention('Key1') or 'Key1'} → 1 Common or Uncommon item\n"
+                        f"{emoji_mod.mention('chest2') or '📦'} **Chest 2:** Costs 1 {emoji_mod.mention('Key2') or 'Key2'} → 1 Rare item\n"
+                        f"{emoji_mod.mention('chest3') or '📦'} **Chest 3:** Costs 1 {emoji_mod.mention('Key3') or 'Key3'} → 1 Epic item\n"
+                        f"{emoji_mod.mention('chest4') or '📦'} **Chest 4:** Costs 1 of Each Key → 1 item of your chosen type + 1 Uncommon or better",
             color=discord.Color.gold()
         )
         await ctx.send(embed=embed, view=view, ephemeral=True)
@@ -658,21 +687,34 @@ class PetCommandsCog(commands.Cog):
         view = InventoryPaginatedView(self.pet_system, ctx.author.id, pet)
         await ctx.send(embed=view.get_embed(), view=view)
 
-    @commands.hybrid_command(name='train', description='Train your pet to gain experience')
-    @app_commands.describe(difficulty="Choose training difficulty")
-    @app_commands.choices(difficulty=[
-        app_commands.Choice(name="Easy", value="Easy"),
-        app_commands.Choice(name="Average", value="Average"),
-        app_commands.Choice(name="Hard", value="Hard"),
-    ])
-    async def train(self: "PetCommandsCog", ctx: commands.Context, difficulty: str = "Easy"):
+    @commands.hybrid_command(name='train', description='Train a stat on your pet')
+    @app_commands.describe(
+        stat="Stat to train: ATT, DEF, INT, DEX, HAP, ENE",
+        difficulty="Training difficulty (affects multiplier and success chance)"
+    )
+    @app_commands.choices(
+        stat=[
+            app_commands.Choice(name="ATT (Attack)",    value="ATT"),
+            app_commands.Choice(name="DEF (Defense)",   value="DEF"),
+            app_commands.Choice(name="INT (Intel)",     value="INT"),
+            app_commands.Choice(name="DEX (Dexterity)", value="DEX"),
+            app_commands.Choice(name="HAP (Happiness)", value="HAP"),
+            app_commands.Choice(name="ENE (Energy)",    value="ENE"),
+        ],
+        difficulty=[
+            app_commands.Choice(name="Easy    — 75% success, ±1× equip mult", value="Easy"),
+            app_commands.Choice(name="Average — 60% success, ±3× equip mult", value="Average"),
+            app_commands.Choice(name="Hard    — 45% success, ±5× equip mult", value="Hard"),
+        ]
+    )
+    async def train(self: "PetCommandsCog", ctx: commands.Context, stat: str, difficulty: str = "Easy"):
         on_cd, remaining = self.pet_system._is_command_on_cooldown('train', ctx.author.id)
         if on_cd:
             await ctx.send(f"⏳ Training is on cooldown for {remaining}s")
             return
-            
+
         self.pet_system.set_command_cooldown('train', ctx.author.id)
-        success, message = await self.pet_system.train_pet(ctx, difficulty)
+        success, message = await self.pet_system.train_pet(ctx, difficulty, stat)
         if message:
             await ctx.send(message)
 
@@ -745,7 +787,8 @@ class PetCommandsCog(commands.Cog):
                 res.get("new_level", 0), 
                 "mission", 
                 ctx.channel, 
-                res.get("lost_xp", 0)
+                res.get("lost_xp", 0),
+                res.get("losses")
             ))
 
     @commands.hybrid_command(name="battle", description="Start a solo battle against a monster")
@@ -1008,11 +1051,19 @@ class PetCommandsCog(commands.Cog):
             await ctx.response.send_message("You don't have a pet to go on a quest with!", ephemeral=True)
             return
 
+        # ── Cooldown check ────────────────────────────────────────────────────
+        on_cd, remaining = self.pet_system._is_command_on_cooldown('quest', ctx.user.id)
+        if on_cd:
+            mins, secs = divmod(remaining, 60)
+            await ctx.response.send_message(f"⏳ Quest is on cooldown. Try again in {mins}m {secs}s.", ephemeral=True)
+            return
+
         quest_data = generate_or_load_quest(location, difficulty)
         if not quest_data or 'stages' not in quest_data or not quest_data['stages']:
             await ctx.response.send_message("Could not generate or load a quest. Please try again later.", ephemeral=True)
             return
 
+        self.pet_system.set_command_cooldown('quest', ctx.user.id)
         view = QuestView(self.bot, pet, quest_data, difficulty, str(ctx.user.id), location)
         await view.start_quest(ctx)  # Pass the interaction context directly
 

@@ -1,0 +1,79 @@
+{
+    "stages": [
+        {
+            "stage_name": "Entering Location",
+            "event": "You arrive at the edge of a massive glacier, where walls of ancient ice tower hundreds of feet above you. The air is so cold it burns your lungs, and every breath creates clouds of vapor. Crevasses split the ice like frozen lightning, and the silence is absolute except for the occasional crack of shifting ice.",
+            "difficulty_modifier": 1.1,
+            "choices": {
+                "1": "Smash handholds into the ice wall with powerful strikes",
+                "2": "Find natural footholds and climb with careful precision",
+                "3": "Take time to acclimate to the extreme cold before proceeding"
+            }
+        },
+        {
+            "stage_name": "Looking Around",
+            "event": "Atop the glacier, you're surrounded by a landscape of pristine white that stretches to the horizon. Ice formations create natural sculptures, and deep blue crevasses reveal the glacier's ancient layers. The wind howls across the ice, creating an otherworldly symphony.",
+            "difficulty_modifier": 1.2,
+            "choices": {
+                "1": "Break through ice barriers to explore hidden areas",
+                "2": "Navigate carefully around dangerous crevasses using intelligence",
+                "3": "Conserve energy while marveling at the frozen wilderness"
+            }
+        },
+        {
+            "stage_name": "Avoiding Hostile Pets",
+            "sub_type": "scare_off",
+            "event": "A massive %%HOSTILE_PET%% blocks your path across the glacier! Its thick fur is covered in frost, and its breath creates great clouds of steam in the frigid air. It seems perfectly adapted to this harsh environment.",
+            "difficulty_modifier": 1.4,
+            "choices": {
+                "1": "Pound the ice to create intimidating sounds and show your strength",
+                "2": "Use the glacier's acoustics to amplify threatening calls",
+                "3": "Project unwavering determination despite the bitter cold"
+            }
+        },
+        {
+            "stage_name": "Avoiding Hostile Pets",
+            "sub_type": "evade",
+            "event": "The %%HOSTILE_PET%% charges across the slippery glacier surface! Its claws find purchase on the ice as it rapidly closes the distance, sending ice shards flying in all directions.",
+            "difficulty_modifier": 1.4,
+            "choices": {
+                "1": "Smash through ice obstacles in a powerful escape",
+                "2": "Use the slippery surface to slide away with agile movements",
+                "3": "Endure the chase across the exhausting icy terrain"
+            }
+        },
+        {
+            "stage_name": "Locating a FREE to open Loot Chest",
+            "sub_type": "mimic",
+            "event": "Embedded in a wall of blue ice, you discover what appears to be a frozen treasure chest. The ice around it seems unusually clear, and you notice the chest's surface has a strange, organic texture that doesn't quite match the surrounding ice formations.",
+            "difficulty_modifier": 1.5,
+            "choices": {
+                "1": "Shatter the ice around the chest with powerful blows",
+                "2": "Carefully chip away the ice to examine the chest closely",
+                "3": "Wait and watch for any signs of movement in the ice"
+            }
+        },
+        {
+            "stage_name": "Locating a FREE to open Loot Chest",
+            "sub_type": "real_chest",
+            "event": "You discover a genuine treasure chest that has been perfectly preserved in the glacier's ice for centuries. The ancient wood and metal are in pristine condition, and the lock mechanism appears to be a masterwork of craftsmanship that requires expert handling.",
+            "difficulty_modifier": 1.5,
+            "double_loot_choice": 2,
+            "choices": {
+                "1": "Use brute force to break through the ice and chest",
+                "2": "Carefully thaw and manipulate the delicate lock mechanism",
+                "3": "Search the surrounding ice for additional frozen treasures"
+            }
+        },
+        {
+            "stage_name": "Exiting Location",
+            "event": "As you prepare to leave the glacier, the aurora borealis begins to dance across the star-filled sky in brilliant greens and blues. The extreme cold has tested your limits, but you've proven yourself capable of surviving in one of nature's most challenging environments.",
+            "difficulty_modifier": 1.1,
+            "choices": {
+                "1": "Power through the cold with determination and strength",
+                "2": "Navigate the treacherous ice with careful, calculated steps",
+                "3": "Draw energy from your sense of accomplishment and wonder"
+            }
+        }
+    ]
+}

@@ -50,8 +50,7 @@
             "choices": {
                 "1": "Smash it open with brute force (ATT).",
                 "2": "Carefully inspect the lock for traps (DEX).",
-                "3": "Hope for the best and give it a kick (HAP)",
-                "double_loot_choice": 2
+                "3": "Hope for the best and give it a kick (HAP)"
             }
         },
         {
@@ -59,11 +58,11 @@
             "sub_type": "real_chest",
             "event": "You find a genuine chest in the Graveyard. It's old and creaky, but it might contain treasure!",
             "difficulty_modifier": 1.3,
+            "double_loot_choice": 1,
             "choices": {
                 "1": "Try to force the lock open with your paws (ATT).",
                 "2": "Use your agility to navigate any traps (DEX).",
-                "3": "Hope the lock is weak and easily opens (HAP).",
-                "double_loot_choice": 1
+                "3": "Hope the lock is weak and easily opens (HAP)."
             }
         },
         {

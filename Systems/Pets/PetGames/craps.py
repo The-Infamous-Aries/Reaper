@@ -501,7 +501,20 @@ class CrapsSession(discord.ui.View):
                     payout = profit if stay_up else (bet.amount + profit)
                     
                     if self.betting_mode:
-                        await LootCalculator.apply_xp_change(uid, payout, source="craps_win")
+                        # Apply ability tree effects
+                        modified_payout = payout
+                        try:
+                            pet_data = await user_data_manager.get_pet_data_async(str(uid))
+                            if pet_data:
+                                from Systems.Pets.Logic.ability_tree import get_ability_effect
+                                # Apply casino win bonus
+                                win_mult = get_ability_effect(pet_data, "casino_xp_gain_mult", game="craps")
+                                if win_mult != 1.0:
+                                    modified_payout = int(payout * win_mult)
+                        except Exception:
+                            pass
+                        
+                        await LootCalculator.apply_xp_change(uid, modified_payout, source="craps_win")
 
                     won_total += profit
                     
@@ -509,6 +522,20 @@ class CrapsSession(discord.ui.View):
                         new_bets.append(bet)
                 elif loss:
                     lost_total += bet.amount
+                    
+                    # Apply loss reduction ability
+                    if self.betting_mode:
+                        try:
+                            pet_data = await user_data_manager.get_pet_data_async(str(uid))
+                            if pet_data:
+                                from Systems.Pets.Logic.ability_tree import get_ability_effect
+                                loss_reduction = get_ability_effect(pet_data, "casino_xp_loss_reduction", game="craps")
+                                if loss_reduction > 0:
+                                    refund = int(bet.amount * loss_reduction)
+                                    if refund > 0:
+                                        await LootCalculator.apply_xp_change(uid, refund, source="craps_loss_reduction")
+                        except Exception:
+                            pass
                 else:
                     new_bets.append(bet) # Keep bet (Push, or not resolved yet)
                     

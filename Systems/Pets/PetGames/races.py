@@ -10,16 +10,12 @@ from Systems.Functions import emoji as emoji_mod
 from Systems.Pets.Logic.pet_brain import LootCalculator
 
 def _pet_speed(pet: Dict) -> float:
-    dex = float(pet.get("DEX", 0))
-    ene = float(pet.get("ENE", 0))
-    hap = float(pet.get("HAP", 0))
-    
-    rand_dex = random.uniform(0.5, 1.5)
-    rand_ene = random.uniform(0.5, 1.5)
-    rand_hap = random.uniform(0.5, 1.5)
-    
-    speed = (dex * rand_dex) * (ene * rand_ene) * (hap * rand_hap) / 3.0
-    return speed
+    import math
+    dex = float(pet.get("DEX", 1))
+    ene = float(pet.get("ENE", 1))
+    hap = float(pet.get("HAP", 1))
+    base = (math.log1p(dex) + math.log1p(ene) + math.log1p(hap)) / 3.0
+    return base * random.uniform(0.6, 1.4)
 
 async def _deduct_xp(user: discord.Member, amount: int, pet_data: Optional[Dict] = None) -> bool:
     pet: Optional[Dict[str, Any]]
@@ -92,7 +88,9 @@ class RaceSession(discord.ui.View):
         self.simulation = simulation
         self.difficulty = (difficulty or "").lower()
         self.mode_betting = mode_betting
-        self.initial_bet = int(bet_amount or 0)
+        # Cap bet to prevent XP overflow from streak multipliers
+        MAX_BET = 10 ** 12
+        self.initial_bet = min(int(bet_amount or 0), MAX_BET)
         self.message: Optional[discord.Message] = None
         self.running = False
         self.finished = False
@@ -179,8 +177,24 @@ class RaceSession(discord.ui.View):
                         return False
                     self.bets[self.owner.id] = self.initial_bet
             
-            diff_mults = {"apprentice": 0.8, "journeyman": 1.0, "senior": 1.2}
+            diff_mults = {"easy": 0.8, "average": 1.0, "hard": 1.2,
+                          "apprentice": 0.8, "journeyman": 1.0, "senior": 1.2}
             diff_mult = diff_mults.get(self.difficulty, 1.0)
+
+            # Scale bot stats relative to the player's stats
+            DIFF_SCALE = {
+                "easy":       (0.75, 0.90),
+                "average":    (0.90, 1.10),
+                "hard":       (1.10, 1.30),
+                "apprentice": (0.75, 0.90),
+                "journeyman": (0.90, 1.10),
+                "senior":     (1.10, 1.30),
+            }
+            scale_lo, scale_hi = DIFF_SCALE.get(self.difficulty, (0.90, 1.10))
+            player_dex = float(pet.get("DEX", 1))
+            player_ene = float(pet.get("ENE", 1))
+            player_hap = float(pet.get("HAP", 1))
+
             track_char = emoji_mod.mention('BlackSquare') or "➖"
             for _ in range(3):
                 name, em = _random_species_mention()
@@ -191,9 +205,9 @@ class RaceSession(discord.ui.View):
                 self.accum[bot_id] = 0.0
                 self.species_emo[bot_id] = em
                 pd = {
-                    "DEX": max(1, int(float(self.pets[self.owner.id].get("DEX", 0)) * diff_mult + random.uniform(-2, 2))),
-                    "ENE": max(1, int(float(self.pets[self.owner.id].get("ENE", 0)) * diff_mult + random.uniform(-2, 2))),
-                    "HAP": max(1, int(float(self.pets[self.owner.id].get("HAP", 0)) * diff_mult + random.uniform(-2, 2))),
+                    "DEX": max(1.0, player_dex * random.uniform(scale_lo, scale_hi)),
+                    "ENE": max(1.0, player_ene * random.uniform(scale_lo, scale_hi)),
+                    "HAP": max(1.0, player_hap * random.uniform(scale_lo, scale_hi)),
                     "species": name,
                 }
                 self.pets[bot_id] = pd
@@ -219,6 +233,18 @@ class RaceSession(discord.ui.View):
             total_level += int(pet_data.get("level", 1))
             num_pets += 1
         return total_level / num_pets if num_pets > 0 else 1.0
+
+    def _bot_stat_ranges(self) -> tuple:
+        """Return (lo, hi) absolute stat range for bots based on difficulty."""
+        return {
+            "easy":    (1.0, 4.0),
+            "average": (3.0, 8.0),
+            "hard":    (6.0, 14.0),
+            # legacy names
+            "apprentice": (1.0, 4.0),
+            "journeyman": (3.0, 8.0),
+            "senior":     (6.0, 14.0),
+        }.get(self.difficulty, (3.0, 8.0))
 
     def _lobby_embed(self) -> discord.Embed:
         e = discord.Embed(title="Race Lobby", color=discord.Color.blurple(), timestamp=discord.utils.utcnow())
@@ -263,15 +289,20 @@ class RaceSession(discord.ui.View):
             if self.message:
                 await self.message.edit(view=self)
 
-        avg_level = self._calculate_average_pet_level()
-        
-        diff_mult = 1.0
-        if self.difficulty == "journeyman":
-            diff_mult = 1.5
-        elif self.difficulty != "apprentice":
-            diff_mult = 2.0
-            
-        self.segment_threshold = (25.0 * avg_level) * diff_mult
+        import math
+        # Compute segment_threshold so the fastest racer finishes in ~60 ticks
+        target_ticks = {"easy": 55, "average": 65, "hard": 75,
+                        "apprentice": 55, "journeyman": 65, "senior": 75}.get(self.difficulty, 65)
+
+        def _mean_speed(pet: dict) -> float:
+            dex = float(pet.get("DEX", 1))
+            ene = float(pet.get("ENE", 1))
+            hap = float(pet.get("HAP", 1))
+            return (math.log1p(dex) + math.log1p(ene) + math.log1p(hap)) / 3.0
+
+        all_speeds = [_mean_speed(self.pets[uid]) for uid in self.participants if uid in self.pets]
+        fastest = max(all_speeds) if all_speeds else 1.0
+        self.segment_threshold = (fastest * target_ticks) / self.max_segments
 
         self.running = True
         self.finished = False
@@ -332,8 +363,9 @@ class RaceSession(discord.ui.View):
         if self.winner_id == self.owner.id:
             self.win_streak += 1
             
-            payout_mults = {"apprentice": 1.25, "journeyman": 2.0, "senior": 3.0}
-            payout_mult = payout_mults.get(self.difficulty, 1.0)
+            payout_mults = {"easy": 1.25, "average": 2.0, "hard": 3.0,
+                            "apprentice": 1.25, "journeyman": 2.0, "senior": 3.0}
+            payout_mult = payout_mults.get(self.difficulty, 1.25)
             
             streak_mult = 1
             if self.win_streak >= 9:
@@ -344,7 +376,10 @@ class RaceSession(discord.ui.View):
                 streak_mult = 2
             
             win_amount = int(self.initial_bet * payout_mult * streak_mult)
-            self.pending_xp += win_amount
+            # Cap individual payout and total pending to prevent XP overflow
+            MAX_RACE_PAYOUT = 10 ** 15
+            win_amount = min(win_amount, MAX_RACE_PAYOUT)
+            self.pending_xp = min(self.pending_xp + win_amount, MAX_RACE_PAYOUT)
             
             keys_to_add = []
             if self.win_streak >= 9:

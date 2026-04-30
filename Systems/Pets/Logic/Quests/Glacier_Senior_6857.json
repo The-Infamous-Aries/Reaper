@@ -1,0 +1,79 @@
+{
+    "stages": [
+        {
+            "stage_name": "Entering Location",
+            "event": "You and your pet arrive at the Glacier, a vast and icy landscape. The snow crunches beneath your feet as you begin your journey.",
+            "difficulty_modifier": 1.0,
+            "choices": {
+                "1": "Use ATT, 50% chance to reduce difficulty by 10%",
+                "2": "Use DEX, reveal hidden passageway and skip to next stage",
+                "3": "Use ENE, reduce stamina by 20% for this stage"
+            }
+        },
+        {
+            "stage_name": "Looking Around",
+            "event": "As you look around, you see towering icebergs and a frozen river stretching far into the distance. A figure is approaching you.",
+            "difficulty_modifier": 1.0,
+            "choices": {
+                "1": "Use DEF, increase defense by 30%",
+                "2": "Use DEX, reveal a hidden cave and gain 10% of ENE",
+                "3": "Use HAP, increase pet's happy level by 20%"
+            }
+        },
+        {
+            "stage_name": "Avoiding Hostile Pets",
+            "sub_type": "scare_off",
+            "event": "A Grizzly %%HOSTILE_PET%% blocks your path! Can you scare it away?",
+            "difficulty_modifier": 1.2,
+            "choices": {
+                "1": "Use ATT, 50% chance to scare it off",
+                "2": "Use DEX, 30% chance to scare it off and increase your speed",
+                "3": "Use ENE, reduce stamina by 10% and have a 25% chance to scare it off"
+            }
+        },
+        {
+            "stage_name": "Avoiding Hostile Pets",
+            "sub_type": "evade",
+            "event": "The Arctic %%HOSTILE_PET%% charges at you! Can you dodge?",
+            "difficulty_modifier": 1.2,
+            "choices": {
+                "1": "Use ATT, 20% chance to deal damage and slow the opponent",
+                "2": "Use DEX, 35% chance to dodge the attack and increase your speed",
+                "3": "Use HAP, increase your pet's agility by 40%"
+            }
+        },
+        {
+            "stage_name": "Locating a FREE to open Loot Chest",
+            "sub_type": "mimic",
+            "event": "You come across a mysterious chest that resembles a treasure chest. Is it a real chest, or a mimic?",
+            "difficulty_modifier": 1.3,
+            "choices": {
+                "1": "Use DEF, 30% chance to open it and reveal its contents",
+                "2": "Use DEX, 25% chance to open it and reveal its contents",
+                "3": "Use ENE, reveal its contents and gain 10% of INT"
+            }
+        },
+        {
+            "stage_name": "Locating a FREE to open Loot Chest",
+            "sub_type": "real_chest",
+            "event": "You approach the chest and find that it is indeed a real treasure chest! However, its lock is too hard to crack!",
+            "difficulty_modifier": 1.3,
+            "double_loot_choice": 2,
+            "choices": {
+                "1": "Use ATT, 45% chance to open it and gain double loot",
+                "2": "Use INT, 35% chance to open it and gain double loot",
+                "3": "Use ENE, increase your pet's energy by 20% for this stage"
+            }
+        },
+        {
+            "stage_name": "Exiting Location",
+            "event": "You have completed your quest at the Glacier and are now ready to leave. However, a sudden storm is approaching.",
+            "difficulty_modifier": 1.0,
+            "choices": {
+                "1": "Use DEF, increase your defenses by 25%",
+                "2": "Use DEX, increase your speed by 20%",
+                "3": "Use ENE, reduce stamina by 10%"
+            }
+        }
+    ]
+}

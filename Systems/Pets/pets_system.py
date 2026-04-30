@@ -75,12 +75,12 @@ async def add_experience(user_id: int, amount: int, source: str = "battle", equi
         logger.error(f"Error in add_experience: {e}")
         return False, None
 
-async def send_level_down_embed(user_id: int, old_level: int, new_level: int, source: str = "mission", channel=None, lost_xp: int = 0) -> None:
+async def send_level_down_embed(user_id: int, old_level: int, new_level: int, source: str = "mission", channel=None, lost_xp: int = 0, losses: Optional[Dict[str, int]] = None) -> None:
     pet = await user_data_manager.get_pet_data_async(str(user_id))
     if not pet:
         return
     pet = cast(Dict[str, Any], pet)
-    embed = await LootCalculator.create_level_down_embed(pet, old_level, new_level, source, lost_xp)
+    embed = await LootCalculator.create_level_down_embed(pet, old_level, new_level, source, lost_xp, losses)
     try:
         if channel:
             await channel.send(embed=embed)
@@ -241,10 +241,12 @@ class PetSystem:
         if command not in self._cooldowns:
             self._cooldowns[command] = {}
         
-        # Cooldown durations in seconds
+        # Cooldown durations in seconds - 5 seconds for all commands
         durations = {
-            'mission': 300,  # 5 minutes
-            'train': 60,     # 1 minute
+            'mission': 5,    # 5 seconds
+            'train': 5,      # 5 seconds
+            'play': 5,       # 5 seconds
+            'quest': 5,      # 5 seconds
         }
         duration = durations.get(command, 0)
         
@@ -260,6 +262,20 @@ class PetSystem:
         if command not in self._cooldowns:
             self._cooldowns[command] = {}
         self._cooldowns[command][user_id] = datetime.utcnow()
+
+    def _calculate_level_scaled_xp(self, base_xp: int, pet_level: int) -> int:
+        """
+        Calculate XP with level-based scaling to ensure higher levels remain optimal.
+        Formula: base_xp * (1 + (level - 1) * 0.1)
+        This gives a 10% increase per level above 1.
+        
+        Examples:
+        - Level 1: base_xp * 1.0 = base_xp
+        - Level 10: base_xp * 1.9 = base_xp * 1.9
+        - Level 20: base_xp * 2.9 = base_xp * 2.9
+        """
+        level_multiplier = 1.0 + (pet_level - 1) * 0.1
+        return int(base_xp * level_multiplier)
 
     def get_element_style(self, element: str, element2: Optional[str] = None) -> Tuple[int, str]:
         """Get element-specific styling. Supports dual elements."""
@@ -320,6 +336,22 @@ class PetSystem:
 
     async def create_pet(self, user_id: int, user_name: str, category: str, species: str, element: Optional[str] = None, element2: Optional[str] = None, custom_name: Optional[str] = None) -> Optional[Dict[str, Any]]:
         """Create a new pet using category/species base stats and element."""
+        import re
+        import uuid
+        
+        # Validate custom_name if provided
+        if custom_name:
+            name = custom_name.strip()
+            if not name:
+                raise ValueError("Pet name cannot be only whitespace")
+            if len(name) < 1 or len(name) > 32:
+                raise ValueError("Pet name must be 1-32 characters")
+            valid_pattern = re.compile(r'^[a-zA-Z0-9\s\-_.,!?\']+$')
+            if not valid_pattern.match(name):
+                raise ValueError("Only alphanumeric characters, spaces, and basic punctuation allowed")
+            if re.search(r'<[\/a-zA-Z]', name) or re.search(r'javascript:', name, re.IGNORECASE):
+                raise ValueError("Invalid characters detected")
+        
         category_key = str(category).lower()
         species_name = species.strip()
         
@@ -367,6 +399,7 @@ class PetSystem:
         pet_name = custom_name or self._generate_pet_name(species_key, chosen_element, category_key, chosen_element2)
 
         pet_data = {
+            "id": str(uuid.uuid4()),
             "name": pet_name,
             "type": category_key,  # Ensure type is set from category
             "category": category_key,
@@ -440,6 +473,15 @@ class PetSystem:
             pet_data = await self.create_pet(user_id, user_name, cat, chosen_species, e1, e2, custom_name=custom_name)
             if not pet_data:
                 return {"success": False, "message": "❌ Failed to create pet."}
+            
+            # Generate tasks for the new pet owner
+            try:
+                from Systems.Functions.tasks_db import tasks_db
+                await tasks_db.get_slots(str(user_id))  # This will create tasks if they don't exist
+                logger.info(f"Tasks generated for new pet owner {user_id}")
+            except Exception as e:
+                logger.error(f"Error generating tasks for new pet owner {user_id}: {e}")
+                
         except Exception as e:
             logger.error(f"Adoption failed: {e}")
             return {"success": False, "message": "❌ Adoption failed. Please check your selections."}
@@ -530,6 +572,19 @@ class PetSystem:
             return f"**{name}**" if name in specs else name
         
         embed.add_field(name=f"{emoji_mod.mention('Stat') or ''} Stats", value=f"{att_e} {fmt_stat('ATT')} {totals['ATT']} | {def_e} {fmt_stat('DEF')} {totals['DEF']}\n{int_e} {fmt_stat('INT')} {totals['INT']} | {dex_e} {fmt_stat('DEX')} {totals['DEX']}\n{hap_e} {fmt_stat('HAP')} {totals['HAP']} | {ene_e} {fmt_stat('ENE')} {totals['ENE']}", inline=False)
+        
+        # Add stat mastery multipliers if any exist
+        try:
+            from Systems.Pets.Logic.ability_tree import get_all_mastery_multipliers
+            multipliers = get_all_mastery_multipliers(pet)
+            active_multipliers = {stat: mult for stat, mult in multipliers.items() if mult > 1.0}
+            
+            if active_multipliers:
+                mult_display = " | ".join([f"{stat}: x{mult:.1f}" for stat, mult in active_multipliers.items()])
+                embed.add_field(name="✨ Stat Mastery", value=mult_display, inline=False)
+        except ImportError:
+            # Ability tree module not available
+            pass
         
         threshold = LootCalculator.get_next_level_xp(pet['level'])
         progress = min(pet['experience'] / threshold, 1.0) if threshold > 0 else 0
@@ -802,41 +857,65 @@ class PetSystem:
         
         return embed
 
-    async def train_pet(self, ctx: commands.Context, difficulty: str) -> Tuple[bool, str]:
-        """Train pet for XP"""
+    async def train_pet(self, ctx: commands.Context, difficulty: str, stat: str) -> Tuple[bool, str]:
+        """Train a chosen stat. Success raises it, failure lowers it. No XP awarded."""
         user_id = ctx.author.id
         pet = await self.get_user_pet(user_id)
         if not pet:
             return False, "You don't have a pet!"
 
-        success_chance = 0.9
-        if difficulty == "Average": success_chance = 0.7
-        elif difficulty == "Hard": success_chance = 0.5
-        
+        stat = stat.upper()
+        valid_stats = ("ATT", "DEF", "INT", "DEX", "HAP", "ENE")
+        if stat not in valid_stats:
+            return False, f"❌ Invalid stat. Choose one of: {', '.join(valid_stats)}"
+
+        diff_cfg = {
+            "Easy":    (0.75, 1),
+            "Average": (0.60, 3),
+            "Hard":    (0.45, 5),
+        }
+        if difficulty not in diff_cfg:
+            return False, "❌ Invalid difficulty. Choose Easy, Average, or Hard."
+
+        success_chance, stat_mult = diff_cfg[difficulty]
+
+        from Systems.Pets.Logic.pet_brain import StatsCalculator
+        equip_mult = int(StatsCalculator.get_equipment_xp_multiplier(pet))
+        equip_mult = max(1, equip_mult)
+        change_amount = stat_mult * equip_mult
+
+        from Systems.Pets.Logic.ability_tree import get_ability_effect
+        train_bonus = int(get_ability_effect(pet, "train_bonus"))
+
         success = random.random() < success_chance
+        current_val = int(pet.get(stat, 0))
 
         if success:
-            xp_gain = 50
-            if difficulty == "Average": xp_gain = 100
-            elif difficulty == "Hard": xp_gain = 200
-            
-            added, lvl_up = await add_experience(user_id, xp_gain, "training")
-            
-            msg = f"🏋️ Trained hard! Gained {xp_gain} XP."
-            if lvl_up:
-                asyncio.create_task(send_level_up_embed(user_id, lvl_up, ctx.channel))
-                msg += f"\n🎉 Level Up! Now level {lvl_up['new_level']}!"
-            
-            return True, msg
+            total_gain = change_amount + train_bonus
+            pet[stat] = current_val + total_gain
+            bonus_str = f" (+{train_bonus} INT bonus)" if train_bonus else ""
+            msg = (
+                f"💪 Training successful! **{stat}** increased by **+{total_gain}**"
+                f" ({stat_mult} × {equip_mult}x equipment multiplier{bonus_str}).\n"
+                f"**{stat}**: {current_val} → {pet[stat]}"
+            )
         else:
-            # Training failed
-            if await self._maybe_trigger_wild_encounter(ctx, pet):
-                return False, ""
-            else:
-                return False, "❌ Training failed, but you got away safely."
+            effective_loss = max(0, change_amount - train_bonus)
+            new_val = max(1, current_val - effective_loss)
+            actual_loss = current_val - new_val
+            pet[stat] = new_val
+            block_str = f" (INT blocked {train_bonus} loss)" if train_bonus else ""
+            msg = (
+                f"😓 Training failed. **{stat}** decreased by **-{actual_loss}**"
+                f" ({stat_mult} × {equip_mult}x equipment multiplier{block_str}).\n"
+                f"**{stat}**: {current_val} → {pet[stat]}"
+            )
+
+        await user_data_manager.save_pet_data(str(user_id), pet.get("name", "Pet"), pet)
+        return success, msg
 
     async def perform_mission(self, ctx: commands.Context, difficulty: str, gamble_xp: Optional[int] = None) -> Dict[str, Any]:
-        """Perform a mission"""
+        """Perform a mission with level-based XP scaling"""
         user_id = ctx.author.id
         pet = await self.get_user_pet(user_id)
         if not pet:
@@ -852,15 +931,20 @@ class PetSystem:
         xp_gain = 0
         
         if success:
+            # Base XP amounts
             base_xp = 100
             if difficulty == "Average": base_xp = 250
             elif difficulty == "Hard": base_xp = 500
             
-            xp_gain = base_xp
+            # Apply level-based scaling
+            pet_level = pet.get("level", 1)
+            scaled_xp = self._calculate_level_scaled_xp(base_xp, pet_level)
+            
+            xp_gain = scaled_xp
             if gamble_xp:
                 xp_gain += gamble_xp
             
-            narrative = f"✅ Mission Successful! Gained {xp_gain} XP."
+            narrative = f"✅ Mission Successful! Gained {xp_gain} XP (Level {pet_level} bonus applied)."
             
             looted_keys = LootCalculator.get_key_loot(difficulty, bypass_chance=True)
             
@@ -878,8 +962,8 @@ class PetSystem:
             narrative = "❌ Mission Failed."
             if gamble_xp:
                 _, res = await LootCalculator.apply_xp_change(user_id, -gamble_xp, "mission_fail")
-                if res and res.get("level_down"):
-                     return {"narrative": narrative, "level_up": None, "level_down": res, "wild_encounter": False}
+                if res and res.get("new_level", 0) < res.get("old_level", 0):
+                    return {"narrative": narrative, "level_up": None, "level_down": res, "wild_encounter": False}
                 narrative += f" Lost {gamble_xp} XP."
 
         level_up = None
@@ -908,14 +992,30 @@ class PetSystem:
         if not pet:
             return False, "No pet found."
 
-        if action not in ["attack", "defend", "charge"]:
+        if action not in ["attack", "defend", "defense", "charge"]:
             return False, "Invalid action to rename."
 
-        if "action_labels" not in pet:
-            pet["action_labels"] = {"attack": None, "defend": None, "charge": None}
+        # Normalize: always store defense under "defense" (not "defend")
+        storage_key = "defense" if action in ("defend", "defense") else action
 
-        pet["action_labels"][action] = label
+        if "action_labels" not in pet:
+            pet["action_labels"] = {}
+
+        pet["action_labels"][storage_key] = label
         await user_data_manager.save_pet_data(str(user_id), pet.get("name"), pet)
+
+        # Map storage key back to the BATTLE_ACTIONS casing for task tracking
+        battle_action_map = {"attack": "Attack", "defense": "Defense", "charge": "Charge"}
+        battle_action = battle_action_map.get(storage_key)
+        try:
+            from web.api.tasks_api import record_action as _task_record
+            import asyncio
+            asyncio.ensure_future(
+                _task_record(str(user_id), "rename", meta={"battle_action": battle_action} if battle_action else None)
+            )
+        except Exception:
+            pass
+
         return True, f"Pet's {action} action has been renamed to {label}!"
 
 
@@ -1409,10 +1509,10 @@ class LootMarketView(discord.ui.View):
         self.chest_select: discord.ui.Select = discord.ui.Select(
             placeholder="Select a Chest...",
             options=[
-                discord.SelectOption(label="Chest 1 (1 Item)", value="chest1", description="Cost: 1x Key1", emoji=emoji_mod.mention('chest1')),
-                discord.SelectOption(label="Chest 2 (2 Items)", value="chest2", description="Cost: 1x Key2", emoji=emoji_mod.mention('chest2')),
-                discord.SelectOption(label="Chest 3 (3 Items)", value="chest3", description="Cost: 1x Key3", emoji=emoji_mod.mention('chest3')),
-                discord.SelectOption(label="Chest 4 (1 Selected + 3 Random Items)", value="chest4", description="Cost: 1x Key1, 1x Key2, 1x Key3", emoji=emoji_mod.mention('chest4')),
+                discord.SelectOption(label="Chest 1 (1 Common/Uncommon)", value="chest1", description="Cost: 1x Key1", emoji=emoji_mod.mention('chest1')),
+                discord.SelectOption(label="Chest 2 (1 Rare Item)", value="chest2", description="Cost: 1x Key2", emoji=emoji_mod.mention('chest2')),
+                discord.SelectOption(label="Chest 3 (1 Epic Item)", value="chest3", description="Cost: 1x Key3", emoji=emoji_mod.mention('chest3')),
+                discord.SelectOption(label="Chest 4 (1 Picked Type + 1 Uncommon+)", value="chest4", description="Cost: 1x Key1, 1x Key2, 1x Key3", emoji=emoji_mod.mention('chest4')),
             ],
             row=0
         )
@@ -1531,7 +1631,7 @@ class LootMarketView(discord.ui.View):
         if self.selected_chest is None:
             await interaction.followup.send("Please select a chest first.", ephemeral=True)
             return
-        msgs = await LootCalculator.open_chest(
+        msgs, _ = await LootCalculator.open_chest(
             self.user_id, 
             cast(str, self.selected_chest), 
             self.selected_amount, 

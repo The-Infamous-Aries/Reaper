@@ -1,0 +1,79 @@
+{
+    "stages": [
+        {
+            "stage_name": "Entering Location",
+            "event": "As you make your way deeper into the Forest, the towering trees above you form a canopy, filtering the sunlight and casting dappled shadows on the moss-covered path. You notice the sweet scent of blooming wildflowers, and the gentle rustling of leaves beneath your pet's paws.",
+            "difficulty_modifier": 1.0,
+            "choices": {
+                "1": "You push forward, using your strength to part the foliage and reveal more of the hidden path. (Requires ATT/DEF: 80)",
+                "2": "You expertly weave between the trees, using your agility to navigate the winding path. (Requires DEX/INT: 70)",
+                "3": "You stand still, using your intuition to sense any hidden dangers and wait for your pet's instincts to guide you. (Requires ENE/HAP: 60)"
+            }
+        },
+        {
+            "stage_name": "Looking Around",
+            "event": "You pause, taking in the sights and sounds of the Forest. A rabbit darts across your path, and a bird sings a melodious song from a nearby branch. You notice a hidden clearing, filled with a variety of berries and edible plants.",
+            "difficulty_modifier": 1.0,
+            "choices": {
+                "1": "You investigate the hidden clearing, using your strength to gather the berries and plants. (Requires ATT/DEF: 80)",
+                "2": "You carefully observe the clearing, using your sharp senses to identify the types of plants and berries. (Requires DEX/INT: 70)",
+                "3": "You sit for a while, using your patience to observe the Forest and its creatures. (Requires ENE/HAP: 60)"
+            }
+        },
+        {
+            "stage_name": "Avoiding Hostile Pets",
+            "sub_type": "scare_off",
+            "event": "A fierce wolf blocks your path through the Forest! It looks aggressive and territorial, baring its teeth and growling low in its throat.",
+            "difficulty_modifier": 1.2,
+            "choices": {
+                "1": "You stand your ground, using your strength to intimidate the wolf. (Requires ATT/DEF: 90)",
+                "2": "You use your agility to dodge the wolf's snapping jaws, hoping to distract it enough to pass. (Requires DEX/INT: 80)",
+                "3": "You maintain your confidence, speaking softly to reassure the wolf that you mean no harm. (Requires ENE/HAP: 70)"
+            }
+        },
+        {
+            "stage_name": "Avoiding Hostile Pets",
+            "sub_type": "evade",
+            "event": "A hungry bear charges at you across the Forest! You need to escape quickly, or risk being caught in its path.",
+            "difficulty_modifier": 1.2,
+            "choices": {
+                "1": "You sprint forward, using your speed to outpace the bear. (Requires ATT/DEF: 90)",
+                "2": "You dodge between the trees, using your agility to evade the bear's swipes. (Requires DEX/INT: 80)",
+                "3": "You lead the bear in a wild goose chase, using your endurance to maintain a steady pace. (Requires ENE/HAP: 70)"
+            }
+        },
+        {
+            "stage_name": "Locating a FREE to open Loot Chest",
+            "sub_type": "mimic",
+            "event": "As you wander through the Forest, you come across a small, intricately carved chest nestled in the roots of an ancient tree. The chest seems to shift slightly, as if it's trying to blend into its surroundings, and its lock looks unusually organic.",
+            "difficulty_modifier": 1.3,
+            "choices": {
+                "1": "You slam your paw down on the chest, trying to force it open. (Requires ATT/DEF: 100)",
+                "2": "You examine the chest more closely, using your sharp senses to search for any hidden mechanisms. (Requires DEX/INT: 90)",
+                "3": "You sit back, observing the chest to see if it reveals any more about its secrets. (Requires ENE/HAP: 80)"
+            }
+        },
+        {
+            "stage_name": "Locating a FREE to open Loot Chest",
+            "sub_type": "real_chest",
+            "event": "You stumble upon a genuine treasure chest, adorned with intricate carvings and a sturdy lock. The chest is filled with a dazzling array of treasures: sparkling gemstones, shimmering fabrics, and precious metals.",
+            "difficulty_modifier": 1.3,
+            "double_loot_choice": 2,
+            "choices": {
+                "1": "You use your strength to force the chest open, revealing a hoard of treasures. (Requires ATT/DEF: 100)",
+                "2": "You use your agility and cunning to unlock the chest, revealing a double load of treasures! (Requires DEX/INT: 90)",
+                "3": "You search the surrounding area, hoping to uncover more hidden loot. (Requires ENE/HAP: 80)"
+            }
+        },
+        {
+            "stage_name": "Exiting Location",
+            "event": "As you prepare to leave the Forest, you feel a sense of accomplishment and pride in your travels. You've discovered new places, met new creatures, and found hidden treasures. The Forest seems to be saying goodbye, its trees swaying gently in the breeze.",
+            "difficulty_modifier": 1.0,
+            "choices": {
+                "1": "You make a strong departure, using your strength to part the foliage and reveal the exit path. (Requires ATT/DEF: 80)",
+                "2": "You exit the Forest with elegance, using your agility to navigate the winding path. (Requires DEX/INT: 70)",
+                "3": "You celebrate your journey, using your endurance to maintain a sense of joy and wonder. (Requires ENE/HAP: 60)"
+            }
+        }
+    ]
+}

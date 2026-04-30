@@ -1,0 +1,79 @@
+{
+    "stages": [
+        {
+            "stage_name": "Entering Location",
+            "event": "As you step into the scorching desert heat, the grand Pyramids of Giza rise majestically before you. The air is thick with the whispers of an ancient civilization. The sandy dunes stretch out endlessly, beckoning you to explore.",
+            "difficulty_modifier": 1.0,
+            "choices": {
+                "1": "Use your sturdy legs to charge through the entrance, relying on your strength (ATT) to push aside any obstacles.",
+                "2": "Carefully survey the surroundings, using your keen eyesight (DEX) to spot any hidden dangers or valuable artifacts.",
+                "3": "Take a moment to catch your breath, focusing on maintaining your energy (ENE) and mental clarity (HAP) for the adventure ahead."
+            }
+        },
+        {
+            "stage_name": "Looking Around",
+            "event": "You wander through the Pyramids, marveling at the intricate hieroglyphs and ancient stone carvings. A narrow passage beckons, leading you deeper into the heart of the structures.",
+            "difficulty_modifier": 1.0,
+            "choices": {
+                "1": "Use your physical strength (ATT) to push through the passage, potentially uncovering hidden secrets.",
+                "2": "Investigate the hieroglyphs, using your sharp mind (INT) to decipher the ancient symbols and discover hidden meaning.",
+                "3": "Pause to observe the shadows, using your patience (ENE/HAP) to notice any subtle clues or patterns."
+            }
+        },
+        {
+            "stage_name": "Avoiding Hostile Pets",
+            "sub_type": "scare_off",
+            "event": "A menacing Cobra blocks your path through the Pyramids! It looks aggressive and territorial.",
+            "difficulty_modifier": 1.2,
+            "choices": {
+                "1": "Unleash a fierce roar, attempting to scare off the Cobra with your intimidating presence (ATT).",
+                "2": "Play a clever trick, using your cunning (DEX) to distract the Cobra and create an opportunity to pass.",
+                "3": "Maintain your confidence, standing your ground and daring the Cobra to attack (ENE/HAP)."
+            }
+        },
+        {
+            "stage_name": "Avoiding Hostile Pets",
+            "sub_type": "evade",
+            "event": "The sly Jackal charges at you across the Pyramids! You need to escape quickly!",
+            "difficulty_modifier": 1.2,
+            "choices": {
+                "1": "Make a forceful dash, using your speed (ATT) to outrun the Jackal.",
+                "2": "Quickly scan your surroundings, using your agility (DEX) to spot a safe route and evade the Jackal.",
+                "3": "Stay calm, using your focus (ENE/HAP) to keep your footing and navigate through the Pyramids."
+            }
+        },
+        {
+            "stage_name": "Locating a FREE to open Loot Chest",
+            "sub_type": "mimic",
+            "event": "As you venture deeper into the Pyramids, you come across a mysterious chest adorned with ancient symbols. The chest seems to shift slightly, and its lock looks unusually organic.",
+            "difficulty_modifier": 1.3,
+            "choices": {
+                "1": "Use force to pry the chest open, relying on your brute strength (ATT).",
+                "2": "Examine the chest closely, searching for hidden mechanisms or weaknesses (DEX).",
+                "3": "Approach the chest cautiously, feeling for any subtle hints or warnings (ENE/HAP)."
+            }
+        },
+        {
+            "stage_name": "Locating a FREE to open Loot Chest",
+            "sub_type": "real_chest",
+            "event": "You stumble upon an ancient, intricately carved chest nestled within the heart of the Pyramids. It beckons you to claim its treasures!",
+            "difficulty_modifier": 1.3,
+            "double_loot_choice": 3,
+            "choices": {
+                "1": "Forcefully pry the chest open, relying on your strength (ATT).",
+                "2": "Use your wits to unlock the chest, choosing to reveal either of two hidden compartments (DEX). Double loot: you may choose to claim either of the two hidden treasures!",
+                "3": "Spend time searching the area, ensuring no one is watching as you claim the treasure (ENE/HAP)."
+            }
+        },
+        {
+            "stage_name": "Exiting Location",
+            "event": "As you prepare to leave the Pyramids, the sun sets over the vast expanse of the desert, casting a golden glow over the ancient structures. You feel a sense of accomplishment after uncovering the secrets within.",
+            "difficulty_modifier": 1.0,
+            "choices": {
+                "1": "Leave the Pyramids with a sense of pride, carrying the memories of your discoveries (ATT).",
+                "2": "Depart with stealth, using your agility (DEX) to evade any last-minute dangers.",
+                "3": "Pause to reflect on your adventure, basking in the warm glow of nostalgia (ENE/HAP)."
+            }
+        }
+    ]
+}

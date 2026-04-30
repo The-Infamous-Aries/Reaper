@@ -7,11 +7,131 @@ from typing import Dict, List, Optional, Set, Tuple, Any, Union, TypedDict, cast
 from enum import Enum, auto
 from collections import defaultdict
 from Systems.Functions.user_data_manager import user_data_manager
+from Systems.Functions.pets_db import pets_db
 from Systems.Pets.pets_system import add_experience
 from Systems.Pets.Logic.pet_brain import DamageCalculator, LootCalculator, StatsCalculator, NPCBrain
 from Systems.Functions import emoji as emoji_mod
 
 logger = logging.getLogger('pvp_system')
+
+# ── Relationship System ────────────────────────────────────────────────────────
+async def get_relationship_multipliers(user1_id: str, user2_id: str) -> Tuple[float, float]:
+    """
+    Get damage multipliers based on mutual relationship between two users.
+    Returns (user1_damage_multiplier, user2_damage_multiplier)
+    
+    Relationship effects:
+    - Best Friends: Cannot battle each other (should be blocked before this)
+    - Friends: Both do 0.8x damage to each other
+    - Foe: Both do 1.2x damage to each other  
+    - Enemy: Both do 1.5x damage to each other
+    - Neutral/Mixed: 1.0x damage (no effect)
+    """
+    try:
+        user1_to_user2, user2_to_user1 = await pets_db.get_mutual_relationship(user1_id, user2_id)
+        
+        # If either user considers the other a best friend, they cannot battle
+        if user1_to_user2 == 'best_friend' or user2_to_user1 == 'best_friend':
+            return (0.0, 0.0)  # This should be caught earlier, but safety check
+        
+        # Determine effective relationship (both must agree for effect)
+        effective_relationship = None
+        if user1_to_user2 == user2_to_user1 and user1_to_user2 is not None:
+            effective_relationship = user1_to_user2
+        
+        # Apply multipliers based on effective relationship
+        if effective_relationship == 'friend':
+            return (0.8, 0.8)  # Both do less damage
+        elif effective_relationship == 'foe':
+            return (1.2, 1.2)  # Both do more damage
+        elif effective_relationship == 'enemy':
+            return (1.5, 1.5)  # Both do much more damage
+        else:
+            return (1.0, 1.0)  # Neutral or mixed relationships
+            
+    except Exception as e:
+        logger.error(f"Error getting relationship multipliers: {e}")
+        return (1.0, 1.0)  # Default to neutral on error
+
+async def can_battle_pvp(user1_id: str, user2_id: str) -> Tuple[bool, str]:
+    """
+    Check if two users can battle each other based on their relationship.
+    Returns (can_battle, reason_if_not)
+    """
+    try:
+        user1_to_user2, user2_to_user1 = await pets_db.get_mutual_relationship(user1_id, user2_id)
+        
+        # Best friends cannot battle each other
+        if user1_to_user2 == 'best_friend' or user2_to_user1 == 'best_friend':
+            return (False, "Best friends cannot battle each other!")
+        
+        return (True, "")
+        
+    except Exception as e:
+        logger.error(f"Error checking battle eligibility: {e}")
+        return (True, "")  # Default to allowing battle on error
+
+async def get_boss_battle_multipliers(participants: List[str]) -> Dict[str, float]:
+    """
+    Get damage multipliers for boss battles based on relationships.
+    
+    Best Friends: +25% damage when fighting together
+    Friends: +10% damage when fighting together  
+    Foes: -15% damage when fighting together
+    Enemies: Cannot participate in boss battles together
+    """
+    multipliers = {user_id: 1.0 for user_id in participants}
+    
+    try:
+        # Check all pairs of participants
+        for i, user1_id in enumerate(participants):
+            for user2_id in participants[i+1:]:
+                user1_to_user2, user2_to_user1 = await pets_db.get_mutual_relationship(user1_id, user2_id)
+                
+                # If anyone considers anyone else an enemy, block the battle
+                if user1_to_user2 == 'enemy' or user2_to_user1 == 'enemy':
+                    return {}  # Empty dict indicates battle blocked
+                
+                # Apply positive multipliers for mutual positive relationships
+                effective_relationship = None
+                if user1_to_user2 == user2_to_user1 and user1_to_user2 is not None:
+                    effective_relationship = user1_to_user2
+                
+                if effective_relationship == 'best_friend':
+                    multipliers[user1_id] = max(multipliers[user1_id], 1.25)
+                    multipliers[user2_id] = max(multipliers[user2_id], 1.25)
+                elif effective_relationship == 'friend':
+                    multipliers[user1_id] = max(multipliers[user1_id], 1.10)
+                    multipliers[user2_id] = max(multipliers[user2_id], 1.10)
+                elif effective_relationship == 'foe':
+                    multipliers[user1_id] = min(multipliers[user1_id], 0.85)
+                    multipliers[user2_id] = min(multipliers[user2_id], 0.85)
+        
+        return multipliers
+        
+    except Exception as e:
+        logger.error(f"Error getting boss battle multipliers: {e}")
+        return {user_id: 1.0 for user_id in participants}  # Default to neutral on error
+
+async def can_battle_boss_together(participants: List[str]) -> Tuple[bool, str]:
+    """
+    Check if users can participate in a boss battle together.
+    Returns (can_battle, reason_if_not)
+    """
+    try:
+        # Check all pairs for enemy relationships
+        for i, user1_id in enumerate(participants):
+            for user2_id in participants[i+1:]:
+                user1_to_user2, user2_to_user1 = await pets_db.get_mutual_relationship(user1_id, user2_id)
+                
+                if user1_to_user2 == 'enemy' or user2_to_user1 == 'enemy':
+                    return (False, "Enemies cannot fight boss battles together!")
+        
+        return (True, "")
+        
+    except Exception as e:
+        logger.error(f"Error checking boss battle eligibility: {e}")
+        return (True, "")  # Default to allowing battle on error
 
 class PlayerInfoType(TypedDict, total=False):
     effective_multiplier: float
@@ -149,6 +269,35 @@ class PvPBattleView(discord.ui.View):
     async def initialize_battle_data(self):
         """Initialize pet data for all participants"""
         try:
+            # Check relationships before starting battle
+            player_ids = list(self.players.keys())
+            
+            # For 1v1 battles, check if players can battle each other
+            if self.battle_mode == BattleMode.ONE_VS_ONE and len(player_ids) == 2:
+                can_battle, reason = await can_battle_pvp(player_ids[0], player_ids[1])
+                if not can_battle:
+                    if self.message:
+                        error_emoji = emoji_mod.mention('No') or "❌"
+                        await self.message.edit(content=f"{error_emoji} {reason}", view=None)
+                    return
+            
+            # For FFA battles, check all pairs (though best friends can still participate in FFA)
+            elif self.battle_mode == BattleMode.FREE_FOR_ALL:
+                blocked_pairs = []
+                for i, player1_id in enumerate(player_ids):
+                    for player2_id in player_ids[i+1:]:
+                        can_battle, reason = await can_battle_pvp(player1_id, player2_id)
+                        if not can_battle:
+                            # In FFA, we just note the relationship but don't block the battle
+                            # Best friends will just do 0 damage to each other
+                            blocked_pairs.append((player1_id, player2_id))
+                
+                if blocked_pairs:
+                    # Add a note about relationship effects
+                    relationship_note = "⚠️ Some players have relationship restrictions that will affect damage."
+                    if hasattr(self, 'battle_log'):
+                        self.battle_log.append(relationship_note)
+            
             tasks = []
             for player_id, player in self.players.items():
                 tasks.append(self._load_pet_data(player_id, player))
@@ -594,6 +743,9 @@ class PvPBattleView(discord.ui.View):
         target = self.players[target_id]
         defender = self.players[defender_id]
         
+        # Get relationship multiplier for PvP damage
+        relationship_mult_attacker, relationship_mult_target = await get_relationship_multipliers(attacker_id, target_id)
+        
         # Use new damage calculator
         result = DamageCalculator.calculate_battle_action(
             attacker_attack=int(cast(Any, attacker.get('total_attack', attacker.get('attack', 10)))),
@@ -613,6 +765,9 @@ class PvPBattleView(discord.ui.View):
         
         # Apply damage and parry
         damage_to_target = result['final_damage']
+        # Apply relationship multiplier to damage
+        damage_to_target = int(damage_to_target * relationship_mult_attacker)
+        
         # Apply 25% extra incoming damage if target is charging
         if target.get('charging', False) and damage_to_target > 0:
             damage_to_target = int(damage_to_target * 1.25)
@@ -744,6 +899,9 @@ class PvPBattleView(discord.ui.View):
         player1 = self.players[player1_id]
         player2 = self.players[player2_id]
         
+        # Get relationship multipliers for both players
+        relationship_mult_p1, relationship_mult_p2 = await get_relationship_multipliers(player1_id, player2_id)
+        
         # Calculate damage for player1 attacking player2
         result1 = DamageCalculator.calculate_battle_action(
             attacker_attack=int(cast(Any, player1.get('total_attack', player1.get('attack', 10)))),
@@ -781,6 +939,11 @@ class PvPBattleView(discord.ui.View):
         # Apply damage simultaneously
         damage1 = result1['final_damage']
         damage2 = result2['final_damage']
+        
+        # Apply relationship multipliers
+        damage1 = int(damage1 * relationship_mult_p1)
+        damage2 = int(damage2 * relationship_mult_p2)
+        
         # Apply 25% vulnerability if the targets are charging
         if player2.get('charging', False) and damage1 > 0:
             damage1 = int(damage1 * 1.25)
@@ -1214,7 +1377,7 @@ class PvPActionView(discord.ui.View):
                 pet = pdata.get('pet', {})
                 ptype = str(pet.get('category','')).lower()
                 pelem = str(pet.get('element','')).lower()
-                labels = DamageCalculator.get_action_labels(ptype, pelem, species=pet.get('species'))
+                labels = DamageCalculator.get_action_labels(ptype, pelem, species=pet.get('species'), custom_labels=pet.get('action_labels', {}))
                 t_name = (ptype or 'unknown').title()
                 attack_ph = f"{emoji_mod.mention('Attack') or '⚔️'} {labels.get('attack','Attack')} • {t_name} (select target)"
             except Exception:
@@ -1237,7 +1400,7 @@ class PvPActionView(discord.ui.View):
             pet = pdata.get('pet', {})
             ptype = str(pet.get('category','')).lower()
             pelem = str(pet.get('element','')).lower()
-            labels = DamageCalculator.get_action_labels(ptype, pelem, species=pet.get('species'))
+            labels = DamageCalculator.get_action_labels(ptype, pelem, species=pet.get('species'), custom_labels=pet.get('action_labels', {}))
             t_name = (ptype or 'unknown').title()
             defend_ph = f"{emoji_mod.mention('Defend') or '🛡️'} {labels.get('defend','Defend')} • {t_name} (self only)"
         except Exception:
@@ -1267,7 +1430,7 @@ class PvPActionView(discord.ui.View):
             pet = pdata.get('pet', {})
             pelem = str(pet.get('element','')).lower()
             ptype = str(pet.get('category','')).lower()
-            labels = DamageCalculator.get_action_labels(ptype, pelem, species=pet.get('species'))
+            labels = DamageCalculator.get_action_labels(ptype, pelem, species=pet.get('species'), custom_labels=pet.get('action_labels', {}))
             current_charge = int(pdata.get('charge', 1))
             charge_label = f"{labels.get('charge','Charge')} x{current_charge}"
         except Exception:
@@ -1305,7 +1468,7 @@ class PvPActionView(discord.ui.View):
         charge_multiplier = player_data.get('charge', 1.0)
 
         pet = player_data.get('pet', {})
-        labels = DamageCalculator.get_action_labels(str(pet.get('category','')).lower(), str(pet.get('element','')).lower(), species=pet.get('species'))
+        labels = DamageCalculator.get_action_labels(str(pet.get('category','')).lower(), str(pet.get('element','')).lower(), species=pet.get('species'), custom_labels=pet.get('action_labels', {}))
         action_label = labels.get('attack', 'Attack')
         
         # Clear charge after attacking
@@ -1346,7 +1509,7 @@ class PvPActionView(discord.ui.View):
         
         player_data = self.battle_view.players.get(self.player_id, {})
         pet = player_data.get('pet', {})
-        labels = DamageCalculator.get_action_labels(str(pet.get('category','')).lower(), str(pet.get('element','')).lower(), species=pet.get('species'))
+        labels = DamageCalculator.get_action_labels(str(pet.get('category','')).lower(), str(pet.get('element','')).lower(), species=pet.get('species'), custom_labels=pet.get('action_labels', {}))
         action_label = labels.get('defend', 'Defend')
         
         # Set up defense state
@@ -1437,7 +1600,7 @@ class PvPActionView(discord.ui.View):
         # Add to battle log
         try:
             pet = self.battle_view.players[self.player_id].get('pet', {})
-            labels = DamageCalculator.get_action_labels(str(pet.get('category','')).lower(), str(pet.get('element','')).lower(), species=pet.get('species'))
+            labels = DamageCalculator.get_action_labels(str(pet.get('category','')).lower(), str(pet.get('element','')).lower(), species=pet.get('species'), custom_labels=pet.get('action_labels', {}))
             cverb = labels.get('charge', 'Charge')
         except Exception:
             cverb = "Charge"

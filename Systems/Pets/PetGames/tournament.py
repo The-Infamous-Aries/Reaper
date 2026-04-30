@@ -576,7 +576,7 @@ class TournamentBattleView(discord.ui.View):
             pelem = ""
             if pet:
                 pelem = str(pet.get('element','')).lower()
-            labels = DamageCalculator.get_action_labels(str((pet or {}).get('category','')).lower(), pelem, species=(pet or {}).get('species'))
+            labels = DamageCalculator.get_action_labels(str((pet or {}).get('category','')).lower(), pelem, species=(pet or {}).get('species'), custom_labels=(pet or {}).get('action_labels', {}))
             elem_emojis = {
                 'basic':'⚖️','fire':'🔥','water':'💧','electric':'⚡','ice':'❄️',
                 'plant':'🌱','rock':'🪨','air':'💨','magic':'🔮','holy':'🕯️','necro':'🪦'
@@ -619,7 +619,7 @@ class TournamentBattleView(discord.ui.View):
             ptype = ""
             if pet:
                 ptype = str(pet.get('category','')).lower()
-            labels = DamageCalculator.get_action_labels(ptype, str((pet or {}).get('element','')).lower(), species=(pet or {}).get('species'))
+            labels = DamageCalculator.get_action_labels(ptype, str((pet or {}).get('element','')).lower(), species=(pet or {}).get('species'), custom_labels=(pet or {}).get('action_labels', {}))
             type_emojis = {'flying':'☁️','land':'🌿','swimming':'🌊'}
             t_emoji = type_emojis.get(ptype,'❓')
             t_name = (ptype or 'unknown').title()

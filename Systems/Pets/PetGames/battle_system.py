@@ -67,7 +67,18 @@ class UnifiedBattleView(discord.ui.View):
         self.total_damage_received = {}
         self.total_monster_damage_dealt = 0
         self.total_monster_damage_received = 0
-        
+
+        # Round history for battle log
+        self.round_history = []
+        # Defending players set for PvP
+        self.defending_players = set()
+        # Monster action tracking
+        self.monster_last_action = None
+        self.monster_last_action_info = {}
+        self.prev_monster_hp = 0
+        # Action timeout task
+        self._action_timeout_task: Optional[asyncio.Task] = None
+
         # Initialize damage calculator
         self.damage_calculator = DamageCalculator()
         # Initialize NPC brain for monster AI decisions
@@ -280,20 +291,72 @@ class UnifiedBattleView(discord.ui.View):
                 base_defense = pet.get('defense', deff * intel if deff and intel else 5)
                 total_attack = base_attack
                 total_defense = base_defense
-                
+
                 level = int(pet.get('level', 1))
                 max_hp = pet.get('max_health', StatsCalculator.calculate_max_health(pet))
                 current_hp = int(pet.get('health', max_hp))
+
+                # Apply ability tree combat multipliers
+                try:
+                    from Systems.Pets.Logic.ability_tree import get_ability_effect
+                    
+                    # Determine battle type for ability effects
+                    # self.battle_type is "solo" for NPC/boss, "pvp" for PvP
+                    if self.is_boss_battle:
+                        battle_type = "boss"
+                    elif str(getattr(self, 'battle_type', 'solo')).lower() == 'pvp':
+                        battle_type = "pvp"
+                    else:
+                        battle_type = "npc"
+                    
+                    # Apply damage multipliers
+                    dmg_mult = get_ability_effect(pet, "battle_damage_mult", battle_type=battle_type)
+                    if dmg_mult != 1.0:
+                        total_attack = int(total_attack * dmg_mult)
+                    
+                    # Apply defense multipliers (note: this reduces incoming damage)
+                    def_mult = get_ability_effect(pet, "battle_defense_mult", battle_type=battle_type)
+                    if def_mult != 1.0:
+                        total_defense = int(total_defense * def_mult)
+                        
+                    # Apply battle health bonus (max_hp and current_hp are now defined above)
+                    health_bonus = get_ability_effect(pet, "battle_health_bonus")
+                    if health_bonus > 0:
+                        max_hp = int(max_hp * (1.0 + health_bonus))
+                        current_hp = min(current_hp, max_hp)  # Don't exceed new max
+                        
+                except Exception:
+                    pass
+                
+                # Apply ability tree charge bonuses
+                starting_charge = 1.0
+                max_charge_limit = 5.0  # Default max charge
+                try:
+                    from Systems.Pets.Logic.ability_tree import get_starting_charge_bonus, get_ability_effect
+                    charge_bonus = get_starting_charge_bonus(pet)
+                    if charge_bonus > 0:
+                        starting_charge = min(max_charge_limit, 1.0 + charge_bonus)
+                    
+                    # Apply charge limit bonus
+                    charge_limit_bonus = get_ability_effect(pet, "charge_limit_bonus")
+                    if charge_limit_bonus > 0:
+                        max_charge_limit = 5.0 + charge_limit_bonus
+                except Exception:
+                    pass
                 
                 self.player_data[user.id] = {
                     'user': user,
                     'pet': pet,
                     'hp': current_hp,
                     'max_hp': max_hp,
-                    'charge': 1.0,
+                    'charge': starting_charge,
+                    'charge_multiplier': starting_charge,
+                    'max_charge_limit': max_charge_limit,
                     'charging': False,
+                    'defending': False,
                     'alive': True,
                     'last_action': None,
+                    'last_action_info': {},
                     'total_attack': total_attack,
                     'total_defense': total_defense,
                     'type': str(pet.get('category','')).lower(),
@@ -359,67 +422,75 @@ class UnifiedBattleView(discord.ui.View):
             logger.warning("No interaction context available for sending/updating action messages.")
             return
 
-        tasks = []
-        for user_id, player_data in self.player_data.items():
-            async def send_prompt_for_player(uid, pdata):
-                if pdata['alive'] and pdata['hp'] > 0:
+        async def send_prompt_for_player(uid: int, pdata: dict):
+            if not (pdata['alive'] and pdata['hp'] > 0):
+                return
+            try:
+                action_view = EphemeralActionView(self, uid)
+
+                # Create the action embed
+                last_action = pdata.get('last_action')
+                last_info = pdata.get('last_action_info', {})
+                last_line = ""
+                if last_action == 'attack':
+                    tgt = last_info.get('target')
+                    dmg = last_info.get('damage')
+                    parry = last_info.get('parry_damage', 0)
+                    extra = f" | Parry {parry}" if parry else ""
+                    last_line = f"\nLast round: {emoji_mod.mention('Attack') or '⚔️'} Attack → {dmg} dmg{(' to ' + tgt) if tgt else ''}{extra}"
+                elif last_action == 'defend':
+                    eff = last_info.get('effectiveness')
+                    parry_dealt = last_info.get('parry_damage_dealt', 0)
+                    extra = f" | Parry dealt {parry_dealt}" if parry_dealt else ""
+                    last_line = f"\nLast round: {emoji_mod.mention('Defend') or '🛡️'} Defend → {eff:.2f}x{extra}" if eff is not None else f"\nLast round: {emoji_mod.mention('Defend') or '🛡️'} Defend"
+                elif last_action == 'charge':
+                    mult = last_info.get('multiplier', pdata.get('charge_multiplier', 1.0))
+                    last_line = f"\nLast round: {emoji_mod.mention('Charge') or '⚡'} Charge → x{mult}"
+
+                embed = discord.Embed(
+                    title=f"{emoji_mod.mention('Attack') or '⚔️'} Battle Action Required",
+                    description=f"**{pdata['pet']['name']}** - Round {self.turn_count + 1}{last_line}\nChoose your action:",
+                    color=0x00ff00
+                )
+
+                if uid in self.ephemeral_messages and self.ephemeral_messages[uid]:
                     try:
-                        action_view = EphemeralActionView(self, uid)
-                        
-                        # Create the action embed
-                        last_action = pdata.get('last_action')
-                        last_info = pdata.get('last_action_info', {})
-                        last_line = ""
-                        if last_action == 'attack':
-                            tgt = last_info.get('target')
-                            dmg = last_info.get('damage')
-                            parry = last_info.get('parry_damage', 0)
-                            extra = f" | Parry {parry}" if parry else ""
-                            last_line = f"\nLast round: {emoji_mod.mention('Attack') or '⚔️'} Attack → {dmg} dmg{(' to ' + tgt) if tgt else ''}{extra}"
-                        elif last_action == 'defend':
-                            eff = last_info.get('effectiveness')
-                            parry_dealt = last_info.get('parry_damage_dealt', 0)
-                            extra = f" | Parry dealt {parry_dealt}" if parry_dealt else ""
-                            last_line = f"\nLast round: {emoji_mod.mention('Defend') or '🛡️'} Defend → {eff:.2f}x{extra}" if eff is not None else f"\nLast round: {emoji_mod.mention('Defend') or '🛡️'} Defend"
-                        elif last_action == 'charge':
-                            mult = last_info.get('multiplier', pdata.get('charge', 1.0))
-                            last_line = f"\nLast round: {emoji_mod.mention('Charge') or '⚡'} Charge → x{mult}"
-                        
-                        embed = discord.Embed(
-                            title=f"{emoji_mod.mention('Attack') or '⚔️'} Battle Action Required",
-                            description=f"**{pdata['pet']['name']}** - Round {self.turn_count + 1}{last_line}\nChoose your action:",
-                            color=0x00ff00
-                        )
-                        
-                        if uid in self.ephemeral_messages and self.ephemeral_messages[uid]:
-                            try:
-                                await self.ephemeral_messages[uid].edit(embed=embed, view=action_view)
-                            except discord.NotFound:
-                                logger.debug(f"Ephemeral message for {uid} not found, sending new one.")
-                                del self.ephemeral_messages[uid] # Clear invalid reference
-                                msg = await self.interaction.followup.send(embed=embed, view=action_view, ephemeral=True)
-                                self.ephemeral_messages[uid] = msg
-                            except Exception as e:
-                                logger.error(f"Error editing ephemeral message for user {uid}: {e}")
-                                # If edit fails, try sending a new one as a fallback
-                                msg = await self.interaction.followup.send(embed=embed, view=action_view, ephemeral=True)
-                                self.ephemeral_messages[uid] = msg
-                        else:
+                        await self.ephemeral_messages[uid].edit(embed=embed, view=action_view)
+                    except discord.NotFound:
+                        logger.debug(f"Ephemeral message for {uid} not found, sending new one.")
+                        del self.ephemeral_messages[uid]
+                        msg = await self.interaction.followup.send(embed=embed, view=action_view, ephemeral=True)
+                        self.ephemeral_messages[uid] = msg
+                    except Exception as e:
+                        logger.error(f"Error editing ephemeral message for user {uid}: {e}")
+                        try:
                             msg = await self.interaction.followup.send(embed=embed, view=action_view, ephemeral=True)
                             self.ephemeral_messages[uid] = msg
-                            
-                    except Exception as e:
-                        logger.error(f"Error sending/updating action message to user {uid}: {e}")
-            tasks.append(send_prompt_for_player(user_id, player_data))
-            
+                        except Exception as e2:
+                            logger.error(f"Fallback send also failed for user {uid}: {e2}")
+                else:
+                    msg = await self.interaction.followup.send(embed=embed, view=action_view, ephemeral=True)
+                    self.ephemeral_messages[uid] = msg
+
+            except Exception as e:
+                logger.error(f"Error sending/updating action message to user {uid}: {e}")
+
+        tasks = [send_prompt_for_player(uid, pdata) for uid, pdata in self.player_data.items()]
         if tasks:
             await asyncio.gather(*tasks)
 
     async def start_action_collection(self):
         """Start action collection - updates ephemeral action buttons for each player"""
+        if self.battle_over:
+            return
+
         self.waiting_for_actions = True
         self.player_actions.clear()
-        
+
+        # Cancel any previous timeout task
+        if self._action_timeout_task and not self._action_timeout_task.done():
+            self._action_timeout_task.cancel()
+
         # Update the main battle message without a resend button
         waiting_embed = self.build_spectator_embed("⏳ Waiting for players to choose actions...")
         try:
@@ -428,22 +499,45 @@ class UnifiedBattleView(discord.ui.View):
             logger.warning("Main battle message not found during action collection")
         except discord.HTTPException as e:
             logger.error(f"Error updating main battle message: {e}")
-        
+
         # Update ephemeral action messages to each alive player
         await self._send_or_update_action_messages()
-        
+
+        # Start a timeout so the battle never stalls if a player goes AFK
+        self._action_timeout_task = asyncio.create_task(self._action_timeout())
+
         return True
+
+    async def _action_timeout(self, timeout: int = 120):
+        """Auto-submit 'attack' for any player who hasn't acted within timeout seconds."""
+        await asyncio.sleep(timeout)
+        if self.battle_over or not self.waiting_for_actions:
+            return
+        alive_players = [uid for uid, data in self.player_data.items() if data['alive'] and data['hp'] > 0]
+        for uid in alive_players:
+            if uid not in self.player_actions:
+                logger.info(f"Action timeout: auto-submitting 'attack' for player {uid}")
+                self.player_actions[uid] = {'action': 'attack', 'target': None, 'action_label': 'Attack (auto)'}
+        # Trigger round processing
+        await self.check_all_actions_submitted()
  
     async def check_all_actions_submitted(self):
         """Check if all players have submitted actions"""
         if not self.waiting_for_actions:
-            return            
-        alive_players = [uid for uid, data in self.player_data.items() if data['alive'] and data['hp'] > 0]      
-        if len(self.player_actions) == len(alive_players):
+            return
+        alive_players = [uid for uid, data in self.player_data.items() if data['alive'] and data['hp'] > 0]
+        if len(self.player_actions) >= len(alive_players):
             self.waiting_for_actions = False
-            
-            # No need to clean up ephemeral messages - they auto-delete
-            
+
+            # Cancel the timeout task since all actions are in
+            if self._action_timeout_task and not self._action_timeout_task.done():
+                self._action_timeout_task.cancel()
+
+            # Mark any player with hp <= 0 as dead before processing
+            for uid, data in self.player_data.items():
+                if data['hp'] <= 0:
+                    data['alive'] = False
+
             # Process the round
             if self.battle_type in ["solo"] and self.monster:
                 monster_action = self.get_monster_action()
@@ -488,7 +582,8 @@ class UnifiedBattleView(discord.ui.View):
                     attacker_element=str(player_data['pet'].get('element','')).lower(),
                     attacker_element2=player_data['pet'].get('element2'),
                     defender_type=str(self.monster.get('type','')).lower(),
-                    defender_element=str(self.monster.get('element','')).lower()
+                    defender_element=str(self.monster.get('element','')).lower(),
+                    attacker_pet_data=player_data['pet']  # Add pet data for critical hits
                 )
 
                 # Use calculator's final damage (includes charging vulnerability when applicable)
@@ -516,8 +611,9 @@ class UnifiedBattleView(discord.ui.View):
                     action_lines.append(f"{emoji_mod.mention('Attack') or '⚔️'} {player_name} attacks but misses! (Roll: {battle_result['attack_roll']})")
                 else:
                     charge_text = f" (Charged x{player_data.get('charge_multiplier', 1.0)}!)" if player_data.get('charge_multiplier', 1.0) > 1.0 else ""
-                    self.battle_log.append(f"{emoji_mod.mention('Attack') or '⚔️'} {player_name} attacks for {battle_result['final_damage']} damage! (Roll: {battle_result['attack_roll']}, Result: {battle_result['attack_result']}){charge_text}")
-                    action_lines.append(f"{emoji_mod.mention('Attack') or '⚔️'} {player_name} hits for {battle_result['final_damage']} damage (Roll: {battle_result['attack_roll']}, Result: {battle_result['attack_result']}){charge_text}")
+                    critical_text = " **CRITICAL HIT!**" if battle_result.get('is_critical', False) else ""
+                    self.battle_log.append(f"{emoji_mod.mention('Attack') or '⚔️'} {player_name} attacks for {battle_result['final_damage']} damage! (Roll: {battle_result['attack_roll']}, Result: {battle_result['attack_result']}){charge_text}{critical_text}")
+                    action_lines.append(f"{emoji_mod.mention('Attack') or '⚔️'} {player_name} hits for {battle_result['final_damage']} damage (Roll: {battle_result['attack_roll']}, Result: {battle_result['attack_result']}){charge_text}{critical_text}")
                 
                 # Reset charge after attack
                 player_data['charge_multiplier'] = 1.0
@@ -590,8 +686,11 @@ class UnifiedBattleView(discord.ui.View):
                 current_multiplier = player_data.get('charge_multiplier', 1.0)
                 if 'charge' in player_data:
                     current_multiplier = player_data['charge']
-                    
+                
+                max_charge_limit = player_data.get('max_charge_limit', 5.0)
                 next_multiplier = DamageCalculator.get_next_charge_multiplier(current_multiplier)
+                # Respect the pet's charge limit
+                next_multiplier = min(next_multiplier, max_charge_limit)
                 player_data['charge_multiplier'] = next_multiplier
                 player_data['charge'] = next_multiplier  # Keep both for compatibility
                 player_data['charging'] = True
@@ -631,7 +730,8 @@ class UnifiedBattleView(discord.ui.View):
                         'type': str(player_data['pet'].get('category', '')).lower(),
                         'element': str(player_data['pet'].get('element', '')).lower(),
                         'element2': player_data['pet'].get('element2'),
-                        'species': player_data['pet'].get('species')
+                        'species': player_data['pet'].get('species'),
+                        'pet_data': player_data['pet']
                     }
                 
                 # Calculate monster attack against all players
@@ -655,6 +755,17 @@ class UnifiedBattleView(discord.ui.View):
                     
                     # Use calculator's final damage (already accounts for charging vulnerability)
                     incoming_damage = battle_result['final_damage']
+                    
+                    # Apply low health damage reduction if player is below 25% health
+                    current_hp_percent = player_data['hp'] / player_data['max_hp']
+                    if current_hp_percent < 0.25:
+                        try:
+                            from Systems.Pets.Logic.ability_tree import get_low_health_damage_reduction
+                            damage_reduction = get_low_health_damage_reduction(player_data['pet'])
+                            if damage_reduction > 0:
+                                incoming_damage = int(incoming_damage * (1.0 - damage_reduction))
+                        except Exception:
+                            pass
 
                     # Apply damage to player
                     player_data['hp'] = max(0, player_data['hp'] - incoming_damage)
@@ -725,8 +836,6 @@ class UnifiedBattleView(discord.ui.View):
         # Reset monster charge after attack (like players)
         if monster_action == "attack":
             self.monster_charge_multiplier = 1.0
-        # Track previous monster HP for next NPCBrain decision
-        self.prev_monster_hp = self.monster_hp
         # Track previous monster HP for next NPCBrain decision
         self.prev_monster_hp = self.monster_hp
             
@@ -842,8 +951,11 @@ class UnifiedBattleView(discord.ui.View):
                 current_multiplier = player_data.get('charge_multiplier', 1.0)
                 if 'charge' in player_data:
                     current_multiplier = player_data['charge']
-                    
+                
+                max_charge_limit = player_data.get('max_charge_limit', 5.0)
                 next_multiplier = DamageCalculator.get_next_charge_multiplier(current_multiplier)
+                # Respect the pet's charge limit
+                next_multiplier = min(next_multiplier, max_charge_limit)
                 player_data['charge_multiplier'] = next_multiplier
                 player_data['charge'] = next_multiplier  # Keep both for compatibility
                 # Track last action for UI visibility until next pick
@@ -856,7 +968,8 @@ class UnifiedBattleView(discord.ui.View):
                 labels = DamageCalculator.get_action_labels(
                     str(player_data['pet'].get('category','')).lower(),
                     str(player_data['pet'].get('element','')).lower(),
-                    species=player_data['pet'].get('species')
+                    species=player_data['pet'].get('species'),
+                    custom_labels=player_data['pet'].get('action_labels', {})
                 )
                 verb = labels.get('charge', 'Charging')
                 action_text += f"{emoji_mod.mention('Charge') or '⚡'} **{player_name}** channels {verb}! (Charge: x{next_multiplier})\n"
@@ -893,11 +1006,35 @@ class UnifiedBattleView(discord.ui.View):
                     defender_type=str(defender_data['pet'].get('category','')).lower(),
                     defender_element=str(defender_data['pet'].get('element','')).lower(),
                     attacker_species=attacker_data['pet'].get('species'),
-                    defender_species=defender_data['pet'].get('species')
+                    defender_species=defender_data['pet'].get('species'),
+                    attacker_pet_data=attacker_data['pet'],  # Add pet data for critical hits
+                    defender_pet_data=defender_data['pet']   # Add pet data for charge vulnerability
                 )
                 
                 final_damage = battle_result['final_damage']
                 parry_damage = battle_result.get('parry_damage', 0)
+                
+                # Apply low health damage reduction to defender if below 25% health
+                defender_current_hp_percent = defender_data['hp'] / defender_data['max_hp']
+                if defender_current_hp_percent < 0.25 and final_damage > 0:
+                    try:
+                        from Systems.Pets.Logic.ability_tree import get_low_health_damage_reduction
+                        damage_reduction = get_low_health_damage_reduction(defender_data['pet'])
+                        if damage_reduction > 0:
+                            final_damage = int(final_damage * (1.0 - damage_reduction))
+                    except Exception:
+                        pass
+                
+                # Apply low health damage reduction to attacker if taking parry damage and below 25% health
+                attacker_current_hp_percent = attacker_data['hp'] / attacker_data['max_hp']
+                if attacker_current_hp_percent < 0.25 and parry_damage > 0:
+                    try:
+                        from Systems.Pets.Logic.ability_tree import get_low_health_damage_reduction
+                        damage_reduction = get_low_health_damage_reduction(attacker_data['pet'])
+                        if damage_reduction > 0:
+                            parry_damage = int(parry_damage * (1.0 - damage_reduction))
+                    except Exception:
+                        pass
                 
                 # Apply damage
                 if parry_damage > 0:
@@ -932,9 +1069,10 @@ class UnifiedBattleView(discord.ui.View):
                     else:
                         roll_multiplier = self._get_roll_multiplier_from_result(battle_result['attack_result'], battle_result['attack_roll'])
                         charge_text = f" (Charged x{attacker_data.get('charge_multiplier', 1.0)}!)" if attacker_data.get('charge_multiplier', 1.0) > 1.0 else ""
+                        critical_text = " **CRITICAL HIT!**" if battle_result.get('is_critical', False) else ""
                         defend_text = f", reduced by defense" if defender_defending else ""
                         atk = battle_result.get('attacker_action_name', 'Attack')
-                        action_text += f"{emoji_mod.mention('Attack') or '⚔️'} **{attacker_name}** uses {atk} on **{defender_name}**! (Roll: {battle_result['attack_roll']}, Multiplier: {roll_multiplier:.2f}x){charge_text}{defend_text} → {final_damage} damage dealt\n"
+                        action_text += f"{emoji_mod.mention('Attack') or '⚔️'} **{attacker_name}** uses {atk} on **{defender_name}**! (Roll: {battle_result['attack_roll']}, Multiplier: {roll_multiplier:.2f}x){charge_text}{critical_text}{defend_text} → {final_damage} damage dealt\n"
                 
                 # Track last action for UI visibility until next pick
                 attacker_data['last_action'] = 'attack'
@@ -1362,16 +1500,28 @@ class UnifiedBattleView(discord.ui.View):
         """Check if battle is over and handle rewards"""
         if self.battle_over:
             return
-        
+
+        # Sync alive flag with hp for all players
+        for data in self.player_data.values():
+            if data['hp'] <= 0:
+                data['alive'] = False
+
         # Check for victory against monster
         if self.monster and self.monster_hp <= 0:
+            self.battle_over = True
             await self.handle_victory()
+
+        # Check for defeat against monster (all players dead)
+        elif self.monster and not any(data['alive'] for data in self.player_data.values()):
             self.battle_over = True
-            
-        # Check for defeat against monster
-        elif self.monster and all(not data['alive'] or data['hp'] <= 0 for data in self.player_data.values()):
             await self.handle_defeat()
-            self.battle_over = True
+
+        # PvP: only one player left alive
+        elif not self.monster:
+            alive_count = sum(1 for data in self.player_data.values() if data['alive'])
+            if alive_count <= 1:
+                self.battle_over = True
+                await self.handle_victory()
 
     def _get_roll_multiplier_from_result(self, result_type: str, roll: int) -> float:
         """Convert attack result type to roll multiplier for display purposes"""
@@ -1410,19 +1560,6 @@ class UnifiedBattleView(discord.ui.View):
                 return
 
             if self.is_boss_battle:
-                logger.info(f"Boss battle defeat for {[p[0].id for p in self.participants]}.")
-                for user_id, data in self.player_data.items():
-                    await user_data_manager.update_pet_battle_stats(
-                        str(user_id),
-                        "boss",
-                        losses=1,
-                        xp_earned=0,
-                        damage_dealt=int(self.total_damage_dealt.get(user_id, 0)),
-                        damage_taken=int(self.total_damage_received.get(user_id, 0))
-                    )
-                return
-
-            if self.is_boss_battle:
                 logger.info(f"Boss battle victory for {[p[0].id for p in self.participants]}.")
                 for user_id, data in self.player_data.items():
                     if data['alive'] and data['hp'] > 0:
@@ -1452,7 +1589,7 @@ class UnifiedBattleView(discord.ui.View):
                         # Store loot info for the final embed
                         data['loot_text'] = "\n" + "\n".join(loot_messages)
                         if has_level_changed and change_data:
-                            if change_data.get("new_level") > change_data.get("old_level"):
+                            if change_data.get("new_level", 0) > change_data.get("old_level", 0):
                                 data['loot_text'] += f"\n↗️ Leveled up to {change_data.get('new_level')}!"
 
                 return
@@ -1469,7 +1606,7 @@ class UnifiedBattleView(discord.ui.View):
                     loot_result = await LootCalculator.calculate_loot(
                         user_id=int(user_id),
                         pet_data=pet,
-                        source="battle",
+                        source="npc_battle",
                         difficulty=self.difficulty,
                         winner_level=int(pet.get('level', 1)),
                         is_winner=True
@@ -1536,7 +1673,7 @@ class UnifiedBattleView(discord.ui.View):
                 loot_result = await LootCalculator.calculate_loot(
                     user_id=int(user_id),
                     pet_data=pet,
-                    source="battle",
+                    source="npc_battle",
                     difficulty=self.difficulty,
                     winner_level=int(pet.get('level', 1)),
                     is_winner=False
@@ -1565,11 +1702,6 @@ class UnifiedBattleView(discord.ui.View):
 
         except Exception as e:
             logger.error(f"Error handling defeat: {e}")
-                
-            logger.info("Battle defeat handled")
-            
-        except Exception as e:
-            logger.error(f"Error handling defeat: {e}")
 
 class EphemeralActionView(discord.ui.View):
     """Ephemeral action view for individual players"""
@@ -1593,7 +1725,7 @@ class EphemeralActionView(discord.ui.View):
 
             labels = {
                 'attack': custom_labels.get('attack') or default_labels.get('attack', 'Attack'),
-                'defend': custom_labels.get('defend') or default_labels.get('defend', 'Defend'),
+                'defend': custom_labels.get('defense') or custom_labels.get('defend') or default_labels.get('defend', 'Defend'),
                 'charge': custom_labels.get('charge') or default_labels.get('charge', 'Charge'),
             }
             type_emojis = {'flying':'☁️','land':'🌿','swimming':'🌊'}
@@ -1606,11 +1738,15 @@ class EphemeralActionView(discord.ui.View):
             # Apply labels after buttons are added (they are added by decorators on super().__init__)
             self.attack_button.label = labels['attack']
             self.attack_button.style = discord.ButtonStyle.danger
-            self.attack_button.emoji = discord.PartialEmoji(name='Attack', id=emoji_mod.id_for('Attack'))
+            atk_emoji_id = emoji_mod.id_for('Attack')
+            if atk_emoji_id:
+                self.attack_button.emoji = discord.PartialEmoji(name='Attack', id=atk_emoji_id)
 
             self.defend_button.label = labels['defend']
             self.defend_button.style = discord.ButtonStyle.primary
-            self.defend_button.emoji = discord.PartialEmoji(name='Defend', id=emoji_mod.id_for('Defend'))
+            def_emoji_id = emoji_mod.id_for('Defend')
+            if def_emoji_id:
+                self.defend_button.emoji = discord.PartialEmoji(name='Defend', id=def_emoji_id)
 
             current_charge = 1
             try:
@@ -1619,7 +1755,9 @@ class EphemeralActionView(discord.ui.View):
                 current_charge = 1
             self.charge_button.label = f"{labels['charge']} x{current_charge}"
             self.charge_button.style = discord.ButtonStyle.success
-            self.charge_button.emoji = discord.PartialEmoji(name='Charge', id=emoji_mod.id_for('Charge'))
+            chg_emoji_id = emoji_mod.id_for('Charge')
+            if chg_emoji_id:
+                self.charge_button.emoji = discord.PartialEmoji(name='Charge', id=chg_emoji_id)
         except Exception:
             pass
 

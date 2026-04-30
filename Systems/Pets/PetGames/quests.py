@@ -38,68 +38,129 @@ def _generate_quest_from_groq(location, difficulty):
     if not client:
         return None
 
+    # Location-specific theming hints
+    location_themes = {
+        "Camp": "wilderness survival, campfires, tents, outdoor cooking, nature sounds",
+        "Bonfire": "crackling flames, gathering warmth, storytelling, sparks flying, cozy atmosphere",
+        "Beach": "ocean waves, sandy shores, seashells, tide pools, salty breeze, driftwood",
+        "Forest": "towering trees, rustling leaves, woodland creatures, moss-covered paths, filtered sunlight",
+        "Hot Air Balloon": "soaring heights, panoramic views, gentle winds, floating clouds, basket creaking",
+        "Cruiseship": "ocean voyage, deck activities, nautical themes, sea spray, ship's horn",
+        "Mountain": "rocky peaks, thin air, steep climbs, mountain goats, echoing calls, snow caps",
+        "Gym": "exercise equipment, training routines, physical challenges, sweat, determination",
+        "Graveyard": "ancient tombstones, misty atmosphere, eerie silence, weathered monuments, shadows",
+        "Festival": "colorful decorations, music, crowds, celebration, food stalls, joyful chaos",
+        "Glacier": "ice formations, freezing winds, slippery surfaces, crystal formations, arctic wildlife",
+        "Pyramids": "ancient stones, desert heat, mysterious passages, hieroglyphs, sand dunes"
+    }
+
+    theme_elements = location_themes.get(location, "mysterious environment, unknown challenges")
+
     prompt = f"""
-    Create a cohesive 5-stage pet quest for a {difficulty} level pet at the location: {location}.
-    The quest must be a short story where a pet progresses through the stages, with each stage building on the last.
-    The five stages must be: "Entering Location", "Looking Around", "Avoiding Hostile Pets", "Locating a FREE to open Loot Chest", and "Exiting Location".
+    Create a cohesive 5-stage pet quest for a {difficulty} level pet exploring the {location}.
+    
+    LOCATION THEMING: Incorporate these elements throughout: {theme_elements}
+    Make every stage description immersive and specific to {location}. Use vivid, location-appropriate imagery.
+    
+    STORY FLOW: Create a narrative where each stage builds naturally to the next:
+    1. "Entering Location" - Arrival and first impressions
+    2. "Looking Around" - Exploration and discovery  
+    3. "Avoiding Hostile Pets" - First encounter with danger
+    4. "Locating a FREE to open Loot Chest" - Finding treasure
+    5. "Exiting Location" - Departure with rewards
 
-    For each stage, provide an event description and three choices for the user's pet.
-    Each choice should correspond to a primary stat check:
-    - Choice 1: ATT (Attack) or DEF (Defense)
-    - Choice 2: DEX (Dexterity) or INT (Intelligence)
-    - Choice 3: ENE (Energy) or HAP (Happiness)
+    CHOICE DESIGN: Each choice must use stats that make thematic sense for the action:
+    - Physical actions (climbing, fighting, breaking) → ATT/DEF
+    - Skillful actions (dodging, sneaking, precision) → DEX/INT  
+    - Endurance actions (persisting, staying calm, maintaining energy) → ENE/HAP
 
-    Specific requirements for certain stages:
-    - **Stage 3: Avoiding Hostile Pets**:
-        - Create two distinct events for this stage: one where the pet can scare off a boss, and one where they can evade it.
-        - For the "scare off" event, the success should be a 50/50 chance, influenced by the pet's ATT stat.
-        - For the "evade" event, the success should have a base of 75% for DEX and 85% for INT, influenced by the respective stat.
-        - The event must use a placeholder `%%HOSTILE_PET%%` for the pet species, which will be dynamically generated.
-    - **Stage 4: Locating a FREE to open Loot Chest**:
-        - Create two distinct events: one for a real chest and one for a mimic.
-        - The success of opening the chest or defeating the mimic should be a complex formula based on the pet's skills and the quest difficulty.
-        - For the real chest, include a `double_loot_choice` (1, 2, or 3) that gives double loot on success.
-    - **All Stages**:
-        - Include a `difficulty_modifier` (a float between 0.8 and 1.5) for each event to allow for scaling.
+    SPECIFIC REQUIREMENTS:
+    - **Stage 3: Avoiding Hostile Pets**: Create TWO versions:
+      * "scare_off" sub_type: Use %%HOSTILE_PET%% placeholder, focus on intimidation
+      * "evade" sub_type: Use %%HOSTILE_PET%% placeholder, focus on escape
+    - **Stage 4: Locating a FREE to open Loot Chest**: Create TWO versions:
+      * "mimic" sub_type: Describe a chest that seems suspicious but don't explicitly say "mimic". Use subtle hints like "the chest seems to shift slightly", "something feels off about this chest", "the chest's lock looks unusually organic"
+      * "real_chest" sub_type: Normal chest with "double_loot_choice" (1, 2, or 3)
+    - **All stages**: Include "difficulty_modifier" between 0.8-1.5
 
-    The output must be a JSON object with the following structure:
+    Return ONLY valid JSON with this structure:
     {{
       "stages": [
         {{
           "stage_name": "Entering Location",
-          "event": "Event description for stage 1.",
+          "event": "[Vivid {location}-themed arrival description]",
           "difficulty_modifier": 1.0,
           "choices": {{
-            "1": "Choice 1 description (ATT/DEF).",
-            "2": "Choice 2 description (DEX/INT).",
-            "3": "Choice 3 description (ENE/HAP)."
+            "1": "[Physical approach using ATT/DEF]",
+            "2": "[Skillful approach using DEX/INT]", 
+            "3": "[Endurance approach using ENE/HAP]"
           }}
         }},
-        // ... more stages
+        {{
+          "stage_name": "Looking Around",
+          "event": "[Detailed {location} exploration scene]",
+          "difficulty_modifier": 1.0,
+          "choices": {{
+            "1": "[Physical exploration using ATT/DEF]",
+            "2": "[Careful investigation using DEX/INT]",
+            "3": "[Patient observation using ENE/HAP]"
+          }}
+        }},
         {{
           "stage_name": "Avoiding Hostile Pets",
-          "sub_type": "scare_off", // or "evade"
-          "event": "Event description for scaring off a pet with placeholder %%HOSTILE_PET%%.",
+          "sub_type": "scare_off",
+          "event": "A %%HOSTILE_PET%% blocks your path through the {location}! It looks aggressive and territorial.",
           "difficulty_modifier": 1.2,
           "choices": {{
-            "1": "Attempt to roar louder than the beast (ATT).",
-            "2": "Try to outsmart it by creating a diversion (INT).",
-            "3": "Use your energy to make a quick escape (ENE)."
+            "1": "[Intimidating display using ATT/DEF]",
+            "2": "[Clever misdirection using DEX/INT]",
+            "3": "[Persistent confidence using ENE/HAP]"
+          }}
+        }},
+        {{
+          "stage_name": "Avoiding Hostile Pets", 
+          "sub_type": "evade",
+          "event": "The %%HOSTILE_PET%% charges at you across the {location}! You need to escape quickly!",
+          "difficulty_modifier": 1.2,
+          "choices": {{
+            "1": "[Forceful escape using ATT/DEF]",
+            "2": "[Agile evasion using DEX/INT]",
+            "3": "[Enduring retreat using ENE/HAP]"
           }}
         }},
         {{
           "stage_name": "Locating a FREE to open Loot Chest",
-          "sub_type": "mimic", // or "real_chest"
-          "event": "Event description for a suspicious-looking chest.",
+          "sub_type": "mimic",
+          "event": "[{location}-themed scene with suspicious chest - use subtle hints, no direct mimic mention]",
           "difficulty_modifier": 1.3,
           "choices": {{
-            "1": "Smash it open with brute force (ATT).",
-            "2": "Carefully inspect the lock for traps (DEX).",
-            "3": "Hope for the best and give it a kick (HAP)."
-          }},
-          "double_loot_choice": 1
+            "1": "[Direct forceful approach using ATT/DEF - best for mimics]",
+            "2": "[Careful examination using DEX/INT]",
+            "3": "[Cautious patience using ENE/HAP]"
+          }}
+        }},
+        {{
+          "stage_name": "Locating a FREE to open Loot Chest",
+          "sub_type": "real_chest", 
+          "event": "[{location}-themed scene with genuine treasure chest]",
+          "difficulty_modifier": 1.3,
+          "double_loot_choice": 2,
+          "choices": {{
+            "1": "[Forceful opening using ATT/DEF]",
+            "2": "[Skillful unlocking using DEX/INT - double loot choice]",
+            "3": "[Patient searching using ENE/HAP]"
+          }}
+        }},
+        {{
+          "stage_name": "Exiting Location",
+          "event": "[{location}-themed departure with sense of accomplishment]",
+          "difficulty_modifier": 1.0,
+          "choices": {{
+            "1": "[Strong departure using ATT/DEF]",
+            "2": "[Graceful exit using DEX/INT]",
+            "3": "[Energetic celebration using ENE/HAP]"
+          }}
         }}
-        // ... more stages
       ]
     }}
     """
@@ -116,8 +177,10 @@ def _generate_quest_from_groq(location, difficulty):
             response_format={"type": "json_object"},
         )
         response_text = chat_completion.choices[0].message.content
-        # The response is a JSON string, so we parse it directly.
-        return json.loads(response_text)
+        # Strip JS-style // comments that LLMs sometimes emit even in JSON mode
+        import re as _re
+        cleaned = _re.sub(r'//[^\n]*', '', response_text)
+        return json.loads(cleaned)
     except groq.APIError as e:
         print(f"Groq API Error generating quest: {e}")
         return None
@@ -127,32 +190,39 @@ def _generate_quest_from_groq(location, difficulty):
 
 def generate_or_load_quest(location, difficulty):
     """
-    Generates a new quest using the Groq API or loads a pre-generated one.
-    If the Groq API is used, the quest is saved to a file.
+    Tries to generate a fresh quest via Groq. Falls back to a pre-generated
+    file if Groq is unavailable. Only saves a new file when generation succeeds
+    AND fewer than 5 files already exist for this location+difficulty combo
+    (prevents unbounded disk growth).
     """
-    # Correctly determine the quests directory relative to this file
     script_dir = os.path.dirname(os.path.realpath(__file__))
-    quest_dir = os.path.join(script_dir, '..', 'Logic', 'Quests') # Navigate up and then into Logic/Quests
+    quest_dir  = os.path.join(script_dir, '..', 'Logic', 'Quests')
+    os.makedirs(quest_dir, exist_ok=True)
 
-    if not os.path.exists(quest_dir):
-        os.makedirs(quest_dir)
-    
-    # For simplicity, we'll just generate a new quest each time for now.
-    # In a real application, you would use the file-based caching.
+    # Try Groq first
     quest_data = _generate_quest_from_groq(location, difficulty)
-    if quest_data:
-        # Save the generated quest to a file for future use
-        # In a real scenario, you might use a more sophisticated naming convention
-        file_path = os.path.join(quest_dir, f"{location}_{difficulty}_{random.randint(1, 1000)}.json")
-        with open(file_path, 'w') as f:
-            json.dump(quest_data, f, indent=4)
+    if quest_data and quest_data.get("stages"):
+        # Only cache if we have fewer than 5 files for this combo
+        existing = [f for f in os.listdir(quest_dir)
+                    if f.startswith(f"{location}_{difficulty}_") and f.endswith('.json')]
+        if len(existing) < 5:
+            file_path = os.path.join(quest_dir, f"{location}_{difficulty}_{random.randint(1, 9999)}.json")
+            try:
+                with open(file_path, 'w') as f:
+                    json.dump(quest_data, f, indent=4)
+            except Exception:
+                pass  # caching failure is non-fatal
         return quest_data
 
-    # Fallback to pre-generated files if Groq fails
-    pregen_files = [f for f in os.listdir(quest_dir) if f.startswith(f"{location}_{difficulty}") and f.endswith('.json')]
+    # Fallback to pre-generated files
+    pregen_files = [f for f in os.listdir(quest_dir)
+                    if f.startswith(f"{location}_{difficulty}") and f.endswith('.json')]
     if pregen_files:
-        with open(os.path.join(quest_dir, random.choice(pregen_files)), 'r') as f:
-            return json.load(f)
+        try:
+            with open(os.path.join(quest_dir, random.choice(pregen_files)), 'r') as f:
+                return json.load(f)
+        except Exception:
+            pass
 
     return None
 
@@ -288,8 +358,8 @@ class QuestView(discord.ui.View):
 
         stat_map = {
             1: ("ATT", "DEF"),
-            2: ("INT", "DEX"),
-            3: ("HAP", "ENE")
+            2: ("DEX", "INT"),
+            3: ("ENE", "HAP")
         }
         stat1, stat2 = stat_map[choice_num]
 
@@ -390,17 +460,17 @@ class QuestView(discord.ui.View):
 
                 if sub_type == "mimic":
                     if choice_num == 1: # ATT/DEF choice for fighting mimic
-                        update_message = f"You bravely attack the mimic and overpower it, finding double loot inside! {emoji_manager.mention('mimic')}"
+                        update_message = f"Your forceful approach revealed the chest's true nature - it was a disguised creature! You defeated it and claimed double loot! {emoji_manager.mention('mimic')}"
                         loot_amount = base_loot_amount * 2
                     else:
-                        update_message = f"It was a mimic! You narrowly escape its jaws but find no loot. {emoji_manager.mention('mimic')}"
+                        update_message = f"The chest suddenly snapped shut with rows of teeth! You barely escaped the creature's jaws but found no treasure. {emoji_manager.mention('mimic')}"
                 else: # Not a mimic
                     double_loot_choice = self.current_event.get("double_loot_choice", -1)
                     if choice_num == double_loot_choice:
-                        update_message = f"A stroke of luck! You found double the loot! {chest_emoji}"
+                        update_message = f"Your skillful approach paid off! You found a hidden compartment with double loot! {chest_emoji}"
                         loot_amount = base_loot_amount * 2
                     else:
-                        update_message = f"You successfully opened the chest. {chest_emoji}"
+                        update_message = f"You successfully opened the chest and found treasure inside! {chest_emoji}"
                         loot_amount = base_loot_amount
                 
                 if loot_amount > 0:
@@ -538,15 +608,24 @@ class QuestView(discord.ui.View):
             total_success_rate += event['success_rate']
 
         loot_str = ", ".join([f'{item.get("count", 1)} {emoji_manager.mention(item["name"]) or ""}{item["name"]}' for item in self.loot]) if self.loot else "None"
-        
-        summary_value = f"**Total XP:** {self.xp}\n"
+
+        # Compute level-scaled XP now so the embed shows the correct value
+        if success and self.xp > 0:
+            pet_level = self.pet.get("level", 1)
+            level_multiplier = 1.0 + (pet_level - 1) * 0.1
+            display_xp = int(self.xp * level_multiplier)
+            xp_label = f"**Total XP:** {display_xp}" + (f" *(Lv.{pet_level} bonus)*" if pet_level > 1 else "")
+        else:
+            display_xp = self.xp
+            xp_label = f"**Total XP:** {display_xp}"
+
+        summary_value = xp_label + "\n"
         if success:
              summary_value += f"**Loot:** {loot_str}\n"
         elif self.current_stage_index >= 3 and self.loot:
             summary_value += f"**Loot Kept:** {loot_str}\n"
         else:
             summary_value += f"**Loot:** None\n"
-
 
         if event_count > 0:
             quest_success_rate = total_success_rate / event_count
@@ -564,11 +643,12 @@ class QuestView(discord.ui.View):
             embed.clear_fields()
 
         if success:
-            await user_data_manager.update_pet_data_async(self.user_id, {"exp": self.pet.get('exp', 0) + self.xp})
+            if display_xp > 0:
+                await LootCalculator.apply_xp_change(int(self.user_id), display_xp, "quest")
             if self.loot:
                 for item in self.loot:
                     await LootCalculator.add_item_to_inventory(self.user_id, item, self.pet)
-        elif self.current_stage_index >= 3 and self.loot: # Failure case with loot
+        elif self.current_stage_index >= 3 and self.loot:
             for item in self.loot:
                 await LootCalculator.add_item_to_inventory(self.user_id, item, self.pet)
 

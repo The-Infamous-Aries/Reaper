@@ -140,13 +140,15 @@ class BettingView(discord.ui.View):
             await interaction.response.send_message(f"An unexpected error occurred while processing your fold: {e}", ephemeral=True)
 
 class HoldemSession(discord.ui.View):
-    def __init__(self, bot: commands.Bot, channel_id: int, solo: bool, host: discord.Member, bots: int = 0):
+    def __init__(self, bot: commands.Bot, channel_id: int, solo: bool, host: discord.Member, bots: int = 0, buy_in: int = 500, fun_mode: bool = False):
         super().__init__(timeout=900)
         logger.debug(f"HoldemSession initialized for channel {channel_id} by {host.display_name} (Solo: {solo}, Bots: {bots})")
         self.bot = bot
         self.channel_id = channel_id
         self.solo = solo
         self.host = host
+        self.buy_in_amt: int = max(100, buy_in)
+        self.fun_mode: bool = fun_mode
         self.players: dict[int, PlayerState] = {}
         self.table_open: bool = True
 
@@ -369,18 +371,25 @@ class HoldemSession(discord.ui.View):
         user_id = user.id
         user_display_name = user.display_name
 
-        # 1. Check if the game has already started (only allow joining in 'idle' stage)
         if self.round_stage != "idle":
-            logger.debug(f"Player {user_display_name} (ID: {user_id}) failed to join: Game not in idle stage ({self.round_stage}).")
             return False, "You can only join before the game starts."
 
-        # 2. Check if the player is already in the game
         if user_id in self.players:
-            logger.debug(f"Player {user_display_name} (ID: {user_id}) failed to join: Already in game.")
             return False, "You are already in this game."
 
-        # 3. Add the player to self.players
+        # Deduct buy-in XP for real players
+        if not self.fun_mode:
+            pet = await user_data_manager.get_pet_data_async(str(user_id), user_display_name)
+            if not pet:
+                return False, "You need a pet to play."
+            lvl = int(pet.get("level", 1))
+            total_xp = int(LootCalculator.get_total_experience_for_level(lvl)) + int(pet.get("experience", 0))
+            if total_xp < self.buy_in_amt:
+                return False, f"Not enough XP. Need {self.buy_in_amt:,}, have {total_xp:,}."
+            await LootCalculator.apply_xp_change(user_id, -self.buy_in_amt, source="holdem_buyin")
+
         player_state = PlayerState(user)
+        player_state.bankroll = self.buy_in_amt
         self.players[user_id] = player_state
 
         return True, f"{user_display_name} has joined the game!"
@@ -891,6 +900,23 @@ class HoldemSession(discord.ui.View):
             self.players[uid].win_streak += 1
             
             if not self.players[uid].is_bot:
+                # Award XP to winner
+                if not self.fun_mode and share > 0:
+                    # Apply ability tree effects
+                    modified_share = share
+                    try:
+                        pet_data = await user_data_manager.get_pet_data_async(str(uid))
+                        if pet_data:
+                            from Systems.Pets.Logic.ability_tree import get_ability_effect
+                            # Apply casino win bonus
+                            win_mult = get_ability_effect(pet_data, "casino_xp_gain_mult", game="holdem")
+                            if win_mult != 1.0:
+                                modified_share = int(share * win_mult)
+                    except Exception:
+                        pass
+                    
+                    await LootCalculator.apply_xp_change(uid, modified_share, source="holdem_win")
+
                 highest_bet = 0
                 ps = self.players.get(uid)
                 if ps:
@@ -958,6 +984,10 @@ class HoldemSession(discord.ui.View):
     @discord.ui.button(label="Show Hand", style=discord.ButtonStyle.secondary, custom_id="holdem_show")
     async def btn_show_hand(self, interaction: discord.Interaction, button: discord.ui.Button):
         await self.btn_show_hand_action(interaction)
+
+    @discord.ui.button(label="Cash Out", style=discord.ButtonStyle.primary, custom_id="holdem_cashout", row=1)
+    async def btn_cashout(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await self.btn_cashout_action(interaction)
 
 
 
@@ -1031,6 +1061,41 @@ class HoldemSession(discord.ui.View):
             except Exception:
                 pass
 
+    async def btn_cashout_action(self, interaction: discord.Interaction):
+        """Cash out — return remaining bankroll XP to the player and end their session."""
+        try:
+            await interaction.response.defer(ephemeral=True)
+            uid = interaction.user.id
+            ps = self.players.get(uid)
+            if not ps:
+                await interaction.followup.send("You are not in this game.", ephemeral=True)
+                return
+            if self.round_stage not in ("idle", "finished"):
+                await interaction.followup.send("You can only cash out between hands.", ephemeral=True)
+                return
+
+            # Return remaining bankroll to the player
+            remaining = ps.bankroll
+            if not self.fun_mode and remaining > 0:
+                await LootCalculator.apply_xp_change(uid, remaining, source="holdem_cashout")
+
+            net = remaining - self.buy_in_amt
+            if not self.fun_mode:
+                await user_data_manager.update_pet_gambling_stats(
+                    str(uid), "holdem", net, bet_amount=self.buy_in_amt
+                )
+
+            ps.left_table = True
+            sign = "+" if net >= 0 else ""
+            await interaction.followup.send(
+                f"Cashed out **{remaining:,} XP** ({sign}{net:,} net). Thanks for playing!",
+                ephemeral=True
+            )
+            await self.update_message()
+        except Exception as e:
+            logger.error(f"Error in btn_cashout_action: {e}")
+            await interaction.followup.send(f"An error occurred: {e}", ephemeral=True)
+
     def _setup_buttons(self):
         self.btn_map = {}
         for child in self.children:
@@ -1041,3 +1106,4 @@ class HoldemSession(discord.ui.View):
         self.btn_start_ref = self.btn_map.get("holdem_start")
         self.btn_leave_ref = self.btn_map.get("holdem_leave")
         self.btn_show_hand_ref = self.btn_map.get("holdem_show")
+        self.btn_cashout_ref = self.btn_map.get("holdem_cashout")

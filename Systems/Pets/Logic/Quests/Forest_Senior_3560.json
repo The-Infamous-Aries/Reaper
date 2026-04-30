@@ -1,0 +1,93 @@
+{
+    "stages": [
+        {
+            "stage_name": "Entering Location",
+            "event": "You emerge from the underbrush, standing at the edge of a sun-dappled clearing amidst towering trees that filter the sunlight. A carpet of rustling leaves crunches beneath your paws as you step towards the Forest's central path.",
+            "difficulty_modifier": 1.0,
+            "choices": {
+                "1": "Forcefully push your way through the underbrush using your ATT (Strength) to assert dominance and show others you're not afraid.",
+                "2": "Employ your DEX (Agility) to quickly scale one of the smaller trees and gain a vantage point to take in the surrounding area, using the height to your advantage.",
+                "3": "Use your ENE (Endurance) to calmly observe the surroundings, listening for any signs of other creatures and watching for danger, and patiently await your path.",
+                "4": "Use your HAP (Happiness) to make friendly noises and approach the path at a calm pace, hoping to establish a peaceful rapport with any woodland creatures.",
+                "5": "Use your INT (Intelligence) to sniff and scan the air, detecting any subtle scents or signs that might indicate what lies ahead or warn you of potential danger.",
+                "6": "Use your INT (Intelligence) to study your surroundings, observing the terrain, trees, and any landmarks, and mentally prepare for your journey.",
+                "7": "Use your ATT, DEX, ENE or HAP in any combo, to explore the new location and see what you can discover."
+            }
+        },
+        {
+            "stage_name": "Looking Around",
+            "event": "As you delve deeper into the Forest, the rustling of leaves grows louder and the scent of damp earth fills the air. You come across a shallow stream running parallel to the path, a place where fish might swim undisturbed. The air is thick with the songs of birds and insects, creating a soothing melody that calms your nerves.",
+            "difficulty_modifier": 1.0,
+            "choices": {
+                "1": "Follow the stream using your ATT (Strength) to wade through the water, investigating potential fishing spots.",
+                "2": "Investigate the stream using your DEX (Agility) to skillfully navigate the water and observe the surroundings.",
+                "3": "Listen carefully using your ENE (Endurance) to absorb the peaceful atmosphere, observing the water's edge and waiting for a chance discovery.",
+                "4": "Use your HAP (Happiness) to let out friendly calls and try to connect with the forest's inhabitants, perhaps attracting a friendly companion.",
+                "5": "Use your INT (Intelligence) to analyze the ecosystem, identifying signs of a balanced environment and the potential risks of disrupting the natural order.",
+                "6": "Employ your ATT and DEX in combination to catch a fish from the stream, and then carefully proceed on your path.",
+                "7": "Use your ENE to explore upstream and see if the water source leads to an interesting part of the forest."
+            }
+        },
+        {
+            "stage_name": "Avoiding Hostile Pets",
+            "sub_type": "scare_off",
+            "event": "A massive and aggressive %%HOSTILE_PET%%, its eyes glowing with a fierce inner light, blocks your path through the Forest! It looks territorial, warning you to stay away.",
+            "difficulty_modifier": 1.2,
+            "choices": {
+                "1": "Use your ATT (Strength) to confront the creature, making a powerful display of dominance to scare it off.",
+                "2": "Employ your DEX (Agility) to execute a complex and distracting movement pattern, catching the creature's attention away from its aggressive stance.",
+                "3": "Maintain a calm demeanor using your ENE (Endurance) to reassure the creature that you mean no harm and slowly back away, avoiding confrontation.",
+                "4": "Use your HAP (Happiness) to approach the creature with an open heart, hoping to connect with its inner spirit and understand its needs.",
+                "5": "Use your INT (Intelligence) to observe the creature's behavior, recognizing potential patterns or vulnerabilities, and employ a strategy that avoids direct conflict.",
+                "6": "Employ your ATT and DEX to chase the hostile pet in a playful manner, using your agility to evade its attacks and wear it out.",
+                "7": "Use your ENE to sit calmly and quietly next to the hostile pet, slowly making it feel more at ease until it loses interest and walks away."
+            }
+        },
+        {
+            "stage_name": "Avoiding Hostile Pets",
+            "sub_type": "evade",
+            "event": "The %%HOSTILE_PET%% charges at you across the Forest, its speed catching you off guard. You need to escape quickly before it catches up!",
+            "difficulty_modifier": 1.2,
+            "choices": {
+                "1": "Use your ATT (Strength) to execute a forceful and urgent escape, using your physical strength to outrun the creature.",
+                "2": "Employ your DEX (Agility) to rapidly dodge and weave through the dense underbrush, using your agility to evade the creature's pursuit.",
+                "3": "Maintain a calm and composed demeanor using your ENE (Endurance) to keep a steady pace and avoid panicking, slowly but steadily outpacing the creature.",
+                "4": "Use your HAP (Happiness) to distract the creature with playful yips and antics, momentarily diverting its attention while you make a quick escape.",
+                "5": "Use your INT (Intelligence) to observe the terrain and anticipate the creature's movements, using your knowledge to stay one step ahead.",
+                "6": "Employ your ATT and DEX in combination to rapidly flee while leaping over obstacles and dodging low-hanging branches.",
+                "7": "Use your ENE to run calmly but swiftly while staying close to the ground, using your keen senses to stay out of reach of the chase."
+            }
+        },
+        {
+            "stage_name": "Locating a FREE to open Loot Chest",
+            "sub_type": "mimic",
+            "event": "You come across a peculiar-looking chest, its surface adorned with intricate wood carvings that seem to dance with life. However, the chest seems to shift slightly as you gaze at it, and the lock appears unusually organic, making you wonder if it's truly what it appears to be.",
+            "difficulty_modifier": 1.3,
+            "choices": {
+                "1": "Use your ATT (Strength) to force the lock open with a direct and forceful approach, best suited for mimics.",
+                "2": "Employ your DEX (Agility) to carefully examine the lock and surroundings, searching for subtle clues or hidden mechanics.",
+                "3": "Maintain a patient and cautious demeanor using your ENE (Endurance) to observe the chest, waiting for any sign of life or unusual behavior.",
+                "4": "Use your HAP (Happiness) to approach the chest with an open heart, sensing any potential hidden intentions or needs.",
+                "5": "Use your INT (Intelligence) to reason with the chest, communicating your intentions and seeing if it responds in a rational way.",
+                "6": "Employ your ATT and DEX to try and open the chest with a forceful but precise action.",
+                "7": "Use your ENE to search the nearby area to see if you can find any clues to help you unlock the mysterious chest."
+            }
+        },
+        {
+            "stage_name": "Locating a FREE to open Loot Chest",
+            "sub_type": "real_chest",
+            "event": "You stumble upon a sturdy-looking treasure chest nestled beneath a cluster of towering trees, its surface adorned with rust-resistant symbols that seem to glint in the filtered sunlight. The chest looks inviting and authentic, containing treasures beyond your wildest dreams.",
+            "difficulty_modifier": 1.3,
+            "double_loot_choice": 2,
+            "choices": {
+                "1": "Use your ATT (Strength) to force the lock open with a direct and forceful approach.",
+                "2": "Employ your DEX (Agility) to skillfully unlock the chest, using your agility to navigate complex mechanisms.",
+                "3": "Use your ENE (Endurance) to patiently search the chest for hidden compartments and secret mechanisms.",
+                "4": "Use your HAP (Happiness) to sense any potential hidden emotions or connections the chest may hold.",
+                "5": "Use your INT (Intelligence) to reason with the chest, using your knowledge to unlock it.",
+                "6": "Employ your ATT and DEX to try and open the chest with a forceful but precise action.",
+                "7": "Use your ENE to search the nearby area to see if you can find any clues to help you unlock the treasure chest."
+            }
+        }
+    ]
+}
