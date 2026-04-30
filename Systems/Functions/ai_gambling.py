@@ -7,7 +7,7 @@ RANKS = ["1","2","3","4","5","6","7","8","9","10","J","Q","K"]
 SUITS = ["H","D","C","S"]
 
 def _rank_value(r: str) -> int:
-    if r == "1":
+    if r in ("1", "A"):
         return 14
     if r == "J":
         return 11

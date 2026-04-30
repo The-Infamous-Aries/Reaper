@@ -648,26 +648,6 @@ EMOJI_IDS: Dict[str, int] = {
     "tarot":1476021027199782922,
     "wars":1476022777344688259,
     "awards":1476023377939398807,
-    "whiteT":1476438137633902733,
-    "greyT":1476438139290648576,
-    "blackT":1476438140599271434,
-    "goldT":1476438141660565514,
-    "pinkT":1476438142805348402,
-    "brownT":1476438879119736994,
-    "mintT":1476438880302534799,
-    "greenT":1476439562648686612,
-    "aquaT":1476439563902783508,
-    "lavenderT":1476440080049770599,
-    "limeT":1476440333607899218,
-    "maroonT":1476441203615596706,
-    "oliveT":1476442039943037008,
-    "yellowT":1476444155805958417,
-    "turquoiseT":1476444156933963907,
-    "redT":1476444157818966178,
-    "purpleT":1476444159123521618,
-    "orangeT":1476444160625217729,
-    "blueT":1476438136325144788,
-    "beigeT":1476459315043762288,
     "mild":1479992423076724786,
     "med":1479992420233117796,
     "hot1":1479992421554192525,
@@ -747,6 +727,26 @@ EMOJI_IDS: Dict[str, int] = {
     "inventory":1484257803982999756,
     "calculator":1484282343186501765,
     "scallywag":1484354197536116746,
+    "be":1486035246817476729,
+    "aq":1486035206208098468,
+    "bla":1486035204840882447,
+    "blu":1486035203322544159,
+    "br":1486035201925845194,
+    "go":1486035199065329725,
+    "gr":1486035198109024448,
+    "la":1486035196385165412,
+    "mar":1486035195374338098,
+    "mi":1486035194157994154,
+    "ol":1486035192928796672,
+    "li":1486035191754654008,
+    "or":1486035190794158305,
+    "pi":1486035189392998410,
+    "pu":1486035188126322830,
+    "re":1486035186927009923,
+    "tu":1486035185760866324,
+    "wh":1486035184527872120,
+    "ye":1486035182741098496,
+    "gra":1486298796567560204,
 }
 
 ANIMATED_EMOJI_IDS: Dict[str, int] = {
@@ -775,7 +775,7 @@ CATEGORIES: Dict[str, List[str]] = {
     "Potions": ["basic_potion", "fire_potion", "water_potion", "electric_potion", "ice_potion", "air_potion", "rock_potion", "plant_potion", "magic_potion", "holy_potion", "necro_potion", "psychic_potion", "fighting_potion", "mega_potion", "greater_health_potion", "health_potion", "lesser_health_potion", "xp_potion", "lesser_xp_potion", "luck_potion", "att_potion", "def_potion", "dex_potion", "int_potion", "hap_potion", "ene_potion", "s1_potion", "s2_potion", "s3_potion"],
     "RockPaperScissors": ["rps", "rock_1", "paper", "scissor", "knights", "archer", "necromancer", "tank", "jet", "ship"],
     "Military": ["missile", "bomb", "soldier", "tank", "jet", "ship", "spy", "fortification", "peace_1", "strategy", "wars"],
-    "Improvements": ["recycle", "police", "hospital", "bank", "subway", "windmill", "stadium", "supermarket"],
+    "Improvements": ["recycle", "police", "hospital", "bank", "subway", "windmill", "stadium", "supermarket", "market"],
     "Leadership": ["1ic", "2ic", "MA", "FA", "EA", "IA", "TA", "JA"],
     "Costs": ["infra", "landbuy", "newcity", "project"],
 
@@ -829,7 +829,7 @@ CATEGORIES: Dict[str, List[str]] = {
     "Treaties": ["Signed", "Broken", "MLevel", "OLevel", "Peace", "Prot"],
     "Leadership": ["1ic","2ic","MA","FA","EA","IA","JA","TA"],
     "Tarot": ["fire1","air1","water1","earth1", "zodiac","exchange","tarot"],
-    "Colors": ["whiteT","greyT","blackT","goldT","pinkT","brownT","mintT","greenT","aquaT","lavenderT","limeT","maroonT","oliveT","yellowT","turquoiseT","redT","purpleT","orangeT","blueT","beigeT"]
+    "Colors": ["be","aq","bla","blu","br","go","gr","la","mar","mi","ol","li","or","pi","pu","re","tu","wh","ye","gra"]
 }
 
 SPY_EMOJI = f"<:spy:{EMOJI_IDS['spy']}>"
@@ -837,6 +837,8 @@ SOLDIER_EMOJI = f"<:soldier:{EMOJI_IDS['soldier']}>"
 TANK_EMOJI = f"<:tank:{EMOJI_IDS['tank']}>"
 JET_EMOJI = f"<:jet:{EMOJI_IDS['jet']}>"
 SHIP_EMOJI = f"<:ship:{EMOJI_IDS['ship']}>"
+MISSILE_EMOJI = f"<:missile:{EMOJI_IDS['missile']}>"
+BOMB_EMOJI = f"<:bomb:{EMOJI_IDS['bomb']}>"
 
 def _slug(name: str) -> str:
     return str(name).replace(" ", "_")

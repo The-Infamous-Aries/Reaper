@@ -24,7 +24,15 @@ OWNER_ID = int(os.getenv('ADMIN_USER_ID', '0'))
 DATA_DIR = os.getenv('DATA_DIR', os.getcwd())
 ARIES_USER_ID = 1344242023577817098
 ADMIN_USER_ID = ARIES_USER_ID
-NGROK_AUTHTOKEN = os.getenv('NGROK_AUTHTOKEN')
+CF_ACCOUNT_ID = os.getenv('CF_ACCOUNT_ID')
+CF_TUNNEL_ID = os.getenv('CF_TUNNEL_ID')
+CF_API_TOKEN = os.getenv('CF_API_TOKEN')
+CF_TUNNEL_TOKEN = os.getenv('CF_TUNNEL_TOKEN')
+CF_CREDENTIALS_FILE = os.getenv('CF_CREDENTIALS_FILE')
+
+# Custom domain configuration
+CUSTOM_DOMAIN = os.getenv('CUSTOM_DOMAIN', 'https://reaper.qzz.io')
+USE_CLOUDFLARE_TUNNEL = os.getenv('USE_CLOUDFLARE_TUNNEL', 'false').lower() == 'true'
 
 def _get_results_channel_id() -> int:
     channel_from_env = os.getenv('RESULTS_CHANNEL_ID')

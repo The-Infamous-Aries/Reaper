@@ -7,6 +7,7 @@ import psutil
 import subprocess
 import os
 import asyncio
+import re
 
 logger = logging.getLogger("Reaper.PortManager")
 
@@ -187,6 +188,21 @@ def release_port(service_name: str) -> bool:
     """Release an allocated port."""
     return get_port_manager().release_port(service_name)
 
+SERVICE_WEB_SERVER = "fastapi_web_server"
+SERVICE_CLOUDFLARE = "cloudflare_tunnel"
+
+def initialize_service_ports():
+    """Initialize and clear ports for all required services."""
+    manager = get_port_manager()
+    
+    # Kill existing processes on preferred ports
+    kill_process_on_port(8080) # For FastAPI
+    kill_process_on_port(8005) # For Cloudflare
+    
+    # Allocate ports
+    manager.allocate_port(SERVICE_WEB_SERVER, preferred_port=8080)
+    manager.allocate_port(SERVICE_CLOUDFLARE, preferred_port=8005)
+
 def get_allocated_port(service_name: str) -> Optional[int]:
     """Get the allocated port for a service."""
     return get_port_manager().get_allocated_port(service_name)
@@ -206,17 +222,19 @@ SERVICE_COMPARE = "compare"
 SERVICE_UNIVERSE = "universe"
 SERVICE_BASEBALL = "baseball"
 SERVICE_RESOURCE_STOCKS = "resource_stocks"
-SERVICE_WEB_SERVER = "web_server"
+SERVICE_WEB_SERVER = "fastapi_web_server"
+SERVICE_CLOUDFLARE = "cloudflare_tunnel"
 
 # Default port ranges for different services
 DEFAULT_PORTS = {
     SERVICE_WARS_BD: 8000,
-    SERVICE_WARS_NET_BD: 8005,  # New port for war net breakdown
+    SERVICE_WARS_NET_BD: 8005,
     SERVICE_COMPARE: 8001,
     SERVICE_UNIVERSE: 8002,
     SERVICE_BASEBALL: 8003,
     SERVICE_RESOURCE_STOCKS: 8004,
     SERVICE_WEB_SERVER: 8080,
+    SERVICE_CLOUDFLARE: 8005,
 }
 
 def get_service_port(service_name: str) -> int:
@@ -231,27 +249,6 @@ def get_service_port(service_name: str) -> int:
     # Try to allocate the default port
     preferred_port = DEFAULT_PORTS.get(service_name)
     return manager.allocate_port(service_name, preferred_port)
-
-def initialize_service_ports():
-    """Initialize all service ports. Call this during bot startup."""
-    manager = get_port_manager()
-    
-    logger.info("Initializing service ports...")
-    for service_name, default_port in DEFAULT_PORTS.items():
-        try:
-            allocated_port = manager.allocate_port(service_name, default_port)
-            logger.info(f"Service '{service_name}' allocated port {allocated_port}")
-        except RuntimeError as e:
-            logger.error(f"Failed to allocate port for service '{service_name}': {e}")
-            # Try to find any available port
-            try:
-                allocated_port = manager.allocate_port(service_name)
-                logger.info(f"Service '{service_name}' allocated fallback port {allocated_port}")
-            except RuntimeError:
-                logger.error(f"No ports available for service '{service_name}'")
-    
-    logger.info("Service port initialization complete")
-    return manager.get_all_allocated_ports()
 
 def cleanup_service_ports():
     """Clean up all allocated service ports. Call this during bot shutdown."""
@@ -441,3 +438,168 @@ def is_tunnel_running() -> bool:
     global _tunnel_process
     return _tunnel_process is not None and _tunnel_process.poll() is None
 
+# --- Consolidated Cloudflare Tunnel Management for Web Server Integration ---
+
+# Global tunnel process and public URL for web server integration
+_web_tunnel_process = None
+_web_public_url = None
+
+import time
+
+async def start_cloudflare_tunnel_async():
+    """Start the Cloudflare tunnel and wait for the public URL."""
+    global _web_tunnel_process, _web_public_url
+    
+    from Systems.Functions.config import USE_CLOUDFLARE_TUNNEL
+    
+    if not USE_CLOUDFLARE_TUNNEL:
+        logger.info("Cloudflare tunnel is disabled. Using custom domain configuration.")
+        return
+    
+    if _web_tunnel_process and _web_tunnel_process.returncode is None:
+        logger.info("Cloudflare tunnel is already running.")
+        return
+
+    if not is_cloudflared_installed():
+        logger.error("cloudflared.exe not found.")
+        return
+
+    # Import tunnel configuration
+    from Systems.Functions.config import CF_TUNNEL_ID, CUSTOM_DOMAIN
+
+    config_path = os.path.join(os.getcwd(), 'cloudflared-config', 'config.yml')
+    
+    if not os.path.exists(config_path):
+        logger.error(f"Cloudflare config file not found at {config_path}")
+        # Fallback to generic tunnel if config is missing
+        cmd = ['cloudflared.exe', 'tunnel', '--url', f'http://localhost:{get_service_port(SERVICE_WEB_SERVER)}']
+        logger.warning(f"Starting generic Cloudflare tunnel because config was not found.")
+    else:
+        # Use the config file to run the tunnel
+        cmd = [
+            'cloudflared.exe',
+            'tunnel',
+            '--config',
+            config_path,
+            'run'
+        ]
+        logger.info(f"Starting Cloudflare tunnel for domain: {CUSTOM_DOMAIN} using config.")
+    
+    log_file = os.path.join(os.getcwd(), 'site_debug.log')
+    
+    log_stream = open(log_file, 'w')
+    _web_tunnel_process = await asyncio.create_subprocess_exec(
+        *cmd,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=log_stream
+    )
+
+    # For named tunnels, the public URL is the custom domain.
+    if CF_TUNNEL_ID or CF_CREDENTIALS_FILE:
+        _web_public_url = CUSTOM_DOMAIN
+        logger.info(f"*** Tunnel started. Public URL will be: {CUSTOM_DOMAIN} ***")
+        # Give the tunnel a moment to establish connection
+        await asyncio.sleep(5)
+        return
+
+    # This part is for generic tunnels that create a random URL.
+    url_regex = re.compile(r'(https://[a-zA-Z0-9-]+\.trycloudflare\.com)')
+    timeout = 20
+    start_time = time.time()
+
+    while time.time() - start_time < timeout:
+        try:
+            with open(log_file, 'r') as f:
+                for line in f:
+                    match = url_regex.search(line)
+                    if match:
+                        _web_public_url = match.group(1)
+                        logger.info(f"*** Public URL detected: {_web_public_url} ***")
+                        return
+        except FileNotFoundError:
+            pass
+        except Exception as e:
+            logger.error(f"Error reading cloudflared log file: {e}")
+
+        await asyncio.sleep(1)
+
+    logger.error("Timed out waiting for Cloudflare tunnel URL.")
+
+
+async def stop_cloudflare_tunnel_async():
+    """Stop the Cloudflare tunnel process for the web server."""
+    global _web_tunnel_process, _web_public_url
+    
+    if not _web_tunnel_process:
+        logger.info("No Cloudflare tunnel process to stop for web server")
+        return True
+    
+    try:
+        logger.info("Stopping Cloudflare tunnel for web server...")
+        _web_tunnel_process.terminate()
+        
+        # Wait for graceful termination
+        await _web_tunnel_process.wait()
+        logger.info("Cloudflare tunnel stopped successfully for web server")
+        
+        _web_tunnel_process = None
+        _web_public_url = None
+        return True
+        
+    except Exception as e:
+        logger.error(f"Error stopping Cloudflare tunnel for web server: {e}")
+        return False
+
+async def monitor_tunnel_and_server(bot=None):
+    """Monitors the Cloudflare tunnel and web server, restarting them if they fail."""
+    import aiohttp
+    global _web_tunnel_process
+
+    from Systems.Functions.config import USE_CLOUDFLARE_TUNNEL
+
+    logger.info("Tunnel and server monitor started.")
+    web_server_port = get_service_port(SERVICE_WEB_SERVER)
+    health_check_url = f"http://localhost:{web_server_port}/health"
+
+    while True:
+        await asyncio.sleep(60)  # Check every 60 seconds
+
+        # Check web server health
+        server_ok = False
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(health_check_url, timeout=5) as response:
+                    if response.status == 200:
+                        server_ok = True
+        except Exception as e:
+            logger.warning(f"Web server health check failed: {e}")
+
+        if not server_ok:
+            logger.error("Web server is unresponsive. A bot restart may be required as it cannot be restarted from here.")
+
+        # Check Cloudflare tunnel process if it's enabled
+        if USE_CLOUDFLARE_TUNNEL:
+            if _web_tunnel_process and _web_tunnel_process.returncode is None:
+                logger.info("Cloudflare tunnel is running normally for web server.")
+            else:
+                logger.warning("Cloudflare tunnel process is not running for web server. Attempting to restart...")
+                try:
+                    await start_cloudflare_tunnel_async()
+                except Exception as e:
+                    logger.error(f"Failed to restart Cloudflare tunnel for web server: {e}")
+
+def get_web_public_url() -> str:
+    """Returns the public URL for the web server."""
+    from Systems.Functions.config import CUSTOM_DOMAIN, USE_CLOUDFLARE_TUNNEL
+    
+    # If Cloudflare tunnel is enabled and running, use dynamic URL
+    if USE_CLOUDFLARE_TUNNEL and _web_public_url:
+        return _web_public_url
+    
+    # Otherwise, use the configured custom domain
+    return CUSTOM_DOMAIN
+
+def is_web_tunnel_running() -> bool:
+    """Check if the Cloudflare tunnel for the web server is running."""
+    global _web_tunnel_process
+    return _web_tunnel_process is not None and _web_tunnel_process.returncode is None

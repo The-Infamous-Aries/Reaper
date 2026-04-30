@@ -1,9 +1,10 @@
 import asyncio
-import json
 import random
 from pathlib import Path
+import json
 from typing import Any, Dict, List, Optional, Tuple, Union, cast, TypedDict
 import logging
+from Systems.Functions.pets_db import pets_db
 
 logger = logging.getLogger(__name__)
 
@@ -13,8 +14,6 @@ class InventoryItem(TypedDict):
     rarity: str
     count: int
 from datetime import datetime
-
-from Systems.Functions.optimal_file_manager import OptimalFileManager
 
 
 class UserDataManager:
@@ -29,272 +28,177 @@ class UserDataManager:
         if hasattr(self, "_initialized") and self._initialized:
             return
         self._initialized = True
-        self.file_manager = OptimalFileManager(max_cache_size=2000, ttl_seconds=600)
-        self.users_path = self.file_manager.users_path
-        self.json_path = self.file_manager.json_path
-        self.bot_logs_path = self.json_path / "bot_logs.json"
-        self._user_cache: Dict[str, Dict[str, Any]] = {}
+        # All file-based caching and management is removed.
+        self._legacy_users_dir = Path(r"c:\Users\codyr\DiscordBots\Reaper\Systems\Data\Users")
         self._user_locks: Dict[str, asyncio.Lock] = {}
-        self._dirty_users: Dict[str, bool] = {}
-        self._bot_logs_lock = asyncio.Lock()
-        self._json_locks: Dict[str, asyncio.Lock] = {}
-        self._shutdown = asyncio.Event()
-        try:
-            loop = asyncio.get_event_loop()
-            if loop.is_running():
-                self._flush_task = loop.create_task(self._flush_loop())
-            else:
-                self._flush_task = None
-        except RuntimeError:
-            self._flush_task = None
 
-    def _user_lock(self, user_id: str) -> asyncio.Lock:
+        # Expose file_manager so pet_brain.py can call user_data_manager.file_manager.get_data(...)
+        from Systems.Functions.optimal_file_manager import OptimalFileManager
+        self.file_manager = OptimalFileManager()
+
+    def _get_user_lock(self, user_id: str) -> asyncio.Lock:
+        """Returns a lock for a given user ID."""
         k = str(user_id)
         if k not in self._user_locks:
             self._user_locks[k] = asyncio.Lock()
         return self._user_locks[k]
 
-    def _get_json_lock(self, key: str) -> asyncio.Lock:
-        k = str(key)
-        if k not in self._json_locks:
-            self._json_locks[k] = asyncio.Lock()
-        return self._json_locks[k]
+    async def _get_pet_data_no_lock(self, user_id: str, username: Optional[str] = None) -> Optional[Dict[str, Any]]:
+        pet_data = await pets_db.get_pet_data(user_id)
+        if pet_data is not None:
+            return self._migrate_pet(pet_data)
 
-    def _user_file(self, user_id: str) -> Path:
-        return self.file_manager.get_user_file_path(str(user_id))
+        legacy_pet = await self._load_legacy_pet_data(user_id)
+        if legacy_pet is not None:
+            migrated_pet = self._migrate_pet(legacy_pet)
+            await pets_db.save_pet_data(user_id, migrated_pet)
+            if username:
+                await pets_db.save_user_profile(user_id, username)
+            logger.info(f"Migrated legacy pet data for user {user_id} into shared pets storage")
+            return migrated_pet
 
-    def _default_user(self, user_id: str, username: Optional[str]) -> Dict[str, Any]:
-        now = datetime.utcnow().isoformat()
-        return {
-            "user_id": str(user_id),
-            "username": username or "Unknown",
-            "created_at": now,
-            "last_updated": now,
-            "pets": {"pet_data": None},
-        }
+        return None
 
-    async def _flush_loop(self):
-        while not self._shutdown.is_set():
-            await asyncio.sleep(2)
-            to_flush = [uid for uid, dirty in list(self._dirty_users.items()) if dirty]
-            
-            if not to_flush:
-                continue
-
-            # Batch flush with semaphore to limit file descriptors
-            # Although python handles this well, limiting to 50 concurrent writes is safe
-            sem = asyncio.Semaphore(50)
-            
-            async def protected_flush(uid):
-                async with sem:
-                    try:
-                        await self._flush_user(uid)
-                    except Exception as e:
-                        logger.error(f"Error flushing user {uid}: {e}")
-
-            # Gather all flushes in parallel
-            await asyncio.gather(*(protected_flush(uid) for uid in to_flush))
-
-    async def _flush_user_internal(self, user_id: str):
-        logger.debug(f"Flushing user data internally for user_id: {user_id}")
-        # Internal flush that assumes lock is ALREADY held
-        data = self._user_cache.get(str(user_id))
-        if not data:
-            logger.debug(f"No data found in cache for user_id: {user_id}. Removing from dirty users.")
-            self._dirty_users.pop(str(user_id), None)
-            return
-        path = self._user_file(user_id)
-        logger.debug(f"Saving user data for user_id: {user_id} to path: {path}")
-        saved_successfully = await self.file_manager.save_async(path, data)
-        if not saved_successfully:
-            logger.error(f"Failed to save user data for user_id: {user_id} to path: {path}. Keeping user marked as dirty.")
-            # Do NOT mark as clean, so it will be re-attempted
-        else:
-            self._dirty_users[str(user_id)] = False
-            self._user_cache[str(user_id)] = data # Ensure cache is updated with the data that was just saved
-            logger.debug(f"Successfully flushed and marked user_id: {user_id} as clean.")
-
-    async def _flush_user(self, user_id: str):
-        async with self._user_lock(user_id):
-            await self._flush_user_internal(str(user_id))
-
-    def _process_loaded_data(self, loaded: Dict[str, Any], uid: str) -> Dict[str, Any]:
-        if "pets" not in loaded:
-            loaded["pets"] = {}
-
-        migrated = False
-        
-        # 1. Migrate Games to Pet Gambling Stats
-        if "games" in loaded and loaded["games"]:
-            games = loaded["games"]
-            pet_data = loaded.get("pets", {}).get("pet_data")
-            if pet_data:
-                pet_data = self._migrate_pet(pet_data)
-                g_stats = pet_data["gambling_stats"]
-                
-                mapping = {
-                    "slot_machine": "slots",
-                    "blackjack": "blackjack",
-                    "holdem": "holdem",
-                    "craps": "craps",
-                    "races": "races"
-                }
-                
-                keys_to_remove = []
-                for old_key, new_key in mapping.items():
-                    if old_key in games:
-                        if g_stats[new_key].get("total_games_played", 0) == 0 and \
-                           g_stats[new_key].get("rounds_played", 0) == 0 and \
-                           g_stats[new_key].get("games_played", 0) == 0 and \
-                           g_stats[new_key].get("races_played", 0) == 0:
-                               g_stats[new_key] = games[old_key]
-                        
-                        keys_to_remove.append(old_key)
-                
-                for k in keys_to_remove:
-                    del games[k]
-                    
-                loaded["pets"]["pet_data"] = pet_data
-                migrated = True
-
-            if not games:
-                del loaded["games"]
-                migrated = True
-        
-        # 2. Ensure Pet Data is Migrated
-        if loaded.get("pets", {}).get("pet_data"):
-             pet_data = loaded["pets"]["pet_data"]
-             new_pet_data = self._migrate_pet(pet_data)
-             if new_pet_data != pet_data:
-                 loaded["pets"]["pet_data"] = new_pet_data
-                 migrated = True
-
-        if migrated:
-            self._dirty_users[uid] = True
-        else:
-            self._dirty_users[uid] = False
-            
-        return loaded
-
-    async def _get_user_data_internal(self, user_id: str, username: Optional[str] = None) -> Dict[str, Any]:
-        uid = str(user_id)
-        data = self._user_cache.get(uid)
-        if data:
-            if username and data.get("username") != username:
-                data["username"] = username
-                data["last_updated"] = datetime.utcnow().isoformat()
-                self._dirty_users[uid] = True
-            return data
-            
-        path = self._user_file(uid)
-        loaded = await self.file_manager.load_async(path, self._default_user(uid, username))
-        loaded = self._process_loaded_data(loaded, uid)
-        self._user_cache[uid] = loaded
-        return loaded
-
-    def get_user_data_sync(self, user_id: str, username: Optional[str] = None) -> Dict[str, Any]:
-        uid = str(user_id)
-        data = self._user_cache.get(uid)
-        if data:
-            if username and data.get("username") != username:
-                data["username"] = username
-                data["last_updated"] = datetime.utcnow().isoformat()
-                self._dirty_users[uid] = True
-            return data
-            
-        path = self._user_file(uid)
-        loaded = self.file_manager.load(path, self._default_user(uid, username))
-        loaded = self._process_loaded_data(loaded, uid)
-        self._user_cache[uid] = loaded
-        return loaded
+    async def _save_pet_data_no_lock(self, user_id: str, pet_data: Dict[str, Any], username: Optional[str] = None) -> bool:
+        pet = self._migrate_pet(pet_data or {})
+        success = await pets_db.save_pet_data(user_id, pet)
+        if success and username:
+            await pets_db.save_user_profile(user_id, username)
+        return success
 
     async def get_user_data(self, user_id: str, username: Optional[str] = None) -> Dict[str, Any]:
-        async with self._user_lock(user_id):
-            return await self._get_user_data_internal(user_id, username)
+        """Gets all user data from the database and merges it."""
+        async with self._get_user_lock(user_id):
+            user_profile = await pets_db.get_user_profile(user_id)
+            pet_data = await self._get_pet_data_no_lock(user_id, username)
+
+            if not user_profile:
+                # If no profile exists, create one
+                await pets_db.save_user_profile(user_id, username or "Unknown")
+                user_profile = await pets_db.get_user_profile(user_id)
+            elif username and user_profile.get("username") != username:
+                # If username has changed, update it
+                await pets_db.save_user_profile(user_id, username)
+                user_profile["username"] = username
+
+            # Combine the data
+            full_user_data = user_profile or {}
+            full_user_data["pets"] = {"pet_data": self._migrate_pet(pet_data) if pet_data else None}
+            
+            return full_user_data
 
     async def save_user_data(self, user_id: str, username: str, data: Dict[str, Any]) -> bool:
-        async with self._user_lock(user_id):
-            uid = str(user_id)
-            data["last_updated"] = datetime.utcnow().isoformat()
-            if username:
-                data["username"] = username
-            self._user_cache[uid] = data
-            self._dirty_users[uid] = True
-            await self._flush_user_internal(uid)
+        """Saves user profile and pet data to the database."""
+        async with self._get_user_lock(user_id):
+            # Extract pet data and save it
+            if "pets" in data and "pet_data" in data["pets"]:
+                pet_data = self._migrate_pet(data["pets"]["pet_data"])
+                await self._save_pet_data_no_lock(user_id, pet_data, username)
+            
+            # Save user profile
+            await pets_db.save_user_profile(user_id, username)
             return True
 
     async def update_user_data(self, user_id: str, updates: Dict[str, Any], username: Optional[str] = None) -> bool:
-        async with self._user_lock(user_id):
-            base = await self._get_user_data_internal(user_id, username)
-            def merge(dst: Dict[str, Any], src: Dict[str, Any]):
+        """Updates user data by merging new data with existing data."""
+        async with self._get_user_lock(user_id):
+            # Fetch current data without re-acquiring the lock (avoids deadlock)
+            user_profile = await pets_db.get_user_profile(user_id)
+            pet_data = await self._get_pet_data_no_lock(user_id, username)
+
+            if not user_profile:
+                await pets_db.save_user_profile(user_id, username or "Unknown")
+                user_profile = await pets_db.get_user_profile(user_id)
+            elif username and user_profile.get("username") != username:
+                await pets_db.save_user_profile(user_id, username)
+                if user_profile:
+                    user_profile["username"] = username
+
+            current_data: Dict[str, Any] = user_profile or {}
+            current_data["pets"] = {"pet_data": self._migrate_pet(pet_data) if pet_data else None}
+
+            # Merge updates
+            def merge(dst: Dict[str, Any], src: Dict[str, Any]) -> None:
                 for k, v in src.items():
                     if isinstance(v, dict) and isinstance(dst.get(k), dict):
                         merge(dst[k], v)
                     else:
                         dst[k] = v
-            merge(base, updates or {})
-            base["last_updated"] = datetime.utcnow().isoformat()
-            self._user_cache[str(user_id)] = base
-            self._dirty_users[str(user_id)] = True
-            await self._flush_user_internal(str(user_id))
-            return True
+            merge(current_data, updates or {})
 
-    def get_pet_data(self, user_id: str, username: Optional[str] = None) -> Optional[Dict[str, Any]]:
-        data = self.get_user_data_sync(user_id, username)
-        return data.get("pets", {}).get("pet_data")
+            # Save without re-acquiring the lock
+            if "pets" in current_data and "pet_data" in current_data["pets"]:
+                pet = self._migrate_pet(current_data["pets"]["pet_data"] or {})
+                await self._save_pet_data_no_lock(user_id, pet, current_data.get("username"))
+
+            await pets_db.save_user_profile(user_id, current_data.get("username") or username or "Unknown")
+            return True
 
     async def get_pet_data_async(self, user_id: str, username: Optional[str] = None) -> Optional[Dict[str, Any]]:
-        async with self._user_lock(user_id):
-            data = await self._get_user_data_internal(user_id, username)
-            return data.get("pets", {}).get("pet_data")
+        """Gets pet data exclusively from the database."""
+        async with self._get_user_lock(user_id):
+            return await self._get_pet_data_no_lock(user_id, username)
+
+    async def _load_legacy_pet_data(self, user_id: str) -> Optional[Dict[str, Any]]:
+        legacy_path = self._legacy_users_dir / f"{user_id}.json"
+        if not legacy_path.exists():
+            return None
+
+        try:
+            raw_data = json.loads(legacy_path.read_text(encoding="utf-8"))
+        except Exception as e:
+            logger.warning(f"Failed to read legacy pet data for user {user_id}: {e}")
+            return None
+
+        if not isinstance(raw_data, dict):
+            return None
+
+        pets_section = raw_data.get("pets")
+        if isinstance(pets_section, dict):
+            direct_pet = pets_section.get("pet_data")
+            if isinstance(direct_pet, dict) and direct_pet:
+                return direct_pet
+
+            active_pet_id = raw_data.get("active_pet") or pets_section.get("active_pet")
+            if active_pet_id:
+                active_pet = pets_section.get(str(active_pet_id))
+                if isinstance(active_pet, dict) and active_pet:
+                    return active_pet
+
+            dict_pets = [value for value in pets_section.values() if isinstance(value, dict) and value]
+            if len(dict_pets) == 1:
+                return dict_pets[0]
+
+        active_pet = raw_data.get("active_pet")
+        if isinstance(active_pet, dict) and active_pet:
+            return active_pet
+
+        return None
 
     async def save_pet_data(self, user_id: str, username_or_pet: Optional[Union[str, Dict[str, Any]]], pet_data: Optional[Dict[str, Any]] = None) -> bool:
-        if isinstance(username_or_pet, dict) and pet_data is None:
-            username = None
-            pet = self._migrate_pet(username_or_pet)
-        else:
-            username = username_or_pet if isinstance(username_or_pet, str) else None
-            pet = self._migrate_pet(pet_data or {})
-            
-        async with self._user_lock(user_id):
-            data = await self._get_user_data_internal(user_id, username)
-            data.setdefault("pets", {})
-            data["pets"]["pet_data"] = pet
-            if not data.get("active_pet"):
-                data["active_pet"] = "pet"
-            data["last_updated"] = datetime.utcnow().isoformat()
-            self._user_cache[str(user_id)] = data
-            self._dirty_users[str(user_id)] = True
-            await self._flush_user_internal(str(user_id))
-            return True
+        """Saves pet data exclusively to the database."""
+        async with self._get_user_lock(user_id):
+            if isinstance(username_or_pet, dict) and pet_data is None:
+                pet = self._migrate_pet(username_or_pet)
+                username = None
+            else:
+                pet = self._migrate_pet(pet_data or {})
+                username = cast(Optional[str], username_or_pet) if isinstance(username_or_pet, str) else None
+
+            return await self._save_pet_data_no_lock(user_id, pet, username)
 
     async def update_pet_battle_stats(self, user_id: str, mode: str, **kwargs) -> bool:
         """
-        Updates specific battle stats for a pet.
-        mode: "npc", "pvp", "tournament", "survivor_series", "boss", "wild_encounter"
-        kwargs: key-value pairs of stats to increment or update.
-                For 'most_eliminations' or 'highest_*', it updates if the new value is higher.
-                For other numeric stats (wins, losses, xp, damage), it increments.
+        Updates specific battle stats for a pet, fetching and saving exclusively from the database.
         """
-        async with self._user_lock(user_id):
-            data = await self._get_user_data_internal(user_id)
-            if not data:
+        async with self._get_user_lock(user_id):
+            pet = await self._get_pet_data_no_lock(user_id)
+            if not pet:
                 return False
-            
-            # Ensure pet data exists
-            if "pets" not in data:
-                data["pets"] = {}
-            if "pet_data" not in data["pets"] or not data["pets"]["pet_data"]:
-                # If no pet data, we can't update battle stats
-                return False
-                
-            pet = data["pets"]["pet_data"]
             
             # Ensure battle_stats structure
             stats = pet.setdefault("battle_stats", {})
             mode_stats = stats.setdefault(mode, {})
-            
-            username = data.get("username", "Unknown")
             
             for key, value in kwargs.items():
                 if key.startswith("most_") or key.startswith("highest_"):
@@ -306,153 +210,317 @@ class UserDataManager:
                     current = int(mode_stats.get(key, 0))
                     mode_stats[key] = current + int(value)
             
-            # Mark as dirty and trigger save/flush
-            data["last_updated"] = datetime.utcnow().isoformat()
-            self._user_cache[str(user_id)] = data
-            self._dirty_users[str(user_id)] = True
-            await self._flush_user_internal(str(user_id))
+            # Save the updated pet data to the database
+            await self._save_pet_data_no_lock(user_id, pet)
             return True
 
     async def update_pet_gambling_stats(self, user_id: str, game_type: str, winnings: int, bet_amount: int = 0, extra_data: Optional[Dict[str, Any]] = None) -> bool:
         """
-        Updates gambling stats for a pet.
-        game_type: "blackjack", "craps", "holdem", "races", "slots"
-        winnings: Net XP change (positive for win, negative for loss)
-        bet_amount: Amount bet (for highest_bet tracking)
-        extra_data: Game-specific stats (e.g. difficulty for slots)
+        Updates gambling stats for a pet, fetching and saving exclusively from the database.
         """
-        async with self._user_lock(user_id):
-            data = await self._get_user_data_internal(user_id)
-            if not data:
+        async with self._get_user_lock(user_id):
+            pet = await self._get_pet_data_no_lock(user_id)
+            if not pet:
                 return False
-
-            if "pets" not in data:
-                data["pets"] = {}
-            if "pet_data" not in data["pets"] or not data["pets"]["pet_data"]:
-                return False
-
-            pet = data["pets"]["pet_data"]
-            game_stats = gambling_stats.setdefault(game_type, {
-                "wins": 0,
-                "losses": 0,
-                "pushes": 0,
-                "total_played": 0,
-                "total_won": 0, # Total amount won
-                "total_lost": 0, # Total amount lost
-                "net_xp": 0 # Net XP change
-            })
-
-            # Update standard stats
-            game_stats["total_played"] += 1
-            game_stats["net_xp"] += winnings
-
-            if winnings > 0:
-                game_stats["wins"] += 1
-                game_stats["total_won"] += winnings
-            elif winnings < 0:
-                game_stats["losses"] += 1
-                game_stats["total_lost"] += abs(winnings)
-            # For pushes, we'll handle it in extra_data if provided
+            
+            # Ensure gambling_stats exists
+            if "gambling_stats" not in pet:
+                pet["gambling_stats"] = {}
+            
+            gambling_stats = pet["gambling_stats"]
+            
+            # Ensure game_type stats exist with correct structure
+            if game_type not in gambling_stats:
+                if game_type == "slots":
+                    gambling_stats[game_type] = {
+                        "total_games_played": 0,
+                        "xp_won_total": 0,
+                        "xp_lost_total": 0,
+                        "highest_xp_win": 0,
+                        "highest_xp_bet": 0,
+                        "games_by_difficulty": {"easy": 0, "medium": 0, "hard": 0, "insanity": 0}
+                    }
+                elif game_type == "blackjack":
+                    gambling_stats[game_type] = {
+                        "rounds_played": 0,
+                        "rounds_won": 0,
+                        "rounds_lost": 0,
+                        "pushes": 0,
+                        "xp_won_total": 0,
+                        "xp_lost_total": 0,
+                        "highest_xp_win": 0,
+                        "highest_xp_bet": 0
+                    }
+                elif game_type == "holdem":
+                    gambling_stats[game_type] = {
+                        "games_played": 0,
+                        "games_won": 0,
+                        "games_lost": 0,
+                        "xp_won_total": 0,
+                        "xp_lost_total": 0,
+                        "highest_xp_win": 0,
+                        "highest_xp_bet": 0
+                    }
+                elif game_type == "craps":
+                    gambling_stats[game_type] = {
+                        "games_played": 0,
+                        "games_won": 0,
+                        "games_lost": 0,
+                        "xp_won_total": 0,
+                        "xp_lost_total": 0,
+                        "highest_xp_win": 0,
+                        "highest_xp_bet": 0
+                    }
+                elif game_type == "races":
+                    gambling_stats[game_type] = {
+                        "races_played": 0,
+                        "races_won": 0,
+                        "races_lost": 0,
+                        "xp_won_total": 0,
+                        "xp_lost_total": 0,
+                        "highest_xp_win": 0,
+                        "highest_xp_bet": 0
+                    }
+                elif game_type == "coinflip":
+                    gambling_stats[game_type] = {
+                        "games_played": 0,
+                        "games_won": 0,
+                        "games_lost": 0,
+                        "xp_won_total": 0,
+                        "xp_lost_total": 0,
+                        "highest_xp_win": 0,
+                        "highest_xp_bet": 0
+                    }
+                elif game_type == "rps":
+                    gambling_stats[game_type] = {
+                        "games_played": 0,
+                        "games_won": 0,
+                        "games_lost": 0,
+                        "games_tied": 0,
+                        "xp_won_total": 0,
+                        "xp_lost_total": 0,
+                        "highest_xp_win": 0,
+                        "highest_xp_bet": 0
+                    }
+                elif game_type == "wheel_of_pets":
+                    gambling_stats[game_type] = {
+                        "games_played": 0,
+                        "games_won": 0,
+                        "games_lost": 0,
+                        "own_pet_jackpots": 0,
+                        "xp_won_total": 0,
+                        "xp_lost_total": 0,
+                        "highest_xp_win": 0,
+                        "highest_xp_bet": 0
+                    }
+                elif game_type == "keno":
+                    gambling_stats[game_type] = {
+                        "games_played": 0,
+                        "games_won": 0,
+                        "games_lost": 0,
+                        "xp_won_total": 0,
+                        "xp_lost_total": 0,
+                        "highest_xp_win": 0,
+                        "highest_xp_bet": 0
+                    }
+                elif game_type == "powerball":
+                    gambling_stats[game_type] = {
+                        "tickets_bought": 0,
+                        "games_won": 0,
+                        "xp_won_total": 0,
+                        "xp_lost_total": 0,
+                        "highest_xp_win": 0
+                    }
+                elif game_type == "scratch_cards":
+                    gambling_stats[game_type] = {
+                        "games_played": 0,
+                        "games_won": 0,
+                        "games_lost": 0,
+                        "xp_won_total": 0,
+                        "xp_lost_total": 0,
+                        "highest_xp_win": 0,
+                        "highest_xp_bet": 0
+                    }
+                else:
+                    # Default structure for unknown game types
+                    gambling_stats[game_type] = {
+                        "wins": 0,
+                        "losses": 0,
+                        "pushes": 0,
+                        "total_played": 0,
+                        "total_won": 0,
+                        "total_lost": 0,
+                        "net_xp": 0
+                    }
+            
+            game_stats = gambling_stats[game_type]
+            
+            # Update standard stats based on game type
+            if game_type == "slots":
+                game_stats["total_games_played"] += 1
+                if winnings > 0:
+                    game_stats["xp_won_total"] += winnings
+                    if winnings > game_stats.get("highest_xp_win", 0):
+                        game_stats["highest_xp_win"] = winnings
+                else:
+                    game_stats["xp_lost_total"] += abs(winnings)
+                if bet_amount > game_stats.get("highest_xp_bet", 0):
+                    game_stats["highest_xp_bet"] = bet_amount
+            elif game_type == "blackjack":
+                game_stats["rounds_played"] += 1
+                if winnings > 0:
+                    game_stats["xp_won_total"] += winnings
+                    game_stats["rounds_won"] += 1
+                    if winnings > game_stats.get("highest_xp_win", 0):
+                        game_stats["highest_xp_win"] = winnings
+                else:
+                    game_stats["xp_lost_total"] += abs(winnings)
+                    game_stats["rounds_lost"] += 1
+                if bet_amount > game_stats.get("highest_xp_bet", 0):
+                    game_stats["highest_xp_bet"] = bet_amount
+            elif game_type == "holdem":
+                game_stats["games_played"] += 1
+                if winnings > 0:
+                    game_stats["xp_won_total"] += winnings
+                    game_stats["games_won"] += 1
+                    if winnings > game_stats.get("highest_xp_win", 0):
+                        game_stats["highest_xp_win"] = winnings
+                else:
+                    game_stats["xp_lost_total"] += abs(winnings)
+                    game_stats["games_lost"] += 1
+                if bet_amount > game_stats.get("highest_xp_bet", 0):
+                    game_stats["highest_xp_bet"] = bet_amount
+            elif game_type == "craps":
+                game_stats["games_played"] += 1
+                if winnings > 0:
+                    game_stats["xp_won_total"] += winnings
+                    game_stats["games_won"] += 1
+                    if winnings > game_stats.get("highest_xp_win", 0):
+                        game_stats["highest_xp_win"] = winnings
+                else:
+                    game_stats["xp_lost_total"] += abs(winnings)
+                    game_stats["games_lost"] += 1
+                if bet_amount > game_stats.get("highest_xp_bet", 0):
+                    game_stats["highest_xp_bet"] = bet_amount
+            elif game_type == "races":
+                game_stats["races_played"] += 1
+                if winnings > 0:
+                    game_stats["xp_won_total"] += winnings
+                    game_stats["races_won"] += 1
+                    if winnings > game_stats.get("highest_xp_win", 0):
+                        game_stats["highest_xp_win"] = winnings
+                else:
+                    game_stats["xp_lost_total"] += abs(winnings)
+                    game_stats["races_lost"] += 1
+                if bet_amount > game_stats.get("highest_xp_bet", 0):
+                    game_stats["highest_xp_bet"] = bet_amount
+            elif game_type in ("coinflip", "rps"):
+                game_stats["games_played"] += 1
+                if winnings > 0:
+                    game_stats["xp_won_total"] += winnings
+                    game_stats["games_won"] += 1
+                    if winnings > game_stats.get("highest_xp_win", 0):
+                        game_stats["highest_xp_win"] = winnings
+                elif winnings < 0:
+                    game_stats["xp_lost_total"] += abs(winnings)
+                    game_stats["games_lost"] += 1
+                elif game_type == "rps":
+                    game_stats["games_tied"] = game_stats.get("games_tied", 0) + 1
+                if bet_amount > game_stats.get("highest_xp_bet", 0):
+                    game_stats["highest_xp_bet"] = bet_amount
+            elif game_type in ("wheel_of_pets", "keno", "scratch_cards"):
+                game_stats["games_played"] = game_stats.get("games_played", 0) + 1
+                if winnings > 0:
+                    game_stats["xp_won_total"] = game_stats.get("xp_won_total", 0) + winnings
+                    game_stats["games_won"] = game_stats.get("games_won", 0) + 1
+                    if winnings > game_stats.get("highest_xp_win", 0):
+                        game_stats["highest_xp_win"] = winnings
+                else:
+                    game_stats["xp_lost_total"] = game_stats.get("xp_lost_total", 0) + abs(winnings)
+                    game_stats["games_lost"] = game_stats.get("games_lost", 0) + 1
+                if bet_amount > game_stats.get("highest_xp_bet", 0):
+                    game_stats["highest_xp_bet"] = bet_amount
+            elif game_type == "powerball":
+                if bet_amount > 0:
+                    # Ticket purchase
+                    game_stats["tickets_bought"] = game_stats.get("tickets_bought", 0) + 1
+                    game_stats["xp_lost_total"] += bet_amount
+                if winnings > 0:
+                    game_stats["games_won"] = game_stats.get("games_won", 0) + 1
+                    game_stats["xp_won_total"] += winnings
+                    if winnings > game_stats.get("highest_xp_win", 0):
+                        game_stats["highest_xp_win"] = winnings
+            else:
+                # Default for unknown game types
+                if "total_played" in game_stats:
+                    game_stats["total_played"] += 1
+                    if winnings > 0:
+                        game_stats["wins"] += 1
+                        game_stats["total_won"] += winnings
+                    elif winnings < 0:
+                        game_stats["losses"] += 1
+                        game_stats["total_lost"] += abs(winnings)
+                    if "net_xp" in game_stats:
+                        game_stats["net_xp"] += winnings
 
             # Game-specific updates
             if game_type == "races":
-                # No specific extra stats for races beyond standard
                 pass
             elif game_type == "slots":
-                # No specific extra stats for slots beyond standard
                 pass
             elif game_type == "blackjack":
-                if extra_data and extra_data.get("is_push"): # Assuming extra_data can indicate a push
-                    game_stats["pushes"] += 1
+                if extra_data and extra_data.get("is_push"):
+                    game_stats["pushes"] = game_stats.get("pushes", 0) + 1
             elif game_type == "holdem":
-                # No specific extra stats for holdem beyond standard
                 pass
             elif game_type == "craps":
-                # No specific extra stats for craps beyond standard
                 pass
+            elif game_type == "wheel_of_pets":
+                if extra_data and extra_data.get("own_pet_jackpots"):
+                    game_stats["own_pet_jackpots"] = game_stats.get("own_pet_jackpots", 0) + int(extra_data["own_pet_jackpots"])
 
-            # Apply any extra data provided (e.g., highest bet, specific game outcomes)
+            # Apply any extra data provided
             if extra_data:
                 for key, value in extra_data.items():
-                    if key == "highest_bet": # Example of an extra stat
+                    if key == "highest_bet":
                         game_stats[key] = max(game_stats.get(key, 0), value)
-                    elif key == "is_push" and game_type != "blackjack": # Handle pushes for other games if applicable
-                        game_stats["pushes"] += 1
-                    # Add other extra_data handling as needed
+                    elif key == "is_push" and game_type != "blackjack":
+                        game_stats["pushes"] = game_stats.get("pushes", 0) + 1
 
-            # Mark as dirty and trigger save/flush
-            data["last_updated"] = datetime.utcnow().isoformat()
-            self._user_cache[str(user_id)] = data
-            self._dirty_users[str(user_id)] = True
-            await self._flush_user_internal(str(user_id))
+            # Save the updated pet data to the database
+            await self._save_pet_data_no_lock(user_id, pet)
             return True
 
 
     async def delete_pet_data(self, user_id: str, username: Optional[str] = None) -> bool:
-        async with self._user_lock(user_id):
-            data = await self._get_user_data_internal(user_id, username)
-            changed = False
-            pets = data.get("pets", {})
-            if "pet_data" in pets:
-                del pets["pet_data"]
-                changed = True
-            ap = data.get("active_pet")
-            if isinstance(ap, str) and ap in pets:
-                try:
-                    del pets[ap]
-                except Exception:
-                    pass
-                data["active_pet"] = None
-                changed = True
-                
-            if changed:
-                data["pets"] = pets
-                self._user_cache[str(user_id)] = data
-                self._dirty_users[str(user_id)] = True
-                await self._flush_user_internal(str(user_id))
-                return True
-            return False
+        """Deletes pet data exclusively from the database."""
+        async with self._get_user_lock(user_id):
+            return await pets_db.delete_pet_data(user_id)
 
     async def set_pet_action_label(self, user_id: str, pet_id: str, action: str, label: str) -> bool:
-        async with self._user_lock(user_id):
-            data = await self._get_user_data_internal(user_id)
-            if not data or "pets" not in data or "pet_data" not in data["pets"]:
-                return False
-
-            pet = data["pets"]["pet_data"]
-            if pet.get("id") != pet_id: # Assuming pet_id is the unique identifier for the active pet
+        async with self._get_user_lock(user_id):
+            pet = await self._get_pet_data_no_lock(user_id)
+            if not pet or pet.get("id") != pet_id:
                 return False
 
             if "action_labels" not in pet:
-                pet["action_labels"] = {"attack": None, "defend": None, "charge": None} # Initialize if not present
+                pet["action_labels"] = {"attack": None, "defense": None, "charge": None}
 
-            pet["action_labels"][action] = label if label else None # Set label for specific action
-            data["pets"]["pet_data"] = pet
+            # Normalize: always store defense under "defense" (not "defend")
+            storage_key = "defense" if action in ("defend", "defense") else action
+            pet["action_labels"][storage_key] = label if label else None
 
-            data["last_updated"] = datetime.utcnow().isoformat()
-            self._user_cache[str(user_id)] = data
-            self._dirty_users[str(user_id)] = True
-            await self._flush_user_internal(str(user_id))
-            return True
+            return await self._save_pet_data_no_lock(user_id, pet)
 
     async def update_pet_name(self, user_id: str, pet_id: str, new_name: str) -> bool:
-        async with self._user_lock(user_id):
-            data = await self._get_user_dat-internal(user_id)
-            if not data or "pets" not in data or "pet_data" not in data["pets"]:
-                return False
-
-            pet = data["pets"]["pet_data"]
-            if pet.get("id") != pet_id: # Assuming pet_id is the unique identifier for the active pet
+        async with self._get_user_lock(user_id):
+            pet = await self._get_pet_data_no_lock(user_id)
+            if not pet or pet.get("id") != pet_id:
                 return False
 
             pet["name"] = new_name
-            data["pets"]["pet_data"] = pet
 
-            data["last_updated"] = datetime.utcnow().isoformat()
-            self._user_cache[str(user_id)] = data
-            self._dirty_users[str(user_id)] = True
-            await self._flush_user_internal(str(user_id))
-            return True
+            return await self._save_pet_data_no_lock(user_id, pet)
 
     def _get_level_experience(self, level: int) -> int:
         """
@@ -465,143 +533,13 @@ class UserDataManager:
         return int(200 * (1.03 ** (level - 1)))
 
     async def add_pet_experience(self, user_id: str, amount: int, source: str = "battle") -> Tuple[bool, Optional[Dict[str, Any]]]:
-        async with self._user_lock(user_id):
-            data = await self._get_user_data_internal(user_id)
-            if not data or "pets" not in data or "pet_data" not in data["pets"]:
-                return False, None
-            
-            pet = data["pets"]["pet_data"]
-            
-            # Ensure basic stats exist via migrate
-            pet = self._migrate_pet(pet)
-            data["pets"]["pet_data"] = pet
-
-            old_level = int(pet["level"])
-            current_exp = int(pet["experience"])
-            new_exp = current_exp + int(amount)
-            pet["experience"] = new_exp
-            
-            # --- DEBUG LOGGING ---
-            logger.debug(f"add_pet_experience: User {user_id}, Amount {amount}, Source {source}")
-            logger.debug(f"Initial: Level {old_level}, Current XP {current_exp}, New XP {new_exp}")
-            # --- END DEBUG LOGGING ---
-
-            # Track Source XP
-            xp_key = f"{source}_xp_earned"
-            pet[xp_key] = int(pet.get(xp_key, 0)) + int(amount)
-            pet["total_xp_earned"] = int(pet.get("total_xp_earned", 0)) + int(amount)
-
-            gains = {"ATT": 0, "DEF": 0, "INT": 0, "DEX": 0, "HAP": 0, "ENE": 0}
-            
-            # Level Up Logic
-            if amount >= 0:
-                while True:
-                    exp_needed = self._get_level_experience(pet["level"])
-                    # --- DEBUG LOGGING ---
-                    logger.debug(f"Level Up Check: Pet Level {pet['level']}, XP Needed {exp_needed}, Current New XP {new_exp}")
-                    # --- END DEBUG LOGGING ---
-                    if new_exp < exp_needed:
-                        break
-                    new_exp -= exp_needed
-                    pet["level"] += 1
-                    pet["experience"] = new_exp
-                    
-                    # Stat gains
-                    points_per_category = 1 + ((pet["level"] - 1) // 10)
-                    
-                    # Physical
-                    for _ in range(points_per_category):
-                        if random.choice([True, False]):
-                            pet["ATT"] = int(pet.get("ATT", 0)) + 1
-                            gains["ATT"] += 1
-                        else:
-                            pet["DEF"] = int(pet.get("DEF", 0)) + 1
-                            gains["DEF"] += 1
-                    
-                    # Mental
-                    for _ in range(points_per_category):
-                        if random.choice([True, False]):
-                            pet["INT"] = int(pet.get("INT", 0)) + 1
-                            gains["INT"] += 1
-                        else:
-                            pet["DEX"] = int(pet.get("DEX", 0)) + 1
-                            gains["DEX"] += 1
-                    
-                    # Vitals
-                    for _ in range(points_per_category):
-                        if random.choice([True, False]):
-                            pet["HAP"] = int(pet.get("HAP", 0)) + 1
-                            gains["HAP"] += 1
-                        else:
-                            pet["ENE"] = int(pet.get("ENE", 0)) + 1
-                            gains["ENE"] += 1
-            else:
-                # Level Down Logic (Handle negative XP and subtract stat points)
-                # Calculate total XP first to handle multi-level drops
-                total_xp = 0
-                for lvl in range(1, pet["level"]):
-                    total_xp += self._get_level_experience(lvl)
-                total_xp += current_exp
-
-                # Subtract loss (amount is negative)
-                new_total = max(0, total_xp + amount)
-
-                # Recompute level
-                new_level = 1
-                remainder = new_total
-                while True:
-                    needed = self._get_level_experience(new_level)
-                    if remainder < needed:
-                        break
-                    remainder -= needed
-                    new_level += 1
-
-                points_per_category = 1 + ((pet["level"] - 1) // 10)  # previous/old level (before losing)
-                stat_categories = ["ATT", "DEF", "INT", "DEX", "HAP", "ENE"]
-                # Remove points_per_category from each category, distributed as on level up (random)
-                for _ in range(points_per_category):
-                    # Remove from Physical
-                    chosen = random.choice(["ATT", "DEF"])
-                    pet[chosen] = max(0, int(pet.get(chosen, 0)) - 1)
-                    # Remove from Mental
-                    chosen = random.choice(["INT", "DEX"])
-                    pet[chosen] = max(0, int(pet.get(chosen, 0)) - 1)
-                    # Remove from Vitals
-                    chosen = random.choice(["HAP", "ENE"])
-                    pet[chosen] = max(0, int(pet.get(chosen, 0)) - 1)
-
-                pet["level"] = new_level
-                pet["experience"] = remainder
-
-                data["last_updated"] = datetime.utcnow().isoformat()
-                self._user_cache[str(user_id)] = data
-                self._dirty_users[str(user_id)] = True
-                await self._flush_user_internal(str(user_id))
-                return True, pet
-
-            if pet["level"] > old_level:
-                level_gains = {
-                    "old_level": old_level,
-                    "new_level": pet["level"],
-                    "ATT": gains["ATT"],
-                    "DEF": gains["DEF"],
-                    "INT": gains["INT"],
-                    "DEX": gains["DEX"],
-                    "HAP": gains["HAP"],
-                    "ENE": gains["ENE"],
-                    "source": source
-                }
-                return True, level_gains
-            elif pet["level"] < old_level:
-                 level_loss = {
-                    "old_level": old_level,
-                    "new_level": pet["level"],
-                    "source": source,
-                    "lost_xp": abs(amount)
-                 }
-                 return True, level_loss
-            
-            return True, None
+        """Adds experience to a pet. Delegates to the centralized XP system."""
+        try:
+            from Systems.Pets.Logic.pet_brain import LootCalculator
+            return await LootCalculator.apply_xp_change(int(user_id), int(amount), source)
+        except Exception as e:
+            logger.error(f"add_pet_experience error for user {user_id}: {e}", exc_info=True)
+            return False, None
 
     @staticmethod
     def _consolidate_inventory(inventory: List[Any]) -> List[InventoryItem]:
@@ -644,40 +582,28 @@ class UserDataManager:
 
     async def update_pet_data(self, user_id: str, updates: Dict[str, Any]) -> bool:
         """
-        Generic update for pet data fields (name, species, etc).
-        For stats/xp, use add_pet_experience.
+        Generic update for pet data fields, saving exclusively to the database.
         """
-        async with self._user_lock(user_id):
-            data = await self._get_user_data_internal(user_id)
-            if not data or "pets" not in data or "pet_data" not in data["pets"]:
+        async with self._get_user_lock(user_id):
+            pet = await self._get_pet_data_no_lock(user_id)
+            if not pet:
                 return False
-            
-            pet = data["pets"]["pet_data"]
+
             for k, v in updates.items():
                 pet[k] = v
-            
-            data["last_updated"] = datetime.utcnow().isoformat()
-            self._user_cache[str(user_id)] = data
-            self._dirty_users[str(user_id)] = True
-            await self._flush_user_internal(str(user_id))
-            return True, {"level_up": old_level < pet["level"], "new_level": pet["level"], "gains": gains}
+
+            return await self._save_pet_data_no_lock(user_id, pet)
         
     async def increment_pet_stats(self, user_id: str, stats_to_increment: Dict[str, int]) -> bool:
-        async with self._user_lock(user_id):
-            data = await self._get_user_data_internal(user_id)
-            if not data or "pets" not in data or "pet_data" not in data["pets"]:
+        async with self._get_user_lock(user_id):
+            pet = await self._get_pet_data_no_lock(user_id)
+            if not pet:
                 return False
-            
-            pet = data["pets"]["pet_data"]
-            
+
             for stat, value in stats_to_increment.items():
                 pet[stat] = pet.get(stat, 0) + value
 
-            data["last_updated"] = datetime.utcnow().isoformat()
-            self._user_cache[str(user_id)] = data
-            self._dirty_users[str(user_id)] = True
-            await self._flush_user_internal(str(user_id))
-            return True
+            return await self._save_pet_data_no_lock(user_id, pet)
 
     def _migrate_pet(self, pet: Dict[str, Any]) -> Dict[str, Any]:
         pet = dict(pet or {})
@@ -696,8 +622,8 @@ class UserDataManager:
         # Ensure equipment structure
         equip = pet["equipment"]
         
-        # Ensure List Slots (Gems, Monsters)
-        for list_slot in ["Gems", "Monsters"]:
+        # Ensure List Slots (Gems, Monsters, Material)
+        for list_slot in ["Gems", "Monsters", "Material"]:
             if list_slot in equip:
                 val = equip[list_slot]
                 if isinstance(val, dict):
@@ -710,8 +636,8 @@ class UserDataManager:
                 # Let's clean it up if it's junk, but don't force empty list if None.
                 pass
         
-        # Ensure Dict Slots (Material, Hat, Potion)
-        for dict_slot in ["Material", "Hat", "Potion"]:
+        # Ensure Dict Slots (Hat, Potion)
+        for dict_slot in ["Hat", "Potion"]:
             if dict_slot in equip:
                 val = equip[dict_slot]
                 if isinstance(val, list):
@@ -751,7 +677,7 @@ class UserDataManager:
         # Action Labels
         action_labels = pet.setdefault("action_labels", {})
         action_labels.setdefault("attack", None)
-        action_labels.setdefault("defend", None)
+        action_labels.setdefault("defense", None)
         action_labels.setdefault("charge", None)
 
         pet.setdefault("mission_xp_gambled_total", 0)
@@ -839,189 +765,5 @@ class UserDataManager:
         })
 
         return pet
-
-    async def batch_load_user_data(self, user_ids: List[str]) -> Dict[str, Dict[str, Any]]:
-        results: Dict[str, Dict[str, Any]] = {}
-        tasks = [self.get_user_data(str(uid)) for uid in user_ids]
-        outs = await asyncio.gather(*tasks, return_exceptions=True)
-        for i, uid in enumerate(user_ids):
-            res = outs[i]
-            if not isinstance(res, Exception):
-                results[str(uid)] = cast(Dict[str, Any], res)
-        return results
-
-    async def update_shooting_range_stats(self, user_id: str, session_data: Dict[str, Any]) -> bool:
-        async with self._user_lock(user_id):
-            data = await self._get_user_data_internal(user_id)
-            if not data:
-                return False
-
-            hits = int(session_data.get("hits", 0))
-            total_shots = int(session_data.get("total_shots", 0))
-            rounds = session_data.get("rounds", 5)
-
-            games = data.setdefault("games", {})
-            stats = games.setdefault("shooting_range", {
-                "sessions_played": 0, "total_hits": 0, "total_shots": 0,
-                "best_records": {
-                    "5": {"accuracy": 0.0, "hits": 0},
-                    "15": {"accuracy": 0.0, "hits": 0},
-                    "25": {"accuracy": 0.0, "hits": 0},
-                    "50": {"accuracy": 0.0, "hits": 0},
-                    "100": {"accuracy": 0.0, "hits": 0}
-                },
-                "attempts_by_round": {"5": 0, "15": 0, "25": 0, "50": 0, "100": 0}
-            })
-            stats["sessions_played"] += 1
-            stats["total_hits"] += hits
-            stats["total_shots"] += total_shots
-            acc = (hits / max(1, total_shots)) * 100.0
-            rk = str(rounds)
-            best = stats["best_records"].get(rk, {"accuracy": 0.0, "hits": 0})
-            if acc > best["accuracy"] or (acc == best["accuracy"] and hits > best["hits"]):
-                stats["best_records"][rk] = {"accuracy": acc, "hits": hits}
-            stats["attempts_by_round"][rk] = int(stats["attempts_by_round"].get(rk, 0)) + 1
-            
-            data["last_updated"] = datetime.utcnow().isoformat()
-            self._user_cache[str(user_id)] = data
-            self._dirty_users[str(user_id)] = True
-            await self._flush_user_internal(str(user_id))
-            return True
-
-    async def get_shooting_range_stats(self, user_id: str) -> Dict[str, Any]:
-        d = await self.get_user_data(str(user_id))
-        games = d.setdefault("games", {})
-        stats = games.setdefault("shooting_range", {
-            "sessions_played": 0, "total_hits": 0, "total_shots": 0,
-            "best_records": {
-                "5": {"accuracy": 0.0, "hits": 0},
-                "15": {"accuracy": 0.0, "hits": 0},
-                "25": {"accuracy": 0.0, "hits": 0},
-                "50": {"accuracy": 0.0, "hits": 0},
-                "100": {"accuracy": 0.0, "hits": 0}
-            },
-            "attempts_by_round": {"5": 0, "15": 0, "25": 0, "50": 0, "100": 0}
-        })
-        self._user_cache[str(user_id)] = d
-        self._dirty_users[str(user_id)] = True
-        return stats
-
-    async def get_json_data(self, key: str, default_data: Any = None) -> Any:
-        async with self._get_json_lock(key):
-            k = str(key)
-            if k.startswith("walktru_"):
-                mapping = {
-                    "horror": "Horror.json",
-                    "ganster": "Ganster.json",
-                    "knight": "Knight.json",
-                    "robot": "Robot.json",
-                    "western": "Western.json",
-                    "wizard": "Wizard.json",
-                }
-                name = k.replace("walktru_", "", 1)
-                fname = mapping.get(name)
-                if fname:
-                    path = self.file_manager.walk_tru_dir / fname
-                    data = await self.file_manager.load_async(path, default_data if default_data is not None else {})
-                    return data if data is not None else (default_data if default_data is not None else {})
-            path = self.json_path / f"{k}.json"
-            data = await self.file_manager.load_async(path, default_data if default_data is not None else {})
-            return data if data is not None else (default_data if default_data is not None else {})
-
-    async def save_json_data(self, key: str, data: Any) -> bool:
-        async with self._get_json_lock(key):
-            path = self.json_path / f"{str(key)}.json"
-            return await self.file_manager.save_async(path, data)
-
-    async def load_json_data(self, key: str) -> Any:
-        async with self._get_json_lock(key):
-            k = str(key)
-            if k.startswith("walktru_"):
-                mapping = {
-                    "horror": "Horror.json",
-                    "ganster": "Ganster.json",
-                    "knight": "Knight.json",
-                    "robot": "Robot.json",
-                    "western": "Western.json",
-                    "wizard": "Wizard.json",
-                }
-                name = k.replace("walktru_", "", 1)
-                fname = mapping.get(name)
-                if fname:
-                    path = self.file_manager.walk_tru_dir / fname
-                    return await self.file_manager.load_async(path, {})
-            path = self.json_path / f"{k}.json"
-            return await self.file_manager.load_async(path, {})
-
-    async def get_bot_logs(self, user_id: Optional[str] = None, limit: int = 50) -> List[Dict[str, Any]]:
-        async with self._bot_logs_lock:
-            logs = await self.file_manager.load_async(self.bot_logs_path, {"logs": []})
-        entries = logs.get("logs", [])
-        if user_id:
-            entries = [e for e in entries if str(e.get("user_id")) == str(user_id)]
-        return entries[-int(limit or 50):]
-
-    async def get_bot_log_count(self, user_id: Optional[str] = None) -> int:
-        async with self._bot_logs_lock:
-            logs = await self.file_manager.load_async(self.bot_logs_path, {"logs": []})
-        entries = logs.get("logs", [])
-        if user_id:
-            entries = [e for e in entries if str(e.get("user_id")) == str(user_id)]
-        return len(entries)
-
-    async def add_bot_log(self, entry: Dict[str, Any]) -> bool:
-        async with self._bot_logs_lock:
-            logs = await self.file_manager.load_async(self.bot_logs_path, {"logs": []})
-            entries = logs.get("logs", [])
-            entries.append(entry)
-            # Limit logs to prevent infinite growth (e.g., keep last 5000)
-            if len(entries) > 5000:
-                entries = entries[-5000:]
-            logs["logs"] = entries
-            return await self.file_manager.save_async(self.bot_logs_path, logs)
-
-    async def clear_bot_logs(self, count: Optional[int] = None) -> int:
-        async with self._bot_logs_lock:
-            logs = await self.file_manager.load_async(self.bot_logs_path, {"logs": []})
-            entries = logs.get("logs", [])
-            if count is None or int(count) >= len(entries):
-                cleared = len(entries)
-                logs["logs"] = []
-                await self.file_manager.save_async(self.bot_logs_path, logs)
-                return cleared
-            cleared = int(count)
-            logs["logs"] = entries[:-cleared]
-            await self.file_manager.save_async(self.bot_logs_path, logs)
-            return cleared
-
-    async def get_user_theme_data(self, user_id: str, username: Optional[str] = None) -> Dict[str, Any]:
-        d = await self.get_user_data(str(user_id), username)
-        theme = d.setdefault("theme", {})
-        self._user_cache[str(user_id)] = d
-        self._dirty_users[str(user_id)] = True
-        return theme
-
-    async def save_theme_system_data(self, user_id: str, theme_data: Dict[str, Any]) -> bool:
-        async with self._user_lock(user_id):
-            data = await self._get_user_data_internal(user_id)
-            data["theme_system"] = theme_data
-            self._user_cache[str(user_id)] = data
-            self._dirty_users[str(user_id)] = True
-            await self._flush_user_internal(str(user_id))
-            return True
-
-    async def shutdown(self):
-        self._shutdown.set()
-        if getattr(self, "_flush_task", None):
-            try:
-                await asyncio.sleep(0.05)
-            except Exception:
-                pass
-        for uid in list(self._dirty_users.keys()):
-            try:
-                await self._flush_user(uid)
-            except Exception:
-                pass
-
 
 user_data_manager = UserDataManager()

@@ -40,7 +40,7 @@ class OptimalFileManager:
         
         # Caches
         self._logic_cache: Dict[str, Any] = {}
-        self._hg_optimized: Dict[str, Any] = {}
+        self._game_optimized: Dict[str, Any] = {}
         # Optimized Lookups
         self._equipment_lookup: Dict[str, Any] = {}
         self._pet_info_lookup: Dict[str, Any] = {}
@@ -73,24 +73,11 @@ class OptimalFileManager:
     def preload_logic(self):
         """
         Loads all JSON files from Systems/Pets/Logic into memory and builds optimized indexes.
-        Verifies that all critical Hunger Games logic files are present.
         """
-        required_hg_files = {
-            "Actions": [
-                "flying_actions", "land_actions", "swimming_actions"
-            ],
-            "Eliminations": [
-                "air_eliminations", "basic_eliminations", "electric_eliminations", 
-                "fighting_eliminations", "fire_eliminations", "holy_eliminations", 
-                "ice_eliminations", "magic_eliminations", "necro_eliminations", 
-                "plant_eliminations", "psychic_eliminations", "rock_eliminations", 
-                "water_eliminations"
-            ],
+        # Note: Legacy Hunger Games logic files have been removed - only checking for essential files now
+        required_files = {
             "Locations": [
-                "deadly_flying", "deadly_land", "deadly_swimming", "locations_base"
-            ],
-            "Placeholders": [
-                "attacks", "defenses", "eliminations", "successes"
+                "locations_base"
             ]
         }
 
@@ -114,8 +101,8 @@ class OptimalFileManager:
                 except Exception as e:
                     logger.error(f"Failed to load {file_path.name}: {e}")
             
-            # Load SurvivorSeries subdirectories into hunger_games structure
-            hg_data = {
+            # Load SurvivorSeries subdirectories into game data structure
+            game_data = {
                 "actions": {},
                 "eliminations": {},
                 "locations": {},
@@ -136,60 +123,57 @@ class OptimalFileManager:
                         try:
                             with open(file_path, 'r', encoding='utf-8') as f:
                                 data = json.load(f)
-                                hg_data[key_name][file_path.stem] = data
+                                game_data[key_name][file_path.stem] = data
                                 loaded_count += 1
                         except Exception as e:
                             logger.error(f"Failed to load {folder_name}/{file_path.name}: {e}")
 
             # Verify required files
             missing_files = []
-            for folder, expected_files in required_hg_files.items():
+            for folder, expected_files in required_files.items():
                 key_name = subdirs.get(folder)
                 if not key_name: 
                     continue
                     
-                loaded_data = hg_data.get(key_name, {})
+                loaded_data = game_data.get(key_name, {})
                 for expected in expected_files:
                     if expected not in loaded_data:
                         missing_files.append(f"{folder}/{expected}.json")
             
             if missing_files:
-                logger.warning(f"Missing required Hunger Games logic files: {', '.join(missing_files)}")
+                logger.warning(f"Missing required logic files: {', '.join(missing_files)}")
             else:
-                logger.info("All required Hunger Games logic files verified and loaded.")
+                logger.info("All required logic files verified and loaded.")
             
-            self._logic_cache["hunger_games"] = hg_data
+            self._logic_cache["game_data"] = game_data
             
             # Build Optimized Indexes
             self._build_optimized_indexes()
-            self._build_hg_indexes(hg_data)
+            self._build_game_indexes(game_data)
             
             logger.info(f"OptimalFileManager preloaded {loaded_count} files from {self.pets_logic_dir}")
 
-    def _build_hg_indexes(self, hg_data: Dict[str, Any]):
+    def _build_game_indexes(self, game_data: Dict[str, Any]):
         """
-        Builds optimized indexes for Hunger Games data.
+        Builds optimized indexes for remaining game data.
+        Note: Legacy deadly locations have been removed.
         """
-        # 1. Deadly Locations
+        # 1. Deadly Locations - removed, no longer needed
         deadly = {}
-        locs_raw = hg_data.get("locations", {})
-        for k, v in locs_raw.items():
-            if k.startswith("deadly_"):
-                type_key = k.replace("deadly_", "")
-                deadly[type_key] = v
         
         # 2. Flattened Locations (Style -> List[names])
         locs_flat = {}
+        locs_raw = game_data.get("locations", {})
         base_locs = locs_raw.get("locations_base", {}).get("locations", {})
         for style, names in base_locs.items():
             locs_flat[style] = names
             
-        self._hg_optimized = {
-            "deadly_by_type": deadly,
+        self._game_optimized = {
+            "deadly_by_type": deadly,  # Empty now, kept for compatibility
             "locations_flat": locs_flat,
-            "actions": hg_data.get("actions", {}),
-            "eliminations": hg_data.get("eliminations", {}),
-            "placeholders": hg_data.get("placeholders", {})
+            "actions": game_data.get("actions", {}),
+            "eliminations": game_data.get("eliminations", {}),
+            "placeholders": game_data.get("placeholders", {})
         }
 
     def _build_optimized_indexes(self):
@@ -255,11 +239,17 @@ class OptimalFileManager:
 
     def get_data(self, filename: str) -> Any:
         """
-        Retrieves data for a specific logic file (e.g. 'mission', 'base').
-        Served from memory.
+        Retrieves data for a specific file.
+        First checks logic cache, then tries to load from base data directory.
         """
         with self._logic_lock:
-            return self._logic_cache.get(filename, {})
+            # First check if it's in the logic cache
+            if filename in self._logic_cache:
+                return self._logic_cache[filename]
+        
+        # If not in logic cache, try to load from base data directory
+        path = self.json_path / f"{filename}.json"
+        return self.load(path, {})
 
     def get_logic_data(self, filename: str) -> Any:
         """
@@ -269,11 +259,12 @@ class OptimalFileManager:
 
     def get_hg_pool(self, key: str) -> Dict[str, Any]:
         """
-        Returns a specific Hunger Games optimized pool.
+        Returns a specific game data optimized pool.
         Keys: 'actions', 'eliminations', 'locations_flat', 'deadly_by_type', 'placeholders'
+        Note: deadly_by_type is now empty as legacy files were removed.
         """
         with self._logic_lock:
-            return self._hg_optimized.get(key, {})
+            return self._game_optimized.get(key, {})
 
 
     def save_logic_data(self, filename: str, data: Any) -> bool:
@@ -352,4 +343,19 @@ class OptimalFileManager:
         Asynchronously saves data to a logic file.
         """
         path = self.pets_logic_dir / f"{filename}.json"
+        return await self.save_async(path, data)
+
+    def save_data(self, filename: str, data: Any) -> bool:
+        """
+        Saves data to a JSON file in the base data directory.
+        This method provides compatibility with the expected interface.
+        """
+        path = self.json_path / f"{filename}.json"
+        return self.save(path, data)
+
+    async def save_data_async(self, filename: str, data: Any) -> bool:
+        """
+        Asynchronously saves data to a JSON file in the base data directory.
+        """
+        path = self.json_path / f"{filename}.json"
         return await self.save_async(path, data)

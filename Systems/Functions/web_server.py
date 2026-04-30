@@ -1,4 +1,4 @@
-# Standard Library Imports
+﻿# Standard Library Imports
 import asyncio
 import io
 import logging
@@ -10,16 +10,22 @@ import time
 from datetime import date, datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 
+import json
+
 # Third-Party Imports
 import discord
 import httpx
 import psutil
 import uvicorn
 from discord.ext import commands
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
+
+# Version marker - homepage routing fix v1.1
 from fastapi.responses import (FileResponse, HTMLResponse, JSONResponse,
                                RedirectResponse, Response, StreamingResponse)
 from fastapi.staticfiles import StaticFiles
+from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.sessions import SessionMiddleware
 from pydantic import BaseModel
 
 # Add project root to path to allow for clean imports
@@ -27,27 +33,66 @@ project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(_
 sys.path.insert(0, project_root)
 
 # Local Application Imports
-import Systems.Functions.json_database as db
+import Systems.Functions.database_manager as db
 from Systems.Astrology import reading
 from Systems.Functions.ai_brain import get_ai_choice
-from Systems.Functions.graph_utils import (CREDIT_RESOURCES, FOOD_RESOURCES,
-                                           MAN_RESOURCES, RAW_RESOURCES,
-                                           _prepare_dataframe,
-                                           create_stock_graph)
+
 from Systems.Functions.utils import (SERVICE_WEB_SERVER, get_service_port,
-                                     kill_process_on_port)
-from Systems.PnW.Util.Graphs.compare_graph import \
-    create_interactive_comparison_page
-from Systems.PnW.Util.Graphs.treaty_graph import TreatyGraph
-from Systems.PnW.Util.Graphs.war_graph import war_graph_generator
-from Systems.PnW.Util.Graphs.war_graph_net_bd import \
-    war_net_breakdown_graph_generator
+                                     kill_process_on_port, start_cloudflare_tunnel_async,
+                                     stop_cloudflare_tunnel_async, monitor_tunnel_and_server,
+                                     get_web_public_url, is_web_tunnel_running, initialize_service_ports)
+
 from Systems.PnW.Util.query import (create_v3_query_instance,
                                     get_all_treaties, get_game_info,
-                                    get_nation_by_id, get_nation_by_name,
-                                    get_wars)
+                                    get_nation_by_id, get_nation_by_name)
 from Systems.PnW.Util.war_calc import calculate_war_costs, get_resource_prices
-from web.api.fun_slots import fun_slots_api
+from web.api.astrology_api import router as astrology_api
+from web.api.bot_info import router as bot_info_api
+from web.api.docs import router as docs_api
+from web.api.casino_api import casino_api
+from web.api.blackjack_api import router as blackjack_api
+from web.api.craps_api import router as craps_api
+from web.api.holdem_api import router as holdem_api
+from web.api.races_api import router as races_api
+from web.api.minigames_api import router as minigames_api
+from web.api.casino_lobby_api import router as casino_lobby_api
+from web.api.library import router as library_api
+from web.api.pets_api import router as pets_api
+from web.api.pnw_api import router as pnw_api
+from web.api.discord_auth import router as discord_auth_api
+from web.api.watch_api import router as watch_api
+from web.api.alerts_api import router as alerts_api
+from web.api.arena_api import router as arena_api
+from web.api.weapon_api import router as weapon_api
+from web.api.bazaar_api import router as bazaar_api
+from web.api.pet_stock_api import router as pet_stock_api
+from web.api.ss_api import router as ss_api
+from web.api.world_api import router as world_api
+from web.api.tasks_api import router as tasks_api
+from web.api.powerball_api import router as powerball_api
+from web.api.scratch_api import router as scratch_api
+from web.api.cache_api import router as cache_api
+from web.api.battle_config_api import router as battle_config_api
+from web.api.user_battle_settings_api import router as user_battle_settings_api
+from web.api.tarot_api import router as tarot_api
+from web.api.rev_optimizer_api import router as rev_optimizer_api
+from web.api.access_api import router as access_api
+from web.api.raids_api import router as raids_api
+
+from Systems.Functions.database_manager import get_resource_prices_comparison, get_colors_comparison, get_resource_supply_comparison
+
+# Global variable to hold the bot instance
+_bot_instance: Optional[commands.Bot] = None
+
+def set_bot_instance(bot: commands.Bot):
+    """Sets the global bot instance for the web server to use."""
+    global _bot_instance
+    _bot_instance = bot
+    logger.info(f"Bot instance set in web_server module: {_bot_instance.user.name if _bot_instance and _bot_instance.user else 'None'}")
+
+def get_bot_instance() -> Optional[commands.Bot]:
+    """Returns the global bot instance, or None if not yet set."""
+    return _bot_instance
 
 
 # Request models
@@ -58,109 +103,525 @@ class AstrologyRequest(BaseModel):
 
 app = FastAPI()
 
+# Add session middleware
+# IMPORTANT: This key should be a secret and loaded from environment variables in a real application
+app.add_middleware(
+    SessionMiddleware,
+    secret_key="your-secret-key-here",
+    session_cookie="session",
+    same_site="lax",
+    https_only=False,  # Cloudflare terminates SSL; server receives plain HTTP
+    max_age=86400,     # 24 hours
+)
+
+# Include all API routers FIRST - before any static file mounting
+app.include_router(casino_api, prefix="/api", tags=["casino"])
+app.include_router(blackjack_api, prefix="/api", tags=["blackjack"])
+app.include_router(craps_api, prefix="/api", tags=["craps"])
+app.include_router(holdem_api, prefix="/api", tags=["holdem"])
+app.include_router(races_api, prefix="/api", tags=["races"])
+app.include_router(minigames_api, prefix="/api", tags=["minigames"])
+app.include_router(casino_lobby_api, prefix="/api", tags=["casino-lobby"])
+app.include_router(bot_info_api, prefix="/api", tags=["bot-info"])
+app.include_router(docs_api, prefix="/api", tags=["docs"])
+app.include_router(library_api, prefix="/api", tags=["library"])
+app.include_router(pets_api, prefix="/api", tags=["pets"])
+app.include_router(pnw_api, prefix="/api", tags=["pnw-graphs"])
+app.include_router(discord_auth_api, prefix="/api", tags=["discord-auth"])
+app.include_router(watch_api, prefix="/api", tags=["watch"])
+app.include_router(alerts_api, prefix="/api", tags=["alerts"])
+app.include_router(arena_api, prefix="/api", tags=["arena"])
+app.include_router(weapon_api, prefix="/api", tags=["weapons"])
+app.include_router(bazaar_api, prefix="/api", tags=["bazaar"])
+app.include_router(pet_stock_api, prefix="/api", tags=["pet-stock"])
+app.include_router(ss_api, prefix="/api", tags=["survivor-series"])
+app.include_router(world_api, prefix="/api", tags=["world"])
+app.include_router(tasks_api, prefix="/api", tags=["tasks"])
+app.include_router(powerball_api, prefix="/api", tags=["powerball"])
+app.include_router(scratch_api, prefix="/api", tags=["scratch"])
+app.include_router(cache_api, prefix="/api", tags=["cache"])
+app.include_router(battle_config_api, prefix="/api", tags=["battle-config"])
+app.include_router(user_battle_settings_api, prefix="/api", tags=["user-battle-settings"])
+app.include_router(tarot_api, prefix="/api", tags=["tarot"])
+app.include_router(rev_optimizer_api, prefix="/api", tags=["rev-optimizer"])
+app.include_router(access_api, prefix="/api", tags=["access"])
+app.include_router(raids_api, prefix="/api", tags=["raids"])
+
+
+@app.on_event("startup")
+async def startup_event():
+    asyncio.create_task(broadcast_updates())
+    # Initialize PetSystem on app state so the adopt endpoint can use it
+    from Systems.Pets.pets_system import PetSystem
+    app.state.pet_system = PetSystem(bot=None)
+    # Start pet stock hourly loop
+    from Systems.Functions.pet_stock_engine import start_stock_loop
+    asyncio.create_task(start_stock_loop())
+    # Restore SS game state from database (keeps pets in lobby/game across restarts)
+    from web.api.ss_api import _load_state as _ss_load_state
+    asyncio.create_task(_ss_load_state())
+    # Ensure all pet owners have tasks
+    from web.api.tasks_api import ensure_all_pet_owners_have_tasks, periodic_task_maintenance, midnight_reset_loop
+    asyncio.create_task(ensure_all_pet_owners_have_tasks())
+    asyncio.create_task(periodic_task_maintenance())
+    asyncio.create_task(midnight_reset_loop())
+    # Initialise Powerball DB on startup
+    from web.api.powerball_api import _ensure_db as _pb_ensure_db
+    asyncio.create_task(_pb_ensure_db())
+
+app.include_router(astrology_api, prefix="/api", tags=["astrology"])
+
+# Mount static files AFTER API routes to ensure API takes precedence
+app.mount("/static", StaticFiles(directory="web/static"), name="static")
+app.mount("/css", StaticFiles(directory="web/css"), name="css")
+app.mount("/js", StaticFiles(directory="web/js"), name="js")
+app.mount("/Pages", StaticFiles(directory="web/Pages"), name="pages")
+app.mount("/Systems", StaticFiles(directory="Systems"), name="systems")
+app.mount("/node_modules", StaticFiles(directory="node_modules"), name="node_modules")
+
+@app.get("/api/game-info/resource-prices")
+async def get_game_info_resource_prices():
+    """Get latest resource prices for game info page."""
+    try:
+        prices = await db.get_latest_resource_prices()
+        if prices is None:
+            raise HTTPException(status_code=404, detail="No resource price data found.")
+        return JSONResponse(content=prices)
+    except Exception as e:
+        logger.error(f"Error getting resource prices for game info: {e}")
+        raise HTTPException(status_code=500, detail="Failed to retrieve resource prices.")
+
+@app.get("/api/game-info/debug/resource-count")
+async def get_resource_debug_info():
+    """Debug endpoint to check resource data in database."""
+    try:
+        import aiosqlite
+        from Systems.Functions.db_paths import REAPER_DB_STR
+        DB_FILE = REAPER_DB_STR
+        
+        async with aiosqlite.connect(DB_FILE) as conn:
+            conn.row_factory = aiosqlite.Row
+            
+            # Get total count of records
+            cursor = await conn.execute("SELECT COUNT(*) as total FROM resource_prices")
+            total_records = (await cursor.fetchone())['total']
+            
+            # Get distinct resources
+            cursor = await conn.execute("SELECT DISTINCT resource FROM resource_prices")
+            resources = [row['resource'] for row in await cursor.fetchall()]
+            
+            # Get latest timestamp
+            cursor = await conn.execute("SELECT MAX(timestamp) as latest FROM resource_prices")
+            latest_timestamp = (await cursor.fetchone())['latest']
+            
+            # Get count per resource
+            cursor = await conn.execute("""
+                SELECT resource, COUNT(*) as count 
+                FROM resource_prices 
+                GROUP BY resource 
+                ORDER BY count DESC
+            """)
+            resource_counts = {row['resource']: row['count'] for row in await cursor.fetchall()}
+            
+            return JSONResponse(content={
+                "total_records": total_records,
+                "distinct_resources": resources,
+                "resource_counts": resource_counts,
+                "latest_timestamp": latest_timestamp,
+                "expected_resources": [r.lower() for r in ["FOOD", "COAL", "OIL", "URANIUM", "LEAD", "IRON", "BAUXITE", "GASOLINE", "MUNITIONS", "STEEL", "ALUMINUM", "CREDIT"]]
+            })
+    except Exception as e:
+        logger.error(f"Error getting debug info: {e}", exc_info=True)
+        return JSONResponse(content={"error": str(e)}, status_code=500)
+
+@app.get("/api/game-info/resource-prices-comparison")
+async def get_game_info_resource_prices_comparison():
+    """Get latest and previous resource prices for comparison."""
+    try:
+        prices = await db.get_resource_prices_comparison()
+        if not prices or not prices.get("current"):
+            logger.warning("No resource price comparison data found in database.")
+            raise HTTPException(status_code=404, detail="No comparison data available.")
+        
+        # Log the fetched data for debugging
+        current_count = len(prices.get('current', {}))
+        history_count = len(prices.get('history', {}))
+        logger.info(f"Sending resource price data to frontend. Current prices count: {current_count}, History resources: {history_count}")
+        
+        # Log which resources are available
+        current_resources = list(prices.get('current', {}).keys())
+        history_resources = list(prices.get('history', {}).keys())
+        logger.info(f"Current resources: {current_resources}")
+        logger.info(f"History resources: {history_resources}")
+        
+        return JSONResponse(content=prices)
+    except Exception as e:
+        logger.error(f"Error getting resource price comparison: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to retrieve price comparison data.")
+
+@app.get("/api/game-info/resource-history/{resource}")
+async def get_resource_full_history(resource: str):
+    """Get the complete buy/sell price history for a single resource (on-demand for chart zoom)."""
+    try:
+        valid = {"credit","food","uranium","oil","gasoline","lead","munitions","bauxite","aluminum","coal","iron","steel"}
+        if resource.lower() not in valid:
+            raise HTTPException(status_code=400, detail="Unknown resource.")
+        history = await db.get_full_resource_price_history(resource.lower())
+        return JSONResponse(content={"resource": resource.lower(), "history": history})
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting full resource history for {resource}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to retrieve resource history.")
+
+@app.get("/api/game-info/colors-comparison")
+async def get_game_info_colors_comparison():
+    """Get latest and previous color bonuses for comparison."""
+    try:
+        colors = await db.get_colors_comparison()
+        if not colors:
+            raise HTTPException(status_code=404, detail="No color comparison data available.")
+        return JSONResponse(content=colors)
+    except Exception as e:
+        logger.error(f"Error getting color comparison: {e}")
+        raise HTTPException(status_code=500, detail="Failed to retrieve color comparison data.")
+
+@app.get("/api/game-info/colors")
+async def get_game_info_colors():
+    """Get latest color data for game info page."""
+    try:
+        color_data = await db.get_latest_game_data("colors")
+        if color_data is None:
+            raise HTTPException(status_code=404, detail="No color data found.")
+        return JSONResponse(content=color_data)
+    except Exception as e:
+        logger.error(f"Error getting color data for game info: {e}")
+        raise HTTPException(status_code=500, detail="Failed to retrieve color data.")
+
+@app.get("/api/game-info/resource-supply-comparison")
+async def get_game_info_resource_supply_comparison():
+    """Get latest and previous resource supply data for comparison."""
+    try:
+        supply_data = await db.get_resource_supply_comparison()
+        if not supply_data:
+            raise HTTPException(status_code=404, detail="No supply comparison data available.")
+        return JSONResponse(content=supply_data)
+    except Exception as e:
+        logger.error(f"Error getting resource supply comparison: {e}")
+        raise HTTPException(status_code=500, detail="Failed to retrieve supply comparison data.")
+
+async def _get_resource_intelligence_data() -> dict:
+    """Helper function to fetch and process resource intelligence data."""
+    try:
+        prices = await db.get_resource_prices_comparison()
+        supply = await db.get_resource_supply_comparison()
+
+        if not prices or not prices.get("current") or not supply or not supply.get("current"):
+            return {}
+
+        intelligence_data = {}
+        price_ts = prices["current"].get("timestamp", 0)
+        supply_ts = supply["current"].get("timestamp", 0)
+
+        # Only proceed if the main timestamps match
+        if price_ts == supply_ts:
+            for resource, current_price in prices["current"].items():
+                if resource == "timestamp": continue
+
+                if resource in supply["current"]:
+                    previous_price_data = prices.get("previous", {}).get(resource, {})
+                    current_supply = supply["current"][resource]
+                    previous_supply = supply.get("previous", {}).get(resource)
+
+                    price_change = 0
+                    if previous_price_data and previous_price_data.get('avg', 0) > 0:
+                        price_change = (current_price.get('avg', 0) - previous_price_data.get('avg', 0)) / previous_price_data.get('avg', 0)
+
+                    supply_change = 0
+                    if previous_supply and previous_supply > 0:
+                        supply_change = (previous_supply - current_supply) / previous_supply
+
+                    # Inverted logic: Supply decreases + price increases = SELL (time to cash out)
+                    # Supply increases + price decreases = BUY (time to accumulate)
+                    intelligence_score = (-price_change * 0.35) + (-supply_change * 0.65)
+
+                    if intelligence_score > 0.02:
+                        recommendation, trend = "BUY", "bullish"
+                    elif intelligence_score < -0.02:
+                        recommendation, trend = "SELL", "bearish"
+                    else:
+                        recommendation, trend = "HOLD", "neutral"
+
+                    intelligence_data[resource] = {
+                "current_price": current_price.get('avg', 0),
+                "buy_price": current_price.get('buy', 0),
+                "sell_price": current_price.get('sell', 0),
+                "previous_price": previous_price_data.get('avg', 0),
+                "price_change_percent": price_change * 100,
+                "current_supply": current_supply,
+                "previous_supply": previous_supply,
+                "supply_change_percent": supply_change * 100,
+                "intelligence_score": intelligence_score * 100,
+                "recommendation": recommendation,
+                "trend": trend,
+                "price_history": prices.get("history", {}).get(resource, []),
+                "supply_history": supply.get("history", {}).get(resource, []),
+            }
+
+        return {
+            "intelligence": intelligence_data,
+            "last_updated": price_ts
+        }
+    except Exception as e:
+        logger.error(f"Error generating resource intelligence data: {e}")
+        return {}
+
+@app.get("/api/game-info/resource-intelligence")
+async def get_resource_intelligence():
+    """Get comprehensive resource intelligence data including prices, supply, and predictions."""
+    data = await _get_resource_intelligence_data()
+    if not data or not data.get("intelligence"):
+        raise HTTPException(status_code=404, detail="Insufficient data for intelligence analysis. Timestamps for price and supply may not match.")
+    return JSONResponse(content=data)
+
+# --- WebSocket for Live Updates ---
+
+class ConnectionManager:
+    def __init__(self):
+        self.active_connections: list[WebSocket] = []
+
+    async def connect(self, websocket: WebSocket):
+        await websocket.accept()
+        self.active_connections.append(websocket)
+
+    def disconnect(self, websocket: WebSocket):
+        self.active_connections.remove(websocket)
+
+    async def broadcast(self, message: str):
+        for connection in self.active_connections:
+            await connection.send_text(message)
+
+manager = ConnectionManager()
+
+@app.websocket("/ws/resource-updates")
+async def websocket_endpoint(websocket: WebSocket):
+    await manager.connect(websocket)
+    try:
+        while True:
+            # Keep the connection alive
+            await websocket.receive_text()
+    except WebSocketDisconnect:
+        manager.disconnect(websocket)
+
+async def broadcast_updates():
+    """Periodically checks for new data and broadcasts it to all connected clients."""
+    last_known_timestamp = 0
+    while True:
+        await asyncio.sleep(10) # Check every 10 seconds
+        try:
+            current_timestamp = await db.get_latest_resource_timestamp()
+            if current_timestamp > last_known_timestamp:
+                logger.info(f"New resource data found (timestamp: {current_timestamp}). Fetching and broadcasting update.")
+                last_known_timestamp = current_timestamp
+                
+                intelligence_data = await _get_resource_intelligence_data()
+                if intelligence_data and intelligence_data.get("intelligence"):
+                    await manager.broadcast(json.dumps(intelligence_data))
+        except Exception as e:
+            logger.error(f"Error in broadcast_updates: {e}", exc_info=True)
+
+# Add CORS middleware to allow cross-origin requests
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allows all origins - adjust for production
+    allow_credentials=True,
+    allow_methods=["GET", "POST"],  # Specify allowed methods
+    allow_headers=["Content-Type", "Authorization"],  # Specify allowed headers
+)
+
+import hashlib as _hashlib
+
+# Pre-compute ETag cache — recomputed once per hour, not per request
+_etag_cache: dict = {}
+
+def _get_etag(path: str) -> str:
+    hour = int(time.time() // 3600)
+    key = (path, hour)
+    if key not in _etag_cache:
+        _etag_cache.clear()  # drop stale entries
+        _etag_cache[key] = _hashlib.md5(f"{path}_{hour}".encode()).hexdigest()[:8]
+    return _etag_cache[key]
+
+# Pre-compute the static CSP header string once
+_CSP = ("default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' "
+        "https://cdn.jsdelivr.net https://static.cloudflareinsights.com https://unpkg.com "
+        "https://fonts.googleapis.com; worker-src 'self' blob:; style-src 'self' 'unsafe-inline' "
+        "https://fonts.googleapis.com https://fonts.gstatic.com https://cdnjs.cloudflare.com; "
+        "style-src-elem 'self' 'unsafe-inline' https://fonts.googleapis.com https://fonts.gstatic.com "
+        "https://cdnjs.cloudflare.com; font-src 'self' https://fonts.gstatic.com "
+        "https://cdnjs.cloudflare.com; img-src 'self' data: https://cdn.discordapp.com "
+        "https://media.discordapp.net https://reaper.qzz.io https://politicsandwar.com; "
+        "connect-src 'self' https://reaper.qzz.io https://cdn.jsdelivr.net https://unpkg.com "
+        "https://fonts.googleapis.com https://cdnjs.cloudflare.com https://api.groq.com;")
+
+# Add request logging and security headers middleware
+@app.middleware("http")
+async def add_headers_and_log_requests(request, call_next):
+    path = request.url.path
+    is_static = path.startswith(("/static/", "/css/", "/js/", "/Pages/"))
+
+    response = await call_next(request)
+
+    # Security headers (always)
+    h = response.headers
+    h["Content-Security-Policy"] = _CSP
+    h["X-Content-Type-Options"] = "nosniff"
+    h["X-Frame-Options"] = "DENY"
+    h["X-XSS-Protection"] = "1; mode=block"
+    h["Strict-Transport-Security"] = "max-age=15768000; includeSubDomains"
+
+    if path.endswith(".wasm"):
+        h["Content-Type"] = "application/wasm"
+
+    # Cache-control
+    pl = path.lower()
+    if pl.startswith(("/static/images/", "/static/fonts/", "/static/icons/")):
+        h["Cache-Control"] = "public, max-age=3600, must-revalidate"
+        h["CF-Cache-Tag"] = "static-assets"
+    elif pl.startswith(("/css/", "/js/")) or pl.endswith((".css", ".js")):
+        h["Cache-Control"] = "public, max-age=3600, must-revalidate"
+        h["CF-Cache-Tag"] = "stylesheets-scripts"
+        h["ETag"] = f'"{_get_etag(pl)}"'
+    elif pl.startswith("/pages/") or pl.endswith(".html"):
+        h["Cache-Control"] = "no-cache, no-store, must-revalidate"
+        h["Pragma"] = "no-cache"
+        h["Expires"] = "0"
+        h["CF-Cache-Tag"] = "html-pages"
+    elif pl.startswith("/api/"):
+        h["Cache-Control"] = "no-cache, no-store, must-revalidate"
+        h["Pragma"] = "no-cache"
+        h["Expires"] = "0"
+    elif pl in ("/", "/dashboard", "/dashboard.html"):
+        h["Cache-Control"] = "no-cache, no-store, must-revalidate"
+        h["Pragma"] = "no-cache"
+        h["Expires"] = "0"
+    elif is_static:
+        h["Cache-Control"] = "public, max-age=300, must-revalidate"
+        h["CF-Cache-Tag"] = "misc-static"
+
+    if pl.startswith(("/api/", "/dashboard")) or pl.endswith(".html"):
+        h["CF-Cache-Status"] = "BYPASS"
+
+    return response
+
 @app.exception_handler(404)
 async def not_found_exception_handler(request, exc):
-    """Custom 404 page."""
-    return FileResponse("web/404.html", status_code=404)
+    """Custom 404 — JSON for API routes, HTML page for everything else."""
+    if request.url.path.startswith("/api/"):
+        return JSONResponse({"detail": "Not found"}, status_code=404)
+    return FileResponse("web/static/404.html", status_code=404)
 
 @app.exception_handler(500)
 async def internal_server_error_handler(request, exc):
-    """Custom 500 page."""
-    return FileResponse("web/500.html", status_code=500)
-app.include_router(fun_slots_api)
+    """Custom 500 — JSON for API routes, HTML page for everything else."""
+    if request.url.path.startswith("/api/"):
+        return JSONResponse({"detail": "Internal server error"}, status_code=500)
+    return FileResponse("web/static/500.html", status_code=500)
 
-# Mount static files to serve images, CSS, and JavaScript
-app.mount("/web", StaticFiles(directory="web"), name="web")
-app.mount("/Systems", StaticFiles(directory="Systems"), name="systems")
-logging.basicConfig(level=logging.INFO)
+
+@app.get("/library", response_class=HTMLResponse)
+async def get_library_page():
+    """Serve the main library page."""
+    return FileResponse("web/Pages/library.html")
+
+@app.get("/casino", response_class=HTMLResponse)
+async def get_casino_page():
+    """Serve the casino page."""
+    return FileResponse("web/Pages/casino.html")
+
+
 logger = logging.getLogger("Reaper.WebServer")
 
+@app.get("/health")
+async def health_check():
+    """A simple health check endpoint to confirm the server is responsive."""
+    return JSONResponse(content={"status": "ok"})
+
 # Add request logging middleware
-@app.middleware("http")
-async def log_requests(request, call_next):
-    logger.info(f"Incoming request: {request.method} {request.url.path}")
-    response = await call_next(request)
-    logger.info(f"Response: {response.status_code} for {request.method} {request.url.path}")
-    return response
-_bot_instance: commands.Bot = None
 _server_instance: uvicorn.Server = None
 
 
-# Serve dashboard at root path (highest priority)
+# Cache dashboard HTML at module load time — no file I/O on every request
+_DASHBOARD_PATH = os.path.abspath(os.path.join("web", "dashboard.html"))
+_dashboard_html: str = ""
+try:
+    with open(_DASHBOARD_PATH, "r", encoding="utf-8", errors="replace") as _f:
+        _dashboard_html = _f.read()
+except Exception as _e:
+    logger.warning(f"Could not pre-load dashboard.html: {_e}")
+
+# Serve homepage at root path (highest priority)
 @app.get("/", response_class=HTMLResponse)
 async def read_root():
-    """Serve the main dashboard at root path."""
-    try:
-        dashboard_path = os.path.join("web", "dashboard.html")
-        if not os.path.exists(dashboard_path):
-            logger.error(f"Dashboard file not found at {dashboard_path}")
-            return HTMLResponse(content="Dashboard not found", status_code=404)
-        
-        with open(dashboard_path, "r", encoding="utf-8") as f:
-            html_content = f.read()
-        
-        logger.info("Successfully served dashboard at root path")
-        return HTMLResponse(content=html_content, status_code=200)
-    except Exception as e:
-        logger.error(f"Error loading dashboard: {e}")
-        return HTMLResponse(content=f"Error loading dashboard: {str(e)}", status_code=500)
+    if not _dashboard_html:
+        return HTMLResponse(content="Dashboard not found", status_code=404)
+    return HTMLResponse(content=_dashboard_html, status_code=200)
 
-# Redirect /dashboard to root
+# Serve dashboard at /dashboard path
 @app.get("/dashboard", response_class=HTMLResponse)
 async def read_dashboard():
-    """Redirect /dashboard to root path."""
-    return RedirectResponse(url="/")
+    if not _dashboard_html:
+        return HTMLResponse(content="Dashboard not found", status_code=404)
+    return HTMLResponse(content=_dashboard_html, status_code=200)
 
 
 @app.get("/favicon.ico", include_in_schema=False)
 async def favicon():
     """Serves the favicon."""
-    return FileResponse("web/reaper.png")
+    return FileResponse("web/static/Images/reaper.png")
 
 
-# Serve individual HTML pages
+@app.get("/.well-known/security.txt", include_in_schema=False)
+async def security_txt():
+    """Serves the security.txt file per RFC 9116."""
+    content = (
+        "Contact: mailto:cody.ray.inc@gmail.com\n"
+        "Expires: 2027-01-01T00:00:00.000Z\n"
+        "Preferred-Languages: en\n"
+        "Canonical: https://reaper.qzz.io/.well-known/security.txt\n"
+    )
+    return Response(content=content, media_type="text/plain")
+
+
+# Serve individual HTML pages — Pages are served as static files via StaticFiles mount,
+# but these routes handle {{PUBLIC_URL}} injection. Cache pages in memory.
+_page_cache: dict = {}
+
+def _read_page_file(path: str) -> str:
+    with open(path, "r", encoding="utf-8") as f:
+        return f.read()
+
 @app.get("/{page_name}.html", response_class=HTMLResponse)
 async def read_page(page_name: str):
     """Serve individual HTML pages from the web directory."""
-    try:
-        file_path = os.path.join("web", f"{page_name}.html")
-        if not os.path.exists(file_path):
-            logger.warning(f"Page {page_name}.html not found at {file_path}")
-            raise HTTPException(status_code=404, detail=f"Page {page_name}.html not found")
-        
-        with open(file_path, "r", encoding="utf-8") as f:
-            html_content = f.read()
-        
-        logger.info(f"Successfully served page: {page_name}.html")
-        return HTMLResponse(content=html_content, status_code=200)
-    except FileNotFoundError:
-        logger.error(f"File not found: {file_path}", exc_info=True)
+    file_path = os.path.join("web", f"{page_name}.html")
+    if not os.path.exists(file_path):
         raise HTTPException(status_code=404, detail=f"Page {page_name}.html not found")
-    except Exception as e:
-        logger.error(f"Error loading page {page_name}.html: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Error loading page: {page_name}.html")
+    if file_path not in _page_cache:
+        _page_cache[file_path] = await asyncio.to_thread(_read_page_file, file_path)
+    public_url = get_web_public_url()
+    return HTMLResponse(content=_page_cache[file_path].replace("{{PUBLIC_URL}}", public_url))
 
-# Serve pages from the Pages subdirectory
 @app.get("/Pages/{page_name}.html", response_class=HTMLResponse)
 async def read_sub_page(page_name: str):
     """Serve individual HTML pages from the web/Pages directory."""
-    try:
-        file_path = os.path.join("web", "Pages", f"{page_name}.html")
-        if not os.path.exists(file_path):
-            logger.warning(f"Page {page_name}.html not found in Pages directory at {file_path}")
-            raise HTTPException(status_code=404, detail=f"Page {page_name}.html not found")
-        
-        with open(file_path, "r", encoding="utf-8") as f:
-            html_content = f.read()
-        
-        logger.info(f"Successfully served page from Pages directory: {page_name}.html")
-        return HTMLResponse(content=html_content, status_code=200)
-    except FileNotFoundError:
-        logger.error(f"File not found: {file_path}", exc_info=True)
+    file_path = os.path.join("web", "Pages", f"{page_name}.html")
+    if not os.path.exists(file_path):
         raise HTTPException(status_code=404, detail=f"Page {page_name}.html not found")
-    except Exception as e:
-        logger.error(f"Error loading page {page_name}.html from Pages directory: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Error loading page: {page_name}.html")
+    if file_path not in _page_cache:
+        _page_cache[file_path] = await asyncio.to_thread(_read_page_file, file_path)
+    public_url = get_web_public_url()
+    return HTMLResponse(content=_page_cache[file_path].replace("{{PUBLIC_URL}}", public_url))
 
 # API routes
 @app.get("/api/emoji-data")
@@ -177,7 +638,7 @@ async def get_emoji_data():
         for color in dice_colors:
             for num in range(1, 7):
                 emoji_name = f"{color}{num}"
-                emoji_data[emoji_name] = f"/web/Emojis/Dice/{emoji_name}.png"
+                emoji_data[emoji_name] = f"/static/Emojis/Dice/{emoji_name}.png"
         
         # Card emojis
         card_types = {
@@ -189,13 +650,38 @@ async def get_emoji_data():
         }
         for suit, cards in card_types.items():
             for card in cards:
-                emoji_data[card] = f"/web/Emojis/Cards/{card}.png"
+                emoji_data[card] = f"/static/Emojis/Cards/{card}.png"
         
         # Coin emojis (using existing Discord emoji IDs if available, otherwise fallback)
         coin_emojis = ["Pirate", "Poop", "Future", "Retro", "Full", "Empty", "Plug", "Socket", "Open", "Close", "Day", "Night", "Hot", "Cold"]
         for coin in coin_emojis:
             if coin in EMOJI_IDS:
-                emoji_data[coin] = f"/web/Emojis/Coins/{coin}.png"
+                emoji_data[coin] = f"/static/Emojis/Coins/{coin}.png"
+        
+        # Globe emojis
+        globe_emojis = ["africa", "antarctica", "asia", "australia", "europe", "north", "south"]
+        for globe in globe_emojis:
+            emoji_data[globe] = f"/static/Emojis/Globe/{globe}.png"
+        
+        # Add all slot-relevant emojis
+        slot_categories = {
+            "Pets": "/static/Emojis/Pets/",
+            "Pet Type": "/static/Emojis/Pets/Deco/",
+            "Stats": "/static/Emojis/Pets/Deco/",
+            "Elements": "/static/Emojis/Pets/Deco/",
+            "Military": "/static/Emojis/Military/",
+            "Hats": "/static/Emojis/Pets/Equipment/",
+            "Gems": "/static/Emojis/Pets/Equipment/",
+            "Materials": "/static/Emojis/Pets/Equipment/",
+            "Monsters": "/static/Emojis/Pets/Equipment/",
+            "Loot": "/static/Emojis/Pets/Equipment/",
+            "Potions": "/static/Emojis/Pets/Equipment/"
+        }
+
+        for category, path in slot_categories.items():
+            if category in CATEGORIES:
+                for emoji_name in CATEGORIES[category]:
+                    emoji_data[emoji_name] = f"{path}{emoji_name}.png"
         
         # Add categories for reference
         emoji_categories = {}
@@ -233,7 +719,7 @@ async def coin_flip(theme: str):
         # Random flip
         is_heads = random.random() < 0.5
         theme_data = coin_themes[theme]
-        result_emoji = f"/web/Emojis/Coins/{theme_data['heads'] if is_heads else theme_data['tails']}.png"
+        result_emoji = f"/static/Emojis/Coins/{theme_data['heads'] if is_heads else theme_data['tails']}.png"
         
         return JSONResponse(content={
             "result": "heads" if is_heads else "tails",
@@ -244,41 +730,7 @@ async def coin_flip(theme: str):
         logger.error(f"Error in coin flip: {e}")
         return JSONResponse(content={"error": "Failed to flip coin"}, status_code=500)
 
-@app.get("/api/fun/dice-roll")
-async def dice_roll(color: str, amount: int):
-    """Roll dice with given color and amount."""
-    try:
-        import random
-        
-        # Validate inputs
-        valid_colors = ["Red", "Orange", "Blue", "Yellow", "Pink", "Green", "Purple"]
-        if color not in valid_colors:
-            return JSONResponse(content={"error": "Invalid color"}, status_code=400)
-        
-        if amount < 1 or amount > 5:
-            return JSONResponse(content={"error": "Amount must be between 1-5"}, status_code=400)
-        
-        # Roll dice
-        rolls = []
-        for _ in range(amount):
-            roll = random.randint(1, 6)
-            emoji_name = f"{color}{roll}"
-            rolls.append({
-                "value": roll,
-                "emoji": f"/web/Emojis/Dice/{emoji_name}.png"
-            })
-        
-        total = sum(roll["value"] for roll in rolls)
-        
-        return JSONResponse(content={
-            "rolls": rolls,
-            "total": total,
-            "color": color,
-            "amount": amount
-        })
-    except Exception as e:
-        logger.error(f"Error in dice roll: {e}")
-        return JSONResponse(content={"error": "Failed to roll dice"}, status_code=500)
+
 
 @app.get("/api/fun/card-draw")
 async def card_draw(count: int):
@@ -305,7 +757,7 @@ async def card_draw(count: int):
                 all_cards.append({
                     "card": card,
                     "suit": suit_name,
-                    "emoji": f"/web/Emojis/Cards/{card}.png"
+                    "emoji": f"/static/Emojis/Cards/{card}.png"
                 })
         
         # Shuffle and draw
@@ -320,342 +772,218 @@ async def card_draw(count: int):
         logger.error(f"Error in card draw: {e}")
         return JSONResponse(content={"error": "Failed to draw cards"}, status_code=500)
 
-@app.get("/api/bot-info")
-async def get_bot_info():
-    """Get comprehensive bot information including README and LICENSE data."""
+@app.get("/api/fun/rps")
+async def rps_game(theme: str, player_choice: str):
+    """Play Rock Paper Scissors with AI opponent."""
     try:
-        # Get bot information from Discord
-        bot_info = {}
+        import random
         
-        if _bot_instance and _bot_instance.user:
-            try:
-                # Fetch the bot's user object to get the latest profile data, including the banner
-                user = await _bot_instance.fetch_user(_bot_instance.user.id)
-                banner_url = str(user.banner.url) if user.banner else None
-            except Exception as e:
-                logger.error(f"Failed to fetch bot user or banner: {e}")
-                banner_url = None
-
-            logger.info(f"Bot info requested. Name: {_bot_instance.user.name}, Banner URL: {banner_url}")
-            
-            bot_info.update({
-                "name": _bot_instance.user.name,
-                "avatar_url": str(_bot_instance.user.avatar.url) if _bot_instance.user.avatar else None,
-                "banner_url": banner_url
-            })
+        # Define RPS themes mapping
+        rps_themes = {
+            "Traditional": {
+                "rock_1": {"name": "Rock", "beats": "scissor", "emoji": "/static/Emojis/RPS/rock_1.png"},
+                "paper": {"name": "Paper", "beats": "rock_1", "emoji": "/static/Emojis/RPS/paper.png"},
+                "scissor": {"name": "Scissors", "beats": "paper", "emoji": "/static/Emojis/RPS/scissor.png"}
+            },
+            "Fantasy": {
+                "knights": {"name": "Knight", "beats": "necromancer", "emoji": "/static/Emojis/RPS/knights.png"},
+                "archer": {"name": "Archer", "beats": "knights", "emoji": "/static/Emojis/RPS/archer.png"},
+                "necromancer": {"name": "Necromancer", "beats": "archer", "emoji": "/static/Emojis/RPS/necromancer.png"}
+            },
+            "War": {
+                "tank": {"name": "Tank", "beats": "ship", "emoji": "/static/Emojis/RPS/tank.png"},
+                "jet": {"name": "Jet", "beats": "tank", "emoji": "/static/Emojis/RPS/jet.png"},
+                "ship": {"name": "Ship", "beats": "jet", "emoji": "/static/Emojis/RPS/ship.png"}
+            }
+        }
+        
+        # Validate theme
+        if theme not in rps_themes:
+            return JSONResponse(content={"error": "Invalid theme"}, status_code=400)
+        
+        # Validate player choice
+        theme_choices = rps_themes[theme]
+        if player_choice not in theme_choices:
+            return JSONResponse(content={"error": "Invalid choice for theme"}, status_code=400)
+        
+        # AI makes random choice
+        ai_choice = random.choice(list(theme_choices.keys()))
+        
+        # Determine winner
+        player_data = theme_choices[player_choice]
+        ai_data = theme_choices[ai_choice]
+        
+        if player_choice == ai_choice:
+            result = "tie"
+            outcome = "It's a tie!"
+        elif player_data["beats"] == ai_choice:
+            result = "win"
+            outcome = "You win!"
         else:
-            logger.warning("/api/bot-info endpoint called but bot instance is not available.")
-            # Use fallback information from README and LICENSE
-            bot_info["name"] = "Reaper Bot"
-            bot_info["avatar_url"] = None
-            bot_info["banner_url"] = None
+            result = "lose"
+            outcome = "AI wins!"
         
-        # Get README information
-        try:
-            with open("README.md", "r", encoding="utf-8") as f:
-                readme_content = f.read()
-                # Extract bot description from README
-                lines = readme_content.split('\n')
-                for i, line in enumerate(lines):
-                    if line.strip().startswith('> **') and 'bot' in line.lower():
-                        bot_info["description"] = line.replace('> **', '').replace('**', '').strip()
-                        break
-                if "description" not in bot_info:
-                    # Fallback to first paragraph after title
-                    for i, line in enumerate(lines[1:], 1):
-                        if line.strip() and not line.startswith('#') and not line.startswith('---'):
-                            bot_info["description"] = line.strip().replace('> ', '').replace('**', '')
-                            break
-                bot_info["readme"] = readme_content
-        except FileNotFoundError:
-            bot_info["readme"] = "README.md not found"
-            bot_info["description"] = "A comprehensive Discord bot"
-        except Exception as e:
-            logger.error(f"Error reading README: {e}")
-            bot_info["readme"] = "Error reading README"
-            bot_info["description"] = "A comprehensive Discord bot"
-        
-        # Get LICENSE information
-        try:
-            with open("LICENSE.txt", "r", encoding="utf-8") as f:
-                license_content = f.read()
-                # Extract license type
-                if "END-USER LICENSE AGREEMENT" in license_content:
-                    bot_info["license"] = "Custom EULA"
-                else:
-                    bot_info["license"] = "Custom License"
-                bot_info["license_full"] = license_content
-        except FileNotFoundError:
-            bot_info["license"] = "License not found"
-            bot_info["license_full"] = "LICENSE.txt not found"
-        except Exception as e:
-            logger.error(f"Error reading LICENSE: {e}")
-            bot_info["license"] = "Error reading license"
-            bot_info["license_full"] = "Error reading LICENSE"
-        
-        # Add GROQ API key for frontend use (safely - only indicate availability)
-        from Systems.Functions.config import GROQ_API_KEY
-        bot_info["groq_api_available"] = bool(GROQ_API_KEY)
-        if GROQ_API_KEY:
-            # Only expose a masked version for security
-            bot_info["groq_api_key"] = GROQ_API_KEY[:8] + "..." + GROQ_API_KEY[-4:]
-        else:
-            bot_info["groq_api_key"] = None
-        
-        return JSONResponse(content=bot_info)
+        return JSONResponse(content={
+            "result": result,
+            "outcome": outcome,
+            "player_choice": player_choice,
+            "player_emoji": player_data["emoji"],
+            "player_name": player_data["name"],
+            "ai_choice": ai_choice,
+            "ai_emoji": ai_data["emoji"],
+            "ai_name": ai_data["name"],
+            "theme": theme
+        })
     except Exception as e:
-        logger.error(f"Error fetching bot info: {e}", exc_info=True)
-        return JSONResponse(content={"error": "Failed to fetch bot information"}, status_code=500)
+        logger.error(f"Error in RPS game: {e}")
+        return JSONResponse(content={"error": "Failed to play RPS"}, status_code=500)
 
-@app.get("/api/pets-data")
-async def get_pets_data():
-    """Get comprehensive pets data from the Pets system."""
-    try:
-        import json
-        # Load pets data from the info.json file
-        pets_file_path = os.path.join(project_root, "Systems", "Pets", "Logic", "info.json")
-        
-        with open(pets_file_path, "r", encoding="utf-8") as f:
-            pets_data = json.load(f)
-        
-        return JSONResponse(content=pets_data)
-    except FileNotFoundError:
-        logger.error("Pets info.json file not found")
-        return JSONResponse(content={"error": "Pets data file not found"}, status_code=404)
-    except json.JSONDecodeError as e:
-        logger.error(f"Error parsing pets JSON: {e}")
-        return JSONResponse(content={"error": "Error parsing pets data"}, status_code=500)
-    except Exception as e:
-        logger.error(f"Error fetching pets data: {e}", exc_info=True)
-        return JSONResponse(content={"error": "Failed to fetch pets data"}, status_code=500)
-
-
-@app.get("/api/equipment-data")
-async def get_equipment_data():
-    """Get comprehensive equipment data from the Pets system."""
-    try:
-        import json
-        # Load equipment data from the equipment.json file
-        equipment_file_path = os.path.join(project_root, "Systems", "Pets", "Logic", "equipment.json")
-        
-        with open(equipment_file_path, "r", encoding="utf-8") as f:
-            equipment_data = json.load(f)
-        
-        return JSONResponse(content=equipment_data)
-    except FileNotFoundError:
-        logger.error("Equipment equipment.json file not found")
-        return JSONResponse(content={"error": "Equipment data file not found"}, status_code=404)
-    except json.JSONDecodeError as e:
-        logger.error(f"Error parsing equipment JSON: {e}")
-        return JSONResponse(content={"error": "Error parsing equipment data"}, status_code=500)
-    except Exception as e:
-        logger.error(f"Error fetching equipment data: {e}", exc_info=True)
-        return JSONResponse(content={"error": "Failed to fetch equipment data"}, status_code=500)
-
-def convert_markdown_to_html(text):
-    """Convert Discord markdown to HTML for web display."""
-    import re
-
-    def slugify(s):
-        s = s.lower().strip()
-        s = re.sub(r'[\s-]+', '-', s)
-        s = re.sub(r'[^a-z0-9-]', '', s)
-        return s
-
-    # Generate IDs for headers
-    def add_header_ids(match):
-        level = len(match.group(1))
-        title = match.group(2).strip()
-        id = slugify(title)
-        return f'<h{level} id="{id}">{title}</h{level}>'
-
-    text = re.sub(r'^(#+)(.+)$', add_header_ids, text, flags=re.MULTILINE)
-
-    # Update ToC links to match slugified IDs
-    def update_toc_links(match):
-        link_text = match.group(1)
-        link_target = match.group(2)
-        slug = slugify(link_target.replace('#', ''))
-        return f'<a href="#{slug}">{link_text}</a>'
-
-    text = re.sub(r'\[([^\]]+)\]\((#[^\)]+)\)', update_toc_links, text)
-
-    # Convert bold text (**text**)
-    text = re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', text)
-    
-    # Convert horizontal rules (---)
-    text = re.sub(r'^---+$', r'<hr>', text, flags=re.MULTILINE)
-    
-    # Convert numbered lists (1. 2. 3.)
-    text = re.sub(r'^(\d+\.) (.+)$', r'<li>\2</li>', text, flags=re.MULTILINE)
-    
-    # Convert bullet points (* text)
-    text = re.sub(r'^(\*|-) (.+)$', r'<li>\2</li>', text, flags=re.MULTILINE)
-    
-    # Wrap consecutive list items in <ol> or <ul> tags
-    text = re.sub(r'(<li>.+<\/li>\s*)+', lambda m: '<ol>\n' + m.group(0) + '</ol>\n' if m.group(0).strip().startswith('<li>') else '<ul>\n' + m.group(0) + '</ul>\n', text)
-
-    # Convert inline code (`code`)
-    text = re.sub(r'`([^`]+)`', r'<code>\1</code>', text)
-    
-    # Convert code blocks (```code```)
-    text = re.sub(r'```([a-z]*)\n([\s\S]*?)\n```', r'<pre><code class="language-\1">\2</code></pre>', text)
-    
-    # Convert general links [text](url)
-    text = re.sub(r'\[([^\]]+)\]\((?!#)([^\)]+)\)', r'<a href="\2" target="_blank">\1</a>', text)
-    
-    # Convert line breaks to <br> tags for better formatting
-    text = re.sub(r'\n', r'<br>', text)
-
-    return text
-
-@app.get("/api/readme")
-async def get_readme():
-    """Get README.md content converted to HTML."""
-    try:
-        with open("README.md", "r", encoding="utf-8") as f:
-            readme_content = f.read()
-        
-        # Convert markdown to HTML
-        html_content = convert_markdown_to_html(readme_content)
-        return JSONResponse(content={"content": html_content})
-    except FileNotFoundError:
-        return JSONResponse(content={"error": "README.md not found"}, status_code=404)
-    except Exception as e:
-        logger.error(f"Error reading README: {e}")
-        return JSONResponse(content={"error": "Failed to read README"}, status_code=500)
-
-@app.get("/api/license")
-async def get_license():
-    """Get LICENSE.txt content."""
-    try:
-        with open("LICENSE.txt", "r", encoding="utf-8") as f:
-            license_content = f.read()
-        return JSONResponse(content={"content": license_content})
-    except FileNotFoundError:
-        return JSONResponse(content={"error": "LICENSE.txt not found"}, status_code=404)
-    except Exception as e:
-        logger.error(f"Error reading LICENSE: {e}")
-        return JSONResponse(content={"error": "Failed to read LICENSE"}, status_code=500)
 
 @app.get("/api/test")
 async def test_endpoint():
     """Test endpoint to verify server is picking up changes."""
     return JSONResponse(content={"message": "Test endpoint working", "timestamp": str(datetime.now())})
 
-@app.get("/api/commands")
+@app.get("/api/commands", response_class=JSONResponse)
 async def get_commands():
-    """Get all bot commands organized by category."""
+    """Provides a list of all application commands."""
+    if not _bot_instance:
+        logger.error("Command API called before bot instance was ready.")
+        raise HTTPException(status_code=503, detail="Bot is not ready.")
+
     try:
-        logger.info("API/commands endpoint called")
-        
-        if not _bot_instance:
-            logger.warning("Bot instance not available for /api/commands")
-            return JSONResponse(content={"error": "Bot not available"}, status_code=503)
-        
-        commands_data = []
-        logger.info(f"Starting command extraction from {len(_bot_instance.cogs)} cogs")
-        
-        # Iterate through all cogs to get commands
-        for cog_name, cog in _bot_instance.cogs.items():
-            # Skip internal cogs
-            if cog_name in ['OwnerCog']:
-                continue
-                
-            logger.info(f"Processing cog: {cog_name}")
-            
-            # Get commands from this cog
-            for command in cog.get_commands():
-                # Skip hidden commands
-                if command.hidden:
-                    continue
-                    
-                # Determine category based on cog name or command module
-                category = cog_name.replace('Cog', '').replace('_', ' ').strip()
-                if not category:
-                    category = 'General'
-                
-                # Get command parameters
-                params = []
-                if hasattr(command, 'params'):
-                    for param_name, param in command.params.items():
-                        if param_name in ['self', 'ctx', 'interaction']:
-                            continue
-                            
-                        param_info = {
-                            "name": param_name,
-                            "description": getattr(param, 'description', None) or "No description available",
-                            "required": getattr(param, 'required', True),
-                            "default": str(param.default) if param.default is not None else None
-                        }
-                        
-                        # Add choices if available
-                        if hasattr(param, 'choices') and param.choices:
-                            param_info["choices"] = [choice.name for choice in param.choices]
-                        
-                        params.append(param_info)
-                
-                command_data = {
-                    "name": command.name,
-                    "description": command.description or "No description available",
-                    "usage": f"/{command.name}" + (f" {' '.join([f'<{p}>' for p in params])}" if params else ""),
-                    "category": category,
-                    "params": params
-                }
-                
-                commands_data.append(command_data)
-                logger.info(f"Added command: {command.name} in category {category}")
-        
-        # Also get slash commands from the bot's tree
-        slash_commands = _bot_instance.tree.get_commands()
-        logger.info(f"Processing {len(slash_commands)} slash commands")
-        for app_command in slash_commands:
-            # Determine category based on command name or module
-            category = 'Slash Commands'
-            
-            # Get command parameters
-            params = []
-            if hasattr(app_command, 'parameters'):
-                for param in app_command.parameters:
-                    param_info = {
-                        "name": param.name,
-                        "description": param.description or "No description available",
-                        "required": getattr(param, 'required', True),
-                        "default": str(param.default) if hasattr(param, 'default') and param.default is not None else None
-                    }
-                    
-                    # Add choices if available
-                    if hasattr(param, 'choices') and param.choices:
-                        param_info["choices"] = [choice.name for choice in param.choices]
-                    
-                    params.append(param_info)
-            
-            command_data = {
-                "name": app_command.name,
-                "description": app_command.description or "No description available",
-                "usage": f"/{app_command.name}" + (f" {' '.join([f'<{p}>' for p in params])}" if params else ""),
-                "category": category,
-                "params": params
+        commands_list = []
+        seen_commands = set() # To avoid duplicates
+
+        # Helper function to process a command and add it to the list
+        def process_command(command, guild_name=None):
+            # For hybrid commands, get the cog name from the underlying command object
+            cog = command.cog if hasattr(command, 'cog') else None
+            if isinstance(command, discord.ext.commands.HybridCommand):
+                cog = command.app_command.cog
+
+            command_id = f"{command.name}_{guild_name or 'global'}"
+            if command_id in seen_commands:
+                return # Skip duplicates
+            seen_commands.add(command_id)
+
+            command_info = {
+                "name": command.name,
+                "category": cog.qualified_name if cog else (guild_name or "General"),
             }
-            
-            commands_data.append(command_data)
-            logger.info(f"Added slash command: {app_command.name}")
-        
-        logger.info(f"Successfully retrieved {len(commands_data)} commands for API")
-        return JSONResponse(content=commands_data)
-        
+            # Handle different command types gracefully
+            if isinstance(command, discord.app_commands.AppCommand):
+                command_info.update({
+                    "description": command.description or "(No description)",
+                    "usage": f"/{command.name}",
+                    "params": []
+                })
+                
+                # Try to get parameters if available (some command types may not have them)
+                try:
+                    if hasattr(command, 'options') and command.options:
+                        command_info["params"] = [
+                            {
+                                "name": option.name,
+                                "description": option.description or "(No description)",
+                                "required": option.required,
+                                "default": str(option.default) if hasattr(option, 'default') and option.default is not None else None,
+                                "choices": [choice.name for choice in option.choices] if hasattr(option, 'choices') and option.choices else []
+                            } for option in command.options
+                        ]
+                    elif hasattr(command, 'parameters') and command.parameters:
+                        command_info["params"] = [
+                            {
+                                "name": param.name,
+                                "description": param.description or "(No description)",
+                                "required": param.required,
+                                "default": str(param.default) if param.default is not None else None,
+                                "choices": [choice.name for choice in param.choices] if param.choices else []
+                            } for param in command.parameters
+                        ]
+                except AttributeError:
+                    # If we can't get parameters, just leave params as empty list
+                    pass
+            elif isinstance(command, discord.app_commands.ContextMenu):
+                # Context menu commands don't have descriptions or parameters
+                command_info.update({
+                    "description": f"Context menu command ({command.type.name.title()})",
+                    "usage": f"(Right-click on a {command.type.name.lower()}) -> Apps -> {command.name}",
+                    "params": []
+                })
+            else:
+                # Skip unknown command types
+                return
+
+            commands_list.append(command_info)
+
+        # 1. Get Global Commands
+        global_commands = await _bot_instance.tree.fetch_commands() # fetch_commands is more reliable
+        for command in global_commands:
+            # Use the command data directly instead of fetching full details
+            # This is much faster and provides the essential information
+            process_command(command)
+
+        # 2. Get Guild-specific Commands
+        for guild in _bot_instance.guilds:
+            try:
+                guild_commands = await _bot_instance.tree.fetch_commands(guild=guild)
+                for command in guild_commands:
+                    # Use the command data directly for better performance
+                    process_command(command, guild.name)
+            except discord.errors.Forbidden:
+                logger.warning(f"Missing permissions to fetch commands for guild: {guild.name} (ID: {guild.id})")
+            except Exception as e:
+                logger.error(f"Error fetching commands for guild {guild.name} (ID: {guild.id}): {e}")
+
+        logger.info(f"Successfully fetched {len(commands_list)} commands via API.")
+        return commands_list
+
     except Exception as e:
-        logger.error(f"Error in /api/commands endpoint: {e}", exc_info=True)
-        return JSONResponse(content={"error": "Failed to fetch commands", "details": str(e)}, status_code=500)
+        logger.error(f"Error fetching commands for API: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/pnw/resource-prices")
 async def get_pnw_resource_prices():
-    """Get PnW resource prices."""
+    """Get PnW resource prices from reaper.db."""
     try:
-        prices = await get_resource_prices()
-        return JSONResponse(content=prices)
+        import aiosqlite
+        from Systems.Functions.db_paths import REAPER_DB_STR
+        DB_FILE = REAPER_DB_STR
+
+        async with aiosqlite.connect(DB_FILE) as conn:
+            conn.row_factory = aiosqlite.Row
+
+            # Get the most recent timestamp
+            cursor = await conn.execute("SELECT timestamp FROM resource_prices ORDER BY timestamp DESC LIMIT 1")
+            latest_timestamp = await cursor.fetchone()
+            
+            if not latest_timestamp:
+                return JSONResponse(content={"error": "No resource price data available"}, status_code=404)
+            
+            # Get all resources for the latest timestamp
+            cursor = await conn.execute(
+                "SELECT resource, avg_price, best_buy_price, best_sell_price FROM resource_prices WHERE timestamp = ?",
+                (latest_timestamp['timestamp'],)
+            )
+            rows = await cursor.fetchall()
+            
+            # Format the data to match what the web calculator expects
+            data = {}
+            for row in rows:
+                data[row['resource']] = {
+                    'avg': row['avg_price'],
+                    'buy': row['best_buy_price'],
+                    'sell': row['best_sell_price']
+                }
+            
+            return JSONResponse(content={
+                "data": data,
+                "timestamp": latest_timestamp['timestamp']
+            })
+            
     except Exception as e:
-        logger.error(f"Error getting resource prices: {e}")
+        logger.error(f"Error getting resource prices from reaper.db: {e}")
         return JSONResponse(content={"error": "Failed to retrieve resource prices"}, status_code=500)
 
 @app.get("/api/pnw/game-info")
@@ -671,827 +999,68 @@ async def get_pnw_game_info():
 
 @app.get("/api/pnw/nation-info/{nation_query}")
 async def get_pnw_nation_info(nation_query: str):
-    """Get PnW nation info."""
+    """Get PnW nation info for the calculator.
+    Checks IRS local DB first (no API query for members).
+    Falls back to PnW API for non-members.
+    """
     try:
+        from Systems.Functions.irs_nations_db import IRSNationsDB
+        from Systems.Functions.db_paths import NW_NATIONS_DB_STR
+        nw_db = IRSNationsDB(NW_NATIONS_DB_STR)
+
+        nation_data = None
+        cities = []
+
+        # --- Try IRS DB first ---
+        if nation_query.isdigit():
+            nation_data = await nw_db.get_nation(int(nation_query))
+            if nation_data:
+                cities = await nw_db.get_cities_for_nation(int(nation_query))
+        else:
+            # Search NW DB by name (case-insensitive) — offload to thread
+            def _search_by_name(db_path: str, query: str):
+                import sqlite3 as _sq, json as _json
+                with _sq.connect(db_path) as conn:
+                    conn.row_factory = _sq.Row
+                    row = conn.execute(
+                        "SELECT * FROM nations WHERE LOWER(nation_name) = LOWER(?)",
+                        (query,)
+                    ).fetchone()
+                    if not row:
+                        return None
+                    d = dict(row)
+                    mr = d.get("military_research")
+                    if isinstance(mr, str):
+                        try:
+                            d["military_research"] = _json.loads(mr)
+                        except Exception:
+                            d["military_research"] = None
+                    return d
+            nation_data = await asyncio.to_thread(_search_by_name, NW_DB_PATH, nation_query)
+            if nation_data:
+                cities = await nw_db.get_cities_for_nation(nation_data["id"])
+
+        if nation_data:
+            nation_data["cities"] = cities
+            nation_data["_source"] = "nights_watch_db"
+            return JSONResponse(content=nation_data)
+
+        # --- Fall back to PnW API ---
         query_instance = create_v3_query_instance()
         if nation_query.isdigit():
-            nation_data = await query_instance.get_nation_by_id(nation_query)
+            api_data = await query_instance.get_nation_by_id(nation_query)
         else:
-            nation_data = await query_instance.get_nation_by_name(nation_query)
-        
-        if not nation_data:
+            api_data = await query_instance.get_nation_by_name(nation_query)
+
+        if not api_data:
             return JSONResponse(content={"error": "Nation not found"}, status_code=404)
-            
-        return JSONResponse(content=nation_data)
+
+        api_data["_source"] = "pnw_api"
+        return JSONResponse(content=api_data)
+
     except Exception as e:
-        logger.error(f"Error getting nation info: {e}")
+        logger.error(f"Error getting nation info for '{nation_query}': {e}", exc_info=True)
         return JSONResponse(content={"error": "Failed to retrieve nation info"}, status_code=500)
-
-async def _get_war_graph_data(alliance_name: str, time: str, force_refresh: bool, opps_view: bool) -> dict:
-    """Helper function to get war graph data."""
-    # Time parsing logic
-    after_datetime = None
-    match = re.match(r'(\d+)([dwm])', time.lower())
-    if match:
-        amount, unit = int(match.group(1)), match.group(2)
-        delta = timedelta()
-        if unit == 'd':
-            delta = timedelta(days=amount)
-        elif unit == 'w':
-            delta = timedelta(weeks=amount)
-        elif unit == 'm':
-            delta = timedelta(days=amount * 30)
-        after_datetime = datetime.now(timezone.utc) - delta
-    
-    if not after_datetime:
-        raise ValueError("Invalid time format. Use formats like '2d', '3w', or '1m'.")
-
-    query_instance = create_v3_query_instance()
-    resolved_alliance_ids = await query_instance.resolve_entities([alliance_name], 'alliance')
-    if not resolved_alliance_ids:
-        raise ValueError(f"Could not find an alliance named '{alliance_name}'.")
-    
-    alliance_id = resolved_alliance_ids[0]
-
-    all_wars = await get_wars(alliance_id=[alliance_id], active=False, status="ALL", after=after_datetime, before=datetime.now(timezone.utc), force_refresh=force_refresh)
-    if not all_wars:
-        raise ValueError(f"No wars found for alliance '{alliance_name}' in the last {time}.")
-
-    resource_prices = await get_resource_prices()
-    
-    # Simplified nation collection logic for web view
-    nation_ids = set()
-    nation_names = {}
-    for war in all_wars:
-        if opps_view:
-            if str(war.get('def_alliance_id')) == str(alliance_id):
-                nid = war.get('att_id')
-                nname = war.get('attacker', {}).get('nation_name')
-                if nid and nname: nation_ids.add(nid); nation_names[nid] = nname
-            if str(war.get('att_alliance_id')) == str(alliance_id):
-                nid = war.get('def_id')
-                nname = war.get('defender', {}).get('nation_name')
-                if nid and nname: nation_ids.add(nid); nation_names[nid] = nname
-        else:
-            if str(war.get('att_alliance_id')) == str(alliance_id):
-                nid = war.get('att_id')
-                nname = war.get('attacker', {}).get('nation_name')
-                if nid and nname: nation_ids.add(nid); nation_names[nid] = nname
-            if str(war.get('def_alliance_id')) == str(alliance_id):
-                nid = war.get('def_id')
-                nname = war.get('defender', {}).get('nation_name')
-                if nid and nname: nation_ids.add(nid); nation_names[nid] = nname
-
-    nation_breakdown = {}
-    for nation_id in nation_ids:
-        nation_wars = [w for w in all_wars if str(w.get('att_id')) == str(nation_id) or str(w.get('def_id')) == str(nation_id)]
-        if not nation_wars: continue
-        costs = await calculate_war_costs(nation_wars, resource_prices, team1_id_set={int(nation_id)})
-        team1_costs = costs.get('team1', {})
-        total_gains = team1_costs.get('loot_received', 0) + sum(team1_costs.get('resource_loot', {}).values())
-        if team1_costs.get('gross', 0) > 0 or total_gains > 0:
-            # Correctly calculate resource loot values
-            resource_loot_gained_value = sum(amount * resource_prices.get("sell", {}).get(res, 0) for res, amount in team1_costs.get('resource_loot_gained', {}).items())
-            resource_loot_lost_value = sum(amount * resource_prices.get("sell", {}).get(res, 0) for res, amount in team1_costs.get('resource_loot_lost', {}).items())
-
-            nation_breakdown[nation_id] = {
-                'nation_id': nation_id,
-                'name': nation_names.get(nation_id, f'Unknown {nation_id}'),
-                'gross_cost': team1_costs.get('gross', 0),
-                'net_damage': team1_costs.get('gross', 0) - costs.get('team2', {}).get('gross', 0),
-                'total_gains': total_gains,
-                'soldiers_lost': team1_costs.get('units', {}).get('soldiers', {}).get('lost', 0),
-                'tanks_lost': team1_costs.get('units', {}).get('tanks', {}).get('lost', 0),
-                'aircraft_lost': team1_costs.get('units', {}).get('aircraft', {}).get('lost', 0),
-                'ships_lost': team1_costs.get('units', {}).get('ships', {}).get('lost', 0),
-                'missiles_lost': team1_costs.get('units', {}).get('missiles', {}).get('lost', 0),
-                'nukes_lost': team1_costs.get('units', {}).get('nukes', {}).get('lost', 0),
-                'consumption_cost': (team1_costs.get('consumption', {}).get('munitions', 0) * resource_prices['buy'].get("munitions", 0)) + \
-                                    (team1_costs.get('consumption', {}).get('gasoline', 0) * resource_prices['buy'].get("gasoline", 0)),
-                'infra_destroyed_value': team1_costs.get('infra_lost_value', 0),
-                'improvements_cost': team1_costs.get('improvements_lost', 0),
-                'loot_lost': team1_costs.get('loot_lost', 0),
-                'resource_loot_lost_value': resource_loot_lost_value,
-            }
-
-    if not nation_breakdown:
-        raise ValueError(f"No war costs could be calculated for alliance '{alliance_name}' in the last {time}.")
-
-    return {
-        'nation_breakdown': nation_breakdown,
-        'resource_prices': resource_prices,
-        'all_wars': all_wars,
-        'alliance_id': alliance_id
-    }
-
-@app.get("/api/graph/war", response_class=HTMLResponse)
-async def get_war_graph(alliance_name: str, time: str, force_refresh: bool = False, opps_view: bool = False):
-    try:
-        logger.info(f"Received war graph request for alliance: {alliance_name}, time: {time}, force_refresh: {force_refresh}, opps_view: {opps_view}")
-        data = await _get_war_graph_data(alliance_name, time, force_refresh, opps_view)
-        html_filename = war_graph_generator.generate_interactive_breakdown(data['nation_breakdown'], alliance_name, data['resource_prices'])
-        html_file_path = os.path.abspath(os.path.join("web", "Wars", html_filename))
-        if os.path.exists(html_file_path):
-            with open(html_file_path, "r", encoding="utf-8") as f:
-                return HTMLResponse(content=f.read(), status_code=200)
-        else:
-            return HTMLResponse(content="Failed to generate war breakdown graph: HTML file not created", status_code=500)
-    except ValueError as e:
-        return HTMLResponse(content=str(e), status_code=400)
-    except Exception as e:
-        logger.error(f"Error generating war graph: {e}", exc_info=True)
-        return HTMLResponse(content=f"An error occurred: {e}", status_code=500)
-
-@app.get("/api/graph/warnet", response_class=HTMLResponse)
-async def get_war_net_graph(alliance_name: str, time: str, force_refresh: bool = False, opps_view: bool = False):
-    try:
-        logger.info(f"Received war net graph request for alliance: {alliance_name}, time: {time}, force_refresh: {force_refresh}, opps_view: {opps_view}")
-        data = await _get_war_graph_data(alliance_name, time, force_refresh, opps_view)
-        
-        # Calculate enemy relationships
-        nation_breakdown = data['nation_breakdown']
-        all_wars = data['all_wars']
-        alliance_id = data['alliance_id']
-        
-        enemy_relationships = {}
-        nation_id_to_name = {nid: costs['name'] for nid, costs in nation_breakdown.items()}
-        
-        for war in all_wars:
-            att_alliance_id = str(war.get('att_alliance_id'))
-            def_alliance_id = str(war.get('def_alliance_id'))
-            att_id = war.get('att_id')
-            def_id = war.get('def_id')
-
-            if att_alliance_id != str(alliance_id) and def_alliance_id != str(alliance_id):
-                continue
-
-            if att_alliance_id == str(alliance_id):
-                alliance_member_id = att_id
-                enemy_id = def_id
-                enemy_obj = war.get('defender')
-            else:
-                alliance_member_id = def_id
-                enemy_id = att_id
-                enemy_obj = war.get('attacker')
-
-            if alliance_member_id not in nation_id_to_name:
-                continue
-
-            if alliance_member_id not in enemy_relationships:
-                enemy_relationships[alliance_member_id] = {}
-
-            if enemy_id not in enemy_relationships[alliance_member_id]:
-                enemy_name = 'Unknown Enemy'
-                if enemy_obj and isinstance(enemy_obj, dict):
-                    enemy_name = enemy_obj.get('nation_name', f'Enemy {enemy_id}')
-                enemy_relationships[alliance_member_id][enemy_id] = {'name': enemy_name, 'net_damage': 0}
-
-            # Simplified net damage calculation for web view
-            att_infra_destroyed = war.get('att_infra_destroyed_value', 0)
-            def_infra_destroyed = war.get('def_infra_destroyed_value', 0)
-            net_damage = def_infra_destroyed - att_infra_destroyed if att_alliance_id == str(alliance_id) else att_infra_destroyed - def_infra_destroyed
-            enemy_relationships[alliance_member_id][enemy_id]['net_damage'] += net_damage
-
-        html_filename = war_net_breakdown_graph_generator.generate_interactive_net_breakdown(data['nation_breakdown'], alliance_name, data['resource_prices'], enemy_relationships)
-        html_file_path = os.path.abspath(os.path.join("web", "Wars", html_filename))
-        if os.path.exists(html_file_path):
-            with open(html_file_path, "r", encoding="utf-8") as f:
-                return HTMLResponse(content=f.read(), status_code=200)
-        else:
-            return HTMLResponse(content="Failed to generate war net breakdown graph: HTML file not created", status_code=500)
-    except ValueError as e:
-        return HTMLResponse(content=str(e), status_code=400)
-    except Exception as e:
-        logger.error(f"Error generating war net graph: {e}", exc_info=True)
-        return HTMLResponse(content=f"An error occurred: {e}", status_code=500)
-
-@app.get("/api/graph/treaty", response_class=HTMLResponse)
-async def get_treaty_graph(alliance_ids: str = None):
-    try:
-        logger.info(f"Received treaty graph request for alliances: {alliance_ids}")
-
-        query_instance = create_v3_query_instance()
-        all_treaties = await get_all_treaties()
-
-        if not all_treaties:
-            return HTMLResponse(content="Could not fetch any treaties.", status_code=404)
-
-        treaty_graph = TreatyGraph()
-        G = treaty_graph.build_treaty_graph(all_treaties)
-        blocs = treaty_graph.find_blocs(all_treaties)
-        
-        html_content = treaty_graph.create_interactive_map(G, all_treaties, blocs)
-        return HTMLResponse(content=html_content, status_code=200)
-
-    except Exception as e:
-        logger.error(f"Error generating treaty graph: {e}", exc_info=True)
-        return HTMLResponse(content=f"An error occurred: {e}", status_code=500)
-
-
-@app.get("/api/graph/compare", response_class=HTMLResponse)
-async def get_compare_graph(home_alliance_ids: str, away_alliance_ids: str):
-    try:
-        logger.info(f"Received compare graph request for home alliances: {home_alliance_ids} and away alliances: {away_alliance_ids}")
-
-        # Parse alliance IDs
-        home_ids = [int(aid.strip()) for aid in home_alliance_ids.split(',') if aid.strip().isdigit()]
-        away_ids = [int(aid.strip()) for aid in away_alliance_ids.split(',') if aid.strip().isdigit()]
-        
-        if not home_ids or not away_ids:
-            return HTMLResponse(content="Invalid alliance IDs provided.", status_code=400)
-
-        # Create filename with timestamp for caching
-        today_str = datetime.now().strftime("%m-%d-%Y")
-        home_names_str = "-".join([str(aid) for aid in sorted(home_ids)])
-        away_names_str = "-".join([str(aid) for aid in sorted(away_ids)])
-        html_filename = f"comparison_{home_names_str}_{away_names_str}_{today_str}.html"
-        comparisons_dir = os.path.join("web", "Comparisons")
-        html_filepath = os.path.join(comparisons_dir, html_filename)
-        
-        # Check if cached file exists
-        if os.path.exists(html_filepath):
-            logger.info(f"Using cached comparison file: {html_filename}")
-            with open(html_filepath, "r", encoding="utf-8") as f:
-                return HTMLResponse(content=f.read(), status_code=200)
-
-        # Import required modules from compare.py
-        from Systems.PnW.Util.query import create_v3_query_instance
-        from Systems.PnW.Util.calc import AllianceCalculator
-        
-        query_instance = create_v3_query_instance()
-        calculator = AllianceCalculator(query_instance)
-
-        async def get_alliance_stats(alliance_ids, side_label):
-            all_stats = []
-            
-            # Fetch nations for all alliances in batch
-            queries = {}
-            for aid in alliance_ids:
-                queries[f"a{aid}"] = f"""
-                    nations(alliance_id: {aid}, first: 500) {{
-                        paginatorInfo {{ hasMorePages }}
-                        data {{
-                            id
-                            nation_name
-                            alliance_position
-                            vacation_mode_turns
-                            score
-                            num_cities
-                            soldiers
-                            tanks
-                            aircraft
-                            ships
-                            missiles
-                            nukes
-                            military_research {{
-                                ground_capacity
-                                air_capacity
-                                naval_capacity
-                            }}
-                            iron_dome
-                            missile_launch_pad
-                            nuclear_research_facility
-                            vital_defense_system
-                            propaganda_bureau
-                            military_research_center
-                            space_program
-                            nuclear_launch_facility
-                            cities {{
-                                barracks
-                                factory
-                                hangar
-                                drydock
-                            }}
-                        }}
-                    }}
-                """
-            
-            batch_results = await query_instance.execute_batch(queries)
-            
-            for aid in alliance_ids:
-                alias = f"a{aid}"
-                result = batch_results.get(alias, {})
-                if result and isinstance(result, dict):
-                    nations_data = result.get('data', [])
-                    if nations_data:
-                        # Filter active nations (not in VM, not Applicant)
-                        active_nations = []
-                        for n in nations_data:
-                            vm_turns = int(n.get('vacation_mode_turns', 0) or 0)
-                            position = str(n.get('alliance_position', '') or '').upper()
-                            if vm_turns == 0 and position != 'APPLICANT':
-                                active_nations.append(n)
-                        
-                        # Calculate statistics using AllianceCalculator
-                        stats = await calculator.calculate_alliance_statistics(active_nations)
-                        daily_military = await calculator.calculate_full_mill_data(active_nations)
-                        
-                        # Get city counts
-                        city_counts = {}
-                        for n in active_nations:
-                            num_cities = n.get('num_cities', 0)
-                            city_counts[num_cities] = city_counts.get(num_cities, 0) + 1
-                        
-                        # Get alliance name from first nation or use ID
-                        alliance_name = f"Alliance {aid}"
-                        if active_nations:
-                            first_nation = active_nations[0]
-                            if first_nation.get('alliance'):
-                                alliance_name = first_nation['alliance'].get('name', alliance_name)
-                        
-                        all_stats.append({
-                            'name': alliance_name,
-                            'stats': {
-                                **stats,
-                                'daily_military': daily_military,
-                                'city_counts': city_counts
-                            }
-                        })
-            
-            return all_stats
-
-        # Get stats for both sides
-        home_stats = await get_alliance_stats(home_ids, "Home")
-        away_stats = await get_alliance_stats(away_ids, "Away")
-
-        if not home_stats or not away_stats:
-            return HTMLResponse(content="No data found for the specified alliances.", status_code=404)
-
-        # Generate interactive comparison page
-        html_content = create_interactive_comparison_page(home_stats, away_stats)
-        
-        # Ensure Comparisons directory exists
-        os.makedirs(comparisons_dir, exist_ok=True)
-        
-        # Save the HTML file for caching
-        with open(html_filepath, "w", encoding="utf-8") as f:
-            f.write(html_content)
-        
-        logger.info(f"Generated and cached comparison file: {html_filename}")
-        return HTMLResponse(content=html_content, status_code=200)
-
-    except Exception as e:
-        logger.error(f"Error generating compare graph: {e}", exc_info=True)
-        return HTMLResponse(content=f"An error occurred: {e}", status_code=500)
-
-
-
-# Astrology API endpoints
-import json
-from pathlib import Path
-
-# Cache for astrology data
-_astrology_cache = {}
-
-async def _get_astrology_json_data(filename: str) -> List[Dict[str, Any]]:
-    """Load astrology JSON data with caching."""
-    cache_key = f"astrology_{filename}"
-    if cache_key in _astrology_cache:
-        return _astrology_cache[cache_key]
-    
-    # Construct an absolute path to the Zodiac directory
-    base_path = Path(__file__).parent.parent / "Astrology" / "Zodiac"
-    path = base_path / filename
-    
-    if not path.exists():
-        logger.error(f"Astrology data file not found at {path}")
-        return []
-    
-    try:
-        with open(path, 'r', encoding='utf-8') as f:
-            data = json.load(f)
-            _astrology_cache[cache_key] = data
-            logger.info(f"Sending equipment data for {len(data)} categories")
-        return data
-    except Exception as e:
-        logger.error(f"Error loading astrology data from {filename}: {e}")
-        return []
-
-def _zodiac_for_date(bday: date) -> str:
-    """Return the zodiac sign name for given date (month/day boundaries)."""
-    m, d = bday.month, bday.day
-    if (m == 12 and d >= 22) or (m == 1 and d <= 19):
-        return "Capricorn"
-    if (m == 1 and d >= 20) or (m == 2 and d <= 18):
-        return "Aquarius"
-    if (m == 2 and d >= 19) or (m == 3 and d <= 20):
-        return "Pisces"
-    if (m == 3 and d >= 21) or (m == 4 and d <= 19):
-        return "Aries"
-    if (m == 4 and d >= 20) or (m == 5 and d <= 20):
-        return "Taurus"
-    if (m == 5 and d >= 21) or (m == 6 and d <= 20):
-        return "Gemini"
-    if (m == 6 and d >= 21) or (m == 7 and d <= 22):
-        return "Cancer"
-    if (m == 7 and d >= 23) or (m == 8 and d <= 22):
-        return "Leo"
-    if (m == 8 and d >= 23) or (m == 9 and d <= 22):
-        return "Virgo"
-    if (m == 9 and d >= 23) or (m == 10 and d <= 22):
-        return "Libra"
-    if (m == 10 and d >= 23) or (m == 11 and d <= 21):
-        return "Scorpio"
-    return "Sagittarius"
-
-async def _find_western_sign_data(sign_name: str) -> Optional[Dict[str, Any]]:
-    """Find Western zodiac sign data."""
-    logger.info(f"Looking for Western sign data: {sign_name}")
-    data = await _get_astrology_json_data("astrology.json")
-    logger.info(f"Loaded astrology.json with {len(data)} entries")
-    for entry in data:
-        if entry.get("name", "").lower() == sign_name.lower():
-            logger.info(f"Found Western sign data for {sign_name}")
-            return entry
-    logger.warning(f"No Western sign data found for {sign_name}")
-    return None
-
-async def _find_chinese_sign_by_birthday(user_birthday: date) -> Optional[Dict[str, Any]]:
-    """Determine Chinese zodiac sign accounting for actual Chinese New Year of that year."""
-    logger.info(f"Looking for Chinese sign for birthday: {user_birthday}")
-    # Chinese New Year dates (simplified for web version)
-    CHINESE_NEW_YEAR_DATES = {
-        1900: date(1900, 1, 31), 1901: date(1901, 2, 19), 1902: date(1902, 2, 8), 1903: date(1903, 1, 29),
-        1904: date(1904, 2, 16), 1905: date(1905, 2, 4), 1906: date(1906, 1, 25), 1907: date(1907, 2, 13),
-        1908: date(1908, 2, 2), 1909: date(1909, 1, 22), 1910: date(1910, 2, 10), 1911: date(1911, 1, 30),
-        1912: date(1912, 2, 18), 1913: date(1913, 2, 6), 1914: date(1914, 1, 26), 1915: date(1915, 2, 14),
-        1916: date(1916, 2, 3), 1917: date(1917, 1, 23), 1918: date(1918, 2, 11), 1919: date(1919, 2, 1),
-        1920: date(1920, 2, 20), 1921: date(1921, 2, 8), 1922: date(1922, 1, 28), 1923: date(1923, 2, 16),
-        1924: date(1924, 2, 5), 1925: date(1925, 1, 24), 1926: date(1926, 2, 13), 1927: date(1927, 2, 2),
-        1928: date(1928, 1, 23), 1929: date(1929, 2, 10), 1930: date(1930, 1, 30), 1931: date(1931, 2, 17),
-        1932: date(1932, 2, 6), 1933: date(1933, 1, 26), 1934: date(1934, 2, 14), 1935: date(1935, 2, 4),
-        1936: date(1936, 1, 24), 1937: date(1937, 2, 11), 1938: date(1938, 1, 31), 1939: date(1939, 2, 19),
-        1940: date(1940, 2, 8), 1941: date(1941, 1, 27), 1942: date(1942, 2, 15), 1943: date(1943, 2, 5),
-        1944: date(1944, 1, 25), 1945: date(1945, 2, 13), 1946: date(1946, 2, 2), 1947: date(1947, 1, 22),
-        1948: date(1948, 2, 10), 1949: date(1949, 1, 29), 1950: date(1950, 2, 17), 1951: date(1951, 2, 6),
-        1952: date(1952, 1, 27), 1953: date(1953, 2, 14), 1954: date(1954, 2, 3), 1955: date(1955, 1, 24),
-        1956: date(1956, 2, 12), 1957: date(1957, 1, 31), 1958: date(1958, 2, 18), 1959: date(1959, 2, 8),
-        1960: date(1960, 1, 28), 1961: date(1961, 2, 15), 1962: date(1962, 2, 5), 1963: date(1963, 1, 25),
-        1964: date(1964, 2, 13), 1965: date(1965, 2, 2), 1966: date(1966, 1, 21), 1967: date(1967, 2, 9),
-        1968: date(1968, 1, 30), 1969: date(1969, 2, 17), 1970: date(1970, 2, 6), 1971: date(1971, 1, 27),
-        1972: date(1972, 2, 15), 1973: date(1973, 2, 3), 1974: date(1974, 1, 23), 1975: date(1975, 2, 11),
-        1976: date(1976, 1, 31), 1977: date(1977, 2, 18), 1978: date(1978, 2, 7), 1979: date(1979, 1, 28),
-        1980: date(1980, 2, 16), 1981: date(1981, 2, 5), 1982: date(1982, 1, 25), 1983: date(1983, 2, 13),
-        1984: date(1984, 2, 2), 1985: date(1985, 2, 20), 1986: date(1986, 2, 9), 1987: date(1987, 1, 29),
-        1988: date(1988, 2, 17), 1989: date(1989, 2, 6), 1990: date(1990, 1, 27), 1991: date(1991, 2, 15),
-        1992: date(1992, 2, 4), 1993: date(1993, 1, 23), 1994: date(1994, 2, 10), 1995: date(1995, 1, 31),
-        1996: date(1996, 2, 19), 1997: date(1997, 2, 7), 1998: date(1998, 1, 28), 1999: date(1999, 2, 16),
-        2000: date(2000, 2, 5), 2001: date(2001, 1, 24), 2002: date(2002, 2, 12), 2003: date(2003, 2, 1),
-        2004: date(2004, 1, 22), 2005: date(2005, 2, 9), 2006: date(2006, 1, 29), 2007: date(2007, 2, 18),
-        2008: date(2008, 2, 7), 2009: date(2009, 1, 26), 2010: date(2010, 2, 14), 2011: date(2011, 2, 3),
-        2012: date(2012, 1, 23), 2013: date(2013, 2, 10), 2014: date(2014, 1, 31), 2015: date(2015, 2, 19),
-        2016: date(2016, 2, 8), 2017: date(2017, 1, 28), 2018: date(2018, 2, 16), 2019: date(2019, 2, 5),
-        2020: date(2020, 1, 25), 2021: date(2021, 2, 12), 2022: date(2022, 2, 1), 2023: date(2023, 1, 22),
-        2024: date(2024, 2, 10), 2025: date(2025, 1, 29), 2026: date(2026, 2, 17), 2027: date(2027, 2, 6),
-    }
-    
-    year = user_birthday.year
-    cny = CHINESE_NEW_YEAR_DATES.get(year, date(year, 2, 4))
-    chinese_year = year if user_birthday >= cny else year - 1
-    
-    # Calculate animal based on year
-    animals = ["Rat", "Ox", "Tiger", "Rabbit", "Dragon", "Snake", "Horse", "Goat", "Monkey", "Rooster", "Dog", "Pig"]
-    index = (chinese_year - 4) % 12
-    animal_name = animals[index]
-    
-    data = await _get_astrology_json_data("chinese_astrology.json")
-    for entry in data:
-        if entry.get("Name", "").lower() == animal_name.lower():
-            return entry
-    
-    logger.warning(f"Chinese animal '{animal_name}' not found in database, returning default")
-    return {"Name": animal_name, "Emoji": "🔮", "Description": "Unknown"}
-
-async def _find_primal_entry(western_sign: str, chinese_animal: str) -> Optional[Dict[str, Any]]:
-    """Find Primal Astrology combination with more robust matching."""
-    logger.info(f"Looking for primal entry: {western_sign} / {chinese_animal}")
-    if not western_sign or not chinese_animal:
-        logger.warning(f"Missing western_sign or chinese_animal: {western_sign}, {chinese_animal}")
-        return None
-
-    data = await _get_astrology_json_data("primal_astrology.json")
-    if not data:
-        logger.warning("primal_astrology.json is empty or could not be loaded.")
-        return None
-
-    # Normalize inputs
-    western_sign = western_sign.strip()
-    chinese_animal = chinese_animal.strip()
-
-    # Define known alternate names for Chinese animals
-    alternates = {
-        "Goat": "Sheep", "Sheep": "Goat",
-        "Rat": "Mouse", "Mouse": "Rat",
-        "Ox": "Cow", "Cow": "Ox",
-        "Rabbit": "Cat", "Cat": "Rabbit",
-        "Rooster": "Chicken", "Chicken": "Rooster",
-        "Pig": "Boar", "Boar": "Pig"
-    }
-
-    possible_chinese_names = {chinese_animal, alternates.get(chinese_animal)}
-    possible_chinese_names.discard(None)
-
-    # Iterate through all possible combinations
-    for entry in data:
-        sign_combination = entry.get("Sign Combination", "").strip()
-        if not sign_combination:
-            continue
-
-        # Split the combination into parts (e.g., "Aries / Rat")
-        parts = [part.strip() for part in re.split(r'[\/,-]', sign_combination)]
-        if len(parts) != 2:
-            continue
-
-        # Check if the parts match the western and any of the possible Chinese names
-        part1, part2 = parts
-        for name in possible_chinese_names:
-            if (part1.lower() == western_sign.lower() and part2.lower() == name.lower()) or \
-               (part2.lower() == western_sign.lower() and part1.lower() == name.lower()):
-                logger.info(f"Found primal match for {western_sign}/{chinese_animal} -> {sign_combination}")
-                return entry
-
-    logger.warning(f"No primal astrology match found for {western_sign} / {chinese_animal}")
-    return None
-
-async def _fetch_horoscope_data(sign: str, day: str = "today") -> tuple[Optional[str], Optional[Dict[str, Any]]]:
-    """Fetch horoscope data with fallback generation."""
-    import random
-    
-    sign_slug = str(sign).strip().lower()
-    
-    # Fallback horoscope templates based on sign characteristics
-    horoscope_templates = {
-        "aries": [
-            "Today brings new opportunities for leadership and action.",
-            "Your natural courage will help you overcome challenges.",
-            "Energy and enthusiasm are your allies today."
-        ],
-        "taurus": [
-            "Stability and comfort are highlighted today.",
-            "Your practical nature will serve you well.",
-            "Focus on building solid foundations."
-        ],
-        "gemini": [
-            "Communication is key today - express yourself clearly.",
-            "Your adaptability will be an asset.",
-            "New ideas and connections are favored."
-        ],
-        "cancer": [
-            "Emotional connections are emphasized today.",
-            "Trust your intuition in decision making.",
-            "Home and family matters may require attention."
-        ],
-        "leo": [
-            "Your natural charisma shines brightly today.",
-            "Creative expression is favored.",
-            "Leadership opportunities may arise."
-        ],
-        "virgo": [
-            "Attention to detail brings rewards.",
-            "Organization and planning are highlighted.",
-            "Health and wellness matters may need focus."
-        ],
-        "libra": [
-            "Balance and harmony are important today.",
-            "Relationships may need attention and care.",
-            "Aesthetic and artistic pursuits are favored."
-        ],
-        "scorpio": [
-            "Transformation and renewal are themes today.",
-            "Deep insights may come through introspection.",
-            "Passion and intensity are your allies."
-        ],
-        "sagittarius": [
-            "Adventure and exploration are calling.",
-            "Your optimistic outlook attracts positive energy.",
-            "Learning and growth opportunities abound."
-        ],
-        "capricorn": [
-            "Hard work and discipline pay off today.",
-            "Long-term planning is favored.",
-            "Professional matters may come into focus."
-        ],
-        "aquarius": [
-            "Innovation and originality are highlighted.",
-            "Your unique perspective is valuable.",
-            "Group activities and friendships are favored."
-        ],
-        "pisces": [
-            "Intuition and creativity flow strongly.",
-            "Compassion and empathy serve you well.",
-            "Spiritual and artistic pursuits are favored."
-        ]
-    }
-    
-    templates = horoscope_templates.get(sign_slug, ["Today brings new opportunities and experiences."])
-    text = random.choice(templates)
-    
-    # Generate some basic stats
-    lucky_numbers = ["3", "7", "9", "11", "21", "27"]
-    colors = ["Blue", "Red", "Green", "Purple", "Gold", "Silver"]
-    moods = ["Energetic", "Calm", "Focused", "Creative", "Social", "Reflective"]
-    
-    # Get date range for sign
-    date_ranges = {
-        "aries": "March 21 - April 19",
-        "taurus": "April 20 - May 20",
-        "gemini": "May 21 - June 20",
-        "cancer": "June 21 - July 22",
-        "leo": "July 23 - August 22",
-        "virgo": "August 23 - September 22",
-        "libra": "September 23 - October 22",
-        "scorpio": "October 23 - November 21",
-        "sagittarius": "November 22 - December 21",
-        "capricorn": "December 22 - January 19",
-        "aquarius": "January 20 - February 18",
-        "pisces": "February 19 - March 20",
-    }
-    
-    stats = {
-        "mood": random.choice(moods),
-        "color": random.choice(colors),
-        "lucky_number": random.choice(lucky_numbers),
-        "lucky_time": f"{random.randint(1, 12)}:00 {'AM' if random.random() < 0.5 else 'PM'}",
-        "compatibility": random.choice(list(horoscope_templates.keys())),
-        "date_range": date_ranges.get(sign.lower(), "Unknown"),
-        "current_date": datetime.now().strftime("%B %d, %Y")
-    }
-    
-    return text, stats
-
-@app.get("/api/horoscope-proxy")
-async def horoscope_proxy(sign: str, day: str = "today"):
-    """Proxy for the external horoscope API to avoid CORS issues."""
-    try:
-        # Validate sign
-        valid_signs = ["Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo",
-                      "Libra", "Scorpio", "Sagittarius", "Capricorn", "Aquarius", "Pisces"]
-        sign_match = next((s for s in valid_signs if s.lower() == sign.lower()), None)
-        if not sign_match:
-            return JSONResponse(content={"error": "Invalid sign"}, status_code=400)
-
-        # Validate day parameter
-        valid_days = ["today", "yesterday", "tomorrow"]
-        if day.lower() not in valid_days:
-            day = "today"  # Default to today if invalid day provided
-
-        # Use the new free horoscope API - note: this API only supports daily horoscopes
-        # For yesterday/tomorrow, we'll use the current day's horoscope as a fallback
-        url = f"https://freehoroscopeapi.com/api/v1/get-horoscope/daily?sign={sign_match.lower()}"
-        
-        async with httpx.AsyncClient() as client:
-            response = await client.get(url, timeout=10.0)
-            response.raise_for_status()  # Raise an exception for bad status codes (4xx or 5xx)
-            
-            api_data = response.json()
-            logger.info(f"Successfully proxied horoscope for {sign_match} ({day})")
-            
-            # Transform the new API format to match the old format for compatibility
-            if "data" in api_data:
-                # Adjust date based on the day parameter
-                from datetime import datetime, timedelta
-                base_date = datetime.strptime(api_data["data"]["date"], "%Y-%m-%d")
-                
-                if day.lower() == "yesterday":
-                    adjusted_date = base_date - timedelta(days=1)
-                elif day.lower() == "tomorrow":
-                    adjusted_date = base_date + timedelta(days=1)
-                else:  # today
-                    adjusted_date = base_date
-                
-                transformed_data = {
-                    "date": adjusted_date.strftime("%Y-%m-%d"),
-                    "horoscope": api_data["data"]["horoscope"],
-                    "sunsign": api_data["data"]["sign"]
-                }
-                return JSONResponse(content=transformed_data)
-            else:
-                return JSONResponse(content=api_data)
-
-    except httpx.RequestError as e:
-        logger.error(f"Error fetching horoscope from external API for {sign}: {e}")
-        return JSONResponse(content={"error": "Failed to fetch horoscope from the external source."}, status_code=502) # Bad Gateway
-    except Exception as e:
-        logger.error(f"Error in horoscope proxy endpoint: {e}", exc_info=True)
-        return JSONResponse(content={"error": "Internal server error in proxy."}, status_code=500)
-
-
-@app.post("/api/astrology/signs")
-async def get_astrology_signs(request: AstrologyRequest):
-    """Get Western, Eastern, and Spirit Animal signs for a birth date."""
-    try:
-        logger.info(f"Received astrology signs request: {request.month}/{request.day}/{request.year}")
-        
-        # Validate date
-        try:
-            user_birthday = date(request.year, request.month, request.day)
-            logger.info(f"Validated birth date: {user_birthday}")
-        except ValueError:
-            logger.error(f"Invalid date provided: {request.month}/{request.day}/{request.year}")
-            return JSONResponse(
-                content={"error": "Invalid date. Please check the month/day combination."},
-                status_code=400
-            )
-        
-        if user_birthday > date.today():
-            logger.error(f"Future date provided: {user_birthday}")
-            return JSONResponse(
-                content={"error": "Date cannot be in the future."},
-                status_code=400
-            )
-        
-        # Get Western sign
-        western_sign = _zodiac_for_date(user_birthday)
-        logger.info(f"Western sign: {western_sign}")
-        western_data = await _find_western_sign_data(western_sign)
-        
-        if not western_data:
-            logger.error(f"No Western zodiac data found for {western_sign}")
-            return JSONResponse(
-                content={"error": f"Could not find Western zodiac data for {western_sign}."},
-                status_code=404
-            )
-        
-        # Get Chinese sign
-        chinese_data = await _find_chinese_sign_by_birthday(user_birthday)
-        logger.info(f"Chinese data: {chinese_data}")
-        
-        # Get Spirit Animal (Primal Astrology)
-        chinese_animal = chinese_data.get("Name", "") if chinese_data else ""
-        logger.info(f"Chinese animal: {chinese_animal}")
-        spirit_data = await _find_primal_entry(western_sign, chinese_animal)
-        logger.info(f"Spirit data: {spirit_data}")
-        
-        # Format response
-        response = {
-            "western": western_data,
-            "chinese": chinese_data,
-            "spirit": spirit_data,
-            "birth_date": user_birthday.isoformat()
-        }
-        
-        logger.info(f"Returning astrology response: {response}")
-        return JSONResponse(content=response)
-        
-    except Exception as e:
-        logger.error(f"Error in astrology signs endpoint: {e}", exc_info=True)
-        return JSONResponse(
-            content={"error": "Internal server error"},
-            status_code=500
-        )
-
-@app.get("/api/astrology/horoscope")
-async def get_horoscope(sign: str, day: str = "today"):
-    """Get daily horoscope for a zodiac sign."""
-    try:
-        # Validate sign
-        valid_signs = ["Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo",
-                      "Libra", "Scorpio", "Sagittarius", "Capricorn", "Aquarius", "Pisces"]
-        
-        sign_match = next((s for s in valid_signs if s.lower() == sign.lower()), None)
-        
-        if not sign_match:
-            return JSONResponse(
-                content={"error": f"Invalid sign '{sign}'. Valid signs: {', '.join(valid_signs)}"},
-                status_code=400
-            )
-        
-        # Validate day
-        valid_days = ["yesterday", "today", "tomorrow"]
-        if day not in valid_days:
-            return JSONResponse(
-                content={"error": f"Invalid day '{day}'. Valid days: {', '.join(valid_days)}"},
-                status_code=400
-            )
-        
-        # Get horoscope text and stats
-        text, stats = await _fetch_horoscope_data(sign_match, day)
-        
-        if not text:
-            return JSONResponse(
-                content={"error": f"Could not generate horoscope for {sign_match} for {day}."},
-                status_code=500
-            )
-        
-        # Get additional sign data
-        sign_data = await _find_western_sign_data(sign_match)
-        
-        response = {
-            "sign": sign_match,
-            "day": day,
-            "text": text,
-            "stats": stats,
-            "sign_data": sign_data
-        }
-        
-        return JSONResponse(content=response)
-        
-    except Exception as e:
-        logger.error(f"Error in horoscope endpoint: {e}", exc_info=True)
-        return JSONResponse(
-            content={"error": "Internal server error"},
-            status_code=500
-        )
 
 # Catch-all route for any remaining paths
 @app.get("/{path:path}", response_class=HTMLResponse)
@@ -1512,188 +1081,56 @@ async def catch_all(path: str):
     logger.info(f"Redirecting unknown path '/{path}' to dashboard")
     return RedirectResponse(url="/")
 
+
+
 # Web server startup and shutdown functions
-async def monitor_cloudflare_tunnel():
-    """Periodically checks if the Cloudflare tunnel is active."""
-    global _tunnel_process, _public_url
-    while True:
-        await asyncio.sleep(60)  # Check every 60 seconds
-        
-        if _tunnel_process and _tunnel_process.poll() is None:
-            logger.info("Cloudflare tunnel is running normally")
-        else:
-            logger.warning("Cloudflare tunnel process is not running. Attempting to restart...")
-            try:
-                await start_cloudflare_tunnel()
-            except Exception as e:
-                logger.error(f"Failed to restart Cloudflare tunnel: {e}")
-
-async def start_cloudflare_tunnel():
-    """Start the Cloudflare tunnel process."""
-    global _tunnel_process, _public_url
-    
-    try:
-        # Kill any existing cloudflared processes
-        for proc in psutil.process_iter(['pid', 'name']):
-            if proc.info['name'] and 'cloudflared' in proc.info['name'].lower():
-                logger.info(f"Killing existing cloudflared process: PID {proc.info['pid']}")
-                proc.kill()
-                proc.wait(timeout=5)
-    except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.TimeoutExpired):
-        pass
-    
-    await asyncio.sleep(2)
-    
-    try:
-        # Start Cloudflare tunnel
-        config_path = os.path.join(project_root, 'cloudflared-config', 'config.yml')
-        cmd = [
-            'cloudflared.exe',
-            'tunnel', 
-            '--config', config_path,
-            'run', 'discord-bot'
-        ]
-        
-        logger.info("Starting Cloudflare tunnel...")
-        _tunnel_process = subprocess.Popen(
-            cmd,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            cwd=project_root
-        )
-        
-        # Wait a moment for tunnel to establish
-        await asyncio.sleep(5)
-        
-        if _tunnel_process.poll() is None:
-            _public_url = "https://reaper.qzz.io"
-            logger.info(f"Cloudflare tunnel started successfully. Public URL: {_public_url}")
-        else:
-            stdout, stderr = _tunnel_process.communicate()
-            logger.error(f"Cloudflare tunnel failed to start. stdout: {stdout}, stderr: {stderr}")
-            _tunnel_process = None
-            
-    except Exception as e:
-        logger.error(f"Error starting Cloudflare tunnel: {e}")
-        _tunnel_process = None
-
 async def run_web_server(bot: commands.Bot):
-    """Start the web server and Cloudflare tunnel."""
-    global _bot_instance, _server_instance, _tunnel_process, _public_url
+    """Start the web server and optionally Cloudflare tunnel."""
+    global _bot_instance, _server_instance
     _bot_instance = bot
+
+    # Initialize service ports first
+    from Systems.Functions.utils import initialize_service_ports
+    initialize_service_ports()
+
+    # Set bot instance in bot_info_api module before including router
+    from web.api.bot_info import set_bot_instance as set_bot_info_instance
+    set_bot_info_instance(bot)
+
     port = get_service_port(SERVICE_WEB_SERVER)
     
     # Ensure the port is free before starting the server
     kill_process_on_port(port)
-    
-    # Start Cloudflare tunnel
-    try:
-        await start_cloudflare_tunnel()
-    except Exception as e:
-        logger.error(f"Failed to start Cloudflare tunnel: {e}")
-        _public_url = None
 
     config = uvicorn.Config(app, host="0.0.0.0", port=port, log_level="info")
     _server_instance = uvicorn.Server(config)
     
     logger.info(f"Starting web server on port {port}")
-    
-    # Run the server and the tunnel monitor concurrently
-    server_task = asyncio.create_task(_server_instance.serve())
-    monitor_task = asyncio.create_task(monitor_cloudflare_tunnel())
-    
-    await asyncio.gather(server_task, monitor_task)
+
+    # Start the server directly without creating additional tasks
+    await _server_instance.serve()
 
 async def shutdown_web_server():
-    """Shutdown the web server and Cloudflare tunnel gracefully."""
-    global _server_instance, _tunnel_process, _public_url
+    """Shutdown the web server and optionally Cloudflare tunnel gracefully."""
+    global _server_instance
     if _server_instance:
         logger.info("Shutting down web server...")
-        await _server_instance.shutdown()
+        _server_instance.should_exit = True
         _server_instance = None
     
-    # Stop Cloudflare tunnel
-    if _tunnel_process:
-        logger.info("Stopping Cloudflare tunnel...")
+    # Stop Cloudflare tunnel if enabled
+    from Systems.Functions.config import USE_CLOUDFLARE_TUNNEL
+    if USE_CLOUDFLARE_TUNNEL:
         try:
-            _tunnel_process.terminate()
-            _tunnel_process.wait(timeout=10)
-            logger.info("Cloudflare tunnel stopped successfully")
-        except subprocess.TimeoutExpired:
-            logger.warning("Cloudflare tunnel did not stop gracefully, forcing kill...")
-            _tunnel_process.kill()
-            _tunnel_process.wait()
+            await stop_cloudflare_tunnel_async()
         except Exception as e:
             logger.error(f"Error stopping Cloudflare tunnel: {e}")
-        _tunnel_process = None
-    
-    # Kill any remaining cloudflared processes
-    try:
-        for proc in psutil.process_iter(['pid', 'name']):
-            if proc.info['name'] and 'cloudflared' in proc.info['name'].lower():
-                logger.info(f"Killing remaining cloudflared process: PID {proc.info['pid']}")
-                proc.kill()
-                proc.wait(timeout=3)
-    except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.TimeoutExpired):
-        pass
-    
-    _public_url = None
-
-_public_url = None
-_tunnel_process = None
-
-def get_public_url():
-    """Returns the Cloudflare tunnel public URL."""
-    return _public_url
 
 # Rock Paper Scissors API routes
 class RPSRequest(BaseModel):
     theme: str
     playerChoice: str
     playerHistory: List[str] = []
-
-# Main execution block for standalone server
-if __name__ == "__main__":
-    import asyncio
-    
-    async def run_standalone_server():
-        """Run the web server without a bot instance."""
-        port = get_service_port(SERVICE_WEB_SERVER)
-        
-        # Ensure the port is free
-        kill_process_on_port(port)
-        
-        config = uvicorn.Config(app, host="0.0.0.0", port=port, log_level="info")
-        server = uvicorn.Server(config)
-        
-        logger.info(f"Starting standalone web server on port {port}")
-        await server.serve()
-    
-    # Run the standalone server
-    asyncio.run(run_standalone_server())
-    playerHistory: List[str] = []
-
-@app.post("/api/fun/rps-play")
-async def rps_play(request: RPSRequest):
-    """Handle Rock Paper Scissors game play against AI."""
-    try:
-        # Get AI choice using the existing AI brain
-        ai_choice = get_ai_choice(request.theme, request.playerHistory)
-        
-        # Determine winner
-        winner = determine_rps_winner(request.playerChoice, ai_choice, request.theme)
-        
-        return JSONResponse({
-            "aiChoice": ai_choice,
-            "winner": winner,
-            "theme": request.theme
-        })
-    except Exception as e:
-        logger.error(f"Error in RPS play: {e}")
-        return JSONResponse(
-            content={"error": "Internal server error"},
-            status_code=500
-        )
 
 def determine_rps_winner(player_choice: str, ai_choice: str, theme: str) -> str:
     """Determine the winner of RPS game."""
@@ -1727,3 +1164,51 @@ def determine_rps_winner(player_choice: str, ai_choice: str, theme: str) -> str:
         return "player"
     else:
         return "ai"
+
+@app.post("/api/fun/rps-play")
+async def rps_play(request: RPSRequest):
+    """Handle Rock Paper Scissors game play against AI."""
+    try:
+        # Get AI choice using the existing AI brain
+        ai_choice = get_ai_choice(request.theme, request.playerHistory)
+        
+        # Determine winner
+        winner = determine_rps_winner(request.playerChoice, ai_choice, request.theme)
+        
+        return JSONResponse({
+            "aiChoice": ai_choice,
+            "winner": winner,
+            "theme": request.theme
+        })
+    except Exception as e:
+        logger.error(f"Error in RPS play: {e}")
+        return JSONResponse(
+            content={"error": "Internal server error"},
+            status_code=500
+        )
+
+# Main execution block for standalone server
+if __name__ == "__main__":
+    import asyncio
+    
+    async def run_standalone_server():
+        """Run the web server without a bot instance."""
+        port = get_service_port(SERVICE_WEB_SERVER)
+        
+        # Ensure the port is free
+        kill_process_on_port(port)
+        
+        # Start Cloudflare tunnel
+        await start_cloudflare_tunnel_async()
+
+        config = uvicorn.Config(app, host="0.0.0.0", port=port, log_level="info")
+        server = uvicorn.Server(config)
+        
+        logger.info(f"Starting standalone web server on port {port}")
+        await server.serve()
+    
+    # Run the standalone server
+    try:
+        asyncio.run(run_standalone_server())
+    except KeyboardInterrupt:
+        logger.info("Web server shut down by user.")
