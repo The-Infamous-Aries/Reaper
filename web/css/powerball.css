@@ -508,20 +508,20 @@
 .pb-payout-table {
     width: 100%;
     border-collapse: collapse;
-    font-size: 0.7rem;
+    font-size: 0.68rem;
 }
 .pb-payout-table th {
     color: var(--text-secondary);
     font-weight: 600;
-    padding: 4px 6px;
+    padding: 4px 5px;
     text-align: left;
     border-bottom: 1px solid rgba(255,215,0,0.15);
     font-family: 'Orbitron', sans-serif;
-    font-size: 0.6rem;
+    font-size: 0.58rem;
     letter-spacing: 0.5px;
 }
 .pb-payout-table td {
-    padding: 5px 6px;
+    padding: 4px 5px;
     color: var(--text-secondary);
     border-bottom: 1px solid rgba(255,255,255,0.04);
 }
@@ -532,17 +532,35 @@
 .pb-payout-table .tier-2 td { color: #3498db; }
 .pb-payout-table .tier-3em td { color: #2ecc71; }
 .pb-payout-table .tier-3 td { color: var(--text-secondary); }
-.pb-payout-xp { color: var(--gold-primary) !important; font-weight: 600; }
+.pb-payout-xp { font-weight: 600; }
 
 /* ── Last draw result ────────────────────────────────────────────────────── */
 .pb-last-draw {
     font-size: 0.72rem;
 }
+.pb-last-draw-date {
+    font-size: 0.62rem;
+    color: var(--text-secondary);
+    font-family: 'Orbitron', sans-serif;
+    margin-bottom: 8px;
+}
+.pb-last-draw-pot {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(255,215,0,0.06);
+    border: 1px solid rgba(255,215,0,0.2);
+    border-radius: 6px;
+    padding: 5px 10px;
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+}
 .pb-last-draw-pets {
     display: flex;
     gap: 4px;
     flex-wrap: wrap;
-    margin: 8px 0;
+    margin-bottom: 6px;
 }
 .pb-last-draw-pet {
     display: flex;
@@ -550,6 +568,11 @@
     align-items: center;
     gap: 2px;
     width: 44px;
+}
+.pb-last-draw-pos {
+    font-size: 0.45rem;
+    color: var(--gold-secondary);
+    font-family: 'Orbitron', sans-serif;
 }
 .pb-last-draw-pet img {
     width: 28px;
@@ -560,7 +583,7 @@
     background: rgba(0,0,0,0.3);
     padding: 2px;
 }
-.pb-last-draw-pet span {
+.pb-last-draw-pet span:last-child {
     font-size: 0.45rem;
     color: var(--text-secondary);
     text-align: center;
@@ -571,30 +594,50 @@
     gap: 6px;
     font-size: 0.68rem;
     color: #ffa500;
-    margin-bottom: 6px;
+    margin-bottom: 8px;
 }
 .pb-last-draw-em img {
     width: 22px;
     height: 22px;
     object-fit: contain;
 }
-.pb-no-winners {
-    font-size: 0.68rem;
-    color: var(--text-secondary);
-    font-style: italic;
-    margin-top: 4px;
-}
-.pb-winner-chip {
-    display: inline-block;
-    background: rgba(255,215,0,0.1);
-    border: 1px solid rgba(255,215,0,0.3);
-    border-radius: 5px;
-    padding: 2px 8px;
+.pb-last-draw-winners-label {
     font-size: 0.65rem;
     color: var(--gold-secondary);
-    margin: 2px;
+    font-weight: 600;
+    margin-bottom: 4px;
 }
-.pb-winner-chip.mega { background: rgba(255,215,0,0.2); border-color: var(--gold-primary); color: var(--gold-primary); font-weight: 700; }
+.pb-last-draw-winners {
+    margin-top: 4px;
+}
+.pb-winner-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 4px 8px;
+    border-radius: 5px;
+    font-size: 0.67rem;
+    margin-bottom: 3px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.06);
+    color: var(--text-secondary);
+}
+.pb-winner-row.mega    { background: rgba(255,215,0,0.12); border-color: rgba(255,215,0,0.4); color: var(--gold-primary); font-weight: 700; }
+.pb-winner-row.tier1   { background: rgba(243,156,18,0.1);  border-color: rgba(243,156,18,0.3); color: #f39c12; }
+.pb-winner-row.tier2em { background: rgba(155,89,182,0.1);  border-color: rgba(155,89,182,0.3); color: #9b59b6; }
+.pb-winner-row.tier2   { background: rgba(52,152,219,0.1);  border-color: rgba(52,152,219,0.3); color: #3498db; }
+.pb-winner-row.tier3em { background: rgba(46,204,113,0.1);  border-color: rgba(46,204,113,0.3); color: #2ecc71; }
+.pb-winner-row.tier3   { background: rgba(255,255,255,0.03); }
+.pb-winner-payout {
+    font-weight: 700;
+    color: inherit;
+}
+.pb-no-winners {
+    font-size: 0.67rem;
+    color: var(--text-secondary);
+    font-style: italic;
+    padding: 4px 0;
+}
 
 /* ── Draw animation overlay ──────────────────────────────────────────────── */
 .pb-draw-overlay {
@@ -697,4 +740,10 @@
     .pb-side-col { width: 100%; flex: none; }
     .pb-jackpot-amount { font-size: 1.6rem; }
     .pb-pet-grid { max-height: 200px; }
+}
+
+/* ── Rollover multiplier animation ──────────────────────────────────────────── */
+@keyframes pbRolloverGlow {
+    0%,100% { color: #27ae60; text-shadow: 0 0 5px rgba(39,174,96,0.3); }
+    50%      { color: #2ecc71; text-shadow: 0 0 10px rgba(39,174,96,0.6); }
 }

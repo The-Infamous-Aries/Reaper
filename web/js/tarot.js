@@ -17,7 +17,11 @@ class TarotReading {
     }
 
     async init() {
-        // Fetch bot info to get API availability
+        // Set up event listeners immediately so clicks are never missed
+        this.setRandomSkull();
+        this.setupEventListeners();
+
+        // Fetch bot info and tarot data in the background
         try {
             const res = await fetch('/api/bot-info');
             if (res.ok) {
@@ -29,8 +33,6 @@ class TarotReading {
         } catch (_) {}
 
         await this.loadTarotData();
-        this.setRandomSkull();
-        this.setupEventListeners();
     }
 
     setRandomSkull() {
@@ -57,10 +59,16 @@ class TarotReading {
     }
 
     setupEventListeners() {
-        document.querySelectorAll('.thought-bubble').forEach(bubble => {
-            bubble.addEventListener('click', () => {
+        const bubbles = document.querySelectorAll('.thought-bubble');
+        if (!bubbles.length) {
+            console.warn('[TarotReading] No .thought-bubble elements found in DOM');
+        }
+        bubbles.forEach(bubble => {
+            bubble.addEventListener('click', (e) => {
+                e.stopPropagation();
                 if (this.isDealing) return;
                 const spread = bubble.dataset.spread;
+                if (!spread) return;
                 document.querySelectorAll('.thought-bubble').forEach(b => b.classList.remove('selected'));
                 bubble.classList.add('selected');
                 this.startReading(spread);
@@ -98,6 +106,21 @@ class TarotReading {
         document.getElementById('reading-results').classList.add('d-none');
 
         this.showDealerMessage(this.dealerMessages.start);
+
+        // If tarot data hasn't loaded yet, wait up to 5 seconds
+        if (!this.tarotData || Object.keys(this.tarotData).length === 0) {
+            this.showDealerMessage('Loading the cards from the cosmos...');
+            await this.loadTarotData();
+        }
+
+        if (!this.tarotData || Object.keys(this.tarotData).length === 0) {
+            document.getElementById('card-table').classList.add('d-none');
+            document.getElementById('reading-selection').classList.remove('d-none');
+            this.showDealerMessage('The cards are unavailable. Please try again.');
+            this.isDealing = false;
+            return;
+        }
+
         await this.delay(1500);
         await this.dealCards();
     }
@@ -219,41 +242,29 @@ class TarotReading {
     }
 
     async generateAISummary() {
-        if (!this.groqApiAvailable || !this.groqApiKey) {
-            return this.generateBasicSummary();
-        }
-
         try {
-            const positions = this.getPositionsForSpread(this.currentSpread);
-            const cardInfo = this.cards.map((card, index) => ({
+            const cardPayload = this.cards.map(card => ({
                 name: card.name,
-                position: positions[index],
-                meaning: card.meaning
+                position: card.position,
+                meaning: card.meaning,
+                isReversed: card.isReversed,
+                imageKey: card.imageKey
             }));
 
-            let prompt = `You are a wise, slightly sarcastic tarot reader. Provide a mystical reading for this ${this.currentSpread} spread:\n\n`;
-            cardInfo.forEach(card => {
-                prompt += `**${card.position}**: ${card.name} — ${card.meaning}\n`;
-            });
-            prompt += '\nProvide an insightful interpretation in under 250 words. Be mystical but direct.';
-
-            const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+            const response = await fetch('/api/tarot/reading', {
                 method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${this.groqApiKey}`,
-                    'Content-Type': 'application/json',
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    model: 'llama-3.1-8b-instant',
-                    messages: [{ role: 'user', content: prompt }],
-                    temperature: 0.8,
-                    max_tokens: 400
+                    spread: this.currentSpread,
+                    cards: cardPayload
                 })
             });
 
             if (response.ok) {
                 const data = await response.json();
-                return data.choices[0].message.content.trim();
+                if (data.summary) return data.summary;
+            } else {
+                console.error('Tarot API error:', response.status);
             }
         } catch (error) {
             console.error('AI summary error:', error);
@@ -331,17 +342,24 @@ class TarotReading {
     }
 }
 
-// Initialize when the dashboard loads this page
-document.addEventListener('dashboardPageLoaded', (event) => {
+// Initialize when the dashboard loads this page.
+// Use a named handler so we can remove any previously registered copy before
+// adding a new one — prevents stacking duplicate listeners across page visits.
+function _tarotPageLoadedHandler(event) {
     if (event.detail && event.detail.page === 'tarot.html') {
+        // Destroy any previous instance so its state doesn't bleed in
         if (window.tarotInstance) {
             window.tarotInstance = null;
         }
         window.tarotInstance = new TarotReading();
     }
-});
+}
 
-// Handle direct page load
+// Remove any stale listener from a previous script load, then re-register
+document.removeEventListener('dashboardPageLoaded', _tarotPageLoadedHandler);
+document.addEventListener('dashboardPageLoaded', _tarotPageLoadedHandler);
+
+// Handle direct page load (no dashboard wrapper)
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
         if (document.getElementById('reading-selection')) {

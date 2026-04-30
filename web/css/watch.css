@@ -385,6 +385,32 @@
             font-weight: 700;
         }
 
+/* ── Alliance totals row ─────────────────────────────────────────────────────── */
+.watch-totals-row {
+    background: linear-gradient(90deg, rgba(255,215,0,0.12) 0%, rgba(255,215,0,0.04) 100%) !important;
+    border-top: 2px solid rgba(255, 215, 0, 0.5);
+    border-bottom: 2px solid rgba(255, 215, 0, 0.5);
+}
+.watch-totals-row td {
+    font-weight: 700;
+}
+.watch-totals-label {
+    display: flex !important;
+    flex-direction: column;
+    gap: 0.15rem;
+}
+.watch-totals-badge {
+    color: var(--gold-primary);
+    font-size: 0.95rem;
+    font-weight: 800;
+    letter-spacing: 0.03em;
+}
+.watch-totals-sub {
+    color: var(--text-secondary);
+    font-size: 0.75rem;
+    font-weight: 400;
+}
+
 /* ── Expand / collapse ───────────────────────────────────────────────────────── */
 .watch-nation-row {
     transition: background 0.15s ease;
@@ -558,4 +584,153 @@
     color: var(--gold-primary);
     font-weight: 700;
     font-size: 0.88rem;
+}
+
+        /* ── Mode toggle (Alliance / All Nations) ─────────────────────────── */
+        .watch-topline-right {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+        }
+        .watch-mode-toggle {
+            display: inline-flex;
+            border-radius: 999px;
+            border: 1px solid rgba(255, 215, 0, 0.28);
+            overflow: hidden;
+            background: linear-gradient(135deg, rgba(34, 27, 9, 0.96), rgba(11, 11, 11, 0.92));
+        }
+        .watch-mode-btn {
+            padding: 0.45rem 1rem;
+            background: transparent;
+            border: none;
+            color: var(--gold-secondary);
+            font-size: 0.82rem;
+            font-weight: 600;
+            letter-spacing: 0.04em;
+            cursor: pointer;
+            transition: background 0.15s, color 0.15s;
+            white-space: nowrap;
+        }
+        .watch-mode-btn:hover {
+            background: rgba(255, 215, 0, 0.1);
+            color: var(--gold-primary);
+        }
+        .watch-mode-btn.is-active {
+            background: linear-gradient(135deg, rgba(184, 134, 11, 0.55), rgba(255, 215, 0, 0.25));
+            color: var(--gold-primary);
+        }
+
+/* ── Alliance War Summary Panel ──────────────────────────────────────────────── */
+#watch-alliance-panel {
+    animation: wa-fadein 0.2s ease;
+}
+@keyframes wa-fadein {
+    from { opacity: 0; transform: translateY(6px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+.wa-panel {
+    background: rgba(14, 11, 5, 0.92);
+    border: 1px solid rgba(255, 215, 0, 0.25);
+    border-radius: 0.75rem;
+    overflow: hidden;
+}
+.wa-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    padding: 1rem 1.25rem 0.75rem;
+    border-bottom: 1px solid rgba(255, 215, 0, 0.2);
+    background: linear-gradient(90deg, rgba(255,215,0,0.08) 0%, transparent 100%);
+}
+.wa-title {
+    color: var(--gold-primary);
+    font-size: 1.05rem;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+}
+.wa-subtitle {
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+}
+.wa-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 0;
+}
+.wa-section {
+    padding: 1rem 1.25rem;
+    border-right: 1px solid rgba(255, 215, 0, 0.1);
+    border-bottom: 1px solid rgba(255, 215, 0, 0.1);
+}
+.wa-section:last-child {
+    border-right: none;
+}
+.wa-section-title {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    color: var(--gold-secondary);
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.4rem;
+    border-bottom: 1px solid rgba(255, 215, 0, 0.15);
+}
+.wa-section-icon {
+    width: 14px;
+    height: 14px;
+    object-fit: contain;
+    opacity: 0.8;
+}
+.wa-section-emoji {
+    font-size: 0.9rem;
+    line-height: 1;
+}
+.wa-section-body {
+    display: grid;
+    gap: 0.35rem;
+}
+.wa-stat {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    grid-template-rows: auto auto;
+    align-items: baseline;
+    gap: 0 0.5rem;
+}
+.wa-stat-label {
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+}
+.wa-stat-value {
+    font-size: 0.9rem;
+    font-weight: 700;
+    text-align: right;
+    white-space: nowrap;
+}
+.wa-stat-sub {
+    grid-column: 2;
+    color: var(--text-secondary);
+    font-size: 0.72rem;
+    text-align: right;
+    white-space: nowrap;
+}
+.wa-divider {
+    height: 1px;
+    background: rgba(255, 215, 0, 0.12);
+    margin: 0.3rem 0;
+    grid-column: 1 / -1;
+}
+.wa-res-icon {
+    width: 13px;
+    height: 13px;
+    object-fit: contain;
+    vertical-align: middle;
 }

@@ -5,6 +5,7 @@ let watchFetchToken = 0;
 let watchFetchTimer = null;
 let currentUnitsMetric = "units_net";
 let expandedNationId = null;
+let watchViewMode = "alliance"; // "alliance" | "nations"
 
 const UNITS_METRIC_LABELS = {
     units_net: "All Units", soldiers_lost: "Soldiers", tanks_lost: "Tanks",
@@ -179,7 +180,7 @@ function getResolvedSortKey(sortKey) {
     return sortKey;
 }
 
-// Sort only the top-level nation rows (not expanded sub-rows)
+// Sort only the top-level nation rows (not expanded sub-rows, not totals row)
 function sortRows(sortKey, direction) {
     if (!sortKey) return;
     const resolvedSortKey = getResolvedSortKey(sortKey);
@@ -191,6 +192,7 @@ function sortRows(sortKey, direction) {
     const children = Array.from(tbody.children);
     while (i < children.length) {
         const row = children[i];
+        if (row.dataset.totalsRow === "true") { i++; continue; } // skip totals row
         if (row.dataset.nationId) {
             const group = [row];
             i++;
@@ -222,12 +224,13 @@ function sortRows(sortKey, direction) {
         return direction === "asc" ? aV - bV : bV - aV;
     });
 
+    // Re-append sorted groups (totals row stays at top via DOM order)
     groups.forEach(group => group.forEach(row => tbody.appendChild(row)));
 }
 
 // ── Cell update helpers ───────────────────────────────────────────────────────
 function updateUnitsCells() {
-    document.querySelectorAll("#war-stats-body tr[data-nation-id]").forEach((row) => {
+    document.querySelectorAll("#war-stats-body tr[data-nation-id], #war-stats-body tr[data-totals-row='true']").forEach((row) => {
         const metricCell = row.querySelector("td[data-key='units_metric']");
         if (!metricCell) return;
         if (currentUnitsMetric === "units_net") {
@@ -251,7 +254,7 @@ function updateUnitsCells() {
     });
 }
 function updateCostCells() {
-    document.querySelectorAll("#war-stats-body tr[data-nation-id]").forEach((row) => {
+    document.querySelectorAll("#war-stats-body tr[data-nation-id], #war-stats-body tr[data-totals-row='true']").forEach((row) => {
         const metricCell = row.querySelector("td[data-key='cost_metric']");
         if (!metricCell) return;
         const grossCell = row.querySelector("td[data-key='gross_cost']");
@@ -262,7 +265,7 @@ function updateCostCells() {
     });
 }
 function updateConsumptionCells() {
-    document.querySelectorAll("#war-stats-body tr[data-nation-id]").forEach((row) => {
+    document.querySelectorAll("#war-stats-body tr[data-nation-id], #war-stats-body tr[data-totals-row='true']").forEach((row) => {
         const metricCell = row.querySelector("td[data-key='consumption_metric']");
         if (!metricCell) return;
         const gasUsedCell = row.querySelector("td[data-key='gas_used']");
@@ -284,7 +287,7 @@ function updateConsumptionCells() {
     });
 }
 function updateDestructionCells() {
-    document.querySelectorAll("#war-stats-body tr[data-nation-id]").forEach((row) => {
+    document.querySelectorAll("#war-stats-body tr[data-nation-id], #war-stats-body tr[data-totals-row='true']").forEach((row) => {
         const metricCell = row.querySelector("td[data-key='destruction_metric']");
         if (!metricCell) return;
         const infraLevelsCell = row.querySelector("td[data-key='infra_levels_lost']");
@@ -304,7 +307,7 @@ function updateDestructionCells() {
     });
 }
 function updateWarsCells() {
-    document.querySelectorAll("#war-stats-body tr[data-nation-id]").forEach((row) => {
+    document.querySelectorAll("#war-stats-body tr[data-nation-id], #war-stats-body tr[data-totals-row='true']").forEach((row) => {
         const metricCell = row.querySelector("td[data-key='wars_metric']");
         if (!metricCell) return;
         const offCell = row.querySelector("td[data-key='offense_wars_count']");
@@ -318,7 +321,7 @@ function updateWarsCells() {
     });
 }
 function updateGainsCells() {
-    document.querySelectorAll("#war-stats-body tr[data-nation-id]").forEach((row) => {
+    document.querySelectorAll("#war-stats-body tr[data-nation-id], #war-stats-body tr[data-totals-row='true']").forEach((row) => {
         const metricCell = row.querySelector("td[data-key='gains_metric']");
         if (!metricCell) return;
         let sortVal = 0;
@@ -473,6 +476,221 @@ function buildConsumptionDisplayOpp(gasUsed, gasValue, munUsed, munValue) {
         <span class="watch-units-cell-main watch-val--gain"><img class="watch-sort-icon" src="/static/Emojis/Resources/munitions.png" alt=""> ${formatNumber(munUsed)}</span>
         <span class="watch-units-cell-sub watch-val--gain">${formatCurrency(munValue)}</span>
     </div>`;
+}
+
+// ── Alliance totals panel (full breakdown, shown instead of table) ────────────
+function buildAllianceTotalsBreakdown(t) {
+    const panel = document.getElementById("watch-alliance-panel");
+    const tableCard = document.getElementById("watch-table-card");
+    if (tableCard) tableCard.style.display = "none";
+    if (!panel) return document.createDocumentFragment();
+
+    const off      = Number(t.offense_wars_count) || 0;
+    const def      = Number(t.defense_wars_count) || 0;
+    const wins     = Number(t.wins_count)   || 0;
+    const losses   = Number(t.losses_count) || 0;
+    const peaced   = Number(t.peace_count)  || 0;
+    const expired  = Number(t.draws_count)  || 0;
+    const totalWars = off + def;
+    const resolved  = wins + losses + peaced + expired;
+    const active    = Math.max(0, totalWars - resolved);
+
+    // Loot breakdown
+    const lootCash     = Number((t.loot_breakdown || {}).cash) || 0;
+    const lootRes      = (t.loot_breakdown || {}).resources || {};
+    const lootResTotal = Object.values(lootRes).reduce((s, r) => s + (Number(r.value) || 0), 0);
+    const lootTotal    = lootCash + lootResTotal;
+
+    const RESOURCES = ["coal","oil","uranium","iron","bauxite","lead","gasoline","munitions","steel","aluminum","food"];
+    const RES_ICONS = {
+        coal:"/static/Emojis/Resources/coal.png", oil:"/static/Emojis/Resources/oil.png",
+        uranium:"/static/Emojis/Resources/uranium.png", iron:"/static/Emojis/Resources/iron.png",
+        bauxite:"/static/Emojis/Resources/bauxite.png", lead:"/static/Emojis/Resources/lead.png",
+        gasoline:"/static/Emojis/Resources/gasoline.png", munitions:"/static/Emojis/Resources/munitions.png",
+        steel:"/static/Emojis/Resources/steel.png", aluminum:"/static/Emojis/Resources/aluminum.png",
+        food:"/static/Emojis/Resources/food.png",
+    };
+
+    function stat(label, value, cls = "", sub = "") {
+        return `<div class="wa-stat">
+            <span class="wa-stat-label">${label}</span>
+            <span class="wa-stat-value ${cls}">${value}</span>
+            ${sub ? `<span class="wa-stat-sub">${sub}</span>` : ""}
+        </div>`;
+    }
+    function section(title, icon, content) {
+        const iconHtml = icon
+            ? (icon.startsWith("/") ? `<img src="${icon}" class="wa-section-icon" alt="">` : `<span class="wa-section-emoji">${icon}</span>`)
+            : "";
+        return `<div class="wa-section">
+            <div class="wa-section-title">${iconHtml}${title}</div>
+            <div class="wa-section-body">${content}</div>
+        </div>`;
+    }
+    function divider() { return `<div class="wa-divider"></div>`; }
+
+    // ── Wars ──────────────────────────────────────────────────────────────────
+    const warsContent = `
+        ${stat("Total Wars",   formatNumber(totalWars))}
+        ${stat("⚔️ Offensive", formatNumber(off),    "watch-val--loss")}
+        ${stat("🛡️ Defensive", formatNumber(def),    "watch-val--loss")}
+        ${divider()}
+        ${stat("🏆 Wins",      formatNumber(wins),   "watch-val--gain")}
+        ${stat("💀 Losses",    formatNumber(losses), "watch-val--loss")}
+        ${stat("🕊️ Peaced",    formatNumber(peaced))}
+        ${stat("⏳ Expired",   formatNumber(expired))}
+        ${active > 0 ? stat("🔥 Active Now", formatNumber(active), "watch-val--loss") : ""}
+    `;
+
+    // ── Costs & Damage ────────────────────────────────────────────────────────
+    // Gross cost = units(buy) + consumption(buy) + infra + improvements + loot_lost + money_destroyed
+    // Net cost   = gross - loot_received - resource_loot - salvage
+    // Note: consumption in gross uses BUY price; the Consumption section shows SELL price
+    const net    = Number(t.net_damage) || 0;
+    const netCls = net <= 0 ? "watch-val--gain" : "watch-val--loss";
+    const netSub = net <= 0 ? "Negative = we profited" : "Positive = we spent more";
+    const costsContent = `
+        ${stat("Gross Cost",   formatCurrency(t.gross_cost),  "watch-val--loss")}
+        ${stat("Net Cost",     formatCurrency(net),           netCls, netSub)}
+        ${stat("Damage Dealt", formatCurrency(t.damages),     "watch-val--gain")}
+        ${stat("Total Gains",  formatCurrency(t.total_gains), "watch-val--gain")}
+    `;
+
+    // ── Units lost ────────────────────────────────────────────────────────────
+    const M = "/static/Emojis/Military/";
+    const unitsContent = `
+        ${stat(`<img src="${M}soldier.png" class="wa-res-icon" alt=""> Soldiers`,  formatNumber(t.soldiers_lost),  "watch-val--loss", formatCurrency(t.soldiers_lost_cost))}
+        ${stat(`<img src="${M}tank.png"    class="wa-res-icon" alt=""> Tanks`,     formatNumber(t.tanks_lost),     "watch-val--loss", formatCurrency(t.tanks_lost_cost))}
+        ${stat(`<img src="${M}jet.png"     class="wa-res-icon" alt=""> Aircraft`,  formatNumber(t.aircraft_lost),  "watch-val--loss", formatCurrency(t.aircraft_lost_cost))}
+        ${stat(`<img src="${M}ship.png"    class="wa-res-icon" alt=""> Ships`,     formatNumber(t.ships_lost),     "watch-val--loss", formatCurrency(t.ships_lost_cost))}
+        ${stat(`<img src="${M}missile.png" class="wa-res-icon" alt=""> Missiles`,  formatNumber(t.missiles_lost),  "watch-val--loss", formatCurrency(t.missiles_lost_cost))}
+        ${stat(`<img src="${M}bomb.png"    class="wa-res-icon" alt=""> Nukes`,     formatNumber(t.nukes_lost),     "watch-val--loss", formatCurrency(t.nukes_lost_cost))}
+        ${divider()}
+        ${stat("Total Units",  formatNumber(t.units_net),  "watch-val--loss", formatCurrency(t.units_total_cost))}
+    `;
+
+    // ── Consumption ───────────────────────────────────────────────────────────
+    // Note: gross_cost uses BUY price for consumption; we show sell price here as market value
+    const consumptionContent = `
+        ${stat(`<img src="${RES_ICONS.gasoline}"  class="wa-res-icon" alt=""> Gasoline Used`,
+               formatNumber(t.gas_used), "watch-val--loss", formatCurrency(t.gasoline_sell_value))}
+        ${stat(`<img src="${RES_ICONS.munitions}" class="wa-res-icon" alt=""> Munitions Used`,
+               formatNumber(t.mun_used), "watch-val--loss", formatCurrency(t.munitions_sell_value))}
+        ${divider()}
+        ${stat("Total (sell value)", formatCurrency(t.consumption), "watch-val--loss")}
+    `;
+
+    // ── Destruction ───────────────────────────────────────────────────────────
+    const destructionContent = `
+        ${stat("🏗️ Infra Levels Lost",      formatNumber(t.infra_levels_lost),  "watch-val--loss", formatCurrency(t.infra_net))}
+        ${stat("🔧 Improvements Destroyed", formatNumber(t.improvements_count), "watch-val--loss", formatCurrency(t.improvements))}
+        ${divider()}
+        ${stat("Total Destruction", formatCurrency((Number(t.infra_net)||0) + (Number(t.improvements)||0)), "watch-val--loss")}
+    `;
+
+    // ── Loot gained ───────────────────────────────────────────────────────────
+    const lootResRows = RESOURCES.map(res => {
+        const rd = lootRes[res];
+        if (!rd || (!rd.amount && !rd.value)) return "";
+        return stat(
+            `<img src="${RES_ICONS[res]}" class="wa-res-icon" alt="${res}"> ${res.charAt(0).toUpperCase()+res.slice(1)}`,
+            formatNumber(rd.amount),
+            "watch-val--gain",
+            formatCurrency(rd.value)
+        );
+    }).join("");
+    const lootContent = `
+        ${stat("💰 Cash Looted", formatCurrency(lootCash), "watch-val--gain")}
+        ${lootResRows}
+        ${divider()}
+        ${stat("Total Loot Value", formatCurrency(lootTotal), "watch-val--gain")}
+    `;
+
+    panel.innerHTML = `
+        <div class="wa-panel">
+            <div class="wa-header">
+                <span class="wa-title">🌙 Nights Watch — Alliance War Summary</span>
+                <span class="wa-subtitle">${formatDateLabel(watchRangeState.selectedStartDate)} – ${formatDateLabel(watchRangeState.selectedEndDate)}</span>
+            </div>
+            <div class="wa-grid">
+                ${section("Wars",           "⚔️",  warsContent)}
+                ${section("Costs & Damage", "/static/Emojis/Watcher/cost.png", costsContent)}
+                ${section("Units Lost",     "/static/Emojis/Watcher/cost.png", unitsContent)}
+                ${section("Consumption",    "/static/Emojis/Watcher/consumption.png", consumptionContent)}
+                ${section("Destruction",    "/static/Emojis/Watcher/infra.png", destructionContent)}
+                ${section("Loot Gained",    "/static/Emojis/Watcher/loot.png", lootContent)}
+            </div>
+        </div>
+    `;
+    panel.style.display = "block";
+    return document.createDocumentFragment();
+}
+
+function hideAlliancePanel() {
+    const panel = document.getElementById("watch-alliance-panel");
+    const tableCard = document.getElementById("watch-table-card");
+    if (panel) panel.style.display = "none";
+    if (tableCard) tableCard.style.display = "";
+}
+
+// ── Alliance totals row ───────────────────────────────────────────────────────
+function buildTotalsRow(totals) {
+    const row = document.createElement("tr");
+    row.dataset.totalsRow = "true";
+    row.classList.add("watch-totals-row");
+
+    const off = Number(totals.offense_wars_count) || 0;
+    const def = Number(totals.defense_wars_count) || 0;
+    const nationCount = Number(totals.nation_count) || 0;
+
+    row.innerHTML = [
+        `<td data-key="name" data-sort-value="__totals__" class="watch-totals-label">
+            <span class="watch-totals-badge">🌙 Nights Watch</span>
+            <span class="watch-totals-sub">${nationCount} nation${nationCount !== 1 ? "s" : ""}</span>
+        </td>`,
+        `<td data-key="cost_metric" data-sort-value="${totals.gross_cost || 0}">${buildCostDisplay(totals.gross_cost, totals.net_damage)}</td>`,
+        `<td data-key="gains_metric" data-sort-value="${totals.total_gains || 0}"
+            data-loot-breakdown="${(JSON.stringify(totals.loot_breakdown || {})).replace(/"/g, "&quot;")}">
+            <span class="watch-val--gain" style="cursor:default">${formatCurrency(totals.total_gains)}</span>
+        </td>`,
+        `<td data-key="units_metric" data-sort-value="${totals.units_total_cost || 0}">${buildAllUnitsDisplay(totals.units_net, totals.units_total_cost)}</td>`,
+        `<td data-key="consumption_metric" data-sort-value="${totals.consumption || 0}">${buildConsumptionDisplay(totals.gas_used, totals.gasoline_sell_value, totals.mun_used, totals.munitions_sell_value)}</td>`,
+        `<td data-key="destruction_metric" data-sort-value="${totals.infra_net || 0}">${buildDestructionDisplay(totals.infra_levels_lost, totals.infra_net, totals.improvements_count, totals.improvements)}</td>`,
+        `<td data-key="wars_metric" data-sort-value="${off + def}">${buildWarsDisplay(off, def)}</td>`,
+        `<td data-key="damages" data-sort-value="${totals.damages || 0}"><span class="watch-val--gain">${formatCurrency(totals.damages)}</span></td>`,
+        // Hidden cells for metric switching
+        `<td data-key="gross_cost"         data-sort-value="${totals.gross_cost||0}"          style="display:none">${formatCurrency(totals.gross_cost)}</td>`,
+        `<td data-key="net_damage"         data-sort-value="${totals.net_damage||0}"           style="display:none">${formatCurrency(totals.net_damage)}</td>`,
+        `<td data-key="total_gains"        data-sort-value="${totals.total_gains||0}"          style="display:none">${formatCurrency(totals.total_gains)}</td>`,
+        `<td data-key="gains_cash"         data-sort-value="${(totals.loot_breakdown||{}).cash||0}" style="display:none"></td>`,
+        `<td data-key="units_net"          data-sort-value="${totals.units_net||0}"            style="display:none">${formatNumber(totals.units_net)}</td>`,
+        `<td data-key="units_total_cost"   data-sort-value="${totals.units_total_cost||0}"     style="display:none">${formatCurrency(totals.units_total_cost)}</td>`,
+        `<td data-key="soldiers_lost"      data-sort-value="${totals.soldiers_lost||0}"        style="display:none">${formatNumber(totals.soldiers_lost)}</td>`,
+        `<td data-key="soldiers_lost_cost" data-sort-value="${totals.soldiers_lost_cost||0}"   style="display:none">${formatCurrency(totals.soldiers_lost_cost)}</td>`,
+        `<td data-key="tanks_lost"         data-sort-value="${totals.tanks_lost||0}"           style="display:none">${formatNumber(totals.tanks_lost)}</td>`,
+        `<td data-key="tanks_lost_cost"    data-sort-value="${totals.tanks_lost_cost||0}"      style="display:none">${formatCurrency(totals.tanks_lost_cost)}</td>`,
+        `<td data-key="aircraft_lost"      data-sort-value="${totals.aircraft_lost||0}"        style="display:none">${formatNumber(totals.aircraft_lost)}</td>`,
+        `<td data-key="aircraft_lost_cost" data-sort-value="${totals.aircraft_lost_cost||0}"   style="display:none">${formatCurrency(totals.aircraft_lost_cost)}</td>`,
+        `<td data-key="ships_lost"         data-sort-value="${totals.ships_lost||0}"           style="display:none">${formatNumber(totals.ships_lost)}</td>`,
+        `<td data-key="ships_lost_cost"    data-sort-value="${totals.ships_lost_cost||0}"      style="display:none">${formatCurrency(totals.ships_lost_cost)}</td>`,
+        `<td data-key="missiles_lost"      data-sort-value="${totals.missiles_lost||0}"        style="display:none">${formatNumber(totals.missiles_lost)}</td>`,
+        `<td data-key="missiles_lost_cost" data-sort-value="${totals.missiles_lost_cost||0}"   style="display:none">${formatCurrency(totals.missiles_lost_cost)}</td>`,
+        `<td data-key="nukes_lost"         data-sort-value="${totals.nukes_lost||0}"           style="display:none">${formatNumber(totals.nukes_lost)}</td>`,
+        `<td data-key="nukes_lost_cost"    data-sort-value="${totals.nukes_lost_cost||0}"      style="display:none">${formatCurrency(totals.nukes_lost_cost)}</td>`,
+        `<td data-key="infra_levels_lost"  data-sort-value="${totals.infra_levels_lost||0}"    style="display:none">${formatNumber(totals.infra_levels_lost)}</td>`,
+        `<td data-key="infra_net"          data-sort-value="${totals.infra_net||0}"            style="display:none">${formatCurrency(totals.infra_net)}</td>`,
+        `<td data-key="improvements"       data-sort-value="${totals.improvements||0}"         style="display:none">${formatCurrency(totals.improvements)}</td>`,
+        `<td data-key="consumption"        data-sort-value="${totals.consumption||0}"          style="display:none">${formatCurrency(totals.consumption)}</td>`,
+        `<td data-key="gas_used"           data-sort-value="${totals.gas_used||0}"             style="display:none">${formatNumber(totals.gas_used)}</td>`,
+        `<td data-key="mun_used"           data-sort-value="${totals.mun_used||0}"             style="display:none">${formatNumber(totals.mun_used)}</td>`,
+        `<td data-key="gasoline_sell_value" data-sort-value="${totals.gasoline_sell_value||0}" style="display:none">${formatCurrency(totals.gasoline_sell_value)}</td>`,
+        `<td data-key="munitions_sell_value" data-sort-value="${totals.munitions_sell_value||0}" style="display:none">${formatCurrency(totals.munitions_sell_value)}</td>`,
+        `<td data-key="improvements_count" data-sort-value="${totals.improvements_count||0}"  style="display:none">${formatNumber(totals.improvements_count)}</td>`,
+        `<td data-key="offense_wars_count" data-sort-value="${off}"                            style="display:none">${formatNumber(off)}</td>`,
+        `<td data-key="defense_wars_count" data-sort-value="${def}"                            style="display:none">${formatNumber(def)}</td>`,
+    ].join("");
+
+    return row;
 }
 
 // ── Expand / collapse ─────────────────────────────────────────────────────────
@@ -717,7 +935,8 @@ async function fetchData() {
         if (watchRangeState.selectedStartDate) params.set("start_date", watchRangeState.selectedStartDate);
         if (watchRangeState.selectedEndDate) params.set("end_date", watchRangeState.selectedEndDate);
 
-        const response = await fetch(`/api/watch/wars${params.toString() ? `?${params.toString()}` : ""}`);
+        const endpoint = watchViewMode === "nations" ? "/api/watch/wars/all-nations" : "/api/watch/wars";
+        const response = await fetch(`${endpoint}${params.toString() ? `?${params.toString()}` : ""}`);
         const data = await response.json();
 
         if (requestToken !== watchFetchToken) return;
@@ -733,11 +952,21 @@ async function fetchData() {
         else setStatus("");
 
         if (nationIds.length === 0) {
-            setStatus(data.error || "No Night Watch wars were found in the selected date range.");
+            hideAlliancePanel();
+            setStatus(data.error || (watchViewMode === "nations" ? "No wars were found in the selected date range." : "No Nights Watch wars were found in the selected date range."));
             updateSortUI(currentSortKey, currentSortDirection);
             return;
         }
 
+        // ── Alliance mode: show ONLY the detailed totals breakdown ────────────
+        if (watchViewMode === "alliance" && data.totals) {
+            tableBody.appendChild(buildAllianceTotalsBreakdown(data.totals));
+            updateSortUI(null, null); // No sorting in alliance mode
+            return;
+        }
+
+        // ── Nations mode: show per-nation rows with expand/collapse ───────────
+        hideAlliancePanel();
         for (const nationId of nationIds) {
             tableBody.appendChild(buildNationRow(nationId, nations[nationId] || {}, linkedNationId));
         }
@@ -756,7 +985,7 @@ async function fetchData() {
         }
     } catch (error) {
         console.error("Error fetching war data:", error);
-        setStatus("Night Watch data could not be loaded right now.", true);
+        setStatus("Nights Watch war data could not be loaded right now.", true);
     }
 }
 
@@ -904,6 +1133,26 @@ function initializeWatchPage() {
     bindClick("watch-wars-direction", (e) => { e.stopPropagation(); applySort("wars_metric", currentSortKey === "wars_metric" && currentSortDirection === "asc" ? "desc" : "asc"); });
     bindSelect("watch-gains-select", () => { currentGainsMetric = document.getElementById("watch-gains-select").value; applySort("gains_metric", currentSortKey === "gains_metric" ? currentSortDirection : "desc"); });
     bindClick("watch-gains-direction", (e) => { e.stopPropagation(); applySort("gains_metric", currentSortKey === "gains_metric" && currentSortDirection === "asc" ? "desc" : "asc"); });
+
+    // ── Mode toggle (Alliance Wars / All Nations) ──────────────────────────
+    document.querySelectorAll(".watch-mode-btn").forEach((btn) => {
+        if (btn.dataset.watchInit === "true") return;
+        btn.dataset.watchInit = "true";
+        btn.addEventListener("click", () => {
+            const mode = btn.dataset.mode;
+            if (mode === watchViewMode) return;
+            watchViewMode = mode;
+            document.querySelectorAll(".watch-mode-btn").forEach(b => b.classList.toggle("is-active", b.dataset.mode === mode));
+            const titleEl = document.getElementById("watch-table-title");
+            if (titleEl) titleEl.textContent = mode === "nations" ? "All Nations Breakdown" : "Alliance Breakdown";
+            // Reset date range state so the new endpoint's bounds are applied fresh
+            watchRangeState.availableStartDate = null;
+            watchRangeState.availableEndDate = null;
+            watchRangeState.selectedStartDate = null;
+            watchRangeState.selectedEndDate = null;
+            fetchData();
+        });
+    });
 
     updateSortUI(currentSortKey, currentSortDirection);
     syncSliderUI();

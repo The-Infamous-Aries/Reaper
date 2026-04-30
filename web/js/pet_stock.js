@@ -276,36 +276,55 @@ function psRenderEvents() {
 
 function psOpenModal(token) {
     _psTradeToken = token;
-    _psTradeMode  = 'buy';
 
     const allEmojis = { ..._psMarket.type_emojis, ..._psMarket.element_emojis };
     const allLabels = { ...TYPE_LABELS, ...ELEM_LABELS };
     const price     = _psMarket.prices[token] ?? 0;
     const holding   = _psHoldings[token] ?? 0;
     const mult      = (_psMarket.multipliers && _psMarket.multipliers[token]) || 1;
+    const xp        = _psPetData ? (_psPetData.total_xp ?? _psPetData.experience ?? 0) : 0;
 
-    const multNote = mult > 1
-        ? `<span class="ps-mult-badge" style="margin-left:4px">${mult}x cost (off-affinity)</span>`
-        : '';
-
+    // Header
+    const icon = document.getElementById('ps-modal-icon');
+    icon.src = allEmojis[token] ?? '';
+    icon.alt = token;
     document.getElementById('ps-modal-title').textContent = `Trade ${allLabels[token] ?? token} Token`;
-    document.getElementById('ps-modal-info').innerHTML = `
-        <img src="${allEmojis[token] ?? ''}" alt="${token}">
-        <span>Market: <strong style="color:#ffd700">${fmtPrice(price)} XP</strong>${multNote}</span>
-        <span>Held: <strong style="color:#ffd700">${holding}</strong></span>
-        ${_psPetData ? `<span>Your XP: <strong style="color:#ffd700">${((_psPetData.total_xp ?? _psPetData.experience ?? 0)).toLocaleString()}</strong></span>` : ''}
+
+    // Stats bar
+    document.getElementById('ps-modal-stats').innerHTML = `
+        <div class="ps-stat">
+            <span class="ps-stat-label">Market Price</span>
+            <span class="ps-stat-value">${fmtPrice(price)} XP</span>
+        </div>
+        <div class="ps-stat">
+            <span class="ps-stat-label">You Hold</span>
+            <span class="ps-stat-value">${holding.toLocaleString()}</span>
+        </div>
+        <div class="ps-stat">
+            <span class="ps-stat-label">Your XP</span>
+            <span class="ps-stat-value">${xp.toLocaleString()}</span>
+        </div>
     `;
 
-    document.getElementById('ps-qty-input').value = 1;
+    // Affinity badge
+    const affEl = document.getElementById('ps-modal-affinity');
+    if (mult > 1) {
+        affEl.innerHTML = `<span class="ps-affinity-bad">⚠️ Off-affinity token — Buy costs ×${mult} &nbsp;|&nbsp; Sell pays ÷${mult}</span>`;
+    } else {
+        affEl.innerHTML = `<span class="ps-affinity-ok">✅ Affinity match — no penalty</span>`;
+    }
+
+    // Reset inputs & status
+    document.getElementById('ps-buy-qty').value  = 1;
+    document.getElementById('ps-sell-qty').value = 1;
     document.getElementById('ps-trade-status').textContent = '';
-    document.getElementById('ps-trade-status').className = 'ps-trade-status';
-    psModalTab('buy');
-    psUpdateCostPreview();
+    document.getElementById('ps-trade-status').className   = 'ps-trade-status';
+
+    psUpdatePreviews();
 
     document.getElementById('ps-trade-modal').style.display = 'block';
     document.getElementById('ps-modal-backdrop').onclick = psCloseModal;
     document.getElementById('ps-modal-close').onclick    = psCloseModal;
-    document.getElementById('ps-qty-input').oninput      = psUpdateCostPreview;
 }
 
 function psCloseModal() {
@@ -313,48 +332,85 @@ function psCloseModal() {
     _psTradeToken = null;
 }
 
-function psModalTab(mode) {
-    _psTradeMode = mode;
-    document.getElementById('ps-buy-tab').classList.toggle('active',  mode === 'buy');
-    document.getElementById('ps-sell-tab').classList.toggle('active', mode === 'sell');
-    psUpdateCostPreview();
-}
-
-function psAdjQty(delta) {
-    const inp = document.getElementById('ps-qty-input');
+function psAdjQty(side, delta) {
+    const inp = document.getElementById(side === 'buy' ? 'ps-buy-qty' : 'ps-sell-qty');
     inp.value = Math.max(1, (parseInt(inp.value) || 1) + delta);
-    psUpdateCostPreview();
+    psUpdatePreviews();
 }
 
-function psUpdateCostPreview() {
+function psUpdatePreviews() {
     if (!_psTradeToken || !_psMarket) return;
-    const qty   = Math.max(1, parseInt(document.getElementById('ps-qty-input').value) || 1);
     const price = _psMarket.prices[_psTradeToken] ?? 0;
-    const mult  = (_psTradeMode === 'buy' && _psMarket.multipliers)
-        ? (_psMarket.multipliers[_psTradeToken] || 1)
-        : 1;
-    const total = price * mult * qty;
-    const el    = document.getElementById('ps-cost-preview');
+    const mult  = (_psMarket.multipliers && _psMarket.multipliers[_psTradeToken]) || 1;
+    const xp    = _psPetData ? (_psPetData.total_xp ?? _psPetData.experience ?? 0) : 0;
+    const held  = _psHoldings[_psTradeToken] ?? 0;
 
-    if (_psTradeMode === 'buy') {
-        const xp = _psPetData?.total_xp ?? _psPetData?.experience ?? 0;
-        const canAfford = xp >= total;
-        const multStr = mult > 1 ? ` <span style="color:#f4a336">(${mult}x off-affinity)</span>` : '';
-        el.innerHTML = `Cost: <span class="ps-cost-xp">${fmtPrice(total)} XP</span>${multStr}` +
-            (canAfford ? '' : ` <span style="color:#f44336">(need ${fmtPrice(total - xp)} more)</span>`);
-    } else {
-        const held = _psHoldings[_psTradeToken] ?? 0;
-        const payout = price * qty;
-        const canSell = held >= qty;
-        el.innerHTML = `Payout: <span class="ps-cost-xp">${fmtPrice(payout)} XP</span>` +
-            (canSell ? ` (have ${held})` : ` <span style="color:#f44336">(only have ${held})</span>`);
-    }
+    // Buy preview
+    const buyQty  = Math.max(1, parseInt(document.getElementById('ps-buy-qty').value) || 1);
+    const buyCost = Math.round(price * mult * buyQty);
+    const canAfford = xp >= buyCost;
+    const buyMultStr = mult > 1 ? ` <span style="color:#f4a336">(×${mult} off-affinity)</span>` : '';
+    const buyShortfall = canAfford ? '' : ` <span style="color:#f44336">(need ${fmtPrice(buyCost - xp)} more)</span>`;
+    document.getElementById('ps-buy-preview').innerHTML =
+        `Cost: <span class="ps-cost-xp">${fmtPrice(buyCost)} XP</span>${buyMultStr}${buyShortfall}`;
+
+    // Sell preview
+    const sellQty    = Math.max(1, parseInt(document.getElementById('ps-sell-qty').value) || 1);
+    const sellPayout = Math.round(price * sellQty / mult);
+    const canSell    = held >= sellQty;
+    const sellMultStr = mult > 1 ? ` <span style="color:#f4a336">(÷${mult} off-affinity)</span>` : '';
+    const sellHeld = canSell
+        ? ` <span style="color:#888">(have ${held.toLocaleString()})</span>`
+        : ` <span style="color:#f44336">(only have ${held.toLocaleString()})</span>`;
+    document.getElementById('ps-sell-preview').innerHTML =
+        `Payout: <span class="ps-cost-xp">${fmtPrice(sellPayout)} XP</span>${sellMultStr}${sellHeld}`;
 }
 
-async function psConfirmTrade() {
+function _psHandleResult(d, verb, qty, mode) {
+    const status = document.getElementById('ps-trade-status');
+    if (!d.ok) {
+        status.textContent = `❌ ${d.error || 'Trade failed'}`;
+        status.className = 'ps-trade-status error';
+        return;
+    }
+
+    const xpWord = mode === 'buy'
+        ? `−${d.cost?.toLocaleString()}`
+        : `+${d.payout?.toLocaleString()}`;
+    const penaltyStr = (mode === 'sell' && d.mult > 1) ? ` (÷${d.mult} off-affinity)` : '';
+    let msg = `✅ ${verb} ×${qty} | XP: ${xpWord}${penaltyStr} | Holding: ${d.new_qty?.toLocaleString()}`;
+
+    if (d.level_change) {
+        const lc = d.level_change;
+        if (lc.new_level > lc.old_level) {
+            const gainStr = Object.entries(lc.gains || {}).filter(([,v])=>v>0).map(([k,v])=>`${k}+${v}`).join(' ');
+            msg += ` | 🎉 LEVEL UP! ${lc.old_level}→${lc.new_level}` + (gainStr ? ` (${gainStr})` : '');
+        } else if (lc.new_level < lc.old_level) {
+            const lossStr = Object.entries(lc.losses || {}).filter(([,v])=>v>0).map(([k,v])=>`${k}-${v}`).join(' ');
+            msg += ` | 📉 Level down: ${lc.old_level}→${lc.new_level}` + (lossStr ? ` (${lossStr})` : '');
+        }
+    }
+
+    status.textContent = msg;
+    status.className = 'ps-trade-status success';
+
+    _psHoldings[_psTradeToken] = d.new_qty;
+    if (_psPetData) _psPetData.total_xp = d.new_xp;
+
+    // Refresh stats bar XP + held
+    const xpEl = document.querySelector('#ps-modal-stats .ps-stat:nth-child(3) .ps-stat-value');
+    const heldEl = document.querySelector('#ps-modal-stats .ps-stat:nth-child(2) .ps-stat-value');
+    if (xpEl)   xpEl.textContent  = d.new_xp?.toLocaleString() ?? '';
+    if (heldEl) heldEl.textContent = d.new_qty?.toLocaleString() ?? '';
+
+    psRenderAll();
+    psUpdatePreviews();
+}
+
+async function psDoTrade(mode) {
     if (!_psTradeToken) return;
-    const qty = Math.max(1, parseInt(document.getElementById('ps-qty-input').value) || 1);
-    const btn = document.getElementById('ps-confirm-btn');
+    const qty = Math.max(1, parseInt(document.getElementById(mode === 'buy' ? 'ps-buy-qty' : 'ps-sell-qty').value) || 1);
+    const btn = document.getElementById(mode === 'buy' ? 'ps-buy-btn' : 'ps-sell-btn');
     const status = document.getElementById('ps-trade-status');
 
     btn.disabled = true;
@@ -362,52 +418,14 @@ async function psConfirmTrade() {
     status.className = 'ps-trade-status';
 
     try {
-        const endpoint = _psTradeMode === 'buy' ? '/api/pet-stock/buy' : '/api/pet-stock/sell';
+        const endpoint = mode === 'buy' ? '/api/pet-stock/buy' : '/api/pet-stock/sell';
         const r = await fetch(endpoint, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ token: _psTradeToken, quantity: qty }),
         });
-        const d = await r.json();
-
-        if (d.ok) {
-            const verb = _psTradeMode === 'buy' ? 'Bought' : 'Sold';
-            const xpWord = _psTradeMode === 'buy' ? `−${d.cost?.toLocaleString()}` : `+${d.payout?.toLocaleString()}`;
-            let msg = `✅ ${verb} ×${qty} | XP: ${xpWord} | Now holding: ${d.new_qty}`;
-
-            if (d.level_change) {
-                const lc = d.level_change;
-                const oldLvl = lc.old_level;
-                const newLvl = lc.new_level;
-                if (newLvl > oldLvl) {
-                    // Level up — show stat gains
-                    const gains = lc.ATT || lc.DEF || lc.INT || lc.DEX || lc.HAP || lc.ENE
-                        ? Object.entries({ ATT: lc.ATT, DEF: lc.DEF, INT: lc.INT, DEX: lc.DEX, HAP: lc.HAP, ENE: lc.ENE })
-                            .filter(([, v]) => v > 0)
-                            .map(([k, v]) => `${k}+${v}`)
-                            .join(' ')
-                        : '';
-                    msg += ` | 🎉 LEVEL UP! ${oldLvl}→${newLvl}` + (gains ? ` (${gains})` : '');
-                } else if (newLvl < oldLvl) {
-                    msg += ` | ⬇️ Level down: ${oldLvl}→${newLvl}`;
-                }
-            }
-
-            status.textContent = msg;
-            status.className = 'ps-trade-status success';
-
-            // Update local state
-            _psHoldings[_psTradeToken] = d.new_qty;
-            if (_psPetData) _psPetData.total_xp = d.new_xp;
-
-            // Re-render cards
-            psRenderAll();
-            psUpdateCostPreview();
-        } else {
-            status.textContent = `❌ ${d.error || 'Trade failed'}`;
-            status.className = 'ps-trade-status error';
-        }
-    } catch (e) {
+        _psHandleResult(await r.json(), mode === 'buy' ? 'Bought' : 'Sold', qty, mode);
+    } catch {
         status.textContent = '❌ Network error';
         status.className = 'ps-trade-status error';
     } finally {
@@ -415,10 +433,193 @@ async function psConfirmTrade() {
     }
 }
 
+async function psDoBulk(mode) {
+    if (!_psTradeToken) return;
+    const btn = document.getElementById(mode === 'buy' ? 'ps-buymax-btn' : 'ps-sellall-btn');
+    const status = document.getElementById('ps-trade-status');
+    const prevQty = _psHoldings[_psTradeToken] ?? 0;
+
+    btn.disabled = true;
+    status.textContent = 'Processing…';
+    status.className = 'ps-trade-status';
+
+    try {
+        const endpoint = mode === 'buy' ? '/api/pet-stock/buy-all' : '/api/pet-stock/sell-all';
+        const r = await fetch(endpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token: _psTradeToken }),
+        });
+        const d = await r.json();
+        const traded = mode === 'buy' ? ((d.new_qty ?? 0) - prevQty) : prevQty;
+        _psHandleResult(d, mode === 'buy' ? 'Bought' : 'Sold', traded, mode);
+    } catch {
+        status.textContent = '❌ Network error';
+        status.className = 'ps-trade-status error';
+    } finally {
+        btn.disabled = false;
+    }
+}
+
+// Legacy stubs kept so any old inline references don't hard-crash
+function psModalTab() {}
+function psConfirmTrade() { psDoTrade(_psTradeMode ?? 'buy'); }
+function psBulkTrade()    { psDoBulk(_psTradeMode ?? 'buy'); }
+function psUpdateCostPreview() { psUpdatePreviews(); }
+
+
 // ── Boot ──────────────────────────────────────────────────────────────────────
 
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initPetStock);
 } else {
     initPetStock();
+}
+
+// Buy MAX functionality
+async function psRefreshData() {
+    await Promise.all([
+        psLoadMarket(),
+        psLoadHoldings(),
+        psLoadPet()
+    ]);
+    psRenderAll();
+    psRenderEvents();
+}
+
+function psShowBuyMaxConfirm() {
+    if (!_psMarket || !_psPetData) {
+        alert('Market data not loaded yet. Please wait a moment and try again.');
+        return;
+    }
+
+    // Calculate preview
+    const allTokens = [...Object.keys(_psMarket.type_emojis), ...Object.keys(_psMarket.element_emojis)];
+    let totalCost = 0;
+    let previewText = '';
+
+    allTokens.forEach(token => {
+        const price = _psMarket.prices[token] ?? 0;
+        const mult = (_psMarket.multipliers && _psMarket.multipliers[token]) || 1;
+        const costEach = Math.round(price * mult);
+        const maxToBuy = 100000;
+        const currentHolding = _psHoldings[token] ?? 0;
+        const canBuy = Math.max(0, maxToBuy - currentHolding);
+        const cost = costEach * canBuy;
+        
+        if (canBuy > 0) {
+            totalCost += cost;
+            previewText += `${token}: ${canBuy.toLocaleString()} tokens (${cost.toLocaleString()} XP)\n`;
+        }
+    });
+
+    const xp = _psPetData ? (_psPetData.total_xp ?? _psPetData.experience ?? 0) : 0;
+    previewText += `\nTotal Cost: ${totalCost.toLocaleString()} XP\nYour XP: ${xp.toLocaleString()}`;
+    
+    if (totalCost > xp) {
+        previewText += `\n⚠️ Insufficient XP (need ${(totalCost - xp).toLocaleString()} more)`;
+    }
+
+    document.getElementById('ps-buymax-preview').textContent = previewText;
+    document.getElementById('ps-buymax-modal').style.display = 'block';
+}
+
+function psCloseBuyMaxModal() {
+    document.getElementById('ps-buymax-modal').style.display = 'none';
+}
+
+async function psExecuteBuyMax() {
+    const btn = document.querySelector('.ps-confirm-yes');
+    btn.disabled = true;
+    btn.textContent = 'Processing...';
+
+    try {
+        const r = await fetch('/api/pet-stock/buy-max', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({}),
+        });
+        const result = await r.json();
+        
+        psCloseBuyMaxModal();
+        
+        if (result.ok) {
+            alert(`✅ Buy MAX completed!\nTotal bought: ${result.total_bought.toLocaleString()} tokens\nTotal cost: ${result.total_cost.toLocaleString()} XP`);
+            await psRefreshData();
+        } else {
+            alert(`❌ Buy MAX failed: ${result.error}`);
+        }
+    } catch (e) {
+        alert('❌ Network error during Buy MAX');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Yes, Buy MAX';
+    }
+}
+
+// Sell MAX functionality
+function psShowSellMaxConfirm() {
+    if (!_psMarket || !_psHoldings) {
+        alert('Market data not loaded yet. Please wait a moment and try again.');
+        return;
+    }
+
+    // Calculate preview
+    let totalPayout = 0;
+    let totalTokens = 0;
+    let previewText = '';
+
+    Object.entries(_psHoldings).forEach(([token, qty]) => {
+        if (qty > 0) {
+            const price = _psMarket.prices[token] ?? 0;
+            const mult = (_psMarket.multipliers && _psMarket.multipliers[token]) || 1;
+            const payout = Math.round(price * qty / mult);
+            totalPayout += payout;
+            totalTokens += qty;
+            previewText += `${token}: ${qty.toLocaleString()} tokens (${payout.toLocaleString()} XP)\n`;
+        }
+    });
+
+    if (totalTokens === 0) {
+        alert('You don\'t have any tokens to sell.');
+        return;
+    }
+
+    previewText += `\nTotal Tokens: ${totalTokens.toLocaleString()}\nTotal Payout: ${totalPayout.toLocaleString()} XP`;
+
+    document.getElementById('ps-sellmax-preview').textContent = previewText;
+    document.getElementById('ps-sellmax-modal').style.display = 'block';
+}
+
+function psCloseSellMaxModal() {
+    document.getElementById('ps-sellmax-modal').style.display = 'none';
+}
+
+async function psExecuteSellMax() {
+    const btn = document.querySelector('#ps-sellmax-modal .ps-confirm-yes');
+    btn.disabled = true;
+    btn.textContent = 'Processing...';
+
+    try {
+        const r = await fetch('/api/pet-stock/sell-max', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({}),
+        });
+        const result = await r.json();
+        
+        psCloseSellMaxModal();
+        
+        if (result.ok) {
+            alert(`✅ Sell MAX completed!\nTotal sold: ${result.total_sold.toLocaleString()} tokens\nTotal payout: ${result.total_payout.toLocaleString()} XP`);
+            await psRefreshData();
+        } else {
+            alert(`❌ Sell MAX failed: ${result.error}`);
+        }
+    } catch (e) {
+        alert('❌ Network error during Sell MAX');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Yes, Sell ALL';
+    }
 }

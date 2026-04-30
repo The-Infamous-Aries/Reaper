@@ -617,3 +617,102 @@
 .mp-ff-detail-section {
     padding: 6px 0;
 }
+
+/* ── Stat / Type / Element hover tooltip card ────────────────────────────────── */
+.mp-hover-tip {
+    position: absolute;
+    z-index: 9999;
+    min-width: 210px;
+    max-width: 280px;
+    background: linear-gradient(135deg, rgba(12,12,12,0.97), rgba(20,18,10,0.97));
+    border: 1px solid rgba(255,215,0,0.35);
+    border-radius: 8px;
+    box-shadow: 0 0 18px rgba(255,215,0,0.18), 0 4px 24px rgba(0,0,0,0.7);
+    pointer-events: none;
+    opacity: 0;
+    transform: translateY(6px);
+    transition: opacity 0.15s ease, transform 0.15s ease;
+    font-family: inherit;
+    overflow: hidden;
+}
+.mp-hover-tip--visible {
+    pointer-events: none;
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* Header bar */
+.mp-tip-header {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 7px 10px 6px;
+    background: linear-gradient(90deg, rgba(255,215,0,0.12), rgba(255,215,0,0.04));
+    border-bottom: 1px solid rgba(255,215,0,0.2);
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.72rem;
+    color: var(--gold-primary);
+    text-shadow: 0 0 6px var(--gold-glow);
+    letter-spacing: 0.5px;
+}
+.mp-tip-icon {
+    width: 20px;
+    height: 20px;
+    object-fit: contain;
+    flex-shrink: 0;
+    filter: drop-shadow(0 0 4px var(--gold-glow));
+}
+
+/* Body */
+.mp-tip-body {
+    padding: 7px 10px 8px;
+}
+.mp-tip-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 8px;
+    margin-bottom: 4px;
+    font-size: 0.72rem;
+}
+.mp-tip-label {
+    color: var(--text-secondary);
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+.mp-tip-section-head {
+    display: block;
+    font-size: 0.62rem;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: rgba(255,215,0,0.5);
+    margin-bottom: 4px;
+    margin-top: 2px;
+}
+.mp-tip-val {
+    color: var(--text-primary);
+    text-align: right;
+    font-size: 0.72rem;
+}
+.mp-tip-val--gold {
+    color: var(--gold-secondary);
+}
+.mp-tip-val--dim {
+    color: var(--text-secondary);
+    font-style: italic;
+}
+.mp-tip-divider {
+    height: 1px;
+    background: rgba(255,215,0,0.12);
+    margin: 5px 0;
+}
+
+/* Subtle underline hint on hoverable items */
+.mp-stat-hoverable:hover .stat-special,
+.mp-stat-hoverable:hover span {
+    text-decoration: underline dotted rgba(255,215,0,0.4);
+}
+.mp-type-chip:hover,
+.mp-elem-chip:hover {
+    text-decoration: underline dotted rgba(255,215,0,0.5);
+}

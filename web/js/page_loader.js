@@ -12,11 +12,16 @@ class PageScriptManager {
         }
 
         const script = document.createElement('script');
-        // Always append a cache-buster so the browser re-executes the script
-        // on every page navigation (the IIFE and event listeners must re-run).
-        const src = scriptPath + '?v=' + Date.now();
+        // Use centralized cache utils if available, otherwise fallback to timestamp
+        const cacheBuster = window.cacheUtils ? 
+            window.cacheUtils.getFreshCacheBuster() : 
+            `v=${Date.now()}&r=${Math.random().toString(36).substr(2, 9)}`;
+        const src = scriptPath + (scriptPath.includes('?') ? '&' : '?') + cacheBuster;
         script.src = src;
         script.type = scriptType;
+        
+        // Add cache control attributes
+        script.setAttribute('cache', 'no-cache');
         
         script.onload = () => {
             console.log(`Script loaded successfully: ${scriptPath}`);
@@ -38,6 +43,12 @@ class PageScriptManager {
             return;
         }
 
+        // Use centralized cache utils if available, otherwise fallback to timestamp
+        const cacheBuster = window.cacheUtils ? 
+            window.cacheUtils.getFreshCacheBuster() : 
+            `v=${Date.now()}&r=${Math.random().toString(36).substr(2, 9)}`;
+        const href = cssPath + (cssPath.includes('?') ? '&' : '?') + cacheBuster;
+
         if (this.loadedCSS.has(cssPath)) {
             if (callback) callback();
             return;
@@ -45,7 +56,7 @@ class PageScriptManager {
 
         const link = document.createElement('link');
         link.rel = 'stylesheet';
-        link.href = cssPath;
+        link.href = href;
 
         link.onload = () => {
             console.log(`CSS loaded successfully: ${cssPath}`);
@@ -62,14 +73,14 @@ class PageScriptManager {
     }
 
     unloadAll() {
-        // Remove by full src (including ?v= cache-buster)
+        // Remove by full src (including cache-buster)
         this.loadedScripts.forEach(src => {
-            document.querySelectorAll(`script[src="${src}"]`).forEach(el => el.remove());
+            document.querySelectorAll(`script[src*="${src.split('?')[0]}"]`).forEach(el => el.remove());
         });
         this.loadedScripts.clear();
         
         this.loadedCSS.forEach(cssPath => {
-            const linkElements = document.querySelectorAll(`link[href="${cssPath}"]`);
+            const linkElements = document.querySelectorAll(`link[href*="${cssPath}"]`);
             linkElements.forEach(el => el.remove());
         });
         this.loadedCSS.clear();

@@ -554,8 +554,8 @@ const calculatorToggle = document.getElementById('calculator-toggle');
                 nukes:    { label: 'Nukes',     img: '/static/Emojis/Military/bomb.png'    },
             };
 
-            // Per-unit costs (cash + resources)
-            const UNIT_COSTS = {
+            // Base per-unit costs (cash + resources) — before research discounts
+            const BASE_UNIT_COSTS = {
                 soldiers: { cash: 5 },
                 tanks:    { cash: 60,      steel: 0.5 },
                 aircraft: { cash: 4000,    aluminum: 10 },
@@ -580,20 +580,63 @@ const calculatorToggle = document.getElementById('calculator-toggle');
             const uImg = (u) => `<img src="${UNIT_META[u].img}" alt="${UNIT_META[u].label}" height="22" style="vertical-align:middle;margin-right:5px;">`;
 
             try {
-                const resourcePrices = await fetch('/api/pnw/resource-prices').then(r => r.json());
+                const nationQuery = document.getElementById('nation-query').value.trim();
+                const [resourcePrices, nationData] = await Promise.all([
+                    fetch('/api/pnw/resource-prices').then(r => r.json()),
+                    nationQuery ? fetch(`/api/pnw/nation-info/${nationQuery}`).then(r => r.json()).catch(() => null) : Promise.resolve(null),
+                ]);
 
                 const getPrice = (res) => (resourcePrices?.data?.[res]?.sell) || 0;
 
+                // Extract military research levels from nation data
+                const mr = (nationData && !nationData.error && nationData.military_research) || {};
+                const groundCostLvl = parseInt(mr.ground_cost || 0);
+                const airCostLvl    = parseInt(mr.air_cost    || 0);
+                const navalCostLvl  = parseInt(mr.naval_cost  || 0);
+
+                // Apply research purchase cost discounts (per level, capped at max)
+                // Soldiers: -$0.10/level cash (max $2 off = 20 levels)
+                // Tanks:    -$1/level cash, -0.01 steel/level (max $20 & 0.2 steel)
+                // Aircraft: -$50/level cash, -0.2 aluminum/level (max $1000 & 4 aluminum)
+                // Ships:    -$500/level cash, -0.5 steel/level (max $10000 & 10 steel)
+                const UNIT_COSTS = {
+                    soldiers: {
+                        cash: Math.max(3,    5     - 0.1  * groundCostLvl),
+                    },
+                    tanks: {
+                        cash:  Math.max(40,  60    - 1    * groundCostLvl),
+                        steel: Math.max(0.3, 0.5   - 0.01 * groundCostLvl),
+                    },
+                    aircraft: {
+                        cash:     Math.max(3000, 4000 - 50   * airCostLvl),
+                        aluminum: Math.max(6,    10   - 0.2  * airCostLvl),
+                    },
+                    ships: {
+                        cash:  Math.max(40000, 50000 - 500  * navalCostLvl),
+                        steel: Math.max(20,    30    - 0.5  * navalCostLvl),
+                    },
+                    missiles: { cash: 150000, gasoline: 100, munitions: 100, aluminum: 150 },
+                    nukes:    { cash: 1750000, uranium: 500, gasoline: 500,  aluminum: 1000 },
+                };
+
+                const hasResearch = groundCostLvl > 0 || airCostLvl > 0 || navalCostLvl > 0;
+                const researchBadge = hasResearch
+                    ? `<div class="mb-2 p-2 rounded" style="background:rgba(0,200,100,0.08);border:1px solid rgba(0,200,100,0.3);font-size:0.82rem;color:#00c864;">
+                         🔬 Military Research applied — Ground: Lv${groundCostLvl} | Air: Lv${airCostLvl} | Naval: Lv${navalCostLvl}
+                       </div>`
+                    : '';
+
                 // Accumulators
                 let grandCash = 0;
-                const grandResources = {}; // { resource: qty }
+                const grandResources = {};
 
                 // ── Per-unit breakdown cards ──────────────────────────────────
                 let unitCardsHTML = '';
                 for (const [unit, qty] of Object.entries(units)) {
                     if (qty <= 0) continue;
-                    const costs = UNIT_COSTS[unit];
-                    const meta  = UNIT_META[unit];
+                    const costs    = UNIT_COSTS[unit];
+                    const baseCosts = BASE_UNIT_COSTS[unit];
+                    const meta     = UNIT_META[unit];
                     const unitCash = costs.cash * qty;
                     grandCash += unitCash;
 
@@ -606,12 +649,16 @@ const calculatorToggle = document.getElementById('calculator-toggle');
                         const mktVal   = getPrice(res) * totalQty;
                         unitResourceValue += mktVal;
                         grandResources[res] = (grandResources[res] || 0) + totalQty;
-                        // Format perUnit with decimals if needed, otherwise as integer
-                        const perUnitStr = perUnit % 1 === 0 ? fmtNum(perUnit) : perUnit.toLocaleString('en-US', {minimumFractionDigits: 1, maximumFractionDigits: 2});
+                        const basePerUnit = baseCosts[res] || perUnit;
+                        const savedPerUnit = basePerUnit - perUnit;
+                        const perUnitStr = perUnit % 1 === 0 ? fmtNum(perUnit) : perUnit.toLocaleString('en-US', {minimumFractionDigits: 1, maximumFractionDigits: 3});
+                        const savedStr = savedPerUnit > 0.001
+                            ? ` <span style="color:#00c864;font-size:0.75rem">(-${savedPerUnit % 1 === 0 ? fmtNum(savedPerUnit) : savedPerUnit.toFixed(3)}/unit)</span>`
+                            : '';
                         resRows += `
                             <div class="d-flex justify-content-between align-items-center py-1 border-bottom border-secondary" style="font-size:0.88rem;">
                                 <span style="color:#c0c0c0;">${rImg(res)}<span style="text-transform:capitalize;">${res}</span>
-                                    <small class="text-muted ms-1">(${perUnitStr} × ${fmtNum(qty)})</small>
+                                    <small class="text-muted ms-1">(${perUnitStr}${savedStr} × ${fmtNum(qty)})</small>
                                 </span>
                                 <span>
                                     <span class="fw-bold" style="color:#e0e0e0;">${fmtNum(totalQty)}</span>
@@ -620,6 +667,11 @@ const calculatorToggle = document.getElementById('calculator-toggle');
                             </div>`;
                     }
 
+                    const baseCash = baseCosts.cash * qty;
+                    const cashSaved = baseCash - unitCash;
+                    const cashSavedStr = cashSaved > 0.01
+                        ? ` <span style="color:#00c864;font-size:0.8rem">(saved ${fmt(cashSaved)})</span>`
+                        : '';
                     const unitTotal = unitCash + unitResourceValue;
                     unitCardsHTML += `
                         <div class="mb-3 p-3 rounded" style="background:rgba(255,215,0,0.04);border:1px solid rgba(255,215,0,0.18);">
@@ -631,7 +683,7 @@ const calculatorToggle = document.getElementById('calculator-toggle');
                             </div>
                             <div class="d-flex justify-content-between align-items-center py-1 border-bottom border-secondary" style="font-size:0.88rem;">
                                 <span style="color:#c0c0c0;">💵 Cash
-                                    <small class="text-muted ms-1">(${fmt(costs.cash)} × ${fmtNum(qty)})</small>
+                                    <small class="text-muted ms-1">(${fmt(costs.cash)}/unit${cashSavedStr} × ${fmtNum(qty)})</small>
                                 </span>
                                 <span class="fw-bold text-warning">${fmt(unitCash)}</span>
                             </div>
@@ -665,6 +717,7 @@ const calculatorToggle = document.getElementById('calculator-toggle');
                 // ── Assemble final HTML ───────────────────────────────────────
                 resultsBody.innerHTML = `
                     <h5 class="text-center mb-3" style="color:#ffd700;">Unit Cost Breakdown</h5>
+                    ${researchBadge}
                     ${unitCardsHTML}
 
                     <div class="mb-3 p-3 rounded" style="background:rgba(255,215,0,0.06);border:1px solid rgba(255,215,0,0.3);">
@@ -795,11 +848,11 @@ const calculatorToggle = document.getElementById('calculator-toggle');
             'Central Intelligence Agency': { money: 5000000, steel: 500, gasoline: 500 },
             'Guiding Satellite': { money: 200000000, munitions: 40000, aluminum: 40000, uranium: 40000, gasoline: 40000, steel: 20000 },
             'Iron Dome': { money: 15000000, munitions: 5000 },
-            'Missile Launch Pad': { money: 5000000, steel: 500, gasoline: 500 },
-            'Nuclear Research Facility': { money: 50000000, aluminum: 10000, uranium: 1000 },
-            'Propaganda Bureau': { money: 5000000, coal: 1000, iron: 1000 },
-            'Space Program': { money: 50000000, aluminum: 10000, steel: 10000, gasoline: 10000 },
-            'Vital Defense System': { money: 60000000, steel: 25000, aluminum: 25000, munitions: 25000 },
+            'Missile Launch Pad': { money: 15000000, aluminum: 5000, gasoline: 5000, steel: 5000 },
+            'Nuclear Research Facility': { money: 75000000, uranium: 5000, gasoline: 5000, aluminum: 5000 },
+            'Propaganda Bureau': { money: 10000000, gasoline: 2000, munitions: 2000, aluminum: 2000, steel: 2000 },
+            'Space Program': { money: 50000000, aluminum: 25000 },
+            'Vital Defense System': { money: 40000000, steel: 5000, aluminum: 5000, munitions: 5000, gasoline: 5000 },
             'Military Research Center': { money: 100000000, steel: 10000, aluminum: 10000, munitions: 10000, gasoline: 10000 },
             'Military Doctrine': { money: 10000000, steel: 10000, aluminum: 10000, munitions: 10000, gasoline: 10000 },
             'Arms Stockpile': { money: 10000000, coal: 500, iron: 500, oil: 500, bauxite: 500, lead: 500 },
@@ -887,8 +940,8 @@ const calculatorToggle = document.getElementById('calculator-toggle');
         }
 
         // Reposition on scroll/resize so the fixed panel tracks the trigger
-        window.addEventListener('scroll', () => { if (document.getElementById('pp-panel').classList.contains('open')) ppPosition(); }, true);
-        window.addEventListener('resize', () => { if (document.getElementById('pp-panel').classList.contains('open')) ppPosition(); });
+        window.addEventListener('scroll', () => { const panel = document.getElementById('pp-panel'); if (panel && panel.classList.contains('open')) ppPosition(); }, true);
+        window.addEventListener('resize', () => { const panel = document.getElementById('pp-panel'); if (panel && panel.classList.contains('open')) ppPosition(); });
 
         document.getElementById('pp-trigger').addEventListener('click', () => {
             document.getElementById('pp-panel').classList.contains('open') ? ppClose() : ppOpen();
@@ -909,7 +962,8 @@ const calculatorToggle = document.getElementById('calculator-toggle');
             ppUpdateLabel();
         });
         document.addEventListener('click', e => {
-            if (!document.getElementById('project-picker').contains(e.target)) ppClose();
+            const picker = document.getElementById('project-picker');
+            if (picker && !picker.contains(e.target)) ppClose();
         });
         ppBuildList();
         ppUpdateLabel();

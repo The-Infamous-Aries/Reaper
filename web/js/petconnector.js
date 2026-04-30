@@ -722,8 +722,9 @@ window.openGift = function(userId) {
     inv.forEach(function(item) {
         var opt = document.createElement('option');
         opt.value = item.name;
-        opt.textContent = item.name + ' (x' + (item.quantity || 1) + ')';
-        opt.dataset.qty = item.quantity || 1;
+        var qty = item.count || item.quantity || 1;
+        opt.textContent = item.name + ' (x' + qty + ')';
+        opt.dataset.qty = qty;
         sel.appendChild(opt);
     });
 
@@ -769,16 +770,6 @@ window.pcSendGift = function() {
         }
     });
 };
-
-function pcUpdateGiftQty() {
-    var sel = el('pc-gift-select');
-    var qty = el('pc-gift-qty');
-    if (!sel || !qty) return;
-    var itemName = sel.value;
-    if (!itemName) { qty.max = 1; qty.value = 1; return; }
-    qty.max = 10;
-    qty.value = Math.min(parseInt(qty.value) || 1, parseInt(qty.max));
-}
 
 // ── Toast ──────────────────────────────────────────────────────────────────
 function showToast(msg, type) {

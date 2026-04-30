@@ -305,7 +305,7 @@ function renderPets() {
                         <img src="/static/Emojis/Pets/${pet.name}.png" 
                              alt="${pet.name}" 
                              class="pet-emoji"
-                             onerror="this.src='/static/Emojis/Pets/Basic.png'">
+                             onerror="this.src='/static/Emojis/Pets/Deco/Basic.png'">
                         <h6 class="mb-0 mt-1">${pet.name}</h6>
                     </div>
                     <div class="card-body">
@@ -399,7 +399,7 @@ function renderPets() {
                                         <img src="/static/Emojis/Pets/${pet.name}.png" 
                                              alt="${pet.name}" 
                                              style="width: 32px; height: 32px; object-fit: contain; margin-right: 8px;"
-                                             onerror="this.src='/static/Emojis/Pets/Basic.png'">
+                                             onerror="this.src='/static/Emojis/Pets/Deco/Basic.png'">
                                         ${pet.name}
                                     </td>
                                     <td class="${pet.Spec.includes('ATT') ? 'stat-special' : ''}">${pet.Stats.ATT}</td>

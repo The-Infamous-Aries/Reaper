@@ -13,6 +13,9 @@ let _selPets     = [];     // up to 5 names, ordered
 let _selElement  = null;   // string or null
 let _useEM       = false;
 let _countdownId = null;
+let _reloadScheduled = false;
+
+const DRAW_LOCK_SECONDS = 300; // must match backend DRAW_LOCK_SECONDS
 
 // ── Boot ──────────────────────────────────────────────────────────────────
 function init() {
@@ -62,17 +65,43 @@ function renderPage() {
     const ddEl = $('pb-draw-date');
     if (ddEl) ddEl.textContent = _info.draw_date;
 
-    // Pot
+    // Pot — label shows which draw this is for
     const potEl = $('pb-pot-display');
-    if (potEl) potEl.textContent = (_info.pot_xp || 0).toLocaleString() + ' XP';
+    if (potEl) {
+        potEl.textContent = (_info.pot_xp || 0).toLocaleString() + ' XP';
+        
+        // Check if pot grew due to rollover multiplier
+        if (_info.last_draw && _info.last_draw.pot_after && _info.last_draw.pot_before) {
+            const lastPot = _info.last_draw.pot_after;
+            const beforePot = _info.last_draw.pot_before;
+            const winners = _info.last_draw.winners || [];
+            const majorWinners = winners.filter(w => w.tier === 'MEGA' || w.tier === 'TIER1');
+            
+            // If pot grew significantly and no major winners, show rollover indicator
+            if (majorWinners.length === 0 && lastPot > beforePot && (lastPot / beforePot) > 2) {
+                const rolloverEl = document.createElement('div');
+                rolloverEl.style.cssText = `
+                    font-size: 0.6rem; 
+                    color: #27ae60; 
+                    margin-top: 2px; 
+                    font-weight: 600;
+                    animation: pbRolloverGlow 2s ease-in-out infinite;
+                `;
+                rolloverEl.textContent = `🚀 Rolled over from ${beforePot.toLocaleString()} XP (2.5x multiplier)`;
+                potEl.parentNode.appendChild(rolloverEl);
+            }
+        }
+    }
 
-    // Payout table
-    const fmt = n => typeof n === 'number' ? n.toLocaleString() + ' XP' : String(n);
+    // Payout table — show live XP estimates from pot
     const p = _info.payouts || {};
-    if ($('pb-pay-2em')) $('pb-pay-2em').textContent = fmt(p.TIER2_EM);
-    if ($('pb-pay-2'))   $('pb-pay-2').textContent   = fmt(p.TIER2);
-    if ($('pb-pay-3em')) $('pb-pay-3em').textContent = fmt(p.TIER3_EM);
-    if ($('pb-pay-3'))   $('pb-pay-3').textContent   = fmt(p.TIER3);
+    const fmtXp = n => typeof n === 'number' ? n.toLocaleString() + ' XP' : '—';
+    if ($('pb-pay-mega-xp')) $('pb-pay-mega-xp').textContent = fmtXp(p.MEGA_xp);
+    if ($('pb-pay-1-xp'))    $('pb-pay-1-xp').textContent   = fmtXp(p.TIER1_xp);
+    if ($('pb-pay-2em-xp'))  $('pb-pay-2em-xp').textContent = fmtXp(p.TIER2_EM_xp);
+    if ($('pb-pay-2-xp'))    $('pb-pay-2-xp').textContent   = fmtXp(p.TIER2_xp);
+    if ($('pb-pay-3em-xp'))  $('pb-pay-3em-xp').textContent = fmtXp(p.TIER3_EM_xp);
+    if ($('pb-pay-3-xp'))    $('pb-pay-3-xp').textContent   = fmtXp(p.TIER3_xp);
 
     // Last draw
     renderLastDraw(_info.last_draw);
@@ -82,13 +111,6 @@ function renderPage() {
         $('pb-has-ticket').style.display = '';
         $('pb-builder').style.display    = 'none';
         renderTicketDisplay(_info.ticket, $('pb-ticket-display'));
-    } else if (_info.already_drawn) {
-        $('pb-has-ticket').style.display = '';
-        $('pb-builder').style.display    = 'none';
-        $('pb-ticket-display').innerHTML = `
-            <div style="text-align:center;padding:20px;color:var(--text-secondary);font-size:0.82rem">
-                Today's draw has already happened.<br>Come back tomorrow for a new ticket!
-            </div>`;
     } else {
         $('pb-has-ticket').style.display = 'none';
         $('pb-builder').style.display    = '';
@@ -134,8 +156,9 @@ function renderLastDraw(draw) {
     if (!sec || !con || !draw) return;
     sec.style.display = '';
 
-    const petsHtml = (draw.drawn_pets || []).map(p =>
+    const petsHtml = (draw.drawn_pets || []).map((p, i) =>
         `<div class="pb-last-draw-pet">
+            <span class="pb-last-draw-pos">#${i+1}</span>
             <img src="/static/Emojis/Pets/${esc(p)}.png" alt="${esc(p)}">
             <span>${esc(p)}</span>
         </div>`
@@ -148,24 +171,42 @@ function renderLastDraw(draw) {
            </div>`
         : '';
 
+    // Pot summary row
+    const potHtml = `
+        <div class="pb-last-draw-pot">
+            <span>🏦 Pot</span>
+            <span><strong style="color:var(--gold-primary)">${(draw.pot_before||0).toLocaleString()} XP</strong></span>
+        </div>`;
+
+    // Winners section
     let winnersHtml = '';
     if (!draw.winners || draw.winners.length === 0) {
-        winnersHtml = '<div class="pb-no-winners">No winners — pot rolled over!</div>';
+        winnersHtml = `<div class="pb-no-winners">😔 No winners — pot rolled over to ${(draw.pot_after||0).toLocaleString()} XP!</div>`;
     } else {
-        winnersHtml = draw.winners.map(w => {
-            const cls = w.tier === 'MEGA' ? 'mega' : '';
-            return `<span class="pb-winner-chip ${cls}">${esc(w.tier)} +${(w.payout||0).toLocaleString()} XP</span>`;
-        }).join('');
+        const TIER_LABELS = {
+            MEGA:     { icon: '🏆', label: 'MEGA JACKPOT', cls: 'mega' },
+            TIER1:    { icon: '🥇', label: '5 Pets',       cls: 'tier1' },
+            TIER2_EM: { icon: '🥈', label: '4 Pets + ⚡',  cls: 'tier2em' },
+            TIER2:    { icon: '🥈', label: '4 Pets',       cls: 'tier2' },
+            TIER3_EM: { icon: '🥉', label: '3 Pets + ⚡',  cls: 'tier3em' },
+            TIER3:    { icon: '🎖️', label: '3 Pets',       cls: 'tier3' },
+        };
+        winnersHtml = `<div class="pb-last-draw-winners-label">🎉 Winners</div>` +
+            draw.winners.map(w => {
+                const t = TIER_LABELS[w.tier] || { icon: '🎖️', label: w.tier, cls: '' };
+                return `<div class="pb-winner-row ${t.cls}">
+                    <span>${t.icon} ${t.label}</span>
+                    <span class="pb-winner-payout">+${(w.payout||0).toLocaleString()} XP</span>
+                </div>`;
+            }).join('');
     }
 
     con.innerHTML = `
-        <div style="font-size:0.65rem;color:var(--text-secondary);margin-bottom:6px">${esc(draw.draw_date)}</div>
+        <div class="pb-last-draw-date">${esc(draw.draw_date)}</div>
+        ${potHtml}
         <div class="pb-last-draw-pets">${petsHtml}</div>
         ${emHtml}
-        <div style="margin-top:6px">${winnersHtml}</div>
-        <div style="font-size:0.62rem;color:var(--text-secondary);margin-top:6px">
-            Pot: ${(draw.pot_before||0).toLocaleString()} → ${(draw.pot_after||0).toLocaleString()} XP
-        </div>`;
+        <div class="pb-last-draw-winners">${winnersHtml}</div>`;
 }
 
 // ── Pet grid ──────────────────────────────────────────────────────────────
@@ -317,7 +358,7 @@ function updateStep3Preview() {
     const cost = _useEM ? _info.cost_with_em : _info.cost_no_em;
     const baseCost = _info.cost_no_em;
     const emExtra  = _info.cost_with_em - _info.cost_no_em;
-    const potContrib = Math.floor(cost * 0.80);
+    const potContrib = cost;  // house matches 100% of ticket cost into pot
 
     if ($('pb-cost-level'))  $('pb-cost-level').textContent  = `Level ${_info.pet_level}`;
     if ($('pb-cost-equip'))  $('pb-cost-equip').textContent  = `${_info.equip_mult}×`;
@@ -333,6 +374,15 @@ function updateStep3Preview() {
 function checkBuyReady() {
     const btn = $('pb-buy-btn');
     if (!btn || !_info) return;
+
+    // Block during draw lock window
+    if (_info.draw_locked) {
+        btn.disabled = true;
+        const err = $('pb-buy-error');
+        if (err) { err.textContent = '⏳ Draw in progress — tickets resume in a few minutes.'; err.style.display = ''; }
+        return;
+    }
+
     const cost = _useEM ? _info.cost_with_em : _info.cost_no_em;
     const emOk = !_useEM || (_selElement !== null);
     const ready = _selPets.length === 5 && emOk && cost <= _xp;
@@ -453,17 +503,30 @@ async function buyTicket() {
 // ── Countdown ─────────────────────────────────────────────────────────────
 function startCountdown() {
     if (_countdownId) clearInterval(_countdownId);
+
+    // Target: midnight UTC at the start of draw_date (the draw happens at 00:00 UTC that day)
+    function getTargetMs() {
+        if (!_info || !_info.draw_date) return null;
+        const parts = _info.draw_date.split('-').map(Number);
+        return Date.UTC(parts[0], parts[1] - 1, parts[2]);
+    }
+
     function tick() {
-        const now = new Date();
-        const utcNow = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(),
-                                now.getUTCHours(), now.getUTCMinutes(), now.getUTCSeconds());
-        const tomorrow = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1);
-        const diff = Math.max(0, Math.floor((tomorrow - utcNow) / 1000));
+        const target = getTargetMs();
+        if (!target) return;
+        const now = Date.now();
+        const diff = Math.max(0, Math.floor((target - now) / 1000));
         const h = Math.floor(diff / 3600);
         const m = Math.floor((diff % 3600) / 60);
         const s = diff % 60;
         const el = $('pb-countdown');
         if (el) el.textContent = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+
+        // When countdown hits zero, reload info after the lock window clears
+        if (diff === 0 && !_reloadScheduled) {
+            _reloadScheduled = true;
+            setTimeout(() => { _reloadScheduled = false; loadInfo(); }, (DRAW_LOCK_SECONDS + 5) * 1000);
+        }
     }
     tick();
     _countdownId = setInterval(tick, 1000);

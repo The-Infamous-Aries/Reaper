@@ -1,7 +1,7 @@
 ﻿// ═══════════════════════════════════════════════════════════════════════════════
 // ARENA MAP — Animated terrain canvas renderer
 // Each zone has a unique living animation matching its element theme.
-// Supports pan and zoom. Pet icons rendered with high-contrast backing.
+// Supports zone room navigation. Pet icons rendered with high-contrast backing.
 // ═══════════════════════════════════════════════════════════════════════════════
 
 var el  = document.getElementById.bind(document);
@@ -2210,7 +2210,7 @@ function _animatePositions(newPositions) {
         Object.keys(newPositions).forEach(function(uid){
             var s=startPos[uid]||newPositions[uid];
             var e=newPositions[uid];
-            _map.animPos[uid]={x:s.x+(e.x-s.x)*ease,y:s.y+(e.y-s.y)*ease};
+            _map.animPos[uid]={x:s.x+(e.x-s.x)*ease,y:s.y+(e.y-s.y)*ease,style:e.style||'basic'};
         });
         if (t<1) requestAnimationFrame(step);
     }
@@ -2319,9 +2319,7 @@ window.ssEnterZone = function(zoneName) {
         nameEl.style.color = zoneColor;
     }
 
-    // Hide the zoom hint while in room mode
-    var hint = document.getElementById('ss-map-zoom-hint');
-    if (hint) hint.style.display = 'none';
+    // Hide the zoom hint while in room mode (hint removed)
 
     // Animate camera into the zone
     _focusZone(zoneName);
@@ -2335,13 +2333,12 @@ window.ssExitZoom = function() {
     var backEl = document.getElementById('ss-map-zone-back');
     if (backEl) backEl.style.display = 'none';
 
-    // Restore zoom hint
-    var hint = document.getElementById('ss-map-zoom-hint');
-    if (hint) hint.style.display = 'block';
-
     // Animate back to full map
     _map._userPanned = false;
-    ssMapReset();
+    var s = _mapCssSize();
+    _map.scale = _fitScale(s.w, s.h, _map.W, _map.H);
+    _centerMap(s.w, s.h);
+    _scheduleMapDraw();
 };
 
 // Keep ssFocusZone as an alias for backward compat (used internally)
@@ -2405,7 +2402,7 @@ function _refreshMap() {
             if (Object.keys(_map.animPos).length===0) {
                 _map.animPos={};
                 Object.keys(newPos).forEach(function(uid){
-                    _map.animPos[uid]={x:newPos[uid].x,y:newPos[uid].y};
+                    _map.animPos[uid]={x:newPos[uid].x,y:newPos[uid].y,style:newPos[uid].style||'basic'};
                 });
                 _preloadMapImages();
                 // Auto-fit on first load — card is now visible so size is real
@@ -2446,31 +2443,9 @@ function _centerMap(cssW,cssH) {
 }
 
 // ── Public controls ───────────────────────────────────────────────────────────
-window.ssMapReset = function() {
-    _map._userPanned=false;
-    var s=_mapCssSize();
-    _map.scale=_fitScale(s.w,s.h,_map.W,_map.H);
-    _centerMap(s.w,s.h);
-    _scheduleMapDraw();
-};
-window.ssMapZoomIn = function() {
-    var s=_mapCssSize();
-    var mx=s.w/2, my=s.h/2;
-    var ns=Math.min(4,_map.scale*1.3);
-    _map.ox=mx-(mx-_map.ox)*(ns/_map.scale);
-    _map.oy=my-(my-_map.oy)*(ns/_map.scale);
-    _map.scale=ns; _map._userPanned=true;
-    _scheduleMapDraw();
-};
-window.ssMapZoomOut = function() {
-    var s=_mapCssSize();
-    var mx=s.w/2, my=s.h/2;
-    var ns=Math.max(0.05,_map.scale/1.3);
-    _map.ox=mx-(mx-_map.ox)*(ns/_map.scale);
-    _map.oy=my-(my-_map.oy)*(ns/_map.scale);
-    _map.scale=ns; _map._userPanned=true;
-    _scheduleMapDraw();
-};
+window.ssMapReset = function() {};
+window.ssMapZoomIn = function() {};
+window.ssMapZoomOut = function() {};
 
 // ── Pet detail panel ─────────────────────────────────────────────────────────
 var _selectedPetUid = null;
@@ -2734,64 +2709,8 @@ function _mapInitInteraction() {
         }
     });
 
-    // Pan
-    canvas.addEventListener('mousedown', function(e) {
-        _map.dragging=true;
-        _map._wasDragging=false;
-        _map.dragStart={x:e.clientX-_map.ox,y:e.clientY-_map.oy};
-        canvas.style.cursor='grabbing';
-    });
-    window.addEventListener('mousemove', function(e) {
-        if (!_map.dragging) return;
-        var dx=e.clientX-(_map.dragStart.x+_map.ox);
-        var dy=e.clientY-(_map.dragStart.y+_map.oy);
-        if (Math.abs(dx)>3||Math.abs(dy)>3) _map._wasDragging=true;
-        _map.ox=e.clientX-_map.dragStart.x;
-        _map.oy=e.clientY-_map.dragStart.y;
-        _map._userPanned=true;
-    });
-    window.addEventListener('mouseup', function() {
-        _map.dragging=false;
-        if (_map.canvas) _map.canvas.style.cursor='grab';
-    });
-
-    // Zoom
-    canvas.addEventListener('wheel', function(e) {
-        e.preventDefault();
-        var delta=e.deltaY>0?0.9:1.1;
-        var ns=Math.max(0.05,Math.min(2,_map.scale*delta));
-        var rect=canvas.getBoundingClientRect();
-        var mx=e.clientX-rect.left, my=e.clientY-rect.top;
-        _map.ox=mx-(mx-_map.ox)*(ns/_map.scale);
-        _map.oy=my-(my-_map.oy)*(ns/_map.scale);
-        _map.scale=ns; _map._userPanned=true;
-    },{passive:false});
-
-    // Touch pan + pinch zoom
-    var lastTouch=null, lastPinchDist=null;
-    canvas.addEventListener('touchstart',function(e){
-        if (e.touches.length===1) lastTouch={x:e.touches[0].clientX,y:e.touches[0].clientY};
-        if (e.touches.length===2) {
-            var dx=e.touches[0].clientX-e.touches[1].clientX;
-            var dy=e.touches[0].clientY-e.touches[1].clientY;
-            lastPinchDist=Math.sqrt(dx*dx+dy*dy);
-        }
-    },{passive:true});
-    canvas.addEventListener('touchmove',function(e){
-        if (e.touches.length===1&&lastTouch) {
-            _map.ox+=e.touches[0].clientX-lastTouch.x;
-            _map.oy+=e.touches[0].clientY-lastTouch.y;
-            lastTouch={x:e.touches[0].clientX,y:e.touches[0].clientY};
-            _map._userPanned=true;
-        }
-        if (e.touches.length===2&&lastPinchDist) {
-            var dx=e.touches[0].clientX-e.touches[1].clientX;
-            var dy=e.touches[0].clientY-e.touches[1].clientY;
-            var dist=Math.sqrt(dx*dx+dy*dy);
-            var ns=Math.max(0.05,Math.min(2,_map.scale*(dist/lastPinchDist)));
-            _map.scale=ns; lastPinchDist=dist; _map._userPanned=true;
-        }
-    },{passive:true});
+    // Scroll zoom disabled — map is fixed, users navigate via zone clicks only
+    canvas.addEventListener('wheel', function(e) { e.preventDefault(); },{passive:false});
 
     canvas.addEventListener('contextmenu',function(e){ e.preventDefault(); });
 
@@ -2955,7 +2874,7 @@ function _mapInitInteraction() {
                 canvas.style.cursor = 'pointer';
             } else if (tip) {
                 tip.style.display='none';
-                canvas.style.cursor = _map.dragging ? 'grabbing' : 'grab';
+                canvas.style.cursor = 'default';
             }
         }
     });

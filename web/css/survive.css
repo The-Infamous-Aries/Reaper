@@ -52,21 +52,21 @@
 
 /* ── Status banner ─────────────────────────────────────────────────────────── */
 .ss-status-banner {
-    text-align: center;
-    padding: 1.2rem;
-    font-family: 'Orbitron', sans-serif;
-    font-size: 1.1rem;
-    font-weight: 700;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    border-radius: 4px;
-    margin-bottom: 1rem;
+    text-align: center !important;
+    padding: 1.2rem !important;
+    font-family: 'Orbitron', sans-serif !important;
+    font-size: 1.1rem !important;
+    font-weight: 700 !important;
+    letter-spacing: 2px !important;
+    text-transform: uppercase !important;
+    border-radius: 4px !important;
+    margin-bottom: 1rem !important;
 }
-.ss-status-none     { color: var(--text-secondary); background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); }
-.ss-status-lobby    { color: #4caf50; background: rgba(76,175,80,0.1); border: 1px solid rgba(76,175,80,0.4); animation: ssLobbyPulse 2s ease-in-out infinite; }
-.ss-status-countdown{ color: #ff9800; background: rgba(255,152,0,0.1); border: 1px solid rgba(255,152,0,0.5); animation: ssCountdownPulse 1s ease-in-out infinite; }
-.ss-status-running  { color: #f44336; background: rgba(244,67,54,0.1); border: 1px solid rgba(244,67,54,0.5); }
-.ss-status-finished { color: var(--gold-primary); background: rgba(255,215,0,0.08); border: 1px solid rgba(255,215,0,0.4); }
+.ss-status-none     { color: var(--text-secondary) !important; background: rgba(0,0,0,0.3) !important; border: 1px solid rgba(255,255,255,0.1) !important; }
+.ss-status-lobby    { color: #4caf50 !important; background: rgba(76,175,80,0.1) !important; border: 1px solid rgba(76,175,80,0.4) !important; animation: ssLobbyPulse 2s ease-in-out infinite !important; }
+.ss-status-countdown{ color: #ff9800 !important; background: rgba(255,152,0,0.1) !important; border: 1px solid rgba(255,152,0,0.5) !important; animation: ssCountdownPulse 1s ease-in-out infinite !important; }
+.ss-status-running  { color: #f44336 !important; background: rgba(244,67,54,0.1) !important; border: 1px solid rgba(244,67,54,0.5) !important; }
+.ss-status-finished { color: var(--gold-primary) !important; background: rgba(255,215,0,0.08) !important; border: 1px solid rgba(255,215,0,0.4) !important; }
 
 @keyframes ssLobbyPulse    { 0%,100%{opacity:1} 50%{opacity:0.7} }
 @keyframes ssCountdownPulse{ 0%,100%{opacity:1} 50%{opacity:0.6} }
@@ -98,6 +98,83 @@
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
     gap: 0.5rem;
+}
+
+/* ── Enhanced Start Modal Styles ───────────────────────────────────────────── */
+.ss-mode-btn, .ss-diff-btn {
+    transition: all 0.2s ease;
+    cursor: pointer;
+}
+
+.ss-mode-btn:hover, .ss-diff-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(255,215,0,0.2);
+}
+
+.ss-mode-btn.active {
+    background: rgba(255,215,0,0.1) !important;
+    border-color: var(--gold-primary) !important;
+    color: var(--gold-primary) !important;
+}
+
+.ss-diff-btn.active {
+    opacity: 1 !important;
+}
+
+/* Toggle switch styles */
+#sm-add-all-toggle:checked + span {
+    background: var(--gold-primary) !important;
+}
+
+#sm-add-all-toggle:checked + span::before {
+    transform: translateX(20px);
+}
+
+#sm-add-all-toggle + span::before {
+    content: '';
+    position: absolute;
+    height: 16px;
+    width: 16px;
+    left: 2px;
+    bottom: 2px;
+    background: white;
+    border-radius: 50%;
+    transition: .2s;
+}
+
+/* Pet selector styles */
+.ps-pet-item {
+    transition: all 0.2s ease;
+}
+
+.ps-pet-item:hover {
+    background: rgba(255,215,0,0.05) !important;
+    border-color: rgba(255,215,0,0.3) !important;
+}
+
+.ps-pet-item.selected {
+    background: rgba(76,175,80,0.1) !important;
+    border-color: rgba(76,175,80,0.5) !important;
+}
+
+/* Scrollbar styling for pet list */
+#ps-pet-list::-webkit-scrollbar {
+    width: 6px;
+}
+
+#ps-pet-list::-webkit-scrollbar-track {
+    background: rgba(0,0,0,0.2);
+    border-radius: 3px;
+}
+
+#ps-pet-list::-webkit-scrollbar-thumb {
+    background: rgba(255,215,0,0.3);
+    border-radius: 3px;
+}
+
+#ps-pet-list::-webkit-scrollbar-thumb:hover {
+    background: rgba(255,215,0,0.5);
+}
 }
 /* ── Participant card — toggleable expanded detail ─────────────────────────── */
 .ss-participant-card {

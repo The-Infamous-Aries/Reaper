@@ -862,44 +862,28 @@ function initializeGameInfo() {
 let gameInfoInitialized = false;
 
 function initializeGameInfoOnce() {
-    if (gameInfoInitialized) return;
-    
     const marketContainer = document.getElementById('market-prices');
     const bonusesContainer = document.getElementById('turn-bonuses-content');
     
     if (marketContainer || bonusesContainer) {
-        console.log('Initializing Game Info immediately');
+        console.log('Initializing Game Info');
         gameInfoInitialized = true;
         initializeGameInfo();
     }
 }
 
-// Primary initialization - dashboard page loaded
+// Primary: dashboard navigation — always re-initialize on each visit
 document.addEventListener('dashboardPageLoaded', function(e) {
     if (e.detail.page === 'game_info.html') {
         console.log('Dashboard page loaded: game_info.html');
+        gameInfoInitialized = false;  // reset so re-navigation always re-fetches
         initializeGameInfoOnce();
     }
 });
 
-// Secondary initialization - immediate check
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('DOM Content Loaded');
-    initializeGameInfoOnce();
-});
-
-// Tertiary initialization - immediate execution
+// Fallback: direct page load (no dashboard wrapper)
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initializeGameInfoOnce);
 } else {
-    // DOM is already loaded
     initializeGameInfoOnce();
 }
-
-// Final fallback - single attempt after short delay
-setTimeout(() => {
-    if (!gameInfoInitialized) {
-        console.log('Final fallback initialization');
-        initializeGameInfoOnce();
-    }
-}, 500);

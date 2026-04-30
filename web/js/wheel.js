@@ -7,16 +7,20 @@ const $ = id => document.getElementById(id);
 // ── State ─────────────────────────────────────────────────────────────────
 let _xp       = 0;
 let _funMode  = false;
-let _pets     = [];     // [{name, path}, …] — all 103
-let _ownSpec  = '';     // player's own pet species
-let _chosen   = null;  // selected pet name
+let _currentMode = 'pets';  // Current wheel mode
+let _items    = [];         // Current mode items [{name, path}, …]
+let _ownSpec  = '';         // player's own pet species
+let _chosen   = null;       // selected item name
 let _bet      = 0;
 let _spinning = false;
-let _angle    = 0;     // current wheel rotation (radians)
+let _angle    = 0;          // current wheel rotation (radians)
 let _animId   = null;
 let _canvas   = null;
 let _ctx      = null;
-let _hover    = -1;    // hovered segment index
+let _hover    = -1;         // hovered segment index
+
+// ── Global functions ──────────────────────────────────────────────────────
+window._wopBack = () => { window.location.href = '?page=casino'; };
 
 // ── Boot ──────────────────────────────────────────────────────────────────
 function init() {
@@ -47,16 +51,51 @@ async function checkAuth() {
     }
 }
 
-async function loadPets() {
-    const r = await fetch('/api/casino/wheel/pets');
-    if (!r.ok) throw new Error('Failed to load pets');
+async function checkAuth() {
+    try {
+        const r = await fetch('/api/casino/xp');
+        if (r.status === 401) { showState('login'); return; }
+        if (!r.ok)            { showState('login'); return; }
+        const d = await r.json();
+        if (!d.has_pet) { showState('nopet'); return; }
+        _xp      = d.total_xp || 0;
+        _ownSpec = d.species  || '';
+        updateXP();
+        await loadMode(_currentMode);
+        showState('main');
+        initCanvas();
+        bindEvents();
+        drawWheel(_angle);
+        updateSidebar();
+    } catch(e) {
+        console.error('[wheel] checkAuth failed:', e);
+        showState('login');
+    }
+}
+
+async function loadMode(mode) {
+    const r = await fetch(`/api/casino/wheel/items/${mode}`);
+    if (!r.ok) throw new Error(`Failed to load ${mode} mode`);
     const d = await r.json();
-    _pets = d.pets || [];
+    _items = d.items || [];
+    
+    // Update UI
+    const title = $('wop-title');
+    const subtitle = $('wop-subtitle');
+    const description = $('wop-description');
+    if (title) title.textContent = d.title;
+    if (subtitle) subtitle.textContent = d.subtitle;
+    if (description) description.textContent = d.description;
+    
     // Preload all images so the wheel renders immediately
-    await Promise.all(_pets.map(p => new Promise(res => {
+    await Promise.all(_items.map(item => new Promise(res => {
+        if (item.path.startsWith('emoji:')) {
+            res(); // No need to preload emojis
+            return;
+        }
         const img = new Image();
         img.onload = img.onerror = res;
-        img.src = p.path;
+        img.src = item.path;
     })));
 }
 
@@ -68,6 +107,33 @@ function initCanvas() {
 
 // ── Events ────────────────────────────────────────────────────────────────
 function bindEvents() {
+    // Mode selector buttons
+    document.querySelectorAll('.wop-mode-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            if (_spinning) return;
+            
+            const newMode = btn.dataset.mode;
+            if (newMode === _currentMode) return;
+            
+            // Update active button
+            document.querySelectorAll('.wop-mode-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            
+            // Load new mode
+            _currentMode = newMode;
+            _chosen = null;
+            _hover = -1;
+            
+            try {
+                await loadMode(_currentMode);
+                drawWheel(_angle);
+                updateSidebar();
+            } catch(e) {
+                console.error('[wheel] Failed to load mode:', e);
+            }
+        });
+    });
+
     // Fun mode toggle
     const toggle = $('wop-fun-toggle');
     if (toggle) toggle.addEventListener('change', e => {
@@ -104,12 +170,12 @@ function bindEvents() {
     const againBtn  = $('wop-again-btn');
     const changeBtn = $('wop-change-btn');
     if (againBtn)  againBtn.addEventListener('click',  spinAgain);
-    if (changeBtn) changeBtn.addEventListener('click', changePet);
+    if (changeBtn) changeBtn.addEventListener('click', changeSelection);
 }
 
 // ── Canvas hit-test ───────────────────────────────────────────────────────
 function segmentAt(clientX, clientY) {
-    if (!_canvas || !_pets.length) return -1;
+    if (!_canvas || !_items.length) return -1;
     const rect = _canvas.getBoundingClientRect();
     const sx = _canvas.width  / rect.width;
     const sy = _canvas.height / rect.height;
@@ -123,10 +189,10 @@ function segmentAt(clientX, clientY) {
     const d  = Math.sqrt(px * px + py * py);
     // Only register clicks within the ring band
     if (d > Ro || d < Ri) return -1;
-    const arc = (2 * Math.PI) / _pets.length;
+    const arc = (2 * Math.PI) / _items.length;
     let a = Math.atan2(py, px) - _angle;
     a = ((a % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
-    return Math.floor(a / arc) % _pets.length;
+    return Math.floor(a / arc) % _items.length;
 }
 
 function onHover(e) {
@@ -137,7 +203,7 @@ function onHover(e) {
     drawWheel(_angle);
     if (idx >= 0) {
         const tip = $('wop-hover-tip');
-        if (tip) { tip.textContent = _pets[idx].name; tip.style.display = ''; }
+        if (tip) { tip.textContent = _items[idx].name; tip.style.display = ''; }
     } else {
         hideTip();
     }
@@ -147,7 +213,7 @@ function onClick(e) {
     if (_spinning) return;
     const idx = segmentAt(e.clientX, e.clientY);
     if (idx < 0) return;
-    _chosen = _pets[idx].name;
+    _chosen = _items[idx].name;
     drawWheel(_angle);
     updateSidebar();
 }
@@ -175,14 +241,14 @@ function getImg(name, path) {
 }
 
 function drawWheel(rot) {
-    if (!_ctx || !_canvas || !_pets.length) return;
+    if (!_ctx || !_canvas || !_items.length) return;
     const W  = _canvas.width, H = _canvas.height;
     const cx = W / 2, cy = H / 2;
     const R  = Math.min(cx, cy) - 6;   // usable radius
     const Ro = R * RING_OUTER_FRAC;     // outer ring edge
     const Ri = R * RING_INNER_FRAC;     // inner ring edge (hollow starts here)
     const Rm = R * IMG_RING_FRAC;       // emoji centre radius
-    const n  = _pets.length;
+    const n  = _items.length;
     const arc = (2 * Math.PI) / n;
 
     _ctx.clearRect(0, 0, W, H);
@@ -199,9 +265,9 @@ function drawWheel(rot) {
         const sa  = rot + i * arc;
         const ea  = sa + arc;
         const mid = sa + arc / 2;
-        const pet = _pets[i];
-        const isChosen  = pet.name === _chosen;
-        const isOwn     = pet.name === _ownSpec;
+        const item = _items[i];
+        const isChosen  = item.name === _chosen;
+        const isOwn     = (_currentMode === 'pets' && item.name === _ownSpec);
         const isHovered = i === _hover;
 
         // Segment background (donut slice)
@@ -234,21 +300,36 @@ function drawWheel(rot) {
         _ctx.lineWidth = isChosen ? 1.5 : 0.6;
         _ctx.stroke();
 
-        // ── Pet emoji image ───────────────────────────────────────────────
+        // ── Item image/emoji ──────────────────────────────────────────────
         const ix  = cx + Rm * Math.cos(mid);
         const iy  = cy + Rm * Math.sin(mid);
         // Size: fill most of the ring band, capped so images don't overlap
         const bandW = (Ro - Ri);
         const sz  = Math.min(bandW * 0.82, (2 * Math.PI * Rm / n) * 0.78);
 
-        const img = getImg(pet.name, pet.path);
-        if (img && img.complete && img.naturalWidth > 0) {
+        if (item.path.startsWith('emoji:')) {
+            // Draw Unicode emoji as text
+            const emoji = item.path.substring(6); // Remove 'emoji:' prefix
             _ctx.save();
             _ctx.translate(ix, iy);
-            // Keep images upright — don't rotate with the wheel
             _ctx.rotate(mid + Math.PI / 2);
-            _ctx.drawImage(img, -sz / 2, -sz / 2, sz, sz);
+            _ctx.font = `${sz * 0.8}px sans-serif`;
+            _ctx.textAlign = 'center';
+            _ctx.textBaseline = 'middle';
+            _ctx.fillStyle = '#ffffff';
+            _ctx.fillText(emoji, 0, 0);
             _ctx.restore();
+        } else {
+            // Draw image file
+            const img = getImg(item.name, item.path);
+            if (img && img.complete && img.naturalWidth > 0) {
+                _ctx.save();
+                _ctx.translate(ix, iy);
+                // Keep images upright — don't rotate with the wheel
+                _ctx.rotate(mid + Math.PI / 2);
+                _ctx.drawImage(img, -sz / 2, -sz / 2, sz, sz);
+                _ctx.restore();
+            }
         }
 
         // ── Chosen star overlay ───────────────────────────────────────────
@@ -260,6 +341,7 @@ function drawWheel(rot) {
             _ctx.translate(sx2, sy2);
             _ctx.font = `${Math.max(8, sz * 0.45)}px sans-serif`;
             _ctx.textAlign = 'center'; _ctx.textBaseline = 'middle';
+            _ctx.fillStyle = '#FFD700';
             _ctx.fillText('⭐', 0, 0);
             _ctx.restore();
         }
@@ -283,18 +365,53 @@ function drawWheel(rot) {
 
 // ── Sidebar ───────────────────────────────────────────────────────────────
 function updateSidebar() {
-    // Selected pet box
+    // Selected item box
     const box    = $('wop-selected-box');
     const petDiv = $('wop-selected-pet');
     const lbl    = box ? box.querySelector('.wop-selected-label') : null;
     const sImg   = $('wop-sel-img');
     const sName  = $('wop-sel-name');
     const sSub   = $('wop-sel-sub');
+    
+    // Update label text based on mode
+    const modeLabels = {
+        'pets': 'Click a segment to pick your pet',
+        'monsters': 'Click a segment to summon your monster',
+        'materials': 'Click a segment to choose your material',
+        'gems': 'Click a segment to select your gem',
+        'hats': 'Click a segment to pick your hat',
+        'potions': 'Click a segment to brew your potion',
+        'elements': 'Click a segment to harness your element',
+        'stats': 'Click a segment to boost your stat',
+        'units': 'Click a segment to deploy your unit',
+        'resources': 'Click a segment to trade your resource'
+    };
+    
+    if (lbl) lbl.textContent = modeLabels[_currentMode] || 'Click a segment to make your choice';
+    
     if (_chosen) {
-        const p = _pets.find(x => x.name === _chosen);
-        if (p && sImg)  sImg.src = p.path;
-        if (sName) sName.textContent = _chosen;
-        if (sSub)  sSub.textContent  = _chosen === _ownSpec ? '⭐ Your pet — 2× bonus!' : 'Click wheel to change';
+        const item = _items.find(x => x.name === _chosen);
+        if (item && sImg) {
+            if (item.path.startsWith('emoji:')) {
+                // Hide image, show emoji in name
+                sImg.style.display = 'none';
+            } else {
+                sImg.src = item.path;
+                sImg.style.display = '';
+            }
+        }
+        if (sName) {
+            if (item && item.path.startsWith('emoji:')) {
+                const emoji = item.path.substring(6);
+                sName.textContent = `${emoji} ${_chosen}`;
+            } else {
+                sName.textContent = _chosen;
+            }
+        }
+        if (sSub) {
+            const isOwnPet = (_currentMode === 'pets' && _chosen === _ownSpec);
+            sSub.textContent = isOwnPet ? '⭐ Your pet — 2× bonus!' : 'Click wheel to change';
+        }
         if (lbl)   lbl.style.display  = 'none';
         if (petDiv) petDiv.style.display = '';
         if (box)   box.classList.add('has-pet');
@@ -302,16 +419,21 @@ function updateSidebar() {
         if (lbl)   lbl.style.display  = '';
         if (petDiv) petDiv.style.display = 'none';
         if (box)   box.classList.remove('has-pet');
+        if (sImg)  sImg.style.display = '';
     }
 
     // Payout preview
-    const n   = _pets.length || 103;
+    const n   = _items.length || 1;
     const win = Math.floor(_bet * n * 0.95);
     const own = Math.floor(win * 2);
     const pw  = $('wop-pay-win');
     const po  = $('wop-pay-own');
     if (pw) pw.textContent = _bet > 0 ? win.toLocaleString()+' XP' : '—';
     if (po) po.textContent = _bet > 0 ? own.toLocaleString()+' XP' : '—';
+
+    // Show/hide own pet bonus row based on mode
+    const ownRow = document.querySelector('.wop-payout-item--own');
+    if (ownRow) ownRow.style.display = _currentMode === 'pets' ? '' : 'none';
 
     // Bet section visibility
     const bs = $('wop-bet-section');
@@ -341,7 +463,12 @@ async function doSpin() {
         const r = await fetch('/api/casino/wheel/spin', {
             method: 'POST',
             headers: {'Content-Type':'application/json'},
-            body: JSON.stringify({ bet_amount: bet, chosen_pet: _chosen, fun_mode: _funMode })
+            body: JSON.stringify({ 
+                bet_amount: bet, 
+                chosen_item: _chosen, 
+                mode: _currentMode,
+                fun_mode: _funMode 
+            })
         });
         result = await r.json();
         if (!r.ok) throw new Error(result.error || 'Spin failed');
@@ -365,7 +492,7 @@ async function doSpin() {
 // ── Animation ─────────────────────────────────────────────────────────────
 function animateTo(winnerIdx) {
     return new Promise(resolve => {
-        const n   = _pets.length;
+        const n   = _items.length;
         const arc = (2*Math.PI) / n;
         // Pointer at top = -π/2; centre winner segment there
         const base   = -Math.PI/2 - winnerIdx*arc - arc/2;
@@ -401,8 +528,21 @@ function showResult(result) {
     const name = $('wop-res-name');
     const txt  = $('wop-res-text');
     const xpEl = $('wop-res-xp');
-    if (img)  { img.src = result.winner_path; img.alt = result.winner; }
-    if (name) name.textContent = result.winner;
+    
+    if (img && name) {
+        if (result.winner_path.startsWith('emoji:')) {
+            // Hide image, show emoji in name
+            img.style.display = 'none';
+            const emoji = result.winner_path.substring(6);
+            name.textContent = `${emoji} ${result.winner}`;
+        } else {
+            img.src = result.winner_path;
+            img.alt = result.winner;
+            img.style.display = '';
+            name.textContent = result.winner;
+        }
+    }
+    
     if (txt)  txt.textContent  = result.result_text || '';
     if (xpEl) {
         if (result.winnings > 0) { xpEl.style.display=''; xpEl.textContent='+'+result.winnings.toLocaleString()+' XP'; }
@@ -418,14 +558,14 @@ function showResult(result) {
     }
 }
 
-// ── Spin again / change pet ───────────────────────────────────────────────
+// ── Spin again / change selection ────────────────────────────────────────
 function spinAgain() {
     const resEl = $('wop-result');
     if (resEl) resEl.style.display = 'none';
     doSpin();
 }
 
-function changePet() {
+function changeSelection() {
     _chosen = null;
     drawWheel(_angle);
     updateSidebar();

@@ -327,6 +327,9 @@ function showJoinPanel(roomId) {
                 <div style="font-size:0.78rem;color:var(--gold-secondary);margin-bottom:10px">
                     Your room will glow and pulse so other users know you want to fight.
                 </div>
+                <div class="d-flex gap-2 mb-2">
+                    <button class="arena-btn" style="background:rgba(220,53,69,0.12);border-color:rgba(220,53,69,0.4);color:#dc3545;flex:1" onclick="openBattleSettings && openBattleSettings('pvp', ${roomId})">⚔️ Battle Settings</button>
+                </div>
                 <button class="arena-btn" id="join-pvp-btn" onclick="window._arenaJoin(${roomId},'pvp')" ${alreadyIn?'disabled':''}>
                     Enter &amp; Seek PvP
                 </button>
@@ -341,6 +344,9 @@ function showJoinPanel(roomId) {
                         Players always attack the Boss. When defending, choose a teammate to <strong>shield</strong>.<br>
                         All players must submit their action each turn before the round resolves.
                     </div>
+                </div>
+                <div class="d-flex gap-2 mb-2">
+                    <button class="arena-btn" style="background:rgba(220,53,69,0.12);border-color:rgba(220,53,69,0.4);color:#dc3545;flex:1" onclick="openBattleSettings && openBattleSettings('pvp', ${roomId})">⚔️ Battle Settings</button>
                 </div>
                 <button class="arena-btn boss-mode-btn" id="join-boss-btn" onclick="window._arenaJoin(${roomId},'boss')" ${alreadyIn?'disabled':''}>
                     👹 Enter Boss Room

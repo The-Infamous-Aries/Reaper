@@ -1,4 +1,4 @@
-﻿(function () {
+(function () {
 'use strict';
 
 var ELEM_IMG_BASE = '/static/Emojis/Pets/Deco/';
@@ -163,30 +163,24 @@ function calcEquipBonuses(pet) {
     var setMult;
     if (fullSet) {
         setMult = hatSpecMatches >= 2 ? 4 : 3;
+    } else if (hasMatPair || hasGemPair || hasMonPair) {
+        setMult = 2;
     } else {
-        setMult = 1; // pairs handled per-item
+        setMult = 1;
     }
     var finalMult = setMult + levelBonus;
 
-    // ── Accumulate bonuses ────────────────────────────────────────────────────
+    // ── Sum raw bonuses first, then apply global multiplier ───────────────────
+    var rawBonuses = {ATT:0, DEF:0, INT:0, DEX:0, HAP:0, ENE:0};
     items.forEach(function(e2) {
         var data = getEquipItem(e2.item.name);
         var b = (data && data.bonuses) ? data.bonuses : (e2.item.bonuses || {});
-        var n = (e2.item.name||'').toLowerCase();
-
-        var itemMult;
-        if (fullSet) {
-            itemMult = finalMult;
-        } else {
-            var isPair = (e2.t === 'Material' && (matCounts[n]||0) >= 2) ||
-                         (e2.t === 'Gem'      && (gemCounts[n]||0) >= 2) ||
-                         (e2.t === 'Monster'  && (monCounts[n]||0) >= 2);
-            itemMult = (isPair ? 2 : 1) + levelBonus;
-        }
-
         Object.keys(b).forEach(function(stat){
-            if (bonuses[stat] !== undefined) bonuses[stat] += parseInt(b[stat]||0, 10) * itemMult;
+            if (rawBonuses[stat] !== undefined) rawBonuses[stat] += parseInt(b[stat]||0, 10);
         });
+    });
+    Object.keys(rawBonuses).forEach(function(stat){
+        bonuses[stat] = rawBonuses[stat] * finalMult;
     });
 
     return bonuses;
@@ -249,17 +243,17 @@ function renderPetCard(pet) {
 
         hdr.innerHTML =
             '<div class="d-flex align-items-center justify-content-between gap-2" style="width:100%">'+
-            '<img src="'+petImg(sp)+'" class="mp-pet-img" onerror="this.src=\'/static/Emojis/Pets/Basic.png\'">'+
+            '<img src="'+petImg(sp)+'" class="mp-pet-img" onerror="this.src=\'/static/Emojis/Pets/Deco/Basic.png\'">'+
             '<div style="flex:1;min-width:0">'+
             '<div class="fw-bold" style="font-family:Orbitron,sans-serif;color:var(--gold-primary);font-size:0.95rem;text-shadow:0 0 8px var(--gold-glow)">'+(pet.name||sp)+'</div>'+
             '<div class="d-flex align-items-center gap-1 mt-1 flex-wrap">'+
             '<span class="badge bg-warning text-dark" style="font-size:0.6rem">Lv.'+(pet.level||1)+'</span>'+
             '<img src="'+catImg(cat)+'" style="width:18px;height:18px;object-fit:contain" title="'+cap(cat)+'" onerror="this.style.display=\'none\'">'+
-            '<span style="font-size:0.75rem;color:var(--text-secondary)">'+cap(cat)+'</span>'+
+            '<span class="mp-type-chip" data-type="'+cat+'" style="font-size:0.75rem;color:var(--text-secondary);cursor:pointer">'+cap(cat)+'</span>'+
             '<span style="color:rgba(255,215,0,0.4);margin:0 2px">|</span>'+
             '<img src="'+elemImgPath(e1)+'" style="width:18px;height:18px;object-fit:contain" title="'+cap(e1)+'" onerror="this.style.display=\'none\'">'+
-            '<span style="font-size:0.75rem;color:var(--gold-secondary)">'+cap(e1)+'</span>'+
-            (e2 ? '<span style="color:rgba(255,215,0,0.4);margin:0 2px">/</span><img src="'+elemImgPath(e2)+'" style="width:18px;height:18px;object-fit:contain" title="'+cap(e2)+'" onerror="this.style.display=\'none\'"><span style="font-size:0.75rem;color:var(--gold-secondary)">'+cap(e2)+'</span>' : '')+
+            '<span class="mp-elem-chip" data-elem="'+e1+'" style="font-size:0.75rem;color:var(--gold-secondary);cursor:pointer">'+cap(e1)+'</span>'+
+            (e2 ? '<span style="color:rgba(255,215,0,0.4);margin:0 2px">/</span><img src="'+elemImgPath(e2)+'" style="width:18px;height:18px;object-fit:contain" title="'+cap(e2)+'" onerror="this.style.display=\'none\'"><span class="mp-elem-chip" data-elem="'+e2+'" style="font-size:0.75rem;color:var(--gold-secondary);cursor:pointer">'+cap(e2)+'</span>' : '')+
             '</div></div>'+
             rankHtml+
             '</div>';
@@ -272,10 +266,11 @@ function renderPetCard(pet) {
         var bonus = equipBonuses[s]||0;
         var total = cs[s]!==undefined ? cs[s] : (base + bonus);
         var isSp = specs.indexOf(s) !== -1;
-        var bonusStr = bonus > 0 ? ' <span style="font-size:0.65rem;color:#4caf50">(+'+bonus+')</span>' : '';
-        statsHtml += '<div class="col-6"><div class="mp-stat-row">'+
-            '<img src="/static/Emojis/Pets/Deco/'+s+'.png" onerror="this.style.display=\'none\'">'+
-            '<span class="'+(isSp?'stat-special':'')+'">'+s+': '+total+'</span>'+bonusStr+
+
+        var bonusStr = bonus > 0 ? ' <span style="font-size:0.65rem;color:#4caf50">(+' + bonus + ')</span>' : '';
+        statsHtml += '<div class="col-6"><div class="mp-stat-row mp-stat-hoverable" data-stat="'+s+'" style="cursor:pointer">' +
+            '<img src="/static/Emojis/Pets/Deco/' + s + '.png" onerror="this.style.display=\'none\'">' +
+            '<span class="' + (isSp ? 'stat-special' : '') + '">' + s + ': ' + total + '</span>' + bonusStr +
             '</div></div>';
     });
     statsHtml += '</div>';
@@ -303,6 +298,194 @@ function renderPetCard(pet) {
         '<div style="font-size:0.68rem;color:var(--text-secondary);text-align:right">'+xpCur.toLocaleString()+' / '+xpMax.toLocaleString()+' XP</div>';
     var body = el('my-pet-body');
     if (body) body.innerHTML = xpHtml + buildEquipped(pet) + buildEquipBonus(pet) + '<hr class="mp-divider my-2">' + statsHtml + combatHtml + buildInventoryCollapsible(pet) + buildTokenStatsCard(pet) + buildFriendFoeCard() + buildBreakdownCard(pet);
+    bindStatTooltips(pet);
+}
+
+// ── Stat / Type / Element hover tooltip system ────────────────────────────────
+
+var _mpTip = null;
+var _mpTipTimer = null;
+
+function _mpGetTip() {
+    if (!_mpTip) {
+        _mpTip = document.createElement('div');
+        _mpTip.id = 'mp-hover-tip';
+        _mpTip.className = 'mp-hover-tip';
+        document.body.appendChild(_mpTip);
+        _mpTip.addEventListener('mouseenter', function() { clearTimeout(_mpTipTimer); });
+        _mpTip.addEventListener('mouseleave', _mpHideTip);
+    }
+    return _mpTip;
+}
+
+function _mpHideTip() {
+    _mpTipTimer = setTimeout(function() {
+        var t = document.getElementById('mp-hover-tip');
+        if (t) { t.classList.remove('mp-hover-tip--visible'); }
+    }, 120);
+}
+
+function _mpShowTip(anchor, html) {
+    clearTimeout(_mpTipTimer);
+    var tip = _mpGetTip();
+    tip.innerHTML = html;
+    tip.classList.remove('mp-hover-tip--visible');
+    // Position
+    var rect = anchor.getBoundingClientRect();
+    var scrollY = window.scrollY || document.documentElement.scrollTop;
+    var scrollX = window.scrollX || document.documentElement.scrollLeft;
+    tip.style.left = '0px'; tip.style.top = '0px';
+    document.body.appendChild(tip);
+    var tw = tip.offsetWidth;
+    var th = tip.offsetHeight;
+    var left = rect.left + scrollX + rect.width / 2 - tw / 2;
+    var top  = rect.top  + scrollY - th - 10;
+    // Clamp to viewport
+    left = Math.max(8, Math.min(left, window.innerWidth - tw - 8));
+    if (top < scrollY + 8) top = rect.bottom + scrollY + 10;
+    tip.style.left = left + 'px';
+    tip.style.top  = top  + 'px';
+    tip.classList.add('mp-hover-tip--visible');
+}
+
+function _mpBuildStatTip(pet, stat) {
+    var masteryRaw = pet.stat_mastery && pet.stat_mastery[stat];
+    var masteryPts = masteryRaw && typeof masteryRaw === 'object' ? (masteryRaw.points || 0) : (masteryRaw || 0);
+    var masteryMult = masteryPts > 0 ? (1.0 + masteryPts * 0.1).toFixed(1) : null;
+
+    var abilities = [];
+    if (pet.abilities) {
+        var prefix = stat.toLowerCase() + '_';
+        Object.keys(pet.abilities).forEach(function(id) {
+            var lvl = pet.abilities[id];
+            if (id.indexOf(prefix) === 0 && lvl > 0) {
+                // Pretty-print the id: "att_npc_damage" → "Npc Damage"
+                var label = id.slice(prefix.length).replace(/_/g, ' ').replace(/\b\w/g, function(c){ return c.toUpperCase(); });
+                abilities.push({ label: label, level: lvl });
+            }
+        });
+    }
+
+    var rows = '';
+
+    // Mastery row
+    rows += '<div class="mp-tip-row">' +
+        '<span class="mp-tip-label">Stat Mastery</span>' +
+        '<span class="mp-tip-val' + (masteryPts > 0 ? ' mp-tip-val--gold' : ' mp-tip-val--dim') + '">' +
+        (masteryPts > 0 ? masteryPts + ' pt' + (masteryPts !== 1 ? 's' : '') + ' &nbsp;→&nbsp; <strong>' + masteryMult + 'x</strong>' : 'None') +
+        '</span></div>';
+
+    // Abilities
+    rows += '<div class="mp-tip-divider"></div>';
+    rows += '<div class="mp-tip-label mp-tip-section-head">Abilities</div>';
+    if (abilities.length === 0) {
+        rows += '<div class="mp-tip-row"><span class="mp-tip-val--dim" style="font-size:0.7rem">None unlocked</span></div>';
+    } else {
+        abilities.forEach(function(ab) {
+            rows += '<div class="mp-tip-row">' +
+                '<span class="mp-tip-label">' + ab.label + '</span>' +
+                '<span class="mp-tip-val mp-tip-val--gold">Lv.' + ab.level + '</span>' +
+                '</div>';
+        });
+    }
+
+    return '<div class="mp-tip-header">' +
+        '<img src="/static/Emojis/Pets/Deco/' + stat + '.png" class="mp-tip-icon" onerror="this.style.display=\'none\'">' +
+        '<span>' + stat + ' Mastery</span>' +
+        '</div>' +
+        '<div class="mp-tip-body">' + rows + '</div>';
+}
+
+function _mpBuildTypeTip(pet, typeKey) {
+    var info = TYPE_INFO[typeKey] || { label: cap(typeKey), desc: '' };
+    var advMastery = pet.advantage_mastery || {};
+    var typePts = parseInt(advMastery['type'] || 0, 10);
+    var typeBonus = typePts > 0 ? (typePts * 0.1).toFixed(1) : null;
+
+    var rows = '<div class="mp-tip-row">' +
+        '<span class="mp-tip-label">Matchup</span>' +
+        '<span class="mp-tip-val" style="font-size:0.7rem;color:var(--text-secondary)">' + info.desc + '</span>' +
+        '</div>';
+
+    rows += '<div class="mp-tip-divider"></div>';
+    rows += '<div class="mp-tip-row">' +
+        '<span class="mp-tip-label">Type Adv. Mastery</span>' +
+        '<span class="mp-tip-val' + (typePts > 0 ? ' mp-tip-val--gold' : ' mp-tip-val--dim') + '">' +
+        (typePts > 0 ? typePts + ' pt' + (typePts !== 1 ? 's' : '') + ' &nbsp;→&nbsp; <strong>+' + typeBonus + '</strong> bonus' : 'None') +
+        '</span></div>';
+
+    return '<div class="mp-tip-header">' +
+        '<img src="' + catImg(typeKey) + '" class="mp-tip-icon" onerror="this.style.display=\'none\'">' +
+        '<span>' + info.label + ' Type</span>' +
+        '</div>' +
+        '<div class="mp-tip-body">' + rows + '</div>';
+}
+
+function _mpBuildElemTip(pet, elemKey) {
+    var info = ELEM_INFO[elemKey] || { label: cap(elemKey), strong: [], weak: [], desc: '' };
+    var advMastery = pet.advantage_mastery || {};
+    var elemPts = parseInt(advMastery['element'] || 0, 10);
+    var elemBonus = elemPts > 0 ? (elemPts * 0.1).toFixed(1) : null;
+
+    var strongStr = info.strong && info.strong.length ? info.strong.join(', ') : '—';
+    var weakStr   = info.weak   && info.weak.length   ? info.weak.join(', ')   : '—';
+
+    var rows = '<div class="mp-tip-row">' +
+        '<span class="mp-tip-label" style="color:#4caf50">Strong vs</span>' +
+        '<span class="mp-tip-val" style="color:#4caf50">' + strongStr + '</span>' +
+        '</div>' +
+        '<div class="mp-tip-row">' +
+        '<span class="mp-tip-label" style="color:#e74c3c">Weak to</span>' +
+        '<span class="mp-tip-val" style="color:#e74c3c">' + weakStr + '</span>' +
+        '</div>';
+
+    rows += '<div class="mp-tip-divider"></div>';
+    rows += '<div class="mp-tip-row">' +
+        '<span class="mp-tip-label">Elem Adv. Mastery</span>' +
+        '<span class="mp-tip-val' + (elemPts > 0 ? ' mp-tip-val--gold' : ' mp-tip-val--dim') + '">' +
+        (elemPts > 0 ? elemPts + ' pt' + (elemPts !== 1 ? 's' : '') + ' &nbsp;→&nbsp; <strong>+' + elemBonus + '</strong> bonus' : 'None') +
+        '</span></div>';
+
+    return '<div class="mp-tip-header">' +
+        '<img src="' + elemImgPath(elemKey) + '" class="mp-tip-icon" onerror="this.style.display=\'none\'">' +
+        '<span>' + info.label + ' Element</span>' +
+        '</div>' +
+        '<div class="mp-tip-body">' + rows + '</div>';
+}
+
+function bindStatTooltips(pet) {
+    // Stat rows
+    var rows = document.querySelectorAll('.mp-stat-hoverable[data-stat]');
+    rows.forEach(function(row) {
+        var stat = row.getAttribute('data-stat');
+        row.addEventListener('mouseenter', function() {
+            clearTimeout(_mpTipTimer);
+            _mpShowTip(row, _mpBuildStatTip(pet, stat));
+        });
+        row.addEventListener('mouseleave', _mpHideTip);
+    });
+
+    // Type chips
+    var typeChips = document.querySelectorAll('.mp-type-chip[data-type]');
+    typeChips.forEach(function(chip) {
+        var typeKey = chip.getAttribute('data-type');
+        chip.addEventListener('mouseenter', function() {
+            clearTimeout(_mpTipTimer);
+            _mpShowTip(chip, _mpBuildTypeTip(pet, typeKey));
+        });
+        chip.addEventListener('mouseleave', _mpHideTip);
+    });
+
+    // Element chips
+    var elemChips = document.querySelectorAll('.mp-elem-chip[data-elem]');
+    elemChips.forEach(function(chip) {
+        var elemKey = chip.getAttribute('data-elem');
+        chip.addEventListener('mouseenter', function() {
+            clearTimeout(_mpTipTimer);
+            _mpShowTip(chip, _mpBuildElemTip(pet, elemKey));
+        });
+        chip.addEventListener('mouseleave', _mpHideTip);
+    });
 }
 
 function bindTabs() {}
@@ -322,6 +505,34 @@ function buildInteractions(pet) {
 
     var LOCATIONS = ['Camp','Bonfire','Beach','Forest','Hot Air Balloon','Cruiseship','Mountain','Gym','Graveyard','Festival','Glacier','Pyramids'];
     var LOC_EMOJI = {Camp:'camping',Bonfire:'bonfire',Beach:'beach',Forest:'forest','Hot Air Balloon':'hotairballoon',Cruiseship:'cruiseship',Mountain:'mountain',Gym:'gym',Graveyard:'graveyard',Festival:'festival',Glacier:'glacier',Pyramids:'pyramids'};
+    var LOC_SPECIALS = {
+        Camp:              ['Plant','Fighting'],
+        Bonfire:           ['Fire','Necro'],
+        Beach:             ['Water','Holy'],
+        Forest:            ['Plant','Rock'],
+        'Hot Air Balloon': ['Air','Fire'],
+        Cruiseship:        ['Water','Electric'],
+        Mountain:          ['Rock','Ice'],
+        Gym:               ['Fighting','Psychic'],
+        Graveyard:         ['Holy','Necro'],
+        Festival:          ['Magic','Psychic'],
+        Glacier:           ['Ice','Air'],
+        Pyramids:          ['Magic','Electric']
+    };
+
+    // Normalise pet elements for comparison
+    var petElem1 = (pet.element  || '').toLowerCase();
+    var petElem2 = (pet.element2 || '').toLowerCase();
+
+    function _locMatchCount(loc) {
+        var specials = LOC_SPECIALS[loc] || [];
+        var count = 0;
+        specials.forEach(function(s) {
+            var sl = s.toLowerCase();
+            if (sl === petElem1 || (petElem2 && sl === petElem2)) count++;
+        });
+        return count;
+    }
 
     var tabs = [
         {id:'train',  label:'🏋️ Train'},
@@ -330,6 +541,8 @@ function buildInteractions(pet) {
         {id:'quest',  label:'🗡️ Quest'},
         {id:'market', label:'📦 Loot Market'},
         {id:'gift',   label:'🎁 Gift Item'},
+        {id:'abilities', label:'💎 Abilities'},
+        {id:'battle', label:'⚔️ Battle Settings'},
         {id:'rename', label:'✏️ Rename'},
         {id:'kill',   label:'💀 Kill Pet'}
     ];
@@ -344,20 +557,39 @@ function buildInteractions(pet) {
     html += '<div id="panel-train">'+
         '<div class="mp-section-title">Train Your Pet</div>'+
         '<div class="mp-battle-card mb-3" style="font-size:0.82rem;color:var(--text-secondary)">'+
-        'Send your pet to train and earn XP. Higher difficulty = more XP but lower success rate.'+
+        'Pick a stat to train and a difficulty. Success raises the stat; failure lowers it. '+
+        'The change is <strong>difficulty multiplier × equipment multiplier</strong>. No XP is gained or lost.'+
         '</div>'+
+
+        // Stat picker
+        '<div class="mp-mini-label mb-1">Choose Stat</div>'+
+        '<div class="d-flex gap-2 flex-wrap mb-3">'+
+        ['ATT','DEF','INT','DEX','HAP','ENE'].map(function(s) {
+            return '<div class="mp-mini-stat-card" style="cursor:pointer;transition:all 0.2s;min-width:70px;text-align:center" '+
+                'id="train-stat-'+s+'" onclick="window._mpSelectTrainStat(\''+s+'\')">'+
+                '<img src="/static/Emojis/Pets/Deco/'+s+'.png" style="width:28px;height:28px;object-fit:contain;margin-bottom:3px" onerror="this.style.display=\'none\'">'+
+                '<div class="mp-mini-label">'+s+'</div>'+
+                '</div>';
+        }).join('')+
+        '</div>'+
+
+        // Difficulty picker
+        '<div class="mp-mini-label mb-1">Choose Difficulty</div>'+
         '<div class="row g-2 mb-3">'+
         ['Easy','Average','Hard'].map(function(d) {
-            var xp = {Easy:'50+',Average:'100+',Hard:'200+'}[d];
-            var chance = {Easy:'90%',Average:'70%',Hard:'50%'}[d];
+            var mult  = {Easy:'1×',Average:'3×',Hard:'5×'}[d];
+            var chance = {Easy:'75%',Average:'60%',Hard:'45%'}[d];
             return '<div class="col-md-4"><div class="mp-mini-stat-card" style="cursor:pointer;transition:all 0.2s" id="train-opt-'+d+'" onclick="window._mpSelectTrain(\''+d+'\')">'+
                 '<div class="mp-mini-label">'+d+'</div>'+
-                '<div style="font-size:0.78rem;color:var(--gold-secondary);font-weight:700">'+xp+' XP</div>'+
+                '<div style="font-size:0.78rem;color:var(--gold-secondary);font-weight:700">±'+mult+' equip mult</div>'+
                 '<div style="font-size:0.7rem;color:var(--text-secondary)">'+chance+' success</div>'+
                 '</div></div>';
         }).join('')+
         '</div>'+
-        '<div style="font-size:0.68rem;color:var(--text-secondary);margin-bottom:8px">⚡ XP scales with your pet\'s level (+10% per level above 1). 5 sec cooldown.</div>'+
+
+        '<div style="font-size:0.68rem;color:var(--text-secondary);margin-bottom:8px">'+
+        '⚡ Stat change = difficulty multiplier × equipment multiplier. 5 sec cooldown.'+
+        '</div>'+
         '<button class="mp-adopt-btn" id="train-btn" onclick="window._mpTrain()">Start Training</button>'+
         '<div id="train-result" class="mt-3"></div>'+
         '</div>';
@@ -372,7 +604,11 @@ function buildInteractions(pet) {
         ['Easy','Average','Hard'].map(function(d) {
             var xp = {Easy:'100+',Average:'250+',Hard:'500+'}[d];
             var chance = {Easy:'70%',Average:'50%',Hard:'30%'}[d];
-            var keys = {Easy:'33% Key1',Average:'Key1+Key2',Hard:'Key1+Key2+Key3'}[d];
+        var keys = {
+            Easy:    '50% per key',
+            Average: '65% per key',
+            Hard:    '75% per key'
+        }[d];
             return '<div class="col-md-4"><div class="mp-mini-stat-card" style="cursor:pointer;transition:all 0.2s" id="mission-opt-'+d+'" onclick="window._mpSelectMission(\''+d+'\')">'+
                 '<div class="mp-mini-label">'+d+'</div>'+
                 '<div style="font-size:0.78rem;color:var(--gold-secondary);font-weight:700">'+xp+' XP</div>'+
@@ -394,14 +630,41 @@ function buildInteractions(pet) {
     html += '<div id="panel-play" style="display:none">'+
         '<div class="mp-section-title">Take Your Pet to Play</div>'+
         '<div class="mp-battle-card mb-3" style="font-size:0.82rem;color:var(--text-secondary)">'+
-        'XP = 5 × Level × element bonus. Matching your pet\'s element to the location gives 2x or 3x XP and better keys.'+
+        'XP = 5 × Level × element bonus. Matching your pet\'s element to the location gives 2× or 3× XP and better keys. '+
+        '<span style="color:var(--gold-secondary)">★ = your element matches</span>'+
         '</div>'+
         '<div class="row g-2 mb-3">'+
         LOCATIONS.map(function(loc) {
-            var deco = LOC_EMOJI[loc] || 'camping';
-            return '<div class="col-md-3 col-sm-4 col-6"><div class="mp-mini-stat-card" style="cursor:pointer;transition:all 0.2s" id="play-opt-'+loc.replace(/ /g,'-')+'" onclick="window._mpSelectPlay(\''+loc+'\')">'+
+            var deco     = LOC_EMOJI[loc] || 'camping';
+            var specials = LOC_SPECIALS[loc] || [];
+            var matches  = _locMatchCount(loc);
+            // Border glow: gold for 2 matches, green for 1, default for 0
+            var borderStyle = matches === 2
+                ? 'border-color:var(--gold-primary);box-shadow:0 0 8px rgba(255,215,0,0.35)'
+                : matches === 1
+                    ? 'border-color:#4caf50;box-shadow:0 0 6px rgba(76,175,80,0.25)'
+                    : '';
+            // XP badge
+            var xpBadge = matches === 2
+                ? '<span style="font-size:0.6rem;font-weight:700;color:var(--gold-primary);background:rgba(255,215,0,0.12);border-radius:4px;padding:1px 5px;display:block;margin-top:2px">3× XP ★★</span>'
+                : matches === 1
+                    ? '<span style="font-size:0.6rem;font-weight:700;color:#4caf50;background:rgba(76,175,80,0.1);border-radius:4px;padding:1px 5px;display:block;margin-top:2px">2× XP ★</span>'
+                    : '<span style="font-size:0.6rem;color:var(--text-secondary);display:block;margin-top:2px">1× XP</span>';
+            // Element icons row
+            var elemIcons = specials.map(function(s) {
+                var isMatch = s.toLowerCase() === petElem1 || (petElem2 && s.toLowerCase() === petElem2);
+                return '<img src="/static/Emojis/Pets/Deco/'+s+'.png" '+
+                    'title="'+s+(isMatch?' — matches your element!':'')+'" '+
+                    'style="width:16px;height:16px;object-fit:contain;vertical-align:middle;'+
+                    (isMatch ? 'filter:drop-shadow(0 0 3px gold);outline:1px solid gold;border-radius:2px;' : 'opacity:0.55;')+'">';
+            }).join('');
+            return '<div class="col-md-3 col-sm-4 col-6">'+
+                '<div class="mp-mini-stat-card" style="cursor:pointer;transition:all 0.2s;'+borderStyle+'" '+
+                'id="play-opt-'+loc.replace(/ /g,'-')+'" onclick="window._mpSelectPlay(\''+loc+'\')">'+
                 '<img src="/static/Emojis/Pets/Deco/'+deco+'.png" style="width:28px;height:28px;object-fit:contain;margin-bottom:3px" onerror="this.style.display=\'none\'">'+
                 '<div class="mp-mini-label">'+loc+'</div>'+
+                '<div style="display:flex;gap:3px;justify-content:center;align-items:center;margin-top:3px">'+elemIcons+'</div>'+
+                xpBadge+
                 '</div></div>';
         }).join('')+
         '</div>'+
@@ -571,6 +834,38 @@ function buildInteractions(pet) {
         '<div id="kill-result" class="mt-3"></div>'+
         '</div>';
 
+    // ── Abilities ──────────────────────────────────────────────────────────
+    html += '<div id="panel-abilities" style="display:none">'+
+        '<div class="mp-section-title">💎 Abilities & Mastery</div>'+
+        '<div class="mp-battle-card mb-3" style="font-size:0.82rem;color:var(--text-secondary)">'+
+        'Spend ability points to unlock powerful abilities and stat mastery bonuses. Purchase points with levels (500 levels per point).'+
+        '</div>'+
+        '<div id="abilities-content">'+
+        '<div class="text-center py-4">'+
+        '<div class="spinner-border" style="color: var(--gold-primary);" role="status">'+
+        '<span class="visually-hidden">Loading...</span>'+
+        '</div>'+
+        '<p class="mt-2" style="color: var(--text-secondary);">Loading abilities...</p>'+
+        '</div>'+
+        '</div>'+
+        '</div>';
+
+    // ── Battle Settings ────────────────────────────────────────────────────
+    html += '<div id="panel-battle" style="display:none">'+
+        '<div class="mp-section-title">⚔️ Battle Settings</div>'+
+        '<div class="mp-battle-card mb-3" style="font-size:0.82rem;color:var(--text-secondary)">'+
+        'Customize your battle formulas and scaling behavior. Configure health, attack, and defense calculations.'+
+        '</div>'+
+        '<div id="battle-settings-content">'+
+        '<div class="text-center py-4">'+
+        '<div class="spinner-border" style="color: var(--gold-primary);" role="status">'+
+        '<span class="visually-hidden">Loading...</span>'+
+        '</div>'+
+        '<p class="mt-2" style="color: var(--text-secondary);">Loading battle settings...</p>'+
+        '</div>'+
+        '</div>'+
+        '</div>';
+
     return html;
 }
 
@@ -642,7 +937,7 @@ var EMOJI_PATH_MAP = (function() {
     ].forEach(function(n){ map[n.toLowerCase()] = pet + n + '.png'; });
 
     return map;
-}());
+})();
 
 /**
  * Convert a Discord API response string into safe HTML:
@@ -689,18 +984,134 @@ function injectItemImages(text) {
 }
 
 
+// ── Play themed result builder ────────────────────────────────────────────────
+// Builds a clean, emoji-rich result card from the play API response.
+// Avoids rendering the raw outcome string (which contains Discord emoji codes
+// and Unicode that can display as mojibake).
+var _ELEM_VERBS = {
+    fire:     ['scorched the area','breathed a jet of flame','ignited the surroundings','radiated heat'],
+    water:    ['summoned a refreshing mist','splashed through the area','called the rain','purified the water nearby'],
+    electric: ['crackled with energy','lit up the area','zapped through the space','hummed with static'],
+    ice:      ['frosted the ground','chilled the air','left icy paw prints','sculpted a tiny ice figure'],
+    plant:    ['grew a ring of flowers','rustled the leaves','coaxed vines to bloom','scattered seeds'],
+    rock:     ['skipped a stone','carved a small rune','stacked a little cairn','shook the ground'],
+    air:      ['stirred a gentle breeze','whirled the dust','carried a scent on the wind','lifted a leaf'],
+    magic:    ['conjured a sparkle','left a trail of glowing motes','enchanted the surroundings','made something shimmer'],
+    holy:     ['radiated a warm glow','blessed the area','left a golden shimmer','soothed the space'],
+    necro:    ['whispered to the shadows','found an old bone','chilled the air with spectral energy','summoned a wisp'],
+    psychic:  ['levitated a pebble','sensed the surroundings','projected a mental image','read the environment'],
+    fighting: ['shadowboxed the air','trained with fierce intensity','struck a powerful pose','cleared the path'],
+    basic:    ['explored the area','sniffed around','wandered curiously','took in the sights']
+};
+
+var _LOC_EMOJI_KEY = {
+    Camp:'camping', Bonfire:'bonfire', Beach:'beach', Forest:'forest',
+    'Hot Air Balloon':'hotairballoon', Cruiseship:'cruiseship', Mountain:'mountain',
+    Gym:'gym', Graveyard:'graveyard', Festival:'festival', Glacier:'glacier', Pyramids:'pyramids'
+};
+
+function _eImg(elem, size) {
+    size = size || 16;
+    var e = (elem||'basic').toLowerCase();
+    // Capitalise first letter for filename
+    var file = e.charAt(0).toUpperCase() + e.slice(1);
+    return '<img src="/static/Emojis/Pets/Deco/'+file+'.png" '+
+        'style="width:'+size+'px;height:'+size+'px;object-fit:contain;vertical-align:middle;margin:0 2px" '+
+        'onerror="this.style.display=\'none\'">';
+}
+
+function _kImg(key, size) {
+    size = size || 14;
+    return '<img src="/static/Emojis/Pets/Equipment/'+key+'.png" '+
+        'style="width:'+size+'px;height:'+size+'px;object-fit:contain;vertical-align:middle;margin:0 2px" '+
+        'onerror="this.style.display=\'none\'">';
+}
+
+function _randVerb(elem) {
+    var verbs = _ELEM_VERBS[(elem||'basic').toLowerCase()] || _ELEM_VERBS.basic;
+    return verbs[Math.floor(Math.random() * verbs.length)];
+}
+
+function buildPlayResult(d, loc, petBefore) {
+    // d = API response, loc = location string, petBefore = pet snapshot before play
+    var pet      = d.pet || petBefore || {};
+    var petName  = escHtml(pet.name || 'Your pet');
+    var elem1    = (pet.element  || 'basic').toLowerCase();
+    var elem2    = (pet.element2 || '').toLowerCase();
+    var xp       = d.xp || 0;
+    var locKey   = _LOC_EMOJI_KEY[loc] || 'camping';
+    var locImg   = '<img src="/static/Emojis/Pets/Deco/'+locKey+'.png" style="width:16px;height:16px;object-fit:contain;vertical-align:middle;margin:0 2px" onerror="this.style.display=\'none\'">';
+
+    // Determine keys awarded by diffing inventory (or fall back to parsing outcome)
+    // We detect keys from the outcome string since the API doesn't return them separately
+    var keysAwarded = [];
+    var raw = d.outcome || '';
+    ['Key3','Key2','Key1'].forEach(function(k) {
+        // Count occurrences of each key name in the outcome
+        var re = new RegExp(k, 'g');
+        var matches = raw.match(re);
+        if (matches) keysAwarded.push({name: k, count: matches.length});
+    });
+
+    // Build the activity description line
+    var actLine = '';
+    if (elem2 && elem2 !== 'basic' && elem2 !== elem1) {
+        actLine = petName + ' ' + _randVerb(elem1) + ' ' +
+            _eImg(elem1) + ' and ' + _randVerb(elem2) + ' ' + _eImg(elem2) +
+            ' at ' + locImg + ' <strong>' + escHtml(loc) + '</strong>';
+    } else {
+        actLine = petName + ' ' + _randVerb(elem1) + ' ' + _eImg(elem1) +
+            ' at ' + locImg + ' <strong>' + escHtml(loc) + '</strong>';
+    }
+
+    // XP line
+    var xpLine = '✨ Gained <strong style="color:var(--gold-primary)">' + xp.toLocaleString() + ' XP</strong>';
+
+    // Key lines
+    var keyLines = keysAwarded.map(function(k) {
+        return _kImg(k.name) + ' Looted <strong>' + k.name + '</strong>' + (k.count > 1 ? ' ×' + k.count : '');
+    }).join('<br>');
+
+    // Level up line
+    var lvlLine = '';
+    if (d.level_up) {
+        lvlLine = '🎉 <strong style="color:var(--gold-primary)">Level Up!</strong> Now level ' + d.level_up.new_level + '!';
+    }
+
+    var lines = [actLine, keyLines, xpLine, lvlLine].filter(Boolean).join('<br>');
+
+    return '<div class="mp-battle-card" style="border-color:rgba(39,174,96,0.4);font-size:0.82rem;line-height:1.8;color:var(--text-secondary)">'+lines+'</div>';
+}
+
 window._mpTab = function(tab) {
-    ['train','mission','play','battle','quest','market','gift','rename','kill'].forEach(function(t) {
+    ['train','mission','play','quest','market','gift','abilities','battle','rename','kill'].forEach(function(t) {
         var btn = el('tab-'+t), panel = el('panel-'+t);
         if (btn)   btn.classList.toggle('active', t===tab);
         if (panel) panel.style.display = t===tab ? '' : 'none';
     });
+    
+    // Load content for abilities and battle settings tabs when they're opened
+    if (tab === 'abilities') {
+        loadAbilitiesContent();
+    } else if (tab === 'battle') {
+        loadBattleSettingsContent();
+    }
 };
 
 // ── selection state ───────────────────────────────────────────────────────────
 var _trainDiff   = 'Easy';
+var _trainStat   = '';
 var _missionDiff = 'Easy';
 var _playLoc     = '';
+
+window._mpSelectTrainStat = function(s) {
+    _trainStat = s;
+    ['ATT','DEF','INT','DEX','HAP','ENE'].forEach(function(x) {
+        var el2 = el('train-stat-'+x);
+        if (el2) el2.style.borderColor = x===s ? 'var(--gold-primary)' : 'rgba(255,215,0,0.15)';
+        if (el2) el2.style.boxShadow   = x===s ? '0 0 8px var(--gold-glow)' : '';
+    });
+};
 
 window._mpSelectTrain = function(d) {
     _trainDiff = d;
@@ -750,13 +1161,19 @@ function showLevelChangePopup(data, isDown) {
     var glow  = isLevelDown ? 'rgba(231,76,60,0.4)' : 'var(--gold-glow)';
     var bg    = isLevelDown ? 'rgba(231,76,60,0.15)' : 'rgba(255,215,0,0.1)';
 
-    var gainsHtml = '';
+    var statHtml = '';
     if (!isLevelDown && data.gains && Object.keys(data.gains).length) {
-        gainsHtml = '<div style="margin-top:8px;font-size:0.75rem;color:var(--text-secondary)">';
+        statHtml = '<div style="margin-top:8px;font-size:0.75rem;color:var(--text-secondary)">';
         Object.entries(data.gains).forEach(function(kv) {
-            if (kv[1] && kv[1] !== 0) gainsHtml += '<span style="margin-right:8px">+'+kv[1]+' '+kv[0]+'</span>';
+            if (kv[1] && kv[1] > 0) statHtml += '<span style="margin-right:8px;color:#2ecc71">+'+kv[1]+' '+kv[0]+'</span>';
         });
-        gainsHtml += '</div>';
+        statHtml += '</div>';
+    } else if (isLevelDown && data.losses && Object.keys(data.losses).length) {
+        statHtml = '<div style="margin-top:8px;font-size:0.75rem;color:var(--text-secondary)">';
+        Object.entries(data.losses).forEach(function(kv) {
+            if (kv[1] && kv[1] > 0) statHtml += '<span style="margin-right:8px;color:#e74c3c">-'+kv[1]+' '+kv[0]+'</span>';
+        });
+        statHtml += '</div>';
     }
 
     var popup = document.createElement('div');
@@ -779,7 +1196,7 @@ function showLevelChangePopup(data, isDown) {
             'Level <span style="color:var(--text-secondary)">'+data.old_level+'</span>'+
             ' → <span style="color:'+color+';font-weight:700">'+data.new_level+'</span>'+
         '</div>'+
-        gainsHtml
+        statHtml
     );
 
     document.body.appendChild(popup);
@@ -897,12 +1314,16 @@ function _restoreCooldowns() {
 
 
 window._mpTrain = async function() {
+    if (!_trainStat) {
+        showResult('train-result', false, 'Please select a stat to train.');
+        return;
+    }
     var r = el('train-result');
     if (r) r.innerHTML = '<div class="mp-battle-card" style="font-size:0.8rem;color:var(--text-secondary)">Training...</div>';
     try {
         var res = await fetch('/api/pets/train', {
             method:'POST', headers:{'Content-Type':'application/json'},
-            body: JSON.stringify({difficulty: _trainDiff})
+            body: JSON.stringify({difficulty: _trainDiff, stat: _trainStat})
         });
         var d = await res.json();
         if (res.status === 429) {
@@ -911,7 +1332,6 @@ window._mpTrain = async function() {
         } else if (res.ok) {
             showResult('train-result', d.success, d.outcome);
             if (d.pet) { _pet = d.pet; renderPetCard(d.pet); }
-            if (d.level_up) showLevelChangePopup(d.level_up, false);
             _startCooldownTimer('train-btn', 'train-result', null, 5);
         } else {
             showResult('train-result', false, d.error || d.detail || 'Failed');
@@ -949,6 +1369,7 @@ window._mpPlay = async function() {
     if (!_playLoc) { showResult('play-result', false, 'Please select a location first.'); return; }
     var r = el('play-result');
     if (r) r.innerHTML = '<div class="mp-battle-card" style="font-size:0.8rem;color:var(--text-secondary)">Playing...</div>';
+    var petSnapshot = _pet || {};
     try {
         var res = await fetch('/api/pets/play', {
             method:'POST', headers:{'Content-Type':'application/json'},
@@ -959,7 +1380,8 @@ window._mpPlay = async function() {
             showResult('play-result', false, d.error || 'On cooldown.');
             _startCooldownTimer('play-btn', 'play-result', d.error);
         } else if (res.ok) {
-            showResult('play-result', d.success, d.outcome);
+            var resultEl = el('play-result');
+            if (resultEl) resultEl.innerHTML = buildPlayResult(d, _playLoc, petSnapshot);
             if (d.pet) { _pet = d.pet; renderPetCard(d.pet); }
             if (d.level_up) showLevelChangePopup(d.level_up, false);
             _startCooldownTimer('play-btn', 'play-result', null, 5);
@@ -1039,11 +1461,28 @@ function _renderQuestStage(d) {
     if(xpt && d.xp_so_far !== undefined) xpt.textContent = 'XP earned so far: '+d.xp_so_far;
     if(cho) {
         cho.innerHTML = '';
+        var statMaps = [
+            {stats: 'ATT + DEF', desc: 'Physical approach'},
+            {stats: 'DEX + INT', desc: 'Skillful approach'}, 
+            {stats: 'ENE + HAP', desc: 'Endurance approach'}
+        ];
         Object.keys(d.choices).forEach(function(k) {
+            var choiceNum = parseInt(k, 10);
+            var statInfo = statMaps[choiceNum - 1] || {stats: 'Unknown', desc: 'Unknown'};
+            
             var btn = document.createElement('button');
             btn.className = 'mp-adopt-btn';
-            btn.style.cssText = 'font-size:0.8rem;padding:8px 14px;text-align:left;width:100%';
-            btn.textContent = k+'. '+d.choices[k];
+            btn.style.cssText = 'font-size:0.8rem;padding:8px 14px;text-align:left;width:100%;position:relative';
+            
+            // Create choice content with stat indicators
+            var choiceDiv = document.createElement('div');
+            choiceDiv.innerHTML = 
+                '<div style="display:flex;align-items:center;justify-content:space-between">'+
+                    '<span><strong>'+k+'.</strong> '+d.choices[k]+'</span>'+
+                    '<span style="font-size:0.7rem;color:var(--gold-secondary);background:rgba(255,215,0,0.1);padding:2px 6px;border-radius:10px;margin-left:8px">'+statInfo.stats+'</span>'+
+                '</div>';
+            
+            btn.appendChild(choiceDiv);
             btn.onclick = function(){ window._mpQuestChoice(parseInt(k,10)); };
             cho.appendChild(btn);
         });
@@ -3083,5 +3522,962 @@ document.addEventListener('mouseout', function(e) {
     if (t && !t.contains(e.relatedTarget)) { _hoverEl = null; _hideItemHover(); }
 });
 
-}());
+// ── Load abilities content inline ─────────────────────────────────────────────
+function loadAbilitiesContent() {
+    var container = el('abilities-content');
+    if (!container) return;
+    
+    // Show loading state
+    container.innerHTML = '<div class="text-center py-4">'+
+        '<div class="spinner-border" style="color: var(--gold-primary);" role="status">'+
+        '<span class="visually-hidden">Loading...</span>'+
+        '</div>'+
+        '<p class="mt-2" style="color: var(--text-secondary);">Loading abilities...</p>'+
+        '</div>';
+    
+    // Load ability tree CSS if not already loaded
+    if (!document.querySelector('link[href="/css/ability_tree.css"]')) {
+        var lnk = document.createElement('link');
+        lnk.rel = 'stylesheet'; lnk.href = '/css/ability_tree.css';
+        document.head.appendChild(lnk);
+    }
+    
+    // Load ability tree data and render inline using the full system
+    fetch('/api/pets/ability-tree')
+        .then(function(r){ return r.json(); })
+        .then(function(data) {
+            if (data && data.available_points !== undefined) {
+                renderFullAbilityTreeInline(data, container);
+            } else {
+                container.innerHTML = '<div class="mp-battle-card" style="color:#e74c3c">Failed to load abilities data</div>';
+            }
+        })
+        .catch(function(e) {
+            container.innerHTML = '<div class="mp-battle-card" style="color:#e74c3c">Error loading abilities: ' + e.message + '</div>';
+        });
+}
+window.loadAbilitiesContent = loadAbilitiesContent;
+function renderFullAbilityTreeInline(state, container) {
+    // Set up the ability tree state for inline rendering
+    window._abilityTreeState = state;
+    window._abilityTreeSelectedNode = null;
+    window._abilityTreeOpenStat = null;
+    
+    var pts = state.available_points || 0;
+    
+    // Create the full ability tree interface inline
+    var html = '<div class="at-inline-container" style="background:linear-gradient(135deg,rgba(8,8,8,0.85),rgba(14,14,14,0.85));border-radius:8px;padding:12px">';
+    
+    // Header with points badge
+    html += '<div class="at-inline-header" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">';
+    html += '<div class="at-inline-title" style="font-family:Orbitron,sans-serif;font-size:1rem;color:var(--gold-primary);text-shadow:0 0 10px rgba(255,215,0,0.4);font-weight:700">💎 Abilities & Mastery</div>';
+    html += '<div class="at-points-badge" style="background:rgba(255,215,0,0.12);border:1px solid rgba(255,215,0,0.35);border-radius:20px;padding:4px 12px;font-size:0.75rem;color:var(--gold-primary);font-weight:700">✨ ' + pts + ' pt' + (pts !== 1 ? 's' : '') + '</div>';
+    html += '</div>';
+    
+    // Top bar with purchase and advantage mastery
+    html += '<div class="at-topbar" style="display:flex;align-items:stretch;gap:8px;margin-bottom:10px;flex-wrap:wrap">';
+    html += renderPurchaseBarInline(state);
+    html += renderAdvMasteryCardsInline(state);
+    html += '</div>';
+    
+    // Main content layout
+    html += '<div class="at-content-layout" style="display:flex;gap:12px">';
+    html += '<div class="at-tree-container" style="flex:2;min-width:0">' + renderTreeInline(state) + '</div>';
+    html += '<div class="at-details-container" style="flex:1;min-width:250px" id="at-details-panel-inline">' + renderDetailsInline() + '</div>';
+    html += '</div>';
+    
+    html += '</div>';
+    
+    // Add toast container for notifications
+    html += '<div id="at-toast-inline" style="display:none"></div>';
+    
+    container.innerHTML = html;
+    
+    // Expose global handlers for inline version
+    exposeInlineAbilityHandlers();
+}
+
+// ── Purchase bar for inline version ───────────────────────────────────────────
+function renderPurchaseBarInline(state) {
+    var pts = state.available_points || 0;
+    var level = state.current_level || 1;
+    var canBuy = state.can_purchase_point || false;
+    var cost = state.point_cost || 500;
+    return '<div class="at-purchase-compact" style="background:linear-gradient(135deg,rgba(255,215,0,0.08),rgba(255,140,0,0.04));border:1px solid rgba(255,215,0,0.25);border-radius:6px;padding:6px 12px;display:flex;align-items:center;gap:10px;flex:1;min-width:0">' +
+        '<div class="at-purchase-info" style="display:flex;align-items:center;gap:10px;flex:1;flex-wrap:wrap">' +
+            '<span class="at-purchase-label" style="font-size:0.75rem;color:var(--gold-primary);font-weight:700;white-space:nowrap">💎 ' + pts + ' pt' + (pts !== 1 ? 's' : '') + '</span>' +
+            '<span class="at-purchase-cost" style="font-size:0.72rem;color:var(--text-secondary);white-space:nowrap">Cost: ' + cost + ' Lvls</span>' +
+            '<span class="at-purchase-level" style="font-size:0.72rem;color:var(--text-secondary);white-space:nowrap">Lv.' + level + '</span>' +
+        '</div>' +
+        '<button class="at-purchase-btn-compact" style="background:' + (canBuy ? 'linear-gradient(135deg,var(--gold-primary),#ffb300)' : 'rgba(80,80,80,0.4)') + ';border:none;border-radius:5px;color:' + (canBuy ? '#000' : 'rgba(255,255,255,0.4)') + ';font-size:0.72rem;font-weight:700;padding:5px 10px;cursor:' + (canBuy ? 'pointer' : 'not-allowed') + ';transition:all 0.2s;white-space:nowrap;flex-shrink:0"' + (canBuy ? '' : ' disabled') +
+            ' onclick="purchaseAbilityPointInline()">' +
+            (canBuy ? '🛒 Buy Point' : '❌ Need ' + (cost - level) + ' Lvls') +
+        '</button>' +
+    '</div>';
+}
+
+// ── Advantage mastery cards for inline version ────────────────────────────────
+function renderAdvMasteryCardsInline(state) {
+    var adv = state.advantage_mastery || {};
+    var pts = state.available_points || 0;
+    var canSpend = pts >= 1;
+    var cards = [
+        { key:'type',    icon:'⚔️', label:'Type Adv.' },
+        { key:'element', icon:'✨', label:'Elem Adv.' },
+    ];
+    var html = '<div class="at-adv-mastery-group" style="display:flex;gap:6px">';
+    cards.forEach(function(c) {
+        var m = adv[c.key] || { points:0, bonus:0 };
+        var mpts = m.points || 0;
+        var bonus = m.bonus !== undefined ? m.bonus : (mpts * 0.1);
+        var isSelected = window._abilityTreeSelectedNode && window._abilityTreeSelectedNode.type === 'adv' && window._abilityTreeSelectedNode.key === c.key;
+        html += '<div class="at-adv-card' + (isSelected ? ' at-selected' : '') +
+            '" data-adv-key="' + c.key + '" style="background:linear-gradient(135deg,rgba(255,215,0,0.07),rgba(255,140,0,0.03));border:1px solid rgba(255,215,0,0.22);border-radius:6px;padding:5px 10px;display:flex;align-items:center;gap:6px;cursor:pointer;transition:all 0.2s;min-width:110px" onclick="selectAdvNodeInline(\'' + c.key + '\')">' +
+            '<div class="at-adv-card-icon" style="font-size:1rem;flex-shrink:0">' + c.icon + '</div>' +
+            '<div class="at-adv-card-info" style="flex:1;min-width:0">' +
+                '<div class="at-adv-card-label" style="font-family:Orbitron,sans-serif;font-size:0.62rem;color:var(--gold-primary);font-weight:700;line-height:1.1">' + c.label + '</div>' +
+                '<div class="at-adv-card-val" style="font-size:0.68rem;color:#4caf50;font-weight:700;line-height:1">+' + bonus.toFixed(1) + '</div>' +
+                '<div class="at-adv-card-pts" style="font-size:0.58rem;color:var(--text-secondary);line-height:1">' + mpts + ' pts</div>' +
+            '</div>' +
+            '<button class="at-adv-upgrade-btn" style="background:' + (canSpend ? 'linear-gradient(135deg,#4caf50,#45a049)' : 'rgba(80,80,80,0.4)') + ';border:none;border-radius:3px;color:#fff;font-size:0.6rem;font-weight:700;cursor:' + (canSpend ? 'pointer' : 'not-allowed') + ';padding:2px 6px;transition:all 0.2s"' + (canSpend ? '' : ' disabled') +
+                ' onclick="event.stopPropagation(); upgradeAdvMasteryInline(\'' + c.key + '\')">+</button>' +
+        '</div>';
+    });
+    return html + '</div>';
+}
+
+// ── Load battle settings content inline ───────────────────────────────────────
+function loadBattleSettingsContent() {
+    var container = el('battle-settings-content');
+    if (!container) return;
+    
+    // Show loading state
+    container.innerHTML = '<div class="text-center py-4">'+
+        '<div class="spinner-border" style="color: var(--gold-primary);" role="status">'+
+        '<span class="visually-hidden">Loading...</span>'+
+        '</div>'+
+        '<p class="mt-2" style="color: var(--text-secondary);">Loading battle settings...</p>'+
+        '</div>';
+    
+    // Load battle settings and render inline
+    fetch('/api/battle/settings/my')
+        .then(function(r){ 
+            if (r.status === 401 || r.status === 403) {
+                // User not authenticated - show default settings
+                renderBattleSettingsInline(getDefaultBattleSettings(), container);
+                return;
+            }
+            return r.json(); 
+        })
+        .then(function(data) {
+            if (data && data.settings) {
+                renderBattleSettingsInline(data.settings, container);
+            } else if (data) {
+                // Already handled above for auth errors
+                return;
+            } else {
+                renderBattleSettingsInline(getDefaultBattleSettings(), container);
+            }
+        })
+        .catch(function(e) {
+            console.log('Battle settings error:', e);
+            renderBattleSettingsInline(getDefaultBattleSettings(), container);
+        });
+}
+
+// ── Render battle settings content inline ─────────────────────────────────────
+function renderBattleSettingsInline(settings, container) {
+    var formula = settings.formula || getDefaultBattleSettings().formula;
+    
+    var html = '<div class="row g-3">';
+    
+    // Left column - Health formula
+    html += '<div class="col-md-4">';
+    html += '<div class="mp-battle-card">';
+    html += '<div class="mp-mini-label mb-2">Health Formula</div>';
+    html += '<div class="mb-2">';
+    html += '<label style="font-size:0.75rem;color:var(--text-secondary)">Stats to include:</label>';
+    html += '<div class="d-flex flex-wrap gap-1 mt-1">';
+    ['ATT', 'DEF', 'INT', 'DEX', 'HAP', 'ENE'].forEach(function(stat) {
+        var checked = formula.health_stats.indexOf(stat) !== -1;
+        html += '<label class="d-flex align-items-center gap-1" style="font-size:0.7rem;cursor:pointer">';
+        html += '<input type="checkbox" ' + (checked ? 'checked' : '') + ' onchange="updateHealthStats(\'' + stat + '\')">';
+        html += '<span>' + stat + '</span>';
+        html += '</label>';
+    });
+    html += '</div>';
+    html += '</div>';
+    html += '<div class="mb-2">';
+    html += '<label class="d-flex align-items-center gap-2" style="font-size:0.75rem;cursor:pointer">';
+    html += '<input type="checkbox" ' + (formula.health_use_average ? 'checked' : '') + ' onchange="toggleHealthAverage()">';
+    html += '<span>Use average instead of sum</span>';
+    html += '</label>';
+    html += '</div>';
+    html += '<div class="mb-2">';
+    html += '<label style="font-size:0.75rem;color:var(--text-secondary)">Multiplier:</label>';
+    html += '<input type="number" class="form-control mp-input" style="font-size:0.75rem;padding:0.25rem 0.5rem" value="' + formula.health_multiplier + '" onchange="updateHealthMultiplier(this.value)">';
+    html += '</div>';
+    html += '</div>';
+    html += '</div>';
+    
+    // Middle column - Attack formula
+    html += '<div class="col-md-4">';
+    html += '<div class="mp-battle-card">';
+    html += '<div class="mp-mini-label mb-2">Attack Formula</div>';
+    html += '<div class="mb-2">';
+    html += '<label style="font-size:0.75rem;color:var(--text-secondary)">Stats to include:</label>';
+    html += '<div class="d-flex flex-wrap gap-1 mt-1">';
+    ['ATT', 'DEF', 'INT', 'DEX', 'HAP', 'ENE'].forEach(function(stat) {
+        var checked = formula.attack_stats.indexOf(stat) !== -1;
+        html += '<label class="d-flex align-items-center gap-1" style="font-size:0.7rem;cursor:pointer">';
+        html += '<input type="checkbox" ' + (checked ? 'checked' : '') + ' onchange="updateAttackStats(\'' + stat + '\')">';
+        html += '<span>' + stat + '</span>';
+        html += '</label>';
+    });
+    html += '</div>';
+    html += '</div>';
+    html += '<div class="mb-2">';
+    html += '<label class="d-flex align-items-center gap-2" style="font-size:0.75rem;cursor:pointer">';
+    html += '<input type="checkbox" ' + (formula.attack_use_average ? 'checked' : '') + ' onchange="toggleAttackAverage()">';
+    html += '<span>Use average instead of sum</span>';
+    html += '</label>';
+    html += '</div>';
+    html += '<div class="mb-2">';
+    html += '<label style="font-size:0.75rem;color:var(--text-secondary)">Multiplier:</label>';
+    html += '<input type="number" class="form-control mp-input" style="font-size:0.75rem;padding:0.25rem 0.5rem" value="' + formula.attack_multiplier + '" onchange="updateAttackMultiplier(this.value)">';
+    html += '</div>';
+    html += '</div>';
+    html += '</div>';
+    
+    // Right column - Defense formula
+    html += '<div class="col-md-4">';
+    html += '<div class="mp-battle-card">';
+    html += '<div class="mp-mini-label mb-2">Defense Formula</div>';
+    html += '<div class="mb-2">';
+    html += '<label style="font-size:0.75rem;color:var(--text-secondary)">Stats to include:</label>';
+    html += '<div class="d-flex flex-wrap gap-1 mt-1">';
+    ['ATT', 'DEF', 'INT', 'DEX', 'HAP', 'ENE'].forEach(function(stat) {
+        var checked = formula.defense_stats.indexOf(stat) !== -1;
+        html += '<label class="d-flex align-items-center gap-1" style="font-size:0.7rem;cursor:pointer">';
+        html += '<input type="checkbox" ' + (checked ? 'checked' : '') + ' onchange="updateDefenseStats(\'' + stat + '\')">';
+        html += '<span>' + stat + '</span>';
+        html += '</label>';
+    });
+    html += '</div>';
+    html += '</div>';
+    html += '<div class="mb-2">';
+    html += '<label class="d-flex align-items-center gap-2" style="font-size:0.75rem;cursor:pointer">';
+    html += '<input type="checkbox" ' + (formula.defense_use_average ? 'checked' : '') + ' onchange="toggleDefenseAverage()">';
+    html += '<span>Use average instead of sum</span>';
+    html += '</label>';
+    html += '</div>';
+    html += '<div class="mb-2">';
+    html += '<label style="font-size:0.75rem;color:var(--text-secondary)">Multiplier:</label>';
+    html += '<input type="number" class="form-control mp-input" style="font-size:0.75rem;padding:0.25rem 0.5rem" value="' + formula.defense_multiplier + '" onchange="updateDefenseMultiplier(this.value)">';
+    html += '</div>';
+    html += '</div>';
+    html += '</div>';
+    
+    html += '</div>';
+    
+    // Save button
+    html += '<div class="text-center mt-3">';
+    html += '<button class="mp-adopt-btn" onclick="saveBattleSettings()">Save Battle Settings</button>';
+    html += '</div>';
+    
+    container.innerHTML = html;
+}
+
+// ── Default battle settings ───────────────────────────────────────────────────
+function getDefaultBattleSettings() {
+    return {
+        formula: {
+            health_stats: ['HAP', 'ENE'],
+            health_use_average: true,
+            health_multiplier: 10.0,
+            health_level_factor: true,
+            health_equipment_factor: true,
+            health_custom_multiplier: 1.0,
+            health_custom_divider: 1.0,
+            
+            attack_stats: ['ATT', 'DEX'],
+            attack_use_average: false,
+            attack_multiplier: 1.0,
+            attack_level_factor: true,
+            attack_equipment_factor: true,
+            attack_custom_multiplier: 1.0,
+            attack_custom_divider: 1.0,
+            
+            defense_stats: ['DEF', 'INT'],
+            defense_use_average: false,
+            defense_multiplier: 1.0,
+            defense_level_factor: true,
+            defense_equipment_factor: true,
+            defense_custom_multiplier: 1.0,
+            defense_custom_divider: 1.0,
+            
+            use_original_scaling: false,
+            formula_name: "Default Formula"
+        }
+    };
+}
+
+// ── Ability and battle settings interaction functions ─────────────────────────
+window.purchaseAbilityPoint = function() {
+    fetch('/api/pets/ability-tree/purchase-point', {method: 'POST'})
+        .then(function(r){ return r.json(); })
+        .then(function(d) {
+            if (d.success) {
+                loadAbilitiesContent(); // Reload to show updated points
+                if (_pet) { _pet = d.pet; renderPetCard(_pet); } // Update pet display
+            } else {
+                alert('Failed to purchase point: ' + (d.error || 'Unknown error'));
+            }
+        })
+        .catch(function(e) { alert('Error: ' + e.message); });
+};
+
+window.spendStatMastery = function(stat) {
+    fetch('/api/pets/ability-tree/spend-stat-mastery', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({stat: stat})
+    })
+        .then(function(r){ return r.json(); })
+        .then(function(d) {
+            if (d.success) {
+                loadAbilitiesContent(); // Reload to show updated mastery
+            } else {
+                alert('Failed to spend mastery point: ' + (d.error || 'Unknown error'));
+            }
+        })
+        .catch(function(e) { alert('Error: ' + e.message); });
+};
+
+window.upgradeAbility = function(abilityId) {
+    fetch('/api/pets/ability-tree/unlock-ability', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ability_id: abilityId})
+    })
+        .then(function(r){ return r.json(); })
+        .then(function(d) {
+            if (d.success) {
+                loadAbilitiesContent(); // Reload to show updated abilities
+            } else {
+                alert('Failed to upgrade ability: ' + (d.error || 'Unknown error'));
+            }
+        })
+        .catch(function(e) { alert('Error: ' + e.message); });
+};
+
+// Battle settings update functions (simplified for inline display)
+var _currentBattleSettings = null;
+
+window.updateHealthStats = function(stat) {
+    if (!_currentBattleSettings) _currentBattleSettings = getDefaultBattleSettings();
+    var stats = _currentBattleSettings.formula.health_stats;
+    var index = stats.indexOf(stat);
+    if (index !== -1) {
+        stats.splice(index, 1);
+    } else {
+        stats.push(stat);
+    }
+};
+
+window.toggleHealthAverage = function() {
+    if (!_currentBattleSettings) _currentBattleSettings = getDefaultBattleSettings();
+    _currentBattleSettings.formula.health_use_average = !_currentBattleSettings.formula.health_use_average;
+};
+
+window.updateHealthMultiplier = function(value) {
+    if (!_currentBattleSettings) _currentBattleSettings = getDefaultBattleSettings();
+    _currentBattleSettings.formula.health_multiplier = parseFloat(value) || 1.0;
+};
+
+window.updateAttackStats = function(stat) {
+    if (!_currentBattleSettings) _currentBattleSettings = getDefaultBattleSettings();
+    var stats = _currentBattleSettings.formula.attack_stats;
+    var index = stats.indexOf(stat);
+    if (index !== -1) {
+        stats.splice(index, 1);
+    } else {
+        stats.push(stat);
+    }
+};
+
+window.toggleAttackAverage = function() {
+    if (!_currentBattleSettings) _currentBattleSettings = getDefaultBattleSettings();
+    _currentBattleSettings.formula.attack_use_average = !_currentBattleSettings.formula.attack_use_average;
+};
+
+window.updateAttackMultiplier = function(value) {
+    if (!_currentBattleSettings) _currentBattleSettings = getDefaultBattleSettings();
+    _currentBattleSettings.formula.attack_multiplier = parseFloat(value) || 1.0;
+};
+
+window.updateDefenseStats = function(stat) {
+    if (!_currentBattleSettings) _currentBattleSettings = getDefaultBattleSettings();
+    var stats = _currentBattleSettings.formula.defense_stats;
+    var index = stats.indexOf(stat);
+    if (index !== -1) {
+        stats.splice(index, 1);
+    } else {
+        stats.push(stat);
+    }
+};
+
+window.toggleDefenseAverage = function() {
+    if (!_currentBattleSettings) _currentBattleSettings = getDefaultBattleSettings();
+    _currentBattleSettings.formula.defense_use_average = !_currentBattleSettings.formula.defense_use_average;
+};
+
+window.updateDefenseMultiplier = function(value) {
+    if (!_currentBattleSettings) _currentBattleSettings = getDefaultBattleSettings();
+    _currentBattleSettings.formula.defense_multiplier = parseFloat(value) || 1.0;
+};
+
+window.saveBattleSettings = function() {
+    if (!_currentBattleSettings) {
+        alert('No settings to save');
+        return;
+    }
+    
+    fetch('/api/battle/settings/save', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(_currentBattleSettings)
+    })
+        .then(function(r){ return r.json(); })
+        .then(function(d) {
+            if (d.success) {
+                alert('Battle settings saved successfully!');
+            } else {
+                alert('Failed to save settings: ' + (d.error || 'Unknown error'));
+            }
+        })
+        .catch(function(e) { 
+            console.log('Save error:', e);
+            alert('Settings saved locally (server unavailable)');
+        });
+};
+
+})();
+
+// ── Tree rendering for inline version ─────────────────────────────────────────
+function renderTreeInline(state) {
+    var STATS = ['ATT','DEF','INT','DEX','HAP','ENE'];
+    var STAT_META = {
+        ATT: { label:'ATT', icon:'/static/Emojis/Pets/Deco/ATT.png', color:'#e74c3c' },
+        DEF: { label:'DEF', icon:'/static/Emojis/Pets/Deco/DEF.png', color:'#3498db' },
+        INT: { label:'INT', icon:'/static/Emojis/Pets/Deco/INT.png', color:'#9b59b6' },
+        DEX: { label:'DEX', icon:'/static/Emojis/Pets/Deco/DEX.png', color:'#1abc9c' },
+        HAP: { label:'HAP', icon:'/static/Emojis/Pets/Deco/HAP.png', color:'#f39c12' },
+        ENE: { label:'ENE', icon:'/static/Emojis/Pets/Deco/ENE.png', color:'#2ecc71' },
+    };
+    var ABILITY_ICONS = {
+        'att_npc_damage':'🤖','att_pvp_damage':'⚔️','att_boss_damage':'🐉',
+        'att_survive_aggression':'🔥','att_critical_chance':'🎯','att_critical_multiplier':'💥',
+        'def_npc_defense':'🛡️','def_pvp_defense':'🏰','def_boss_defense':'⛰️',
+        'def_survive_endurance':'🧱','def_charge_protection':'🔋','def_last_stand':'💀',
+        'int_train_xp':'🧠','int_mission_xp':'🎯','int_play_xp':'🎮','int_quest_xp':'📜',
+        'int_survive_xp':'🧠','int_npc_battle_xp':'🤖','int_pvp_battle_xp':'⚔️','int_boss_battle_xp':'🐉',
+        'dex_speed_boost':'💨','dex_slots_loss_reduction':'🎰','dex_blackjack_loss_reduction':'🃏',
+        'dex_holdem_loss_reduction':'♠️','dex_craps_loss_reduction':'🎲','dex_wheel_loss_reduction':'🎡',
+        'dex_keno_loss_reduction':'🔢','dex_scratch_loss_reduction':'🎫','dex_powerball_loss_reduction':'🎱',
+        'dex_races_loss_reduction':'🏇','dex_coinflip_loss_reduction':'🪙','dex_rps_loss_reduction':'✂️',
+        'hap_battle_health':'❤️','hap_slots_win_bonus':'🎰','hap_blackjack_win_bonus':'🃏',
+        'hap_holdem_win_bonus':'♠️','hap_craps_win_bonus':'🎲','hap_wheel_win_bonus':'🎡',
+        'hap_keno_win_bonus':'🔢','hap_scratch_win_bonus':'🎫','hap_powerball_win_bonus':'🎱',
+        'hap_races_win_bonus':'🏇','hap_coinflip_win_bonus':'🪙','hap_rps_win_bonus':'✂️',
+        'ene_battle_stamina':'💪','ene_charge_mastery':'⚡','ene_speed_burst':'🚀',
+        'ene_charged_start':'🔋','ene_overcharged':'⚡',
+    };
+    
+    var mastery   = state.stat_mastery || {};
+    var abilities = state.abilities    || {};
+    var pts       = state.available_points || 0;
+
+    return STATS.map(function(stat) {
+        var m    = mastery[stat] || { points:0, multiplier:1.0 };
+        var meta = STAT_META[stat];
+        var isUnlocked = m.points > 0;
+        var canUnlock  = pts >= 1 && !isUnlocked;
+        var mClass = isUnlocked ? 'at-stat-unlocked' : canUnlock ? 'at-stat-available' : 'at-stat-locked';
+        var isSelMastery = window._abilityTreeSelectedNode && window._abilityTreeSelectedNode.type === 'mastery' && window._abilityTreeSelectedNode.stat === stat;
+        var isOpen = window._abilityTreeOpenStat === stat;
+
+        // Count abilities with progress for the collapsed summary
+        var statAbs = Object.keys(abilities)
+            .map(function(id){ return abilities[id]; })
+            .filter(function(a){ return a.stat === stat; });
+        var ownedCount = statAbs.filter(function(a){ return (a.current_level || 0) > 0; }).length;
+        var totalCount = statAbs.length;
+
+        // Summary chips shown when collapsed
+        var summaryHtml = '';
+        if (!isOpen) {
+            if (isUnlocked) {
+                summaryHtml = '<span class="at-section-summary" style="display:flex;gap:4px;margin-left:auto">' +
+                    '<span class="at-summary-mult" style="background:rgba(76,175,80,0.15);color:#4caf50;padding:2px 6px;border-radius:10px;font-size:0.6rem;font-weight:700">x' + m.multiplier.toFixed(1) + '</span>' +
+                    (totalCount > 0 ? '<span class="at-summary-ab" style="background:rgba(255,215,0,0.15);color:var(--gold-primary);padding:2px 6px;border-radius:10px;font-size:0.6rem;font-weight:700">' + ownedCount + '/' + totalCount + ' ab</span>' : '') +
+                '</span>';
+            } else {
+                summaryHtml = '<span class="at-section-summary" style="margin-left:auto"><span class="at-summary-locked" style="background:rgba(128,128,128,0.15);color:#888;padding:2px 6px;border-radius:10px;font-size:0.6rem;font-weight:700">🔒 ' + totalCount + ' ab</span></span>';
+            }
+        }
+
+        var chevron = '<span class="at-chevron' + (isOpen ? ' at-chevron-open' : '') + '" style="margin-left:8px;transition:transform 0.2s;transform:rotate(' + (isOpen ? '90deg' : '0deg') + ');color:var(--gold-primary);font-weight:700">›</span>';
+
+        var masteryRow =
+            '<div class="at-stat-mastery ' + mClass + (isSelMastery ? ' at-selected' : '') + '" data-stat="' + stat + '" style="display:flex;align-items:center;gap:8px;padding:8px;border-radius:6px;cursor:pointer;transition:all 0.2s;background:' + (isSelMastery ? 'rgba(255,215,0,0.1)' : 'rgba(0,0,0,0.2)') + ';border:1px solid ' + (isSelMastery ? 'var(--gold-primary)' : 'rgba(255,215,0,0.2)') + '" onclick="selectMasteryNodeInline(\'' + stat + '\')">' +
+                '<div class="at-stat-icon" style="width:32px;height:32px;flex-shrink:0"><img src="' + meta.icon + '" alt="' + stat + '" style="width:100%;height:100%;object-fit:contain" onerror="this.style.display=\'none\'"></div>' +
+                '<div class="at-stat-info" style="flex:1;min-width:0">' +
+                    '<div class="at-stat-name" style="font-size:0.8rem;font-weight:700;color:var(--gold-primary)">' + stat + ' Mastery</div>' +
+                    '<div style="display:flex;gap:8px;font-size:0.7rem;color:var(--text-secondary)">' +
+                        '<span class="at-stat-multiplier">x' + m.multiplier.toFixed(1) + '</span>' +
+                        '<span class="at-stat-points">' + m.points + ' pts</span>' +
+                    '</div>' +
+                '</div>' +
+                summaryHtml +
+                '<div class="at-stat-action" style="flex-shrink:0" onclick="event.stopPropagation()">' +
+                    (isUnlocked
+                        ? '<button class="at-upgrade-btn" style="background:linear-gradient(135deg,#4caf50,#45a049);border:none;border-radius:4px;color:#fff;font-size:0.7rem;font-weight:700;padding:4px 8px;cursor:pointer;transition:all 0.2s" onclick="event.stopPropagation(); upgradeMasteryInline(\'' + stat + '\')">+</button>'
+                        : canUnlock
+                            ? '<button class="at-unlock-btn" style="background:linear-gradient(135deg,var(--gold-primary),#ffb300);border:none;border-radius:4px;color:#000;font-size:0.7rem;font-weight:700;padding:4px 8px;cursor:pointer;transition:all 0.2s" onclick="event.stopPropagation(); unlockMasteryInline(\'' + stat + '\')">Unlock</button>'
+                            : '<span class="at-locked-indicator" style="color:#888;font-size:0.8rem">🔒</span>') +
+                '</div>' +
+                chevron +
+            '</div>';
+
+        var abilitiesHtml = '';
+        if (isOpen) {
+            if (isUnlocked) {
+                abilitiesHtml = '<div class="at-abilities-list" style="margin-top:8px;padding-left:16px">' +
+                    statAbs.map(function(ab) {
+                        var lvl     = ab.current_level || 0;
+                        var maxLvl  = ab.effective_max_level || ab.max_level || 5;
+                        var canUp   = ab.can_upgrade || false;
+                        var isMaxed = lvl >= maxLvl;
+                        var icon    = ABILITY_ICONS[ab.id] || '✨';
+                        var isSelAb = window._abilityTreeSelectedNode && window._abilityTreeSelectedNode.type === 'ability' && window._abilityTreeSelectedNode.abilityId === ab.id;
+
+                        var rowClass = 'at-ability-row ' +
+                            (isMaxed ? 'at-ability-maxed' :
+                             lvl > 0  ? 'at-ability-owned' :
+                             canUp    ? 'at-ability-available' : 'at-ability-locked');
+
+                        var pips = '';
+                        for (var i = 1; i <= maxLvl; i++) {
+                            var pc = i <= lvl ? (isMaxed ? 'maxed' : 'filled') :
+                                     (i === lvl + 1 && canUp ? 'next' : '');
+                            var pipColor = pc === 'maxed' ? '#ff9800' : pc === 'filled' ? '#4caf50' : pc === 'next' ? 'var(--gold-primary)' : 'rgba(255,255,255,0.2)';
+                            pips += '<div class="at-pip" style="width:8px;height:8px;border-radius:50%;background:' + pipColor + ';border:1px solid rgba(255,255,255,0.3)"></div>';
+                        }
+
+                        var badge = isMaxed
+                            ? '<span class="at-row-badge at-badge-max" style="background:#ff9800;color:#fff;padding:2px 6px;border-radius:10px;font-size:0.6rem;font-weight:700">MAX</span>'
+                            : canUp
+                                ? '<span class="at-row-badge at-badge-up" style="background:var(--gold-primary);color:#000;padding:2px 6px;border-radius:10px;font-size:0.6rem;font-weight:700">' + (lvl === 0 ? 'UNLOCK' : 'UP') + '</span>'
+                                : lvl > 0
+                                    ? '<span class="at-row-badge at-badge-lv" style="background:#4caf50;color:#fff;padding:2px 6px;border-radius:10px;font-size:0.6rem;font-weight:700">Lv.' + lvl + '</span>'
+                                    : '<span class="at-row-badge at-badge-lock" style="background:#888;color:#fff;padding:2px 6px;border-radius:10px;font-size:0.6rem;font-weight:700">🔒</span>';
+
+                        return '<div class="' + rowClass + '" data-ability-id="' + ab.id + '" style="display:flex;align-items:center;gap:8px;padding:6px 8px;margin-bottom:4px;border-radius:4px;cursor:pointer;transition:all 0.2s;background:' + (isSelAb ? 'rgba(255,215,0,0.1)' : 'rgba(0,0,0,0.3)') + ';border:1px solid ' + (isSelAb ? 'var(--gold-primary)' : 'rgba(255,215,0,0.1)') + '" onclick="selectAbilityNodeInline(\'' + ab.id + '\')">' +
+                            '<span class="at-row-icon" style="font-size:1rem;flex-shrink:0">' + icon + '</span>' +
+                            '<span class="at-row-name" style="flex:1;font-size:0.75rem;color:var(--text-primary);font-weight:600">' + ab.name + '</span>' +
+                            '<div class="at-row-pips" style="display:flex;gap:2px;flex-shrink:0">' + pips + '</div>' +
+                            badge +
+                            (canUp ? '<button class="at-ability-upgrade-btn" style="background:linear-gradient(135deg,var(--gold-primary),#ffb300);border:none;border-radius:3px;color:#000;font-size:0.6rem;font-weight:700;padding:2px 6px;margin-left:4px;cursor:pointer;transition:all 0.2s" onclick="event.stopPropagation(); upgradeAbilityInline(\'' + ab.id + '\')">+</button>' : '') +
+                        '</div>';
+                    }).join('') +
+                '</div>';
+            } else {
+                abilitiesHtml = '<div class="at-abilities-locked" style="margin-top:8px;padding:12px;text-align:center;color:#888;font-size:0.8rem;background:rgba(0,0,0,0.2);border-radius:4px">🔒 Unlock ' + stat + ' Mastery to access ' + totalCount + ' abilities</div>';
+            }
+        }
+
+        return '<div class="at-stat-section' + (isOpen ? ' at-section-open' : '') + '" data-stat="' + stat + '" style="margin-bottom:8px">' +
+            '<div class="at-section-header" style="border-left:3px solid ' + meta.color + ';padding-left:8px" onclick="toggleStatSectionInline(\'' + stat + '\');">' +
+                masteryRow +
+            '</div>' +
+            (isOpen ? '<div class="at-section-content">' + abilitiesHtml + '</div>' : '') +
+        '</div>';
+    }).join('');
+}
+
+// ── Details panel for inline version ──────────────────────────────────────────
+function renderDetailsInline() {
+    if (!window._abilityTreeSelectedNode) {
+        return '<div class="at-details-empty" style="text-align:center;padding:20px;color:var(--text-secondary);background:rgba(0,0,0,0.2);border-radius:6px">' +
+            '<div class="at-details-empty-icon" style="font-size:2rem;margin-bottom:8px">👆</div>' +
+            '<div style="font-size:0.8rem">Click any mastery, ability, or advantage card to see details & actions.</div>' +
+        '</div>';
+    }
+    
+    var node = window._abilityTreeSelectedNode;
+    var state = window._abilityTreeState;
+    
+    if (node.type === 'mastery') {
+        var stat = node.stat;
+        var m = (state.stat_mastery || {})[stat] || { points:0, multiplier:1.0 };
+        var canUp = (state.available_points || 0) >= 1;
+        return '<div class="at-details-panel" style="background:rgba(0,0,0,0.2);border-radius:6px;padding:12px">' +
+            '<div class="at-details-header" style="display:flex;align-items:center;gap:8px;margin-bottom:12px">' +
+                '<img src="/static/Emojis/Pets/Deco/' + stat + '.png" style="width:32px;height:32px" onerror="this.style.display=\'none\'">' +
+                '<div>' +
+                    '<div class="at-details-title" style="font-size:0.9rem;font-weight:700;color:var(--gold-primary)">' + stat + ' Mastery</div>' +
+                    '<div class="at-details-subtitle" style="font-size:0.7rem;color:var(--text-secondary)">Stat Multiplier</div>' +
+                '</div>' +
+            '</div>' +
+            '<div class="at-details-description" style="font-size:0.75rem;color:var(--text-secondary);margin-bottom:12px">Each point multiplies your ' + stat + ' stat by an additional 0.1x. At least 1 point is required to unlock abilities in this branch.</div>' +
+            '<div class="at-details-stats" style="margin-bottom:12px">' +
+                '<div class="at-detail-row" style="display:flex;justify-content:space-between;margin-bottom:4px;font-size:0.75rem"><span>Points Invested</span><span style="color:var(--gold-secondary);font-weight:700">' + m.points + '</span></div>' +
+                '<div class="at-detail-row" style="display:flex;justify-content:space-between;margin-bottom:4px;font-size:0.75rem"><span>Current Multiplier</span><span style="color:#4caf50;font-weight:700">x' + m.multiplier.toFixed(1) + '</span></div>' +
+                '<div class="at-detail-row" style="display:flex;justify-content:space-between;font-size:0.75rem"><span>Next Point</span><span style="color:var(--gold-primary);font-weight:700">x' + (m.multiplier + 0.1).toFixed(1) + '</span></div>' +
+            '</div>' +
+            '<div class="at-details-action">' +
+                (canUp
+                    ? '<button class="at-action-btn" style="width:100%;background:linear-gradient(135deg,#4caf50,#45a049);border:none;border-radius:4px;color:#fff;font-size:0.8rem;font-weight:700;padding:8px;cursor:pointer;transition:all 0.2s" onclick="upgradeMasteryInline(\'' + stat + '\')">⬆️ Spend 1 Point (+0.1x)</button>'
+                    : '<button class="at-action-btn" style="width:100%;background:rgba(80,80,80,0.4);border:none;border-radius:4px;color:rgba(255,255,255,0.4);font-size:0.8rem;font-weight:700;padding:8px;cursor:not-allowed" disabled>❌ Need more ability points</button>') +
+            '</div>' +
+        '</div>';
+    }
+
+    if (node.type === 'ability') {
+        var abilityId = node.abilityId;
+        var abilities = state.abilities || {};
+        var ab = abilities[abilityId];
+        if (!ab) return '<div class="at-details-empty" style="text-align:center;padding:20px;color:var(--text-secondary);background:rgba(0,0,0,0.2);border-radius:6px">Ability not found.</div>';
+        var lvl    = ab.current_level || 0;
+        var maxLvl = ab.effective_max_level || ab.max_level || 5;
+        var canUp  = ab.can_upgrade || false;
+        var isMaxed = lvl >= maxLvl;
+        var ABILITY_ICONS = {
+            'att_npc_damage':'🤖','att_pvp_damage':'⚔️','att_boss_damage':'🐉',
+            'att_survive_aggression':'🔥','att_critical_chance':'🎯','att_critical_multiplier':'💥',
+            'def_npc_defense':'🛡️','def_pvp_defense':'🏰','def_boss_defense':'⛰️',
+            'def_survive_endurance':'🧱','def_charge_protection':'🔋','def_last_stand':'💀',
+            'int_train_xp':'🧠','int_mission_xp':'🎯','int_play_xp':'🎮','int_quest_xp':'📜',
+            'int_survive_xp':'🧠','int_npc_battle_xp':'🤖','int_pvp_battle_xp':'⚔️','int_boss_battle_xp':'🐉',
+            'dex_speed_boost':'💨','dex_slots_loss_reduction':'🎰','dex_blackjack_loss_reduction':'🃏',
+            'dex_holdem_loss_reduction':'♠️','dex_craps_loss_reduction':'🎲','dex_wheel_loss_reduction':'🎡',
+            'dex_keno_loss_reduction':'🔢','dex_scratch_loss_reduction':'🎫','dex_powerball_loss_reduction':'🎱',
+            'dex_races_loss_reduction':'🏇','dex_coinflip_loss_reduction':'🪙','dex_rps_loss_reduction':'✂️',
+            'hap_battle_health':'❤️','hap_slots_win_bonus':'🎰','hap_blackjack_win_bonus':'🃏',
+            'hap_holdem_win_bonus':'♠️','hap_craps_win_bonus':'🎲','hap_wheel_win_bonus':'🎡',
+            'hap_keno_win_bonus':'🔢','hap_scratch_win_bonus':'🎫','hap_powerball_win_bonus':'🎱',
+            'hap_races_win_bonus':'🏇','hap_coinflip_win_bonus':'🪙','hap_rps_win_bonus':'✂️',
+            'ene_battle_stamina':'💪','ene_charge_mastery':'⚡','ene_speed_burst':'🚀',
+            'ene_charged_start':'🔋','ene_overcharged':'⚡'
+        };
+        var icon = ABILITY_ICONS[abilityId] || '✨';
+        var pips = '';
+        for (var i = 1; i <= maxLvl; i++) {
+            var pc = i <= lvl ? (isMaxed ? '#ff9800' : '#4caf50') : (i === lvl + 1 && canUp ? 'var(--gold-primary)' : 'rgba(255,255,255,0.15)');
+            pips += '<div style="width:12px;height:12px;border-radius:50%;background:' + pc + ';border:1px solid rgba(255,255,255,0.3)"></div>';
+        }
+        var statusLabel = isMaxed
+            ? '<span style="background:#ff9800;color:#fff;padding:2px 8px;border-radius:10px;font-size:0.65rem;font-weight:700">MAX</span>'
+            : lvl > 0
+                ? '<span style="background:#4caf50;color:#fff;padding:2px 8px;border-radius:10px;font-size:0.65rem;font-weight:700">Lv.' + lvl + ' / ' + maxLvl + '</span>'
+                : '<span style="background:#888;color:#fff;padding:2px 8px;border-radius:10px;font-size:0.65rem;font-weight:700">Locked</span>';
+        return '<div class="at-details-panel" style="background:rgba(0,0,0,0.2);border-radius:6px;padding:12px">' +
+            '<div class="at-details-header" style="display:flex;align-items:center;gap:8px;margin-bottom:12px">' +
+                '<span style="font-size:1.8rem;flex-shrink:0">' + icon + '</span>' +
+                '<div style="flex:1;min-width:0">' +
+                    '<div class="at-details-title" style="font-size:0.9rem;font-weight:700;color:var(--gold-primary)">' + (ab.name || abilityId) + '</div>' +
+                    '<div style="margin-top:4px">' + statusLabel + '</div>' +
+                '</div>' +
+            '</div>' +
+            (ab.description ? '<div class="at-details-description" style="font-size:0.75rem;color:var(--text-secondary);margin-bottom:12px">' + ab.description + '</div>' : '') +
+            '<div class="at-details-stats" style="margin-bottom:12px">' +
+                '<div class="at-detail-row" style="display:flex;justify-content:space-between;margin-bottom:4px;font-size:0.75rem"><span>Level</span><span style="color:var(--gold-secondary);font-weight:700">' + lvl + ' / ' + maxLvl + '</span></div>' +
+                (ab.effect_per_level ? '<div class="at-detail-row" style="display:flex;justify-content:space-between;font-size:0.75rem"><span>Effect/Level</span><span style="color:#4caf50;font-weight:700">' + ab.effect_per_level + '</span></div>' : '') +
+            '</div>' +
+            '<div style="display:flex;gap:4px;margin-bottom:12px">' + pips + '</div>' +
+            '<div class="at-details-action">' +
+                (isMaxed
+                    ? '<button style="width:100%;background:rgba(255,152,0,0.2);border:1px solid #ff9800;border-radius:4px;color:#ff9800;font-size:0.8rem;font-weight:700;padding:8px;cursor:default">✅ Maxed Out</button>'
+                    : canUp
+                        ? '<button class="at-action-btn" style="width:100%;background:linear-gradient(135deg,var(--gold-primary),#ffb300);border:none;border-radius:4px;color:#000;font-size:0.8rem;font-weight:700;padding:8px;cursor:pointer;transition:all 0.2s" onclick="upgradeAbilityInline(\'' + abilityId + '\')">' + (lvl === 0 ? '🔓 Unlock Ability' : '⬆️ Upgrade Ability') + '</button>'
+                        : '<button style="width:100%;background:rgba(80,80,80,0.4);border:none;border-radius:4px;color:rgba(255,255,255,0.4);font-size:0.8rem;font-weight:700;padding:8px;cursor:not-allowed" disabled>❌ Need more ability points</button>') +
+            '</div>' +
+        '</div>';
+    }
+    
+    return '<div class="at-details-empty" style="text-align:center;padding:20px;color:var(--text-secondary);background:rgba(0,0,0,0.2);border-radius:6px">Select an item to see details</div>';
+}
+
+// ── Inline ability tree handlers ──────────────────────────────────────────────
+function exposeInlineAbilityHandlers() {
+    window.toggleStatSectionInline = function(stat) {
+        console.log('[mypet.js] toggleStatSectionInline called with stat:', stat);
+        window._abilityTreeOpenStat = (window._abilityTreeOpenStat === stat) ? null : stat;
+        // Re-render just the tree container
+        var tc = document.querySelector('.at-tree-container');
+        if (tc && window._abilityTreeState) {
+            tc.innerHTML = renderTreeInline(window._abilityTreeState);
+        }
+    };
+    
+    window.selectMasteryNodeInline = function(stat) {
+        console.log('[mypet.js] selectMasteryNodeInline called with stat:', stat);
+        try {
+            window._abilityTreeSelectedNode = { type: 'mastery', stat: stat };
+            
+            // Clear previous selections
+            document.querySelectorAll('.at-selected').forEach(function(node_el) {
+                node_el.classList.remove('at-selected');
+            });
+            
+            // Add selection to current node
+            var masteryNode = document.querySelector('.at-stat-section[data-stat="' + stat + '"] .at-stat-mastery');
+            if (masteryNode) {
+                masteryNode.classList.add('at-selected');
+            }
+            
+            var dp = document.getElementById('at-details-panel-inline');
+            if (dp) dp.innerHTML = renderDetailsInline();
+        } catch (e) {
+            console.error('[mypet.js] Error in selectMasteryNodeInline:', e);
+        }
+    };
+    
+    window.selectAbilityNodeInline = function(abilityId) {
+        console.log('[mypet.js] selectAbilityNodeInline called with abilityId:', abilityId);
+        try {
+            window._abilityTreeSelectedNode = { type: 'ability', abilityId: abilityId };
+            
+            // Clear previous selections
+            document.querySelectorAll('.at-selected').forEach(function(node_el) {
+                node_el.classList.remove('at-selected');
+            });
+            
+            // Add selection to current node
+            var abilityNode = document.querySelector('.at-ability-row[data-ability-id="' + abilityId + '"]');
+            if (abilityNode) {
+                abilityNode.classList.add('at-selected');
+            }
+            
+            var dp = document.getElementById('at-details-panel-inline');
+            if (dp) dp.innerHTML = renderDetailsInline();
+        } catch (e) {
+            console.error('[mypet.js] Error in selectAbilityNodeInline:', e);
+        }
+    };
+    
+    window.selectAdvNodeInline = function(key) {
+        console.log('[mypet.js] selectAdvNodeInline called with key:', key);
+        try {
+            window._abilityTreeSelectedNode = { type: 'adv', key: key };
+            
+            // Clear previous selections
+            document.querySelectorAll('.at-selected').forEach(function(node_el) {
+                node_el.classList.remove('at-selected');
+            });
+            
+            // Add selection to current node
+            var advNode = document.querySelector('.at-adv-card[data-adv-key="' + key + '"]');
+            if (advNode) {
+                advNode.classList.add('at-selected');
+            }
+            
+            var dp = document.getElementById('at-details-panel-inline');
+            if (dp) dp.innerHTML = renderDetailsInline();
+        } catch (e) {
+            console.error('[mypet.js] Error in selectAdvNodeInline:', e);
+        }
+    };
+    
+    window.purchaseAbilityPointInline = function() {
+        console.log('[mypet.js] purchaseAbilityPointInline called');
+        var state = window._abilityTreeState || {};
+        var currentLevel = state.current_level || 0;
+        var cost = state.point_cost || 500;
+        var newLevel = currentLevel - cost;
+        showAbilityPurchaseConfirmModal(currentLevel, cost, newLevel);
+    };
+
+    window._confirmAbilityPointPurchase = function() {
+        var modal = document.getElementById('at-purchase-modal');
+        if (modal) modal.style.display = 'none';
+        var btn = document.getElementById('at-purchase-confirm-btn');
+        if (btn) { btn.disabled = true; btn.textContent = 'Purchasing...'; }
+
+        fetch('/api/pets/ability-tree/purchase', {method: 'POST'})
+            .then(function(r){ return r.json(); })
+            .then(function(d) {
+                if (d.ok) {
+                    showAbilityPurchaseResultModal(true, d.message || 'Ability point purchased!', d.tree);
+                    loadAbilitiesContent();
+                } else {
+                    showAbilityPurchaseResultModal(false, d.message || 'Purchase failed.');
+                }
+            })
+            .catch(function(e) {
+                console.error('[mypet.js] Error in _confirmAbilityPointPurchase:', e);
+                showAbilityPurchaseResultModal(false, 'Error: ' + e.message);
+            });
+    };
+    
+    window.upgradeMasteryInline = function(stat) {
+        console.log('[mypet.js] upgradeMasteryInline called with stat:', stat);
+        fetch('/api/pets/ability-tree/mastery', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({stat: stat, points: 1})
+        })
+            .then(function(r){ return r.json(); })
+            .then(function(d) {
+                if (d.ok) {
+                    showToastInline(d.message || 'Mastery upgraded!', true);
+                    loadAbilitiesContent(); // Reload to show updated mastery
+                } else {
+                    showToastInline('Failed to upgrade mastery: ' + (d.message || 'Unknown error'), false);
+                }
+            })
+            .catch(function(e) { 
+                console.error('[mypet.js] Error in upgradeMasteryInline:', e);
+                showToastInline('Error: ' + e.message, false); 
+            });
+    };
+    
+    window.unlockMasteryInline = window.upgradeMasteryInline;
+    
+    window.upgradeAbilityInline = function(abilityId) {
+        console.log('[mypet.js] upgradeAbilityInline called with abilityId:', abilityId);
+        fetch('/api/pets/ability-tree/unlock', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ability_id: abilityId})
+        })
+            .then(function(r){ return r.json(); })
+            .then(function(d) {
+                if (d.ok) {
+                    showToastInline(d.message || 'Ability upgraded!', true);
+                    loadAbilitiesContent(); // Reload to show updated abilities
+                } else {
+                    showToastInline('Failed to upgrade ability: ' + (d.message || 'Unknown error'), false);
+                }
+            })
+            .catch(function(e) { 
+                console.error('[mypet.js] Error in upgradeAbilityInline:', e);
+                showToastInline('Error: ' + e.message, false); 
+            });
+    };
+    
+    window.upgradeAdvMasteryInline = function(key) {
+        console.log('[mypet.js] upgradeAdvMasteryInline called with key:', key);
+        fetch('/api/pets/ability-tree/advantage-mastery', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({key: key})
+        })
+            .then(function(r){ return r.json(); })
+            .then(function(d) {
+                if (d.ok) {
+                    showToastInline(d.message || 'Advantage mastery upgraded!', true);
+                    loadAbilitiesContent(); // Reload to show updated mastery
+                } else {
+                    showToastInline('Failed to upgrade advantage mastery: ' + (d.message || 'Unknown error'), false);
+                }
+            })
+            .catch(function(e) { 
+                console.error('[mypet.js] Error in upgradeAdvMasteryInline:', e);
+                showToastInline('Error: ' + e.message, false); 
+            });
+    };
+}
+
+// ── Toast notifications for inline version ────────────────────────────────────
+function showToastInline(msg, ok) {
+    var t = document.getElementById('at-toast-inline');
+    if (!t) {
+        // Toast container was removed (e.g. after DOM reload) — create a floating one
+        t = document.createElement('div');
+        t.id = 'at-toast-inline';
+        document.body.appendChild(t);
+    }
+    t.textContent = msg;
+    t.style.cssText = 'position:fixed;top:20px;right:20px;z-index:10000;padding:8px 16px;border-radius:6px;font-size:0.8rem;font-weight:700;' +
+        (ok ? 'background:#2ecc71;color:#fff;' : 'background:#e74c3c;color:#fff;') +
+        'box-shadow:0 4px 12px rgba(0,0,0,0.3);transition:all 0.3s ease;display:block;';
+    setTimeout(function(){ if (t) t.style.cssText = 'display:none;'; }, 3000);
+}
+
+// ── Ability point purchase modals ─────────────────────────────────────────────
+function _getOrCreateModal(id) {
+    var m = document.getElementById(id);
+    if (!m) {
+        m = document.createElement('div');
+        m.id = id;
+        document.body.appendChild(m);
+    }
+    return m;
+}
+
+function showAbilityPurchaseConfirmModal(currentLevel, cost, newLevel) {
+    var modal = _getOrCreateModal('at-purchase-modal');
+    modal.innerHTML =
+        '<div style="position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:9998;display:flex;align-items:center;justify-content:center;padding:16px">' +
+            '<div style="background:linear-gradient(135deg,#111,#1a1a1a);border:1px solid rgba(255,215,0,0.35);border-radius:10px;padding:24px;max-width:380px;width:100%;box-shadow:0 8px 32px rgba(0,0,0,0.6)">' +
+                '<div style="font-family:Orbitron,sans-serif;font-size:1rem;color:var(--gold-primary);font-weight:700;margin-bottom:16px;text-align:center">💎 Buy Ability Point</div>' +
+                '<div style="background:rgba(255,215,0,0.07);border:1px solid rgba(255,215,0,0.2);border-radius:6px;padding:12px;margin-bottom:14px">' +
+                    '<div style="display:flex;justify-content:space-between;font-size:0.8rem;margin-bottom:6px"><span style="color:var(--text-secondary)">Cost</span><span style="color:#e74c3c;font-weight:700">−' + cost + ' Levels</span></div>' +
+                    '<div style="display:flex;justify-content:space-between;font-size:0.8rem;margin-bottom:6px"><span style="color:var(--text-secondary)">Level</span><span style="font-weight:700"><span style="color:var(--text-secondary)">' + currentLevel + '</span> → <span style="color:var(--gold-primary)">' + newLevel + '</span></span></div>' +
+                    '<div style="display:flex;justify-content:space-between;font-size:0.8rem"><span style="color:var(--text-secondary)">Reward</span><span style="color:#4caf50;font-weight:700">+1 Ability Point</span></div>' +
+                '</div>' +
+                '<div style="background:rgba(231,76,60,0.1);border:1px solid rgba(231,76,60,0.3);border-radius:6px;padding:10px;margin-bottom:18px;font-size:0.75rem;color:#e74c3c">' +
+                    '⚠️ Spending levels will reduce your stats proportionally. This cannot be undone.' +
+                '</div>' +
+                '<div style="display:flex;gap:10px">' +
+                    '<button onclick="document.getElementById(\'at-purchase-modal\').style.display=\'none\'" style="flex:1;background:rgba(80,80,80,0.4);border:1px solid rgba(255,255,255,0.15);border-radius:6px;color:rgba(255,255,255,0.7);font-size:0.8rem;font-weight:700;padding:10px;cursor:pointer">Cancel</button>' +
+                    '<button id="at-purchase-confirm-btn" onclick="window._confirmAbilityPointPurchase()" style="flex:1;background:linear-gradient(135deg,var(--gold-primary),#ffb300);border:none;border-radius:6px;color:#000;font-size:0.8rem;font-weight:700;padding:10px;cursor:pointer;transition:all 0.2s">✅ Confirm Purchase</button>' +
+                '</div>' +
+            '</div>' +
+        '</div>';
+    modal.style.display = 'block';
+}
+
+function showAbilityPurchaseResultModal(ok, message, tree) {
+    var modal = _getOrCreateModal('at-purchase-modal');
+    // Parse stat losses out of the message for nicer display
+    var statMatch = message.match(/Stats reduced: ([^)]+)/);
+    var statLines = '';
+    if (statMatch) {
+        statMatch[1].split(',').forEach(function(s) {
+            var parts = s.trim().split(':');
+            if (parts.length === 2) {
+                statLines += '<div style="display:flex;justify-content:space-between;font-size:0.78rem;margin-bottom:4px">' +
+                    '<span style="color:var(--text-secondary)">' + parts[0].trim() + '</span>' +
+                    '<span style="color:#e74c3c;font-weight:700">' + parts[1].trim() + '</span>' +
+                '</div>';
+            }
+        });
+    }
+    var newLevel = tree ? (tree.current_level || '') : '';
+    var newPts   = tree ? (tree.available_points || '') : '';
+    modal.innerHTML =
+        '<div style="position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:9998;display:flex;align-items:center;justify-content:center;padding:16px">' +
+            '<div style="background:linear-gradient(135deg,#111,#1a1a1a);border:1px solid ' + (ok ? 'rgba(46,204,113,0.4)' : 'rgba(231,76,60,0.4)') + ';border-radius:10px;padding:24px;max-width:380px;width:100%;box-shadow:0 8px 32px rgba(0,0,0,0.6)">' +
+                '<div style="font-size:2rem;text-align:center;margin-bottom:10px">' + (ok ? '✅' : '❌') + '</div>' +
+                '<div style="font-family:Orbitron,sans-serif;font-size:0.95rem;color:' + (ok ? '#2ecc71' : '#e74c3c') + ';font-weight:700;margin-bottom:14px;text-align:center">' + (ok ? 'Point Purchased!' : 'Purchase Failed') + '</div>' +
+                (ok && (newLevel || newPts) ?
+                    '<div style="background:rgba(46,204,113,0.07);border:1px solid rgba(46,204,113,0.2);border-radius:6px;padding:12px;margin-bottom:12px">' +
+                        (newLevel ? '<div style="display:flex;justify-content:space-between;font-size:0.8rem;margin-bottom:6px"><span style="color:var(--text-secondary)">New Level</span><span style="color:var(--gold-primary);font-weight:700">' + newLevel + '</span></div>' : '') +
+                        (newPts   ? '<div style="display:flex;justify-content:space-between;font-size:0.8rem"><span style="color:var(--text-secondary)">Ability Points</span><span style="color:#4caf50;font-weight:700">' + newPts + '</span></div>' : '') +
+                    '</div>'
+                : '') +
+                (statLines ?
+                    '<div style="background:rgba(231,76,60,0.07);border:1px solid rgba(231,76,60,0.2);border-radius:6px;padding:12px;margin-bottom:14px">' +
+                        '<div style="font-size:0.72rem;color:var(--text-secondary);margin-bottom:8px;font-weight:700">STAT CHANGES</div>' +
+                        statLines +
+                    '</div>'
+                : (!ok ? '<div style="font-size:0.8rem;color:var(--text-secondary);margin-bottom:14px;text-align:center">' + message + '</div>' : '')) +
+                '<button onclick="document.getElementById(\'at-purchase-modal\').style.display=\'none\'" style="width:100%;background:linear-gradient(135deg,rgba(255,215,0,0.15),rgba(255,140,0,0.1));border:1px solid rgba(255,215,0,0.3);border-radius:6px;color:var(--gold-primary);font-size:0.8rem;font-weight:700;padding:10px;cursor:pointer">Close</button>' +
+            '</div>' +
+        '</div>';
+    modal.style.display = 'block';
+}
 
