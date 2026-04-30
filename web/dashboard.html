@@ -6,11 +6,34 @@
     <title>Reaper Bot Dashboard</title>
     <link rel="icon" href="/static/Images/reaper.png" type="image/png">
 
-    <!-- Core styles -->
-    <link href="/css/bootstrap.min.css?v=20250327" rel="stylesheet">
-    <link href="/css/main.css?v=20250327" rel="stylesheet">
-    <link href="/css/fonts.css" rel="stylesheet">
-    <link href="/css/dashboard.css" rel="stylesheet">
+    <!-- Core styles with enhanced cache-busting -->
+    <script>
+        // Generate hourly cache buster that updates every hour
+        const hourlyTimestamp = Math.floor(Date.now() / (60 * 60 * 1000));
+        const randomId = Math.random().toString(36).substr(2, 9);
+        const cacheBuster = `v=${hourlyTimestamp}&cb=${randomId}`;
+        
+        // Dynamically load CSS with cache busting
+        const cssFiles = [
+            '/css/bootstrap.min.css',
+            '/css/main.css',
+            '/css/fonts.css',
+            '/css/dashboard.css'
+        ];
+        
+        cssFiles.forEach(cssFile => {
+            const link = document.createElement('link');
+            link.rel = 'stylesheet';
+            link.href = `${cssFile}?${cacheBuster}`;
+            document.head.appendChild(link);
+        });
+        
+        // Load cache utilities first
+        const cacheUtilsScript = document.createElement('script');
+        cacheUtilsScript.src = `/js/cache-utils.js?${cacheBuster}`;
+        cacheUtilsScript.defer = true;
+        document.head.appendChild(cacheUtilsScript);
+    </script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
           integrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2PkPKZ5QiAj6Ta86w+fsb2TkcmfRyVX3pBnMFcV7oQPJkl9QevSCWr3W6A=="
           crossorigin="anonymous" referrerpolicy="no-referrer">
@@ -25,6 +48,13 @@
 
     <script src="/node_modules/gsap/dist/gsap.min.js" defer></script>
     <script src="/node_modules/gsap/dist/MotionPathPlugin.min.js" defer></script>
+    <script>
+        // Load cache-buster.js with dynamic cache busting
+        const cacheBusterScript = document.createElement('script');
+        cacheBusterScript.src = `/js/cache-buster.js?${cacheBuster}`;
+        cacheBusterScript.defer = true;
+        document.head.appendChild(cacheBusterScript);
+    </script>
 </head>
 <body>
 
@@ -52,267 +82,342 @@
             <div class="sidebar-nav-content">
             <ul class="nav flex-column nav-pills mt-2 px-1">
 
-                <!-- ── Account ─────────────────────────────────────────── -->
-                <li class="nav-item" id="user-profile" style="display:none">
-                    <a class="nav-link" href="#">
-                        <img id="user-avatar" src="" alt="User Avatar"
-                             style="width:32px;height:32px;border-radius:50%;margin-right:8px;object-fit:cover;border:1px solid rgba(255,215,0,0.4);">
-                        <span id="user-name"></span>
-                    </a>
-                </li>
-                <li class="nav-item" id="login-button">
-                    <a class="nav-link" id="discord-login-link" href="/api/discord/login"
-                       onclick="discordDeepLinkLogin(event)">
-                        <i class="fab fa-discord" style="width:20px;height:20px;margin-right:8px;"></i>
-                        Sign In with Discord
-                    </a>
-                </li>
-                <li class="nav-item" id="logout-button" style="display:none">
-                    <a class="nav-link" href="/api/discord/logout">
-                        <i class="fas fa-sign-out-alt" style="width:20px;height:20px;margin-right:8px;"></i>
-                        Logout
-                    </a>
-                </li>
+                <!-- ── User Card ────────────────────────────────────────── -->
+                <li class="nav-item uc-wrapper" id="uc-wrapper">
 
-                <!-- Nation link bar -->
-                <li class="nav-item nation-link-bar" id="nation-link-bar">
-                    <div id="nation-linked-view" style="display:none">
-                        <div class="nation-linked-display">
-                            <img id="nation-flag-img" class="nation-flag" src="" alt="">
-                            <span id="nation-linked-name" class="nation-linked-name"></span>
-                            <button class="nation-unlink-btn" id="nation-unlink-btn" title="Unlink nation">✕</button>
+                    <!-- Signed-out state -->
+                    <div id="uc-signed-out" class="uc-signed-out">
+                        <a class="uc-login-btn" id="discord-login-link" href="/api/discord/login"
+                           onclick="discordDeepLinkLogin(event)">
+                            <i class="fab fa-discord"></i> Sign In with Discord
+                        </a>
+                    </div>
+
+                    <!-- Signed-in state -->
+                    <div id="uc-signed-in" class="uc-card" style="display:none">
+
+                        <!-- Header row: avatar + name + age + refresh + logout -->
+                        <div class="uc-header">
+                            <div class="uc-avatar-wrap">
+                                <img id="uc-avatar" src="" alt="Avatar" class="uc-avatar"
+                                     onerror="this.src='https://cdn.discordapp.com/embed/avatars/0.png'">
+                                <span class="uc-discord-badge"><i class="fab fa-discord"></i></span>
+                            </div>
+                            <div class="uc-identity">
+                                <div class="uc-username" id="uc-username">—</div>
+                                <div class="uc-since" id="uc-since"></div>
+                            </div>
+                            <div class="uc-header-actions">
+                                <button class="uc-icon-btn" id="uc-refresh-btn" title="Refresh profile"
+                                        onclick="window.refreshUserProfile()">↻</button>
+                                <a class="uc-icon-btn" href="/api/discord/logout" title="Sign out">
+                                    <i class="fas fa-sign-out-alt" style="font-size:0.7rem"></i>
+                                </a>
+                            </div>
                         </div>
-                        <div class="nation-rank-ticker" id="nation-rank-ticker" style="display:none"></div>
+
+                        <!-- Nation row -->
+                        <div class="uc-nation-section">
+                            <div id="uc-nation-linked" style="display:none">
+                                <div class="uc-nation-row">
+                                    <img id="nation-flag-img" class="uc-flag" src="" alt="">
+                                    <span id="nation-linked-name" class="uc-nation-name"></span>
+                                    <button class="uc-unlink-btn" id="nation-unlink-btn" title="Unlink">✕</button>
+                                </div>
+                                <div class="nation-rank-ticker" id="nation-rank-ticker" style="display:none"></div>
+                            </div>
+                            <div id="uc-nation-input">
+                                <form id="nation-link-form" autocomplete="off" class="uc-link-form">
+                                    <input type="text" id="nation-id-input" placeholder="Link PnW Nation ID"
+                                           maxlength="12" pattern="[0-9]*" inputmode="numeric">
+                                    <button type="submit">Link</button>
+                                </form>
+                                <div id="nation-link-error" class="nation-link-error" style="display:none"></div>
+                            </div>
+                        </div>
+
+                        <!-- Pet section -->
+                        <div id="uc-pet-section" style="display:none">
+                            <div class="uc-divider"></div>
+                            <div class="uc-pet-row">
+                                <img id="uc-pet-img" src="" alt="" class="uc-pet-img"
+                                     onerror="this.src='/static/Emojis/Pets/Deco/Basic.png'">
+                                <div class="uc-pet-info">
+                                    <div class="uc-pet-name-row">
+                                        <span id="uc-pet-name" class="uc-pet-name"></span>
+                                        <div id="uc-pet-elems" class="uc-pet-elems"></div>
+                                    </div>
+                                    <div class="uc-pet-meta">
+                                        <span class="uc-pet-level" id="uc-pet-level"></span>
+                                        <span class="uc-pet-ss" id="uc-pet-ss" style="display:none"></span>
+                                    </div>
+                                    <div class="uc-pet-ss-stats" id="uc-pet-ss-stats" style="display:none"></div>
+                                </div>
+                                <img id="uc-pet-rank-img" src="" alt="" class="uc-pet-rank-img"
+                                     onerror="this.style.display='none'">
+                            </div>
+                            <!-- XP bar -->
+                            <div class="uc-xp-wrap">
+                                <div class="uc-xp-bar" id="uc-xp-bar"></div>
+                            </div>
+                            <!-- Equipment bar -->
+                            <div class="uc-equip-bar" id="uc-equip-bar"></div>
+                        </div>
+
                     </div>
-                    <div id="nation-input-view">
-                        <form id="nation-link-form" autocomplete="off">
-                            <input type="text" id="nation-id-input" placeholder="PnW Nation ID"
-                                   maxlength="12" pattern="[0-9]*" inputmode="numeric">
-                            <button type="submit">Link</button>
-                        </form>
-                        <div id="nation-link-error" class="nation-link-error" style="display:none"></div>
-                    </div>
                 </li>
 
-                <!-- ── Politics & War ───────────────────────────────────── -->
+                <!-- ── Top nav links ────────────────────────────────────── -->
                 <li class="nav-item">
-                    <h6 class="px-3 mt-2 mb-1 text-uppercase fw-bold"
-                        style="font-size:0.7rem;letter-spacing:1px;color:var(--gold-secondary);">
-                        Politics &amp; War
-                    </h6>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="#" data-page="game_info">
-                        <img src="/static/Emojis/Menu/game_info.png" alt="Game Info" style="width:20px;height:20px;margin-right:8px;">
-                        Game Info
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="#" data-page="nations">
-                        <img src="/static/Emojis/Menu/crow.png" alt="Nations" style="width:20px;height:20px;margin-right:8px;">
-                        The Watch
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="#" data-page="watch">
-                        <img src="/static/Emojis/Menu/wars.png" alt="War Stats" style="width:20px;height:20px;margin-right:8px;">
-                        War Stats
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="#" data-page="leaderboard">
-                        <img src="/static/Emojis/Menu/leaderboard.png" alt="Leaderboards" style="width:20px;height:20px;margin-right:8px;">
-                        Leaderboards
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="#" data-page="cost_calc">
-                        <img src="/static/Emojis/Menu/calculator.png" alt="Calculators" style="width:20px;height:20px;margin-right:8px;">
-                        Calculators
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="#" data-page="comparison">
-                        <img src="/static/Emojis/Menu/comparison.png" alt="Comparison" style="width:20px;height:20px;margin-right:8px;">
-                        Comparison
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="#" data-page="weapons" data-css="/css/weapons.css">
-                        <img src="/static/Emojis/Menu/snipe.png" alt="Weapons" style="width:20px;height:20px;margin-right:8px;">
-                        Weapon Eff
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="#" data-page="library">
-                        <img src="/static/Emojis/Menu/script.png" alt="Scriptorium" style="width:20px;height:20px;margin-right:8px;">
-                        Scriptorium
-                    </a>
-                </li>
-
-                <!-- ── Pets ─────────────────────────────────────────────── -->
-                <li class="nav-item">
-                    <h6 class="px-3 mt-2 mb-1 text-uppercase fw-bold"
-                        style="font-size:0.7rem;letter-spacing:1px;color:var(--gold-secondary);">
-                        Pets
-                    </h6>
-                </li>
-                <li class="nav-item" id="my-pet-link">
-                    <a class="nav-link" href="#" data-page="mypet" data-css="/css/mypet.css" data-script="/js/mypet.js">
-                        <img src="/static/Emojis/Menu/pets.png" alt="My Pet" style="width:20px;height:20px;margin-right:8px;">
-                        My Pet
-                    </a>
-                </li>
-                <li class="nav-item" id="tasks-nav-link">
-                    <a class="nav-link" href="#" data-page="tasks" data-css="/css/tasks.css">
-                        <img src="/static/Emojis/Menu/tasks.png" alt="Tasks" style="width:20px;height:20px;margin-right:8px;">
-                        Tasks
-                        <span id="tasks-nav-badge" style="display:none;margin-left:auto;font-size:0.65rem;color:var(--gold-secondary);background:rgba(255,215,0,0.12);border:1px solid rgba(255,215,0,0.3);border-radius:10px;padding:1px 7px;white-space:nowrap;"></span>
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="#" data-page="petconnector" data-css="/css/petconnector.css" data-script="/js/petconnector.js">
-                        <img src="/static/Emojis/Menu/world.png" alt="Pet Connector" style="width:20px;height:20px;margin-right:8px;">
-                        Pet Connector
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="#" data-page="bazaar" data-css="/css/bazaar.css" data-script="/js/bazaar.js">
-                        <img src="/static/Emojis/Menu/bazaar.png" alt="Bazaar" style="width:20px;height:20px;margin-right:8px;">
-                        Item Board
-                        <span id="bazaar-nav-count" style="display:none;margin-left:auto;font-size:0.65rem;color:var(--gold-secondary);background:rgba(255,215,0,0.12);border:1px solid rgba(255,215,0,0.3);border-radius:10px;padding:1px 7px;white-space:nowrap;"></span>
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="#" data-page="arena" data-css="/css/arena.css /css/casino_lobby.css" data-script="/js/arena.js">
-                        <img src="/static/Emojis/Menu/arena.png" alt="Arena" style="width:20px;height:20px;margin-right:8px;">
-                        Arena
-                        <span class="arena-nav-live ms-auto d-flex align-items-center gap-1" style="margin-left:auto">
-                            <span class="arena-live-badge" style="font-size:0.55rem;padding:1px 6px"><span class="arena-live-dot"></span>LIVE</span>
-                            <span id="arena-nav-online" style="font-size:0.65rem;color:var(--text-secondary)"></span>
-                        </span>
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="#" data-page="survive" data-css="/css/survive.css" data-script="/js/survive.js">
-                        <img src="/static/Emojis/Menu/survive.png" alt="Survivor Series" style="width:20px;height:20px;margin-right:8px;">
-                        Survive
-                        <span id="ss-nav-count" style="display:none;margin-left:auto;font-size:0.65rem;color:var(--gold-secondary);background:rgba(255,215,0,0.12);border:1px solid rgba(255,215,0,0.3);border-radius:10px;padding:1px 7px;white-space:nowrap;"></span>
-                        <span id="ss-nav-timer" style="display:none;margin-left:4px;font-size:0.65rem;color:var(--gold-primary);font-family:Orbitron,monospace;white-space:nowrap;min-width:3rem;text-align:right"></span>
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="#" data-page="pet_stock" data-css="/css/pet_stock.css" data-script="/js/pet_stock.js">
-                        <img src="/static/Emojis/Menu/pet_stock.png" alt="Pet Stocks" style="width:20px;height:20px;margin-right:8px;">
-                        Pet Stocks
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="#" data-page="casino" data-css="/css/casino.css">
-                        <img src="/static/Emojis/Menu/casino.png" alt="Casino" style="width:20px;height:20px;margin-right:8px;">
-                        Casino
-                    </a>
-                </li>
-                <!-- Blackjack — navigated to from casino page, hidden from sidebar -->
-                <li class="nav-item" style="display:none">
-                    <a class="nav-link" href="#" data-page="blackjack" data-css="/css/blackjack.css">
-                        Blackjack
-                    </a>
-                </li>
-                <!-- Craps — navigated to from casino page, hidden from sidebar -->
-                <li class="nav-item" style="display:none">
-                    <a class="nav-link" href="#" data-page="craps" data-css="/css/craps.css">
-                        Craps
-                    </a>
-                </li>
-                <!-- Hold'em — navigated to from casino page, hidden from sidebar -->
-                <li class="nav-item" style="display:none">
-                    <a class="nav-link" href="#" data-page="holdem" data-css="/css/holdem.css">
-                        Hold'em
-                    </a>
-                </li>
-                <!-- Races — navigated to from casino page, hidden from sidebar -->
-                <li class="nav-item" style="display:none">
-                    <a class="nav-link" href="#" data-page="races" data-css="/css/races.css">
-                        Races
-                    </a>
-                </li>
-                <!-- Mini-Games — navigated to from casino page, hidden from sidebar -->
-                <li class="nav-item" style="display:none">
-                    <a class="nav-link" href="#" data-page="minigames" data-css="/css/minigames.css">
-                        Mini-Games
-                    </a>
-                </li>
-                <!-- Wheel of Pets — navigated to from casino page, hidden from sidebar -->
-                <li class="nav-item" style="display:none">
-                    <a class="nav-link" href="#" data-page="wheel" data-css="/css/wheel.css">
-                        Wheel of Pets
-                    </a>
-                </li>
-                <!-- Pet Powerball — navigated to from casino page, hidden from sidebar -->
-                <li class="nav-item" style="display:none">
-                    <a class="nav-link" href="#" data-page="powerball" data-css="/css/powerball.css">
-                        Pet Powerball
-                    </a>
-                </li>
-                <!-- Scratch Cards — navigated to from casino page, hidden from sidebar -->
-                <li class="nav-item" style="display:none">
-                    <a class="nav-link" href="#" data-page="scratch" data-css="/css/scratch.css">
-                        Scratch Cards
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="#" data-page="what_are_pets">
-                        <img src="/static/Emojis/Menu/what_pets.png" alt="Breakdown" style="width:20px;height:20px;margin-right:8px;">
-                        Breakdown
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="#" data-page="pets">
-                        <img src="/static/Emojis/Menu/pets.png" alt="Types &amp; Items" style="width:20px;height:20px;margin-right:8px;">
-                        Types &amp; Items
-                    </a>
-                </li>
-
-                <!-- ── Misc ─────────────────────────────────────────────── -->
-                <li class="nav-item">
-                    <h6 class="px-3 mt-2 mb-1 text-uppercase fw-bold"
-                        style="font-size:0.7rem;letter-spacing:1px;color:var(--gold-secondary);">
-                        Misc
-                    </h6>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="#" data-page="astrology">
-                        <img src="/static/Emojis/Menu/astrology.png" alt="Astrology" style="width:20px;height:20px;margin-right:8px;">
-                        Astrology
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="#" data-page="tarot" data-css="/css/tarot.css" data-script="/js/tarot.js">
-                        <img src="/static/Emojis/Menu/tarot.png" alt="Tarot" style="width:20px;height:20px;margin-right:8px;">
-                        Tarot
-                    </a>
-                </li>
-                <!-- ── Footer links ─────────────────────────────────────── -->
-                <li class="nav-item">
-                    <hr class="sidebar-divider">
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link nav-link-footer" href="#" data-page="homepage">
-                        <img src="/static/Emojis/Menu/reaper.png" alt="Homepage" style="width:14px;height:14px;margin-right:6px;opacity:0.6;">
+                    <a class="nav-link" href="#" data-page="homepage">
+                        <img src="/static/Emojis/Menu/reaper.png" alt="Homepage" style="width:20px;height:20px;margin-right:8px;">
                         Homepage
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link nav-link-footer" href="#" data-page="commands" data-css="/css/commands.css?v=20250327">
-                        <img src="/static/Emojis/Menu/discord.png" alt="Commands" style="width:14px;height:14px;margin-right:6px;opacity:0.6;">
+                    <a class="nav-link" href="#" data-page="commands" data-css="/css/commands.css?v=20250327">
+                        <img src="/static/Emojis/Menu/discord.png" alt="Commands" style="width:20px;height:20px;margin-right:8px;">
                         Commands
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link nav-link-footer" href="#" data-page="contact">
-                        <img src="/static/Emojis/Menu/contact.png" alt="Contact" style="width:14px;height:14px;margin-right:6px;opacity:0.6;">
+                    <a class="nav-link" href="#" data-page="contact">
+                        <img src="/static/Emojis/Menu/contact.png" alt="Contact" style="width:20px;height:20px;margin-right:8px;">
                         Contact
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <hr class="sidebar-divider">
+                </li>
+
+                <!-- ── Politics & War ───────────────────────────────────── -->
+                <li class="nav-item nav-section-header" id="pnw-section-header">
+                    <button class="nav-section-toggle" data-target="pnw-section" aria-expanded="false">
+                        <span class="nav-section-label">Politics &amp; War</span>
+                        <i class="nav-section-chevron fas fa-chevron-down"></i>
+                    </button>
+                </li>
+                <li class="nav-item nav-section-body" id="pnw-section">
+                    <ul class="nav flex-column nav-pills nav-subsection">
+                        <li class="nav-item">
+                            <a class="nav-link" href="#" data-page="game_info">
+                                <img src="/static/Emojis/Menu/game_info.png" alt="Game Info" style="width:20px;height:20px;margin-right:8px;">
+                                Game Info
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#" data-page="nations">
+                                <img src="/static/Emojis/Menu/crow.png" alt="Nations" style="width:20px;height:20px;margin-right:8px;">
+                                The Watch
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#" data-page="watch">
+                                <img src="/static/Emojis/Menu/wars.png" alt="War Stats" style="width:20px;height:20px;margin-right:8px;">
+                                War Stats
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#" data-page="leaderboard">
+                                <img src="/static/Emojis/Menu/leaderboard.png" alt="Leaderboards" style="width:20px;height:20px;margin-right:8px;">
+                                Leaderboards
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#" data-page="raids" data-css="/css/raids.css">
+                                <img src="/static/Emojis/Menu/pirate.png" alt="Raids" style="width:20px;height:20px;margin-right:8px;">
+                                Raid Finder
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#" data-page="cost_calc">
+                                <img src="/static/Emojis/Menu/calculator.png" alt="Calculators" style="width:20px;height:20px;margin-right:8px;">
+                                Calculators
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#" data-page="comparison">
+                                <img src="/static/Emojis/Menu/comparison.png" alt="Comparison" style="width:20px;height:20px;margin-right:8px;">
+                                Comparison
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#" data-page="weapons" data-css="/css/weapons.css">
+                                <img src="/static/Emojis/Menu/snipe.png" alt="Weapons" style="width:20px;height:20px;margin-right:8px;">
+                                Weapon Eff
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#" data-page="rev_optimizer" data-css="/css/rev_optimizer.css" data-script="/js/rev_optimizer.js">
+                                <img src="/static/Emojis/Menu/revenue.png" alt="Rev Optimizer" style="width:20px;height:20px;margin-right:8px;">
+                                Rev Optimizer
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#" data-page="library">
+                                <img src="/static/Emojis/Menu/script.png" alt="Scriptorium" style="width:20px;height:20px;margin-right:8px;">
+                                Scriptorium
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+
+                <!-- ── Pets ─────────────────────────────────────────────── -->
+                <li class="nav-item nav-section-header" id="pets-section-header">
+                    <button class="nav-section-toggle" data-target="pets-section" aria-expanded="false">
+                        <span class="nav-section-label">Pets</span>
+                        <i class="nav-section-chevron fas fa-chevron-down"></i>
+                    </button>
+                </li>
+                <li class="nav-item nav-section-body" id="pets-section">
+                    <ul class="nav flex-column nav-pills nav-subsection">
+                        <li class="nav-item" id="my-pet-link">
+                            <a class="nav-link" href="#" data-page="mypet" data-css="/css/mypet.css" data-script="/js/mypet.js">
+                                <img src="/static/Emojis/Menu/pets.png" alt="My Pet" style="width:20px;height:20px;margin-right:8px;">
+                                My Pet
+                            </a>
+                        </li>
+                        <li class="nav-item" id="tasks-nav-link">
+                            <a class="nav-link" href="#" data-page="tasks" data-css="/css/tasks.css">
+                                <img src="/static/Emojis/Menu/tasks.png" alt="Tasks" style="width:20px;height:20px;margin-right:8px;">
+                                Tasks
+                                <span id="tasks-nav-badge" style="display:none;margin-left:auto;font-size:0.65rem;color:var(--gold-secondary);background:rgba(255,215,0,0.12);border:1px solid rgba(255,215,0,0.3);border-radius:10px;padding:1px 7px;white-space:nowrap;"></span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#" data-page="petconnector" data-css="/css/petconnector.css" data-script="/js/petconnector.js">
+                                <img src="/static/Emojis/Menu/world.png" alt="Pet Connector" style="width:20px;height:20px;margin-right:8px;">
+                                Pet Connector
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#" data-page="bazaar" data-css="/css/bazaar.css" data-script="/js/bazaar.js">
+                                <img src="/static/Emojis/Menu/bazaar.png" alt="Bazaar" style="width:20px;height:20px;margin-right:8px;">
+                                Item Board
+                                <span id="bazaar-nav-count" style="display:none;margin-left:auto;font-size:0.65rem;color:var(--gold-secondary);background:rgba(255,215,0,0.12);border:1px solid rgba(255,215,0,0.3);border-radius:10px;padding:1px 7px;white-space:nowrap;"></span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#" data-page="arena" data-css="/css/arena.css /css/casino_lobby.css" data-script="/js/arena.js">
+                                <img src="/static/Emojis/Menu/arena.png" alt="Arena" style="width:20px;height:20px;margin-right:8px;">
+                                Arena
+                                <span class="arena-nav-live ms-auto d-flex align-items-center gap-1" style="margin-left:auto">
+                                    <span class="arena-live-badge" style="font-size:0.55rem;padding:1px 6px"><span class="arena-live-dot"></span>LIVE</span>
+                                    <span id="arena-nav-online" style="font-size:0.65rem;color:var(--text-secondary)"></span>
+                                </span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#" data-page="survive" data-css="/css/survive.css?v=20260425-fix" data-script="/js/survive.js">
+                                <img src="/static/Emojis/Menu/survive.png" alt="Survivor Series" style="width:20px;height:20px;margin-right:8px;">
+                                Survive
+                                <span id="ss-nav-count" style="display:none;margin-left:auto;font-size:0.65rem;color:var(--gold-secondary);background:rgba(255,215,0,0.12);border:1px solid rgba(255,215,0,0.3);border-radius:10px;padding:1px 7px;white-space:nowrap;"></span>
+                                <span id="ss-nav-timer" style="display:none;margin-left:4px;font-size:0.65rem;color:var(--gold-primary);font-family:Orbitron,monospace;white-space:nowrap;min-width:3rem;text-align:right"></span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#" data-page="pet_stock" data-css="/css/pet_stock.css" data-script="/js/pet_stock.js">
+                                <img src="/static/Emojis/Menu/pet_stock.png" alt="Pet Stocks" style="width:20px;height:20px;margin-right:8px;">
+                                Pet Stocks
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#" data-page="casino" data-css="/css/casino.css">
+                                <img src="/static/Emojis/Menu/casino.png" alt="Casino" style="width:20px;height:20px;margin-right:8px;">
+                                Casino
+                            </a>
+                        </li>
+                        <!-- Blackjack — navigated to from casino page, hidden from sidebar -->
+                        <li class="nav-item" style="display:none">
+                            <a class="nav-link" href="#" data-page="blackjack" data-css="/css/blackjack.css">
+                                Blackjack
+                            </a>
+                        </li>
+                        <!-- Craps — navigated to from casino page, hidden from sidebar -->
+                        <li class="nav-item" style="display:none">
+                            <a class="nav-link" href="#" data-page="craps" data-css="/css/craps.css">
+                                Craps
+                            </a>
+                        </li>
+                        <!-- Hold'em — navigated to from casino page, hidden from sidebar -->
+                        <li class="nav-item" style="display:none">
+                            <a class="nav-link" href="#" data-page="holdem" data-css="/css/holdem.css">
+                                Hold'em
+                            </a>
+                        </li>
+                        <!-- Races — navigated to from casino page, hidden from sidebar -->
+                        <li class="nav-item" style="display:none">
+                            <a class="nav-link" href="#" data-page="races" data-css="/css/races.css">
+                                Races
+                            </a>
+                        </li>
+                        <!-- Mini-Games — navigated to from casino page, hidden from sidebar -->
+                        <li class="nav-item" style="display:none">
+                            <a class="nav-link" href="#" data-page="minigames" data-css="/css/minigames.css">
+                                Mini-Games
+                            </a>
+                        </li>
+                        <!-- Wheel of Pets — navigated to from casino page, hidden from sidebar -->
+                        <li class="nav-item" style="display:none">
+                            <a class="nav-link" href="#" data-page="wheel" data-css="/css/wheel.css">
+                                Wheel of Pets
+                            </a>
+                        </li>
+                        <!-- Pet Powerball — navigated to from casino page, hidden from sidebar -->
+                        <li class="nav-item" style="display:none">
+                            <a class="nav-link" href="#" data-page="powerball" data-css="/css/powerball.css">
+                                Pet Powerball
+                            </a>
+                        </li>
+                        <!-- Scratch Cards — navigated to from casino page, hidden from sidebar -->
+                        <li class="nav-item" style="display:none">
+                            <a class="nav-link" href="#" data-page="scratch" data-css="/css/scratch.css">
+                                Scratch Cards
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#" data-page="what_are_pets">
+                                <img src="/static/Emojis/Menu/what_pets.png" alt="Breakdown" style="width:20px;height:20px;margin-right:8px;">
+                                Breakdown
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#" data-page="pets">
+                                <img src="/static/Emojis/Menu/pets.png" alt="Types &amp; Items" style="width:20px;height:20px;margin-right:8px;">
+                                Types &amp; Items
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+
+                <!-- ── Misc ─────────────────────────────────────────────── -->
+                <li class="nav-item nav-section-header" id="misc-section-header">
+                    <button class="nav-section-toggle" data-target="misc-section" aria-expanded="false">
+                        <span class="nav-section-label">Misc</span>
+                        <i class="nav-section-chevron fas fa-chevron-down"></i>
+                    </button>
+                </li>
+                <li class="nav-item nav-section-body" id="misc-section">
+                    <ul class="nav flex-column nav-pills nav-subsection">
+                        <li class="nav-item">
+                            <a class="nav-link" href="#" data-page="astrology">
+                                <img src="/static/Emojis/Menu/astrology.png" alt="Astrology" style="width:20px;height:20px;margin-right:8px;">
+                                Astrology
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#" data-page="tarot" data-css="/css/tarot.css" data-script="/js/tarot.js">
+                                <img src="/static/Emojis/Menu/tarot.png" alt="Tarot" style="width:20px;height:20px;margin-right:8px;">
+                                Tarot
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+                <!-- ── Footer links ─────────────────────────────────────── -->
+                <li class="nav-item" style="display:none">
+                    <a class="nav-link nav-link-footer" href="#" data-page="cache-management" data-script="/js/cache-management.js">
+                        <img src="/static/Emojis/Menu/reaper.png" alt="Cache Management" style="width:14px;height:14px;margin-right:6px;opacity:0.6;">
+                        Cache Management
                     </a>
                 </li>
 
@@ -333,6 +438,7 @@
         integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
         crossorigin="anonymous"></script>
 <script src="/js/page_loader.js?v=20260418"></script>
+<script src="/js/modal_utils.js"></script>
 <script src="/js/dashboard.js"></script>
 <script>
 /**
@@ -367,6 +473,74 @@ async function discordDeepLinkLogin(event) {
         window.location.href = webUrl;
     }, 750);
 }
+
+// ── Nav Section Accordion ────────────────────────────────────────────────────
+(function () {
+    const STORAGE_KEY = 'navSectionStates';
+
+    function getSavedStates() {
+        try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; } catch { return {}; }
+    }
+    function saveState(id, expanded) {
+        const states = getSavedStates();
+        states[id] = expanded;
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(states));
+    }
+
+    function expand(body) {
+        body.style.height = body.scrollHeight + 'px';
+        body.classList.add('expanded');
+        body.addEventListener('transitionend', function onEnd() {
+            body.removeEventListener('transitionend', onEnd);
+            body.style.height = 'auto'; // allow reflow after open
+        }, { once: true });
+    }
+
+    function collapse(body) {
+        // Lock to pixel height first so transition has a start value
+        body.style.height = body.scrollHeight + 'px';
+        body.classList.remove('expanded');
+        // Force reflow so the browser registers the explicit height before we set 0
+        body.offsetHeight; // eslint-disable-line no-unused-expressions
+        body.style.height = '0';
+    }
+
+    function initAccordions() {
+        const saved = getSavedStates();
+        document.querySelectorAll('.nav-section-toggle').forEach(btn => {
+            const targetId = btn.dataset.target;
+            const body = document.getElementById(targetId);
+            if (!body) return;
+
+            // Default: collapsed (saved state overrides)
+            const expanded = saved[targetId] === true;
+            btn.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+            if (expanded) {
+                body.style.height = 'auto';
+                body.classList.add('expanded');
+            } else {
+                body.style.height = '0';
+            }
+
+            btn.addEventListener('click', () => {
+                const isExpanded = btn.getAttribute('aria-expanded') === 'true';
+                btn.setAttribute('aria-expanded', isExpanded ? 'false' : 'true');
+                if (isExpanded) {
+                    collapse(body);
+                } else {
+                    expand(body);
+                }
+                saveState(targetId, !isExpanded);
+            });
+        });
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initAccordions);
+    } else {
+        initAccordions();
+    }
+})();
 </script>
 
 </body>
