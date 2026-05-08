@@ -8,8 +8,7 @@ import asyncio
 
 from Systems.Functions.emoji import mention, resource_emoji, military_codes
 from Systems.Functions.irs_wars_db import IRSWarsDB
-from Systems.Functions.irs_nations_db import IRSNationsDB
-from Systems.Functions.db_paths import NW_WARS_DB_STR as NW_DB_PATH, NW_NATIONS_DB_STR as NW_NATIONS_DB_PATH
+from Systems.Functions.db_paths import NW_WARS_DB_STR as NW_DB_PATH
 from Systems.PnW.Util.war_calc import get_resource_prices, calculate_unit_cost
 
 # ── Constants ─────────────────────────────────────────────────────────────────
@@ -100,10 +99,12 @@ class Rankings(commands.Cog):
         return alliance_ids
 
     async def _get_nw_nations_for_autocomplete(self) -> List[Dict[str, Any]]:
-        """Load NW member nations from the nations DB for autocomplete."""
+        """Load NW member nations from GlobalNations.db for autocomplete."""
         try:
-            db = IRSNationsDB(NW_NATIONS_DB_PATH)
-            return await db.get_all_nations()
+            from PnWHarvester.db.global_nations_db import GlobalNationsDB
+            from Systems.Functions.db_paths import GLOBAL_NATIONS_DB as _GNDB, NW_ALLIANCE_ID
+            db = GlobalNationsDB(str(_GNDB))
+            return await db.get_nations_by_alliance(NW_ALLIANCE_ID)
         except Exception as e:
             self.logger.warning(f"rankings autocomplete: could not load NW nations: {e}")
             return []

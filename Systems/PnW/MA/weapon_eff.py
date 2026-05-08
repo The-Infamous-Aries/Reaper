@@ -18,7 +18,7 @@ from typing import Optional
 
 from Systems.PnW.Util.war_calc import UNIT_COSTS, get_resource_prices, calculate_unit_cost
 from Systems.Functions.emoji import get_partial, mention
-from Systems.Functions.db_paths import GLOBAL_NATIONS_DB, NW_NATIONS_DB
+from Systems.Functions.db_paths import GLOBAL_NATIONS_DB
 from Systems.PnW.Util.query import create_v3_query_instance, V3GraphQuery
 
 # --- 1. INFRASTRUCTURE COST FORMULA (from costs.py) ---
@@ -406,7 +406,7 @@ class WeaponEfficiency(commands.Cog):
     # ── HELPERS ──────────────────────────────────────────────────────────────────
 
     async def _resolve_nation(self, target: str) -> Optional[dict]:
-        """Resolve a nation with cities from local DBs, falling back to API."""
+        """Resolve a nation with cities from GlobalNations.db (single source of truth), falling back to API."""
         if GLOBAL_NATIONS_DB.exists():
             try:
                 from PnWHarvester.db.global_nations_db import GlobalNationsDB
@@ -420,22 +420,6 @@ class WeaponEfficiency(commands.Cog):
                         return nation
             except Exception as e:
                 logging.debug(f"GlobalNationsDB lookup failed for '{target}': {e}")
-
-        if NW_NATIONS_DB.exists():
-            try:
-                from Systems.Functions.irs_nations_db import IRSNationsDB
-                nwdb = IRSNationsDB(str(NW_NATIONS_DB))
-                nation = await nwdb.get_nation(int(target)) if target.isdigit() else None
-                if not nation:
-                    all_nw = await nwdb.get_all_nations()
-                    nation = next((n for n in all_nw
-                                   if n.get('nation_name', '').lower() == target.lower()), None)
-                if nation:
-                    nation['cities'] = await nwdb.get_cities_for_nation(int(nation['id']))
-                    if nation['cities']:
-                        return nation
-            except Exception as e:
-                logging.debug(f"IRSNationsDB lookup failed for '{target}': {e}")
 
         query = create_v3_query_instance()
         return (await query.get_nation_by_id(target)

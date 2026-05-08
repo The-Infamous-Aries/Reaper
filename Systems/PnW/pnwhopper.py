@@ -36,7 +36,6 @@ PNW_COGS = {
     ],
     # FA (Foreign Affairs) Cogs
     "FA": [
-        ("Systems.PnW.FA.compare", "CompareCog"),
         ("Systems.PnW.FA.treaties", "TreatiesManager"),
         ("Systems.PnW.FA.universe", "UniverseCog"),
     ],
@@ -144,13 +143,11 @@ async def setup(bot: commands.Bot):
 
                 elif category == "FA":
                     # FA cogs that need AllianceManager dependencies
-                    if class_name in ["CompareCog", "TreatiesManager", "UniverseCog"]:
+                    if class_name in ["TreatiesManager", "UniverseCog"]:
                         alliance_cog = bot.get_cog("AllianceManager")
                         if alliance_cog:
                             if class_name == "TreatiesManager":
                                 instance = cog_class(bot, alliance_cog.query_system, alliance_cog.calc_system)
-                            elif class_name == "CompareCog":
-                                instance = cog_class(bot)
                             else:
                                 instance = cog_class(bot, alliance_cog.query_system)
                         else:

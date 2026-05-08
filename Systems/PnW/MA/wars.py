@@ -231,11 +231,12 @@ class Wars(commands.Cog):
     # ── DB-only resolution helpers ────────────────────────────────────────────
 
     async def _resolve_nation_ids_from_db(self, identifiers: List[Union[int, str]]) -> List[int]:
-        """Resolve nation names/IDs to IDs using the NW nations DB — no API call."""
+        """Resolve nation names/IDs to IDs using GlobalNations.db — no API call."""
         try:
-            from Systems.Functions.irs_nations_db import IRSNationsDB
-            db = IRSNationsDB(NW_NATIONS_DB_PATH)
-            nations = await db.get_all_nations()
+            from PnWHarvester.db.global_nations_db import GlobalNationsDB
+            from Systems.Functions.db_paths import GLOBAL_NATIONS_DB as _GNDB, NW_ALLIANCE_ID
+            db = GlobalNationsDB(str(_GNDB))
+            nations = await db.get_nations_by_alliance(NW_ALLIANCE_ID)
             resolved = []
             for ident in identifiers:
                 ident_str = str(ident).strip()
@@ -309,11 +310,12 @@ class Wars(commands.Cog):
     # ── Autocomplete helpers ──────────────────────────────────────────────────
 
     async def _get_nw_nations_for_autocomplete(self) -> list:
-        """Load NW member nations from the nations DB for autocomplete."""
+        """Load NW member nations from GlobalNations.db for autocomplete."""
         try:
-            from Systems.Functions.irs_nations_db import IRSNationsDB
-            db = IRSNationsDB(NW_NATIONS_DB_PATH)
-            return await db.get_all_nations()
+            from PnWHarvester.db.global_nations_db import GlobalNationsDB
+            from Systems.Functions.db_paths import GLOBAL_NATIONS_DB as _GNDB, NW_ALLIANCE_ID
+            db = GlobalNationsDB(str(_GNDB))
+            return await db.get_nations_by_alliance(NW_ALLIANCE_ID)
         except Exception as e:
             logging.warning(f"wars autocomplete: could not load NW nations: {e}")
             return []

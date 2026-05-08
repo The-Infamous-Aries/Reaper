@@ -17,12 +17,8 @@ from Systems.PnW.Util.query import get_color_info, create_v3_query_instance, V3G
 from Systems.Functions import emoji as emoji_mod
 from Systems.Functions.config import PANDW_API_KEY
 import Systems.Functions.database_manager as db_manager
-from Systems.Functions.irs_nations_db import IRSNationsDB
-from Systems.Functions.db_paths import NW_NATIONS_DB
 from Systems.Functions.nation_emoji_store import get_nation_emoji, strip_emoji_prefix
 from pathlib import Path
-
-DATABASE_FILE = NW_NATIONS_DB
 
 logger = logging.getLogger(__name__)
 
@@ -98,24 +94,37 @@ def infra_price(amount: float) -> float:
 
 def calc_infra_value(starting_amount: float, ending_amount: float) -> float:
     start = round(float(starting_amount), 2)
-    end = round(float(ending_amount), 2)
-    diff = end - start
+    end   = round(float(ending_amount),   2)
+    diff  = end - start
 
     if diff > 10000: return float('inf')
-    if diff == 0: return 0.0
-    if diff < 0: return 150.0 * diff
+    if diff == 0:    return 0.0
+    if diff < 0:     return 150.0 * diff
 
-    if diff > 100 and (diff % 100 == 0):
-        cost_of_chunk = round(infra_price(start), 2) * 100.0
-        return cost_of_chunk + calc_infra_value(start + 100.0, end)
-    if diff > 100 and (diff % 100 != 0):
-        remainder = diff % 100.0
-        cost_of_chunk = round(infra_price(start), 2) * remainder
-        return cost_of_chunk + calc_infra_value(start + remainder, end)
-    if diff <= 100:
-        cost_of_chunk = round(infra_price(start), 2) * diff
-        return cost_of_chunk
-    return 0.0
+    total = 0.0
+    current = start
+    remaining = round(end - current, 2)
+
+    while remaining > 0:
+        if remaining > 100:
+            # Align to the next 100-unit boundary first if not already aligned
+            partial = remaining % 100.0
+            if partial == 0.0:
+                chunk = 100.0
+            else:
+                chunk = partial
+        else:
+            chunk = remaining
+
+        # Guard against floating-point producing a zero/negative chunk
+        if chunk <= 0:
+            break
+
+        total    += round(infra_price(current), 2) * chunk
+        current   = round(current + chunk, 2)
+        remaining = round(end - current, 2)
+
+    return total
 
 # --- LAND COST FORMULAS ---
 def land_price(amount: float) -> float:
@@ -123,24 +132,35 @@ def land_price(amount: float) -> float:
 
 def calc_land_value(starting_amount: float, ending_amount: float) -> float:
     start = round(float(starting_amount), 2)
-    end = round(float(ending_amount), 2)
-    diff = end - start
+    end   = round(float(ending_amount),   2)
+    diff  = end - start
 
     if diff > 10000: return float('inf')
-    if diff == 0: return 0.0
-    if diff < 0: return 50.0 * diff
+    if diff == 0:    return 0.0
+    if diff < 0:     return 50.0 * diff
 
-    if diff > 500 and (diff % 500 == 0):
-        cost_of_chunk = round(land_price(start), 2) * 500.0
-        return cost_of_chunk + calc_land_value(start + 500.0, end)
-    if diff > 500 and (diff % 500 != 0):
-        remainder = diff % 500.0
-        cost_of_chunk = round(land_price(start), 2) * remainder
-        return cost_of_chunk + calc_land_value(start + remainder, end)
-    if diff <= 500:
-        cost_of_chunk = round(land_price(start), 2) * diff
-        return cost_of_chunk
-    return 0.0
+    total = 0.0
+    current = start
+    remaining = round(end - current, 2)
+
+    while remaining > 0:
+        if remaining > 500:
+            partial = remaining % 500.0
+            if partial == 0.0:
+                chunk = 500.0
+            else:
+                chunk = partial
+        else:
+            chunk = remaining
+
+        if chunk <= 0:
+            break
+
+        total    += round(land_price(current), 2) * chunk
+        current   = round(current + chunk, 2)
+        remaining = round(end - current, 2)
+
+    return total
 
 # --- DISCOUNT HELPERS ---
 def calculate_project_discounts(nation_data: Dict[str, Any]) -> Dict[str, float]:
@@ -183,16 +203,24 @@ def project_build_cost(project_name: str, nation_data: Dict[str, Any]) -> Dict[s
     # Base cost for projects is the raw cost, as no projects discount other projects.
     base_cost = raw_costs.copy()
     
-    # Final cost always includes the Technological Advancement policy discount.
+    # Final cost includes the Technological Advancement policy discount only if
+    # the nation currently has that domestic policy active.
     final_cost = raw_costs.copy()
     tech_adv_savings = 0.0
-    
-    if "money" in final_cost:
+
+    # Normalize domestic_policy: DB stores "DomesticPolicy.TECHNOLOGICAL_ADVANCEMENT",
+    # API stores "Technological Advancement" — normalise to UPPER_SNAKE_CASE for comparison.
+    _raw_dp = str(nation_data.get("domestic_policy") or "").upper()
+    domestic_policy = _raw_dp.replace("DOMESTICPOLICY.", "").replace(" ", "_")
+    if domestic_policy == "TECHNOLOGICAL_ADVANCEMENT":
         policy_discount_multiplier = project_discounts.get("domestic_policy_multiplier", 1.0)
         discount_rate = 0.05 * policy_discount_multiplier
-        discount_amount = final_cost["money"] * discount_rate
-        final_cost["money"] -= discount_amount
-        tech_adv_savings = discount_amount
+        for key in list(final_cost.keys()):
+            if final_cost[key] > 0:
+                discount_amount = final_cost[key] * discount_rate
+                final_cost[key] -= discount_amount
+                if key == "money":
+                    tech_adv_savings = discount_amount
 
     return {
         "base_costs": base_cost,
@@ -471,26 +499,30 @@ class CostsCommand(commands.Cog):
         return [app_commands.Choice(name=p, value=p) for p in filtered_projects[:25]]
 
     async def _get_nights_watch_nations(self) -> List[Dict[str, Any]]:
-        """Get all IRS nations from the database."""
+        """Get all NW nations from GlobalNations.db."""
         try:
-            db = IRSNationsDB(str(DATABASE_FILE))
-            return await db.get_all_nations()
+            from PnWHarvester.db.global_nations_db import GlobalNationsDB
+            from Systems.Functions.db_paths import GLOBAL_NATIONS_DB as _GNDB, NW_ALLIANCE_ID
+            db = GlobalNationsDB(str(_GNDB))
+            return await db.get_nations_by_alliance(NW_ALLIANCE_ID)
         except Exception as e:
-            logger.error(f"Error getting IRS nations: {e}")
+            logger.error(f"Error getting NW nations: {e}")
             return []
 
     async def _get_nation_from_db(self, query: str) -> Optional[Dict[str, Any]]:
-        """Look up a nation from the IRS DB by name or ID. Returns None if not found."""
+        """Look up a nation from GlobalNations.db by name or ID."""
         try:
-            db = IRSNationsDB(str(DATABASE_FILE))
+            from PnWHarvester.db.global_nations_db import GlobalNationsDB
+            from Systems.Functions.db_paths import GLOBAL_NATIONS_DB as _GNDB
+            db = GlobalNationsDB(str(_GNDB))
             if query.isdigit():
                 nation = await db.get_nation(int(query))
                 if nation:
                     nation['cities'] = await db.get_cities_for_nation(int(query))
                     return nation
-            nations = await db.get_all_nations()
-            for nation in nations:
-                if nation.get('nation_name', '').lower() == query.lower():
+            else:
+                nation = await db.get_nation_by_name(query)
+                if nation:
                     nation['cities'] = await db.get_cities_for_nation(int(nation['id']))
                     return nation
             return None
@@ -591,8 +623,6 @@ class CostsCommand(commands.Cog):
             description_parts.append(f"{emoji_mod.mention('project')} **Projects:**")
 
             project_discounts = calculate_project_discounts(nation_data)
-            policy_discount_multiplier = project_discounts.get("domestic_policy_multiplier", 1.0)
-            discount_rate = 0.05 * policy_discount_multiplier
 
             for project_name, cost_data in costs_data['project_costs'].items():
                 base_costs = cost_data['base_costs']
@@ -608,18 +638,24 @@ class CostsCommand(commands.Cog):
                     money_line += f" (Discounted: ${final_money:,.2f} - Saved: ${money_savings:,.2f})"
                 description_parts.append(money_line)
 
-                # Calculate resource values
+                # Calculate resource values — show base amounts with discounted value if policy active
                 base_resource_value = 0.0
-                for res, amount in base_costs.items():
+                final_resource_value = 0.0
+                for res, base_amount in base_costs.items():
                     if res != 'money':
                         res_emoji = self._get_resource_emoji(res)
-                        value = best_buy_price_map.get(res.lower(), 0.0) * amount
-                        base_resource_value += value
-                        description_parts.append(f"    {res_emoji}{amount:,.0f} {res.capitalize()} (Est. Value: ${value:,.2f})")
+                        final_amount = final_costs.get(res, base_amount)
+                        base_value = best_buy_price_map.get(res.lower(), 0.0) * base_amount
+                        final_value = best_buy_price_map.get(res.lower(), 0.0) * final_amount
+                        base_resource_value += base_value
+                        final_resource_value += final_value
+                        res_line = f"    {res_emoji}{base_amount:,.0f} {res.capitalize()} (Est. Value: ${base_value:,.2f})"
+                        if abs(base_amount - final_amount) > 0.01:
+                            res_line += f" (Discounted: {final_amount:,.0f} — ${final_value:,.2f})"
+                        description_parts.append(res_line)
 
                 # Calculate total values
                 total_base_value = base_money + base_resource_value
-                final_resource_value = base_resource_value * (1.0 - discount_rate)
                 total_final_value = final_money + final_resource_value
 
                 description_parts.append(f"    **Total Est. Value:** ${total_base_value:,.2f}")
@@ -866,31 +902,33 @@ class CostsCommand(commands.Cog):
             project_names = [p.strip() for p in projects_to_buy.split(',') if p.strip()]
             project_costs_details = {}
 
-            # Get policy multiplier once for all projects
+            # Get policy multiplier — no longer needed for manual discount calc
+            # since project_build_cost() now returns fully-discounted final_costs.
             project_discounts = calculate_project_discounts(nation_data)
-            policy_discount_multiplier = project_discounts.get("domestic_policy_multiplier", 1.0)
-            discount_rate = 0.05 * policy_discount_multiplier
 
             for name in project_names:
                 cost_data = project_build_cost(name, nation_data)
                 if cost_data:
                     project_costs_details[name] = cost_data
-                    
+
                     # Calculate monetary value for totals
                     base_money_cost = cost_data['base_costs'].get('money', 0.0)
                     final_money_cost = cost_data['final_costs'].get('money', 0.0)
-                    
-                    # Calculate base resource cost
-                    resource_cost = 0.0
+
+                    # Base resource cost (raw amounts at market price)
+                    base_resource_cost = 0.0
                     for res, amount in cost_data['base_costs'].items():
                         if res != 'money':
-                            resource_cost += best_buy_price_map.get(res.lower(), 0.0) * amount
-                    
-                    # Apply policy discount to resource cost for the 'all discounts' total
-                    discounted_resource_cost = resource_cost * (1.0 - discount_rate)
-                            
-                    costs_data['total_cost_projects_only'] += base_money_cost + resource_cost
-                    costs_data['total_cost_all_discounts'] += final_money_cost + discounted_resource_cost
+                            base_resource_cost += best_buy_price_map.get(res.lower(), 0.0) * amount
+
+                    # Final resource cost — final_costs already has discounted amounts
+                    final_resource_cost = 0.0
+                    for res, amount in cost_data['final_costs'].items():
+                        if res != 'money':
+                            final_resource_cost += best_buy_price_map.get(res.lower(), 0.0) * amount
+
+                    costs_data['total_cost_projects_only'] += base_money_cost + base_resource_cost
+                    costs_data['total_cost_all_discounts'] += final_money_cost + final_resource_cost
             
             costs_data['project_costs'] = project_costs_details
 

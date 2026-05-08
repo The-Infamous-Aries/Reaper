@@ -39,14 +39,10 @@ from Systems.PnW.IA.costs import (
     calculate_project_discounts,
 )
 from Systems.PnW.Util.war_calc import IMPROVEMENT_COSTS
-from Systems.Functions.irs_nations_db import IRSNationsDB
-from Systems.Functions.db_paths import NW_NATIONS_DB
 from Systems.Functions.nation_emoji_store import get_nation_emoji, strip_emoji_prefix
 from Systems.PnW.Util.query import create_v3_query_instance, V3GraphQuery
 
 logger = logging.getLogger(__name__)
-
-DATABASE_FILE = NW_NATIONS_DB
 
 # ── Game constants ─────────────────────────────────────────────────────────────
 
@@ -298,14 +294,21 @@ def _project_cost_money(flag: str, nation: dict, prices: dict) -> float:
     raw = PROJECT_BUILD_COSTS[display]
     discounts = calculate_project_discounts(nation)
 
-    # Apply Technological Advancement policy discount to money cost
+    # Apply Technological Advancement policy discount to money cost only if
+    # the nation currently has that domestic policy active.
     money = raw.get('money', 0.0)
-    policy_mult = discounts.get('domestic_policy_multiplier', 1.0)
-    money *= (1.0 - 0.05 * policy_mult)
+    _raw_dp = str(nation.get('domestic_policy') or '').upper()
+    _dp_norm = _raw_dp.replace('DOMESTICPOLICY.', '').replace(' ', '_')
+    if _dp_norm == 'TECHNOLOGICAL_ADVANCEMENT':
+        policy_mult = discounts.get('domestic_policy_multiplier', 1.0)
+        discount_rate = 1.0 - 0.05 * policy_mult
+    else:
+        discount_rate = 1.0
+    money *= discount_rate
 
-    # Add resource costs at market prices
+    # Add resource costs at market prices, applying the same discount
     resource_cost = sum(
-        qty * prices.get(rss, 0)
+        qty * discount_rate * prices.get(rss, 0)
         for rss, qty in raw.items()
         if rss != 'money'
     )
@@ -697,14 +700,17 @@ class RevenueOptimizer(commands.Cog):
     async def _get_nation(self, query: str) -> Optional[dict]:
         clean = strip_emoji_prefix(query)
         try:
-            db = IRSNationsDB(str(DATABASE_FILE))
+            from PnWHarvester.db.global_nations_db import GlobalNationsDB
+            from Systems.Functions.db_paths import GLOBAL_NATIONS_DB as _GNDB
+            db = GlobalNationsDB(str(_GNDB))
             if clean.isdigit():
                 n = await db.get_nation(int(clean))
                 if n:
                     n['cities'] = await db.get_cities_for_nation(int(clean))
                     return n
-            for n in await db.get_all_nations():
-                if n.get('nation_name', '').lower() == clean.lower():
+            else:
+                n = await db.get_nation_by_name(clean)
+                if n:
                     n['cities'] = await db.get_cities_for_nation(int(n['id']))
                     return n
         except Exception as e:

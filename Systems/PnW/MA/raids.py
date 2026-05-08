@@ -23,13 +23,10 @@ from Systems.Functions.emoji import (
     resource_emoji, military_codes, get_animated_partial,
     SOLDIER_EMOJI, TANK_EMOJI, JET_EMOJI, SHIP_EMOJI, MISSILE_EMOJI, BOMB_EMOJI, mention, EMOJI_IDS
 )
-from Systems.Functions.irs_nations_db import IRSNationsDB
-from Systems.Functions.db_paths import NW_NATIONS_DB, GLOBAL_NATIONS_DB_STR, HOLDINGS_DB_STR
+from Systems.Functions.db_paths import GLOBAL_NATIONS_DB_STR, HOLDINGS_DB_STR
 from Systems.Functions.nation_emoji_store import get_nation_emoji, strip_emoji_prefix
 from Systems.Functions.autocomplete_utils import nation_autocomplete as _nation_autocomplete_util
 import Systems.Functions.database_manager as db_manager
-
-DATABASE_FILE = NW_NATIONS_DB
 
 class Raids(commands.Cog):
     """Cog for P&W raid target finding with V3 graph queries."""
@@ -208,7 +205,7 @@ class Raids(commands.Cog):
         """
         self.logger.info(f"Looking up attacker from local DB: {nation_identifier}")
         try:
-            clean_id = self._clean_nation_identifier(nation_identifier)
+            clean_id = strip_emoji_prefix(nation_identifier)
             self.logger.info(f"Cleaned identifier: '{clean_id}'")
 
             from PnWHarvester.db.global_nations_db import GlobalNationsDB
@@ -225,20 +222,8 @@ class Raids(commands.Cog):
                     nation["cities"] = await global_db.get_cities_for_nation(int(nation["id"]))
                     return nation
 
-            # Fall back to NW DB
-            db = IRSNationsDB(str(DATABASE_FILE))
-            nations = await db.get_all_nations()
-            for n in nations:
-                if clean_id.isdigit():
-                    if str(n.get("id")) == clean_id:
-                        n["cities"] = await db.get_cities_for_nation(int(n["id"]))
-                        return n
-                else:
-                    if (n.get("nation_name") or "").lower() == clean_id.lower():
-                        n["cities"] = await db.get_cities_for_nation(int(n["id"]))
-                        return n
-
-            self.logger.warning(f"Nation '{clean_id}' not found in any local DB.")
+            # Fall back to API — GlobalNations.db didn't have this nation
+            self.logger.warning(f"Nation '{clean_id}' not found in GlobalNations.db.")
             return None
         except Exception as e:
             self.logger.error(f"Error fetching attacker nation from DB: {e}", exc_info=True)
@@ -285,7 +270,7 @@ class Raids(commands.Cog):
             "defense": {
                 "fortress": 0.9,
                 "moneybags": 0.6, # This is a penalty, not a bonus
-                "turtle": 0.95,
+                "turtle": 1.2,    # Defender loses 20% more loot
                 "pirate": 1.1, # Pirate also affects defense
             }
         }
@@ -297,9 +282,9 @@ class Raids(commands.Cog):
 
     def _turns_since_last_looted(self, nation: Dict[str, Any]) -> int:
         """Return turns elapsed since the nation was last looted (1 turn = 2 hours).
-        Falls back to holdings last_loot_date if available."""
+        Uses holdings last_loot_date."""
         holdings = nation.get("_holdings")
-        dt = self._last_looted_dt_from_holdings(holdings) if holdings else self._last_looted_dt(nation)
+        dt = self._last_looted_dt_from_holdings(holdings) if holdings else None
         if dt is None:
             return 0
         return max(0, int((datetime.now(timezone.utc) - dt).total_seconds() / 7200))
@@ -325,23 +310,6 @@ class Raids(commands.Cog):
             return 0.0
         cap = 30 * self._TURNS_PER_DAY
         return net_per_turn * min(turns, cap)
-
-    def _last_looted_dt(self, nation: Dict[str, Any]) -> Optional[datetime]:
-        """
-        Return the datetime of the last loot event for this nation.
-        Uses the _loot_event embedded in the nation dict (set during filtering).
-        Kept for backward compat — holdings-based path uses last_loot_date directly.
-        """
-        loot_event = nation.get("_loot_event")
-        if not loot_event:
-            return None
-        raw = loot_event.get("date")
-        if not raw:
-            return None
-        try:
-            return datetime.fromisoformat(str(raw).replace("Z", "+00:00"))
-        except Exception:
-            return None
 
     def _last_looted_dt_from_holdings(self, holdings: Optional[Dict[str, Any]]) -> Optional[datetime]:
         """Return the last loot datetime from a holdings row."""
@@ -508,7 +476,9 @@ class Raids(commands.Cog):
                            min_loot: float = 0,
                            show_beige: bool = False,
                            buy_prices: Dict[str, float] = None,
-                           holdings_db=None):
+                           holdings_db=None,
+                           excluded_alliance_names: set = None,
+                           active_wars_filter: Optional[int] = None):
         """Filter nations using holdings as the sole loot source. No bankrecs needed."""
         sem = asyncio.Semaphore(20)
 
@@ -534,8 +504,25 @@ class Raids(commands.Cog):
             if not show_beige and nation.get('beige_turns', 0) > 0:
                 return None
 
-            if nation.get('defensive_wars_count', 0) >= 3:
+            def_wars = nation.get('defensive_wars_count', 0)
+
+            # Exclude nations with a full 3 def wars (can't be declared on)
+            if def_wars >= 3:
                 return None
+
+            # Filter by max defensive war count if requested
+            if active_wars_filter is not None and def_wars > active_wars_filter:
+                return None
+
+            # Exclude by alliance name (case-insensitive)
+            if excluded_alliance_names:
+                nation_alliance = (
+                    (nation.get("alliance") or {}).get("name")
+                    or nation.get("alliance_name")
+                    or ""
+                ).lower()
+                if nation_alliance and nation_alliance in excluded_alliance_names:
+                    return None
 
             async with sem:
                 nation_id = int(nation.get('id'))
@@ -567,6 +554,44 @@ class Raids(commands.Cog):
             self.logger.warning(f"nation_autocomplete error: {e}")
             return []
 
+    async def alliance_autocomplete(self, interaction: discord.Interaction, current: str) -> List[app_commands.Choice[str]]:
+        """Autocomplete for exclude_alliances — returns matching alliance names.
+        Supports comma-separated input: completes the last token after the final comma."""
+        try:
+            from PnWHarvester.db.global_nations_db import GlobalNationsDB
+            db = GlobalNationsDB(GLOBAL_NATIONS_DB_STR)
+
+            # Split on comma and complete only the last segment
+            parts = current.split(",")
+            search_term = parts[-1].strip()
+            already_chosen = [p.strip() for p in parts[:-1] if p.strip()]
+
+            alliances = await db.get_distinct_alliances(current=search_term)
+
+            choices = []
+            for a in alliances:
+                name = a.get("alliance_name") or ""
+                if not name:
+                    continue
+                # Skip alliances already in the comma-separated list
+                if name in already_chosen:
+                    continue
+                # Build the full value: keep prior selections + this one
+                if already_chosen:
+                    value = ", ".join(already_chosen) + ", " + name
+                else:
+                    value = name
+                # Discord choice values max 100 chars
+                if len(value) > 100:
+                    continue
+                choices.append(app_commands.Choice(name=value, value=value))
+                if len(choices) >= 25:
+                    break
+            return choices
+        except Exception as e:
+            self.logger.warning(f"alliance_autocomplete error: {e}")
+            return []
+
     @app_commands.command(name="raids", description="Find raid targets using last looted amount")
     @app_commands.describe(
         nation="Your nation name (for war range calculation)",
@@ -575,13 +600,22 @@ class Raids(commands.Cog):
         min_loot="Minimum loot amount to show",
         beige="Show beige nations (True) or hide them (False, default)",
         targets="Number of targets to show (defaults to 20)",
-        display="How to display the results (Message or PDF)"
+        display="How to display the results (Message or PDF)",
+        exclude_alliances="Exclude nations from these alliances (comma-separated, use autocomplete)",
+        active_wars="Filter by number of ongoing defensive wars (0, 1, or 2)",
     )
-    @app_commands.autocomplete(nation=nation_autocomplete)
-    @app_commands.choices(display=[
-        app_commands.Choice(name="Message", value="message"),
-        app_commands.Choice(name="PDF", value="pdf"),
-    ])
+    @app_commands.autocomplete(nation=nation_autocomplete, exclude_alliances=alliance_autocomplete)
+    @app_commands.choices(
+        display=[
+            app_commands.Choice(name="Message", value="message"),
+            app_commands.Choice(name="PDF", value="pdf"),
+        ],
+        active_wars=[
+            app_commands.Choice(name="0 — no active def wars", value=0),
+            app_commands.Choice(name="1 — 1 or fewer active def wars", value=1),
+            app_commands.Choice(name="2 — 2 or fewer active def wars", value=2),
+        ],
+    )
     async def raids(self, interaction: discord.Interaction, 
                     nation: Optional[str] = None,
                     active: bool = True,
@@ -589,7 +623,9 @@ class Raids(commands.Cog):
                     min_loot: Optional[str] = None,
                     beige: bool = False,
                     targets: Optional[int] = 20,
-                    display: str = "message"):
+                    display: str = "message",
+                    exclude_alliances: Optional[str] = None,
+                    active_wars: Optional[int] = None):
         """Find raid targets based on specified criteria."""
         try:
             # Defer interaction
@@ -606,6 +642,13 @@ class Raids(commands.Cog):
             
             # Parse loot filter
             min_loot_val = self._parse_loot_filter(min_loot)
+
+            # Parse excluded alliances — split on comma, normalise to lowercase set
+            excluded_alliance_names: set = set()
+            if exclude_alliances:
+                excluded_alliance_names = {
+                    a.strip().lower() for a in exclude_alliances.split(",") if a.strip()
+                }
             
             # Calculate score range for the query
             min_score, max_score = None, None
@@ -639,6 +682,8 @@ class Raids(commands.Cog):
                 show_beige=beige,
                 buy_prices=buy_prices,
                 holdings_db=holdings_db,
+                excluded_alliance_names=excluded_alliance_names,
+                active_wars_filter=active_wars,
             ):
                 raid_targets.append(nation)
             

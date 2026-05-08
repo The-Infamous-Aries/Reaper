@@ -31,7 +31,8 @@ class Loot(commands.Cog):
             'base': 0.10,           # 10% base loot
             'pirate': 1.4,         # 40% increase from Pirate policy
             'ape': 1.1,            # 10% increase from Advanced Pirate Economics
-            'moneybags': 0.6         # 40% reduction from Moneybags policy
+            'turtle': 1.2,         # 20% increase (defender loses 20% more loot)
+            'moneybags': 0.6       # 40% reduction from Moneybags policy
         }
 
     @commands.Cog.listener()

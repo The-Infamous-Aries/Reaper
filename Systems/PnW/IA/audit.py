@@ -9,12 +9,9 @@ import os
 import sys
 
 from Systems.Functions import emoji as emoji_mod
-from Systems.Functions.irs_nations_db import IRSNationsDB
-from Systems.Functions.db_paths import NW_NATIONS_DB
 from Systems.Functions.nation_emoji_store import get_nation_emoji, strip_emoji_prefix
 from pathlib import Path
 
-DATABASE_FILE = NW_NATIONS_DB
 NIGHTS_WATCH_ALLIANCE_ID = 14225
 NIGHTS_WATCH_ALLIANCE_NAME = "Nights Watch"
 
@@ -70,14 +67,16 @@ class AuditManager(commands.Cog):
             return []
 
     async def _get_combined_nations(self, center_id: int) -> List[Dict[str, Any]]:
-        """Fetch nations for the specified alliance — DB for IRS, API otherwise."""
+        """Fetch nations for the specified alliance — DB for NW, API otherwise."""
         if center_id == NIGHTS_WATCH_ALLIANCE_ID:
             try:
-                db = IRSNationsDB(str(DATABASE_FILE))
-                db_nations = await db.get_all_nations()
+                from PnWHarvester.db.global_nations_db import GlobalNationsDB
+                from Systems.Functions.db_paths import GLOBAL_NATIONS_DB as _GNDB, NW_ALLIANCE_ID
+                db = GlobalNationsDB(str(_GNDB))
+                db_nations = await db.get_nations_by_alliance(NW_ALLIANCE_ID)
                 for nation in db_nations:
                     nation['cities'] = await db.get_cities_for_nation(int(nation['id']))
-                self.logger.info(f"Loaded {len(db_nations)} IRS nations from DB")
+                self.logger.info(f"Loaded {len(db_nations)} NW nations from GlobalNations.db")
                 return db_nations
             except Exception as e:
                 self.logger.error(f"DB load failed, falling back to API: {e}")

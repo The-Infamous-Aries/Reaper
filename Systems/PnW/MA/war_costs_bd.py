@@ -447,19 +447,26 @@ class WarsBD(commands.Cog):
         return nation_breakdown
 
     @app_commands.command(name="wars_cost_bd", description="Generates a paginated war cost breakdown for an alliance.")
-    @app_commands.describe(alliance="The name or ID of the alliance to analyze.", time="Time range: '2d', '3w', '1m' or combined '2m2w5d3h' (m=28d, w=7d, d=24h, h=60min).", force_refresh="Set to True to bypass the cache and fetch fresh data.", opps_view="Set to True to view the breakdown from the opponent's perspective.")
-    async def wars_breakdown(self, interaction: discord.Interaction, alliance: str, time: str, force_refresh: bool = False, opps_view: bool = False):
+    @app_commands.describe(alliance="The name or ID of the alliance to analyze.", time="Time range: '2d', '3w', '1m' or combined '2m2w5d3h'. Leave blank for ALL time.", force_refresh="Set to True to bypass the cache and fetch fresh data.", opps_view="Set to True to view the breakdown from the opponent's perspective.")
+    async def wars_breakdown(self, interaction: discord.Interaction, alliance: str, time: Optional[str] = None, force_refresh: bool = False, opps_view: bool = False):
         await interaction.response.defer(thinking=True)
 
         try:
-            after_datetime = self._parse_time_to_utc_datetime(time)
-            if not after_datetime:
-                await interaction.followup.send("❌ Invalid time format. Use formats like '2d', '3w', '1m', or combined like '2m2w5d3h' (months=28d, weeks=7d, days=24h, hours=60m).")
-                return
+            after_datetime = None
+            if time:
+                after_datetime = self._parse_time_to_utc_datetime(time)
+                if not after_datetime:
+                    await interaction.followup.send("❌ Invalid time format. Use formats like '2d', '3w', '1m', or combined like '2m2w5d3h' (months=28d, weeks=7d, days=24h, hours=60m). Leave blank for all time.")
+                    return
+
+            time_label = time if time else "all time"
 
             # Check for Nights Watch
             if alliance.lower() in ["nights watch", "nw", "14225"]:
-                all_wars = await self.db.get_wars_by_alliance_in_range(14225, role='attacker' if not opps_view else 'defender', start_date=after_datetime.date())
+                all_wars = await self.db.get_all_wars_for_alliance_in_range(
+                    14225,
+                    start_date=after_datetime.date() if after_datetime else None,
+                )
                 alliance_id = 14225
             else:
                 resolved_alliance_ids = await self.query_instance.resolve_entities([alliance], 'alliance')
@@ -471,7 +478,7 @@ class WarsBD(commands.Cog):
                 all_wars = await get_wars(alliance_id=[alliance_id], active=False, status="ALL", after=after_datetime, before=datetime.now(timezone.utc), force_refresh=force_refresh)
 
             if not all_wars:
-                await interaction.followup.send(f"No wars found for alliance '{alliance}' in the last {time}.")
+                await interaction.followup.send(f"No wars found for alliance '{alliance}'" + (f" in the last {time}." if time else "."))
                 return
 
             # Attach attacks to each war so calculate_war_costs has loot + missile data
@@ -485,7 +492,7 @@ class WarsBD(commands.Cog):
             nation_breakdown = await self._get_nation_breakdown(all_wars, alliance_id, opps_view, resource_prices)
             
             if not nation_breakdown:
-                await interaction.followup.send(f"No war costs could be calculated for alliance '{alliance}' in the last {time}.")
+                await interaction.followup.send(f"No war costs could be calculated for alliance '{alliance}'" + (f" in the last {time}." if time else "."))
                 return
 
             total_gross = sum(c['gross_cost'] for c in nation_breakdown.values())
@@ -527,19 +534,19 @@ class WarsBD(commands.Cog):
 
             from urllib.parse import quote_plus
             public_url = get_web_public_url()
-            interactive_url = f"{public_url}/api/pnw/war_costs?alliance={quote_plus(alliance)}&time={quote_plus(time)}&force_refresh={force_refresh}&opps_view={opps_view}"
+            interactive_url = f"{public_url}/api/pnw/war_costs?alliance={quote_plus(alliance)}&time={quote_plus(time or 'all')}&force_refresh={force_refresh}&opps_view={opps_view}"
 
             if opps_view:
                 summary_embed = discord.Embed(
                     title=f"Opponent War Summary for {alliance}",
-                    description=f"Total costs for **{len(nation_breakdown)}** opponents over the last **{time}**.",
+                    description=f"Total costs for **{len(nation_breakdown)}** opponents over **{time_label}**.",
                     color=discord.Color.red(),
                     timestamp=datetime.now(timezone.utc)
                 )
             else:
                 summary_embed = discord.Embed(
                     title=f"Alliance War Summary for {alliance}",
-                    description=f"Total costs for **{len(nation_breakdown)}** members over the last **{time}**.",
+                    description=f"Total costs for **{len(nation_breakdown)}** members over **{time_label}**.",
                     color=discord.Color.gold(),
                     timestamp=datetime.now(timezone.utc)
                 )

@@ -601,6 +601,8 @@ class WarBrain:
             multiplier *= 1.4
         if defender_policy == 'moneybags':
             multiplier *= 0.6
+        if defender_policy == 'turtle':
+            multiplier *= 1.2
         if has_project(attacker, 'Advanced Piracy Economics'):
             multiplier *= 1.1
 

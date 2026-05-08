@@ -17,12 +17,8 @@ from Systems.Functions.user_data_manager import UserDataManager
 from Systems.PnW.Util.calc import AllianceCalculator
 from Systems.Functions import emoji as emoji_mod
 from Systems.Functions.emoji import improvement_emoji_map, mention
-from Systems.Functions.irs_nations_db import IRSNationsDB
-from Systems.Functions.db_paths import NW_NATIONS_DB
 from Systems.Functions.nation_emoji_store import get_nation_emoji, strip_emoji_prefix
 from pathlib import Path
-
-DATABASE_FILE = NW_NATIONS_DB
 
 # Top-level autocomplete wrapper to bind correctly without relying on Cog method binding
 async def autocomplete_show_target(interaction: discord.Interaction, current: str) -> List[app_commands.Choice[str]]:
@@ -95,23 +91,25 @@ class ShowCog(commands.Cog):
 
 
     async def _get_nights_watch_nations(self) -> List[Dict[str, Any]]:
-        """Get all NW nations from the database with caching."""
+        """Get all NW nations from GlobalNations.db with caching."""
         import time
         current_time = time.time()
-        
+
         # Return cached data if still valid
-        if (self._nations_cache and 
-            current_time - self._cache_timestamp < self._cache_ttl):
+        if (self._nations_cache and
+                current_time - self._cache_timestamp < self._cache_ttl):
             return self._nations_cache
-        
+
         try:
-            db = IRSNationsDB(str(DATABASE_FILE))
-            nations = await db.get_all_nations()
-            
+            from PnWHarvester.db.global_nations_db import GlobalNationsDB
+            from Systems.Functions.db_paths import GLOBAL_NATIONS_DB, NW_ALLIANCE_ID
+            db = GlobalNationsDB(str(GLOBAL_NATIONS_DB))
+            nations = await db.get_nations_by_alliance(NW_ALLIANCE_ID)
+
             # Update cache
             self._nations_cache = nations
             self._cache_timestamp = current_time
-            
+
             return nations
         except Exception as e:
             self.logger.error(f"Error getting NW nations: {e}")
@@ -121,55 +119,45 @@ class ShowCog(commands.Cog):
     async def refresh_nations_cache(self):
         """Force refresh the nations cache."""
         try:
-            db = IRSNationsDB(str(DATABASE_FILE))
-            nations = await db.get_all_nations()
-            
+            from PnWHarvester.db.global_nations_db import GlobalNationsDB
+            from Systems.Functions.db_paths import GLOBAL_NATIONS_DB, NW_ALLIANCE_ID
+            db = GlobalNationsDB(str(GLOBAL_NATIONS_DB))
+            nations = await db.get_nations_by_alliance(NW_ALLIANCE_ID)
+
             import time
             self._nations_cache = nations
             self._cache_timestamp = time.time()
-            
-            self.logger.info(f"Nations cache refreshed with {len(nations)} nations")
+
+            self.logger.info(f"Nations cache refreshed with {len(nations)} NW nations")
         except Exception as e:
             self.logger.error(f"Error refreshing nations cache: {e}")
 
     async def _get_nation_from_db(self, query: str) -> Optional[Dict[str, Any]]:
         """
-        Look up a nation from local DBs by name, leader name, or ID.
-        Checks GlobalNationsDB first (covers all nations), falls back to
-        IRSNationsDB for NW members. Returns None if not found in either.
+        Look up a nation from GlobalNations.db by name, leader name, or ID.
+        GlobalNations.db is the single source of truth — it contains all nations
+        including Nights Watch members.
         """
         try:
             from PnWHarvester.db.global_nations_db import GlobalNationsDB
-            from Systems.Functions.db_paths import EP_NATIONS_DB, GLOBAL_NATIONS_DB
+            from Systems.Functions.db_paths import GLOBAL_NATIONS_DB
 
-            global_db = GlobalNationsDB(str(GLOBAL_NATIONS_DB))
-            ep_db     = IRSNationsDB(str(EP_NATIONS_DB))
+            db = GlobalNationsDB(str(GLOBAL_NATIONS_DB))
 
-            async def _attach_cities(nation, db):
+            async def _attach_cities(nation):
                 nation['cities'] = await db.get_cities_for_nation(int(nation['id']))
                 return nation
 
             if query.isdigit():
-                nation_id = int(query)
-                nation = await global_db.get_nation(nation_id)
+                nation = await db.get_nation(int(query))
                 if nation:
-                    return await _attach_cities(nation, global_db)
-                # GlobalNations.db may not be populated yet — fall back to NW DB
-                nation = await ep_db.get_nation(nation_id)
-                if nation:
-                    return await _attach_cities(nation, ep_db)
+                    return await _attach_cities(nation)
                 return None
 
             # Name search — GlobalNationsDB has an indexed get_nation_by_name
-            nation = await global_db.get_nation_by_name(query)
+            nation = await db.get_nation_by_name(query)
             if nation:
-                return await _attach_cities(nation, global_db)
-
-            # Fall back to NW DB (covers case where GlobalNations.db isn't populated)
-            ep_nations = await ep_db.get_all_nations()
-            for n in ep_nations:
-                if (n.get('nation_name') or '').lower() == query.lower():
-                    return await _attach_cities(n, ep_db)
+                return await _attach_cities(nation)
 
             return None
         except Exception as e:
@@ -1485,7 +1473,7 @@ _LOOT_MULTIPLIERS = {
         "blockade":     0.05,
     },
     "offense": {"pirate": 1.4, "ape": 1.1},
-    "defense":  {"fortress": 0.9, "moneybags": 0.6, "turtle": 0.95, "pirate": 1.1},
+    "defense":  {"fortress": 0.9, "moneybags": 0.6, "turtle": 1.2, "pirate": 1.1},
 }
 _LOOT_RESOURCES = ["coal", "oil", "uranium", "iron", "bauxite", "lead",
                    "gasoline", "munitions", "steel", "aluminum", "food"]

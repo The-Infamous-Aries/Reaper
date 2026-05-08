@@ -7,8 +7,7 @@ from typing import Optional, List, Dict, Any
 from datetime import datetime, timedelta, timezone
 
 from Systems.Functions.irs_wars_db import IRSWarsDB
-from Systems.Functions.irs_nations_db import IRSNationsDB
-from Systems.Functions.db_paths import NW_WARS_DB_STR as NW_DB_PATH, NW_NATIONS_DB_STR as NW_NATIONS_DB_PATH
+from Systems.Functions.db_paths import NW_WARS_DB_STR as NW_DB_PATH
 from Systems.Functions.nation_emoji_store import get_nation_emoji, strip_emoji_prefix
 from Systems.PnW.Util.war_calc import get_resource_prices, calculate_unit_cost
 from Systems.Functions.emoji import resource_emoji
@@ -458,8 +457,10 @@ class CompareWars(commands.Cog):
 
     async def _get_nw_nations(self) -> List[Dict[str, Any]]:
         try:
-            db = IRSNationsDB(NW_NATIONS_DB_PATH)
-            return await db.get_all_nations()
+            from PnWHarvester.db.global_nations_db import GlobalNationsDB
+            from Systems.Functions.db_paths import GLOBAL_NATIONS_DB as _GNDB, NW_ALLIANCE_ID
+            db = GlobalNationsDB(str(_GNDB))
+            return await db.get_nations_by_alliance(NW_ALLIANCE_ID)
         except Exception as e:
             self.logger.warning(f"compare_wars: could not load NW nations: {e}")
             return []

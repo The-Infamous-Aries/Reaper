@@ -15,15 +15,12 @@ from Systems.PnW.Util.query import V3GraphQuery, create_v3_query_instance
 from Systems.Functions import emoji as emoji_mod
 from Systems.PnW.Util.rev_correct import calculate_full_revenue_with_query
 from Systems.Functions.config import PANDW_API_KEY
-from Systems.Functions.irs_nations_db import IRSNationsDB as IRSNationsDB
-from Systems.Functions.db_paths import EP_NATIONS_DB, EP_NATIONS_DB_STR, EP_WARS_DB_STR, GLOBAL_NATIONS_DB
-from Systems.Functions.nation_emoji_store import get_nation_emoji, strip_emoji_prefix
+from Systems.Functions.db_paths import GLOBAL_NATIONS_DB
+from Systems.Functions.nation_emoji_store import get_nation_emoji, get_alliance_emoji, strip_emoji_prefix
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
-DATABASE_DIR      = EP_NATIONS_DB.parent
-DATABASE_FILE     = EP_NATIONS_DB
 NIGHTS_WATCH_ALLIANCE_ID = 14225
 
 def _get_global_nations_db():
@@ -59,49 +56,40 @@ class RevenueCommand(commands.Cog):
         return emoji_mod.resource_emoji(resource_name) or ""
     
     async def _get_nights_watch_nations(self) -> List[Dict[str, Any]]:
-        """Get all IRS nations from the database."""
+        """Get all NW nations from GlobalNations.db."""
         try:
-            db = IRSNationsDB(str(DATABASE_FILE))
-            nations = await db.get_all_nations()
+            from PnWHarvester.db.global_nations_db import GlobalNationsDB
+            from Systems.Functions.db_paths import GLOBAL_NATIONS_DB, NW_ALLIANCE_ID
+            db = GlobalNationsDB(str(GLOBAL_NATIONS_DB))
+            nations = await db.get_nations_by_alliance(NW_ALLIANCE_ID)
             return nations
         except Exception as e:
-            logger.error(f"Error getting IRS nations: {e}")
+            logger.error(f"Error getting NW nations: {e}")
             return []
-    
+
     async def _get_nation_from_db(self, query: str) -> Optional[Dict[str, Any]]:
         """
-        Look up a nation from local DBs by name or ID.
-        Checks GlobalNationsDB first (all nations), falls back to IRSNationsDB (NW only).
+        Look up a nation from GlobalNations.db by name or ID.
+        GlobalNations.db is the single source of truth — it contains all nations
+        including Nights Watch members.
         """
         try:
             from PnWHarvester.db.global_nations_db import GlobalNationsDB
-            global_db = GlobalNationsDB(str(GLOBAL_NATIONS_DB))
-            ep_db     = IRSNationsDB(str(DATABASE_FILE))
+            from Systems.Functions.db_paths import GLOBAL_NATIONS_DB
+            db = GlobalNationsDB(str(GLOBAL_NATIONS_DB))
 
             if query.isdigit():
-                nation = await global_db.get_nation(int(query))
+                nation = await db.get_nation(int(query))
                 if nation:
-                    nation['cities'] = await global_db.get_cities_for_nation(int(query))
-                    return nation
-                # Fall back to NW DB if GlobalNations.db isn't populated
-                nation = await ep_db.get_nation(int(query))
-                if nation:
-                    nation['cities'] = await ep_db.get_cities_for_nation(int(query))
+                    nation['cities'] = await db.get_cities_for_nation(int(query))
                     return nation
                 return None
 
             # Name search
-            nation = await global_db.get_nation_by_name(query)
+            nation = await db.get_nation_by_name(query)
             if nation:
-                nation['cities'] = await global_db.get_cities_for_nation(int(nation['id']))
+                nation['cities'] = await db.get_cities_for_nation(int(nation['id']))
                 return nation
-
-            # Fall back to NW DB
-            nations = await ep_db.get_all_nations()
-            for n in nations:
-                if (n.get('nation_name') or '').lower() == query.lower():
-                    n['cities'] = await ep_db.get_cities_for_nation(int(n['id']))
-                    return n
 
             return None
         except Exception as e:
@@ -118,13 +106,14 @@ class RevenueCommand(commands.Cog):
             return []
     
     async def alliance_autocomplete(self, interaction: discord.Interaction, current: str) -> List[app_commands.Choice[str]]:
-        """Autocomplete for alliance names — pulls from GlobalNations.db if available, falls back to EP only."""
+        """Autocomplete for alliance names — pulls from GlobalNations.db, emojis from alliance emoji store."""
         choices = []
 
-        # Always include Nights Watch first
+        # Always include Nights Watch first if it matches
         ep_label = "Nights Watch"
         if not current or current.lower() in ep_label.lower():
-            choices.append(app_commands.Choice(name=f"💰 {ep_label}", value=ep_label))
+            nw_emoji = get_alliance_emoji(ep_label)
+            choices.append(app_commands.Choice(name=f"{nw_emoji} {ep_label}", value=ep_label))
 
         # Pull all alliances from GlobalNations.db
         try:
@@ -138,7 +127,8 @@ class RevenueCommand(commands.Cog):
                     # Skip NW — already added above
                     if aid == NIGHTS_WATCH_ALLIANCE_ID:
                         continue
-                    label = f"{aname} ({count})"
+                    emoji = get_alliance_emoji(aname)
+                    label = f"{emoji} {aname} ({count})" if count else f"{emoji} {aname}"
                     choices.append(app_commands.Choice(name=label[:100], value=aname))
                     if len(choices) >= 25:
                         break
@@ -250,21 +240,23 @@ class RevenueCommand(commands.Cog):
             # Strip emoji prefix from autocomplete selection
             clean_query = strip_emoji_prefix(alliance_query)
 
-            # Check if this is IRS
+            # Check if this is NW
             if clean_query.lower() in ["nights watch", "nightswatch", "nw"]:
                 await loading_msg.edit(content="🌙 Using Nights Watch database...")
 
-                # Get all IRS nations from database
+                # Get all NW nations from GlobalNations.db
                 nations = await self._get_nights_watch_nations()
                 if not nations:
-                    await loading_msg.edit(content="❌ No IRS nations found in database.")
+                    await loading_msg.edit(content="❌ No Nights Watch nations found in database.")
                     return
-                
-                # Add cities to each nation
-                db = IRSNationsDB(str(DATABASE_FILE))
+
+                # Attach cities (get_nations_by_alliance doesn't include cities)
+                from PnWHarvester.db.global_nations_db import GlobalNationsDB
+                from Systems.Functions.db_paths import GLOBAL_NATIONS_DB as _GNDB
+                _db = GlobalNationsDB(str(_GNDB))
                 for nation in nations:
-                    cities = await db.get_cities_for_nation(int(nation['id']))
-                    nation['cities'] = cities
+                    if not nation.get('cities'):
+                        nation['cities'] = await _db.get_cities_for_nation(int(nation['id']))
                 
                 # Load shared context from DB once for all nations
                 rev_ctx = await self._load_rev_ctx()

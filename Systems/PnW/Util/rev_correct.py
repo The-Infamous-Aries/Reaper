@@ -218,7 +218,7 @@ def _normalize_domestic_policy(nation: dict[str, Any]) -> str:
     ('DomesticPolicy.OPEN_MARKETS').
     Returns e.g. 'OPEN_MARKETS', 'IMPERIALISM', 'MANIFEST_DESTINY'.
     """
-    raw = (nation.get('domestic_policy') or '').upper()
+    raw = str(nation.get('domestic_policy') or '').upper()
     return raw.replace('DOMESTICPOLICY.', '').replace(' ', '_')
 
 
@@ -413,7 +413,7 @@ def calculate_nation_modifiers(nation: dict[str, Any]) -> dict[str, float]:
     
     # Domestic policy effects
     # Normalize: DB stores "DomesticPolicy.OPEN_MARKETS", API stores "Open Markets"
-    raw_policy = nation.get('domestic_policy', '') or ''
+    raw_policy = str(nation.get('domestic_policy', '') or '')
     dp = raw_policy.upper().replace('DOMESTICPOLICY.', '').replace(' ', '_')
     
     if dp in ('OPEN_MARKETS', 'OPENMARKETS'):
@@ -1766,10 +1766,10 @@ async def calculate_full_revenue_with_query(
         resource_tax_rate = float(override_tax_rate)
     else:
         try:
-            from Systems.Functions.irs_nations_db import IRSNationsDB
-            from Systems.Functions.db_paths import NW_NATIONS_DB
-            if NW_NATIONS_DB.exists():
-                _db = IRSNationsDB(str(NW_NATIONS_DB))
+            from PnWHarvester.db.global_nations_db import GlobalNationsDB
+            from Systems.Functions.db_paths import GLOBAL_NATIONS_DB
+            if GLOBAL_NATIONS_DB.exists():
+                _db = GlobalNationsDB(str(GLOBAL_NATIONS_DB))
                 alliance_id = nation_data.get("alliance_id") or (
                     nation_data.get("alliance", {}) or {}
                 ).get("id")

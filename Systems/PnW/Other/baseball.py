@@ -13,12 +13,8 @@ from pathlib import Path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 from Systems.Functions.config import PANDW_API_KEY
 from Systems.PnW.Util.query import create_v3_query_instance, V3GraphQuery
-from Systems.Functions.irs_nations_db import IRSNationsDB
-from Systems.Functions.db_paths import NW_NATIONS_DB
 from Systems.Functions import emoji as emoji_mod
 from Systems.Functions.nation_emoji_store import get_nation_emoji, strip_emoji_prefix
-
-DATABASE_FILE = NW_NATIONS_DB
 
 # Setup logging
 logger = logging.getLogger(__name__)

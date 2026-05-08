@@ -19,6 +19,55 @@ from Systems.Functions.user_data_manager import UserDataManager
 
 AllianceManager = None
 
+# ── Module-level autocomplete functions ───────────────────────────────────────
+# Must be defined at module level so @app_commands.autocomplete can bind them
+# before the Cog class is instantiated.
+
+async def _destroy_target_autocomplete(
+    interaction: discord.Interaction, current: str
+) -> List[app_commands.Choice[str]]:
+    """Autocomplete for the destroy command's target (nation) parameter."""
+    try:
+        from Systems.Functions.autocomplete_utils import nation_autocomplete
+        return await nation_autocomplete(current, nw_only=False, limit=25)
+    except Exception as e:
+        logging.getLogger(__name__).error(f"destroy target autocomplete error: {e}")
+        return []
+
+
+async def _destroy_attackers_autocomplete(
+    interaction: discord.Interaction, current: str
+) -> List[app_commands.Choice[str]]:
+    """Autocomplete for the destroy command's attackers (alliance) parameter.
+
+    Supports comma-separated input — autocompletes the last token so users can
+    keep typing additional alliances after a comma.
+    """
+    try:
+        from Systems.Functions.autocomplete_utils import alliance_autocomplete
+
+        # If the user has typed multiple comma-separated values, only autocomplete
+        # the portion after the last comma so existing selections are preserved.
+        if "," in current:
+            prefix = current[: current.rfind(",") + 1]  # everything up to & including last comma
+            partial = current[current.rfind(",") + 1 :].strip()
+        else:
+            prefix = ""
+            partial = current
+
+        raw_choices = await alliance_autocomplete(partial, include_nw=True, limit=25)
+
+        if prefix:
+            # Re-prefix each choice value so the full string is preserved
+            return [
+                app_commands.Choice(name=choice.name, value=f"{prefix} {choice.value}")
+                for choice in raw_choices
+            ]
+        return raw_choices
+    except Exception as e:
+        logging.getLogger(__name__).error(f"destroy attackers autocomplete error: {e}")
+        return []
+
 class DestroyCog(commands.Cog):
     """Cog for managing war destruction commands."""
     
@@ -690,12 +739,47 @@ class DestroyCog(commands.Cog):
             return None
 
     async def fetch_target_nation(self, target_data: str, input_type: str) -> Optional[Dict[str, Any]]:
-        """Fetch target nation based on input type."""
+        """Fetch target nation based on input type.
+
+        Tries GlobalNations.db first (fast, no API quota) and falls back to the
+        live API only when the local DB has no match.
+        """
         try:
+            # ── 1. Try GlobalNations.db first ─────────────────────────────────
+            try:
+                from PnWHarvester.db.global_nations_db import GlobalNationsDB
+                from Systems.Functions.db_paths import GLOBAL_NATIONS_DB
+                from Systems.Functions.nation_emoji_store import strip_emoji_prefix
+
+                db = GlobalNationsDB(str(GLOBAL_NATIONS_DB))
+                nation: Optional[Dict[str, Any]] = None
+
+                clean = strip_emoji_prefix(target_data).strip()
+
+                if input_type == 'nation_id':
+                    nation = await db.get_nation(int(clean))
+                elif input_type == 'nation_name':
+                    nation = await db.get_nation_by_name(clean)
+                    # Also try leader name if nation_name lookup misses
+                    if not nation and hasattr(db, 'get_nation_by_leader_name'):
+                        nation = await db.get_nation_by_leader_name(clean)
+
+                if nation:
+                    # Attach cities so downstream callers have full data
+                    nation['cities'] = await db.get_cities_for_nation(int(nation['id']))
+                    self.logger.info(
+                        f"fetch_target_nation: resolved '{target_data}' from GlobalNations.db "
+                        f"(id={nation.get('id')})"
+                    )
+                    return nation
+            except Exception as db_err:
+                self.logger.warning(f"fetch_target_nation: GlobalNations.db lookup failed, falling back to API: {db_err}")
+
+            # ── 2. Fall back to live API ───────────────────────────────────────
             if not self.query_instance:
                 self.logger.error("No query instance available")
                 return None
-            
+
             nation = None
             if input_type == 'nation_id':
                 nation = await self.query_instance.get_nation_by_id(target_data)
@@ -703,7 +787,7 @@ class DestroyCog(commands.Cog):
                 nation = await self.query_instance.get_nation_by_name(target_data)
             elif input_type == 'leader_name':
                 nation = await self.query_instance.get_nation_by_leader(target_data)
-            
+
             return nation
         except Exception as e:
             self._log_error(f"Error fetching target nation: {e}", e, "fetch_target_nation")
@@ -715,6 +799,7 @@ class DestroyCog(commands.Cog):
         attackers='Enter Alliance Name(s) or ID(s), comma-separated for multiple',
         exclude_unoptimal='Exclude nations with >2000 avg infra or zero units'
     )
+    @app_commands.autocomplete(target=_destroy_target_autocomplete, attackers=_destroy_attackers_autocomplete)
     async def destroy(
         self,
         interaction: discord.Interaction,
@@ -744,6 +829,14 @@ class DestroyCog(commands.Cog):
             input_type = None
             display_name = None
             raw = target.strip()
+
+            # Strip any emoji prefix that autocomplete may have prepended
+            try:
+                from Systems.Functions.nation_emoji_store import strip_emoji_prefix
+                raw = strip_emoji_prefix(raw).strip()
+            except Exception:
+                pass
+
             nid = self._extract_nation_id_from_link(raw)
             if nid:
                 target_data = nid
@@ -765,23 +858,65 @@ class DestroyCog(commands.Cog):
             attackers_ids = []
             attackers_identifiers = []
             if attackers and attackers.strip():
+                # Strip any emoji prefix that autocomplete may have prepended
+                try:
+                    from Systems.Functions.nation_emoji_store import strip_emoji_prefix
+                    attackers = strip_emoji_prefix(attackers)
+                except Exception:
+                    pass
+
                 # Split by comma and strip whitespace
                 identifiers = [a.strip() for a in attackers.split(',') if a.strip()]
                 if identifiers:
                     attackers_identifiers = identifiers
                     self.logger.info(f"Resolving {len(identifiers)} attacker alliances: {identifiers}")
-                    
+
+                    # Load GlobalNations.db once for fast alliance ID lookups
+                    _global_db = None
+                    try:
+                        from PnWHarvester.db.global_nations_db import GlobalNationsDB
+                        from Systems.Functions.db_paths import GLOBAL_NATIONS_DB
+                        _global_db = GlobalNationsDB(str(GLOBAL_NATIONS_DB))
+                    except Exception as _db_init_err:
+                        self.logger.warning(f"Could not open GlobalNations.db for alliance resolution: {_db_init_err}")
+
                     # Resolve each alliance identifier
                     for identifier in identifiers:
                         try:
-                            if not self.query_instance:
-                                self.query_instance = create_v3_query_instance()
-                            alliance_item = await self.query_instance.resolve_alliance(identifier)
-                            if alliance_item and alliance_item.get('id'):
-                                alliance_id = str(alliance_item['id'])
-                                if alliance_id not in attackers_ids:
-                                    attackers_ids.append(alliance_id)
-                                    self.logger.info(f"Resolved alliance '{identifier}' to ID {alliance_id}")
+                            resolved_id: Optional[str] = None
+
+                            # ── Try GlobalNations.db first ────────────────────
+                            if _global_db is not None:
+                                try:
+                                    if identifier.isdigit():
+                                        # Numeric ID — verify it exists in the DB
+                                        rows = await _global_db.get_nations_by_alliance(int(identifier))
+                                        if rows:
+                                            resolved_id = identifier
+                                    else:
+                                        # Name search via get_distinct_alliances
+                                        matches = await _global_db.get_distinct_alliances(identifier)
+                                        if matches:
+                                            # Pick the closest match (first result is highest member count)
+                                            resolved_id = str(matches[0]['alliance_id'])
+                                            self.logger.info(
+                                                f"Resolved alliance '{identifier}' → "
+                                                f"'{matches[0].get('alliance_name')}' (id={resolved_id}) via GlobalNations.db"
+                                            )
+                                except Exception as _db_lookup_err:
+                                    self.logger.warning(f"GlobalNations.db alliance lookup failed for '{identifier}': {_db_lookup_err}")
+
+                            # ── Fall back to live API if DB missed ────────────
+                            if not resolved_id:
+                                if not self.query_instance:
+                                    self.query_instance = create_v3_query_instance()
+                                alliance_item = await self.query_instance.resolve_alliance(identifier)
+                                if alliance_item and alliance_item.get('id'):
+                                    resolved_id = str(alliance_item['id'])
+                                    self.logger.info(f"Resolved alliance '{identifier}' to ID {resolved_id} via API")
+
+                            if resolved_id and resolved_id not in attackers_ids:
+                                attackers_ids.append(resolved_id)
                             else:
                                 self.logger.warning(f"Could not resolve alliance: {identifier}")
                         except Exception as e:

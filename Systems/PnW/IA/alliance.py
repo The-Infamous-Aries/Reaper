@@ -65,8 +65,7 @@ from Systems.Functions.user_data_manager import UserDataManager
 
 from Systems.PnW.Util.calc import AllianceCalculator, AllianceStats, ImprovementsStats
 from Systems.PnW.Util.query import V3GraphQuery
-from Systems.Functions.irs_nations_db import IRSNationsDB
-from Systems.Functions.db_paths import NW_NATIONS_DB, GLOBAL_NATIONS_DB
+from Systems.Functions.db_paths import GLOBAL_NATIONS_DB
 
 BlocAllianceManager = None
 
@@ -75,7 +74,6 @@ DEFAULT_ALLIANCE_ID = os.getenv("DEFAULT_ALLIANCE_ID", "14635")
 DEFAULT_ALLIANCE_NAME = os.getenv("DEFAULT_ALLIANCE_NAME", "Death Before Dishonor")
 NIGHTS_WATCH_ALLIANCE_ID = "14225"
 NIGHTS_WATCH_ALLIANCE_NAME = "Nights Watch"
-DATABASE_FILE = NW_NATIONS_DB
 
 
 def _get_global_nations_db():
@@ -1344,18 +1342,19 @@ class AllianceManager(commands.Cog):
                 await initial_msg.edit(content=None, embed=embed)
                 return
 
-            # Fetch nations — use DB for IRS, GlobalNations.db for others, API as last resort
+            # Fetch nations — use GlobalNations.db for all alliances (NW included)
             nations: List[Dict] = []
             if target_id == NIGHTS_WATCH_ALLIANCE_ID:
                 try:
-                    db = IRSNationsDB(str(DATABASE_FILE))
-                    db_nations = await db.get_all_nations()
+                    from PnWHarvester.db.global_nations_db import GlobalNationsDB
+                    db = GlobalNationsDB(str(GLOBAL_NATIONS_DB))
+                    db_nations = await db.get_nations_by_alliance(int(NIGHTS_WATCH_ALLIANCE_ID))
                     for nation in db_nations:
                         nation['cities'] = await db.get_cities_for_nation(int(nation['id']))
                     nations = db_nations
-                    self.logger.info(f"Loaded {len(nations)} NW nations from IRSNationsDB")
+                    self.logger.info(f"Loaded {len(nations)} NW nations from GlobalNationsDB")
                 except Exception as e:
-                    self.logger.error(f"IRSNationsDB load failed, falling back to API: {e}")
+                    self.logger.error(f"GlobalNationsDB NW load failed, falling back to API: {e}")
                     nations = await self.get_alliance_nations(target_id, force_refresh=False)
             else:
                 # Try GlobalNations.db first — no API call needed

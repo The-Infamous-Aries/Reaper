@@ -57,6 +57,7 @@ class GroundBattleCalculator:
         policy_mod = 1.0
         if attacker_policy == 'pirate': policy_mod *= 1.4
         if defender_policy == 'moneybags': policy_mod *= 0.6
+        if defender_policy == 'turtle': policy_mod *= 1.2
 
         max_loot = base_loot * (victory_type / 3) * war_type_mod * policy_mod * random.uniform(0.8, 1.1)
 

@@ -218,6 +218,10 @@ class V3GraphQuery:
         
         # Rate limiting
         self._last_request_ts = 0.0
+        # Async lock — serialises all _make_graphql_request calls so concurrent
+        # coroutines (e.g. TurnRevenueLoop batches, war-stats updates) cannot
+        # race past the rate-limit check and flood the API simultaneously.
+        self._request_lock: asyncio.Lock = asyncio.Lock()
         
         # Autocomplete cache for constant connection
         self._autocomplete_cache = {
@@ -748,7 +752,9 @@ class V3GraphQuery:
             "city_id success victor attcas1 defcas1 attcas2 defcas2 "
             "city_infra_before infra_destroyed infra_destroyed_value "
             "money_stolen money_destroyed military_salvage_aluminum military_salvage_steel "
+            "att_aircraft_lost def_aircraft_lost att_ships_lost def_ships_lost "
             "att_missiles_lost def_missiles_lost att_nukes_lost def_nukes_lost "
+            "att_mun_used def_mun_used att_gas_used def_gas_used "
             "improvements_destroyed resistance_lost loot_info "
             "money_looted coal_looted oil_looted uranium_looted iron_looted "
             "bauxite_looted lead_looted gasoline_looted munitions_looted "
