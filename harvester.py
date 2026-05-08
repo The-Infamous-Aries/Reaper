@@ -1,14 +1,12 @@
-﻿#!/usr/bin/env python3
-"""
+﻿"""
 PnWHarvester — standalone asyncio service (no Discord).
 
 Starts three WebSocket subscriptions and keeps them running forever:
   1. GlobalNationsSubscription — all nations → GlobalNations.db; NW → IRSNations.db
-  2. GlobalWarsSubscription    — NW wars → IRSWars.db; win attacks → loot.db
-  3. BankrecsSubscription      — all bank records → bankrecs.db
+  2. GlobalWarsSubscription    — NW wars → IRSWars.db; win attacks → holdings.db
+  3. BankrecsSubscription      — all bank records → bankrecs.db + holdings.db
 
-One-time population of GlobalNations.db, loot.db, and bankrecs.db is done
-separately via:
+One-time population of GlobalNations.db and bankrecs.db is done separately via:
     python scripts/populate_dbs.py --all
 
 NW wars backfill (IRSWars.db) is still available here:
@@ -20,7 +18,7 @@ import argparse
 import logging
 import sys
 from pathlib import Path
-from datetime import datetime, timezone, timedelta, timedelta
+from datetime import datetime, timezone, timedelta
 from typing import Optional
 
 # ── Path setup ────────────────────────────────────────────────────────────────
@@ -51,10 +49,9 @@ logger = logging.getLogger("harvester")
 DB_DIR = _reaper_root / "Databases"
 DB_DIR.mkdir(parents=True, exist_ok=True)
 
-EP_NATIONS_DB    = str(DB_DIR / "PnW" / "IRSNations.db")
+EP_NATIONS_DB    = str(DB_DIR / "PnW" / "GlobalNations.db")  # merged into GlobalNations.db
 EP_WARS_DB       = str(DB_DIR / "PnW" / "IRSWars.db")
 GLOBAL_NATIONS_DB = str(DB_DIR / "PnW" / "GlobalNations.db")
-LOOT_DB          = str(DB_DIR / "PnW" / "loot.db")
 BANKRECS_DB      = str(DB_DIR / "PnW" / "bankrecs.db")
 HOLDINGS_DB      = str(DB_DIR / "PnW" / "holdings.db")
 
@@ -73,15 +70,17 @@ _WAR_FIELDS = (
     "att_soldiers_lost def_soldiers_lost att_tanks_lost def_tanks_lost "
     "att_aircraft_lost def_aircraft_lost att_ships_lost def_ships_lost "
     "att_missiles_used def_missiles_used att_nukes_used def_nukes_used "
-    "attacker { id nation_name leader_name alliance { name } } "
-    "defender { id nation_name leader_name alliance { name } }"
+    "attacker { id nation_name leader_name war_policy advanced_pirate_economy alliance { name } } "
+    "defender { id nation_name leader_name war_policy alliance { name } }"
 )
 _ATTACK_FIELDS = (
     "id date att_id def_id type war_id "
     "city_id success victor attcas1 defcas1 attcas2 defcas2 "
     "city_infra_before infra_destroyed infra_destroyed_value "
     "money_stolen money_destroyed military_salvage_aluminum military_salvage_steel "
+    "att_aircraft_lost def_aircraft_lost att_ships_lost def_ships_lost "
     "att_missiles_lost def_missiles_lost att_nukes_lost def_nukes_lost "
+    "att_mun_used def_mun_used att_gas_used def_gas_used "
     "improvements_destroyed resistance_lost loot_info "
     "money_looted coal_looted oil_looted uranium_looted iron_looted "
     "bauxite_looted lead_looted gasoline_looted munitions_looted "
@@ -134,64 +133,72 @@ async def _sync_nw_wars(
     logger.info(f"NW wars sync: {after_str} → {before_str}")
 
     unique_wars: dict[int, dict] = {}
-    page = 1
-    page_size = 50
 
-    while True:
-        query = f"""
-        query {{
-          wars(
-            alliance_id: [{EP_ALLIANCE_ID}],
-            active: false,
-            after: "{after_str}",
-            before: "{before_str}",
-            page: {page},
-            first: {page_size}
-          ) {{
-            paginatorInfo {{ hasMorePages currentPage lastPage total }}
-            data {{
-              {_WAR_FIELDS}
-              attacks {{ {_ATTACK_FIELDS} }}
+    async def _fetch_pages(active_filter: bool | None):
+        """Paginate one pass (ended or active) and merge into unique_wars."""
+        page = 1
+        page_size = 50
+        active_clause = "" if active_filter is None else f"active: {'true' if active_filter else 'false'},"
+        label = "active" if active_filter is True else ("ended" if active_filter is False else "all")
+        while True:
+            query = f"""
+            query {{
+              wars(
+                alliance_id: [{EP_ALLIANCE_ID}],
+                {active_clause}
+                after: "{after_str}",
+                before: "{before_str}",
+                page: {page},
+                first: {page_size}
+              ) {{
+                paginatorInfo {{ hasMorePages currentPage lastPage total }}
+                data {{
+                  {_WAR_FIELDS}
+                  attacks {{ {_ATTACK_FIELDS} }}
+                }}
+              }}
             }}
-          }}
-        }}
-        """
-        retries = 0
-        wars_data = None
-        paginator = {}
-        while retries < 3:
-            try:
-                raw = await query_instance._make_graphql_request(query, timeout=60)
-                wars_page = (raw or {}).get("wars") or {}
-                wars_data = wars_page.get("data") or []
-                paginator = wars_page.get("paginatorInfo") or {}
-                break
-            except Exception as e:
-                retries += 1
-                logger.error(f"NW wars page {page} attempt {retries}/3: {e}")
-                if retries >= 3:
+            """
+            retries = 0
+            wars_data = None
+            paginator = {}
+            while retries < 3:
+                try:
+                    raw = await query_instance._make_graphql_request(query, timeout=60)
+                    wars_page = (raw or {}).get("wars") or {}
+                    wars_data = wars_page.get("data") or []
+                    paginator = wars_page.get("paginatorInfo") or {}
                     break
-                await asyncio.sleep(2 ** retries)
+                except Exception as e:
+                    retries += 1
+                    logger.error(f"NW wars [{label}] page {page} attempt {retries}/3: {e}")
+                    if retries >= 3:
+                        break
+                    await asyncio.sleep(2 ** retries)
 
-        if wars_data is None:
-            logger.error(f"NW wars sync: aborting at page {page} after retries")
-            break
-        if not wars_data:
-            break
+            if wars_data is None:
+                logger.error(f"NW wars sync [{label}]: aborting at page {page} after retries")
+                break
+            if not wars_data:
+                break
 
-        for war in wars_data:
-            wid = war.get("id")
-            if wid is not None:
-                unique_wars[int(wid)] = war
+            for war in wars_data:
+                wid = war.get("id")
+                if wid is not None:
+                    unique_wars[int(wid)] = war
 
-        logger.info(
-            f"NW wars page {page}/{paginator.get('lastPage', '?')} — "
-            f"{len(wars_data)} wars, total so far: {len(unique_wars)}"
-        )
-        if not paginator.get("hasMorePages"):
-            break
-        page += 1
-        await asyncio.sleep(0.5)
+            logger.info(
+                f"NW wars [{label}] page {page}/{paginator.get('lastPage', '?')} — "
+                f"{len(wars_data)} wars, {len(unique_wars)} unique so far"
+            )
+            if not paginator.get("hasMorePages"):
+                break
+            page += 1
+            await asyncio.sleep(0.5)
+
+    # Fetch ended wars first, then active — active pass wins on conflict (fresher state)
+    await _fetch_pages(False)
+    await _fetch_pages(True)
 
     wars_saved = 0
     attacks_saved = 0
@@ -294,11 +301,9 @@ async def _sync_global_nations(query_instance, global_nations_db) -> dict:
                 if not nation.get("alliance_name"):
                     nation["alliance_name"] = alliance_obj.get("name")
 
-            cities = nation.pop("cities", None) or []
-            if await global_nations_db.save_nation(nation):
-                nations_saved += 1
-            if cities:
-                await global_nations_db.save_cities(int(nation["id"]), cities)
+        # Use bulk upsert — writes all fields including money/resources as initial seed
+        saved, _ = await global_nations_db.bulk_upsert_nations_and_cities(nations_data)
+        nations_saved += saved
 
         logger.info(
             f"Global nations page {page}/{paginator.get('lastPage', '?')} — "
@@ -311,110 +316,6 @@ async def _sync_global_nations(query_instance, global_nations_db) -> dict:
 
     logger.info(f"Global nations sync complete: {nations_saved} nations upserted")
     return {"nations_saved": nations_saved}
-
-
-async def _backfill_loot(query_instance, loot_db, days: int = 14) -> dict:
-    """
-    Backfill loot.db with war-ending attacks from the last N days.
-    Fetches ALL wars (not just NW) and saves every attack that looted anything.
-    Returns {"attacks_saved": int}.
-    """
-    until_dt = datetime.now(timezone.utc)
-    since_dt = until_dt - timedelta(days=days)
-    after_str  = since_dt.strftime("%Y-%m-%d %H:%M:%S")
-    before_str = until_dt.strftime("%Y-%m-%d %H:%M:%S")
-
-    logger.info(f"Loot backfill: fetching all wars {after_str} → {before_str}")
-
-    _LOOT_ATTACK_FIELDS = (
-        "id date att_id def_id type war_id "
-        "money_looted coal_looted oil_looted uranium_looted iron_looted "
-        "bauxite_looted lead_looted gasoline_looted munitions_looted "
-        "steel_looted aluminum_looted food_looted"
-    )
-    _LOOT_WAR_FIELDS = (
-        "id att_id def_id att_alliance_id def_alliance_id "
-        "attacker { id nation_name } defender { id nation_name } "
-        f"attacks {{ {_LOOT_ATTACK_FIELDS} }}"
-    )
-
-    attacks_saved = 0
-    page = 1
-    page_size = 50
-
-    while True:
-        query = f"""
-        query {{
-          wars(
-            active: false,
-            after: "{after_str}",
-            before: "{before_str}",
-            page: {page},
-            first: {page_size}
-          ) {{
-            paginatorInfo {{ hasMorePages currentPage lastPage total }}
-            data {{ {_LOOT_WAR_FIELDS} }}
-          }}
-        }}
-        """
-        retries = 0
-        wars_data = None
-        paginator = {}
-        while retries < 3:
-            try:
-                raw = await query_instance._make_graphql_request(query, timeout=60)
-                wars_page = (raw or {}).get("wars") or {}
-                wars_data = wars_page.get("data") or []
-                paginator = wars_page.get("paginatorInfo") or {}
-                break
-            except Exception as e:
-                retries += 1
-                logger.error(f"Loot backfill page {page} attempt {retries}/3: {e}")
-                if retries >= 3:
-                    break
-                await asyncio.sleep(2 ** retries)
-
-        if wars_data is None:
-            logger.error(f"Loot backfill: aborting at page {page} after retries")
-            break
-        if not wars_data:
-            break
-
-        for war in wars_data:
-            attacker_obj = war.get("attacker") or {}
-            defender_obj = war.get("defender") or {}
-            att_name = attacker_obj.get("nation_name") if isinstance(attacker_obj, dict) else None
-            def_name = defender_obj.get("nation_name") if isinstance(defender_obj, dict) else None
-
-            for attack in war.get("attacks") or []:
-                has_loot = float(attack.get("money_looted") or 0) > 0
-                if not has_loot:
-                    for rss in ("coal", "oil", "uranium", "iron", "bauxite", "lead",
-                                "gasoline", "munitions", "steel", "aluminum", "food"):
-                        if float(attack.get(f"{rss}_looted") or 0) > 0:
-                            has_loot = True
-                            break
-                if not has_loot:
-                    continue
-
-                if await loot_db.save_loot_event(
-                    attack=attack,
-                    defender_name=def_name,
-                    attacker_name=att_name,
-                ):
-                    attacks_saved += 1
-
-        logger.info(
-            f"Loot backfill page {page}/{paginator.get('lastPage', '?')} — "
-            f"attacks saved so far: {attacks_saved}"
-        )
-        if not paginator.get("hasMorePages"):
-            break
-        page += 1
-        await asyncio.sleep(0.5)
-
-    logger.info(f"Loot backfill complete: {attacks_saved} loot events saved")
-    return {"attacks_saved": attacks_saved}
 
 
 async def _backfill_bankrecs(query_instance, bankrecs_db, days: int = 14) -> dict:
@@ -502,13 +403,49 @@ async def main(
     skip_ep_nations_sync: bool = False,
     force_ep_nations_sync: bool = False,
 ):
+    # ── Suppress pnwkit internal task noise ───────────────────────────────────
+    # pnwkit spawns asyncio tasks for ping_pong / handle_socket_close that raise
+    # various network errors when the PnW API drops the connection or DNS fails.
+    # These are expected disconnects — our run_forever() wrappers handle the actual
+    # restart.  Without this handler Python logs "Task exception was never retrieved"
+    # for every disconnect, which is noisy and misleading.
+    _PNWKIT_NOISE_TYPES = (
+        "pnwkit.errors.NoReconnect",
+        "aiohttp.client_exceptions.ServerDisconnectedError",
+        "aiohttp.client_exceptions.ClientConnectorError",  # DNS failure during reconnect
+        "aiohttp.client_exceptions.ClientOSError",
+        "aiohttp.client_exceptions.ClientConnectionError",
+    )
+    _PNWKIT_NOISE_MSGS = (
+        "getaddrinfo failed",
+        "Cannot connect to host",
+        "Connection reset by peer",
+        "The network connection was aborted",
+    )
+
+    def _pnwkit_exception_handler(loop, context):
+        exc = context.get("exception")
+        if exc is not None:
+            exc_type = f"{type(exc).__module__}.{type(exc).__qualname__}"
+            exc_msg  = str(exc)
+            if exc_type in _PNWKIT_NOISE_TYPES:
+                logger.debug(f"pnwkit internal disconnect (suppressed): {exc}")
+                return
+            # Also suppress by message for subclasses we might not enumerate
+            if any(m in exc_msg for m in _PNWKIT_NOISE_MSGS):
+                logger.debug(f"pnwkit network error (suppressed): {exc}")
+                return
+        # Fall back to default handler for everything else
+        loop.default_exception_handler(context)
+
+    asyncio.get_event_loop().set_exception_handler(_pnwkit_exception_handler)
+
     # ── Imports ───────────────────────────────────────────────────────────────
     from PnWHarvester.subscriptions.nations_subscription  import GlobalNationsSubscription
     from PnWHarvester.subscriptions.wars_subscription     import GlobalWarsSubscription
     from PnWHarvester.subscriptions.bankrecs_subscription import BankrecsSubscription
     from PnWHarvester.subscriptions.turn_revenue_loop     import TurnRevenueLoop
 
-    from Systems.Functions.irs_nations_db      import IRSNationsDB
     from Systems.Functions.irs_wars_db         import IRSWarsDB
     from Systems.Functions.irs_nations_manager import sync_nations
     from Systems.PnW.Util.query                import create_v3_query_instance
@@ -525,11 +462,14 @@ async def main(
     logger.info("Initialising databases...")
     from PnWHarvester.db.global_nations_db import GlobalNationsDB
     from PnWHarvester.db.holdings_db       import HoldingsDB
+    from PnWHarvester.db.bankrecs_db       import BankrecsDB
 
-    ep_nations_db     = IRSNationsDB(EP_NATIONS_DB)
-    ep_wars_db        = IRSWarsDB(EP_WARS_DB)
+    # Single nations DB — GlobalNations.db holds ALL nations (NW and non-NW).
+    # IRSNationsDB is an alias for GlobalNationsDB; no separate file is needed.
     global_nations_db = GlobalNationsDB(GLOBAL_NATIONS_DB)
+    ep_wars_db        = IRSWarsDB(EP_WARS_DB)
     holdings_db       = HoldingsDB(HOLDINGS_DB)
+    bankrecs_db       = BankrecsDB(BANKRECS_DB)
 
     query_instance = create_v3_query_instance(api_key=api_key, logger=logger)
 
@@ -568,20 +508,31 @@ async def main(
 
     nations_sub = GlobalNationsSubscription(
         global_db=global_nations_db,
-        nw_db=ep_nations_db,
         api_key=api_key,
         holdings_db=holdings_db,
     )
+    
+    # Verify alliance data integrity on startup
+    logger.info("Verifying alliance data integrity...")
+    try:
+        integrity_stats = await nations_sub.verify_alliance_data_integrity()
+        logger.info(f"Alliance data integrity check complete: {integrity_stats}")
+    except Exception as e:
+        logger.error(f"Alliance data integrity check failed: {e}")
+    
     wars_sub = GlobalWarsSubscription(
         global_db=None,
         nw_db=ep_wars_db,
         query_instance=query_instance,
         api_key=api_key,
         holdings_db=holdings_db,
+        nw_nations_db=None,
+        global_nations_db=global_nations_db,
     )
     bankrecs_sub = BankrecsSubscription(
         api_key=api_key,
         holdings_db=holdings_db,
+        bankrecs_db=bankrecs_db,
     )
 
     turn_revenue_loop = TurnRevenueLoop(
@@ -592,56 +543,155 @@ async def main(
 
     logger.info("Starting subscriptions (nations, wars, bankrecs) + turn revenue loop...")
 
-    async def _run_nations():
-        while True:
+    # ── Shutdown coordination ─────────────────────────────────────────────────
+    # A single Event that any signal handler sets to request a clean shutdown.
+    # All _run_* wrappers watch it so they can exit their restart loops gracefully
+    # instead of being hard-cancelled mid-write.
+    _shutdown = asyncio.Event()
+
+    def _request_shutdown(signame: str):
+        if not _shutdown.is_set():
+            logger.info(f"Shutdown requested ({signame}) — draining in-flight writes…")
+            _shutdown.set()
+
+    # Register both SIGINT (Ctrl-C) and SIGTERM (systemd / kill) on Unix.
+    import signal as _signal
+    loop = asyncio.get_event_loop()
+    for _sig in (getattr(_signal, "SIGINT", None), getattr(_signal, "SIGTERM", None)):
+        if _sig is not None:
             try:
-                await nations_sub.start()
+                loop.add_signal_handler(_sig, _request_shutdown, _sig.name)
+            except (NotImplementedError, RuntimeError):
+                # Windows doesn't support add_signal_handler for all signals
+                pass
+
+    async def _run_nations():
+        while not _shutdown.is_set():
+            try:
+                await nations_sub.run_forever()
             except asyncio.CancelledError:
                 break
             except Exception as e:
+                if _shutdown.is_set():
+                    break
                 logger.error(f"Nations subscription crashed: {e} — restarting in 30s", exc_info=True)
-                await asyncio.sleep(30)
-            finally:
-                await nations_sub.stop()
+                try:
+                    await asyncio.wait_for(_shutdown.wait(), timeout=30)
+                except asyncio.TimeoutError:
+                    pass
+        await nations_sub.stop()
+        logger.info("Nations subscription shut down cleanly")
 
     async def _run_wars():
-        while True:
+        while not _shutdown.is_set():
             try:
                 await wars_sub.run_forever()
             except asyncio.CancelledError:
                 break
             except Exception as e:
+                if _shutdown.is_set():
+                    break
                 logger.error(f"Wars subscription crashed: {e} — restarting in 30s", exc_info=True)
-                await asyncio.sleep(30)
+                try:
+                    await asyncio.wait_for(_shutdown.wait(), timeout=30)
+                except asyncio.TimeoutError:
+                    pass
+        await wars_sub.stop()
+        logger.info("Wars subscription shut down cleanly")
 
     async def _run_bankrecs():
-        while True:
+        while not _shutdown.is_set():
             try:
                 await bankrecs_sub.run_forever()
             except asyncio.CancelledError:
                 break
             except Exception as e:
+                if _shutdown.is_set():
+                    break
                 logger.error(f"Bankrecs subscription crashed: {e} — restarting in 30s", exc_info=True)
-                await asyncio.sleep(30)
+                try:
+                    await asyncio.wait_for(_shutdown.wait(), timeout=30)
+                except asyncio.TimeoutError:
+                    pass
+        await bankrecs_sub.stop()
+        logger.info("Bankrecs subscription shut down cleanly")
 
     async def _run_turn_revenue():
         await turn_revenue_loop.start()
-        # start() launches the internal task; we just keep this coroutine alive
-        # so gather() doesn't exit early. The loop task runs independently.
         try:
-            while turn_revenue_loop.running:
-                await asyncio.sleep(60)
+            await _shutdown.wait()
         except asyncio.CancelledError:
             pass
         finally:
             await turn_revenue_loop.stop()
+            logger.info("Turn revenue loop shut down cleanly")
 
+    async def _run_checkpoint():
+        """Checkpoint all WAL files every 5 minutes to keep them small."""
+        while not _shutdown.is_set():
+            try:
+                await asyncio.wait_for(_shutdown.wait(), timeout=300)
+            except asyncio.TimeoutError:
+                pass
+            if _shutdown.is_set():
+                break
+            try:
+                global_nations_db.checkpoint()
+            except Exception as e:
+                logger.warning(f"Checkpoint loop error: {e}")
+            try:
+                from PnWHarvester.db.news_db import get_news_db as _get_news_db
+                _get_news_db().checkpoint()
+            except Exception as e:
+                logger.warning(f"News DB checkpoint error: {e}")
+        logger.info("Checkpoint loop shut down cleanly")
+
+    async def _shutdown_watcher():
+        """Wait for shutdown signal, then cancel all subscription tasks."""
+        await _shutdown.wait()
+        logger.info("Shutdown signal received — stopping all subscriptions…")
+        # Signal all subscriptions to stop their restart loops
+        nations_sub.running  = False
+        wars_sub.running     = False
+        bankrecs_sub.running = False
+        # Give in-flight asyncio.create_task() DB writes a moment to complete
+        # before the event loop is torn down. 3 seconds is enough for any
+        # pending SQLite write (they're all sub-100ms).
+        await asyncio.sleep(3)
+        # Cancel all top-level tasks so gather() returns
+        for t in asyncio.all_tasks():
+            if t is not asyncio.current_task():
+                t.cancel()
+
+    # Run everything concurrently. _shutdown_watcher cancels the others on signal.
     await asyncio.gather(
-        asyncio.create_task(_run_nations()),
-        asyncio.create_task(_run_wars()),
-        asyncio.create_task(_run_bankrecs()),
-        asyncio.create_task(_run_turn_revenue()),
+        asyncio.create_task(_run_nations(),      name="nations"),
+        asyncio.create_task(_run_wars(),         name="wars"),
+        asyncio.create_task(_run_bankrecs(),     name="bankrecs"),
+        asyncio.create_task(_run_turn_revenue(), name="turn_revenue"),
+        asyncio.create_task(_run_checkpoint(),   name="checkpoint"),
+        asyncio.create_task(_shutdown_watcher(), name="shutdown_watcher"),
+        return_exceptions=True,
     )
+
+    # ── Final WAL checkpoint on clean exit ────────────────────────────────────
+    logger.info("Performing final WAL checkpoint on all databases…")
+    for _db, _name in [
+        (global_nations_db, "GlobalNations.db"),
+        (holdings_db,       "holdings.db (GlobalNations.db WAL)"),
+    ]:
+        try:
+            _db.checkpoint()
+            logger.info(f"  ✓ {_name} checkpointed")
+        except Exception as e:
+            logger.warning(f"  ✗ {_name} checkpoint failed: {e}")
+    try:
+        from PnWHarvester.db.news_db import get_news_db as _get_news_db
+        _get_news_db().checkpoint()
+        logger.info("  ✓ news DBs checkpointed")
+    except Exception as e:
+        logger.warning(f"  ✗ news DB checkpoint failed: {e}")
+    logger.info("Harvester shut down cleanly.")
 
 
 if __name__ == "__main__":
@@ -707,4 +757,9 @@ if __name__ == "__main__":
             force_ep_nations_sync=force_sync,
         ))
     except KeyboardInterrupt:
-        logger.info("Harvester stopped by user")
+        # SIGINT on Windows (no add_signal_handler) — asyncio.run() already
+        # cancelled all tasks; just suppress the traceback.
+        logger.info("Harvester stopped by user (KeyboardInterrupt)")
+    except Exception as e:
+        logger.error(f"Harvester exited with error: {e}", exc_info=True)
+        sys.exit(1)

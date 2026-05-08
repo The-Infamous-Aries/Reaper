@@ -477,6 +477,10 @@ class ReaperBot:
           Stage 2 — time_remaining <= 15 min  → "leaving beige in ~15 min" final DM.
                       Alert is deleted.
 
+        Also drains the beige_early_exit_queue written by the harvester when it
+        detects a nation left beige early (color change / beige_turns → 0 via the
+        nation/update WebSocket subscription).
+
         Using time-based thresholds (rather than raw beige_turns == 1/0) prevents
         the Stage 1 message from firing with a misleading "~2 hours" label when the
         nation is already deep into its last turn, and ensures Stage 2 always fires
@@ -501,10 +505,46 @@ class ReaperBot:
                     _update_beige_alert_turns,
                     _compute_beige_expiry_utc,
                 )
-                from Systems.PnW.Util.query import create_v3_query_instance
                 from datetime import datetime, timezone, timedelta
                 from PnWHarvester.db.holdings_db import HoldingsDB
                 from Systems.Functions.db_paths  import HOLDINGS_DB_STR
+                from Systems.Functions.beige_alerts_db import drain_early_exit_queue
+
+                # ── Drain early-exit queue (harvester → reaper DM bridge) ─────
+                # The harvester writes here when it detects a nation left beige
+                # early via the nation/update WebSocket subscription.
+                try:
+                    early_exits = await drain_early_exit_queue()
+                    for ex in early_exits:
+                        uid         = str(ex["user_id"])
+                        nid         = str(ex["nation_id"])
+                        nation_name = ex.get("nation_name") or f"nation {nid}"
+                        proj_loot   = float(ex.get("projected_loot") or 0)
+                        try:
+                            discord_user = await self.bot.fetch_user(int(uid))
+                            if discord_user:
+                                embed = discord.Embed(
+                                    title=f"⚠️ Beige Ended Early — {nation_name}",
+                                    description=(
+                                        f"**[{nation_name}](https://politicsandwar.com/nation/id={nid})**"
+                                        f" has **left beige early** — they are now vulnerable!"
+                                    ),
+                                    color=0xFF4444,
+                                )
+                                embed.add_field(
+                                    name="💰 Last Projected Loot",
+                                    value=f"**${proj_loot:,.0f}**" if proj_loot > 0 else "Unknown",
+                                    inline=True,
+                                )
+                                embed.set_footer(text="Reaper • Beige Alert — nation left beige before expected")
+                                await discord_user.send(embed=embed)
+                                logger.info(
+                                    f"Sent early-exit beige DM to user {uid} for nation {nid} ({nation_name})"
+                                )
+                        except Exception as e:
+                            logger.warning(f"Could not send early-exit beige DM to user {uid}: {e}")
+                except Exception as e:
+                    logger.warning(f"beige early-exit queue drain failed: {e}")
 
                 alerts = await _get_all_beige_alerts()
                 if not alerts:
@@ -529,28 +569,23 @@ class ReaperBot:
                     continue
 
                 nation_ids = list({str(a["nation_id"]) for a in relevant})
-                qi = create_v3_query_instance()
 
+                # Read nation data from GlobalNationsDB — no API call needed.
+                # The harvester keeps this DB current via WebSocket subscriptions.
                 nation_cache: dict = {}
-                for nid in nation_ids:
-                    try:
-                        query = f"""
-                        query BeigeCheck {{
-                          nations(id: [{nid}], first: 1) {{
-                            data {{
-                              id nation_name beige_turns
-                              soldiers tanks aircraft ships missiles nukes
-                              war_policy score num_cities
-                            }}
-                          }}
-                        }}
-                        """
-                        data = await qi._request_with_retries(query, timeout=30)
-                        nations = (data.get("data") or {}).get("nations", {}).get("data") or []
-                        if nations:
-                            nation_cache[str(nid)] = nations[0]
-                    except Exception as e:
-                        logger.warning(f"Could not fetch nation {nid} for beige check: {e}")
+                try:
+                    from PnWHarvester.db.global_nations_db import GlobalNationsDB
+                    from Systems.Functions.db_paths import GLOBAL_NATIONS_DB_STR
+                    _gdb = GlobalNationsDB(GLOBAL_NATIONS_DB_STR)
+                    for nid in nation_ids:
+                        try:
+                            nation_row = await _gdb.get_nation(int(nid))
+                            if nation_row:
+                                nation_cache[nid] = nation_row
+                        except Exception as e:
+                            logger.warning(f"Could not read nation {nid} from GlobalNationsDB: {e}")
+                except Exception as e:
+                    logger.warning(f"Could not open GlobalNationsDB for beige check: {e}")
 
                 # Refresh stored beige_turns for all relevant alerts so the
                 # filter stays accurate on the next poll cycle.
@@ -815,18 +850,73 @@ async def main():
             try:
                 await bot.start(DISCORD_TOKEN)
                 break  # clean exit (e.g. KeyboardInterrupt propagated as SystemExit)
+            except discord.HTTPException as e:
+                if e.status == 429:
+                    # IP-level rate limit — discord.py already waited internally,
+                    # but our IP is still hot. Back off much longer before retrying.
+                    rate_limit_delay = 60 * attempt  # 60s, 120s, 180s, ...
+                    logger.warning(
+                        f"⚠️  IP rate limited by Discord (attempt {attempt}/{max_retries}). "
+                        f"Waiting {rate_limit_delay}s before retrying..."
+                    )
+                    try:
+                        await bot.close()
+                    except Exception:
+                        pass
+                    if attempt >= max_retries:
+                        logger.error("❌ Max retries reached. Could not connect to Discord.")
+                        break
+                    await asyncio.sleep(rate_limit_delay)
+                else:
+                    logger.warning(f"⚠️  HTTP error (attempt {attempt}/{max_retries}): {e}")
+                    if attempt >= max_retries:
+                        logger.error("❌ Max retries reached. Could not connect to Discord.")
+                        break
+                    delay = base_delay * (2 ** (attempt - 1))
+                    logger.info(f"Retrying in {delay}s...")
+                    try:
+                        await bot.close()
+                    except Exception:
+                        pass
+                    await asyncio.sleep(delay)
             except (discord.ConnectionClosed, discord.GatewayNotFound) as e:
                 logger.warning(f"⚠️  Discord gateway error (attempt {attempt}/{max_retries}): {e}")
+                if attempt >= max_retries:
+                    logger.error("❌ Max retries reached. Could not connect to Discord.")
+                    break
+                delay = base_delay * (2 ** (attempt - 1))
+                logger.info(f"Retrying in {delay}s...")
+                try:
+                    await bot.close()
+                except Exception:
+                    pass
+                await asyncio.sleep(delay)
             except Exception as e:
                 # Covers ClientConnectorError (DNS/network failures) and anything else
                 logger.warning(f"⚠️  Connection failed (attempt {attempt}/{max_retries}): {e}")
-
-            if attempt < max_retries:
-                delay = base_delay * (2 ** (attempt - 1))  # exponential back-off: 5, 10, 20, 40s
+                if attempt >= max_retries:
+                    logger.error("❌ Max retries reached. Could not connect to Discord.")
+                    break
+                delay = base_delay * (2 ** (attempt - 1))
                 logger.info(f"Retrying in {delay}s...")
+                try:
+                    await bot.close()
+                except Exception:
+                    pass
                 await asyncio.sleep(delay)
             else:
-                logger.error("❌ Max retries reached. Could not connect to Discord.")
+                # bot.start() returned cleanly — no retry needed
+                break
+
+            # Close the old bot instance cleanly before creating a fresh one.
+            # Reusing the same bot after a failed start() leaves aiohttp
+            # ClientSessions open and the internal connector in a broken state.
+            reaper = ReaperBot()
+            bot_instance = reaper
+            sys.modules[__name__].bot_instance = reaper
+            bot = await reaper.create_bot_instance()
+            bot.setup_hook = reaper.setup_hook
+            bot.on_ready = reaper.on_ready
 
     except Exception as e:
         logger.error(f"❌ Failed to start bot: {e}")
