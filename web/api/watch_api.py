@@ -9,7 +9,7 @@ import re
 from datetime import date
 
 from Systems.Functions.irs_wars_db import IRSWarsDB
-from Systems.Functions.db_paths import IRS_WARS_DB_STR as WATCH_DB_PATH, IRS_NATIONS_DB_STR as NATIONS_DB_PATH
+from Systems.Functions.db_paths import IRS_WARS_DB_STR as WATCH_DB_PATH
 from Systems.PnW.Util.war_calc import get_resource_prices, calculate_unit_cost, calculate_war_costs
 from Systems.PnW.MA.war_net_bd import WarsNetBD
 
@@ -19,14 +19,24 @@ WATCH_ALLIANCE_ID = 14225
 LOOT_RESOURCES = ("coal", "oil", "uranium", "iron", "bauxite", "lead", "gasoline", "munitions", "steel", "aluminum", "food")
 
 # ── Module-level singletons ───────────────────────────────────────────────────
-# Reuse a single DB instance instead of re-initialising on every request.
+# One DB instance per process — never re-initialised on each request.
+# The harvester owns all writes; the reaper only reads.
 _watch_db: IRSWarsDB | None = None
+_global_nations_db = None  # GlobalNationsDB, lazy-imported
 
 def _get_watch_db() -> IRSWarsDB:
     global _watch_db
     if _watch_db is None:
         _watch_db = IRSWarsDB(WATCH_DB_PATH)
     return _watch_db
+
+def _get_global_nations_db():
+    global _global_nations_db
+    if _global_nations_db is None:
+        from PnWHarvester.db.global_nations_db import GlobalNationsDB
+        from Systems.Functions.db_paths import GLOBAL_NATIONS_DB_STR
+        _global_nations_db = GlobalNationsDB(GLOBAL_NATIONS_DB_STR)
+    return _global_nations_db
 
 # ── Simple TTL response cache ─────────────────────────────────────────────────
 # Keyed by (start_date_iso, end_date_iso).  Entries expire after CACHE_TTL_SECS.
@@ -49,6 +59,35 @@ def invalidate_wars_cache() -> None:
     _watch_db = None  # also reset the DB singleton so it re-opens on next request
 
 
+# ── Revenue turn-boundary cache ───────────────────────────────────────────────
+# Revenue only changes at turn boundaries (every 2 hours on even UTC hours).
+# Cache is keyed by alliance_id so different alliances don't share a result.
+_revenue_cache: Dict[int, Any] = {}   # alliance_id → cached payload
+_revenue_cache_turn: int = -1         # turn boundary epoch when the cache was built
+
+def _current_turn_epoch() -> int:
+    """Return the Unix timestamp of the most-recent even-hour UTC turn boundary."""
+    now = time.time()
+    import datetime as _dt
+    utc = _dt.datetime.fromtimestamp(now, tz=_dt.timezone.utc)
+    turn_hour = (utc.hour // 2) * 2
+    boundary = utc.replace(hour=turn_hour, minute=0, second=0, microsecond=0)
+    return int(boundary.timestamp())
+
+def _get_revenue_cache(alliance_id: int) -> Dict[str, Any] | None:
+    if _revenue_cache_turn == _current_turn_epoch():
+        return _revenue_cache.get(alliance_id)
+    return None
+
+def _set_revenue_cache(alliance_id: int, payload: Dict[str, Any]) -> None:
+    global _revenue_cache, _revenue_cache_turn
+    current_turn = _current_turn_epoch()
+    if _revenue_cache_turn != current_turn:
+        # New turn — clear stale entries from previous turn
+        _revenue_cache = {}
+        _revenue_cache_turn = current_turn
+    _revenue_cache[alliance_id] = payload
+
 def _current_user_id(request: Request) -> str | None:
     discord_user = request.session.get("discord_user")
     if discord_user and isinstance(discord_user, dict):
@@ -57,14 +96,6 @@ def _current_user_id(request: Request) -> str | None:
             return str(uid)
     uid = request.session.get("user_id")
     return str(uid) if uid else None
-
-
-async def _require_access(request: Request):
-    """Raise 403 if the session user does not have restricted-page access."""
-    from Systems.Functions.page_access import has_access
-    uid = _current_user_id(request)
-    if not uid or not await has_access(uid):
-        raise HTTPException(status_code=403, detail="Access denied. You are not authorised to view this page.")
 
 
 def _as_number(value: Any) -> float:
@@ -87,6 +118,9 @@ def _build_watch_response(
     normalized_nations: Dict[str, Dict[str, Any]] = {}
     buy_prices = (resource_prices or {}).get("buy", {})
     sell_prices = (resource_prices or {}).get("sell", {})
+    
+    # Resource list for loot breakdown
+    LOOT_RES_KEYS = ("coal", "oil", "uranium", "iron", "bauxite", "lead", "gasoline", "munitions", "steel", "aluminum", "food")
 
     for nation_id, nation_data in nations.items():
         gross_cost = _as_number(nation_data.get("gross_cost"))
@@ -139,6 +173,16 @@ def _build_watch_response(
                 if _as_number(amt) > 0
             },
         }
+        
+        # Calculate gains_cash and gains_res_* fields for leaderboard compatibility
+        gains_cash = loot_breakdown["cash"]
+        gains_res_fields = {}
+        gains_res_total = 0.0
+        for res in LOOT_RES_KEYS:
+            res_data = loot_breakdown["resources"].get(res, {})
+            res_value = _as_number(res_data.get("value", 0))
+            gains_res_fields[f"gains_res_{res}"] = res_value
+            gains_res_total += res_value
 
         # Build wars_with: list of opponents this nation fought, with per-opponent stats
         per_opp = nation_data.get("_per_opp", {})
@@ -205,6 +249,9 @@ def _build_watch_response(
             "draws_count": _as_number(nation_data.get("draws_count")),
             "damages": _as_number(nation_data.get("damages")),
             "loot_breakdown": loot_breakdown,
+            "gains_cash": gains_cash,
+            "gains_res_total": gains_res_total,
+            **gains_res_fields,
             "missiles_eaten": _as_number(nation_data.get("missiles_eaten")),
             "missiles_blocked": _as_number(nation_data.get("missiles_blocked")),
             "missiles_missed": _as_number(nation_data.get("missiles_missed")),
@@ -399,8 +446,7 @@ async def _attach_war_attacks(db: IRSWarsDB, wars: list[Dict[str, Any]]) -> list
     ]
 
 @router.get("/watch/wars")
-async def get_watch_wars_data(request: Request, start_date: str | None = None, end_date: str | None = None):
-    await _require_access(request)
+async def get_watch_wars_data(request: Request, start_date: str | None = None, end_date: str | None = None, force_refresh: bool = False):
     try:
         db = _get_watch_db()
         bounds = await db.get_alliance_war_date_bounds(WATCH_ALLIANCE_ID)
@@ -441,6 +487,8 @@ async def get_watch_wars_data(request: Request, start_date: str | None = None, e
 
         # Check cache before doing any heavy work
         cache_key = (selected_start.isoformat(), selected_end.isoformat())
+        if force_refresh:
+            invalidate_wars_cache()
         cached = _cache_get(cache_key)
         if cached is not None:
             logger.debug("watch/wars cache hit for %s – %s", selected_start, selected_end)
@@ -483,6 +531,21 @@ async def get_watch_wars_data(request: Request, start_date: str | None = None, e
         # 2. Get the breakdown from the "correct" logic in WarsNetBD
         war_net_bd_cog = WarsNetBD(bot=None)
         nation_breakdown = await war_net_bd_cog._get_nation_breakdown(unique_wars, str(WATCH_ALLIANCE_ID), False, resource_prices)
+
+        # Enrich any placeholder names ("Nation <id>") with real names from GlobalNations.db
+        placeholder_ids = [
+            int(nid) for nid, nd in nation_breakdown.items()
+            if (nd.get("name") or "").startswith("Nation ")
+        ]
+        if placeholder_ids:
+            try:
+                gdb = _get_global_nations_db()
+                real_names = await gdb.get_nation_names_by_ids(placeholder_ids)
+                for nid, nd in nation_breakdown.items():
+                    if (nd.get("name") or "").startswith("Nation ") and int(nid) in real_names:
+                        nd["name"] = real_names[int(nid)]
+            except Exception as _name_err:
+                logger.debug("Could not enrich nation names: %s", _name_err)
 
         # Attach the raw wars list to each nation so _build_watch_response can build wars_with
         for nation_id, nation_data in nation_breakdown.items():
@@ -615,13 +678,10 @@ async def get_watch_wars_data(request: Request, start_date: str | None = None, e
 @router.get("/watch/wars/all-nations")
 async def get_watch_wars_all_nations(request: Request, start_date: str | None = None, end_date: str | None = None):
     """Return war stats for NW nations covering ALL their wars (not just NW-tagged wars)."""
-    await _require_access(request)
     try:
-        from Systems.Functions.irs_nations_db import IRSNationsDB
-
-        # ── Load NW nation IDs from the nations DB ────────────────────────────
-        nations_db = IRSNationsDB(NATIONS_DB_PATH)
-        nw_nations = await nations_db.get_all_nations()
+        # ── Load NW nation IDs from GlobalNations.db ──────────────────────────
+        nations_db = _get_global_nations_db()
+        nw_nations = await nations_db.get_nations_by_alliance(WATCH_ALLIANCE_ID)
         nw_nation_ids = [int(n["id"]) for n in nw_nations if n.get("id")]
 
         if not nw_nation_ids:
@@ -937,6 +997,18 @@ async def _get_nation_ranks_for_period(nation_name: str, period: str, start: dat
         war_net_bd_cog = WarsNetBD(bot=None)
         nation_breakdown = await war_net_bd_cog._get_nation_breakdown(unique_wars, str(WATCH_ALLIANCE_ID), False, resource_prices)
 
+        # Enrich placeholder names with real names from GlobalNations.db
+        placeholder_ids = [int(nid) for nid, nd in nation_breakdown.items() if (nd.get("name") or "").startswith("Nation ")]
+        if placeholder_ids:
+            try:
+                gdb = _get_global_nations_db()
+                real_names = await gdb.get_nation_names_by_ids(placeholder_ids)
+                for nid, nd in nation_breakdown.items():
+                    if (nd.get("name") or "").startswith("Nation ") and int(nid) in real_names:
+                        nd["name"] = real_names[int(nid)]
+            except Exception as _name_err:
+                logger.debug("Could not enrich nation names in ranks: %s", _name_err)
+
         nations = {k: _enrich_nation_for_rank(dict(v)) for k, v in nation_breakdown.items()}
         name_lower = nation_name.lower()
         from collections import defaultdict
@@ -990,7 +1062,6 @@ async def _get_nation_ranks_for_period(nation_name: str, period: str, start: dat
 @router.get("/watch/nation-ranks/{nation_name}")
 async def get_nation_ranks(request: Request, nation_name: str):
     """Return all periods (current + historical) where the nation ranked top 3."""
-    await _require_access(request)
     import sqlite3, calendar as _cal
     import datetime as _datetime_mod
     from datetime import date as _date
@@ -1105,7 +1176,6 @@ async def invalidate_watch_cache(request: Request):
     """Clear the wars response cache and reset the DB singleton.
     Call this after syncing new war data so the next page load is fresh.
     """
-    await _require_access(request)
     invalidate_wars_cache()
     logger.info("watch cache invalidated via API")
     return {"ok": True, "message": "Watch cache cleared."}
@@ -1118,7 +1188,6 @@ async def get_available_periods(request: Request):
     Each entry is tagged with `is_current` so the frontend can highlight the
     current week/month without doing its own timezone-sensitive date math.
     """
-    await _require_access(request)
     db = _get_watch_db()
     try:
         import calendar
@@ -1215,23 +1284,96 @@ async def get_available_periods(request: Request):
 
 # ── Nations DB endpoints ──────────────────────────────────────────────────────
 
-@router.get("/watch/nations")
-async def get_watch_nations(request: Request):
-    """Return all nations from the NW Nations DB with their city aggregates."""
-    await _require_access(request)
+def _build_nation_aggregates(nations, city_rows, active_war_counts):
+    """Shared helper: attach city aggregates + computed fields to a list of nation dicts."""
+    city_map = {r["nation_id"]: dict(r) for r in city_rows}
+    project_fields = [
+        'iron_dome','vital_defense_system','missile_launch_pad','nuclear_research_facility',
+        'nuclear_launch_facility','propaganda_bureau','military_research_center','space_program',
+        'spy_satellite','surveillance_network','guiding_satellite','telecommunications_satellite',
+        'central_intelligence_agency','fallout_shelter','military_doctrine','military_salvage',
+        'pirate_economy','advanced_pirate_economy','arms_stockpile','bauxite_works','iron_works',
+        'emergency_gasoline_reserve','uranium_enrichment_program','green_technologies',
+        'recycling_initiative','mass_irrigation','arable_land_agency','international_trade_center',
+        'clinical_research_center','specialized_police_training_program','bureau_of_domestic_affairs',
+        'government_support_agency','center_for_civil_engineering','advanced_engineering_corps',
+        'activity_center','research_and_development_center','moon_landing','mars_landing',
+    ]
+    FULL_MMR = (5, 5, 5, 3)
+    result = []
+    for n in nations:
+        nid = n["id"]
+        agg = city_map.get(nid, {})
+        city_count = agg.get("city_count") or 1
+        avg_b = round((agg.get('barracks') or 0) / city_count, 1)
+        avg_f = round((agg.get('factories') or 0) / city_count, 1)
+        avg_h = round((agg.get('hangars') or 0) / city_count, 1)
+        avg_d = round((agg.get('drydocks') or 0) / city_count, 1)
+        mmr = f"{avg_b:g}/{avg_f:g}/{avg_h:g}/{avg_d:g}"
+        mmr_deficit = (
+            max(0, FULL_MMR[0] - avg_b) + max(0, FULL_MMR[1] - avg_f) +
+            max(0, FULL_MMR[2] - avg_h) + max(0, FULL_MMR[3] - avg_d)
+        )
+        total_projects = sum(1 for f in project_fields if n.get(f))
+        avg_improvements = round((agg.get("total_improvements") or 0) / city_count, 1) if city_count else 0
+        color = (n.get("color") or "").lower()
+        raw_pos = (n.get("alliance_position") or "")
+        clean_pos = raw_pos.split(".")[-1].upper() if "." in raw_pos else raw_pos.upper()
+        if clean_pos == "APPLICANT":
+            status_order = 4
+        elif (n.get("vacation_mode_turns") or 0) > 0:
+            status_order = 2
+        elif (n.get("beige_turns") or 0) > 0:
+            status_order = 1
+        elif color in ("gray", "grey"):
+            status_order = 3
+        else:
+            status_order = 0
+        api_off = n.get("offensive_wars_count")
+        api_def = n.get("defensive_wars_count")
+        db_counts = active_war_counts.get(nid, {"off": 0, "def": 0})
+        war_counts = {
+            "off": int(api_off) if api_off is not None else db_counts["off"],
+            "def": int(api_def) if api_def is not None else db_counts["def"],
+        }
+        result.append({
+            **n,
+            "city_agg": {**agg, "mmr": mmr, "mmr_deficit": mmr_deficit, "avg_improvements": avg_improvements},
+            "total_projects": total_projects,
+            "status_order": status_order,
+            "active_war_counts": war_counts,
+        })
+    return result
+
+
+@router.get("/watch/nations_by_alliance")
+async def get_nations_by_alliance(request: Request, alliance_id: int):
+    """Return nations for any alliance by ID, with city aggregates.
+
+    Always uses GlobalNations.db (all alliances including Nights Watch).
+    """
     try:
-        from Systems.Functions.irs_nations_db import IRSNationsDB
-        import sqlite3
 
-        db = IRSNationsDB(NATIONS_DB_PATH)
-        nations = await db.get_all_nations()
+        # All alliances — including NW — are now in GlobalNations.db
+        db = _get_global_nations_db()
+        nations = await db.get_nations_by_alliance(alliance_id)
+        db_path = db.db_path
+        if alliance_id == WATCH_ALLIANCE_ID:
+            alliance_name = "Nights Watch"
+        else:
+            alliance_name = (nations[0].get("alliance_name") or f"Alliance {alliance_id}") if nations else f"Alliance {alliance_id}"
 
-        # Aggregate city improvements per nation — run in thread (blocking SQLite)
+        if not nations:
+            return {"nations": [], "count": 0, "alliance_name": alliance_name}
+
+        nation_ids = [n["id"] for n in nations]
+        id_placeholders = ",".join("?" * len(nation_ids))
+
         def _fetch_city_agg():
             import sqlite3 as _sq
-            with _sq.connect(NATIONS_DB_PATH) as conn:
+            with _sq.connect(db_path) as conn:
                 conn.row_factory = _sq.Row
-                return conn.execute("""
+                return conn.execute(f"""
                     SELECT nation_id,
                         COUNT(*) as city_count,
                         SUM(infrastructure) as total_infra,
@@ -1253,8 +1395,70 @@ async def get_watch_nations(request: Request):
                         SUM(factory) as factories,
                         AVG(factory) as avg_factories,
                         SUM(barracks+hangar+drydock+factory+oil_refinery+aluminum_refinery+steel_mill+munitions_factory+coal_power+oil_power+nuclear_power+wind_power+coal_mine+oil_well+uranium_mine+lead_mine+iron_mine+bauxite_mine+farm+police_station+hospital+recycling_center+subway+supermarket+bank+shopping_mall+stadium) as total_improvements
-                    FROM cities GROUP BY nation_id
-                """).fetchall()
+                    FROM cities WHERE nation_id IN ({id_placeholders}) GROUP BY nation_id
+                """, nation_ids).fetchall()
+
+        city_rows = await asyncio.to_thread(_fetch_city_agg)
+
+        active_war_counts: dict = {}
+        if alliance_id == WATCH_ALLIANCE_ID:
+            try:
+                wars_db = _get_watch_db()
+                active_war_counts = await wars_db.get_active_war_counts()
+            except Exception as _e:
+                logger.warning(f"Could not load active war counts: {_e}")
+
+        result = _build_nation_aggregates(nations, city_rows, active_war_counts)
+        return {"nations": result, "count": len(result), "alliance_name": alliance_name}
+
+    except Exception as e:
+        logger.error(f"get_nations_by_alliance error: {e}", exc_info=True)
+        return {"nations": [], "count": 0, "error": str(e)}
+
+
+@router.get("/watch/nations")
+async def get_watch_nations(request: Request):
+    """Return all Nights Watch nations from GlobalNations.db with their city aggregates."""
+    try:
+        db = _get_global_nations_db()
+        nations = await db.get_nations_by_alliance(WATCH_ALLIANCE_ID)
+
+        if not nations:
+            return {"nations": [], "count": 0}
+
+        nation_ids = [n["id"] for n in nations]
+        id_placeholders = ",".join("?" * len(nation_ids))
+        global_db_path = db.db_path
+
+        # Aggregate city improvements per nation — run in thread (blocking SQLite)
+        def _fetch_city_agg():
+            import sqlite3 as _sq
+            with _sq.connect(global_db_path) as conn:
+                conn.row_factory = _sq.Row
+                return conn.execute(f"""
+                    SELECT nation_id,
+                        COUNT(*) as city_count,
+                        SUM(infrastructure) as total_infra,
+                        AVG(infrastructure) as avg_infra,
+                        SUM(land) as total_land,
+                        AVG(land) as avg_land,
+                        SUM(coal_power+oil_power+nuclear_power+wind_power) as total_power,
+                        SUM(coal_mine+oil_well+uranium_mine+lead_mine+iron_mine+bauxite_mine+farm) as raw_resources,
+                        SUM(oil_refinery+aluminum_refinery+steel_mill+munitions_factory+factory) as manufacturing,
+                        SUM(police_station+hospital+recycling_center+subway) as civil,
+                        SUM(supermarket+bank+shopping_mall+stadium) as commerce,
+                        SUM(barracks+hangar+drydock) as mil_buildings,
+                        SUM(barracks) as barracks,
+                        AVG(barracks) as avg_barracks,
+                        SUM(hangar) as hangars,
+                        AVG(hangar) as avg_hangars,
+                        SUM(drydock) as drydocks,
+                        AVG(drydock) as avg_drydocks,
+                        SUM(factory) as factories,
+                        AVG(factory) as avg_factories,
+                        SUM(barracks+hangar+drydock+factory+oil_refinery+aluminum_refinery+steel_mill+munitions_factory+coal_power+oil_power+nuclear_power+wind_power+coal_mine+oil_well+uranium_mine+lead_mine+iron_mine+bauxite_mine+farm+police_station+hospital+recycling_center+subway+supermarket+bank+shopping_mall+stadium) as total_improvements
+                    FROM cities WHERE nation_id IN ({id_placeholders}) GROUP BY nation_id
+                """, nation_ids).fetchall()
         city_rows = await asyncio.to_thread(_fetch_city_agg)
 
         city_map = {r["nation_id"]: dict(r) for r in city_rows}
@@ -1341,16 +1545,13 @@ async def get_watch_nations(request: Request):
 
 @router.get("/watch/nations/{nation_id}")
 async def get_watch_nation_detail(request: Request, nation_id: int):
-    """Return full nation detail including all cities."""
-    await _require_access(request)
+    """Return full nation detail including all cities from GlobalNations.db."""
     try:
-        from Systems.Functions.irs_nations_db import IRSNationsDB
-
-        db = IRSNationsDB(NATIONS_DB_PATH)
-        nation = await db.get_nation(nation_id)
+        global_db = _get_global_nations_db()
+        nation = await global_db.get_nation(nation_id)
         if not nation:
             return {"error": "Nation not found"}
-        cities = await db.get_cities_for_nation(nation_id)
+        cities = await global_db.get_cities_for_nation(nation_id)
         return {"nation": nation, "cities": cities}
 
     except Exception as e:
@@ -1359,151 +1560,236 @@ async def get_watch_nation_detail(request: Request, nation_id: int):
 
 
 @router.get("/watch/revenue")
-async def get_watch_revenue(request: Request):
-    """Calculate and return revenue for all NW nations.
-    
-    Uses the same calculate_full_revenue_with_query logic as the Discord rev command.
-    All upkeeps (military, improvement, power, resource) are pre-deducted.
-    Alliance tax is informational only — not deducted from displayed revenue.
+async def get_watch_revenue(request: Request, alliance_id: int = WATCH_ALLIANCE_ID):
+    """Calculate and return revenue for nations in the given alliance.
+
+    Defaults to Nights Watch (WATCH_ALLIANCE_ID) when no alliance_id is supplied.
+    Uses revenue_calc_sync (pure CPU) via asyncio.to_thread so the event loop
+    stays responsive.  Cities are loaded in a single bulk query instead of one
+    per nation.  Results are cached per alliance for the current PnW turn (2-hour window).
     """
-    await _require_access(request)
+
+    # Return cached result if we're still in the same turn
+    cached = _get_revenue_cache(alliance_id)
+    if cached is not None:
+        logger.debug("Revenue cache hit for alliance %s — returning cached result", alliance_id)
+        return cached
+
     try:
-        from Systems.Functions.irs_nations_db import IRSNationsDB
-        from Systems.PnW.Util.rev_correct import calculate_full_revenue_with_query
-        from Systems.Functions.database_manager import get_latest_resource_prices, get_latest_game_data, get_latest_game_info
+        from Systems.PnW.Util.rev_correct import revenue_calc_sync
+        from Systems.Functions.database_manager import (
+            get_latest_resource_prices, get_latest_game_data,
+            get_latest_game_info, get_latest_radiation_data,
+        )
         from datetime import datetime, timezone
 
-        logger.info("Starting revenue calculation for all nations")
+        logger.info("Revenue calculation starting for alliance %s", alliance_id)
 
-        db = IRSNationsDB(NATIONS_DB_PATH)
-        nations = await db.get_all_nations()
-        logger.info(f"Loaded {len(nations)} nations from database")
+        db = _get_global_nations_db()
 
-        # ── Shared context (DB-first, no API calls) ───────────────────────────
-        market_prices = None
-        try:
-            price_data = await get_latest_resource_prices()
-            if price_data:
-                market_prices = {res: p['sell'] for res, p in price_data.items()}
-        except Exception as e:
-            logger.warning(f"Could not load prices from DB: {e}")
+        # ── Load only the requested alliance's nations and cities ─────────────
+        (
+            nations,
+            all_cities,
+            price_data,
+            colors_data,
+            game_info,
+            radiation_data,
+            active_war_nation_ids,
+        ) = await asyncio.gather(
+            db.get_nations_by_alliance(alliance_id),
+            db.get_cities_bulk_for_alliance(alliance_id),
+            get_latest_resource_prices(),
+            get_latest_game_data("colors"),
+            get_latest_game_info(),
+            get_latest_radiation_data(),
+            _get_watch_db().get_active_war_nation_ids(),
+            return_exceptions=True,
+        )
 
-        color_map = {}
-        try:
-            colors = await get_latest_game_data("colors")
-            if colors:
-                color_map = {c['color'].lower(): float(c.get('turn_bonus', 0)) for c in colors}
-        except Exception as e:
-            logger.warning(f"Could not load colors from DB: {e}")
+        # Normalise exceptions to safe defaults
+        if isinstance(nations, Exception):
+            logger.error(f"Failed to load nations: {nations}")
+            nations = []
+        if isinstance(all_cities, Exception):
+            logger.warning(f"Bulk city load failed: {all_cities}")
+            all_cities = {}
+        if isinstance(price_data, Exception) or not price_data:
+            price_data = {}
+        if isinstance(colors_data, Exception) or not colors_data:
+            colors_data = []
+        if isinstance(game_info, Exception):
+            game_info = None
+        if isinstance(radiation_data, Exception):
+            radiation_data = None
+        if isinstance(active_war_nation_ids, Exception):
+            active_war_nation_ids = set()
+
+        logger.info(f"Loaded {len(nations)} nations, {sum(len(v) for v in all_cities.values())} cities for alliance {alliance_id}")
+
+        # ── Build shared game context (computed once, reused for all nations) ─
+        market_prices: Dict[str, float] = {
+            res: p['sell'] for res, p in price_data.items()
+        } if price_data else {}
+
+        color_map: Dict[str, float] = {
+            c['color'].lower(): float(c.get('turn_bonus', 0)) for c in colors_data
+        } if colors_data else {}
+
+        # colors dict for revenue_calc_sync uses the raw color name (not lowercased key)
+        colors_for_calc: Dict[str, float] = {
+            c['color']: float(c.get('turn_bonus', 0)) for c in colors_data
+        } if colors_data else {}
 
         game_date = None
-        try:
-            gi = await get_latest_game_info()
-            if gi:
-                raw = gi.get('game_date')
-                if raw:
-                    parsed = datetime.fromisoformat(raw.replace("Z", "+00:00"))
-                    game_date = parsed.replace(tzinfo=timezone.utc) if parsed.tzinfo is None else parsed
-        except Exception as e:
-            logger.warning(f"Could not load game_info from DB: {e}")
+        if game_info and game_info.get('game_date'):
+            try:
+                parsed = datetime.fromisoformat(game_info['game_date'].replace("Z", "+00:00"))
+                game_date = parsed.replace(tzinfo=timezone.utc) if parsed.tzinfo is None else parsed
+            except Exception:
+                pass
+        if game_date is None:
+            game_date = datetime.now(timezone.utc)
 
-        # ── Active war lookup (single bulk query, authoritative source) ──────────
-        active_war_nation_ids: set = set()
-        try:
-            wars_db = _get_watch_db()
-            active_war_nation_ids = await wars_db.get_active_war_nation_ids()
-            logger.info(f"Active war nation IDs loaded: {len(active_war_nation_ids)} nations at war")
-        except Exception as e:
-            logger.warning(f"Could not load active war nation IDs from wars DB, falling back to counts: {e}")
+        # Radiation dict for revenue_calc_sync
+        global_rad = (radiation_data or {}).get('global', 0)
+        radiation: Dict[str, float] = {
+            'na': ((radiation_data or {}).get('north_america', 0) + global_rad) / -1000,
+            'sa': ((radiation_data or {}).get('south_america', 0) + global_rad) / -1000,
+            'eu': ((radiation_data or {}).get('europe', 0) + global_rad) / -1000,
+            'as': ((radiation_data or {}).get('asia', 0) + global_rad) / -1000,
+            'af': ((radiation_data or {}).get('africa', 0) + global_rad) / -1000,
+            'au': ((radiation_data or {}).get('australia', 0) + global_rad) / -1000,
+            'an': ((radiation_data or {}).get('antarctica', 0) + global_rad) / -1000,
+        } if radiation_data else {'na': 0, 'sa': 0, 'eu': 0, 'as': 0, 'af': 0, 'au': 0, 'an': 0}
 
-        # ── Per-nation calculation ─────────────────────────────────────────────
+        month = game_date.month
+        seasonal_mod: Dict[str, float] = {'na': 1, 'sa': 1, 'eu': 1, 'as': 1, 'af': 1, 'au': 1, 'an': 0.5}
+        if month in (6, 7, 8):
+            seasonal_mod.update({'na': 1.2, 'as': 1.2, 'eu': 1.2, 'sa': 0.8, 'af': 0.8, 'au': 0.8})
+        elif month in (12, 1, 2):
+            seasonal_mod.update({'na': 0.8, 'as': 0.8, 'eu': 0.8, 'sa': 1.2, 'af': 1.2, 'au': 1.2})
+
+        TAX_RATE = 0.10
+
+        # ── Per-nation calculation (batched CPU work in thread pool) ────────────
+        # Running one thread per nation is extremely slow for 15k+ nations due to
+        # task-scheduling overhead and GIL contention.  Instead we split nations
+        # into fixed-size chunks and process each chunk in a single thread call,
+        # then gather the chunks concurrently.  This keeps thread count low while
+        # still parallelising across CPU cores.
+        CHUNK_SIZE = 500  # nations per thread — tune based on revenue_calc_sync cost
+
         revenue_results = []
         alliance_total_turn = 0.0
         alliance_total_day  = 0.0
         failed_calculations = 0
-        TAX_RATE = 0.10
 
-        for i, nation in enumerate(nations):
-            try:
-                nation['cities'] = await db.get_cities_for_nation(int(nation['id']))
-                nation_id = int(nation['id'])
-                # Use wars DB (turns_left > 0) as the authoritative source.
-                # Fall back to the nation's war counts only if the wars DB query failed.
-                if active_war_nation_ids:
-                    at_war = nation_id in active_war_nation_ids
-                else:
-                    at_war = (nation.get('offensive_wars_count', 0) > 0 or
-                              nation.get('defensive_wars_count', 0) > 0)
-                color = nation.get('color', 'beige').lower()
-                color_bonus = color_map.get(color, 0.0)
+        def _calc_nation_single(nation: Dict[str, Any]) -> Dict[str, Any] | None:
+            """Compute revenue for one nation. Returns None if no city data."""
+            nation_id = int(nation['id'])
+            nation['cities'] = all_cities.get(nation_id, [])
+            if not nation['cities']:
+                return None
 
-                rev = await calculate_full_revenue_with_query(
-                    nation_data=nation,
-                    query_instance=None,
-                    is_war=at_war,
-                    color_bonus=color_bonus,
-                    market_prices=market_prices,
-                    game_date=game_date,
-                )
+            at_war = (nation_id in active_war_nation_ids) if active_war_nation_ids else (
+                (nation.get('offensive_wars_count') or 0) > 0
+                or (nation.get('defensive_wars_count') or 0) > 0
+            )
+            color = (nation.get('color') or 'beige').lower()
+            color_bonus = color_map.get(color, 0.0)
 
-                # gross_income = net_cash_num = cash after ALL upkeeps, before tax
-                # monetary_net_num = gross_income + net resource monetary value
-                gross_income   = rev.get('gross_income', 0)          # net cash (no tax)
-                total_mon      = rev.get('monetary_net_num', 0)       # cash + resources
-                alliance_tax   = max(0.0, gross_income * TAX_RATE)
-                net_after_tax  = gross_income - alliance_tax
+            rev = revenue_calc_sync(
+                nation=nation,
+                radiation=radiation,
+                treasures=[],
+                prices=market_prices,
+                colors=colors_for_calc,
+                seasonal_mod=seasonal_mod,
+                is_war=at_war,
+            )
+            if not rev:
+                return None
 
-                # turn_revenue = net cash (what the nation keeps, before tax)
-                # matches Discord embed "Net Income (Gross)"
-                turn_revenue = gross_income
-                day_revenue  = turn_revenue * 12
-                alliance_total_turn += turn_revenue
-                alliance_total_day  += day_revenue
+            gross_income  = rev.get('net_cash_num', 0)
+            total_mon     = rev.get('monetary_net_num', 0)
+            alliance_tax  = max(0.0, gross_income * TAX_RATE)
+            turn_revenue  = gross_income
+            day_revenue   = turn_revenue * 12
 
-                revenue_results.append({
-                    'nation_id':            nation['id'],
-                    'nation_name':          nation.get('nation_name', 'Unknown'),
-                    'leader_name':          nation.get('leader_name', ''),
-                    'flag':                 nation.get('flag', ''),
-                    'color':                color,
-                    'num_cities':           nation.get('num_cities', 0),
-                    'score':                nation.get('score', 0),
-                    # Revenue fields — mirrors Discord embed exactly
-                    'turn_revenue':         turn_revenue,
-                    'day_revenue':          day_revenue,
-                    'gross_income':         gross_income,
-                    'total_monetary_value': total_mon,
-                    'net_after_tax':        net_after_tax,
-                    # Upkeep breakdown
-                    'military_upkeep':      rev.get('military_upkeep_turn', 0),
-                    'improvement_upkeep':   rev.get('improvement_upkeep_turn', 0),
-                    'power_upkeep':         rev.get('power_upkeep_turn', 0),
-                    'rss_upkeep':           rev.get('rss_upkeep_turn', 0),
-                    # Tax (informational only)
-                    'alliance_tax':         alliance_tax,
-                    'alliance_tax_rate':    TAX_RATE,
-                    # War status (from wars DB turns_left > 0)
-                    'at_war':               at_war,
-                    # Other
-                    'color_bonus':          color_bonus,
-                    'population':           rev.get('nationpop', 0),
-                    'resources':            rev.get('resources', {}),
-                    'prices':               rev.get('prices', market_prices or {}),
-                })
+            return {
+                'nation_id':            nation['id'],
+                'nation_name':          nation.get('nation_name', 'Unknown'),
+                'leader_name':          nation.get('leader_name', ''),
+                'flag':                 nation.get('flag', ''),
+                'color':                color,
+                'num_cities':           nation.get('num_cities', 0),
+                'score':                nation.get('score', 0),
+                'turn_revenue':         turn_revenue,
+                'day_revenue':          day_revenue,
+                'gross_income':         gross_income,
+                'total_monetary_value': total_mon,
+                'net_after_tax':        gross_income - alliance_tax,
+                'military_upkeep':      rev.get('military_upkeep_turn', 0),
+                'improvement_upkeep':   rev.get('improvement_upkeep_turn', 0),
+                'power_upkeep':         rev.get('power_upkeep_turn', 0),
+                'rss_upkeep':           rev.get('rss_upkeep_turn', 0),
+                'alliance_tax':         alliance_tax,
+                'alliance_tax_rate':    TAX_RATE,
+                'at_war':               at_war,
+                'color_bonus':          color_bonus,
+                'population':           rev.get('nationpop', 0),
+                'resources':            {
+                    r: rev.get(r, 0) for r in (
+                        'food','coal','oil','uranium','lead','iron','bauxite',
+                        'gasoline','munitions','steel','aluminum',
+                    )
+                },
+                'prices':               market_prices,
+            }
 
-                if (i + 1) % 10 == 0:
-                    logger.info(f"Processed {i + 1}/{len(nations)} nations")
+        def _calc_chunk(chunk: list) -> list:
+            """Process a batch of nations in one thread — avoids per-nation thread overhead."""
+            out = []
+            for nation in chunk:
+                try:
+                    r = _calc_nation_single(nation)
+                    if r is not None:
+                        out.append(r)
+                except Exception:
+                    pass  # counted as failed below via length diff
+            return out
 
-            except Exception as e:
-                failed_calculations += 1
-                logger.warning(f"Revenue calc failed for {nation.get('nation_name', '?')}: {e}")
-                continue
+        # Split into chunks and run each chunk in its own thread concurrently
+        chunks = [nations[i:i + CHUNK_SIZE] for i in range(0, len(nations), CHUNK_SIZE)]
+        chunk_results = await asyncio.gather(
+            *[asyncio.to_thread(_calc_chunk, chunk) for chunk in chunks],
+            return_exceptions=True,
+        )
+
+        for cr in chunk_results:
+            if isinstance(cr, Exception):
+                logger.warning(f"Revenue chunk failed: {cr}")
+                failed_calculations += CHUNK_SIZE  # conservative estimate
+            else:
+                revenue_results.extend(cr)
+
+        # Derive failed count from the gap between input nations (with cities) and output
+        nations_with_cities = sum(1 for n in nations if all_cities.get(int(n['id'])))
+        failed_calculations = max(0, nations_with_cities - len(revenue_results))
+
+        for r in revenue_results:
+            alliance_total_turn += r['turn_revenue']
+            alliance_total_day  += r['day_revenue']
 
         revenue_results.sort(key=lambda x: x['turn_revenue'], reverse=True)
-        logger.info(f"Revenue done: {len(revenue_results)} ok, {failed_calculations} failed. "
-                    f"Alliance total: ${alliance_total_turn:,.2f}/t")
 
-        return {
+        logger.info(
+            f"Revenue done: {len(revenue_results)} nations, {failed_calculations} failed, "
+            f"alliance total ${alliance_total_turn:,.0f}/t"
+        )
+
+        result = {
             "nations":             revenue_results,
             "alliance_total_turn": alliance_total_turn,
             "alliance_total_day":  alliance_total_day,
@@ -1513,11 +1799,13 @@ async def get_watch_revenue(request: Request):
                 "total_nations_in_db":     len(nations),
                 "successful_calculations": len(revenue_results),
                 "failed_calculations":     failed_calculations,
-                "has_market_prices":       market_prices is not None,
-                "has_color_data":          len(color_map) > 0,
+                "has_market_prices":       bool(market_prices),
+                "has_color_data":          bool(color_map),
                 "has_game_date":           game_date is not None,
             }
         }
+        _set_revenue_cache(alliance_id, result)
+        return result
 
     except Exception as e:
         logger.error(f"get_watch_revenue error: {e}", exc_info=True)

@@ -63,6 +63,30 @@
           <input type="number" id="raids-targets" class="raids-input" value="50" min="1" max="200">
         </div>
 
+        <!-- Exclude Alliances -->
+        <div class="raids-filter-group" style="grid-column: span 2;">
+          <label class="raids-filter-label">Exclude Alliances</label>
+          <div class="raids-ac-wrap" id="raids-excl-wrap">
+            <div class="raids-excl-box" id="raids-excl-box">
+              <div class="raids-excl-tags" id="raids-excl-tags"></div>
+              <input type="text" id="raids-excl-input" class="raids-excl-input"
+                     placeholder="Type to search alliances…" autocomplete="off">
+            </div>
+            <div id="raids-excl-dd" class="raids-ac-dropdown" style="display:none;"></div>
+          </div>
+        </div>
+
+        <!-- Active Wars -->
+        <div class="raids-filter-group">
+          <label class="raids-filter-label">Active Def. Wars</label>
+          <div class="raids-toggle-row">
+            <button class="raids-toggle active" id="tog-wars-any"  data-key="active_wars" data-val="any">Any</button>
+            <button class="raids-toggle"        id="tog-wars-0"    data-key="active_wars" data-val="0">≤ 0</button>
+            <button class="raids-toggle"        id="tog-wars-1"    data-key="active_wars" data-val="1">≤ 1</button>
+            <button class="raids-toggle"        id="tog-wars-2"    data-key="active_wars" data-val="2">≤ 2</button>
+          </div>
+        </div>
+
       </div>
 
       <div class="raids-action-row">
@@ -78,11 +102,14 @@
 
   <!-- Beige Alerts Panel (shown when logged in) -->
   <div id="raids-alerts-panel" class="raids-alerts-panel" style="display:none;">
-    <button class="raids-alerts-toggle" id="raids-alerts-toggle" aria-expanded="true">
-      <span>🔔 Beige Notifications</span>
-      <span id="raids-alerts-count" class="raids-alerts-count"></span>
-      <span class="raids-alerts-chevron" id="raids-alerts-chevron">▲</span>
-    </button>
+    <div class="raids-alerts-header">
+      <button class="raids-alerts-toggle" id="raids-alerts-toggle" aria-expanded="true">
+        <span>🔔 Beige Notifications</span>
+        <span id="raids-alerts-count" class="raids-alerts-count"></span>
+        <span class="raids-alerts-chevron" id="raids-alerts-chevron">▲</span>
+      </button>
+      <button id="raids-alerts-refresh" class="raids-alerts-refresh-btn" title="Refresh projected loot from live holdings">↻</button>
+    </div>
     <div id="raids-alerts-body" class="raids-alerts-body">
       <div id="raids-alerts-list"><span class="raids-no-alerts">No active beige alerts.</span></div>
     </div>
@@ -143,7 +170,7 @@
   let _data     = [];
   let _sortCol  = 'total_est_loot';
   let _sortAsc  = false;
-  let _filters  = { active: true, weak: false, beige: false };
+  let _filters  = { active: true, weak: false, beige: false, active_wars: 'any' };
   let _loggedIn = false;
   let _userId   = null;
   let _beigeSet = new Set(); // nation_ids with active alerts
@@ -161,14 +188,17 @@
         if (u && u.id) {
           _loggedIn = true;
           _userId   = u.id;
-          $('raids-alerts-panel').style.display = 'block';
-          $('raids-login-notice').style.display = 'none';
+          const alertsPanel   = $('raids-alerts-panel');
+          const loginNotice   = $('raids-login-notice');
+          if (alertsPanel)  alertsPanel.style.display  = 'block';
+          if (loginNotice)  loginNotice.style.display  = 'none';
           await loadBeigeAlerts();
           return;
         }
       }
     } catch (e) {}
-    $('raids-login-notice').style.display = 'block';
+    const loginNotice = $('raids-login-notice');
+    if (loginNotice) loginNotice.style.display = 'block';
   }
 
   // ── Beige alerts ───────────────────────────────────────────────────────────
@@ -180,6 +210,22 @@
       _beigeSet = new Set(alerts.map(a => String(a.nation_id)));
       renderBeigePanel(alerts);
     } catch (e) {}
+  }
+
+  async function refreshBeigeAlerts() {
+    const btn = $('raids-alerts-refresh');
+    if (btn) { btn.classList.add('spinning'); btn.disabled = true; }
+    try {
+      const r = await fetch('/api/raids/beige-alerts/refresh');
+      if (!r.ok) return;
+      const alerts = await r.json();
+      _beigeSet = new Set(alerts.map(a => String(a.nation_id)));
+      renderBeigePanel(alerts);
+    } catch (e) {
+      showStatus('Failed to refresh beige alerts.', true);
+    } finally {
+      if (btn) { btn.classList.remove('spinning'); btn.disabled = false; }
+    }
   }
 
   // ── Enum helpers ──────────────────────────────────────────────────────────
@@ -297,6 +343,15 @@
     });
   }
 
+  // ── Refresh button ─────────────────────────────────────────────────────────
+  const _refreshBtn = $('raids-alerts-refresh');
+  if (_refreshBtn) {
+    _refreshBtn.addEventListener('click', e => {
+      e.stopPropagation(); // don't trigger the collapse toggle
+      refreshBeigeAlerts();
+    });
+  }
+
   async function toggleBeigeAlert(nationId, nationName, beigeturns, projectedLoot, accumulatedRev) {
     if (!_loggedIn) {
       showStatus('Sign in with Discord to use beige notifications.', true);
@@ -345,11 +400,11 @@
   document.querySelectorAll('.raids-toggle').forEach(btn => {
     btn.addEventListener('click', () => {
       const key = btn.dataset.key;
-      const val = btn.dataset.val === 'true';
-      _filters[key] = val;
-      // Update active state for this group
+      const raw = btn.dataset.val;
+      // active_wars stores 'any' or a numeric string
+      _filters[key] = (key === 'active_wars') ? raw : (raw === 'true');
       document.querySelectorAll(`.raids-toggle[data-key="${key}"]`).forEach(b => {
-        b.classList.toggle('active', b.dataset.val === btn.dataset.val);
+        b.classList.toggle('active', b.dataset.val === raw);
       });
     });
   });
@@ -411,11 +466,113 @@
     else if (e.key === 'Escape') $('raids-ac-dd').style.display = 'none';
   });
   document.addEventListener('click', ev => {
-    if (!inp.contains(ev.target) && !$('raids-ac-dd').contains(ev.target))
-      $('raids-ac-dd').style.display = 'none';
+    const dd = $('raids-ac-dd');
+    if (!inp || !dd) return;
+    if (!inp.contains(ev.target) && !dd.contains(ev.target))
+      dd.style.display = 'none';
   });
   window.addEventListener('scroll', positionAcDd, true);
   window.addEventListener('resize', positionAcDd);
+
+  // ── Exclude Alliances autocomplete ────────────────────────────────────────
+  let _exclAlliances = new Set();   // currently excluded alliance names
+  let _allianceData  = null;        // cached list from API
+  let _exclAcIdx     = -1;
+
+  async function loadAllianceData() {
+    if (_allianceData) return;
+    try {
+      const r = await fetch('/api/raids/alliances_ac');
+      _allianceData = await r.json();
+    } catch (e) { _allianceData = []; }
+  }
+
+  function renderExclTags() {
+    const container = $('raids-excl-tags');
+    container.innerHTML = [..._exclAlliances].map(name => `
+      <span class="raids-excl-tag">
+        ${name}
+        <button class="raids-excl-tag-del" data-name="${name.replace(/"/g,'&quot;')}" title="Remove">✕</button>
+      </span>
+    `).join('');
+    container.querySelectorAll('.raids-excl-tag-del').forEach(btn => {
+      btn.addEventListener('mousedown', ev => {
+        ev.preventDefault();
+        _exclAlliances.delete(btn.dataset.name);
+        renderExclTags();
+      });
+    });
+  }
+
+  function positionExclDd() {
+    const box = $('raids-excl-box');
+    const dd  = $('raids-excl-dd');
+    if (!box || !dd || dd.style.display === 'none') return;
+    const rect = box.getBoundingClientRect();
+    dd.style.top   = (rect.bottom + 4) + 'px';
+    dd.style.left  = rect.left + 'px';
+    dd.style.width = rect.width + 'px';
+  }
+
+  function buildExclDd(val) {
+    const dd = $('raids-excl-dd');
+    dd.innerHTML = '';
+    _exclAcIdx = -1;
+    if (!_allianceData) return;
+    const low = val.toLowerCase();
+    const items = _allianceData
+      .filter(a => a.name && (!low || a.name.toLowerCase().includes(low)))
+      .filter(a => !_exclAlliances.has(a.name))
+      .slice(0, 20);
+    if (!items.length) { dd.style.display = 'none'; return; }
+    items.forEach((a, i) => {
+      const el = document.createElement('div');
+      el.className = 'raids-ac-item';
+      el.textContent = a.name;
+      el.addEventListener('mousedown', ev => {
+        ev.preventDefault();
+        _exclAlliances.add(a.name);
+        renderExclTags();
+        $('raids-excl-input').value = '';
+        dd.style.display = 'none';
+        $('raids-excl-input').focus();
+      });
+      dd.appendChild(el);
+    });
+    dd.style.display = 'block';
+    positionExclDd();
+  }
+
+  const exclInp = $('raids-excl-input');
+  exclInp.addEventListener('focus', async () => { await loadAllianceData(); buildExclDd(exclInp.value); });
+  exclInp.addEventListener('input', async () => { await loadAllianceData(); buildExclDd(exclInp.value); });
+  exclInp.addEventListener('keydown', e => {
+    const items = $('raids-excl-dd').querySelectorAll('.raids-ac-item');
+    if (e.key === 'ArrowDown') { e.preventDefault(); _exclAcIdx = Math.min(_exclAcIdx+1, items.length-1); items.forEach((el,i)=>el.classList.toggle('active',i===_exclAcIdx)); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); _exclAcIdx = Math.max(_exclAcIdx-1,0); items.forEach((el,i)=>el.classList.toggle('active',i===_exclAcIdx)); }
+    else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (_exclAcIdx >= 0 && items[_exclAcIdx]) items[_exclAcIdx].dispatchEvent(new MouseEvent('mousedown'));
+    }
+    else if (e.key === 'Escape') $('raids-excl-dd').style.display = 'none';
+    else if (e.key === 'Backspace' && exclInp.value === '' && _exclAlliances.size > 0) {
+      // Remove last tag on backspace when input is empty
+      const last = [..._exclAlliances].pop();
+      _exclAlliances.delete(last);
+      renderExclTags();
+    }
+  });
+  document.addEventListener('click', ev => {
+    const dd  = $('raids-excl-dd');
+    const box = $('raids-excl-box');
+    if (!dd || !box) return;
+    if (!box.contains(ev.target) && !dd.contains(ev.target))
+      dd.style.display = 'none';
+  });
+  // Click anywhere in the box focuses the input
+  $('raids-excl-box').addEventListener('click', () => exclInp.focus());
+  window.addEventListener('scroll', positionExclDd, true);
+  window.addEventListener('resize', positionExclDd);
 
   // ── Run search ─────────────────────────────────────────────────────────────
   $('raids-run').addEventListener('click', run);
@@ -434,6 +591,14 @@
     });
     if (nation)  params.set('nation',   nation);
     if (minLoot) params.set('min_loot', minLoot);
+
+    // Excluded alliances — join tag set as comma-separated string
+    if (_exclAlliances.size > 0)
+      params.set('exclude_alliances', [..._exclAlliances].join(','));
+
+    // Active wars filter — only send when not 'any'
+    if (_filters.active_wars !== 'any')
+      params.set('active_wars', _filters.active_wars);
 
     showStatus('<span class="raids-spinner"></span>Fetching raid targets… this may take 10–30 seconds.', false);
     $('raids-table-card').style.display = 'none';

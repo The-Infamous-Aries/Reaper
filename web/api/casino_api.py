@@ -608,7 +608,7 @@ EQUIPMENT_FILENAME_MAP = {
 
 # Elements - From Deco folder
 WHEEL_ELEMENTS: List[str] = [
-    'Air','Basic','Electric','Fighting','Fire','Flying','Holy','Ice',
+    'Air','Basic','Electric','Fighting','Fire','Holy','Ice',
     'Magic','Necro','Plant','Psychic','Rock','Water'
 ]
 

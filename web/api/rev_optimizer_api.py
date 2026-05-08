@@ -12,7 +12,6 @@ from Systems.PnW.Util.rev_correct import calculate_nation_modifiers
 from PnWHarvester.db.global_nations_db import GlobalNationsDB
 from Systems.Functions.db_paths import (
     GLOBAL_NATIONS_DB as GLOBAL_NATIONS_DB_PATH,
-    NW_NATIONS_DB as NW_NATIONS_DB_PATH,
 )
 from Systems.PnW.Util.query import create_v3_query_instance
 from Systems.Functions.database_manager import (
@@ -114,12 +113,12 @@ def _global_db() -> GlobalNationsDB:
 
 async def _get_nation_with_cities(query: str, query_instance) -> Optional[dict]:
     """
-    Fetch nation + cities, checking GlobalNations.db first (all game nations),
-    then NW-only IRSNations.db, then falling back to the live PnW API.
+    Fetch nation + cities, checking GlobalNations.db first (single source of truth
+    for all nations including Nights Watch), then falling back to the live PnW API.
     """
     clean = query.strip()
 
-    # ── 1. GlobalNations.db (all game nations) ─────────────────────────────
+    # ── 1. GlobalNations.db (all game nations, including NW) ───────────────
     if GLOBAL_NATIONS_DB_PATH.exists():
         try:
             gdb = _global_db()
@@ -133,26 +132,7 @@ async def _get_nation_with_cities(query: str, query_instance) -> Optional[dict]:
         except Exception as e:
             logger.warning(f"GlobalNationsDB lookup failed for '{clean}': {e}")
 
-    # ── 2. NW-only IRSNations.db ───────────────────────────────────────────
-    if NW_NATIONS_DB_PATH.exists():
-        try:
-            from Systems.Functions.irs_nations_db import IRSNationsDB
-            nwdb = IRSNationsDB(str(NW_NATIONS_DB_PATH))
-            n = (await nwdb.get_nation(int(clean))
-                 if clean.isdigit()
-                 else None)
-            if not n:
-                all_nw = await nwdb.get_all_nations()
-                n = next((x for x in all_nw
-                          if x.get('nation_name', '').lower() == clean.lower()), None)
-            if n:
-                n['cities'] = await nwdb.get_cities_for_nation(int(n['id']))
-                if n['cities']:
-                    return n
-        except Exception as e:
-            logger.warning(f"NWNationsDB lookup failed for '{clean}': {e}")
-
-    # ── 3. Live PnW API fallback ───────────────────────────────────────────
+    # ── 2. Live PnW API fallback ───────────────────────────────────────────
     try:
         n = (await query_instance.get_nation_by_id(clean)
              if clean.isdigit()

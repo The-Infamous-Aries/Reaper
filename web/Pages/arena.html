@@ -1,5 +1,6 @@
 <link rel="stylesheet" href="/css/arena.css">
 <link rel="stylesheet" href="/css/casino_lobby.css">
+<link rel="stylesheet" href="/css/colosseum.css">
 
 <div class="container-fluid" id="arena-root">
 
@@ -33,7 +34,57 @@
     <!-- Main layout -->
     <div id="arena-main" style="display:none">
 
-        <!-- Unified room grid -->
+        <!-- Colosseum center card — shown above the room strip -->
+        <div class="colosseum-center-card" id="colosseum-card" onclick="window._uClickColosseum()">
+
+            <!-- Left: identity -->
+            <div class="col-card-left">
+                <div class="col-card-crown">🏛️</div>
+                <div>
+                    <div class="col-card-title">COLOSSEUM</div>
+                    <div class="col-card-desc">Passive hourly league · XP win or lose · Claim rewards anytime</div>
+                </div>
+            </div>
+
+            <!-- Center: live stats -->
+            <div class="col-card-stats">
+                <div class="col-card-stat">
+                    <span class="col-card-stat-val" id="col-stat-fighters">—</span>
+                    <span class="col-card-stat-lbl">Fighters</span>
+                </div>
+                <div class="col-card-stat-divider"></div>
+                <div class="col-card-stat">
+                    <span class="col-card-stat-val" id="col-stat-round">—</span>
+                    <span class="col-card-stat-lbl">Round</span>
+                </div>
+                <div class="col-card-stat-divider"></div>
+                <div class="col-card-stat">
+                    <span class="col-card-stat-val col-card-stat-gold" id="col-stat-next">—</span>
+                    <span class="col-card-stat-lbl">Next Battle</span>
+                </div>
+                <div class="col-card-stat-divider"></div>
+                <div class="col-card-stat">
+                    <span class="col-card-stat-val col-card-stat-green" id="col-stat-last-winner">—</span>
+                    <span class="col-card-stat-lbl">Last Winner</span>
+                </div>
+            </div>
+
+            <!-- Right: mini fighter avatars + enter hint -->
+            <div class="col-card-right">
+                <div class="col-card-avatars" id="col-card-avatars">
+                    <!-- populated by colosseum.js -->
+                </div>
+                <div class="col-card-enter">
+                    <span class="col-live-badge" id="col-live-badge" style="display:none">
+                        <span class="arena-live-dot"></span>LIVE
+                    </span>
+                    <span class="col-card-cta">Click to Enter ›</span>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Room strip — single row of all 12 rooms -->
         <div class="unified-room-grid" id="unified-grid"></div>
 
         <!-- Shared panel -->
@@ -66,6 +117,7 @@
 </div>
 
 <script src="/js/arena.js"></script>
+<script src="/js/colosseum.js"></script>
 <script src="/js/battle_settings.js"></script>
 
 <!-- Battle Settings Modal -->

@@ -1,179 +1,168 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nights Watch - War Stats</title>
-    <link rel="stylesheet" href="/css/main.css">
-    <link rel="stylesheet" href="/css/watch.css">
-</head>
-<body>
-    <div id="loot-tooltip" class="loot-tooltip" role="tooltip" aria-hidden="true"></div>
-    <div class="watch-shell">
-        <div class="card watch-controls">
-            <div class="card-header">
-                <div class="watch-range-panel">
-                    <div class="watch-range-topline">
-                        <div>
-                            <p class="watch-kicker">NW Ledger</p>
-                            <p class="watch-range-title">Slide the two markers to choose the war date window.</p>
-                        </div>
-                        <div class="watch-topline-right">
-                            <div class="watch-mode-toggle" role="group" aria-label="War view mode">
-                                <button id="watch-mode-alliance" class="watch-mode-btn is-active" type="button" data-mode="alliance">Alliance Wars</button>
-                                <button id="watch-mode-nations" class="watch-mode-btn" type="button" data-mode="nations">All Nations</button>
-                            </div>
-                            <div class="watch-range-count">
-                                <span id="watch-war-count">0</span>
-                                <span>Wars in Range</span>
-                            </div>
-                        </div>
+<div id="loot-tooltip" class="loot-tooltip" role="tooltip" aria-hidden="true"></div>
+<div class="watch-shell">
+    <div class="card watch-controls">
+        <div class="card-header">
+            <div class="watch-range-panel">
+                <div class="watch-range-topline">
+                    <div>
+                        <p class="watch-kicker">NW Ledger</p>
+                        <p class="watch-range-title">Slide the two markers to choose the war date window.</p>
                     </div>
-                    <div class="watch-range-labels">
-                        <div class="watch-range-chip">
-                            <p class="watch-range-chip-label">Available Data</p>
-                            <p class="watch-range-chip-value" id="watch-available-range">Loading...</p>
+                    <div class="watch-topline-right">
+                        <div class="watch-mode-toggle" role="group" aria-label="War view mode">
+                            <button id="watch-mode-alliance" class="watch-mode-btn is-active" type="button" data-mode="alliance">Alliance Wars</button>
+                            <button id="watch-mode-nations" class="watch-mode-btn" type="button" data-mode="nations">All Nations</button>
                         </div>
-                        <div class="watch-range-chip">
-                            <p class="watch-range-chip-label">Selected Start</p>
-                            <p class="watch-range-chip-value" id="watch-selected-start">Loading...</p>
-                        </div>
-                        <div class="watch-range-chip">
-                            <p class="watch-range-chip-label">Selected End</p>
-                            <p class="watch-range-chip-value" id="watch-selected-end">Loading...</p>
-                        </div>
-                    </div>
-                    <div class="watch-slider-shell">
-                        <div class="watch-slider-track"></div>
-                        <div class="watch-slider-range" id="watch-slider-range"></div>
-                        <input id="watch-start-slider" class="watch-slider-input" type="range" min="0" max="0" value="0" step="1" aria-label="Watch start date">
-                        <input id="watch-end-slider" class="watch-slider-input" type="range" min="0" max="0" value="0" step="1" aria-label="Watch end date">
-                        <div class="watch-slider-scale">
-                            <span id="watch-scale-start">-</span>
-                            <span id="watch-scale-end">-</span>
+                        <div class="watch-range-count">
+                            <span id="watch-war-count">0</span>
+                            <span>Wars in Range</span>
                         </div>
                     </div>
                 </div>
-            </div>
-        </div>
-        <div id="watch-status" role="status" aria-live="polite"></div>
-
-        <!-- ── Alliance totals panel (shown in Alliance Wars mode) ── -->
-        <div id="watch-alliance-panel" style="display:none"></div>
-
-        <!-- ── Nations table (shown in All Nations mode) ── -->
-        <div class="card watch-table-card" id="watch-table-card">
-            <div class="card-header">
-                <span id="watch-table-title">Alliance Breakdown</span>
-                <span id="watch-sort-summary">Sorted by Gross Cost (descending)</span>
-            </div>
-            <div class="card-body">
-                <div class="watch-table-wrap">
-                    <table id="war-stats-table">
-                        <thead>
-                            <tr>
-                                <th data-sort="name"><span class="th-label">Nation <span class="th-arrow"></span></span></th>
-                                <th data-sort="cost_metric" class="watch-units-header">
-                                    <div id="watch-cost-sort" class="watch-units-sort">
-                                        <div class="watch-units-select-wrap">
-                                            <img id="watch-cost-icon" class="watch-units-icon" src="/static/Emojis/Watcher/cost.png" alt="">
-                                            <select id="watch-cost-select" class="watch-units-select" aria-label="Select cost metric">
-                                                <option value="gross_cost">Gross Cost</option>
-                                                <option value="net_damage">Net Costs</option>
-                                            </select>
-                                        </div>
-                                        <button id="watch-cost-direction" class="watch-units-direction" type="button" aria-label="Toggle cost sort direction">&#8595;</button>
-                                    </div>
-                                </th>
-                                <th data-sort="gains_metric" class="watch-units-header">
-                                    <div id="watch-gains-sort" class="watch-units-sort">
-                                        <div class="watch-units-select-wrap">
-                                            <img id="watch-gains-icon" class="watch-units-icon" src="/static/Emojis/Watcher/loot.png" alt="">
-                                            <select id="watch-gains-select" class="watch-units-select" aria-label="Select gains metric">
-                                                <option value="total_gains">Total Gains</option>
-                                                <option value="gains_cash">Cash</option>
-                                                <option value="gains_res_coal">Coal</option>
-                                                <option value="gains_res_oil">Oil</option>
-                                                <option value="gains_res_uranium">Uranium</option>
-                                                <option value="gains_res_iron">Iron</option>
-                                                <option value="gains_res_bauxite">Bauxite</option>
-                                                <option value="gains_res_lead">Lead</option>
-                                                <option value="gains_res_gasoline">Gasoline</option>
-                                                <option value="gains_res_munitions">Munitions</option>
-                                                <option value="gains_res_steel">Steel</option>
-                                                <option value="gains_res_aluminum">Aluminum</option>
-                                                <option value="gains_res_food">Food</option>
-                                            </select>
-                                        </div>
-                                        <button id="watch-gains-direction" class="watch-units-direction" type="button" aria-label="Toggle gains sort direction">&#8595;</button>
-                                    </div>
-                                </th>
-                                <th data-sort="units_metric" class="watch-units-header">
-                                    <div id="watch-units-sort" class="watch-units-sort">
-                                        <div class="watch-units-select-wrap">
-                                            <img id="watch-units-icon" class="watch-units-icon" src="/static/Emojis/Watcher/cost.png" alt="">
-                                            <select id="watch-units-select" class="watch-units-select" aria-label="Select unit metric">
-                                                <option value="units_net">All Units</option>
-                                                <option value="soldiers_lost">Soldiers</option>
-                                                <option value="tanks_lost">Tanks</option>
-                                                <option value="aircraft_lost">Aircraft</option>
-                                                <option value="ships_lost">Ships</option>
-                                                <option value="missiles_lost">Missiles</option>
-                                                <option value="nukes_lost">Nukes</option>
-                                            </select>
-                                        </div>
-                                        <button id="watch-units-direction" class="watch-units-direction" type="button" aria-label="Toggle units sort direction">&#8595;</button>
-                                    </div>
-                                </th>
-                                <th data-sort="consumption_metric" class="watch-units-header">
-                                    <div id="watch-consumption-sort" class="watch-units-sort">
-                                        <div class="watch-units-select-wrap">
-                                            <img id="watch-consumption-icon" class="watch-units-icon" src="/static/Emojis/Watcher/consumption.png" alt="">
-                                            <select id="watch-consumption-select" class="watch-units-select" aria-label="Select consumption metric">
-                                                <option value="consumption">Consumption</option>
-                                                <option value="gasoline_sell_value">Gasoline</option>
-                                                <option value="munitions_sell_value">Munitions</option>
-                                            </select>
-                                        </div>
-                                        <button id="watch-consumption-direction" class="watch-units-direction" type="button" aria-label="Toggle consumption sort direction">&#8595;</button>
-                                    </div>
-                                </th>
-                                <th data-sort="destruction_metric" class="watch-units-header">
-                                    <div id="watch-destruction-sort" class="watch-units-sort">
-                                        <div class="watch-units-select-wrap">
-                                            <img id="watch-destruction-icon" class="watch-units-icon" src="/static/Emojis/Watcher/infra.png" alt="">
-                                            <select id="watch-destruction-select" class="watch-units-select" aria-label="Select destruction metric">
-                                                <option value="destruction_total">Destruction</option>
-                                                <option value="infra_net">Infrastructure</option>
-                                                <option value="improvements">Improvements</option>
-                                            </select>
-                                        </div>
-                                        <button id="watch-destruction-direction" class="watch-units-direction" type="button" aria-label="Toggle destruction sort direction">&#8595;</button>
-                                    </div>
-                                </th>
-                                <th data-sort="wars_metric" class="watch-units-header">
-                                    <div id="watch-wars-sort" class="watch-units-sort">
-                                        <div class="watch-units-select-wrap">
-                                            <img id="watch-wars-icon" class="watch-units-icon" src="/static/Emojis/Watcher/war.png" alt="">
-                                            <select id="watch-wars-select" class="watch-units-select" aria-label="Select wars metric">
-                                                <option value="wars_total">Wars</option>
-                                                <option value="offense_wars_count">Offensive</option>
-                                                <option value="defense_wars_count">Defensive</option>
-                                            </select>
-                                        </div>
-                                        <button id="watch-wars-direction" class="watch-units-direction" type="button" aria-label="Toggle wars sort direction">&#8595;</button>
-                                    </div>
-                                </th>
-                                <th data-sort="damages"><span class="th-label"><img class="watch-sort-icon" src="/static/Emojis/Watcher/damages.png" alt=""> Damages <span class="th-arrow"></span></span></th>
-                            </tr>
-                        </thead>
-                        <tbody id="war-stats-body">
-                        </tbody>
-                    </table>
+                <div class="watch-range-labels">
+                    <div class="watch-range-chip">
+                        <p class="watch-range-chip-label">Available Data</p>
+                        <p class="watch-range-chip-value" id="watch-available-range">Loading...</p>
+                    </div>
+                    <div class="watch-range-chip">
+                        <p class="watch-range-chip-label">Selected Start</p>
+                        <p class="watch-range-chip-value" id="watch-selected-start">Loading...</p>
+                    </div>
+                    <div class="watch-range-chip">
+                        <p class="watch-range-chip-label">Selected End</p>
+                        <p class="watch-range-chip-value" id="watch-selected-end">Loading...</p>
+                    </div>
+                </div>
+                <div class="watch-slider-shell">
+                    <div class="watch-slider-track"></div>
+                    <div class="watch-slider-range" id="watch-slider-range"></div>
+                    <input id="watch-start-slider" class="watch-slider-input" type="range" min="0" max="0" value="0" step="1" aria-label="Watch start date">
+                    <input id="watch-end-slider" class="watch-slider-input" type="range" min="0" max="0" value="0" step="1" aria-label="Watch end date">
+                    <div class="watch-slider-scale">
+                        <span id="watch-scale-start">-</span>
+                        <span id="watch-scale-end">-</span>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
-    <script src="/js/watch.js"></script>
-</body>
-</html>
+    <div id="watch-status" role="status" aria-live="polite"></div>
+
+    <!-- ── Alliance totals panel (shown in Alliance Wars mode) ── -->
+    <div id="watch-alliance-panel" style="display:none"></div>
+
+    <!-- ── Nations table (shown in All Nations mode) ── -->
+    <div class="card watch-table-card" id="watch-table-card">
+        <div class="card-header">
+            <span id="watch-table-title">Alliance Breakdown</span>
+            <span id="watch-sort-summary">Sorted by Gross Cost (descending)</span>
+        </div>
+        <div class="card-body">
+            <div class="watch-table-wrap">
+                <table id="war-stats-table">
+                    <thead>
+                        <tr>
+                            <th data-sort="name"><span class="th-label">Nation <span class="th-arrow"></span></span></th>
+                            <th data-sort="cost_metric" class="watch-units-header">
+                                <div id="watch-cost-sort" class="watch-units-sort">
+                                    <div class="watch-units-select-wrap">
+                                        <img id="watch-cost-icon" class="watch-units-icon" src="/static/Emojis/Watcher/cost.png" alt="">
+                                        <select id="watch-cost-select" class="watch-units-select" aria-label="Select cost metric">
+                                            <option value="gross_cost">Gross Cost</option>
+                                            <option value="net_damage">Net Costs</option>
+                                        </select>
+                                    </div>
+                                    <button id="watch-cost-direction" class="watch-units-direction" type="button" aria-label="Toggle cost sort direction">&#8595;</button>
+                                </div>
+                            </th>
+                            <th data-sort="gains_metric" class="watch-units-header">
+                                <div id="watch-gains-sort" class="watch-units-sort">
+                                    <div class="watch-units-select-wrap">
+                                        <img id="watch-gains-icon" class="watch-units-icon" src="/static/Emojis/Watcher/loot.png" alt="">
+                                        <select id="watch-gains-select" class="watch-units-select" aria-label="Select gains metric">
+                                            <option value="total_gains">Total Gains</option>
+                                            <option value="gains_cash">Cash</option>
+                                            <option value="gains_res_coal">Coal</option>
+                                            <option value="gains_res_oil">Oil</option>
+                                            <option value="gains_res_uranium">Uranium</option>
+                                            <option value="gains_res_iron">Iron</option>
+                                            <option value="gains_res_bauxite">Bauxite</option>
+                                            <option value="gains_res_lead">Lead</option>
+                                            <option value="gains_res_gasoline">Gasoline</option>
+                                            <option value="gains_res_munitions">Munitions</option>
+                                            <option value="gains_res_steel">Steel</option>
+                                            <option value="gains_res_aluminum">Aluminum</option>
+                                            <option value="gains_res_food">Food</option>
+                                        </select>
+                                    </div>
+                                    <button id="watch-gains-direction" class="watch-units-direction" type="button" aria-label="Toggle gains sort direction">&#8595;</button>
+                                </div>
+                            </th>
+                            <th data-sort="units_metric" class="watch-units-header">
+                                <div id="watch-units-sort" class="watch-units-sort">
+                                    <div class="watch-units-select-wrap">
+                                        <img id="watch-units-icon" class="watch-units-icon" src="/static/Emojis/Watcher/cost.png" alt="">
+                                        <select id="watch-units-select" class="watch-units-select" aria-label="Select unit metric">
+                                            <option value="units_net">All Units</option>
+                                            <option value="soldiers_lost">Soldiers</option>
+                                            <option value="tanks_lost">Tanks</option>
+                                            <option value="aircraft_lost">Aircraft</option>
+                                            <option value="ships_lost">Ships</option>
+                                            <option value="missiles_lost">Missiles</option>
+                                            <option value="nukes_lost">Nukes</option>
+                                        </select>
+                                    </div>
+                                    <button id="watch-units-direction" class="watch-units-direction" type="button" aria-label="Toggle units sort direction">&#8595;</button>
+                                </div>
+                            </th>
+                            <th data-sort="consumption_metric" class="watch-units-header">
+                                <div id="watch-consumption-sort" class="watch-units-sort">
+                                    <div class="watch-units-select-wrap">
+                                        <img id="watch-consumption-icon" class="watch-units-icon" src="/static/Emojis/Watcher/consumption.png" alt="">
+                                        <select id="watch-consumption-select" class="watch-units-select" aria-label="Select consumption metric">
+                                            <option value="consumption">Consumption</option>
+                                            <option value="gasoline_sell_value">Gasoline</option>
+                                            <option value="munitions_sell_value">Munitions</option>
+                                        </select>
+                                    </div>
+                                    <button id="watch-consumption-direction" class="watch-units-direction" type="button" aria-label="Toggle consumption sort direction">&#8595;</button>
+                                </div>
+                            </th>
+                            <th data-sort="destruction_metric" class="watch-units-header">
+                                <div id="watch-destruction-sort" class="watch-units-sort">
+                                    <div class="watch-units-select-wrap">
+                                        <img id="watch-destruction-icon" class="watch-units-icon" src="/static/Emojis/Watcher/infra.png" alt="">
+                                        <select id="watch-destruction-select" class="watch-units-select" aria-label="Select destruction metric">
+                                            <option value="destruction_total">Destruction</option>
+                                            <option value="infra_net">Infrastructure</option>
+                                            <option value="improvements">Improvements</option>
+                                        </select>
+                                    </div>
+                                    <button id="watch-destruction-direction" class="watch-units-direction" type="button" aria-label="Toggle destruction sort direction">&#8595;</button>
+                                </div>
+                            </th>
+                            <th data-sort="wars_metric" class="watch-units-header">
+                                <div id="watch-wars-sort" class="watch-units-sort">
+                                    <div class="watch-units-select-wrap">
+                                        <img id="watch-wars-icon" class="watch-units-icon" src="/static/Emojis/Watcher/war.png" alt="">
+                                        <select id="watch-wars-select" class="watch-units-select" aria-label="Select wars metric">
+                                            <option value="wars_total">Wars</option>
+                                            <option value="offense_wars_count">Offensive</option>
+                                            <option value="defense_wars_count">Defensive</option>
+                                        </select>
+                                    </div>
+                                    <button id="watch-wars-direction" class="watch-units-direction" type="button" aria-label="Toggle wars sort direction">&#8595;</button>
+                                </div>
+                            </th>
+                            <th data-sort="damages"><span class="th-label"><img class="watch-sort-icon" src="/static/Emojis/Watcher/damages.png" alt=""> Damages <span class="th-arrow"></span></span></th>
+                        </tr>
+                    </thead>
+                    <tbody id="war-stats-body">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="/js/watch.js"></script>

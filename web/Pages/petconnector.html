@@ -10,9 +10,89 @@
             </h4>
             <span class="pc-badge" id="pc-count-badge" style="display:none"></span>
         </div>
+        <div class="d-flex align-items-center gap-2">
+            <button class="pc-btn-secondary" id="pc-compare-mode-btn" onclick="pcToggleCompareMode()" style="display:none">
+                <span id="pc-compare-icon">⚖️</span> Compare Mode
+            </button>
+            <button class="pc-btn-secondary" id="pc-clear-compare-btn" onclick="pcClearCompare()" style="display:none">
+                ✕ Clear Compare
+            </button>
+        </div>
     </div>
 
     <hr class="pc-divider">
+
+    <!-- ── Enhanced Controls bar with rich visuals ── -->
+    <div id="pc-controls" style="display:none" class="pc-controls-bar-enhanced">
+        <!-- Enhanced Search Section -->
+        <div class="pc-search-section">
+            <div class="pc-search-wrap-enhanced">
+                <span class="pc-search-icon-enhanced">🔍</span>
+                <input type="text" id="pc-search" class="pc-search-input-enhanced" placeholder="Search pets, owners, species, elements…" oninput="pcApplyFilters()">
+                <div class="pc-search-filters-enhanced">
+                    <select id="pc-species-filter" class="pc-filter-select" onchange="pcApplyFilters()">
+                        <option value="">All Species</option>
+                    </select>
+                    <select id="pc-element-filter" class="pc-filter-select" onchange="pcApplyFilters()">
+                        <option value="">All Elements</option>
+                    </select>
+                    <select id="pc-category-filter" class="pc-filter-select" onchange="pcApplyFilters()">
+                        <option value="">All Categories</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Condensed Relationship & Sort Controls on Single Line -->
+        <div class="pc-condensed-controls">
+            <!-- Relationship filter tabs -->
+            <div class="pc-filter-section-inline">
+                <span class="pc-filter-label-inline">Relationships:</span>
+                <div class="pc-filter-tabs-inline" id="pc-filter-tabs">
+                    <button class="pc-filter-tab-inline pc-filter-active" data-rel="all" onclick="pcSetRelFilter('all')" title="All Pets">
+                        <span class="pc-filter-emoji-enhanced">🌍</span>
+                    </button>
+                    <button class="pc-filter-tab-inline" data-rel="best_friend" onclick="pcSetRelFilter('best_friend')" title="Best Friends">
+                        <span class="pc-filter-emoji-enhanced pc-emoji-best-friend">💚</span>
+                    </button>
+                    <button class="pc-filter-tab-inline" data-rel="friend" onclick="pcSetRelFilter('friend')" title="Friends">
+                        <span class="pc-filter-emoji-enhanced pc-emoji-friend">💙</span>
+                    </button>
+                    <button class="pc-filter-tab-inline" data-rel="foe" onclick="pcSetRelFilter('foe')" title="Foes">
+                        <span class="pc-filter-emoji-enhanced pc-emoji-foe">🧡</span>
+                    </button>
+                    <button class="pc-filter-tab-inline" data-rel="enemy" onclick="pcSetRelFilter('enemy')" title="Enemies">
+                        <span class="pc-filter-emoji-enhanced pc-emoji-enemy">❤️</span>
+                    </button>
+                    <button class="pc-filter-tab-inline" data-rel="none" onclick="pcSetRelFilter('none')" title="No Relationship">
+                        <span class="pc-filter-emoji-enhanced">⚪</span>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Sort controls -->
+            <div class="pc-sort-section-inline">
+                <span class="pc-sort-label-inline">Sort:</span>
+                <div class="pc-sort-wrap-inline">
+                    <select id="pc-sort-select" class="pc-sort-select-inline" onchange="pcApplyFilters()">
+                        <option value="username">👤 Name</option>
+                        <option value="level">📊 Level</option>
+                        <option value="hp">❤️ HP</option>
+                        <option value="attack">⚔️ ATK</option>
+                        <option value="defense">🛡️ DEF</option>
+                        <option value="xp">✨ XP</option>
+                        <option value="total_xp">🌟 Total XP</option>
+                        <option value="relationship">💫 Relationship</option>
+                        <option value="species">🐾 Species</option>
+                        <option value="element">🔥 Element</option>
+                    </select>
+                    <button class="pc-sort-dir-btn-inline" id="pc-sort-dir" onclick="pcToggleSortDir()" title="Toggle sort direction">
+                        <span class="pc-sort-arrow">↓</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- Loading -->
     <div id="pc-loading" class="text-center py-5">
@@ -26,41 +106,200 @@
         <button class="pc-btn-sm" onclick="location.reload()">↺ Retry</button>
     </div>
 
-    <!-- Cards grid -->
+    <!-- Main layout: grid + leaderboard -->
     <div id="pc-main" style="display:none">
-        <div class="row g-3" id="pc-pets-grid"></div>
+        <div class="pc-main-layout">
+            <!-- Pet cards grid -->
+            <div class="pc-grid-col">
+                <div class="row g-3" id="pc-pets-grid"></div>
+            </div>
+            
+            <!-- Condensed Leaderboard sidebar -->
+            <div class="pc-lb-col">
+                <div class="pc-lb-panel">
+                    <div class="pc-lb-header">
+                        <div class="pc-lb-header-top">
+                            <span class="pc-lb-title">🏆 Leaderboard</span>
+                            <button class="pc-lb-toggle" onclick="pcToggleLeaderboard()" title="Toggle Leaderboard">📊</button>
+                        </div>
+                        <div class="pc-lb-controls">
+                            <select id="pc-lb-category" class="pc-lb-select" onchange="pcLbSort(this.value)">
+                                <optgroup label="📊 Progress">
+                                    <option value="level" selected>Level</option>
+                                    <option value="total_xp">Total XP</option>
+                                    <option value="xp_progress">XP Progress %</option>
+                                </optgroup>
+                                <optgroup label="⚔️ Base Stats">
+                                    <option value="ATT">⚔️ ATT</option>
+                                    <option value="DEF">🛡️ DEF</option>
+                                    <option value="INT">🧠 INT</option>
+                                    <option value="DEX">💨 DEX</option>
+                                    <option value="HAP">💚 HAP</option>
+                                    <option value="ENE">⚡ ENE</option>
+                                </optgroup>
+                                <optgroup label="🥊 Combat">
+                                    <option value="cs_hp">❤️ HP</option>
+                                    <option value="cs_attack">⚔️ Attack</option>
+                                    <option value="cs_defense">🛡️ Defense</option>
+                                </optgroup>
+                                <optgroup label="🏆 Battles">
+                                    <option value="pvp_wins">PvP Wins</option>
+                                    <option value="pvp_wr">PvP Win Rate</option>
+                                    <option value="npc_wins">NPC Wins</option>
+                                    <option value="boss_wins">Boss Wins</option>
+                                    <option value="tournament_wins">Tournament Wins</option>
+                                    <option value="total_wins">Total Wins</option>
+                                    <option value="eliminations">Eliminations</option>
+                                </optgroup>
+                                <optgroup label="🎯 Activity">
+                                    <option value="missions_completed">Missions</option>
+                                    <option value="training_completed">Training</option>
+                                    <option value="play_attempts">Play Attempts</option>
+                                </optgroup>
+                                <optgroup label="🎰 Casino">
+                                    <option value="casino_net">Casino Net XP</option>
+                                    <option value="casino_played">Games Played</option>
+                                    <option value="slots_played">Slots</option>
+                                    <option value="blackjack_played">Blackjack</option>
+                                    <option value="holdem_played">Hold'em</option>
+                                </optgroup>
+                                <optgroup label="💰 Economy">
+                                    <option value="stock_tokens">Stock Tokens</option>
+                                    <option value="ability_points">Ability Points</option>
+                                    <option value="inventory_count">Items</option>
+                                </optgroup>
+                                <optgroup label="✨ XP Sources">
+                                    <option value="xp_play">Play XP</option>
+                                    <option value="xp_training">Training XP</option>
+                                    <option value="xp_mission">Mission XP</option>
+                                    <option value="xp_battle">Battle XP</option>
+                                    <option value="xp_casino">Casino XP</option>
+                                </optgroup>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <!-- Leaderboard list -->
+                    <div id="pc-lb-list" class="pc-lb-list"></div>
+                </div>
+            </div>
+        </div>
     </div>
 
 </div>
 
-<!-- ── Expanded pet detail panel (inline, not a Bootstrap modal) ───────────── -->
+<!-- ══════════════════════════════════════════════════════════════════════════
+     ENHANCED WIDE DETAIL PANEL (two-column layout with hero section)
+     ══════════════════════════════════════════════════════════════════════════ -->
 <div id="pc-detail-overlay" style="display:none">
-    <div id="pc-detail-panel">
+    <div id="pc-detail-panel" class="pc-detail-panel-wide">
         <button class="pc-detail-close" onclick="closeDetail()">✕</button>
-        <div id="pc-detail-inner"></div>
+        
+        <!-- Two-column layout -->
+        <div class="pc-detail-layout">
+            <!-- Left Column: Hero Section -->
+            <div class="pc-detail-left-col">
+                <div id="pc-detail-hero" class="pc-detail-hero-wide"></div>
+            </div>
+            
+            <!-- Right Column: Stats & Info -->
+            <div class="pc-detail-right-col">
+                <div id="pc-detail-stats" class="pc-detail-stats-scroll"></div>
+            </div>
+        </div>
+        
+        <!-- Bottom Full-Width: Relationship & Gift Section -->
+        <div class="pc-detail-bottom-section">
+            <!-- Relationship Section -->
+            <div class="pc-detail-relationship-wide">
+                <h5 class="pc-section-title-wide">💫 Relationship</h5>
+                <div id="pc-mutual-status" class="pc-mutual-status-wide"></div>
+                <div id="pc-relationship-cards" class="pc-relationship-cards"></div>
+            </div>
+            
+            <!-- Gift Section -->
+            <div class="pc-detail-gift-wide">
+                <h5 class="pc-section-title-wide">🎁 Send Gift</h5>
+                <div class="pc-gift-search-bar">
+                    <input type="text" id="pc-gift-search" class="pc-gift-search-input" placeholder="Search items...">
+                    <select id="pc-gift-filter" class="pc-gift-filter-select">
+                        <option value="">All Types</option>
+                        <option value="Material">Materials</option>
+                        <option value="Gem">Gems</option>
+                        <option value="Monster">Monsters</option>
+                        <option value="Equipment">Equipment</option>
+                        <option value="Potion">Potions</option>
+                    </select>
+                </div>
+                <div id="pc-gift-items-grid" class="pc-gift-items-grid"></div>
+                <div class="pc-gift-actions">
+                    <div class="pc-gift-selected-info">
+                        <span id="pc-gift-selected-text">No item selected</span>
+                    </div>
+                    <div class="pc-gift-quantity-controls">
+                        <label>Quantity:</label>
+                        <input type="number" id="pc-gift-quantity" min="1" max="1" value="1" class="pc-gift-qty-input">
+                        <button id="pc-gift-send-btn" class="pc-btn-gift-send" onclick="pcSendGiftInline()" disabled>Send Gift</button>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 
-<!-- ── Gift modal ──────────────────────────────────────────────────────────── -->
+<!-- ══════════════════════════════════════════════════════════════════════════
+     ENHANCED GIFT OVERLAY with auto-populated inventory
+     ══════════════════════════════════════════════════════════════════════════ -->
 <div id="pc-gift-overlay" style="display:none">
-    <div class="pc-gift-dialog">
+    <div class="pc-gift-dialog pc-gift-dialog-enhanced">
         <div class="pc-gift-header">
             <span id="pc-gift-title">🎁 Gift Item</span>
-            <button onclick="closeGiftOverlay()" style="background:none;border:none;color:var(--text-secondary);font-size:1.2rem;cursor:pointer;line-height:1">✕</button>
+            <button class="pc-gift-close" onclick="closeGiftOverlay()">✕</button>
         </div>
         <div class="pc-gift-body">
-            <label style="font-size:0.8rem;color:var(--text-secondary);margin-bottom:4px;display:block">Select Item</label>
-            <select id="pc-gift-select" class="pc-select" style="width:100%;margin-bottom:12px" onchange="pcUpdateGiftQty()">
-                <option value="">Choose an item…</option>
-            </select>
-            <label style="font-size:0.8rem;color:var(--text-secondary);margin-bottom:4px;display:block">Quantity</label>
-            <input type="number" id="pc-gift-qty" class="pc-select" style="width:80px" min="1" max="1" value="1">
+            <div class="pc-gift-section">
+                <label class="pc-gift-label">Select Item:</label>
+                <div class="pc-gift-item-selector">
+                    <select id="pc-gift-select" class="pc-gift-select" onchange="pcUpdateGiftQty()">
+                        <option value="">Choose an item…</option>
+                    </select>
+                    <div id="pc-gift-item-preview" class="pc-gift-item-preview"></div>
+                </div>
+            </div>
+            <div class="pc-gift-section">
+                <label class="pc-gift-label">Quantity:</label>
+                <div class="pc-gift-qty-wrap">
+                    <input type="number" id="pc-gift-qty" class="pc-gift-qty" min="1" max="1" value="1">
+                    <span id="pc-gift-qty-max" class="pc-gift-qty-max">/ 1</span>
+                </div>
+            </div>
         </div>
         <div class="pc-gift-footer">
-            <button class="pc-rel-btn" style="background:rgba(255,255,255,0.08)" onclick="closeGiftOverlay()">Cancel</button>
-            <button class="pc-rel-btn pc-rel-active" id="pc-gift-send" onclick="pcSendGift()">Send Gift</button>
+            <button class="pc-btn-secondary" onclick="closeGiftOverlay()">Cancel</button>
+            <button class="pc-btn-primary" id="pc-gift-send" onclick="pcSendGift()">Send Gift</button>
         </div>
     </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     HOVER PREVIEW TOOLTIP (enhanced with rich content)
+     ══════════════════════════════════════════════════════════════════════════ -->
+<div id="pc-hover-tip" class="pc-hover-tip-enhanced" style="display:none">
+    <div id="pc-hover-tip-inner" class="pc-hover-tip-inner-enhanced"></div>
 </div>
 
 <script src="/js/petconnector.js"></script>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     COMPARE MODAL OVERLAY
+     ══════════════════════════════════════════════════════════════════════════ -->
+<div id="pc-compare-overlay" style="display:none" onclick="if(event.target===this)pcClearCompare()">
+    <div id="pc-compare-modal" class="pc-compare-modal">
+        <button class="pc-detail-close" onclick="pcClearCompare()">✕</button>
+        <div class="pc-compare-modal-header">
+            <span class="pc-compare-modal-title">⚖️ Pet Comparison</span>
+            <span id="pc-compare-vs-label" class="pc-compare-vs-label"></span>
+        </div>
+        <div id="pc-compare-content" class="pc-compare-modal-body"></div>
+    </div>
+</div>

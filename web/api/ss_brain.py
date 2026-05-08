@@ -9,12 +9,13 @@ Scoring:
 
 Movement (SS Brain):
   Priority order per pet each round:
-    1. Enemies      → always chase, ignore all other logic
-    2. Best Friends → stay in same zone while field > 10%
+    1. Enemies      → always chase closest enemy, ignore all other logic
+    2. Best Friends → stay in same zone (stay put if already together);
+                      step toward BF while field > 10%
     3. Dominant pets hunt — move toward weakest stranger in range
     4. Flee         → score-gap-weighted flee from stronger strangers;
                       boldness (kills × 0.15, cap 0.75) reduces flee chance
-    5. Foes         → roam preferred zones freely, no flee
+    5. Foes         → 80% chance to chase foe's zone (stay if already there)
     6. Friends      → avoid their zones while field > 25%
     7. Default      → element-preferred zones, weighted by element affinity
     8. Arena pressure → as rounds accumulate with no eliminations, pets are
@@ -22,13 +23,18 @@ Movement (SS Brain):
                         encounters happen.
 
 Encounter chance per zone:
-  Base 65% (2 pets) → 85% (3+).
+  Base 75% (2 pets) → 92% (3+).
   Enemies in same zone: always encounter.
-  Foes in same zone: 90% encounter.
-  Friends in same zone: 40% encounter.
-  BFs in same zone: 20% encounter.
-  Dominant pet (score > 1.5× opponent): +15% encounter chance.
+  Foes in same zone: 95% encounter.
+  Friends in same zone: 45% encounter.
+  BFs in same zone: 10% encounter (almost never fight each other).
+  Dominant pet (score > 1.5× opponent): 100% encounter chance.
   Arena pressure (stale rounds): encounter chance floors raised further.
+
+Encounter grouping:
+  Enemies and foes are always placed on OPPOSITE sides.
+  Best friends and friends are always placed on the SAME side.
+  The anchor pair is chosen by priority: enemy > foe > BF > friend > stranger.
 
 Deal-making:
   After _DEAL_ROUND_THRESHOLD rounds with no eliminations, pets that are
@@ -43,6 +49,11 @@ Combat resolution:
   Group combat: average score of each side vs representative opponent.
   Win probability clamped 5–95%; close scores produce real tension.
   Upset multiplier: if loser's score > 0.85× winner's, upset chance +5%.
+
+Early-round player protection (rounds 1–3):
+  NPC win chance against a real player is capped based on the score gap:
+    gap 1×: cap 12%  |  gap 2×: cap 7%  |  gap 3×+: cap 2%
+  This prevents a weaker NPC from upsetting a clearly stronger player pet.
 
 Narrative:
   Solo lines reflect actual behaviour: hunting, fleeing, guarding BF,
@@ -199,7 +210,9 @@ def _pet_action_name(info: Dict, action: str) -> str:
     )
 
 
-def _preferred_action(info: Dict) -> str:
+def _charge_limit(info: Dict) -> int:
+    """Return the effective charge stack cap for a participant (base 8 + charge_limit_bonus)."""
+    return max(8, int(info.get("charge_limit", 8)))
     """
     Return 'attack' if ATT >= DEF for this pet, else 'defend'.
     Uses species stats from info.json; falls back to 'attack'.
@@ -388,10 +401,14 @@ def elim_win_prob(uid_a: str, uid_b: str, p_map: Dict,
                   wounded_a: bool = False, wounded_b: bool = False,
                   last_stand_a: bool = False, last_stand_b: bool = False,
                   fight_zone: str = "",
-                  zone_tenure_map: Dict = None) -> float:
+                  zone_tenure_map: Dict = None,
+                  current_round: int = 0) -> float:
     """
     Win probability for uid_a vs uid_b.
     Uses ratio of elimination scores (with all modifiers), clamped 5–95%.
+    Real player pets are protected in rounds 1-3 against NPCs: the NPC's win
+    chance is capped based on the score gap (2–12%), so a player with double
+    the score cannot be upset by a weaker NPC.
     """
     ia = p_map.get(uid_a, {})
     ib = p_map.get(uid_b, {})
@@ -420,7 +437,32 @@ def elim_win_prob(uid_a: str, uid_b: str, p_map: Dict,
         raw = 0.5 + (raw - 0.5) * 0.80
     elif ratio >= 2.0 or ratio <= 0.5:
         raw = 0.5 + (raw - 0.5) * 1.15
-    return max(0.05, min(0.95, raw))
+    raw = max(0.05, min(0.95, raw))
+
+    # ── Early-round player protection (rounds 1-3) ────────────────────────────
+    # Real player pets should not be eliminated by NPCs with lower survive scores.
+    # The cap scales with the score gap: the bigger the player's advantage, the
+    # lower the NPC's maximum win chance (floor 2%, ceiling 12%).
+    if current_round <= 3:
+        a_is_npc = str(uid_a).startswith("npc_") or ia.get("is_npc", False)
+        b_is_npc = str(uid_b).startswith("npc_") or ib.get("is_npc", False)
+        if a_is_npc and not b_is_npc:
+            # NPC attacking real player — cap NPC win chance based on score gap
+            player_ss = survive_score(ib)
+            npc_ss    = survive_score(ia)
+            gap_ratio = player_ss / max(npc_ss, 1e-9)
+            # At 1× gap: cap 12%. At 2× gap: cap 5%. At 3×+: cap 2%.
+            npc_cap = max(0.02, 0.12 - (gap_ratio - 1.0) * 0.05)
+            raw = min(raw, npc_cap)
+        elif b_is_npc and not a_is_npc:
+            # Real player attacking NPC — floor player win chance based on score gap
+            player_ss = survive_score(ia)
+            npc_ss    = survive_score(ib)
+            gap_ratio = player_ss / max(npc_ss, 1e-9)
+            player_floor = min(0.98, 0.88 + (gap_ratio - 1.0) * 0.05)
+            raw = max(raw, player_floor)
+
+    return raw
 
 
 def _group_combat_odds(side_a: List[str], side_b: List[str], p_map: Dict,
@@ -428,8 +470,12 @@ def _group_combat_odds(side_a: List[str], side_b: List[str], p_map: Dict,
                        wounded_set: set = None,
                        last_stand_set: set = None,
                        zone_tenure_map: Dict = None,
-                       fight_zone: str = "") -> float:
-    """Win probability for side_a vs side_b, including all modifiers."""
+                       fight_zone: str = "",
+                       current_round: int = 0) -> float:
+    """Win probability for side_a vs side_b, including all modifiers.
+    Real player pets have a very small chance of being eliminated in rounds 1-2
+    by NPCs — their survival probability is boosted to at least 85% in those rounds.
+    """
     if not side_a or not side_b:
         return 0.5
     if charge_stacks is None:
@@ -466,7 +512,38 @@ def _group_combat_odds(side_a: List[str], side_b: List[str], p_map: Dict,
         raw = 0.5 + (raw - 0.5) * 0.80
     elif ratio >= 2.0 or ratio <= 0.5:
         raw = 0.5 + (raw - 0.5) * 1.15
-    return max(0.05, min(0.95, raw))
+    raw = max(0.05, min(0.95, raw))
+
+    # ── Early-round player protection (rounds 1-3) ────────────────────────────
+    # The cap scales with the score gap so a clearly stronger player pet cannot
+    # be upset by a weaker NPC. Floor 2%, ceiling 12% for NPC win chance.
+    if current_round <= 3:
+        def _is_npc(uid: str) -> bool:
+            return str(uid).startswith("npc_") or p_map.get(uid, {}).get("is_npc", False)
+        a_all_npc  = all(_is_npc(u) for u in side_a)
+        b_all_npc  = all(_is_npc(u) for u in side_b)
+        a_has_real = any(not _is_npc(u) for u in side_a)
+        b_has_real = any(not _is_npc(u) for u in side_b)
+
+        def _avg_ss(uids: List[str]) -> float:
+            vals = [survive_score(p_map.get(u, {})) for u in uids]
+            return sum(vals) / max(len(vals), 1)
+
+        # side_a wins with probability `raw`; cap NPC-only side winning vs real-player side
+        if a_all_npc and b_has_real:
+            npc_avg    = _avg_ss(side_a)
+            player_avg = _avg_ss([u for u in side_b if not _is_npc(u)])
+            gap_ratio  = player_avg / max(npc_avg, 1e-9)
+            npc_cap    = max(0.02, 0.12 - (gap_ratio - 1.0) * 0.05)
+            raw = min(raw, npc_cap)
+        elif b_all_npc and a_has_real:
+            npc_avg    = _avg_ss(side_b)
+            player_avg = _avg_ss([u for u in side_a if not _is_npc(u)])
+            gap_ratio  = player_avg / max(npc_avg, 1e-9)
+            player_floor = min(0.98, 0.88 + (gap_ratio - 1.0) * 0.05)
+            raw = max(raw, player_floor)
+
+    return raw
 
 
 # ---------------------------------------------------------------------------
@@ -697,8 +774,8 @@ def _trigger_environmental_event(game: Dict, current_round: int, alive: List[str
         narratives.append(f"🍀 The {zone_display} is empty — no one is caught in the disaster.")
         return narratives
     
-    # Track environmental damage for this round
-    env_damaged = game.setdefault("_env_damaged", set())
+    # Track environmental damage for this round (stored as list for JSON serialisation)
+    env_damaged = game.setdefault("_env_damaged", [])
     env_evacuated = game.setdefault("_env_evacuated", {})
     
     # Process each pet in the affected zone
@@ -707,7 +784,8 @@ def _trigger_environmental_event(game: Dict, current_round: int, alive: List[str
         
         # Damage chance
         if random.random() < _ENV_DAMAGE_CHANCE:
-            env_damaged.add(uid)
+            if uid not in env_damaged:
+                env_damaged.append(uid)
             damage_line = random.choice(_ENV_DAMAGE_LINES).replace("{name}", pet_name)
             narratives.append(damage_line)
         
@@ -733,7 +811,7 @@ def _apply_environmental_effects(game: Dict, uid: str, scores: Dict[str, float])
     Apply environmental damage effects to combat scores.
     Pets damaged by environmental events fight at reduced effectiveness.
     """
-    env_damaged = game.get("_env_damaged", set())
+    env_damaged = game.get("_env_damaged", [])
     if uid in env_damaged:
         # Environmental damage reduces combat effectiveness by 15%
         return scores.get(uid, 1.0) * 0.85
@@ -742,7 +820,7 @@ def _apply_environmental_effects(game: Dict, uid: str, scores: Dict[str, float])
 
 def _is_environmentally_damaged(game: Dict, uid: str) -> bool:
     """Check if a pet is currently environmentally damaged."""
-    env_damaged = game.get("_env_damaged", set())
+    env_damaged = game.get("_env_damaged", [])
     return uid in env_damaged
 
 
@@ -2157,14 +2235,22 @@ def choose_zone(
             preferred_safe = [z for z in safe_half if z in preferred]
         return random.choice(preferred_safe if preferred_safe else safe_half)
 
-    # 1. Chase enemies — step toward their zone
+    # 1. Chase enemies — step toward their zone (always, no randomness)
     enemies = [u for u in alive if u != uid and is_enemy(rel_map, uid, u)]
     if enemies:
-        return _step_toward(_zone_of(random.choice(enemies)))
+        # Chase the closest enemy (already in same zone first, else nearest)
+        same_zone_enemies = [u for u in enemies if cur_positions.get(u) == my_zone]
+        target_enemy = random.choice(same_zone_enemies if same_zone_enemies else enemies)
+        return _step_toward(_zone_of(target_enemy))
 
-    # 2. Stay near best friends (while field > 10%)
+    # 2. Stay near best friends (while field > 10%) — actively move toward them
+    # and stay in the same zone. BFs protect each other by staying together.
     bfs = [u for u in alive if u != uid and is_best_friend(rel_map, uid, u)]
     if bfs and pct_alive > 0.10:
+        # Prefer a BF already in the same zone (stay put), else step toward one
+        same_zone_bfs = [u for u in bfs if cur_positions.get(u) == my_zone]
+        if same_zone_bfs:
+            return my_zone  # already together — stay
         return _step_toward(_zone_of(random.choice(bfs)))
 
     # 3. Dominant pets hunt — weakest stranger first, then anyone.
@@ -2253,14 +2339,17 @@ def choose_zone(
             if adv_zones:
                 return _step_toward(random.choice(adv_zones))
 
-    # 7. Foes — actively circle toward each other's zone (95% encounter when they
+    # 7. Foes — actively chase each other's zone (95% encounter when they
     # meet, so moving toward them is correct behaviour — they want that fight).
-    # FIX #15: was picking a random preferred zone, ignoring foe positions entirely.
+    # Higher chase chance (80%) so foes reliably find each other.
     foes = [u for u in alive if u != uid and is_foe(rel_map, uid, u)]
     if foes:
-        # 65% chance to move toward a foe's zone, 35% to roam preferred zones
-        if random.random() < 0.65:
-            return _step_toward(_zone_of(random.choice(foes)))
+        # 80% chance to move toward a foe's zone, 20% to roam preferred zones
+        if random.random() < 0.80:
+            # Prefer a foe already in the same zone (stay and fight), else step toward one
+            same_zone_foes = [u for u in foes if cur_positions.get(u) == my_zone]
+            target_foe = random.choice(same_zone_foes if same_zone_foes else foes)
+            return _step_toward(_zone_of(target_foe))
         non_basic_preferred = [z for z in preferred if z != "basic"]
         return random.choice(non_basic_preferred if non_basic_preferred else preferred)
 
@@ -2346,6 +2435,8 @@ def _build_encounter(
       - 2v1 or 2v2 only if both pets on the larger side are Friends, BFs, or deal partners.
       - 3v1 / 3v2 / 4-way only if all on each side are BFs.
       - Deal partners are placed on the same side (they fight together).
+      - Enemies and foes are always placed on OPPOSITE sides.
+      - Best friends are always placed on the SAME side.
     """
     if len(available) < 2:
         return None
@@ -2360,37 +2451,62 @@ def _build_encounter(
             return True
         return False
 
-    a0, b0 = available[0], available[1]
-    max_g = _allowed_group_size(a0, b0, rel_map)
+    def _hostile(uid_a: str, uid_b: str) -> bool:
+        """True if two pets must be on opposite sides."""
+        if is_enemy(rel_map, uid_a, uid_b):
+            return True
+        if is_foe(rel_map, uid_a, uid_b):
+            return True
+        return False
+
+    # ── Prioritise relationship-driven pairings ───────────────────────────────
+    # Find the best anchor pair: prefer enemy > foe > BF > friend > stranger
+    anchor_a, anchor_b = available[0], available[1]
+    for i, ua in enumerate(available):
+        for ub in available[i + 1:]:
+            if is_enemy(rel_map, ua, ub):
+                anchor_a, anchor_b = ua, ub
+                break
+            if is_foe(rel_map, ua, ub) and not is_enemy(rel_map, anchor_a, anchor_b):
+                anchor_a, anchor_b = ua, ub
+        else:
+            continue
+        break
+
+    max_g = _allowed_group_size(anchor_a, anchor_b, rel_map)
 
     if max_g == 1 or len(available) == 2:
-        return ([a0], [b0])
+        return ([anchor_a], [anchor_b])
 
-    # FIX #3: build side_a first, then side_b from pets NOT already on side_a.
-    # The old code used available[1:] for both passes, so b0 could end up on
-    # both sides when a0 and b0 are allied.
-    side_a = [a0]
-    for u in available[1:]:
+    # Build side_a starting from anchor_a — add allies only
+    side_a = [anchor_a]
+    for u in available:
+        if u in (anchor_a, anchor_b):
+            continue
         if len(side_a) >= max_g:
             break
-        if all(_allied(u, s) for s in side_a):
+        # Only add to side_a if allied with all current side_a members AND
+        # not hostile with anchor_b (enemies/foes must be on opposite sides)
+        if (all(_allied(u, s) for s in side_a)
+                and not _hostile(u, anchor_b)):
             side_a.append(u)
 
-    # Side B: only from pets not already claimed by side_a
-    side_b_pool = [u for u in available if u not in side_a]
-    if not side_b_pool:
-        return ([a0], [b0])
-
-    side_b = [side_b_pool[0]]
-    for u in side_b_pool[1:]:
+    # Build side_b starting from anchor_b — add allies only, exclude side_a members
+    side_b = [anchor_b]
+    for u in available:
+        if u in side_a or u == anchor_b:
+            continue
         if len(side_b) >= max_g:
             break
-        if all(_allied(u, s) for s in side_b):
+        # Only add to side_b if allied with all current side_b members AND
+        # not hostile with any side_a member
+        if (all(_allied(u, s) for s in side_b)
+                and not any(_hostile(u, s) for s in side_a)):
             side_b.append(u)
 
     # Final safety: no overlap
     if set(side_a) & set(side_b):
-        return ([a0], [b0])
+        return ([anchor_a], [anchor_b])
 
     return (side_a, side_b)
 
@@ -2436,10 +2552,15 @@ def process_round(game: Dict[str, Any]) -> Dict[str, Any]:
     scores: Dict[str, float] = {uid: survive_score(p_map.get(uid, {})) for uid in alive}
 
     # ── Charge stacks — incremented each round a pet doesn't fight, reset on combat ──
+    # Starting charge (ene_charged_start + ene_overcharged) is applied once when a
+    # pet first enters the charge_stacks dict. Charge limit (ene_charge_mastery) caps
+    # how high stacks can accumulate per pet.
     charge_stacks: Dict[str, int] = game.setdefault("_charge_stacks", {})
     for uid in alive:
         if uid not in charge_stacks:
-            charge_stacks[uid] = 0
+            info = p_map.get(uid, {})
+            starting = int(info.get("starting_charge", 0))
+            charge_stacks[uid] = max(0, starting)
 
     # ── New feature state ─────────────────────────────────────────────────────
     # _wounded:     uid → rounds_remaining (1 = wounded this round only)
@@ -2537,7 +2658,8 @@ def process_round(game: Dict[str, Any]) -> Dict[str, Any]:
                                 last_stand_a=(uid_a in last_stand_set),
                                 last_stand_b=(uid_b in last_stand_set),
                                 fight_zone="basic",
-                                zone_tenure_map=zone_tenure)
+                                zone_tenure_map=zone_tenure,
+                                current_round=current_round)
         a_wins  = random.random() < win_p
         winner_id, loser_id = (uid_a, uid_b) if a_wins else (uid_b, uid_a)
         wi = p_map.get(winner_id, {})
@@ -2631,7 +2753,8 @@ def process_round(game: Dict[str, Any]) -> Dict[str, Any]:
                                    last_stand_a=(uid_a in last_stand_set),
                                    last_stand_b=(uid_b in last_stand_set),
                                    fight_zone="basic",
-                                   zone_tenure_map=zone_tenure)
+                                   zone_tenure_map=zone_tenure,
+                                   current_round=current_round)
             a_wins = random.random() < win_p
             winner_id, loser_id = (uid_a, uid_b) if a_wins else (uid_b, uid_a)
             actual_win_p = win_p if a_wins else (1.0 - win_p)
@@ -2681,7 +2804,7 @@ def process_round(game: Dict[str, Any]) -> Dict[str, Any]:
             if uid in chaos_used or uid not in game["alive_ids"]:
                 continue
             info = p_map.get(uid, {})
-            charge_stacks[uid] = min(8, charge_stacks.get(uid, 0) + 1)
+            charge_stacks[uid] = min(_charge_limit(info), charge_stacks.get(uid, 0) + 1)
             chaos_actions.append(_build_solo_action(
                 uid, info, "basic", list(game["alive_ids"]), p_map, rel_map,
                 scores, kill_counts, pct_alive,
@@ -2775,7 +2898,8 @@ def process_round(game: Dict[str, Any]) -> Dict[str, Any]:
                                last_stand_a=(uid_a in last_stand_set),
                                last_stand_b=(uid_b in last_stand_set),
                                fight_zone=pet_dest.get(uid_a, "basic"),
-                               zone_tenure_map=zone_tenure)
+                               zone_tenure_map=zone_tenure,
+                               current_round=current_round)
         a_wins = random.random() < win_p
         winner_id, loser_id = (uid_a, uid_b) if a_wins else (uid_b, uid_a)
         actual_win_p = win_p if a_wins else (1.0 - win_p)
@@ -2847,7 +2971,7 @@ def process_round(game: Dict[str, Any]) -> Dict[str, Any]:
                     current_alive = list(game["alive_ids"])
                     # FIX #14: compute live pct_alive so late-game lines fire correctly
                     live_pct = len(current_alive) / max(1, total_start)
-                    charge_stacks[uid] = min(8, charge_stacks.get(uid, 0) + 1)
+                    charge_stacks[uid] = min(_charge_limit(info), charge_stacks.get(uid, 0) + 1)
                     actions.append(_build_solo_action(
                         uid, info, zone, current_alive, p_map, rel_map,
                         scores, kill_counts, live_pct,
@@ -2863,10 +2987,11 @@ def process_round(game: Dict[str, Any]) -> Dict[str, Any]:
             eff_rel = _effective_rel(game, rel_map, uid0, uid1)
             if is_enemy(rel_map, uid0, uid1):
                 enc_chance = 1.00
-            elif _either_rel(rel_map, uid0, uid1) == "foe":
+            elif is_foe(rel_map, uid0, uid1):
                 enc_chance = min(1.0, 0.95 + pressure_boost)
             elif is_best_friend(rel_map, uid0, uid1):
-                enc_chance = min(0.55, 0.25 + pressure_boost)
+                # BFs almost never fight — only under extreme arena pressure
+                enc_chance = min(0.35, 0.10 + pressure_boost)
             elif eff_rel == "friend":
                 # Includes deal partners — they cooperate, not fight
                 enc_chance = min(0.60, 0.45 + pressure_boost)
@@ -2901,7 +3026,7 @@ def process_round(game: Dict[str, Any]) -> Dict[str, Any]:
                 info = p_map.get(uid, {})
                 current_alive = list(game["alive_ids"])
                 live_pct = len(current_alive) / max(1, total_start)
-                charge_stacks[uid] = min(8, charge_stacks.get(uid, 0) + 1)
+                charge_stacks[uid] = min(_charge_limit(info), charge_stacks.get(uid, 0) + 1)
                 actions.append(_build_solo_action(
                     uid, info, zone, current_alive, p_map, rel_map,
                     scores, kill_counts, live_pct,
@@ -2919,7 +3044,7 @@ def process_round(game: Dict[str, Any]) -> Dict[str, Any]:
                 info = p_map.get(uid, {})
                 current_alive = list(game["alive_ids"])
                 live_pct = len(current_alive) / max(1, total_start)
-                charge_stacks[uid] = min(8, charge_stacks.get(uid, 0) + 1)
+                charge_stacks[uid] = min(_charge_limit(info), charge_stacks.get(uid, 0) + 1)
                 actions.append(_build_solo_action(
                     uid, info, zone, current_alive, p_map, rel_map,
                     scores, kill_counts, live_pct,
@@ -2948,14 +3073,15 @@ def process_round(game: Dict[str, Any]) -> Dict[str, Any]:
                 bf_group_elims_raw.append(group_list)
 
             # Resolve combat
-            env_damaged = game.get("_env_damaged", set())
-            combined_wounded = wounded_set | env_damaged
+            env_damaged = game.get("_env_damaged", [])
+            combined_wounded = wounded_set | set(env_damaged)
             win_p  = _group_combat_odds(side_a, side_b, p_map,
                                         charge_stacks=charge_stacks,
                                         wounded_set=combined_wounded,
                                         last_stand_set=last_stand_set,
                                         zone_tenure_map=zone_tenure,
-                                        fight_zone=zone)
+                                        fight_zone=zone,
+                                        current_round=current_round)
             a_wins = random.random() < win_p
             winners = side_a if a_wins else side_b
             losers  = side_b if a_wins else side_a
@@ -3069,6 +3195,7 @@ def process_round(game: Dict[str, Any]) -> Dict[str, Any]:
                     last_stand_b=(uid_b in last_stand_set),
                     fight_zone="basic",
                     zone_tenure_map=zone_tenure,
+                    current_round=current_round,
                 )
                 a_wins = random.random() < win_p
                 winner_id, loser_id = (uid_a, uid_b) if a_wins else (uid_b, uid_a)

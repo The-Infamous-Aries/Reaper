@@ -318,6 +318,11 @@ def _patch_participant_multipliers(game: Dict[str, Any]) -> None:
     ss_ability_mult defaults to 1.0 (no bonus) until _refresh_participant_abilities
     runs before the next round and fetches fresh pet data.
     """
+    # Migrate _env_damaged from set to list if it was somehow stored as a set
+    # (old saves or in-memory state loaded before the fix).
+    if isinstance(game.get("_env_damaged"), set):
+        game["_env_damaged"] = list(game["_env_damaged"])
+
     for p in game.get("participants", []):
         if "multiplier" not in p or p["multiplier"] is None:
             level      = max(1, int(p.get("level", 1)))
@@ -336,6 +341,10 @@ def _patch_participant_multipliers(game: Dict[str, Any]) -> None:
             p["adv_mastery_type"] = 0.0
         if "adv_mastery_element" not in p or p["adv_mastery_element"] is None:
             p["adv_mastery_element"] = 0.0
+        if "starting_charge" not in p or p["starting_charge"] is None:
+            p["starting_charge"] = 0
+        if "charge_limit" not in p or p["charge_limit"] is None:
+            p["charge_limit"] = 8
 
 
 async def _build_participant_record(user_id: int, username: str) -> Dict[str, Any]:
@@ -352,11 +361,13 @@ async def _build_participant_record(user_id: int, username: str) -> Dict[str, An
     stat_mastery_mult = 1.0
     adv_mastery_type = 0.0
     adv_mastery_element = 0.0
+    starting_charge = 0      # ene_charged_start + ene_overcharged
+    charge_limit = 8         # base cap; ene_charge_mastery raises this
     if pet:
         try:
             from Systems.Pets.Logic.ability_tree import (
                 get_ability_effect, get_all_mastery_multipliers,
-                get_advantage_mastery_bonus, STATS,
+                get_advantage_mastery_bonus, get_starting_charge_bonus, STATS,
             )
             ss_mult = get_ability_effect(pet, "survive_score_mult")
             if ss_mult != 1.0:
@@ -371,6 +382,11 @@ async def _build_participant_record(user_id: int, username: str) -> Dict[str, An
             # Advantage mastery: flat bonus added to the 1.2 base advantage multiplier
             adv_mastery_type    = get_advantage_mastery_bonus(pet, "type")
             adv_mastery_element = get_advantage_mastery_bonus(pet, "element")
+
+            # Charge abilities: starting charge and charge limit
+            starting_charge = int(get_starting_charge_bonus(pet))
+            charge_limit_bonus = int(get_ability_effect(pet, "charge_limit_bonus"))
+            charge_limit = 8 + charge_limit_bonus
         except Exception:
             pass
 
@@ -395,6 +411,8 @@ async def _build_participant_record(user_id: int, username: str) -> Dict[str, An
         "stat_mastery_mult":    stat_mastery_mult,     # average stat mastery multiplier
         "adv_mastery_type":     adv_mastery_type,      # flat bonus to type advantage (1.2 base)
         "adv_mastery_element":  adv_mastery_element,   # flat bonus to element advantage (1.2 base)
+        "starting_charge":      starting_charge,       # ene_charged_start + ene_overcharged
+        "charge_limit":         charge_limit,          # 8 base + ene_charge_mastery bonus
         "has_pet":              pet is not None,
         # Custom battle action labels saved via /pets/rename
         # Keys: "attack", "defense", "charge"  (lowercase, matching pet_brain lookup)
@@ -525,7 +543,12 @@ def _make_npc(idx: int, level_min: int = 1, level_max: int = 500) -> Dict[str, A
         "category": random.choice(_CATEGORIES),
         "level": level,
         "multiplier": multiplier,
-        "ss_ability_mult": 1.0,  # NPCs have no abilities; field kept for schema consistency
+        "ss_ability_mult": 1.0,   # NPCs have no abilities; field kept for schema consistency
+        "stat_mastery_mult": 1.0,
+        "adv_mastery_type": 0.0,
+        "adv_mastery_element": 0.0,
+        "starting_charge": 0,
+        "charge_limit": 8,
         "has_pet": True,
         "is_npc": True,
     }
@@ -815,19 +838,40 @@ async def ss_map(request: Request):
 
                 live_mult = _compute_pet_multiplier(pet)
                 live_ss_ability_mult = 1.0
+                live_stat_mastery_mult = 1.0
+                live_adv_mastery_type = 0.0
+                live_adv_mastery_element = 0.0
+                live_starting_charge = 0
+                live_charge_limit = 8
                 try:
-                    from Systems.Pets.Logic.ability_tree import get_ability_effect
+                    from Systems.Pets.Logic.ability_tree import (
+                        get_ability_effect, get_all_mastery_multipliers,
+                        get_advantage_mastery_bonus, get_starting_charge_bonus,
+                    )
                     ss_mult = get_ability_effect(pet, "survive_score_mult")
                     if ss_mult != 1.0:
                         live_ss_ability_mult = ss_mult
+                    mults = get_all_mastery_multipliers(pet)
+                    avg = sum(mults.values()) / len(mults) if mults else 1.0
+                    if avg != 1.0:
+                        live_stat_mastery_mult = avg
+                    live_adv_mastery_type    = get_advantage_mastery_bonus(pet, "type")
+                    live_adv_mastery_element = get_advantage_mastery_bonus(pet, "element")
+                    live_starting_charge     = int(get_starting_charge_bonus(pet))
+                    live_charge_limit        = 8 + int(get_ability_effect(pet, "charge_limit_bonus"))
                 except Exception:
                     pass
                 live_data[str(uid)] = {
-                    "level":            int(pet.get("level", 1)),
-                    "multiplier":       live_mult,
-                    "ss_ability_mult":  live_ss_ability_mult,
-                    "specializations":  pet.get("specializations") or pet.get("specs") or [],
-                    "avatar_url":       fresh_avatar_url,
+                    "level":               int(pet.get("level", 1)),
+                    "multiplier":          live_mult,
+                    "ss_ability_mult":     live_ss_ability_mult,
+                    "stat_mastery_mult":   live_stat_mastery_mult,
+                    "adv_mastery_type":    live_adv_mastery_type,
+                    "adv_mastery_element": live_adv_mastery_element,
+                    "starting_charge":     live_starting_charge,
+                    "charge_limit":        live_charge_limit,
+                    "specializations":     pet.get("specializations") or pet.get("specs") or [],
+                    "avatar_url":          fresh_avatar_url,
                 }
         except Exception:
             pass
@@ -838,11 +882,16 @@ async def ss_map(request: Request):
         uid = str(p["user_id"])
         if uid in live_data:
             p = dict(p)  # shallow copy — don't touch game state
-            p["level"]           = live_data[uid]["level"]
-            p["multiplier"]      = live_data[uid]["multiplier"]
-            p["ss_ability_mult"] = live_data[uid]["ss_ability_mult"]
-            p["specializations"] = live_data[uid]["specializations"]
-            p["avatar_url"]      = live_data[uid]["avatar_url"]
+            p["level"]               = live_data[uid]["level"]
+            p["multiplier"]          = live_data[uid]["multiplier"]
+            p["ss_ability_mult"]     = live_data[uid]["ss_ability_mult"]
+            p["stat_mastery_mult"]   = live_data[uid]["stat_mastery_mult"]
+            p["adv_mastery_type"]    = live_data[uid]["adv_mastery_type"]
+            p["adv_mastery_element"] = live_data[uid]["adv_mastery_element"]
+            p["starting_charge"]     = live_data[uid]["starting_charge"]
+            p["charge_limit"]        = live_data[uid]["charge_limit"]
+            p["specializations"]     = live_data[uid]["specializations"]
+            p["avatar_url"]          = live_data[uid]["avatar_url"]
         merged_participants.append(p)
 
     response_data["participants"] = merged_participants
@@ -938,12 +987,25 @@ async def _refresh_participant_abilities(game: Dict[str, Any]) -> None:
                 adv_mastery_element = get_advantage_mastery_bonus(pet, "element")
             except Exception:
                 pass
+
+            # Recalculate charge abilities
+            starting_charge = 0
+            charge_limit = 8
+            try:
+                from Systems.Pets.Logic.ability_tree import get_starting_charge_bonus
+                starting_charge = int(get_starting_charge_bonus(pet))
+                charge_limit_bonus = int(get_ability_effect(pet, "charge_limit_bonus"))
+                charge_limit = 8 + charge_limit_bonus
+            except Exception:
+                pass
             
             # Update participant record with fresh data
             participant["ss_ability_mult"]     = ss_ability_mult
             participant["stat_mastery_mult"]   = stat_mastery_mult
             participant["adv_mastery_type"]    = adv_mastery_type
             participant["adv_mastery_element"] = adv_mastery_element
+            participant["starting_charge"]     = starting_charge
+            participant["charge_limit"]        = charge_limit
             participant["level"]               = int(pet.get("level", 1))
             participant["multiplier"]          = _compute_pet_multiplier(pet)
             
@@ -965,7 +1027,7 @@ async def _refresh_participant_abilities(game: Dict[str, Any]) -> None:
                 )
             
         except Exception as e:
-            logger.debug(f"Failed to refresh abilities for user {user_id}: {e}")
+            logger.warning(f"Failed to refresh abilities for user {user_id}: {e}")
     
     if refreshed_count > 0:
         logger.info(f"SS ability refresh complete: {refreshed_count} participants refreshed, {updated_count} had changes")

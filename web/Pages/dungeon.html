@@ -1,0 +1,190 @@
+<link rel="stylesheet" href="/css/dungeon.css">
+
+<div class="container-fluid" id="dungeon-root">
+    <!-- Loading State -->
+    <div id="dungeon-loading" style="display:none;">
+        <div class="text-center py-5">
+            <div class="spinner-border text-warning" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-3 text-muted">Loading dungeon...</p>
+        </div>
+    </div>
+
+    <!-- Dungeon Lobby -->
+    <div id="dungeon-lobby" style="display:block;">
+        <!-- Header -->
+        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+            <h4 style="font-family:Orbitron,sans-serif;color:var(--gold-primary);text-shadow:0 0 10px var(--gold-glow);margin:0">
+                🏰 Dungeon Crawl
+            </h4>
+        </div>
+
+        <hr style="border-color:rgba(255,215,0,0.2);margin:1rem 0">
+
+        <div class="row justify-content-center">
+            <div class="col-lg-10">
+                <div class="dungeon-card">
+                    <div class="dungeon-card-header">
+                        <h5>Create New Dungeon</h5>
+                    </div>
+                    <div class="dungeon-card-body">
+                        <p class="text-center mb-4" style="color:var(--text-secondary)">
+                            Embark on a procedurally generated dungeon adventure! Solo or team up with 2-4 players.
+                        </p>
+                        
+                        <!-- Create Buttons -->
+                        <div class="mb-4 text-center">
+                            <button class="btn-dungeon-primary me-2" id="create-solo-btn">Solo Adventure</button>
+                            <button class="btn-dungeon-secondary" id="create-party-btn">Create Party</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Active Dungeons -->
+                <div class="dungeon-card mt-3">
+                    <div class="dungeon-card-header">
+                        <h5>Your Active Dungeons</h5>
+                    </div>
+                    <div class="dungeon-card-body">
+                        <div id="active-dungeons-list">
+                            <p class="text-muted">Loading...</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- How to Play -->
+                <div class="dungeon-info-box mt-3">
+                    <h6>📖 How to Play</h6>
+                    <ul>
+                        <li>Each floor has 10 rooms with random events</li>
+                        <li>⚔️ <strong>Monsters:</strong> Battle NPC enemies scaled to your party</li>
+                        <li>📦 <strong>Chests:</strong> Everyone gets unique loot</li>
+                        <li>🪤 <strong>Traps:</strong> Negative effects for the whole party</li>
+                        <li>⛩️ <strong>Shrines:</strong> Positive buffs for the whole party</li>
+                        <li>👹 <strong>Boss:</strong> Room 10 is always a tough boss fight</li>
+                        <li>All party members must click "Continue" to progress</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div><!-- /#dungeon-lobby -->
+        
+    <!-- Dungeon Active View -->
+    <div id="dungeon-active" style="display:none;">
+            <div class="row g-3">
+                <!-- Left: Dungeon Map -->
+                <div class="col-lg-3">
+                    <div class="dungeon-card sticky-top">
+                        <div class="dungeon-card-header">
+                            <h5>🗺️ Floor <span id="current-floor">1</span></h5>
+                        </div>
+                        <div class="dungeon-card-body">
+                            <div id="dungeon-map" class="dungeon-map">
+                                <!-- Room grid will be generated here -->
+                            </div>
+                            <div class="mt-3">
+                                <small class="text-muted">Room <span id="current-room">1</span>/10</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Center: Current Room -->
+                <div class="col-lg-6">
+                    <div class="dungeon-card">
+                        <div class="dungeon-card-header">
+                            <h4 id="room-title">Loading...</h4>
+                        </div>
+                        <div class="dungeon-card-body">
+                            <div id="room-content">
+                                <!-- Room event content -->
+                            </div>
+                            
+                            <!-- Continue Button -->
+                            <div class="text-center mt-4">
+                                <button class="btn-dungeon-primary btn-lg" id="continue-btn" disabled>
+                                    Continue Crawl
+                                </button>
+                                <p class="text-muted mt-2" id="ready-status">Waiting for party...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Right: Party & Buffs -->
+                <div class="col-lg-3">
+                    <!-- Party Status -->
+                    <div class="dungeon-card mb-3">
+                        <div class="dungeon-card-header">
+                            <h5>👥 Party</h5>
+                        </div>
+                        <div class="dungeon-card-body">
+                            <div id="party-list">
+                                <!-- Party members -->
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Active Buffs/Debuffs -->
+                    <div class="dungeon-card">
+                        <div class="dungeon-card-header">
+                            <h5>✨ Active Effects</h5>
+                        </div>
+                        <div class="dungeon-card-body">
+                            <div id="active-effects-list">
+                                <p class="text-muted">No active effects</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modals -->
+    <!-- Party Creation Modal -->
+    <div class="modal fade" id="partyModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Create Party Dungeon</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Invite players to your dungeon party (max 4 total including you):</p>
+                    <div id="party-invite-list">
+                        <div class="party-invite-input mb-2">
+                            <label>Player 2 Discord ID:</label>
+                            <input type="text" class="form-control party-member-input" placeholder="Enter Discord User ID">
+                        </div>
+                    </div>
+                    <button class="btn-dungeon-secondary btn-sm mt-2" id="add-invite-btn">+ Add Another Player</button>
+                    <p class="text-muted mt-3"><small>Note: Players must have pets to join the dungeon.</small></p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-dungeon-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn-dungeon-primary" id="start-party-dungeon-btn">Start Dungeon</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Battle Modal -->
+    <div class="modal fade" id="battleModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">⚔️ Battle!</h5>
+                </div>
+                <div class="modal-body" style="padding:0">
+                    <div id="battle-content">
+                        <!-- Battle UI will be loaded here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="/js/dungeon.js"></script>

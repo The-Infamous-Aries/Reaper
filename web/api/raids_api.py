@@ -18,6 +18,7 @@ from starlette.requests import Request
 from Systems.Functions.db_paths import (
     ALERTS_DB_STR as ALERTS_DB,
     GLOBAL_NATIONS_DB_STR,
+    HOLDINGS_DB_STR,
 )
 
 router = APIRouter()
@@ -33,14 +34,6 @@ def _current_user_id(request: Request) -> str | None:
     uid = request.session.get("user_id")
     return str(uid) if uid else None
 
-
-async def _require_access(request: Request):
-    """Raise 403 if the session user does not have raids page access."""
-    from Systems.Functions.page_access import has_access
-    uid = _current_user_id(request)
-    if not uid or not await has_access(uid, "raids"):
-        raise HTTPException(status_code=403, detail="Access denied. You are not authorised to view this page.")
-
 # ── Constants (mirrors raids.py) ──────────────────────────────────────────────
 WAR_RANGE_MIN   = 0.75
 WAR_RANGE_MAX   = 2.5
@@ -54,7 +47,7 @@ LOOT_MULTIPLIERS = {
         "blockade":     0.05,
     },
     "offense": {"pirate": 1.4, "ape": 1.1},
-    "defense":  {"fortress": 0.9, "moneybags": 0.6, "turtle": 0.95, "pirate": 1.1},
+    "defense":  {"fortress": 0.9, "moneybags": 0.6, "turtle": 1.2, "pirate": 1.1},
 }
 
 RESOURCES = ["coal", "oil", "uranium", "iron", "bauxite", "lead",
@@ -83,21 +76,6 @@ async def _get_revenue_per_turn(nation: dict) -> tuple:
     except Exception as e:
         logger.warning(f"Revenue calc failed for nation {nation.get('id')}: {e}")
         return 0.0, {}
-
-
-def _turns_since_last_looted(nation: dict) -> int:
-    """Return turns elapsed since the nation was last looted (fallback only)."""
-    loot_event = nation.get("_loot_event")
-    if not loot_event:
-        return 0
-    raw = loot_event.get("date")
-    if not raw:
-        return 0
-    try:
-        dt = datetime.fromisoformat(str(raw).replace("Z", "+00:00"))
-        return max(0, int((datetime.now(timezone.utc) - dt).total_seconds() / 7200))
-    except Exception:
-        return 0
 
 
 def _parse_loot_str(s: Optional[str]) -> float:
@@ -300,143 +278,68 @@ async def _fetch_all_nations_local(
 
 # ── DB helpers for beige alerts ───────────────────────────────────────────────
 
-def _compute_beige_expiry_utc(beige_turns: int, created_at: str) -> datetime:
-    """
-    Compute the exact UTC datetime when a nation's beige expires.
+# ── Beige DB helpers — thin wrappers around the shared module ─────────────────
+# All actual DB logic lives in Systems.Functions.beige_alerts_db so both the
+# harvester and the reaper share one implementation with no duplication.
 
-    PnW turn schedule:
-      - Turn 0 (day change) fires at 00:00 UTC each day.
-      - Subsequent turns fire every 2 hours: 02:00, 04:00, … 22:00 UTC.
-      - So there are 12 turns per day, at hours 0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22.
-
-    Algorithm:
-      1. Find the most recent turn boundary at or before `created_at`.
-      2. Add `beige_turns` × 2 hours to get the expiry turn boundary.
-    """
-    try:
-        ref = datetime.fromisoformat(created_at.replace("Z", "+00:00"))
-        # SQLite stores naive datetimes — treat them as UTC
-        if ref.tzinfo is None:
-            ref = ref.replace(tzinfo=timezone.utc)
-    except Exception:
-        ref = datetime.now(timezone.utc)
-
-    # Snap ref back to the most recent 2-hour boundary (turn boundary)
-    hour_snapped = (ref.hour // 2) * 2
-    last_turn = ref.replace(hour=hour_snapped, minute=0, second=0, microsecond=0)
-
-    # Expiry = last_turn + beige_turns * 2 hours
-    expiry = last_turn + timedelta(hours=beige_turns * 2)
-    return expiry
+from Systems.Functions.beige_alerts_db import (
+    ensure_schema          as _ensure_beige_table,   # kept for call-site compat
+    get_all_beige_alerts   as _get_all_beige_alerts,
+    delete_beige_alert_by_id as _delete_beige_alert_by_id,
+    mark_beige_alert_warned  as _mark_beige_alert_warned,
+    update_beige_alert_turns as _update_beige_alert_turns,
+    compute_beige_expiry_utc as _compute_beige_expiry_utc_shared,
+    upsert_beige_alert,
+    batch_update_beige_alerts,
+)
 
 
-async def _ensure_beige_table():
-    async with aiosqlite.connect(ALERTS_DB) as conn:
-        await conn.execute("""
-            CREATE TABLE IF NOT EXISTS beige_alerts (
-                id              INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id         TEXT    NOT NULL,
-                nation_id       TEXT    NOT NULL,
-                nation_name     TEXT    NOT NULL,
-                beige_turns     INTEGER NOT NULL,
-                projected_loot  REAL    NOT NULL DEFAULT 0,
-                accumulated_rev REAL    NOT NULL DEFAULT 0,
-                warned_turn     INTEGER NOT NULL DEFAULT 0,
-                created_at      TEXT    NOT NULL DEFAULT (datetime('now')),
-                UNIQUE(user_id, nation_id)
-            )
-        """)
-        # Migrate existing tables that lack columns
-        for col, definition in [
-            ("projected_loot",  "REAL NOT NULL DEFAULT 0"),
-            ("accumulated_rev", "REAL NOT NULL DEFAULT 0"),
-            ("warned_turn",     "INTEGER NOT NULL DEFAULT 0"),
-        ]:
-            try:
-                await conn.execute(f"ALTER TABLE beige_alerts ADD COLUMN {col} {definition}")
-            except Exception:
-                pass  # column already exists
-        await conn.commit()
+def _compute_beige_expiry_utc(beige_turns: int, created_at: str = "") -> datetime:
+    """Thin wrapper — delegates to the shared helper (created_at is ignored)."""
+    return _compute_beige_expiry_utc_shared(beige_turns)
 
 
 async def _get_beige_alerts_for_user(user_id: str) -> List[dict]:
     await _ensure_beige_table()
     async with aiosqlite.connect(ALERTS_DB) as conn:
+        await conn.execute("PRAGMA journal_mode=WAL")
         conn.row_factory = aiosqlite.Row
         cur = await conn.execute(
             "SELECT * FROM beige_alerts WHERE user_id=? ORDER BY beige_turns ASC",
-            (user_id,)
+            (user_id,),
         )
         rows = [dict(r) for r in await cur.fetchall()]
 
-    # Attach computed expiry timestamp (ISO UTC) for the frontend countdown
     now = datetime.now(timezone.utc)
     for row in rows:
-        expiry = _compute_beige_expiry_utc(int(row.get("beige_turns") or 0), row.get("created_at") or "")
+        expiry = _compute_beige_expiry_utc(int(row.get("beige_turns") or 0))
         row["expiry_utc"] = expiry.isoformat()
-        # Remaining seconds (can be negative if already expired)
         row["seconds_remaining"] = int((expiry - now).total_seconds())
 
     return rows
 
 
-async def _upsert_beige_alert(user_id: str, nation_id: str, nation_name: str, beige_turns: int, projected_loot: float = 0.0, accumulated_rev: float = 0.0):
-    await _ensure_beige_table()
-    async with aiosqlite.connect(ALERTS_DB) as conn:
-        await conn.execute("""
-            INSERT INTO beige_alerts (user_id, nation_id, nation_name, beige_turns, projected_loot, accumulated_rev)
-            VALUES (?, ?, ?, ?, ?, ?)
-            ON CONFLICT(user_id, nation_id)
-            DO UPDATE SET nation_name=excluded.nation_name, beige_turns=excluded.beige_turns,
-                          projected_loot=excluded.projected_loot, accumulated_rev=excluded.accumulated_rev,
-                          warned_turn=0,
-                          created_at=datetime('now')
-        """, (user_id, nation_id, nation_name, beige_turns, projected_loot, accumulated_rev))
-        await conn.commit()
+async def _upsert_beige_alert(
+    user_id: str,
+    nation_id: str,
+    nation_name: str,
+    beige_turns: int,
+    projected_loot: float = 0.0,
+    accumulated_rev: float = 0.0,
+) -> None:
+    await upsert_beige_alert(user_id, nation_id, nation_name, beige_turns, projected_loot, accumulated_rev)
 
 
 async def _delete_beige_alert(user_id: str, nation_id: str) -> bool:
     await _ensure_beige_table()
     async with aiosqlite.connect(ALERTS_DB) as conn:
+        await conn.execute("PRAGMA journal_mode=WAL")
         cur = await conn.execute(
             "DELETE FROM beige_alerts WHERE user_id=? AND nation_id=?",
-            (user_id, nation_id)
+            (user_id, nation_id),
         )
         await conn.commit()
         return cur.rowcount > 0
-
-
-async def _get_all_beige_alerts() -> List[dict]:
-    await _ensure_beige_table()
-    async with aiosqlite.connect(ALERTS_DB) as conn:
-        conn.row_factory = aiosqlite.Row
-        cur = await conn.execute("SELECT * FROM beige_alerts")
-        return [dict(r) for r in await cur.fetchall()]
-
-
-async def _delete_beige_alert_by_id(alert_id: int):
-    async with aiosqlite.connect(ALERTS_DB) as conn:
-        await conn.execute("DELETE FROM beige_alerts WHERE id=?", (alert_id,))
-        await conn.commit()
-
-
-async def _mark_beige_alert_warned(alert_id: int):
-    """Mark that the 1-turn (2-hour) warning has been sent for this alert."""
-    async with aiosqlite.connect(ALERTS_DB) as conn:
-        await conn.execute("UPDATE beige_alerts SET warned_turn=1 WHERE id=?", (alert_id,))
-        await conn.commit()
-
-
-async def _update_beige_alert_turns(alert_id: int, beige_turns: int):
-    """Refresh the stored beige_turns and reset the created_at anchor so that
-    _compute_beige_expiry_utc continues to produce an accurate expiry time as
-    turns tick down."""
-    async with aiosqlite.connect(ALERTS_DB) as conn:
-        await conn.execute(
-            "UPDATE beige_alerts SET beige_turns=?, created_at=datetime('now') WHERE id=?",
-            (beige_turns, alert_id)
-        )
-        await conn.commit()
 
 
 async def _calc_with_data(
@@ -458,16 +361,17 @@ async def _calc_with_data(
 
 @router.get("/raids/search")
 async def raids_search(
-    request:    Request,
-    nation:     Optional[str]  = None,
-    active:     bool           = True,
-    weak:       bool           = False,
-    min_loot:   Optional[str]  = None,
-    beige:      bool           = False,
-    targets:    int            = 50,
+    request:           Request,
+    nation:            Optional[str]  = None,
+    active:            bool           = True,
+    weak:              bool           = False,
+    min_loot:          Optional[str]  = None,
+    beige:             bool           = False,
+    targets:           int            = 50,
+    exclude_alliances: Optional[str]  = None,
+    active_wars:       Optional[int]  = None,
 ):
     """Run the raid target search and return JSON results."""
-    await _require_access(request)
     try:
         attacker = None
         attacker_has_ape = False
@@ -492,6 +396,13 @@ async def raids_search(
         min_loot_val = _parse_loot_str(min_loot)
         prices       = await _get_prices()
         all_nations  = await _fetch_all_nations_local(min_score, max_score)
+
+        # Parse excluded alliances — lowercase set for O(1) lookup
+        excluded_alliance_names: set = set()
+        if exclude_alliances:
+            excluded_alliance_names = {
+                a.strip().lower() for a in exclude_alliances.split(",") if a.strip()
+            }
 
         # ── Pre-filter: cheap checks before the expensive loot calculation ────
         candidates = []
@@ -518,11 +429,24 @@ async def raids_search(
                 continue
             if not beige and (n.get("beige_turns", 0) or 0) > 0:
                 continue
-            if (n.get("defensive_wars_count", 0) or 0) >= 3:
+
+            def_wars = int(n.get("defensive_wars_count", 0) or 0)
+            if def_wars >= 3:
                 continue
-            # "Lost last war" check — use loot.db: if we have a loot event for this
-            # nation it means they were looted (lost), so they're a valid target.
-            # Nations with no loot record are included (we don't know their war history).
+            # Filter by max defensive war count when requested
+            if active_wars is not None and def_wars > active_wars:
+                continue
+
+            # Exclude by alliance name (case-insensitive)
+            if excluded_alliance_names:
+                nation_alliance = (
+                    (n.get("alliance") or {}).get("name")
+                    or n.get("alliance_name")
+                    or ""
+                ).lower()
+                if nation_alliance and nation_alliance in excluded_alliance_names:
+                    continue
+
             candidates.append(n)
 
         # ── Bulk-fetch holdings (1 query, not N×2) ───────────────────────────
@@ -632,9 +556,167 @@ async def get_beige_alerts(request: Request):
     user = _get_user(request)
     if not user:
         raise HTTPException(status_code=401, detail="Not logged in.")
-    await _require_access(request)
     alerts = await _get_beige_alerts_for_user(str(user["id"]))
     return JSONResponse(alerts)
+
+
+@router.get("/raids/beige-alerts/refresh")
+async def refresh_beige_alerts(request: Request):
+    """
+    Refresh beige_turns + projected_loot for every nation in the alerts table.
+
+    Steps:
+      1. Load all alerts (all users) to get the set of nation IDs.
+      2. Query the PnW API directly for live beige_turns + war_policy for those
+         specific nation IDs in a single batched GraphQL request.
+         Falls back to GlobalNations.db if the API is unreachable.
+      3. Single bulk holdings fetch from GlobalNations.db for money/resources.
+      4. Recalculate projected_loot using live holdings × loot %.
+      5. Write back beige_turns and projected_loot for every alert.
+         created_at is never touched — expiry is computed as
+         current_turn_boundary + beige_turns * 2h, so only beige_turns matters.
+      6. Return the refreshed alerts for the requesting user.
+    """
+    user = _get_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Not logged in.")
+
+    # ── 1. Load all alerts ────────────────────────────────────────────────
+    all_alerts = await _get_all_beige_alerts()
+    if not all_alerts:
+        return JSONResponse([])
+
+    all_nation_ids = list({int(a["nation_id"]) for a in all_alerts})
+
+    # ── 2. Query PnW API for live beige_turns + war_policy ────────────────
+    # The API is the authoritative source — GlobalNations.db is only as fresh
+    # as the last WebSocket event from the harvester.  We request only the
+    # four fields we need to keep the query small and fast.
+    live_nation_map: Dict[str, Dict] = {}
+    try:
+        from Systems.PnW.Util.query import create_v3_query_instance
+        _qi = create_v3_query_instance()
+        id_list = ",".join(str(nid) for nid in all_nation_ids)
+        _api_query = f"""
+        query {{
+          nations(id: [{id_list}], first: {len(all_nation_ids)}) {{
+            data {{ id beige_turns war_policy nation_name }}
+          }}
+        }}
+        """
+        _resp = await _qi._request_with_retries(_api_query, timeout=30)
+        _rows = (_resp.get("data") or {}).get("nations", {}).get("data") or []
+        for _r in _rows:
+            _nid = str(_r.get("id") or "")
+            if not _nid:
+                continue
+            _wp = str(_r.get("war_policy") or "")
+            if "." in _wp:
+                _wp = _wp.rsplit(".", 1)[-1]
+            live_nation_map[_nid] = {
+                "beige_turns": int(_r.get("beige_turns") or 0),
+                "war_policy":  _wp.lower(),
+                "nation_name": str(_r.get("nation_name") or ""),
+            }
+        logger.info(
+            f"refresh_beige_alerts: API returned live data for "
+            f"{len(live_nation_map)} of {len(all_nation_ids)} nations"
+        )
+    except Exception as e:
+        logger.warning(
+            f"refresh_beige_alerts: PnW API query failed ({e}), "
+            f"falling back to GlobalNations.db"
+        )
+        # Fallback: read from local DB so the endpoint still works when the
+        # API is temporarily unreachable
+        try:
+            import sqlite3 as _sq
+            placeholders = ",".join("?" * len(all_nation_ids))
+            with _sq.connect(GLOBAL_NATIONS_DB_STR) as _conn:
+                _conn.row_factory = _sq.Row
+                _rows = _conn.execute(
+                    f"SELECT id, nation_name, beige_turns, war_policy "
+                    f"FROM nations WHERE id IN ({placeholders})",
+                    all_nation_ids,
+                ).fetchall()
+            for _r in _rows:
+                _wp = str(_r["war_policy"] or "").lower()
+                if "." in _wp:
+                    _wp = _wp.rsplit(".", 1)[-1]
+                live_nation_map[str(_r["id"])] = {
+                    "beige_turns": int(_r["beige_turns"] or 0),
+                    "war_policy":  _wp,
+                    "nation_name": str(_r["nation_name"] or ""),
+                }
+            logger.info(
+                f"refresh_beige_alerts: fallback DB returned data for "
+                f"{len(live_nation_map)} nations"
+            )
+        except Exception as e2:
+            logger.warning(f"refresh_beige_alerts: fallback DB query also failed: {e2}")
+
+    # ── 3. Bulk holdings fetch ────────────────────────────────────────────
+    holdings_map: Dict[int, Dict] = {}
+    try:
+        from PnWHarvester.db.holdings_db import HoldingsDB
+        _hdb = HoldingsDB(HOLDINGS_DB_STR)
+        holdings_map = await _hdb.get_holdings_bulk(all_nation_ids)
+    except Exception as e:
+        logger.warning(f"refresh_beige_alerts: holdings fetch failed: {e}")
+
+    # ── 4. Fetch live resource prices ─────────────────────────────────────
+    prices: Dict[str, float] = {}
+    try:
+        prices = await _get_prices() or {}
+    except Exception:
+        pass
+
+    m   = LOOT_MULTIPLIERS
+    bp  = m["war_type"]["raid"]
+    off = m["offense"]["pirate"] * m["offense"]["ape"]  # worst-case attacker
+
+    # ── 5. Write updates ──────────────────────────────────────────────────
+    # Always update beige_turns from GlobalNations.db (the authoritative source)
+    # and recalculate projected_loot from live holdings.
+    # created_at is intentionally NOT touched — expiry = current_turn_boundary
+    # + beige_turns * 2h, so only beige_turns needs to be accurate.
+    to_update: List[tuple] = []
+    for alert in all_alerts:
+        nid  = int(alert["nation_id"])
+        live = live_nation_map.get(str(nid), {})
+        h    = holdings_map.get(nid)
+
+        # Live beige_turns from PnW API; fall back to stored if nation missing
+        fresh_turns = live.get("beige_turns", int(alert.get("beige_turns") or 0))
+
+        # Recalculate projected_loot from live holdings
+        if h:
+            def_policy = str(live.get("war_policy") or "").lower()
+            if "." in def_policy:
+                def_policy = def_policy.rsplit(".", 1)[-1]
+            dfn        = m["defense"].get(def_policy, 1.0)
+            pct        = bp * off * dfn
+            cash       = max(0.0, float(h.get("money_held") or 0)) * pct
+            rss_val    = sum(
+                max(0.0, float(h.get(f"{r}_held") or 0)) * pct * prices.get(r, 0)
+                for r in RESOURCES
+            )
+            fresh_loot = cash + rss_val
+        else:
+            fresh_loot = float(alert.get("projected_loot") or 0)
+
+        to_update.append((fresh_turns, fresh_loot, int(alert["id"])))
+
+    await batch_update_beige_alerts(to_update, [])
+
+    logger.info(
+        f"refresh_beige_alerts: updated {len(all_alerts)} rows "
+        f"({len(all_nation_ids)} unique nations)"
+    )
+
+    # ── 6. Return refreshed alerts for the requesting user ────────────────
+    updated = await _get_beige_alerts_for_user(str(user["id"]))
+    return JSONResponse(updated)
 
 
 @router.post("/raids/beige-alerts")
@@ -642,7 +724,6 @@ async def add_beige_alert(request: Request, payload: BeigeAlertPayload):
     user = _get_user(request)
     if not user:
         raise HTTPException(status_code=401, detail="Not logged in.")
-    await _require_access(request)
     await _upsert_beige_alert(
         str(user["id"]), payload.nation_id, payload.nation_name,
         payload.beige_turns, payload.projected_loot, payload.accumulated_rev,
@@ -660,7 +741,6 @@ async def remove_beige_alert(request: Request, nation_id: str):
     user = _get_user(request)
     if not user:
         raise HTTPException(status_code=401, detail="Not logged in.")
-    await _require_access(request)
     removed = await _delete_beige_alert(str(user["id"]), nation_id)
     return JSONResponse({"ok": removed})
 
@@ -669,7 +749,6 @@ async def remove_beige_alert(request: Request, nation_id: str):
 
 @router.get("/raids/nations_ac")
 async def raids_nations_ac(request: Request, q: str = ""):
-    await _require_access(request)
     try:
         from PnWHarvester.db.global_nations_db import GlobalNationsDB
 
@@ -695,4 +774,22 @@ async def raids_nations_ac(request: Request, q: str = ""):
         return JSONResponse(out)
     except Exception as e:
         logger.error(f"raids_nations_ac error: {e}", exc_info=True)
+        return JSONResponse([])
+
+
+@router.get("/raids/alliances_ac")
+async def raids_alliances_ac(request: Request, q: str = ""):
+    """Return distinct alliance names for the exclude-alliances autocomplete."""
+    try:
+        from PnWHarvester.db.global_nations_db import GlobalNationsDB
+        db = GlobalNationsDB(GLOBAL_NATIONS_DB_STR)
+        alliances = await db.get_distinct_alliances(current=q.strip())
+        out = [
+            {"id": a.get("alliance_id"), "name": a.get("alliance_name", "")}
+            for a in alliances
+            if a.get("alliance_name")
+        ]
+        return JSONResponse(out)
+    except Exception as e:
+        logger.error(f"raids_alliances_ac error: {e}", exc_info=True)
         return JSONResponse([])

@@ -104,6 +104,7 @@
 
 </div>
 
+<script src="/js/image-utils.js"></script>
 <script>
 (function () {
 
@@ -291,7 +292,7 @@
       rows.push(`<tr class="rev-row${open?' rev-row-open':''}" data-nid="${n.nation_id}" style="cursor:pointer">
         <td class="rev-chevron">${open?'▼':'▶'}</td>
         <td><div class="rev-name-cell">
-          ${n.flag?`<img src="${esc(n.flag)}" class="rev-flag" alt="">`:''}
+          ${n.flag?`<img src="${window.ImageUtils ? window.ImageUtils.proxyImageUrl(n.flag) : n.flag}" class="rev-flag" alt="">`:''}
           <div>
             <a href="https://politicsandwar.com/nation/id=${n.nation_id}" target="_blank" class="rev-pnw-link" onclick="event.stopPropagation()">${esc(n.nation_name)}</a>
             <span class="rev-leader">${esc(n.leader_name)}</span>
@@ -335,7 +336,7 @@
         return `<div class="rev-top-item">
           <div class="rev-top-rank">#${i+1}</div>
           <div class="rev-top-nation">
-            ${n.flag?`<img src="${esc(n.flag)}" class="rev-flag" alt="">`:''}
+            ${n.flag?`<img src="${window.ImageUtils ? window.ImageUtils.proxyImageUrl(n.flag) : n.flag}" class="rev-flag" alt="">`:''}
             <div>
               <a href="https://politicsandwar.com/nation/id=${n.nation_id}" target="_blank" class="rev-pnw-link">${esc(n.nation_name)}</a>
               <span class="rev-leader">${esc(n.leader_name)}</span>

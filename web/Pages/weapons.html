@@ -34,7 +34,10 @@
           <button class="wp-target-type-tab active" data-type="nation">Nation</button>
           <button class="wp-target-type-tab" data-type="alliance">Alliance</button>
         </div>
-        <input type="text" id="wp-target-input" class="wp-input" placeholder="Nation or Alliance name / ID" style="min-width:220px;">
+        <div class="wp-ac-wrap">
+          <input type="text" id="wp-target-input" class="wp-input" placeholder="Nation or Alliance name / ID" autocomplete="off">
+          <div id="wp-ac-dropdown" class="wp-ac-dropdown" style="display:none;"></div>
+        </div>
         <button id="wp-targeted-run" class="btn btn-gold btn-sm">Analyze</button>
         <button id="wp-targeted-refresh" class="btn btn-sm" style="background:rgba(255,215,0,0.08);border:1px solid rgba(255,215,0,0.3);color:var(--gold-secondary);font-size:0.75rem;" title="Force refresh — bypasses 1-hour cache">↻ Refresh</button>
       </div>
@@ -167,6 +170,7 @@
 
 </div><!-- /wp-shell -->
 
+<script src="/js/image-utils.js"></script>
 <script>
 (function () {
   'use strict';
@@ -633,7 +637,7 @@
       rows.push(`<tr class="wp-row" data-nid="${n.nation_id}">
         <td class="wp-chevron">▶</td>
         <td class="wp-name-cell" style="pointer-events:none;">
-          ${n.flag ? `<img src="${n.flag}" class="wp-flag" alt="" style="pointer-events:none;">` : ''}
+          ${n.flag ? `<img src="${window.ImageUtils ? window.ImageUtils.proxyImageUrl(n.flag) : n.flag}" class="wp-flag" alt="" style="pointer-events:none;">` : ''}
           <div style="pointer-events:none;">
             <span style="pointer-events:auto;">${pnwLink(n.nation_id, n.nation_name)}</span>
             <small class="wp-leader">${n.leader_name || ''}</small>
@@ -813,7 +817,7 @@
   function renderNation(data) {
     // Header
     document.getElementById('wp-nation-header').innerHTML = `
-      ${data.flag ? `<img src="${data.flag}" class="wp-nation-flag" alt="">` : ''}
+      ${data.flag ? `<img src="${window.ImageUtils ? window.ImageUtils.proxyImageUrl(data.flag) : data.flag}" class="wp-nation-flag" alt="">` : ''}
       <div>
         <h3 class="wp-nation-name">${pnwLink(data.nation_id, data.nation_name)}</h3>
         <p class="wp-nation-leader">Leader: ${data.leader_name || '—'}</p>
@@ -905,6 +909,125 @@
       return asc ? av - bv : bv - av;
     });
   }
+
+  // ── Targeted autocomplete ─────────────────────────────────────────────────
+  let _wpAcData   = null;   // { nations: [...], alliances: [...] }
+  let _wpAcIdx    = -1;
+
+  async function loadWpAcData() {
+    if (_wpAcData) return _wpAcData;
+    try {
+      const r = await fetch('/api/weapons/ac_data');
+      _wpAcData = await r.json();
+    } catch (e) { _wpAcData = { nations: [], alliances: [] }; }
+    return _wpAcData;
+  }
+
+  function positionWpDropdown() {
+    const inp = document.getElementById('wp-target-input');
+    const dd  = document.getElementById('wp-ac-dropdown');
+    if (!inp || !dd || dd.style.display === 'none') return;
+    const r = inp.getBoundingClientRect();
+    dd.style.top   = (r.bottom + 4) + 'px';
+    dd.style.left  = r.left + 'px';
+    dd.style.width = r.width + 'px';
+  }
+
+  function buildWpDropdown(val) {
+    const dd = document.getElementById('wp-ac-dropdown');
+    if (!dd) return;
+    dd.innerHTML = '';
+    _wpAcIdx = -1;
+    const items = [];
+    const low = (val || '').toLowerCase().trim();
+
+    if (_wpAcData) {
+      // Alliances first (when input matches or is empty)
+      for (const a of (_wpAcData.alliances || [])) {
+        const name = (a.alliance_name || '').toLowerCase();
+        if (!low || name.includes(low) || String(a.alliance_id).includes(low)) {
+          items.push({ label: `🏰 ${a.alliance_name}`, value: a.alliance_name, type: 'alliance' });
+        }
+        if (items.length >= 5) break;
+      }
+
+      // Nations
+      for (const n of (_wpAcData.nations || [])) {
+        const nm  = (n.nation_name  || '').toLowerCase();
+        const ldr = (n.leader_name  || '').toLowerCase();
+        if (!low || nm.includes(low) || ldr.includes(low) || String(n.id).includes(low)) {
+          const label = `🌐 ${n.nation_name}${n.leader_name ? ' (' + n.leader_name + ')' : ''}`;
+          items.push({ label, value: n.nation_name, type: 'nation' });
+        }
+        if (items.length >= 15) break;
+      }
+    }
+
+    if (!items.length) { dd.style.display = 'none'; return; }
+
+    items.forEach((item, i) => {
+      const el = document.createElement('div');
+      el.className = 'wp-ac-item' + (item.type === 'alliance' ? ' wp-ac-alliance' : '');
+      el.textContent = item.label;
+      el.addEventListener('mousedown', ev => {
+        ev.preventDefault();
+        document.getElementById('wp-target-input').value = item.value;
+        // Switch target-type tab to match
+        _targetType = item.type;
+        document.querySelectorAll('.wp-target-type-tab').forEach(b => {
+          b.classList.toggle('active', b.dataset.type === _targetType);
+        });
+        dd.style.display = 'none';
+        runTargeted(false);
+      });
+      dd.appendChild(el);
+    });
+    dd.style.display = 'block';
+    positionWpDropdown();
+  }
+
+  function initWpAC() {
+    const inp = document.getElementById('wp-target-input');
+    const dd  = document.getElementById('wp-ac-dropdown');
+    if (!inp || !dd) return;
+
+    inp.addEventListener('focus', async () => { await loadWpAcData(); buildWpDropdown(inp.value.trim()); });
+    inp.addEventListener('input', async () => { await loadWpAcData(); buildWpDropdown(inp.value.trim()); });
+
+    window.addEventListener('scroll', positionWpDropdown, true);
+    window.addEventListener('resize', positionWpDropdown);
+
+    inp.addEventListener('keydown', e => {
+      const items = dd.querySelectorAll('.wp-ac-item');
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        _wpAcIdx = Math.min(_wpAcIdx + 1, items.length - 1);
+        items.forEach((el, i) => el.classList.toggle('wp-ac-active', i === _wpAcIdx));
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        _wpAcIdx = Math.max(_wpAcIdx - 1, 0);
+        items.forEach((el, i) => el.classList.toggle('wp-ac-active', i === _wpAcIdx));
+      } else if (e.key === 'Enter') {
+        if (_wpAcIdx >= 0 && items[_wpAcIdx]) {
+          items[_wpAcIdx].dispatchEvent(new MouseEvent('mousedown'));
+        } else {
+          dd.style.display = 'none';
+          runTargeted(false);
+        }
+      } else if (e.key === 'Escape') {
+        dd.style.display = 'none';
+      }
+    });
+
+    document.addEventListener('click', ev => {
+      if (!inp.contains(ev.target) && !dd.contains(ev.target)) dd.style.display = 'none';
+    });
+  }
+
+  // Init on load and SPA navigation
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initWpAC);
+  else initWpAC();
+  document.addEventListener('dashboardPageLoaded', () => { _wpAcData = null; initWpAC(); });
 
   // ── Auto-run theory on load ────────────────────────────────────────────────
   runTheory();

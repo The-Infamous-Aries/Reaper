@@ -39,6 +39,22 @@ def _enrich_pet(pet: dict) -> dict:
         rem               = int(pet.get("experience", 0))
         xp_for_next_level = LootCalculator.get_next_level_xp(lvl)
         total_xp          = int(LootCalculator.get_total_experience_for_level(lvl)) + rem
+
+        # Ensure activity fields always exist (older pets may not have them)
+        pet.setdefault("missions_completed", 0)
+        pet.setdefault("missions_failed",    0)
+        pet.setdefault("training_completed", 0)
+        pet.setdefault("training_failed",    0)
+        pet.setdefault("play_attempts",      0)
+        pet.setdefault("ability_points",     0)
+        pet.setdefault("stat_mastery",       {})
+        pet.setdefault("abilities",          {})
+        pet.setdefault("advantage_mastery",  {})
+        pet.setdefault("battle_stats",       {})
+        pet.setdefault("gambling_stats",     {})
+        pet.setdefault("xp_sources",         {})
+        pet.setdefault("inventory",          [])
+
         return {
             **pet,
             "computed_stats":    computed_stats,
@@ -443,3 +459,17 @@ async def gift_item(request: Request, data: GiftRequest):
     except Exception as e:
         logger.error(f"gift_item error: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Internal server error")
+
+
+@router.get("/world/pet-info")
+async def get_pet_info():
+    """Return the pet species info (descriptions, actions, base stats) from info.json."""
+    import json, os
+    info_path = os.path.join(os.path.dirname(__file__), "..", "..", "Systems", "Pets", "Logic", "info.json")
+    try:
+        with open(os.path.normpath(info_path), "r", encoding="utf-8") as f:
+            data = json.load(f)
+        return JSONResponse({"pets": data.get("Pets", {})})
+    except Exception as e:
+        logger.warning(f"get_pet_info: could not load info.json: {e}")
+        return JSONResponse({"pets": {}})

@@ -158,7 +158,8 @@ for _n in CARD5_POTIONS:   _CARD5_TYPE[_n] = "Potions"
 # ── Win-line helpers ──────────────────────────────────────────────────────────
 
 def _count_matches_1x3(symbols: List[str]) -> int:
-    """For a 1×3 row: return 3 if all match, 2 if exactly two match, else 0."""
+    """For a 1×3 row: return 3 if all match, 2 if exactly two match, else 0.
+    Matching is by exact symbol name."""
     counts: Dict[str, int] = {}
     for s in symbols:
         counts[s] = counts.get(s, 0) + 1
@@ -168,6 +169,26 @@ def _count_matches_1x3(symbols: List[str]) -> int:
     if best == 2:
         return 2
     return 0
+
+
+def _count_matches_1x3_typed(symbols: List[str]) -> Tuple[int, Optional[str]]:
+    """For Card 5: match by TYPE GROUP (any 2+ items of the same type count).
+    Returns (match_count, matched_type_or_None).
+    3 = all three same type, 2 = exactly two same type, 0 = no match."""
+    type_counts: Dict[str, int] = {}
+    for s in symbols:
+        t = _CARD5_TYPE.get(s)
+        if t:
+            type_counts[t] = type_counts.get(t, 0) + 1
+    if not type_counts:
+        return 0, None
+    best_type = max(type_counts, key=lambda k: type_counts[k])
+    best = type_counts[best_type]
+    if best >= 3:
+        return 3, best_type
+    if best == 2:
+        return 2, best_type
+    return 0, None
 
 
 def _lines_3x3(grid: List[str]) -> List[List[str]]:
@@ -185,48 +206,55 @@ def _lines_3x3(grid: List[str]) -> List[List[str]]:
     ]
 
 
-def _best_match_3x3(grid: List[str]) -> Tuple[int, List[List[str]]]:
+def _score_all_lines_3x3(grid: List[str], typed: bool = False) -> Tuple[int, List[Tuple[List[str], Optional[str]]], List[Tuple[List[str], Optional[str]]]]:
     """
-    Return (best_match_count, winning_lines) for a 3×3 grid.
-    best_match_count = 3 if any line has 3 identical, 2 if any line has 2 identical, else 0.
-    winning_lines = list of lines that achieved best_match_count.
+    Score ALL 8 lines independently.
+    If typed=True (Card 5), matching is by item TYPE GROUP instead of exact symbol.
+    Returns (best_match_count, three_match_lines, two_match_lines).
+    Each entry in three/two_match_lines is (line_symbols, matched_type_or_None).
     """
     lines = _lines_3x3(grid)
-    three_lines = []
-    two_lines = []
+    three_lines: List[Tuple[List[str], Optional[str]]] = []
+    two_lines:   List[Tuple[List[str], Optional[str]]] = []
     for line in lines:
-        m = _count_matches_1x3(line)
+        if typed:
+            m, matched_type = _count_matches_1x3_typed(line)
+        else:
+            m = _count_matches_1x3(line)
+            matched_type = None
         if m == 3:
-            three_lines.append(line)
+            three_lines.append((line, matched_type))
         elif m == 2:
-            two_lines.append(line)
+            two_lines.append((line, matched_type))
+    best = 3 if three_lines else (2 if two_lines else 0)
+    return best, three_lines, two_lines
+
+
+def _best_match_3x3(grid: List[str]) -> Tuple[int, List[List[str]]]:
+    """
+    Legacy helper — returns (best_match_count, winning_lines_at_best_tier).
+    """
+    best, three_lines, two_lines = _score_all_lines_3x3(grid)
     if three_lines:
-        return 3, three_lines
+        return 3, [ln for ln, _ in three_lines]
     if two_lines:
-        return 2, two_lines
+        return 2, [ln for ln, _ in two_lines]
     return 0, []
 
 
 # ── Card 5 bonus: same-type group matches ────────────────────────────────────
 
-def _card5_type_bonus(grid: List[str], winning_lines: List[List[str]]) -> Optional[str]:
+def _card5_type_bonus(three_lines: List[Tuple[List[str], Optional[str]]]) -> Optional[str]:
     """
-    If two or more winning lines (3-match) share the same item type group,
-    return that group name. Otherwise None.
+    If two or more 3-match lines share the same item type group, return that group name.
+    Works with the typed line tuples from _score_all_lines_3x3(typed=True).
     """
-    if not winning_lines:
+    if not three_lines:
         return None
-    # Only consider 3-match lines for the bonus
-    three_lines = [ln for ln in winning_lines if len(set(ln)) == 1]
-    if len(three_lines) < 2:
-        return None
-    # Check if any two 3-match lines share the same type group
     type_counts: Dict[str, int] = {}
-    for line in three_lines:
-        sym = line[0]
-        t = _CARD5_TYPE.get(sym)
-        if t:
-            type_counts[t] = type_counts.get(t, 0) + 1
+    for _line, matched_type in three_lines:
+        if matched_type:
+            type_counts[matched_type] = type_counts.get(matched_type, 0) + 1
     for t, cnt in type_counts.items():
         if cnt >= 2:
             return t
@@ -312,27 +340,43 @@ def _scratch_card3(bet: int) -> Dict[str, Any]:
 
 
 def _scratch_card4(bet: int) -> Dict[str, Any]:
-    """Pet Emojis — 3×3 grid, all 8 lines. 2-match → x10, 3-match → x25."""
+    """Pet Emojis — 3×3 grid, all 8 lines. Each winning line pays independently.
+    2-match line → x10 per line, 3-match line → x25 per line.
+    Matching is by exact pet species."""
     grid = [random.choice(CARD4_POOL) for _ in range(9)]
-    best, win_lines = _best_match_3x3(grid)
-    if best == 3:
-        mult = 25.0
+    best, three_tuples, two_tuples = _score_all_lines_3x3(grid, typed=False)
+
+    three_lines = [ln for ln, _ in three_tuples]
+    two_lines   = [ln for ln, _ in two_tuples]
+    three_count = len(three_lines)
+    two_count   = len(two_lines)
+
+    mult     = three_count * 25.0 + two_count * 10.0
+    winnings = int(bet * mult)
+
+    if three_count and two_count:
+        result = (f"{three_count}×3-match + {two_count}×2-match! "
+                  f"{three_count}×25 + {two_count}×10 = {mult:.0f}× XP!")
+    elif three_count > 1:
+        result = f"{three_count} lines of 3 Pets! {three_count}×25 = {mult:.0f}× XP!"
+    elif three_count == 1:
         result = "3 Pets in a line! 25× XP!"
-    elif best == 2:
-        mult = 10.0
+    elif two_count > 1:
+        result = f"{two_count} lines of 2 Pets! {two_count}×10 = {mult:.0f}× XP!"
+    elif two_count == 1:
         result = "2 Pets in a line! 10× XP!"
     else:
-        mult = 0.0
         result = "No match. Better luck next time!"
-    winnings = int(bet * mult)
-    # Convert win_lines (list of symbol lists) to index lists for the frontend
+
+    all_win_lines = three_lines + two_lines
     all_lines = _lines_3x3(grid)
     win_line_indices = []
-    for wl in win_lines:
+    for wl in all_win_lines:
         for i, al in enumerate(all_lines):
-            if al == wl:
+            if al == wl and i not in win_line_indices:
                 win_line_indices.append(i)
                 break
+
     return {
         "symbols": [{"name": s, "path": _ep(s)} for s in grid],
         "grid_type": "3x3",
@@ -341,63 +385,141 @@ def _scratch_card4(bet: int) -> Dict[str, Any]:
         "winnings": winnings,
         "result": result,
         "win_lines": win_line_indices,
-        "win_line_symbols": win_lines,
+        "win_line_symbols": all_win_lines,
+        "three_line_count": three_count,
+        "two_line_count": two_count,
     }
 
 
 def _scratch_card5(bet: int) -> Dict[str, Any]:
     """
-    ALL Equipment & Item Emojis — 3×3 grid, all 8 lines.
-    2-match → x10, 3-match → x25.
-    BONUS: if two 3-match lines share the same item type group → extra multiplier.
+    ALL Equipment & Item Emojis — 3×3 grid, all 8 lines scored independently.
+
+    Each line can win by:
+      • Exact symbol match (harder)  — 2 same = 10×, 3 same = 25× per line
+      • Same type group  (easier)    — 2 same type = 4×, 3 same type = 8× per line
+        (type match only fires when the line has NO exact-symbol match)
+
+    All winning lines stack. Type-bonus still applies when 2+ exact-3-match lines
+    share the same item type group (×3 on those lines).
     """
     grid = [random.choice(CARD5_POOL) for _ in range(9)]
-    best, win_lines = _best_match_3x3(grid)
+    all_lines_syms = _lines_3x3(grid)
 
-    # Determine bonus
-    bonus_group = None
-    bonus_mult = 1.0
-    if best == 3:
-        bonus_group = _card5_type_bonus(grid, win_lines)
-        if bonus_group:
-            bonus_mult = 3.0  # triple the payout for same-type double 3-match
+    # Per-line scoring
+    # line_results: list of dicts per line index
+    exact_three: List[Tuple[int, List[str], Optional[str]]] = []  # (line_idx, syms, type)
+    exact_two:   List[Tuple[int, List[str], Optional[str]]] = []
+    type_three:  List[Tuple[int, List[str], str]]            = []
+    type_two:    List[Tuple[int, List[str], str]]            = []
 
-    if best == 3:
-        base_mult = 25.0
-        if bonus_group:
-            mult = base_mult * bonus_mult
-            result = f"DOUBLE {bonus_group} 3-match! {mult:.0f}× XP BONUS!"
-        else:
-            mult = base_mult
-            result = "3 Items in a line! 25× XP!"
-    elif best == 2:
-        mult = 10.0
-        result = "2 Items in a line! 10× XP!"
-    else:
-        mult = 0.0
-        result = "No match. Better luck next time!"
+    for li, line in enumerate(all_lines_syms):
+        # Try exact match first
+        exact_m = _count_matches_1x3(line)
+        if exact_m == 3:
+            exact_three.append((li, line, None))
+            continue
+        if exact_m == 2:
+            exact_two.append((li, line, None))
+            continue
+        # No exact match — try type match
+        type_m, matched_type = _count_matches_1x3_typed(line)
+        if type_m == 3 and matched_type:
+            type_three.append((li, line, matched_type))
+        elif type_m == 2 and matched_type:
+            type_two.append((li, line, matched_type))
 
-    winnings = int(bet * mult)
-    all_lines = _lines_3x3(grid)
-    win_line_indices = []
-    for wl in win_lines:
-        for i, al in enumerate(all_lines):
-            if al == wl:
-                win_line_indices.append(i)
+    # Type bonus: 2+ exact-3-match lines sharing the same type group → ×3 on those lines
+    bonus_group: Optional[str] = None
+    if len(exact_three) >= 2:
+        type_counts: Dict[str, int] = {}
+        for _li, line, _ in exact_three:
+            # All 3 symbols are the same exact item, so they share one type
+            t = _CARD5_TYPE.get(line[0])
+            if t:
+                type_counts[t] = type_counts.get(t, 0) + 1
+        for t, cnt in type_counts.items():
+            if cnt >= 2:
+                bonus_group = t
                 break
 
+    bonus_mult = 3.0 if bonus_group else 1.0
+
+    # Calculate total multiplier
+    # Exact 3-match lines: 25× each (×3 if bonus_group applies to that line)
+    exact_three_pay = 0.0
+    for _li, line, _ in exact_three:
+        line_mult = 25.0
+        if bonus_group and _CARD5_TYPE.get(line[0]) == bonus_group:
+            line_mult *= bonus_mult
+        exact_three_pay += line_mult
+
+    exact_two_pay = len(exact_two) * 10.0
+    type_three_pay = len(type_three) * 8.0
+    type_two_pay   = len(type_two)   * 4.0
+    mult = exact_three_pay + exact_two_pay + type_three_pay + type_two_pay
+    winnings = int(bet * mult)
+
+    # Collect all winning line indices for frontend highlighting
+    win_line_indices = (
+        [li for li, _, _ in exact_three] +
+        [li for li, _, _ in exact_two]   +
+        [li for li, _, _ in type_three]  +
+        [li for li, _, _ in type_two]
+    )
+    all_win_line_syms = (
+        [line for _, line, _ in exact_three] +
+        [line for _, line, _ in exact_two]   +
+        [line for _, line, _ in type_three]  +
+        [line for _, line, _ in type_two]
+    )
+
+    # Counts for message + frontend badge
+    e3 = len(exact_three)
+    e2 = len(exact_two)
+    t3 = len(type_three)
+    t2 = len(type_two)
+    total_wins = e3 + e2 + t3 + t2
+
+    # Build result message
+    if total_wins == 0:
+        result = "No match. Better luck next time!"
+    elif bonus_group:
+        result = (f"DOUBLE {bonus_group} 3-match BONUS! "
+                  f"{e3}×25×{bonus_mult:.0f}"
+                  + (f" + {e2}×10" if e2 else "")
+                  + (f" + {t3}×8" if t3 else "")
+                  + (f" + {t2}×4" if t2 else "")
+                  + f" = {mult:.0f}× XP!")
+    else:
+        parts = []
+        if e3: parts.append(f"{e3}×exact-3 ({e3*25:.0f}×)")
+        if e2: parts.append(f"{e2}×exact-2 ({e2*10:.0f}×)")
+        if t3: parts.append(f"{t3}×type-3 ({t3*8:.0f}×)")
+        if t2: parts.append(f"{t2}×type-2 ({t2*4:.0f}×)")
+        result = " + ".join(parts) + f" = {mult:.0f}× XP!" if parts else "No match."
+
+    best = 3 if (e3 or t3) else (2 if (e2 or t2) else 0)
+
     return {
-        "symbols": [{"name": s, "path": _ep(s)} for s in grid],
-        "grid_type": "3x3",
-        "match": best,
-        "multiplier": mult,
-        "winnings": winnings,
-        "result": result,
-        "win_lines": win_line_indices,
-        "win_line_symbols": win_lines,
-        "bonus_group": bonus_group,
-        "bonus_mult": bonus_mult,
-        "symbol_types": {s: _CARD5_TYPE.get(s, "Unknown") for s in grid},
+        "symbols":          [{"name": s, "path": _ep(s)} for s in grid],
+        "grid_type":        "3x3",
+        "match":            best,
+        "multiplier":       mult,
+        "winnings":         winnings,
+        "result":           result,
+        "win_lines":        win_line_indices,
+        "win_line_symbols": all_win_line_syms,
+        "bonus_group":      bonus_group,
+        "bonus_mult":       bonus_mult,
+        # Breakdown counts for frontend badge
+        "exact_three_count": e3,
+        "exact_two_count":   e2,
+        "type_three_count":  t3,
+        "type_two_count":    t2,
+        "three_line_count":  e3 + t3,   # total 3-match lines (exact + type)
+        "two_line_count":    e2 + t2,   # total 2-match lines (exact + type)
+        "symbol_types":      {s: _CARD5_TYPE.get(s, "Unknown") for s in grid},
     }
 
 
@@ -449,11 +571,13 @@ CARD_INFO = {
     5: {
         "name": "Item Scratch",
         "icon": "🎒",
-        "desc": "All Items — 3×3 all-ways · 2 match: 10× · 3 match: 25× · Same-type double: 75×",
+        "desc": "All Items — 3×3 all-ways · Exact 2: 10× · Exact 3: 25× · Type 2: 4× · Type 3: 8× · Same-type double: 75×",
         "pool_size": len(CARD5_POOL),
         "grid": "3×3",
         "two_mult": 10.0,
         "three_mult": 25.0,
+        "type_two_mult": 4.0,
+        "type_three_mult": 8.0,
         "bonus_mult": 75.0,
     },
 }

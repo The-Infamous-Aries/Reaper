@@ -5,6 +5,10 @@ from Systems.Pets.Logic.ability_tree import (
     get_tree_state, spend_stat_mastery, spend_advantage_mastery,
     unlock_ability, purchase_ability_point, STATS, ADVANTAGE_MASTERY_KEYS
 )
+from Systems.Pets.Logic.battle_skills import (
+    draw_initial_skill_choices, draw_skill_choices, equip_skill,
+    get_skill_state, get_equipped_skills, SKILL_BY_ID, ALL_ELEMENTS
+)
 from fastapi.responses import JSONResponse
 import asyncio
 import json
@@ -267,7 +271,6 @@ async def adopt_pet(request: Request, adoption_data: Dict[str, Any] = Body(...))
             if field not in adoption_data:
                 logger.error(f"Pet adoption failed: Missing required field: {field}")
                 raise HTTPException(status_code=400, detail=f"Missing required field: {field}")
-
         pet_name = adoption_data.get("customName", "").strip()
         logger.info(f"Validating pet name: '{pet_name}'")
         
@@ -306,6 +309,19 @@ async def adopt_pet(request: Request, adoption_data: Dict[str, Any] = Body(...))
         if result["success"]:
             pet_data = await user_data_manager.get_pet_data_async(str(user_id))
             logger.info(f"Pet adoption successful for user {user_id}: {pet_data.get('name') if pet_data else 'Unknown'}")
+
+            # Apply the chosen battle skill if provided
+            chosen_skill_id = adoption_data.get("battleSkillId", "")
+            if chosen_skill_id and pet_data:
+                if chosen_skill_id in SKILL_BY_ID:
+                    equip_skill(pet_data, chosen_skill_id, 0)
+                    await user_data_manager.save_pet_data(str(user_id), pet_data.get("name", "Pet"), pet_data)
+                    logger.info(f"Equipped starting battle skill '{chosen_skill_id}' for user {user_id}")
+                else:
+                    logger.warning(f"Unknown battleSkillId '{chosen_skill_id}' during adoption for user {user_id}")
+
+            # Re-fetch after potential skill save
+            pet_data = await user_data_manager.get_pet_data_async(str(user_id))
             
             # Automatically generate tasks for the new pet owner
             try:
@@ -2319,10 +2335,30 @@ async def _run_npc_battle_sim(user_id: str, difficulty: str) -> dict:
     p_last_action = e_last_action = None
     action_labels = DamageCalculator.get_action_labels(p_type, p_elem, p_spec, custom_labels=pet.get("action_labels", {}))
 
+    # Initialise skill state for web sim
+    player_skill_state: dict = {"total_attack": p_atk, "max_hp": p_hp, "active_effects": [], "skill_cooldown": 0}
+    try:
+        from Systems.Pets.Logic.battle_skills import init_battle_skill_state
+        init_battle_skill_state(player_skill_state)
+    except Exception:
+        pass
+
     for turn_num in range(1, MAX_TURNS + 1):
         if cur_p_hp <= 0 or cur_e_hp <= 0:
             break
         p_action = "attack"
+
+        # Tick active skill effects for player
+        try:
+            from Systems.Pets.Logic.battle_skills import tick_battle_effects, is_stunned, consume_stun
+            net_delta, tick_lines = tick_battle_effects(player_skill_state, p_atk)
+            if net_delta != 0:
+                cur_p_hp = max(0, min(p_hp, cur_p_hp + net_delta))
+            if is_stunned(player_skill_state):
+                consume_stun(player_skill_state)
+                p_action = "defend"  # stunned = skip turn
+        except Exception:
+            pass
         monster_state = {
             "hp": cur_e_hp, "max_hp": e_hp, "prev_hp": cur_e_hp,
             "charge_multiplier": e_charge, "last_action": e_last_action,
@@ -2633,3 +2669,155 @@ async def purchase_ability_point_endpoint(request: Request):
 
     await user_data_manager.save_pet_data(user_id, pet.get("name", "Pet"), pet)
     return JSONResponse(content={"ok": True, "message": message, "tree": get_tree_state(pet)})
+
+
+# ── Battle Skills ─────────────────────────────────────────────────────────────
+
+@router.get("/pets/skills")
+async def get_pet_skills(request: Request):
+    """Return the current skill state for the user's pet."""
+    user = request.session.get("discord_user")
+    if not user:
+        raise HTTPException(status_code=401, detail="Not logged in")
+    user_id = str(user.get("id"))
+    pet = await user_data_manager.get_pet_data_async(user_id)
+    if not pet:
+        raise HTTPException(status_code=404, detail="No pet found")
+    return JSONResponse(content=get_skill_state(pet))
+
+
+@router.post("/pets/skills/draw")
+async def draw_skill_choices_endpoint(request: Request, data: Dict[str, Any] = Body(default={})):
+    """
+    Draw 5 skill choices from the pet's element pool for a given slot.
+    Costs 1 ability point per draw. The point is spent immediately on draw,
+    not on equip — so choose carefully.
+    Body: { "slot": 0, "cross_element": false }
+    """
+    user = request.session.get("discord_user")
+    if not user:
+        raise HTTPException(status_code=401, detail="Not logged in")
+    user_id = str(user.get("id"))
+    pet = await user_data_manager.get_pet_data_async(user_id)
+    if not pet:
+        raise HTTPException(status_code=404, detail="No pet found")
+
+    cross = bool(data.get("cross_element", False))
+
+    # Check ability point balance
+    available_points = int(pet.get("ability_points") or 0)
+    if available_points < 1:
+        return JSONResponse(
+            content={"ok": False, "message": "Not enough ability points. Drawing costs 1 ability point."},
+            status_code=400,
+        )
+
+    # Deduct the point before returning choices
+    pet["ability_points"] = available_points - 1
+    await user_data_manager.save_pet_data(user_id, pet.get("name", "Pet"), pet)
+
+    choices = draw_skill_choices(pet, count=5, cross_element=cross)
+    return JSONResponse(content={"ok": True, "choices": choices, "ability_points": pet["ability_points"]})
+
+
+@router.post("/pets/skills/equip")
+async def equip_skill_endpoint(request: Request, data: Dict[str, Any] = Body(...)):
+    """
+    Equip a skill into a slot.
+    Body: { "skill_id": "fire_001", "slot": 0 }
+    """
+    user = request.session.get("discord_user")
+    if not user:
+        raise HTTPException(status_code=401, detail="Not logged in")
+    user_id = str(user.get("id"))
+
+    skill_id   = str(data.get("skill_id", ""))
+    slot_index = int(data.get("slot", 0))
+
+    if not skill_id:
+        raise HTTPException(status_code=400, detail="skill_id is required")
+    if skill_id not in SKILL_BY_ID:
+        raise HTTPException(status_code=400, detail=f"Unknown skill: {skill_id}")
+
+    pet = await user_data_manager.get_pet_data_async(user_id)
+    if not pet:
+        raise HTTPException(status_code=404, detail="No pet found")
+
+    success, message = equip_skill(pet, skill_id, slot_index)
+    if not success:
+        return JSONResponse(content={"ok": False, "message": message}, status_code=400)
+
+    await user_data_manager.save_pet_data(user_id, pet.get("name", "Pet"), pet)
+    return JSONResponse(content={"ok": True, "message": message, "skills": get_skill_state(pet)})
+
+
+@router.post("/pets/skills/migrate")
+async def migrate_pet_skills(request: Request):
+    """
+    One-time migration for existing pets that have no battle skill.
+    Assigns a random skill from their element pool and grants 1 free ability point.
+    Safe to call multiple times — only acts if the pet has no battle_skills set.
+    """
+    user = request.session.get("discord_user")
+    if not user:
+        raise HTTPException(status_code=401, detail="Not logged in")
+    user_id = str(user.get("id"))
+
+    pet = await user_data_manager.get_pet_data_async(user_id)
+    if not pet:
+        raise HTTPException(status_code=404, detail="No pet found")
+
+    existing = get_equipped_skills(pet)
+    if existing:
+        return JSONResponse(content={
+            "ok": True,
+            "already_migrated": True,
+            "message": "Your pet already has a battle skill.",
+            "skills": get_skill_state(pet),
+        })
+
+    # Assign a random skill from the pet's element pool(s)
+    element1 = str(pet.get("element", "basic")).lower()
+    element2 = str(pet.get("element2") or "").lower() or None
+    choices = draw_initial_skill_choices(element1, element2, count=5)
+    if not choices:
+        raise HTTPException(status_code=500, detail="Could not draw skill choices for this pet's elements.")
+
+    import random as _random
+    chosen = _random.choice(choices)
+    equip_skill(pet, chosen["id"], 0)
+
+    # Grant 1 free ability point so they can reroll if they want
+    pet["ability_points"] = int(pet.get("ability_points") or 0) + 1
+
+    await user_data_manager.save_pet_data(user_id, pet.get("name", "Pet"), pet)
+    return JSONResponse(content={
+        "ok": True,
+        "already_migrated": False,
+        "message": f"Assigned **{chosen['name']}** as your starting battle skill and granted 1 free ability point to reroll if you'd like.",
+        "assigned_skill": chosen,
+        "skills": get_skill_state(pet),
+    })
+
+
+@router.post("/pets/skills/adopt-draw")
+async def draw_adoption_skills(request: Request, data: Dict[str, Any] = Body(...)):
+    """
+    Draw 5 skill choices for a new pet during adoption (before the pet is created).
+    Body: { "element1": "fire", "element2": "water" }
+    Returns 5 skill choices from the combined element pool.
+    """
+    user = request.session.get("discord_user")
+    if not user:
+        raise HTTPException(status_code=401, detail="Not logged in")
+
+    element1 = str(data.get("element1", "basic")).lower()
+    element2 = str(data.get("element2") or "").lower() or None
+
+    if element1 not in ALL_ELEMENTS:
+        element1 = "basic"
+    if element2 and element2 not in ALL_ELEMENTS:
+        element2 = None
+
+    choices = draw_initial_skill_choices(element1, element2, count=5)
+    return JSONResponse(content={"choices": choices})

@@ -38,6 +38,7 @@
 
 </div>
 
+<script src="/js/image-utils.js"></script>
 <script>
 (function () {
   // ── Helpers ────────────────────────────────────────────────────────────────
@@ -279,7 +280,7 @@
     return `
       <div class="ro-nation-row" data-nation-id="${n.nation_id}">
         <div class="ro-nation-header">
-          ${n.flag ? `<img class="ro-nation-flag" src="${esc(n.flag)}" alt="" onerror="this.style.display='none'">` : ''}
+          ${n.flag ? `<img class="ro-nation-flag" src="${window.ImageUtils ? window.ImageUtils.proxyImageUrl(n.flag) : n.flag}" alt="" onerror="this.style.display='none'">` : ''}
           <div>
             <div class="ro-nation-name">${esc(n.nation_name)}</div>
             <div class="ro-nation-leader">${esc(n.leader_name || '')}</div>
@@ -303,7 +304,7 @@
     return `
       <div class="ro-content-wrapper">
         <div class="ro-single-header">
-        ${n.flag ? `<img class="ro-single-flag" src="${esc(n.flag)}" alt="" onerror="this.style.display='none'">` : ''}
+        ${n.flag ? `<img class="ro-single-flag" src="${window.ImageUtils ? window.ImageUtils.proxyImageUrl(n.flag) : n.flag}" alt="" onerror="this.style.display='none'">` : ''}
         <div>
           <div class="ro-single-name">${esc(n.nation_name)}</div>
           <div class="ro-single-leader">${esc(n.leader_name || '')}</div>

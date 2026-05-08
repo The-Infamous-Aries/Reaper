@@ -2,8 +2,9 @@
 Weapon Efficiency API — Theory and Targeted modes.
 Mirrors the /weapon_eff Discord command logic for the web dashboard.
 
-Nation and alliance data is read directly from GlobalNations.db or
-NWNations.db, falling back to the live PnW API if not found locally.
+Nation and alliance data is read directly from GlobalNations.db (single source
+of truth for all nations including Nights Watch), falling back to the live PnW
+API if not found locally.
 """
 import math
 import logging
@@ -18,7 +19,7 @@ from Systems.PnW.MA.weapon_eff import (
     calc_infra_value,
     find_required_infra,
 )
-from Systems.Functions.db_paths import GLOBAL_NATIONS_DB, NW_NATIONS_DB
+from Systems.Functions.db_paths import GLOBAL_NATIONS_DB
 
 router = APIRouter()
 logger = logging.getLogger("Reaper.WebServer.WeaponAPI")
@@ -28,11 +29,11 @@ logger = logging.getLogger("Reaper.WebServer.WeaponAPI")
 
 async def _get_nation_with_cities(target: str) -> Optional[dict]:
     """
-    Resolve a nation by name or ID, preferring local DBs over the live API.
-    Checks GlobalNations.db first (all game nations), then NWNations.db,
-    then falls back to the PnW API. Always attaches cities to the returned dict.
+    Resolve a nation by name or ID, preferring GlobalNations.db (single source of
+    truth for all nations including Nights Watch) over the live API.
+    Always attaches cities to the returned dict.
     """
-    # Try GlobalNations.db first
+    # GlobalNations.db — all game nations including NW
     if GLOBAL_NATIONS_DB.exists():
         try:
             from PnWHarvester.db.global_nations_db import GlobalNationsDB
@@ -46,26 +47,6 @@ async def _get_nation_with_cities(target: str) -> Optional[dict]:
                     return nation
         except Exception as e:
             logger.debug(f"GlobalNationsDB lookup failed for '{target}': {e}")
-
-    # Try NWNations.db
-    if NW_NATIONS_DB.exists():
-        try:
-            from Systems.Functions.irs_nations_db import IRSNationsDB
-            nwdb = IRSNationsDB(str(NW_NATIONS_DB))
-            nation = (await nwdb.get_nation(int(target))
-                      if target.isdigit()
-                      else None)
-            if not nation:
-                # NW DB doesn't have get_nation_by_name — scan all_nations
-                all_nw = await nwdb.get_all_nations()
-                nation = next((n for n in all_nw
-                               if n.get('nation_name', '').lower() == target.lower()), None)
-            if nation:
-                nation['cities'] = await nwdb.get_cities_for_nation(int(nation['id']))
-                if nation['cities']:
-                    return nation
-        except Exception as e:
-            logger.debug(f"NWNationsDB lookup failed for '{target}': {e}")
 
     # Fall back to live API
     query = create_v3_query_instance()
@@ -365,6 +346,64 @@ def _build_alliance_nation_entry(nation: dict, missile_cost: float, nuke_cost: f
         'best_nuke_avg_val': round(best_n['avg_val'])    if best_n else 0,
         'cities': cities_out,
     }
+
+
+# ── Autocomplete data endpoint ───────────────────────────────────────────────
+
+@router.get("/weapons/ac_data")
+async def weapon_ac_data():
+    """
+    Return a lightweight list of nations and alliances for the targeted-mode
+    autocomplete dropdown.  Reads from GlobalNations.db (single source of truth).
+    """
+    nations: list[dict] = []
+    alliances: dict[int, dict] = {}
+
+    # ── GlobalNations.db ──────────────────────────────────────────────────────
+    if GLOBAL_NATIONS_DB.exists():
+        try:
+            from PnWHarvester.db.global_nations_db import GlobalNationsDB
+            gdb = GlobalNationsDB(str(GLOBAL_NATIONS_DB))
+
+            all_nations = await gdb.get_all_nations()
+            for n in all_nations:
+                if not n.get('nation_name'):
+                    continue
+                nations.append({
+                    'id':          n.get('id'),
+                    'nation_name': n.get('nation_name', ''),
+                    'leader_name': n.get('leader_name', ''),
+                })
+                # Collect alliances while we're iterating
+                aid = n.get('alliance_id')
+                if aid and aid not in alliances:
+                    aname = (n.get('alliance') or {}).get('name') if isinstance(n.get('alliance'), dict) else None
+                    if not aname:
+                        aname = n.get('alliance_name')
+                    if aname:
+                        alliances[aid] = {'alliance_id': aid, 'alliance_name': aname}
+
+            # Also try the dedicated alliances method if available
+            if hasattr(gdb, 'get_distinct_alliances'):
+                try:
+                    db_alliances = await gdb.get_distinct_alliances("")
+                    for a in db_alliances:
+                        aid = a.get('alliance_id')
+                        if aid and aid not in alliances and a.get('alliance_name'):
+                            alliances[aid] = {'alliance_id': aid, 'alliance_name': a['alliance_name']}
+                except Exception:
+                    pass
+
+        except Exception as e:
+            logger.warning(f"weapon_ac_data GlobalNationsDB error: {e}")
+
+    # ── NWNations.db fallback is no longer needed — GlobalNations.db contains all nations ──
+
+    # Sort nations alphabetically; alliances alphabetically
+    nations.sort(key=lambda n: (n.get('nation_name') or '').lower())
+    alliance_list = sorted(alliances.values(), key=lambda a: (a.get('alliance_name') or '').lower())
+
+    return {'nations': nations, 'alliances': alliance_list}
 
 
 # ── Theory endpoint ───────────────────────────────────────────────────────────

@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple, Union, cast, Sequence
 
 from Systems.Functions.utils import get_web_public_url
-from Systems.Functions.db_paths import EP_WARS_DB_STR as WATCH_DB_PATH, EP_NATIONS_DB_STR as EP_NATIONS_DB_PATH
+from Systems.Functions.db_paths import EP_WARS_DB_STR as WATCH_DB_PATH
 from PnWHarvester.db.global_nations_db import GlobalNationsDB as _GlobalNationsDB
 from Systems.PnW.Util.calc import AllianceCalculator
 from Systems.PnW.Util.Graphs.compare_graph import create_interactive_comparison_page
@@ -114,7 +114,6 @@ async def search_alliances(q: str = ""):
 
     import asyncio as _asyncio
     await _asyncio.gather(
-        _query_db(EP_NATIONS_DB_PATH),
         _query_db(GLOBAL_NATIONS_DB_PATH),
     )
 
@@ -140,16 +139,16 @@ async def get_compare_data(home_alliance_ids: str, away_alliance_ids: str):
 
     async def _build_data(alliance_id: int, alliance_name: str) -> Optional[dict]:
         try:
-            # NW lives in the local DB — use it directly
+            # NW lives in GlobalNations.db — use it directly
             if alliance_id == WATCH_ALLIANCE_ID:
-                ep_db = _GlobalNationsDB(EP_NATIONS_DB_PATH)
+                ep_db = _GlobalNationsDB(GLOBAL_NATIONS_DB_PATH)
                 nations = await ep_db.get_nations_by_alliance(WATCH_ALLIANCE_ID)
                 # Attach cities from the local DB so improvements/city calcs work
                 for nation in nations:
                     nation_id = nation.get('id')
                     if nation_id:
                         nation['cities'] = await ep_db.get_cities_for_nation(int(nation_id))
-                logger.info(f"Loaded {len(nations)} EP nations from local DB for compare")
+                logger.info(f"Loaded {len(nations)} NW nations from GlobalNations.db for compare")
             else:
                 nations = await query_instance.get_alliance_nations(str(alliance_id))
             if not nations:
@@ -325,7 +324,18 @@ async def get_compare_graph(home_alliance_ids: str, away_alliance_ids: str):
 
     async def _build_alliance_data(alliance_id: int, alliance_name: str) -> Optional[dict]:
         try:
-            nations = await query_instance.get_alliance_nations(str(alliance_id))
+            # NW lives in GlobalNations.db — use it directly instead of the API
+            if alliance_id == WATCH_ALLIANCE_ID:
+                from Systems.Functions.db_paths import GLOBAL_NATIONS_DB_STR as GLOBAL_NATIONS_DB_PATH
+                ep_db = _GlobalNationsDB(GLOBAL_NATIONS_DB_PATH)
+                nations = await ep_db.get_nations_by_alliance(WATCH_ALLIANCE_ID)
+                for nation in nations:
+                    nation_id = nation.get('id')
+                    if nation_id:
+                        nation['cities'] = await ep_db.get_cities_for_nation(int(nation_id))
+                logger.info(f"Loaded {len(nations)} NW nations from GlobalNations.db for compare graph")
+            else:
+                nations = await query_instance.get_alliance_nations(str(alliance_id))
             if not nations:
                 return None
             stats = await calculator.calculate_alliance_statistics(nations)

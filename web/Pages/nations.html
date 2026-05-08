@@ -1,12 +1,71 @@
 <link rel="stylesheet" href="/css/nations.css">
+<style>
+  /* Alliance selector autocomplete — mirrors comparison page style */
+  .nat-alliance-bar {
+    display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid rgba(255,215,0,0.12);
+    background: rgba(10,8,3,0.6);
+  }
+  .nat-alliance-label {
+    color: var(--gold-secondary); font-size: 0.78rem; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.07em; white-space: nowrap;
+  }
+  .nat-ac-wrap { position: relative; flex: 1; min-width: 220px; max-width: 380px; }
+  .nat-ac-input {
+    width: 100%; padding: 0.4rem 0.75rem; border-radius: 999px;
+    border: 1px solid rgba(255,215,0,0.35);
+    background: rgba(14,11,5,0.92); color: var(--text-primary);
+    font-size: 0.85rem;
+  }
+  .nat-ac-input:focus { outline: none; border-color: var(--gold-primary); box-shadow: 0 0 8px var(--gold-glow); }
+  .nat-ac-input::placeholder { color: rgba(255,255,255,0.3); }
+  .nat-ac-dropdown {
+    position: absolute; top: 100%; left: 0; right: 0; z-index: 1050;
+    background: #1a1a2e; border: 1px solid rgba(184,134,11,0.4);
+    border-radius: 0 0 6px 6px; max-height: 220px; overflow-y: auto;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.5); display: none;
+  }
+  .nat-ac-dropdown.open { display: block; }
+  .nat-ac-item {
+    padding: 7px 12px; cursor: pointer; font-size: 0.88rem;
+    color: #d4af37; border-bottom: 1px solid rgba(184,134,11,0.1);
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .nat-ac-item:last-child { border-bottom: none; }
+  .nat-ac-item:hover, .nat-ac-item.active { background: rgba(184,134,11,0.15); }
+  .nat-ac-count { font-size: 0.75rem; color: #888; margin-left: 8px; }
+  .nat-ac-selected-tag {
+    display: inline-flex; align-items: center; gap: 5px;
+    background: rgba(184,134,11,0.2); border: 1px solid rgba(184,134,11,0.45);
+    border-radius: 999px; padding: 0.3rem 0.75rem;
+    color: var(--gold-primary); font-size: 0.82rem; font-weight: 600;
+    white-space: nowrap;
+  }
+  .nat-ac-selected-tag .nat-ac-clear {
+    cursor: pointer; opacity: 0.65; font-size: 0.9rem; line-height: 1;
+    margin-left: 2px;
+  }
+  .nat-ac-selected-tag .nat-ac-clear:hover { opacity: 1; }
+</style>
 
 <div class="nat-shell">
 
   <!-- Controls -->
   <div class="card nat-controls">
+    <!-- Alliance selector bar -->
+    <div class="nat-alliance-bar">
+      <span class="nat-alliance-label">Alliance</span>
+      <div class="nat-ac-wrap">
+        <input type="text" id="nat-alliance-input" class="nat-ac-input"
+               placeholder="Search alliances…" autocomplete="off">
+        <div class="nat-ac-dropdown" id="nat-alliance-drop"></div>
+      </div>
+      <div id="nat-alliance-tag"></div>
+    </div>
     <div class="card-header">
       <div>
-        <p class="nat-kicker">Nights Watch</p>
+        <p class="nat-kicker" id="nat-kicker">Nights Watch</p>
         <p class="nat-title">Alliance Members</p>
       </div>
       <div class="nat-header-right">
@@ -132,6 +191,7 @@
 
 </div>
 
+<script src="/js/image-utils.js"></script>
 <script>
 (function () {
   const fmt  = n => Number(n||0).toLocaleString();
@@ -229,6 +289,12 @@
   let _revCache = {}, _revData = null;
   let _linkedNationId = null;
 
+  // Alliance selector state — default to Nights Watch
+  let _selectedAllianceId   = 14225;
+  let _selectedAllianceName = 'Nights Watch';
+  let _acCache = null;
+  let _acTimer = null;
+
   // Dropdown sort groups: group → current col
   const _dropdowns = {
     units: 'soldiers',
@@ -315,7 +381,7 @@
       rows.push(`<tr class="nat-row${isOpen?' nat-row-open':''}${isMe?' nat-my-nation':''}" data-id="${n.id}">
         <td class="nat-chevron">${isMe?'★':(isOpen?'▼':'▶')}</td>
         <td class="nat-name-cell">
-          ${n.flag?`<img src="${n.flag}" class="nat-flag" alt="">`:''}
+          ${n.flag?`<img src="${window.ImageUtils ? window.ImageUtils.proxyImageUrl(n.flag) : n.flag}" class="nat-flag" alt="">`:''}
           <div>
             <span>${pnwLink(n.id, n.nation_name||'Unknown')}</span>
             <small class="nat-leader">${n.leader_name||''}</small>
@@ -534,7 +600,7 @@
     const top5HTML = nations.slice(0,5).map((n,i) => `
       <div class="ov-rev-earner">
         <span class="ov-rev-rank">#${i+1}</span>
-        ${n.flag?`<img src="${n.flag}" class="nat-flag" alt="">`:''}
+        ${n.flag?`<img src="${window.ImageUtils ? window.ImageUtils.proxyImageUrl(n.flag) : n.flag}" class="nat-flag" alt="">`:''}
         <span class="ov-rev-name">${n.nation_name||'Unknown'}</span>
         <span class="ov-rev-amt nat-rev-pos-strong">${$m(n.turn_revenue)}/t</span>
         <span class="ov-rev-amt-day">${$m(n.day_revenue)}/day</span>
@@ -680,7 +746,7 @@
 
   async function fetchRevenue() {
     try {
-      const res = await fetch('/api/watch/revenue');
+      const res = await fetch(`/api/watch/revenue?alliance_id=${_selectedAllianceId}`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       _revData = data;
@@ -700,11 +766,17 @@
     status.style.display = 'block'; status.className = 'nat-status';
     status.textContent = 'Loading nations…';
     try {
-      const res = await fetch('/api/watch/nations');
+      const url = _selectedAllianceId === 14225
+        ? '/api/watch/nations'
+        : `/api/watch/nations_by_alliance?alliance_id=${_selectedAllianceId}`;
+      const res = await fetch(url);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       if (data.error) throw new Error(data.error);
       _nations = data.nations||[];
+      // Update kicker with alliance name from response (or fallback to selected)
+      const kicker = document.getElementById('nat-kicker');
+      if (kicker) kicker.textContent = data.alliance_name || _selectedAllianceName;
       _detailCache = {}; _expandedId = null;
       status.style.display = 'none';
       renderTable();
@@ -721,6 +793,7 @@
   // ── detail HTML ───────────────────────────────────────────────────────────
   function buildDetailHTML(n, cities) {
     if (!n) return '<div class="nat-status nat-status-error">No data</div>';
+    cities = cities || [];
     const agg = {};
     ['coal_power','oil_power','nuclear_power','wind_power',
      'coal_mine','oil_well','uranium_mine','lead_mine','iron_mine','bauxite_mine',
@@ -799,7 +872,7 @@
 
     return `<div class="nat-detail-inner">
       <div class="nat-detail-header">
-        ${n.flag?`<img src="${n.flag}" class="nat-detail-flag" alt="">`:''}
+        ${n.flag?`<img src="${window.ImageUtils ? window.ImageUtils.proxyImageUrl(n.flag) : n.flag}" class="nat-detail-flag" alt="">`:''}
         <div>
           <h3 class="nat-detail-name">${pnwLink(n.id, n.nation_name||'Unknown')}</h3>
           <p class="nat-detail-leader">Leader: ${n.leader_name||'—'}</p>
@@ -1162,6 +1235,106 @@
   // ── init ──────────────────────────────────────────────────────────────────
   document.addEventListener('dashboardPageLoaded', function(e) {
     if (e.detail.page !== 'nations.html') return;
+
+    // ── Alliance autocomplete ─────────────────────────────────────────────
+    function renderAllianceTag() {
+      const tag = document.getElementById('nat-alliance-tag');
+      if (!tag) return;
+      tag.innerHTML = `<span class="nat-ac-selected-tag">
+        ${_selectedAllianceName}
+        <span class="nat-ac-clear" id="nat-ac-clear" title="Change alliance">✕</span>
+      </span>`;
+      document.getElementById('nat-ac-clear').addEventListener('click', () => {
+        document.getElementById('nat-alliance-input').value = '';
+        document.getElementById('nat-alliance-input').focus();
+        tag.innerHTML = '';
+      });
+    }
+
+    async function fetchAllianceAC(q) {
+      try {
+        const res = await fetch('/api/pnw/alliances?q=' + encodeURIComponent(q));
+        if (!res.ok) return [];
+        return await res.json();
+      } catch(e) { return []; }
+    }
+
+    function openAllianceDrop(items) {
+      const drop = document.getElementById('nat-alliance-drop');
+      if (!items.length) { drop.classList.remove('open'); drop.innerHTML = ''; return; }
+      drop.innerHTML = items.map(a =>
+        `<div class="nat-ac-item" data-id="${a.id}" data-name="${(a.name||'').replace(/"/g,'&quot;')}">
+          <span>${a.name}</span>
+          <span class="nat-ac-count">${a.member_count ? a.member_count + ' members' : 'ID ' + a.id}</span>
+        </div>`
+      ).join('');
+      drop.querySelectorAll('.nat-ac-item').forEach(item => {
+        item.addEventListener('mousedown', ev => {
+          ev.preventDefault();
+          _selectedAllianceId   = parseInt(item.dataset.id);
+          _selectedAllianceName = item.dataset.name;
+          document.getElementById('nat-alliance-input').value = '';
+          drop.classList.remove('open'); drop.innerHTML = '';
+          renderAllianceTag();
+          // Update kicker immediately
+          const kicker = document.getElementById('nat-kicker');
+          if (kicker) kicker.textContent = _selectedAllianceName;
+          // Revenue only available for NW; clear for other alliances
+          _revCache = {}; _revData = null;
+          fetchNations();
+          fetchRevenue();
+        });
+      });
+      drop.classList.add('open');
+    }
+
+    const acInput = document.getElementById('nat-alliance-input');
+    acInput.addEventListener('input', () => {
+      clearTimeout(_acTimer);
+      const q = acInput.value.trim();
+      if (!q) { document.getElementById('nat-alliance-drop').classList.remove('open'); return; }
+      _acTimer = setTimeout(async () => {
+        const results = await fetchAllianceAC(q);
+        openAllianceDrop(results.slice(0, 20));
+      }, 200);
+    });
+    acInput.addEventListener('focus', async () => {
+      const q = acInput.value.trim();
+      if (!q) {
+        if (!_acCache) _acCache = await fetchAllianceAC('');
+        openAllianceDrop((_acCache || []).slice(0, 20));
+      }
+    });
+    acInput.addEventListener('blur', () => {
+      setTimeout(() => {
+        const drop = document.getElementById('nat-alliance-drop');
+        drop.classList.remove('open'); drop.innerHTML = '';
+      }, 150);
+    });
+    acInput.addEventListener('keydown', ev => {
+      const drop = document.getElementById('nat-alliance-drop');
+      const items = drop.querySelectorAll('.nat-ac-item');
+      const active = drop.querySelector('.nat-ac-item.active');
+      if (ev.key === 'ArrowDown') {
+        ev.preventDefault();
+        const next = active ? active.nextElementSibling : items[0];
+        if (active) active.classList.remove('active');
+        if (next) next.classList.add('active');
+      } else if (ev.key === 'ArrowUp') {
+        ev.preventDefault();
+        const prev = active ? active.previousElementSibling : items[items.length - 1];
+        if (active) active.classList.remove('active');
+        if (prev) prev.classList.add('active');
+      } else if (ev.key === 'Enter' && active) {
+        ev.preventDefault();
+        active.dispatchEvent(new MouseEvent('mousedown'));
+      } else if (ev.key === 'Escape') {
+        drop.classList.remove('open'); drop.innerHTML = '';
+      }
+    });
+
+    // Render the default NW tag on load
+    renderAllianceTag();
 
     fetchNations();
     fetchRevenue();

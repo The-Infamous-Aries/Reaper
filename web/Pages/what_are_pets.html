@@ -1,433 +1,615 @@
-<link rel="stylesheet" href="/css/mypet.css">
-<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+﻿<link rel="stylesheet" href="/css/what_are_pets.css">
 
-<style>
-/* ── Layout ──────────────────────────────────────────────────────────────── */
-#wap-wrap { display:flex; gap:20px; align-items:flex-start; }
+<div class="wap2-page">
 
-#wap-nav {
-    position: sticky;
-    top: 12px;
-    width: 172px;
-    flex-shrink: 0;
-    background: rgba(15,15,15,0.82);
-    border: 1px solid rgba(255,215,0,0.18);
-    border-radius: 10px;
-    padding: 10px 0;
-    max-height: calc(100vh - 24px);
-    overflow-y: auto;
-    scrollbar-width: thin;
-}
-#wap-nav a {
-    display: block;
-    padding: 6px 14px;
-    font-size: 0.73rem;
-    color: var(--text-secondary);
-    text-decoration: none;
-    border-left: 2px solid transparent;
-    transition: color 0.15s, border-color 0.15s, background 0.15s;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-#wap-nav a:hover  { color: var(--gold-secondary); background: rgba(255,215,0,0.05); }
-#wap-nav a.active { color: var(--gold-primary); border-left-color: var(--gold-primary); background: rgba(255,215,0,0.07); font-weight:600; }
-#wap-nav .nav-section {
-    font-size: 0.62rem;
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    color: rgba(255,215,0,0.4);
-    padding: 8px 14px 3px;
-    text-transform: uppercase;
-}
+  <!-- Page Header -->
+  <div class="wap2-header">
+    <h1 class="wap2-title">🐾 Pet System Guide</h1>
+    <p class="wap2-subtitle">Everything you need to know — click a card to expand</p>
+    <div class="wap2-expand-controls">
+      <button class="wap2-expand-all-btn" id="wap2ExpandAll">Expand All</button>
+      <button class="wap2-expand-all-btn wap2-collapse-btn" id="wap2CollapseAll">Collapse All</button>
+    </div>
+  </div>
 
-#wap-content { flex: 1; min-width: 0; }
+  <!-- Card Grid -->
+  <div class="wap2-grid">
 
-/* ── Markdown rendered content ───────────────────────────────────────────── */
-#wap-body h2 {
-    color: var(--gold-primary);
-    font-size: 1rem;
-    font-weight: 700;
-    letter-spacing: 0.03em;
-    border-bottom: 1px solid rgba(255,215,0,0.18);
-    padding-bottom: 0.5rem;
-    margin: 1.6rem 0 0.9rem;
-    scroll-margin-top: 12px;
-}
-#wap-body h3 {
-    color: var(--gold-secondary);
-    font-size: 0.82rem;
-    font-weight: 600;
-    margin: 1rem 0 0.35rem;
-}
-#wap-body p {
-    color: var(--text-secondary);
-    font-size: 0.8rem;
-    line-height: 1.65;
-    margin-bottom: 0.5rem;
-}
-#wap-body strong { color: var(--text-primary); }
-#wap-body em { color: var(--gold-secondary); font-style: normal; }
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <!-- CARD 1: Basics -->
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <div class="wap2-card" id="wap2-card-1">
+      <button class="wap2-card-header" aria-expanded="false" aria-controls="wap2-body-1">
+        <span class="wap2-card-title"><span class="wap2-card-emoji">🐾</span> Basics</span>
+        <span class="wap2-card-subtitle">Types, Elements, Stats &amp; Abilities</span>
+        <span class="wap2-chevron">&#8964;</span>
+      </button>
+      <div class="wap2-card-body" id="wap2-body-1">
 
-#wap-body table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 0.76rem;
-    margin: 0.5rem 0 0.9rem;
-}
-#wap-body table th {
-    color: var(--gold-primary);
-    font-weight: 600;
-    padding: 5px 9px;
-    border-bottom: 1px solid rgba(255,215,0,0.18);
-    text-align: left;
-}
-#wap-body table td {
-    color: var(--text-secondary);
-    padding: 4px 9px;
-    border-bottom: 1px solid rgba(255,255,255,0.04);
-    vertical-align: top;
-}
-#wap-body table tr:last-child td { border-bottom: none; }
-#wap-body table tr:hover td { background: rgba(255,215,0,0.03); }
+        <!-- Types -->
+        <h4 class="wap2-section-title">Types</h4>
+        <p>Every pet is randomly assigned one of three types on adoption. Types form a triangle advantage system — each type beats one and loses to one.</p>
+        <table class="wap2-table">
+          <thead>
+            <tr><th>Type</th><th>Beats</th><th>Bonus</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>🦅 Flying</td><td>Land</td><td>+15% damage</td></tr>
+            <tr><td>🐾 Land</td><td>Swimming</td><td>+15% damage</td></tr>
+            <tr><td>🐟 Swimming</td><td>Flying</td><td>+15% damage</td></tr>
+          </tbody>
+        </table>
 
-#wap-body code {
-    display: block;
-    background: rgba(0,0,0,0.38);
-    border: 1px solid rgba(255,215,0,0.16);
-    border-radius: 6px;
-    padding: 7px 13px;
-    font-family: monospace;
-    font-size: 0.76rem;
-    color: var(--gold-secondary);
-    margin: 0.45rem 0;
-    white-space: pre-wrap;
-}
-#wap-body p code, #wap-body li code {
-    display: inline;
-    padding: 1px 5px;
-    border-radius: 4px;
-    font-size: 0.74rem;
-}
+        <!-- Elements -->
+        <h4 class="wap2-section-title">Elements <span class="wap2-note-badge">13 total</span></h4>
+        <p>Pets can have <strong>1 or 2 elements</strong>. Dual-element pets average across all matchup combos. Element advantage grants <strong>+10% damage</strong>.</p>
+        <table class="wap2-table">
+          <thead>
+            <tr><th>Element</th><th>Strong Against</th><th>Notes</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>⚪ Basic</td><td>—</td><td class="wap2-warn-text">−10% damage vs everything (unique penalty)</td></tr>
+            <tr><td>🔥 Fire</td><td>Ice, Plant, Necro</td><td></td></tr>
+            <tr><td>💧 Water</td><td>Fire, Rock, Air</td><td></td></tr>
+            <tr><td>⚡ Electric</td><td>Water, Plant, Fighting</td><td></td></tr>
+            <tr><td>❄️ Ice</td><td>Air, Electric, Water</td><td></td></tr>
+            <tr><td>🌿 Plant</td><td>Water, Air, Psychic</td><td></td></tr>
+            <tr><td>🪨 Rock</td><td>Electric, Fire, Ice</td><td></td></tr>
+            <tr><td>💨 Air</td><td>Rock, Fighting, Electric</td><td></td></tr>
+            <tr><td>✨ Magic</td><td>Psychic, Fighting, Fire</td><td></td></tr>
+            <tr><td>☀️ Holy</td><td>Necro, Magic, Rock</td><td></td></tr>
+            <tr><td>💀 Necro</td><td>Holy, Magic, Plant</td><td></td></tr>
+            <tr><td>🔮 Psychic</td><td>Holy, Necro, Magic</td><td></td></tr>
+            <tr><td>👊 Fighting</td><td>Ice, Psychic, Holy</td><td></td></tr>
+          </tbody>
+        </table>
 
-#wap-body blockquote {
-    border-left: 3px solid #2ecc71;
-    background: rgba(46,204,113,0.07);
-    border-radius: 0 6px 6px 0;
-    padding: 7px 11px;
-    font-size: 0.74rem;
-    color: #a8e6cf;
-    margin: 0.5rem 0;
-}
-#wap-body blockquote p { color: #a8e6cf; margin: 0; font-size: 0.74rem; }
-#wap-body blockquote strong { color: #fff; }
+        <!-- Stats -->
+        <h4 class="wap2-section-title">The Six Stats</h4>
+        <p>Every species has <strong>2 specialization stats</strong> (shown in gold) — the stats it naturally excels at.</p>
+        <table class="wap2-table">
+          <thead>
+            <tr><th>Stat</th><th>Full Name</th><th>Role</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><span class="wap2-stat-pill wap2-stat-att">ATT</span></td><td>Attack</td><td>Raw damage output in battle</td></tr>
+            <tr><td><span class="wap2-stat-pill wap2-stat-def">DEF</span></td><td>Defense</td><td>Damage reduction when defending</td></tr>
+            <tr><td><span class="wap2-stat-pill wap2-stat-int">INT</span></td><td>Intelligence</td><td>Boosts smart/tactical actions and XP gains</td></tr>
+            <tr><td><span class="wap2-stat-pill wap2-stat-dex">DEX</span></td><td>Dexterity</td><td>Speed and precision — affects races and casino</td></tr>
+            <tr><td><span class="wap2-stat-pill wap2-stat-hap">HAP</span></td><td>Happiness</td><td>Contributes to max HP</td></tr>
+            <tr><td><span class="wap2-stat-pill wap2-stat-ene">ENE</span></td><td>Energy</td><td>Contributes to max HP and stamina</td></tr>
+          </tbody>
+        </table>
+        <div class="wap2-tip-box">
+          <strong>Formulas:</strong><br>
+          Max HP = <code>(stat_average + HAP × ENE) × 10</code><br>
+          Combat ATK = <code>ATT + DEX</code> &nbsp;|&nbsp; Combat DEF = <code>DEF + INT</code>
+        </div>
 
-/* Warning blockquotes — paragraphs starting with Warning: */
-#wap-body blockquote.warn,
-#wap-body blockquote.warn p {
-    border-left-color: #e74c3c;
-    background: rgba(231,76,60,0.07);
-    color: #ffb3b3;
-}
+        <!-- Abilities -->
+        <h4 class="wap2-section-title">Abilities <span class="wap2-note-badge">Endgame</span></h4>
+        <p>Spend <strong>500 levels</strong> to earn 1 ability point. Spend 1 point to unlock a stat mastery branch, adding a <strong>+0.1× multiplier per point</strong> to that stat. Each branch has up to 5 levels (49 abilities total across 6 branches).</p>
+        <table class="wap2-table">
+          <thead>
+            <tr><th>Branch</th><th>Key Abilities</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><span class="wap2-stat-pill wap2-stat-att">ATT</span></td><td>NPC Crusher, PvP Striker, crit chance &amp; multiplier</td></tr>
+            <tr><td><span class="wap2-stat-pill wap2-stat-def">DEF</span></td><td>NPC Shield, PvP Guard, charge protection</td></tr>
+            <tr><td><span class="wap2-stat-pill wap2-stat-int">INT</span></td><td>XP multipliers for all 8 activities</td></tr>
+            <tr><td><span class="wap2-stat-pill wap2-stat-dex">DEX</span></td><td>Race speed boost, casino loss reduction</td></tr>
+            <tr><td><span class="wap2-stat-pill wap2-stat-hap">HAP</span></td><td>Battle health bonus, casino win bonuses</td></tr>
+            <tr><td><span class="wap2-stat-pill wap2-stat-ene">ENE</span></td><td>Battle health bonus, charge limit increase</td></tr>
+          </tbody>
+        </table>
+        <div class="wap2-note-box">
+          Full completion = <strong>245 points</strong> = <strong>122,500 levels</strong> spent
+        </div>
 
-#wap-body ul, #wap-body ol {
-    color: var(--text-secondary);
-    font-size: 0.8rem;
-    line-height: 1.65;
-    padding-left: 1.4rem;
-    margin-bottom: 0.5rem;
-}
-#wap-body li { margin-bottom: 0.2rem; }
+      </div><!-- /wap2-card-body -->
+    </div><!-- /card 1 -->
 
-#wap-body hr {
-    border: none;
-    border-top: 1px solid rgba(255,215,0,0.12);
-    margin: 1.6rem 0 0;
-}
 
-/* ── Section cards ───────────────────────────────────────────────────────── */
-.wap-section {
-    background: linear-gradient(145deg, rgba(20,20,20,0.88), rgba(38,38,38,0.88));
-    border: 1px solid rgba(255,215,0,0.22);
-    border-radius: 12px;
-    padding: 1.2rem 1.6rem 0.8rem;
-    margin-bottom: 1.4rem;
-    scroll-margin-top: 12px;
-    transition: box-shadow 0.25s;
-}
-.wap-section:hover { box-shadow: 0 4px 24px rgba(255,215,0,0.09); }
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <!-- CARD 2: My Pet Page -->
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <div class="wap2-card" id="wap2-card-2">
+      <button class="wap2-card-header" aria-expanded="false" aria-controls="wap2-body-2">
+        <span class="wap2-card-title"><span class="wap2-card-emoji">📋</span> My Pet Page</span>
+        <span class="wap2-card-subtitle">Your pet's home base — stats, equipment, inventory &amp; more</span>
+        <span class="wap2-chevron">&#8964;</span>
+      </button>
+      <div class="wap2-card-body" id="wap2-body-2">
 
-/* ── Loading / error states ──────────────────────────────────────────────── */
-#wap-loading {
-    color: var(--text-secondary);
-    font-size: 0.85rem;
-    padding: 2rem;
-    text-align: center;
-}
-#wap-error {
-    display: none;
-    color: #ffb3b3;
-    font-size: 0.82rem;
-    padding: 1rem;
-    background: rgba(231,76,60,0.07);
-    border-left: 3px solid #e74c3c;
-    border-radius: 0 6px 6px 0;
-}
+        <!-- Pet Card -->
+        <h4 class="wap2-section-title">The Pet Card</h4>
+        <p>The left panel shows your pet's full identity and stats at a glance:</p>
+        <ul class="wap2-list">
+          <li>Pet image, name, level badge, type icon, element icon(s)</li>
+          <li>Rank badge — unlocks at level 50, new badge every 50 levels</li>
+          <li>XP progress bar showing current XP vs XP needed for next level</li>
+          <li>Stats grid with all 6 stats; equipment bonuses shown in <span style="color:#4caf50">green</span>; spec stats highlighted in <span style="color:var(--gold-primary)">gold</span></li>
+          <li>Combat stats row: ATK, DEF, HP</li>
+          <li>Equipment slots: 2× Material, 2× Gem, 2× Monster, 1× Hat</li>
+        </ul>
+        <div class="wap2-tip-box">
+          <strong>XP Formula:</strong> <code>200 × (1.03^(level−1))</code> per level — costs 3% more each level, no cap.
+        </div>
 
-/* ── Responsive ──────────────────────────────────────────────────────────── */
-@media(max-width:680px){
-    #wap-wrap { flex-direction:column; }
-    #wap-nav  { position:static; width:100%; max-height:none; display:flex; flex-wrap:wrap; padding:6px 8px; gap:2px; }
-    #wap-nav .nav-section { display:none; }
-    #wap-nav a { border-left:none; border-bottom:2px solid transparent; padding:4px 10px; border-radius:20px; }
-    #wap-nav a.active { border-bottom-color:var(--gold-primary); }
-}
-</style>
+        <!-- Equipment & Multipliers -->
+        <h4 class="wap2-section-title">Equipment &amp; Multipliers</h4>
+        <ul class="wap2-list">
+          <li><strong>Materials</strong> — boost ATT, DEF, DEX &nbsp;|&nbsp; 5 rarities: Common, Uncommon, Rare, Epic, Mythic</li>
+          <li><strong>Gems</strong> — boost INT, HAP, ENE</li>
+          <li><strong>Monsters</strong> — boost mixed stats (varies per monster)</li>
+          <li><strong>Hats</strong> — boost 2 specific stats (e.g. Sorcerer Hat = +25 INT, Santa Hat = +25 HAP)</li>
+        </ul>
+        <table class="wap2-table">
+          <thead>
+            <tr><th>Condition</th><th>Multiplier</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Singles only (no matching pairs)</td><td>1×</td></tr>
+            <tr><td>Any matching pair (e.g. 2× same Material)</td><td>2× on that pair</td></tr>
+            <tr><td>Full Set (Material pair + Gem pair + Monster pair + Hat)</td><td>3× on everything</td></tr>
+            <tr><td>Full Set + Hat's bonus stats both match pet's specializations</td><td>4× on everything</td></tr>
+            <tr><td>Level bonus: every 50 levels adds +1 to the final multiplier</td><td>e.g. level 100 full set = 5×, level 150 full set + matching hat = 7×</td></tr>
+          </tbody>
+        </table>
 
-<div class="container-fluid" style="max-width:1060px;padding-bottom:3rem">
-<div id="wap-wrap">
+        <!-- Equipping & Using Items -->
+        <h4 class="wap2-section-title">Equipping &amp; Using Items</h4>
+        <ul class="wap2-list">
+          <li>Click any item in inventory to equip it (Material/Gem/Monster/Hat) — a confirm prompt appears</li>
+          <li>If a slot is full, the oldest item auto-returns to inventory</li>
+          <li>Click an equipped slot icon to unequip it back to inventory</li>
+          <li>Click a potion to use it — effect applies permanently and immediately</li>
+          <li>Items stack up to 99; overflow converts to XP (<code>level × 100 XP</code> per item)</li>
+        </ul>
 
-<!-- ── Sticky nav (built dynamically from headings) ───────────────────────── -->
-<nav id="wap-nav">
-    <div id="wap-nav-loading" style="padding:10px 14px;font-size:0.72rem;color:rgba(255,215,0,0.4)">Loading…</div>
-</nav>
+        <!-- Potions -->
+        <h4 class="wap2-section-title">Potions</h4>
+        <table class="wap2-table">
+          <thead>
+            <tr><th>Potion</th><th>Effect</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>ATT / DEF / INT / DEX / HAP / ENE Potion</td><td>+3 to that stat</td></tr>
+            <tr><td>Elemental Potion (single element)</td><td>+5 to 3 random stats — element must match</td></tr>
+            <tr><td>Elemental Potion (dual element)</td><td>+3 to 4 random stats — element must match</td></tr>
+            <tr><td>S1 / S2 / S3 Potion</td><td>+1 / +2 / +3 to 2 random stats</td></tr>
+            <tr><td>Luck Potion</td><td>+1–5 to all 6 stats (random per stat)</td></tr>
+            <tr><td>Mega Potion</td><td>+10 to all 6 stats</td></tr>
+            <tr><td>Lesser Health Potion</td><td>+5 to HAP and ENE</td></tr>
+            <tr><td>Health Potion</td><td>+10 to HAP and ENE</td></tr>
+            <tr><td>Greater Health Potion</td><td>+15 to HAP and ENE</td></tr>
+            <tr><td>Lesser XP Potion</td><td>50 × level XP</td></tr>
+            <tr><td>XP Potion</td><td>100 × level XP</td></tr>
+          </tbody>
+        </table>
 
-<!-- ── Content ────────────────────────────────────────────────────────────── -->
-<div id="wap-content">
-    <div id="wap-loading">⏳ Loading pet guide…</div>
-    <div id="wap-error">Failed to load the pet guide. Please refresh the page.</div>
-    <div id="wap-body"></div>
-</div>
+        <!-- Keys & Chests -->
+        <h4 class="wap2-section-title">Keys &amp; Chests <span class="wap2-note-badge">Loot Market tab</span></h4>
+        <table class="wap2-table">
+          <thead>
+            <tr><th>Chest</th><th>Key Required</th><th>Contents</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Chest 1</td><td>Key1</td><td>1 Common or Uncommon item</td></tr>
+            <tr><td>Chest 2</td><td>Key2</td><td>1 Rare item</td></tr>
+            <tr><td>Chest 3</td><td>Key3</td><td>1 Epic item</td></tr>
+            <tr><td>Chest 4</td><td>Key1 + Key2 + Key3</td><td>1 item of chosen type + 1 Uncommon or better</td></tr>
+          </tbody>
+        </table>
+        <p>Open 1–10 chests at a time from the Loot Market tab.</p>
 
-</div><!-- end wap-wrap -->
-</div><!-- end container -->
+        <!-- Other Tabs -->
+        <h4 class="wap2-section-title">Other Tabs on My Pet Page</h4>
+        <table class="wap2-table">
+          <thead>
+            <tr><th>Tab</th><th>What It Does</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Train</strong></td>
+              <td>Pick Easy/Average/Hard + stat to train. Directly changes that stat (no XP). Easy: ±1×equip mult, 75% success. Average: ±3×, 60%. Hard: ±5×, 45%. Failure costs the same amount it would have gained. 5s cooldown.</td>
+            </tr>
+            <tr>
+              <td><strong>Mission</strong></td>
+              <td>Pick difficulty + optional gamble XP. Easy: 100+ XP, 70% success, 50% Key1 drop. Average: 250+ XP, 50%, 65% Key2. Hard: 500+ XP, 30%, 75% Key3. Each key rolls independently. 5s cooldown.</td>
+            </tr>
+            <tr>
+              <td><strong>Play</strong></td>
+              <td>Pick a location tile, click Go Play. Match element for bonus XP. No match: 5×level XP + 75% chance 1 key. 1 element match: 10×level XP + guaranteed key + 25% chance 1–2 more. Both match: 15×level XP + guaranteed key + 50% chance 1–2 more. 5% boss encounter chance. 5s cooldown.</td>
+            </tr>
+            <tr>
+              <td><strong>Quest</strong></td>
+              <td>Pick location + difficulty, AI-generated 5-stage adventure. Each stage has 3 choices tied to stat pairs. Stage 4 may have a mimic chest. 5s cooldown.</td>
+            </tr>
+            <tr>
+              <td><strong>Rename</strong></td>
+              <td>Rename your pet's 3 battle actions (Attack, Defense, Charge). Required for certain daily tasks.</td>
+            </tr>
+            <tr>
+              <td><strong>Ability Tree</strong></td>
+              <td>Spend ability points on permanent stat bonuses (endgame feature).</td>
+            </tr>
+          </tbody>
+        </table>
 
-<script>
-(function () {
+      </div><!-- /wap2-card-body -->
+    </div><!-- /card 2 -->
 
-    // ── Nav section labels keyed by the first word(s) of each h2 ─────────────
-    // Keys must match the START of the h2 text in Pet Guide.md exactly.
-    const NAV_SECTIONS = {
-        'Basics':       'Guide',
-        'Growth':       'Guide',
-        'Interactions': 'Guide',
-        'Hints':        'Guide',
-    };
 
-    const NAV_ICONS = {
-        'Basics':       '🐾',
-        'Growth':       '📈',
-        'Interactions': '⚔️',
-        'Hints':        '💡',
-    };
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <!-- CARD 3: Pet Battles -->
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <div class="wap2-card" id="wap2-card-3">
+      <button class="wap2-card-header" aria-expanded="false" aria-controls="wap2-body-3">
+        <span class="wap2-card-title"><span class="wap2-card-emoji">⚔️</span> Pet Battles</span>
+        <span class="wap2-card-subtitle">NPC, PvP, Boss, Colosseum &amp; Survivor Series</span>
+        <span class="wap2-chevron">&#8964;</span>
+      </button>
+      <div class="wap2-card-body" id="wap2-body-3">
 
-    function slugify(text) {
-        return text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-    }
+        <!-- Battle Stats -->
+        <h4 class="wap2-section-title">Battle Stats</h4>
+        <div class="wap2-tip-box">
+          <strong>ATK power</strong> = <code>ATT + DEX</code> (with equipment multiplier applied)<br>
+          <strong>DEF power</strong> = <code>DEF + INT</code> (with equipment multiplier applied)<br>
+          <strong>HP</strong> = <code>(stat_average + HAP × ENE) × 10</code><br>
+          <strong>Type advantage:</strong> +15% damage when your type beats opponent's type<br>
+          <strong>Element advantage:</strong> +10% damage when your element is strong against opponent's element
+        </div>
 
-    function getNavKey(title) {
-        // Exact match first, then startsWith for safety
-        if (NAV_SECTIONS[title]) return title;
-        for (const key of Object.keys(NAV_SECTIONS)) {
-            if (title.startsWith(key)) return key;
-        }
-        return null;
-    }
+        <!-- Battle Actions -->
+        <h4 class="wap2-section-title">The Three Battle Actions</h4>
+        <table class="wap2-table">
+          <thead>
+            <tr><th>Action</th><th>Mechanic</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>⚔️ Attack</strong></td>
+              <td>Roll d20 × (ATT+DEX) × charge multiplier × type/element bonuses. If target is charging, they take <strong>25% extra damage</strong>.</td>
+            </tr>
+            <tr>
+              <td><strong>🛡️ Defend</strong></td>
+              <td>Roll d20 × (DEF+INT). If defense value exceeds attacker's attack value, excess becomes <strong>parry damage</strong> reflected back. Defending against a charge is especially powerful.</td>
+            </tr>
+            <tr>
+              <td><strong>⚡ Charge</strong></td>
+              <td>Deal 0 damage this turn but advance charge multiplier: 1.0 → 2.0 → 3.0 → 4.0 → 5.0 (max; ENE abilities can raise cap). While charging you take <strong>25% extra damage</strong> from attacks.</td>
+            </tr>
+          </tbody>
+        </table>
 
-    function buildNav(headings) {
-        const nav = document.getElementById('wap-nav');
-        nav.innerHTML = '';
-        let currentSection = null;
+        <!-- NPC Battles -->
+        <h4 class="wap2-section-title">NPC Battles</h4>
+        <p>Turn-based fights vs computer-controlled monsters. Choose enemy type and rarity. Winning drops items and XP; losing awards reduced XP.</p>
 
-        headings.forEach(function (h) {
-            const isH2 = h.tagName === 'H2';
-            const isH3 = h.tagName === 'H3';
+        <!-- Boss Battles -->
+        <h4 class="wap2-section-title">Boss Battles</h4>
+        <ul class="wap2-list">
+          <li>Harder NPC fights — bosses have <strong>2.5–4× your pet's HP</strong></li>
+          <li>5% chance to trigger during Play, or access directly</li>
+          <li>Reward: <strong>5× normal XP</strong> + one of each key type</li>
+        </ul>
+        <div class="wap2-note-box">
+          <strong>Multiplayer damage modifiers:</strong> Best Friends fighting together +25% damage &nbsp;|&nbsp; Friends +10% &nbsp;|&nbsp; Foes −15% &nbsp;|&nbsp; Enemies cannot participate together
+        </div>
 
-            if (isH2) {
-                const sectionEl = h.closest('.wap-section[id]');
-                const sectionId = sectionEl ? sectionEl.id : '';
-                if (!sectionId) return;
+        <!-- PvP -->
+        <h4 class="wap2-section-title">PvP — The Floor</h4>
+        <ul class="wap2-list">
+          <li>Open a lobby, set max opponents (1–9), others join</li>
+          <li>Modes: <strong>1v1</strong> or <strong>Free-For-All</strong> (last pet standing)</li>
+          <li>Bracket tournaments: 4, 8, or 16 players — organizer sets size, matches run automatically</li>
+        </ul>
+        <p>Relationship damage modifiers (both sides must share the relationship):</p>
+        <table class="wap2-table">
+          <thead>
+            <tr><th>Relationship</th><th>Damage Modifier</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>💙 Friends</td><td>Both deal 0.8× damage</td></tr>
+            <tr><td>🧡 Foes</td><td>Both deal 1.2× damage</td></tr>
+            <tr><td>❤️ Enemies</td><td>Both deal 1.5× damage</td></tr>
+            <tr><td>💚 Best Friends</td><td>Cannot battle each other</td></tr>
+          </tbody>
+        </table>
 
-                const key = getNavKey(h.textContent.trim());
-                const section = key ? NAV_SECTIONS[key] : null;
-                const icon   = key ? (NAV_ICONS[key] || '') : '';
+        <!-- Colosseum -->
+        <h4 class="wap2-section-title">Colosseum</h4>
+        <p>Structured competitive arena with brackets and rankings. Separate from The Floor — organized tournament play.</p>
 
-                if (section && section !== currentSection) {
-                    const div = document.createElement('div');
-                    div.className = 'nav-section';
-                    div.textContent = section;
-                    nav.appendChild(div);
-                    currentSection = section;
-                }
+        <!-- Survivor Series -->
+        <h4 class="wap2-section-title">Survivor Series <span class="wap2-note-badge">Survive page</span></h4>
+        <p>Battle royale — your pet vs other players and AI in a shared arena.</p>
+        <div class="wap2-note-box">
+          <strong>Survive Score</strong> = <code>level ÷ equipment_multiplier ÷ 10</code><br>
+          ⚠️ <strong>UNEQUIP EVERYTHING</strong> — equipment hurts your score in Survivor Series.
+        </div>
+        <ul class="wap2-list">
+          <li>12 elemental zones on the map; pets move, chase, flee, and form truces</li>
+          <li>Charge system: every round avoiding combat builds charge stack (max 5, up to 1.5× multiplier)</li>
+          <li>Win probability based on Elimination Score ratio, clamped 5%–95%</li>
+          <li>Rampages (3+ kills), wounded state (−20% score), last stand bonus (+25% for bottom 10%)</li>
+        </ul>
+        <table class="wap2-table">
+          <thead>
+            <tr><th>Relationship</th><th>Encounter Chance</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>❤️ Enemies</td><td>100%</td></tr>
+            <tr><td>🧡 Foes</td><td>90%</td></tr>
+            <tr><td>⚪ Strangers (3+ nearby)</td><td>85%</td></tr>
+            <tr><td>⚪ Strangers (2 nearby)</td><td>65%</td></tr>
+            <tr><td>💙 Friends</td><td>40%</td></tr>
+            <tr><td>💚 Best Friends</td><td>20%</td></tr>
+          </tbody>
+        </table>
+        <div class="wap2-tip-box">
+          <strong>XP reward:</strong> <code>(rounds_survived × 10 + kills × 25) × max(1, level÷5+1)</code><br>
+          Winner gets <strong>+200 ×</strong> that multiplier<br>
+          <strong>Start:</strong> 2+ real players join → any player clicks Start → 15-min countdown → Round 1 fires; rounds every 15 min after
+        </div>
 
-                const a = document.createElement('a');
-                a.href = 'javascript:void(0)';
-                a.dataset.target = sectionId;
-                a.style.fontWeight = '700';
-                a.style.fontSize = '0.76rem';
-                a.style.color = 'var(--gold-secondary)';
-                a.textContent = (icon ? icon + ' ' : '') + h.textContent.trim();
-                nav.appendChild(a);
+      </div><!-- /wap2-card-body -->
+    </div><!-- /card 3 -->
 
-            } else if (isH3) {
-                const id = h.id;
-                if (!id) return;
-                const a = document.createElement('a');
-                a.href = 'javascript:void(0)';
-                a.dataset.targetH3 = id;
-                a.style.paddingLeft = '22px';
-                a.style.fontSize = '0.70rem';
-                // textContent strips any img tags — gives clean nav label
-                a.textContent = '· ' + h.textContent.trim();
-                nav.appendChild(a);
-            }
-        });
-    }
 
-    function applyWarnClass() {
-        // Turn blockquotes whose first strong text starts with "Warning" into red style
-        document.querySelectorAll('#wap-body blockquote').forEach(function (bq) {
-            const strong = bq.querySelector('strong');
-            if (strong && strong.textContent.trim().startsWith('Warning')) {
-                bq.classList.add('warn');
-            }
-        });
-    }
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <!-- CARD 4: XP Casino -->
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <div class="wap2-card" id="wap2-card-4">
+      <button class="wap2-card-header" aria-expanded="false" aria-controls="wap2-body-4">
+        <span class="wap2-card-title"><span class="wap2-card-emoji">🎰</span> XP Casino</span>
+        <span class="wap2-card-subtitle">All casino games use XP as currency — win streaks reward keys</span>
+        <span class="wap2-chevron">&#8964;</span>
+      </button>
+      <div class="wap2-card-body" id="wap2-body-4">
 
-    function wrapSections(headings) {
-        // Wrap each h2 and its following siblings (until next h2) in a .wap-section card
-        const body = document.getElementById('wap-body');
-        const children = Array.from(body.childNodes);
-        let current = null;
+        <!-- General -->
+        <h4 class="wap2-section-title">Win Streak Key Rewards</h4>
+        <p>Win streaks across Blackjack, Craps, and Hold'em reward keys:</p>
+        <table class="wap2-table">
+          <thead>
+            <tr><th>Streak</th><th>Reward</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>1 win</td><td>1× Key1</td></tr>
+            <tr><td>2 wins</td><td>2× Key1</td></tr>
+            <tr><td>3 wins</td><td>1× Key2</td></tr>
+            <tr><td>4 wins</td><td>2× Key2</td></tr>
+            <tr><td>5 wins</td><td>1× Key3</td></tr>
+            <tr><td>6 wins</td><td>2× Key3</td></tr>
+            <tr><td>7+ wins</td><td class="wap2-gold-text">🏆 JACKPOT — 3× Key1 + 3× Key2 + 3× Key3</td></tr>
+          </tbody>
+        </table>
 
-        children.forEach(function (node) {
-            if (node.nodeType === Node.ELEMENT_NODE && node.tagName === 'H2') {
-                current = document.createElement('div');
-                current.className = 'wap-section';
-                current.id = node.id;
-                node.removeAttribute('id'); // id moves to wrapper
-                body.insertBefore(current, node);
-                current.appendChild(node);
-            } else if (node.nodeType === Node.ELEMENT_NODE && node.tagName === 'HR') {
-                current = null; // HR acts as section separator — don't include it
-                if (node.parentNode) node.parentNode.removeChild(node);
-            } else if (current) {
-                current.appendChild(node);
-            }
-        });
-    }
+        <!-- Slot Machine -->
+        <h4 class="wap2-section-title">🎰 Slot Machine</h4>
+        <p>Spin reels, match symbols to win XP. Choose difficulty and bet amount. Fun Mode available (no XP changes). <strong>Insanity mode</strong> uses two separate reels (element reel + species reel) — must match your own pet's element AND species simultaneously for top payout.</p>
+        <table class="wap2-table">
+          <thead>
+            <tr><th>Difficulty</th><th>3-Match Payout</th><th>2-Match Payout</th><th>Key Drop</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Very Easy</td><td>8×</td><td>0.5×</td><td>—</td></tr>
+            <tr><td>Easy</td><td>15×</td><td>~0.78×</td><td>—</td></tr>
+            <tr><td>Medium</td><td>35×</td><td>~1.33×</td><td>5% on win</td></tr>
+            <tr><td>Hard</td><td>168×</td><td>3.33×</td><td>10% on win</td></tr>
+            <tr><td>Very Hard</td><td>1,061×</td><td>~0.49×</td><td>20% on win</td></tr>
+            <tr><td class="wap2-gold-text">Insanity</td><td class="wap2-gold-text">2,500,000,000×</td><td>220,000×</td><td>20% on win</td></tr>
+          </tbody>
+        </table>
 
-    async function loadGuide() {
-        const body    = document.getElementById('wap-body');
-        const loading = document.getElementById('wap-loading');
-        const error   = document.getElementById('wap-error');
+        <!-- Pet Races -->
+        <h4 class="wap2-section-title">🏁 Pet Races</h4>
+        <p>Race your pet against bots, bet XP. Race speed determined by <span class="wap2-stat-pill wap2-stat-dex">DEX</span>, <span class="wap2-stat-pill wap2-stat-ene">ENE</span>, <span class="wap2-stat-pill wap2-stat-hap">HAP</span> stats (log-scale formula with randomness). Simulation mode (instant) or Lobby mode (wait for real players).</p>
+        <div class="wap2-note-box">Winnings accumulate as <strong>pending XP</strong> — must cash out to receive. Losing wipes all pending XP and keys.</div>
+        <table class="wap2-table">
+          <thead>
+            <tr><th>Difficulty</th><th>Payout</th><th>Win Rate</th><th>Streak Bonus</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Apprentice</td><td>1.25×</td><td>~60–65%</td><td>1–2 wins: 1×+Key1 &nbsp;|&nbsp; 3–5: 2×+Key2 &nbsp;|&nbsp; 6–8: 4×+Key3 &nbsp;|&nbsp; 9+: 8×+all 3 keys</td></tr>
+            <tr><td>Journeyman</td><td>2.0×</td><td>~even odds</td><td>Same streak table</td></tr>
+            <tr><td>Senior</td><td>3.0×</td><td>~35–40%</td><td>Same streak table</td></tr>
+          </tbody>
+        </table>
 
-        try {
-            const res = await fetch('/api/library/Pet%20Guide');
-            if (!res.ok) throw new Error('HTTP ' + res.status);
-            const md = await res.text();
+        <!-- Blackjack -->
+        <h4 class="wap2-section-title">🃏 Blackjack</h4>
+        <p>Classic blackjack — get closer to 21 than dealer without busting. Solo or up to 3 AI bots. Supports split hands (up to 4) and double down. Win streaks reward keys; 7+ win streak triggers jackpot key drop.</p>
 
-            // Render markdown — gfm enables tables; raw HTML (img tags) passes through by default
-            marked.use({ gfm: true, breaks: false });
-            body.innerHTML = marked.parse(md);
+        <!-- Craps -->
+        <h4 class="wap2-section-title">🎲 Craps</h4>
+        <p>Roll dice, bet on outcomes. Win streaks reward keys.</p>
+        <p><strong>Available bets:</strong> Pass Line, Don't Pass, Field, Place bets (4–10), Any 7, Hard ways (4/6/8/10)</p>
 
-            // Assign IDs to all h2 and h3 headings before wrapping
-            body.querySelectorAll('h2, h3').forEach(function (h) {
-                h.id = slugify(h.textContent.trim());
-            });
+        <!-- Texas Hold'em -->
+        <h4 class="wap2-section-title">♠️ Texas Hold'em</h4>
+        <p>Full Texas Hold'em poker with XP as bankroll. Set buy-in, add 0–3 AI bots. Win streaks reward keys.</p>
+        <p><strong>Phases:</strong> Pre-deal → Pre-flop → Flop → Turn → River &nbsp;|&nbsp; <strong>Actions:</strong> Bet/Raise, Call/Check, Fold</p>
 
-            applyWarnClass();
-            // wrapSections moves h2s into .wap-section divs; h3 IDs stay intact inside
-            wrapSections(body.querySelectorAll('h2'));
-            buildNav(document.querySelectorAll('.wap-section h2, .wap-section h3'));
+        <!-- Mega Keno -->
+        <h4 class="wap2-section-title">🔢 Mega Keno</h4>
+        <ul class="wap2-list">
+          <li>Pick 1 pet type (from 3), 3 elements (from 13), and 10 pets (from 103)</li>
+          <li>Bot draws 20 pets from 103; element and type draws are separate</li>
+          <li>Bonus draws trigger if enough picks match: 4+ type matches = bonus draw; 2+ element matches = multiplier draw</li>
+          <li>Payout scales with how many of your 10 pet picks appear in the 20 drawn</li>
+        </ul>
 
-            loading.style.display = 'none';
-            initScrollSpy();
+        <!-- Scratch Cards -->
+        <h4 class="wap2-section-title">🎟️ Scratch Cards</h4>
+        <p>Buy a card, scratch to reveal symbols. 1×3 or 3×3 grids depending on card type. Match symbols to win XP; multi-line and bonus badges for special wins. Fun Mode available.</p>
 
-        } catch (e) {
-            loading.style.display = 'none';
-            error.style.display = 'block';
-            console.error('Pet guide load error:', e);
-        }
-    }
+        <!-- Wheel of Pets -->
+        <h4 class="wap2-section-title">🎡 Wheel of Pets</h4>
+        <p>Spin a wheel divided into segments. Choose your wheel mode: pets, monsters, materials, gems, hats, potions, elements, stats, units, or resources. Click a segment to pick your bet target, enter XP amount, spin. Win payout if wheel lands on your pick; <strong>2× bonus</strong> if it lands on your own pet species. 103 pets, equal odds, 5% house edge (on pets wheel). Fun Mode available.</p>
 
-    function initScrollSpy() {
-        const sections = document.querySelectorAll('.wap-section[id]');
-        const navLinks = document.querySelectorAll('#wap-nav a[data-target]');
+        <!-- Pet Powerball -->
+        <h4 class="wap2-section-title">🎱 Pet Powerball</h4>
+        <p>Daily jackpot drawn at <strong>midnight UTC</strong>. Pick 5 pets in order + optional Elemental Multiplier Ball. Pets must match in exact draw order.</p>
+        <div class="wap2-note-box">
+          <strong>Ticket cost:</strong> <code>Level × Equipment Multiplier × 500 XP</code><br>
+          House matches your cost into the pot. Pot grows 2.5× when there are no major winners.
+        </div>
+        <table class="wap2-table">
+          <thead>
+            <tr><th>Match</th><th>Payout</th></tr>
+          </thead>
+          <tbody>
+            <tr><td class="wap2-gold-text">5 pets + element ball</td><td class="wap2-gold-text">100% of pot (MEGA)</td></tr>
+            <tr><td>5 pets</td><td>25% of pot</td></tr>
+            <tr><td>4 pets + element ball</td><td>10% of pot</td></tr>
+            <tr><td>4 pets</td><td>5% of pot</td></tr>
+            <tr><td>3 pets + element ball</td><td>2% of pot</td></tr>
+            <tr><td>3 pets</td><td>1% of pot</td></tr>
+          </tbody>
+        </table>
 
-        // The SPA loads content inside .content-wrapper / .main-content.
-        // scrollIntoView works regardless of which element is scrolling,
-        // but to read scroll position we need the actual scrolling ancestor.
-        function getScrollParent() {
-            let el = document.getElementById('wap-body');
-            while (el && el !== document.body) {
-                const style = window.getComputedStyle(el);
-                if (/(auto|scroll)/.test(style.overflow + style.overflowY)) return el;
-                el = el.parentElement;
-            }
-            return window;
-        }
+      </div><!-- /wap2-card-body -->
+    </div><!-- /card 4 -->
 
-        function getScrollTop() {
-            const sp = getScrollParent();
-            return sp === window ? (window.scrollY || window.pageYOffset) : sp.scrollTop;
-        }
 
-        function getActive() {
-            const scrollTop = getScrollTop();
-            let best = null;
-            sections.forEach(function (sec) {
-                const sp = getScrollParent();
-                const containerTop = sp === window ? 0 : sp.getBoundingClientRect().top;
-                const secTop = sec.getBoundingClientRect().top - containerTop + scrollTop - 20;
-                if (scrollTop >= secTop) best = sec.id;
-            });
-            return best;
-        }
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <!-- CARD 5: Daily Checks -->
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <div class="wap2-card" id="wap2-card-5">
+      <button class="wap2-card-header" aria-expanded="false" aria-controls="wap2-body-5">
+        <span class="wap2-card-title"><span class="wap2-card-emoji">📅</span> Daily Checks</span>
+        <span class="wap2-card-subtitle">Pet Stocks, Tasks &amp; Item Board — your daily routine</span>
+        <span class="wap2-chevron">&#8964;</span>
+      </button>
+      <div class="wap2-card-body" id="wap2-body-5">
 
-        function updateNav() {
-            const active = getActive();
-            navLinks.forEach(function (a) {
-                if (a.dataset.target === active) {
-                    a.classList.add('active');
-                    const nav = document.getElementById('wap-nav');
-                    if (nav && (a.offsetTop < nav.scrollTop || a.offsetTop + a.offsetHeight > nav.scrollTop + nav.clientHeight)) {
-                        a.scrollIntoView({ block: 'nearest' });
-                    }
-                } else {
-                    a.classList.remove('active');
-                }
-            });
-        }
+        <!-- Tasks -->
+        <h4 class="wap2-section-title">Tasks <span class="wap2-note-badge">Tasks page</span></h4>
+        <p>7 task slots total; all reset at <strong>UTC midnight</strong>.</p>
+        <table class="wap2-table">
+          <thead>
+            <tr><th>Slot</th><th>Description</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Slot 0 — Daily Goal</strong></td>
+              <td>Complete 10 daily tasks to earn a chest. Consecutive days upgrade the chest tier (Chest 1 → Chest 4). Missing a day resets your streak.</td>
+            </tr>
+            <tr>
+              <td><strong>Slots 1–6</strong></td>
+              <td>Individual tasks with their own objectives and rewards. Progress tracked automatically.</td>
+            </tr>
+          </tbody>
+        </table>
+        <p><strong>Task types include:</strong> Play, Train, Mission, Win NPC Battle, Complete Quest, Post Item to Item Board, Win Boss Battle, Rename a battle action, Use Potion, Equip Item, Open Chest, Buy/Sell Pet Stock Tokens, Play Slots, Play Keno, Coin Flip, Get Horoscope, Race, Join/Survive/Eliminate in Survivor Series, Buy Powerball Ticket, Scratch Tickets.</p>
+        <div class="wap2-tip-box">
+          <strong>Rename tasks:</strong> "Pet is tired of {action} — rename it." Go to the Rename tab on My Pet page, update that battle action label, save. Task completes automatically.
+        </div>
+        <table class="wap2-table">
+          <thead>
+            <tr><th>Reward Tier</th><th>Rewards</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Low</td><td>1 key</td></tr>
+            <tr><td>Mid</td><td>1–2 keys, rare Chest 1</td></tr>
+            <tr><td>High</td><td>2–3 keys, chance at Chest 2/3</td></tr>
+            <tr><td>Top</td><td>2–3 keys or Chest 2/3/4</td></tr>
+          </tbody>
+        </table>
+        <p>Dismiss any task you don't want — dismissed slots wait for midnight reset. <strong>🔔 Bell button:</strong> configure Discord DM pings when slots refresh (Off / Each Slot / All Slots).</p>
 
-        // Listen on both window and any scrollable ancestor
-        window.addEventListener('scroll', updateNav, { passive: true });
-        const sp = getScrollParent();
-        if (sp !== window) sp.addEventListener('scroll', updateNav, { passive: true });
-        updateNav();
+        <!-- Pet Stock Market -->
+        <h4 class="wap2-section-title">📈 Pet Stock Market <span class="wap2-note-badge">Pet Stocks page</span></h4>
+        <p>XP investment system — buy and sell tokens representing pet types and elements. Prices update every <strong>15 minutes</strong>.</p>
+        <table class="wap2-table">
+          <thead>
+            <tr><th>Token Category</th><th>Tokens</th><th>Base Price</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Type tokens</td><td>Land, Swimming, Flying</td><td>250 XP each</td></tr>
+            <tr><td>Element tokens</td><td>Basic, Fire, Water, Electric, Ice, Plant, Rock, Air, Magic, Holy, Necro, Psychic, Fighting</td><td>500 XP each</td></tr>
+          </tbody>
+        </table>
+        <div class="wap2-note-box">
+          <strong>Buying cost multiplier:</strong><br>
+          Matches your pet's type/element = <strong>1× price</strong><br>
+          Doesn't match (single-element pet) = <strong>2× price</strong><br>
+          Doesn't match (dual-element pet) = <strong>3× price</strong><br>
+          Buying deducts XP directly — your pet can <strong>level DOWN</strong> if you spend enough.<br>
+          Selling always at current market price (no multiplier) — adds XP and can trigger level-ups.
+        </div>
+        <p><strong>Price dynamics:</strong> random drift (elements ±20%, types ±12%), momentum spikes (10% chance extra ±12%), buy/sell pressure from other players, market events (Minor every tick, Major on 85% of days, Holiday events on special dates).</p>
+        <p>Track P&amp;L: XP spent, XP received from sells, unrealised value of held tokens, net profit/loss.</p>
 
-        navLinks.forEach(function (a) {
-            a.addEventListener('click', function (e) {
-                e.preventDefault();
-                e.stopPropagation();
-                // h3 sub-links use data-target-h3
-                const h3Id = a.dataset.targetH3;
-                if (h3Id) {
-                    const target = document.getElementById(h3Id);
-                    if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                    return;
-                }
-                const target = document.getElementById(a.dataset.target);
-                if (target) {
-                    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                    // Update active state immediately on click
-                    navLinks.forEach(l => l.classList.remove('active'));
-                    a.classList.add('active');
-                }
-            });
-        });
-    }
+        <!-- Item Board -->
+        <h4 class="wap2-section-title">🏪 Item Board / Bazaar</h4>
+        <p>Player-to-player marketplace using XP.</p>
+        <ul class="wap2-list">
+          <li>Post items from your inventory with a price in XP — listing goes live immediately</li>
+          <li>Other players browse and buy in real time; XP transfers instantly</li>
+          <li>Seller gets a <strong>Discord DM notification</strong> when their item sells</li>
+          <li>Posting an item counts toward the "Post an item on the Item Board" daily task</li>
+        </ul>
+        <div class="wap2-tip-box">
+          💡 <strong>Tip:</strong> Sell duplicate Materials/Gems on the Item Board instead of letting them overflow to XP — you'll earn more.
+        </div>
 
-    loadGuide();
-})();
-</script>
+      </div><!-- /wap2-card-body -->
+    </div><!-- /card 5 -->
+
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <!-- CARD 6: Viewers -->
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <div class="wap2-card" id="wap2-card-6">
+      <button class="wap2-card-header" aria-expanded="false" aria-controls="wap2-body-6">
+        <span class="wap2-card-title"><span class="wap2-card-emoji">👁️</span> Viewers</span>
+        <span class="wap2-card-subtitle">Pet Connector — browse, compare &amp; interact with all pets</span>
+        <span class="wap2-chevron">&#8964;</span>
+      </button>
+      <div class="wap2-card-body" id="wap2-body-6">
+
+        <!-- Pet Connector -->
+        <h4 class="wap2-section-title">Pet Connector <span class="wap2-note-badge">petconnector page</span></h4>
+        <p>Global view of every pet on the site — browse all registered pets in real time.</p>
+        <ul class="wap2-list">
+          <li>Search by pet name, owner username, species, or element</li>
+          <li>Filter by relationship: All, Best Friends 💚, Friends 💙, Foes 🧡, Enemies ❤️, No Relationship ⚪</li>
+          <li>Filter by species, element, and category using dropdowns</li>
+          <li>Sort by: Name, Level, HP, ATK, DEF, XP, Total XP, Relationship, Species, Element</li>
+        </ul>
+        <p><strong>Leaderboard sidebar</strong> — sortable by: Level, Total XP, XP Progress %, all 6 base stats, HP/ATK/DEF, PvP Wins, PvP Win Rate, NPC Wins, Boss Wins, Tournament Wins, Total Wins, Eliminations, Missions, Training, Play Attempts, Casino Net XP, Games Played, Stock Tokens, Ability Points, Items, and XP by source (Play/Training/Mission/Battle/Casino).</p>
+
+        <!-- Pet Detail Panel -->
+        <h4 class="wap2-section-title">Pet Detail Panel</h4>
+        <p>Click any pet card to open a full detail panel:</p>
+        <table class="wap2-table">
+          <thead>
+            <tr><th>Section</th><th>Contents</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Left column</td><td>Hero section with pet image, name, level, type, element, rank badge, stats</td></tr>
+            <tr><td>Right column</td><td>Full stat breakdown, equipment, combat stats</td></tr>
+            <tr><td>Bottom — Relationships</td><td>Set your relationship with that pet's owner: Best Friend / Friend / Foe / Enemy / None</td></tr>
+            <tr><td>Bottom — Gifts</td><td>Send items from your inventory directly to another player — search your items, pick quantity, send. Recipient gets a Discord DM.</td></tr>
+          </tbody>
+        </table>
+
+        <!-- Compare Mode -->
+        <h4 class="wap2-section-title">Compare Mode</h4>
+        <ul class="wap2-list">
+          <li>Click the <strong>Compare Mode</strong> button to enable it</li>
+          <li>Select 2 pets to open a side-by-side comparison modal</li>
+          <li>Compares all stats, combat values, level, equipment, and relationships</li>
+        </ul>
+
+      </div><!-- /wap2-card-body -->
+    </div><!-- /card 6 -->
+
+  </div><!-- /wap2-grid -->
+</div><!-- /wap2-page -->
+
+<script src="/js/what_are_pets.js"></script>
