@@ -3,10 +3,12 @@ Centralised DB path constants for all Reaper databases.
 
 Import from here instead of hardcoding paths in individual files:
 
-    from Systems.Functions.db_paths import IRS_NATIONS_DB, IRS_WARS_DB, GLOBAL_NATIONS_DB
+    from Systems.Functions.db_paths import GLOBAL_NATIONS_DB, IRS_WARS_DB
     from Systems.Functions.db_paths import PETS_DB, REAPER_DB, TASKS_DB
 
-Note: GLOBAL_WARS_DB removed to avoid API issues - only NW wars are saved
+IRSNations.db has been merged into GlobalNations.db.
+All IRS_NATIONS_DB / EP_NATIONS_DB / NW_NATIONS_DB aliases now point to
+GlobalNations.db so existing code continues to work without changes.
 """
 
 from pathlib import Path
@@ -18,44 +20,45 @@ _PNW_DIR     = _DB_ROOT / "PnW"
 _PETS_DIR    = _DB_ROOT / "Pets"
 
 # ── PnW DBs (Databases/PnW/) ──────────────────────────────────────────────────
-IRS_NATIONS_DB    = _PNW_DIR / "IRSNations.db"
+GLOBAL_NATIONS_DB = _PNW_DIR / "GlobalNations.db"   # single nations DB — all nations
 IRS_WARS_DB       = _PNW_DIR / "IRSWars.db"
-GLOBAL_NATIONS_DB = _PNW_DIR / "GlobalNations.db"
-LOOT_DB           = _PNW_DIR / "loot.db"
 BANKRECS_DB       = _PNW_DIR / "bankrecs.db"
 HOLDINGS_DB       = _PNW_DIR / "holdings.db"
-# GLOBAL_WARS_DB removed to avoid API issues - only NW wars are saved
 
-# Aliases for backward compatibility
-EP_NATIONS_DB     = IRS_NATIONS_DB
-EP_WARS_DB        = IRS_WARS_DB
-NW_NATIONS_DB     = IRS_NATIONS_DB
-NW_WARS_DB        = IRS_WARS_DB
+# All NW/IRS/EP nation DB aliases point to GlobalNations.db (merged)
+IRS_NATIONS_DB = GLOBAL_NATIONS_DB
+EP_NATIONS_DB  = GLOBAL_NATIONS_DB
+NW_NATIONS_DB  = GLOBAL_NATIONS_DB
 
-IRS_NATIONS_DB_STR    = str(IRS_NATIONS_DB)
-IRS_WARS_DB_STR       = str(IRS_WARS_DB)
+EP_WARS_DB = IRS_WARS_DB
+NW_WARS_DB = IRS_WARS_DB
+
 GLOBAL_NATIONS_DB_STR = str(GLOBAL_NATIONS_DB)
-LOOT_DB_STR           = str(LOOT_DB)
+IRS_NATIONS_DB_STR    = GLOBAL_NATIONS_DB_STR   # alias → same file
+IRS_WARS_DB_STR       = str(IRS_WARS_DB)
 BANKRECS_DB_STR       = str(BANKRECS_DB)
 HOLDINGS_DB_STR       = str(HOLDINGS_DB)
 
-# Aliases for backward compatibility
-EP_NATIONS_DB_STR = IRS_NATIONS_DB_STR
+# Backward-compat string aliases
+EP_NATIONS_DB_STR = GLOBAL_NATIONS_DB_STR
 EP_WARS_DB_STR    = IRS_WARS_DB_STR
-NW_NATIONS_DB_STR = IRS_NATIONS_DB_STR
+NW_NATIONS_DB_STR = GLOBAL_NATIONS_DB_STR
 NW_WARS_DB_STR    = IRS_WARS_DB_STR
-# GLOBAL_WARS_DB_STR removed
 
 # ── Pets DBs (Databases/Pets/) ────────────────────────────────────────────────
-PETS_DB      = _PETS_DIR / "pets.db"
-TASKS_DB     = _PETS_DIR / "Tasks.db"
-POWERBALL_DB = _PETS_DIR / "powerball.db"
-SURVIVOR_DB  = _PETS_DIR / "survivorseries.db"
+PETS_DB        = _PETS_DIR / "pets.db"
+TASKS_DB       = _PETS_DIR / "Tasks.db"
+POWERBALL_DB   = _PETS_DIR / "powerball.db"
+SURVIVOR_DB    = _PETS_DIR / "survivorseries.db"
+ABSORB_DB      = _PETS_DIR / "absorb.db"
+COLOSSEUM_DB   = _PETS_DIR / "colosseum.db"
 
-PETS_DB_STR      = str(PETS_DB)
-TASKS_DB_STR     = str(TASKS_DB)
-POWERBALL_DB_STR = str(POWERBALL_DB)
-SURVIVOR_DB_STR  = str(SURVIVOR_DB)
+PETS_DB_STR        = str(PETS_DB)
+TASKS_DB_STR       = str(TASKS_DB)
+POWERBALL_DB_STR   = str(POWERBALL_DB)
+SURVIVOR_DB_STR    = str(SURVIVOR_DB)
+ABSORB_DB_STR      = str(ABSORB_DB)
+COLOSSEUM_DB_STR   = str(COLOSSEUM_DB)
 
 # ── Root DBs (Databases/) ─────────────────────────────────────────────────────
 REAPER_DB  = _DB_ROOT / "reaper.db"
@@ -76,3 +79,5 @@ TICKETS_DB_STR = str(TICKETS_DB)
 _PNW_DIR.mkdir(parents=True, exist_ok=True)
 _PETS_DIR.mkdir(parents=True, exist_ok=True)
 
+# Alliance ID constant (used by DB helpers)
+NW_ALLIANCE_ID = 14225

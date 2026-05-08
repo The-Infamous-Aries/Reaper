@@ -18,6 +18,31 @@ def _total_xp(pet: dict) -> int:
     cumulative = int(200 * (1 - 1.03 ** n) / (1 - 1.03)) if lvl > 1 else 0
     return cumulative + rem
 
+
+def _enrich_item(name: str, item_type: str, rarity: str, count: int) -> Dict[str, Any]:
+    """
+    Build a full item dict by merging the minimal fields with the canonical
+    equipment.json definition (which includes use_effect, emoji_file, etc.).
+    Falls back to a minimal dict if the item isn't found in equipment data.
+    """
+    base: Dict[str, Any] = {"name": name, "type": item_type, "rarity": rarity, "count": count}
+    try:
+        from Systems.Functions.user_data_manager import user_data_manager
+        eq_data = user_data_manager.file_manager.get_data("equipment")
+        type_section_map = {
+            "Potion": "Potions", "Material": "Materials", "Gem": "Gems",
+            "Monster": "Monsters", "Hat": "Hats",
+        }
+        section = type_section_map.get(item_type, item_type + "s")
+        for item in eq_data.get(section, []):
+            if item.get("name") == name:
+                merged = dict(item)          # full canonical data
+                merged["count"] = count      # override with actual count
+                return merged
+    except Exception:
+        pass
+    return base
+
 class PetsDatabase:
     _instance = None
     
@@ -629,12 +654,12 @@ class PetsDatabase:
                             trade_item_meta = next(
                                 (it for it in buyer_inv if isinstance(it, dict) and it.get("name", "").lower() == trade_name.lower()), {}
                             )
-                            seller_inv.append({
-                                "name": trade_name,
-                                "type": trade_item_meta.get("type", "Material"),
-                                "rarity": trade_item_meta.get("rarity", "Common"),
-                                "count": trade_qty,
-                            })
+                            seller_inv.append(_enrich_item(
+                                trade_name,
+                                trade_item_meta.get("type", "Material"),
+                                trade_item_meta.get("rarity", "Common"),
+                                trade_qty,
+                            ))
                         seller_pet["inventory"] = seller_inv
                     else:
                         return {"ok": False, "error": "Unknown price type"}
@@ -649,12 +674,7 @@ class PetsDatabase:
                     if bidx is not None:
                         buyer_inv2[bidx]["count"] = buyer_inv2[bidx].get("count", 1) + quantity
                     else:
-                        buyer_inv2.append({
-                            "name": item_name,
-                            "type": item_type,
-                            "rarity": item_rarity,
-                            "count": quantity,
-                        })
+                        buyer_inv2.append(_enrich_item(item_name, item_type, item_rarity, quantity))
                     buyer_pet["inventory"] = buyer_inv2
 
                     # Persist both pets — inventory only; XP/level will be
@@ -741,12 +761,12 @@ class PetsDatabase:
                     if idx is not None:
                         inv[idx]["count"] = inv[idx].get("count", 1) + listing["quantity"]
                     else:
-                        inv.append({
-                            "name": listing["item_name"],
-                            "type": listing["item_type"],
-                            "rarity": listing["item_rarity"],
-                            "count": listing["quantity"],
-                        })
+                        inv.append(_enrich_item(
+                            listing["item_name"],
+                            listing["item_type"],
+                            listing["item_rarity"],
+                            listing["quantity"],
+                        ))
                     fresh_pet["inventory"] = inv
 
                     await db.execute(

@@ -32,7 +32,11 @@ class IRSWarsDB:
         try:
             with sqlite3.connect(self.db_path) as conn:
                 cursor = conn.cursor()
-                
+
+                # Enable WAL mode so concurrent readers (web server) and writers
+                # (harvester / sync_wars.py) don't block each other.
+                cursor.execute("PRAGMA journal_mode=WAL")
+                cursor.execute("PRAGMA synchronous=NORMAL")  # safe with WAL, faster than FULL
                 # Wars table
                 cursor.execute('''
                     CREATE TABLE IF NOT EXISTS wars (
@@ -86,6 +90,9 @@ class IRSWarsDB:
                         def_missiles_used INTEGER,
                         att_nukes_used INTEGER,
                         def_nukes_used INTEGER,
+                        att_war_policy TEXT,
+                        def_war_policy TEXT,
+                        att_has_ape INTEGER DEFAULT 0,
                         created_at TEXT,
                         updated_at TEXT
                     )
@@ -212,9 +219,32 @@ class IRSWarsDB:
                 self._ensure_column(cursor, 'wars', 'def_infra_destroyed_value', 'REAL')
                 self._ensure_column(cursor, 'wars', 'att_alliance_name', 'TEXT')
                 self._ensure_column(cursor, 'wars', 'def_alliance_name', 'TEXT')
+                # is_active: 1 = war ongoing, 0 = ended (win/loss/peace/expire).
+                # Explicitly managed so active-war queries stay correct even if
+                # turns_left updates are missed during subscription gaps.
+                self._ensure_column(cursor, 'wars', 'is_active', 'INTEGER DEFAULT 1')
+                # end_reason: 'win' | 'loss' | 'peace' | 'expire' | NULL (still active)
+                self._ensure_column(cursor, 'wars', 'end_reason', 'TEXT')
+                # Loot-critical policy fields — needed to correctly back-calculate
+                # defender's remaining holdings after a ground-win attack.
+                self._ensure_column(cursor, 'wars', 'att_war_policy', 'TEXT')
+                self._ensure_column(cursor, 'wars', 'def_war_policy', 'TEXT')
+                self._ensure_column(cursor, 'wars', 'att_has_ape', 'INTEGER DEFAULT 0')
                 for resource in LOOT_RESOURCE_COLUMNS:
                     self._ensure_column(cursor, 'subscription_war_attacks', f'{resource}_looted', 'REAL')
-                
+
+                # Back-fill is_active for existing rows that are clearly ended
+                cursor.execute("""
+                    UPDATE wars SET is_active = 0
+                    WHERE (is_active IS NULL OR is_active = 1)
+                      AND (
+                        (turns_left IS NOT NULL AND turns_left <= 0)
+                        OR (end_date IS NOT NULL AND end_date != '')
+                        OR (winner_id IS NOT NULL AND winner_id != 0)
+                        OR (att_peace = 1 AND def_peace = 1)
+                      )
+                """)
+
                 # Create indexes
                 cursor.execute('CREATE INDEX IF NOT EXISTS idx_wars_att_alliance_id ON wars(att_alliance_id)')
                 cursor.execute('CREATE INDEX IF NOT EXISTS idx_wars_def_alliance_id ON wars(def_alliance_id)')
@@ -224,12 +254,21 @@ class IRSWarsDB:
                 cursor.execute('CREATE INDEX IF NOT EXISTS idx_wars_att_alliance_date ON wars(att_alliance_id, date)')
                 cursor.execute('CREATE INDEX IF NOT EXISTS idx_wars_def_alliance_date ON wars(def_alliance_id, date)')
                 cursor.execute('CREATE INDEX IF NOT EXISTS idx_wars_date ON wars(date)')
+                cursor.execute('CREATE INDEX IF NOT EXISTS idx_wars_is_active ON wars(is_active)')
                 
                 conn.commit()
                 logger.info("Database initialized successfully")
         except Exception as e:
             logger.error(f"Error initializing database: {e}")
             raise
+
+    def _connect(self) -> sqlite3.Connection:
+        """Open a connection with WAL mode and busy timeout for concurrent access."""
+        conn = sqlite3.connect(self.db_path, timeout=30)
+        conn.execute("PRAGMA journal_mode=WAL")
+        conn.execute("PRAGMA synchronous=NORMAL")
+        conn.execute("PRAGMA busy_timeout=10000")  # wait up to 10s if DB is locked
+        return conn
 
     @staticmethod
     def _ensure_column(cursor: sqlite3.Cursor, table_name: str, column_name: str, column_type: str):
@@ -250,15 +289,58 @@ class IRSWarsDB:
         return value.value if hasattr(value, "value") else value
 
     async def save_war(self, war_data: Dict[str, Any]) -> bool:
-        """Upsert a war record — never overwrites an existing non-null column with NULL."""
+        """Upsert a war record.
+
+        Rules:
+        - Never overwrites an existing non-null column with NULL (stale partial updates).
+        - EXCEPTION: turns_left=0 is always written (war ended).
+        - Computes is_active and end_reason from the incoming data so active-war
+          queries stay correct even if a future update is missed.
+        """
         async with self._lock:
             try:
-                with sqlite3.connect(self.db_path) as conn:
+                with self._connect() as conn:
                     cursor = conn.cursor()
 
                     attacker = war_data.get("attacker") or {}
                     defender = war_data.get("defender") or {}
                     now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+
+                    turns_left  = war_data.get("turns_left")
+                    winner_id   = war_data.get("winner_id")
+                    end_date    = war_data.get("end_date")
+                    att_peace   = war_data.get("att_peace")
+                    def_peace   = war_data.get("def_peace")
+
+                    # Determine end state from this payload
+                    # A war is ended when any of these are true:
+                    #   - turns_left <= 0  (PnW sends 0 on expiry, but also sends negative
+                    #                       values like -3, -8, -12 for already-expired wars)
+                    #   - end_date is a non-empty string
+                    #   - winner_id is set (non-zero)
+                    #   - both peace flags are 1
+                    turns_ended  = turns_left is not None and int(turns_left) <= 0
+                    date_ended   = bool(end_date and str(end_date).strip())
+                    winner_ended = winner_id is not None and int(winner_id) != 0
+                    peace_ended  = (att_peace is not None and def_peace is not None
+                                    and int(att_peace) == 1 and int(def_peace) == 1)
+
+                    war_ended = turns_ended or date_ended or winner_ended or peace_ended
+
+                    # Compute end_reason (only set when we know the war is over)
+                    if war_ended:
+                        if winner_ended:
+                            end_reason = "win"
+                        elif peace_ended:
+                            end_reason = "peace"
+                        elif turns_ended and not winner_ended:
+                            end_reason = "expire"
+                        else:
+                            end_reason = "ended"
+                    else:
+                        end_reason = None
+
+                    is_active = 0 if war_ended else 1
 
                     fields = {
                         "date": war_data.get("date"),
@@ -311,6 +393,20 @@ class IRSWarsDB:
                         "def_missiles_used": war_data.get("def_missiles_used"),
                         "att_nukes_used": war_data.get("att_nukes_used"),
                         "def_nukes_used": war_data.get("def_nukes_used"),
+                        # Loot-critical policy fields — persisted so back-calculation
+                        # of defender's remaining holdings survives harvester restarts.
+                        "att_war_policy": (
+                            attacker.get("war_policy") or war_data.get("att_war_policy") or ""
+                        ),
+                        "def_war_policy": (
+                            defender.get("war_policy") or war_data.get("def_war_policy") or ""
+                        ),
+                        "att_has_ape": int(bool(
+                            attacker.get("advanced_pirate_economy")
+                            or war_data.get("att_has_ape")
+                        )),
+                        "is_active": is_active,
+                        "end_reason": end_reason,
                         "updated_at": now,
                     }
 
@@ -327,8 +423,21 @@ class IRSWarsDB:
                             [war_id] + list(fields.values()),
                         )
                     else:
-                        # Only update columns where the incoming value is not None
-                        update_fields = {k: v for k, v in fields.items() if v is not None}
+                        # Update all non-None fields.
+                        # Special case: turns_left=0 must always be written (war ended).
+                        # Special case: is_active=0 must always be written (never re-activate).
+                        update_fields = {}
+                        for k, v in fields.items():
+                            if v is not None:
+                                update_fields[k] = v
+                            elif k == "turns_left" and turns_left is not None:
+                                # Explicitly write turns_left=0
+                                update_fields[k] = 0
+                        # Never allow is_active to go from 0 back to 1
+                        if is_active == 0:
+                            update_fields["is_active"] = 0
+                            if end_reason:
+                                update_fields["end_reason"] = end_reason
                         if update_fields:
                             set_clause = ", ".join(f"{k} = ?" for k in update_fields)
                             cursor.execute(
@@ -346,7 +455,7 @@ class IRSWarsDB:
         """Upsert a war attack — never overwrites an existing non-null column with NULL."""
         async with self._lock:
             try:
-                with sqlite3.connect(self.db_path) as conn:
+                with self._connect() as conn:
                     cursor = conn.cursor()
 
                     improvements_destroyed = attack_data.get("improvements_destroyed")
@@ -443,7 +552,7 @@ class IRSWarsDB:
         """Get a war record by ID."""
         async with self._lock:
             try:
-                with sqlite3.connect(self.db_path) as conn:
+                with self._connect() as conn:
                     cursor = conn.cursor()
                     cursor.execute('SELECT * FROM wars WHERE id = ?', (war_id,))
                     row = cursor.fetchone()
@@ -460,7 +569,7 @@ class IRSWarsDB:
         """Get wars by alliance ID."""
         async with self._lock:
             try:
-                with sqlite3.connect(self.db_path) as conn:
+                with self._connect() as conn:
                     cursor = conn.cursor()
                     
                     if role == 'attacker':
@@ -486,7 +595,7 @@ class IRSWarsDB:
         """Get wars by alliance ID constrained to an inclusive UTC date window."""
         async with self._lock:
             try:
-                with sqlite3.connect(self.db_path) as conn:
+                with self._connect() as conn:
                     cursor = conn.cursor()
 
                     alliance_column = 'att_alliance_id' if role == 'attacker' else 'def_alliance_id'
@@ -520,7 +629,7 @@ class IRSWarsDB:
         """Fetch all wars (attacker OR defender) for an alliance in one query, deduped by id."""
         async with self._lock:
             try:
-                with sqlite3.connect(self.db_path) as conn:
+                with self._connect() as conn:
                     cursor = conn.cursor()
                     query = 'SELECT * FROM wars WHERE (att_alliance_id = ? OR def_alliance_id = ?)'
                     params: List[Any] = [alliance_id, alliance_id]
@@ -547,7 +656,7 @@ class IRSWarsDB:
         """Return the earliest and latest UTC war dates recorded for an alliance."""
         async with self._lock:
             try:
-                with sqlite3.connect(self.db_path) as conn:
+                with self._connect() as conn:
                     cursor = conn.cursor()
                     cursor.execute(
                         '''
@@ -569,7 +678,7 @@ class IRSWarsDB:
         """Return the earliest and latest UTC war dates across ALL wars in the DB."""
         async with self._lock:
             try:
-                with sqlite3.connect(self.db_path) as conn:
+                with self._connect() as conn:
                     cursor = conn.cursor()
                     cursor.execute(
                         '''
@@ -593,7 +702,7 @@ class IRSWarsDB:
         """Fetch ALL wars in the DB (no alliance filter) within an optional date window."""
         async with self._lock:
             try:
-                with sqlite3.connect(self.db_path) as conn:
+                with self._connect() as conn:
                     cursor = conn.cursor()
                     query = 'SELECT * FROM wars WHERE 1=1'
                     params: List[Any] = []
@@ -628,7 +737,7 @@ class IRSWarsDB:
             return []
         async with self._lock:
             try:
-                with sqlite3.connect(self.db_path) as conn:
+                with self._connect() as conn:
                     cursor = conn.cursor()
                     placeholders = ",".join("?" * len(nation_ids))
                     query = (
@@ -663,7 +772,7 @@ class IRSWarsDB:
             return None
         async with self._lock:
             try:
-                with sqlite3.connect(self.db_path) as conn:
+                with self._connect() as conn:
                     cursor = conn.cursor()
                     placeholders = ",".join("?" * len(nation_ids))
                     cursor.execute(
@@ -686,7 +795,7 @@ class IRSWarsDB:
         """Get war attacks for a specific war."""
         async with self._lock:
             try:
-                with sqlite3.connect(self.db_path) as conn:
+                with self._connect() as conn:
                     cursor = conn.cursor()
                     cursor.execute('SELECT * FROM war_attacks WHERE war_id = ? ORDER BY date DESC', (war_id,))
                     
@@ -719,7 +828,7 @@ class IRSWarsDB:
         """Get unprocessed subscription war attacks."""
         async with self._lock:
             try:
-                with sqlite3.connect(self.db_path) as conn:
+                with self._connect() as conn:
                     cursor = conn.cursor()
                     cursor.execute('''
                         SELECT * FROM subscription_war_attacks 
@@ -757,7 +866,7 @@ class IRSWarsDB:
         """Return war ids for alliance wars that still have attack rows missing participant ids."""
         async with self._lock:
             try:
-                with sqlite3.connect(self.db_path) as conn:
+                with self._connect() as conn:
                     cursor = conn.cursor()
                     cursor.execute(
                         '''
@@ -780,7 +889,7 @@ class IRSWarsDB:
         """Mark a subscription war attack as processed."""
         async with self._lock:
             try:
-                with sqlite3.connect(self.db_path) as conn:
+                with self._connect() as conn:
                     cursor = conn.cursor()
                     cursor.execute('''
                         UPDATE subscription_war_attacks 
@@ -798,7 +907,7 @@ class IRSWarsDB:
         """Get database statistics."""
         async with self._lock:
             try:
-                with sqlite3.connect(self.db_path) as conn:
+                with self._connect() as conn:
                     cursor = conn.cursor()
                     
                     cursor.execute('SELECT COUNT(*) FROM wars')
@@ -824,22 +933,31 @@ class IRSWarsDB:
                 return {'wars': 0, 'war_attacks': 0, 'subscription_attacks': 0, 'unprocessed_attacks': 0}
 
     async def get_active_war_nation_ids(self) -> set:
-        """Return the set of nation IDs that are currently in an active war (turns_left > 0).
+        """Return the set of nation IDs currently in an active war.
 
-        A single bulk query — call once before the revenue loop and use the
-        returned set for O(1) per-nation lookups instead of relying on the
-        potentially-stale offensive/defensive_wars_count columns.
+        Uses the is_active column (explicitly managed by save_war) as the
+        primary signal, with a multi-condition fallback for rows that predate
+        the is_active column.
         """
         async with self._lock:
             try:
-                with sqlite3.connect(self.db_path) as conn:
+                with self._connect() as conn:
                     cursor = conn.cursor()
                     cursor.execute(
                         """
                         SELECT att_id, def_id
                         FROM wars
-                        WHERE turns_left > 0
-                          AND (att_id IS NOT NULL OR def_id IS NOT NULL)
+                        WHERE (
+                            is_active = 1
+                            OR (
+                                is_active IS NULL
+                                AND (turns_left IS NULL OR turns_left > 0)
+                                AND (end_date IS NULL OR end_date = '')
+                                AND (winner_id IS NULL OR winner_id = 0)
+                                AND NOT (att_peace = 1 AND def_peace = 1)
+                            )
+                        )
+                        AND (att_id IS NOT NULL OR def_id IS NOT NULL)
                         """
                     )
                     active_ids: set = set()
@@ -854,17 +972,31 @@ class IRSWarsDB:
                 return set()
 
     async def get_active_war_counts(self) -> dict:
-        """Return {nation_id: {'off': int, 'def': int}} for all nations in active wars (turns_left > 0)."""
+        """Return {nation_id: {'off': int, 'def': int}} for all nations in active wars.
+
+        Uses is_active column as primary signal with multi-condition fallback
+        for legacy rows. This is the authoritative source for the nations page
+        war slot display.
+        """
         async with self._lock:
             try:
-                with sqlite3.connect(self.db_path) as conn:
+                with self._connect() as conn:
                     cursor = conn.cursor()
                     cursor.execute(
                         """
                         SELECT att_id, def_id
                         FROM wars
-                        WHERE turns_left > 0
-                          AND (att_id IS NOT NULL OR def_id IS NOT NULL)
+                        WHERE (
+                            is_active = 1
+                            OR (
+                                is_active IS NULL
+                                AND (turns_left IS NULL OR turns_left > 0)
+                                AND (end_date IS NULL OR end_date = '')
+                                AND (winner_id IS NULL OR winner_id = 0)
+                                AND NOT (att_peace = 1 AND def_peace = 1)
+                            )
+                        )
+                        AND (att_id IS NOT NULL OR def_id IS NOT NULL)
                         """
                     )
                     counts: dict = {}
@@ -879,40 +1011,12 @@ class IRSWarsDB:
             except Exception as e:
                 logger.error(f"Error fetching active war counts: {e}")
                 return {}
-        """Return the set of nation IDs that are currently in an active war (turns_left > 0).
-
-        A single bulk query — call once before the revenue loop and use the
-        returned set for O(1) per-nation lookups instead of relying on the
-        potentially-stale offensive/defensive_wars_count columns.
-        """
-        async with self._lock:
-            try:
-                with sqlite3.connect(self.db_path) as conn:
-                    cursor = conn.cursor()
-                    cursor.execute(
-                        """
-                        SELECT att_id, def_id
-                        FROM wars
-                        WHERE turns_left > 0
-                          AND (att_id IS NOT NULL OR def_id IS NOT NULL)
-                        """
-                    )
-                    active_ids: set = set()
-                    for att_id, def_id in cursor.fetchall():
-                        if att_id:
-                            active_ids.add(int(att_id))
-                        if def_id:
-                            active_ids.add(int(def_id))
-                    return active_ids
-            except Exception as e:
-                logger.error(f"Error fetching active war nation IDs: {e}")
-                return set()
 
     async def delete_war(self, war_id: int) -> Dict[str, int]:
         """Delete a war and all its attacks by war ID. Returns counts of deleted rows."""
         async with self._lock:
             try:
-                with sqlite3.connect(self.db_path) as conn:
+                with self._connect() as conn:
                     cursor = conn.cursor()
                     cursor.execute('DELETE FROM war_attacks WHERE war_id = ?', (war_id,))
                     attacks_deleted = cursor.rowcount
@@ -937,7 +1041,7 @@ class IRSWarsDB:
         """
         async with self._lock:
             try:
-                with sqlite3.connect(self.db_path) as conn:
+                with self._connect() as conn:
                     cursor = conn.cursor()
                     cursor.execute(
                         '''
@@ -967,7 +1071,7 @@ class IRSWarsDB:
         """
         async with self._lock:
             try:
-                with sqlite3.connect(self.db_path) as conn:
+                with self._connect() as conn:
                     cursor = conn.cursor()
                     cursor.execute(
                         '''
@@ -993,7 +1097,7 @@ class IRSWarsDB:
         """Return distinct opponent nation names for a specific NW member nation (for autocomplete)."""
         async with self._lock:
             try:
-                with sqlite3.connect(self.db_path) as conn:
+                with self._connect() as conn:
                     cursor = conn.cursor()
                     cursor.execute(
                         '''
@@ -1021,7 +1125,7 @@ class IRSWarsDB:
         """
         async with self._lock:
             try:
-                with sqlite3.connect(self.db_path) as conn:
+                with self._connect() as conn:
                     cursor = conn.cursor()
                     cursor.execute(
                         '''
@@ -1058,7 +1162,7 @@ class IRSWarsDB:
         """Return distinct opponent alliances (id + name) for a specific NW member nation."""
         async with self._lock:
             try:
-                with sqlite3.connect(self.db_path) as conn:
+                with self._connect() as conn:
                     cursor = conn.cursor()
                     cursor.execute(
                         '''
@@ -1097,7 +1201,7 @@ class IRSWarsDB:
             return {}
         async with self._lock:
             try:
-                with sqlite3.connect(self.db_path) as conn:
+                with self._connect() as conn:
                     cursor = conn.cursor()
                     placeholders = ','.join('?' * len(war_ids))
                     cursor.execute(

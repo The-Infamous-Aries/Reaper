@@ -146,9 +146,17 @@ class SsDatabase:
             if game is None:
                 await db.execute("DELETE FROM ss_active WHERE id = 1")
             else:
+                # Use a custom encoder that converts sets to sorted lists so the
+                # game state (which may contain set() values like _env_damaged)
+                # serialises cleanly without raising TypeError.
+                class _SetEncoder(json.JSONEncoder):
+                    def default(self, o: Any) -> Any:
+                        if isinstance(o, set):
+                            return sorted(o, key=str)
+                        return super().default(o)
                 await db.execute(
                     "INSERT OR REPLACE INTO ss_active (id, state_json, updated_at) VALUES (1, ?, ?)",
-                    (json.dumps(game), int(time.time()))
+                    (json.dumps(game, cls=_SetEncoder), int(time.time()))
                 )
             await db.commit()
 

@@ -425,6 +425,14 @@ class GoodEvilSystem(commands.Cog):
                 logger.error(f"Aiohttp client error calling Giphy API: {e}")
                 return None
 
+        async def safe_send(*args, **kwargs):
+            """Try the followup send method; fall back to channel.send if the interaction is stale."""
+            try:
+                await send_method(*args, **kwargs)
+            except discord.NotFound:
+                # Interaction webhook expired or message was deleted — fall back to channel
+                await ctx.channel.send(*args, **kwargs)
+
         try:
             link = None
             if type == "jpg":
@@ -438,15 +446,18 @@ class GoodEvilSystem(commands.Cog):
                 image_file = await self._fetch_image_as_file(link, filename)
 
                 if image_file:
-                    await send_method(file=image_file)
+                    await safe_send(file=image_file)
                 else:
-                    await send_method("Sorry, I couldn't download the image. Please try again.")
+                    await safe_send("Sorry, I couldn't download the image. Please try again.")
             else:
-                await send_method("Couldn't find a random image right now. Please try again!")
+                await safe_send("Couldn't find a random image right now. Please try again!")
 
         except Exception as e:
             logger.error(f"An unexpected error occurred in the random command: {e}", exc_info=True)
-            await send_method("Something went wrong while fetching your image. The error has been logged.")
+            try:
+                await safe_send("Something went wrong while fetching your image. The error has been logged.")
+            except Exception:
+                pass  # Nothing more we can do if both send methods fail
 
 async def setup(bot):
     await bot.add_cog(GoodEvilSystem(bot))

@@ -87,7 +87,7 @@ class JoinModal(discord.ui.Modal, title="Join Tic Tac Toe"):
 
 class TicTacToeButton(discord.ui.Button):
     def __init__(self, x: int, y: int):
-        super().__init__(label=" ", style=discord.ButtonStyle.secondary, row=y)
+        super().__init__(label="\u200b", style=discord.ButtonStyle.secondary, row=y)
         self.x = x
         self.y = y
 

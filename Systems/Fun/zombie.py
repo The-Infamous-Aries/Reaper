@@ -75,21 +75,14 @@ def _get_choice_emojis(round_num: int) -> List[discord.PartialEmoji]:
     return [s["a"], s["b"], s["c"], s["d"]]
 
 
-def _fmt_countdown(seconds: float) -> str:
-    """Format a seconds value as HH:MM:SS."""
-    secs = max(0, int(seconds))
-    h, rem = divmod(secs, 3600)
-    m, s = divmod(rem, 60)
-    return f"{h:02d}:{m:02d}:{s:02d}"
-
-
 # ── Cog ───────────────────────────────────────────────────────────────────────
 
 class ZombieSurvival(commands.Cog):
     """An ongoing, AI-driven zombie survival simulation.
 
-    One message per round: story embed + vote buttons, edited every 60 s for
-    the live countdown.  Player cards are shown via /zombie_character (ephemeral).
+    One message per round: story embed + vote buttons.  The round deadline is
+    rendered as a Discord <t:UNIX:R> timestamp so it counts down live on every
+    client with zero API calls.  Player cards are shown via /zombie_character.
     state["message_id"] = the current round's story message ID.
     """
 
@@ -99,7 +92,6 @@ class ZombieSurvival(commands.Cog):
         self.db = ZombieDB()
         self.bot.loop.create_task(self._startup())
         self.game_loop.start()
-        self.countdown_task.start()
 
     async def _startup(self):
         """Load state from DB, re-register the persistent view after restarts."""
@@ -111,7 +103,6 @@ class ZombieSurvival(commands.Cog):
 
     def cog_unload(self):
         self.game_loop.cancel()
-        self.countdown_task.cancel()
 
     # ── DB helpers ────────────────────────────────────────────────────────────
 
@@ -149,10 +140,12 @@ class ZombieSurvival(commands.Cog):
             "The story MUST be continuous and directly follow the last outcome. "
             "Keep event_text to 3-5 sentences: vivid but punchy, no padding. "
             "choices: exactly 4 short, distinct, actionable options (max 12 words each). "
-            "choice_odds: exactly 4 integers (0-100), one per choice, representing the "
-            "BASE probability of success for that choice — e.g. a reckless charge might "
-            "be 25, a cautious retreat might be 65, a desperate gamble might be 15. "
-            "Vary them meaningfully; do NOT make them all the same. "
+            "choice_odds: exactly 4 integers representing the BASE success probability "
+            "for each choice. These MUST be meaningfully different from each other — "
+            "spread them across the full range. Examples of good spreads: [20,65,40,80], "
+            "[15,55,70,35], [80,25,50,10]. Never use the same value twice. "
+            "A suicidal charge should be 10-20. A cautious retreat should be 60-80. "
+            "A risky gamble should be 15-30. A solid plan should be 55-75. "
             "world_impact.success_outcome: 2-3 sentences — what happens if they succeed. "
             "world_impact.failure_outcome: 2-3 sentences — what happens if they fail. "
             "world_impact.stat_changes: dict of stat deltas (keys: health, stamina, morale; "
@@ -160,7 +153,7 @@ class ZombieSurvival(commands.Cog):
             "Return ONLY valid JSON, no markdown, no code fences:\n"
             '{"event_text":"string",'
             '"choices":["string","string","string","string"],'
-            '"choice_odds":[55,30,70,20],'
+            '"choice_odds":[65,20,45,80],'
             '"world_impact":{"success_outcome":"string","failure_outcome":"string",'
             '"stat_changes":{"health":0,"stamina":-10,"morale":5}}}'
         )
@@ -234,32 +227,6 @@ class ZombieSurvival(commands.Cog):
         except (ValueError, TypeError):
             return f"Survivor {uid}"
 
-    # ── Countdown task ────────────────────────────────────────────────────────
-
-    @tasks.loop(seconds=60)
-    async def countdown_task(self):
-        """Edit the story embed every minute to show a live HH:MM:SS countdown."""
-        if not self.state.get("active"):
-            return
-        message_id = self.state.get("message_id")
-        if not message_id:
-            return
-        channel = self.bot.get_channel(self.state.get("channel_id"))
-        if not channel:
-            return
-        try:
-            story_msg = await channel.fetch_message(message_id)
-        except (discord.NotFound, discord.HTTPException):
-            return
-        try:
-            await story_msg.edit(embed=self._build_story_embed())
-        except discord.HTTPException as e:
-            log.warning(f"Countdown edit failed: {e}")
-
-    @countdown_task.before_loop
-    async def before_countdown(self):
-        await self.bot.wait_until_ready()
-
     # ── Game loop ─────────────────────────────────────────────────────────────
 
     @tasks.loop(minutes=30)
@@ -276,25 +243,25 @@ class ZombieSurvival(commands.Cog):
 
     # ── Embed builders ────────────────────────────────────────────────────────
 
-    def _seconds_remaining(self) -> float:
+    def _round_deadline_ts(self) -> int:
+        """Unix timestamp when the current round resolves."""
         last = self.state.get("last_update", 0)
-        deadline = last + UPDATE_INTERVAL_HOURS * 3600
-        return max(0.0, deadline - datetime.now().timestamp())
+        return int(last + UPDATE_INTERVAL_HOURS * 3600)
 
     def _build_story_embed(self) -> discord.Embed:
-        """Build the single story embed with live countdown and survivor mentions."""
+        """Build the single story embed.  The countdown uses Discord's native
+        <t:UNIX:R> format — it updates live on every client with zero API calls.
+        """
         round_num     = self.state.get("round", 1)
         choice_emojis = _get_choice_emojis(round_num)
         choices       = self.state.get("choices", [])[:4]
-        choice_odds   = self.state.get("choice_odds", [50] * 4)
-        countdown     = _fmt_countdown(self._seconds_remaining())
+        deadline_ts   = self._round_deadline_ts()
 
         embed = discord.Embed(
-            title="🧟 ZOMBIE SURVIVAL: The Echoes of the Fallen",
+            title=f"🧟 ZOMBIE SURVIVAL — Round {round_num}",
             description=(
-                f"**Round {round_num}**\n\n"
                 f"{self.state.get('current_event', '')}\n\n"
-                f"⏱️ **Time remaining:** `{countdown}`"
+                f"⏱️ **Round ends** <t:{deadline_ts}:R>"
             ),
             color=discord.Color.dark_red(),
         )
@@ -302,8 +269,7 @@ class ZombieSurvival(commands.Cog):
 
         # Choices with base odds
         choices_text = "\n".join(
-            f"{choice_emojis[i]} **{CHOICE_LABELS[i]}.** {choice}  "
-            f"`{choice_odds[i] if i < len(choice_odds) else 50}% base`"
+            f"{choice_emojis[i]} **{CHOICE_LABELS[i]}.** {choice}"
             for i, choice in enumerate(choices)
         )
         embed.add_field(
@@ -434,15 +400,31 @@ class ZombieSurvival(commands.Cog):
 
         outcome_text = (
             f"**Choice {label}: {winning_text}**\n"
-            f"*(Votes: {total_votes} | Base odds: {base_odds:.0f}% | "
+            f"*(Votes: {winning_votes} | Base odds: {base_odds:.0f}% | "
             f"Final: {success_chance:.0f}%)* "
             f"→ **{'✅ SUCCESS' if is_success else '❌ FAILURE'}**\n\n"
             f"*{outcome_narrative}*"
         )
 
+        # ── Classify choice: attack (uses ammo) vs supply (gains ammo) ────────
+        _ATTACK_KEYWORDS = (
+            "attack", "shoot", "fire", "fight", "charge", "assault", "engage",
+            "repel", "defend", "stand", "ambush", "snipe", "open fire", "gun",
+            "blast", "cover fire", "suppress", "take out", "eliminate",
+        )
+        _SUPPLY_KEYWORDS = (
+            "scavenge", "loot", "search", "gather", "find", "supply", "supplies",
+            "raid", "forage", "collect", "grab", "retrieve", "salvage", "stock",
+            "ammo", "ammunition", "restock", "resupply",
+        )
+        choice_lower = winning_text.lower()
+        is_attack_choice = any(kw in choice_lower for kw in _ATTACK_KEYWORDS)
+        is_supply_choice = any(kw in choice_lower for kw in _SUPPLY_KEYWORDS)
+
         # ── Apply stat changes + loot ─────────────────────────────────────────
         stat_changes: Dict = world_impact.get("stat_changes", {})
         death_report = ""
+        ammo_report_lines: List[str] = []
 
         if is_success:
             loot = self._loot_on_success(winning_votes)
@@ -450,8 +432,10 @@ class ZombieSurvival(commands.Cog):
             if loot["health"]       > 0: loot_lines.append(f"❤️ +{loot['health']} HP")
             if loot["stamina"]      > 0: loot_lines.append(f"⚡ +{loot['stamina']} ST")
             if loot["morale"]       > 0: loot_lines.append(f"💙 +{loot['morale']} MO")
-            if loot["revolver_ammo"]> 0: loot_lines.append(f"🔫 +{loot['revolver_ammo']} revolver rounds")
-            if loot["rifle_ammo"]   > 0: loot_lines.append(f"🎯 +{loot['rifle_ammo']} rifle rounds")
+            # Only show ammo gains for non-attack choices
+            if not is_attack_choice:
+                if loot["revolver_ammo"] > 0: loot_lines.append(f"🔫 +{loot['revolver_ammo']} revolver rounds")
+                if loot["rifle_ammo"]    > 0: loot_lines.append(f"🎯 +{loot['rifle_ammo']} rifle rounds")
             if loot_lines:
                 outcome_text += f"\n\n**FOUND:** {', '.join(loot_lines)}"
         else:
@@ -470,12 +454,42 @@ class ZombieSurvival(commands.Cog):
                         penalty = -abs(int(delta))
                         survivor[stat] = max(0, min(100, survivor[stat] + penalty))
 
-            # Loot on success
-            if loot:
-                survivor["health"]  = max(0, min(100, survivor["health"]  + loot["health"]))
-                survivor["stamina"] = max(0, min(100, survivor["stamina"] + loot["stamina"]))
-                survivor["morale"]  = max(0, min(100, survivor["morale"]  + loot["morale"]))
-                # Distribute ammo: fill loaded first, then spare
+            # ── Ammo: attack choices consume, supply choices gain ─────────────
+            if is_attack_choice:
+                # Consume ammo: prefer rifle if loaded, else revolver, else melee only
+                rif_loaded = survivor.get("rifle_loaded", 0)
+                rev_loaded = survivor.get("revolver_loaded", 0)
+                rif_spare  = survivor.get("rifle_spare", 0)
+                rev_spare  = survivor.get("revolver_spare", 0)
+
+                # Spend 1-3 rifle rounds if available
+                rif_cost = min(random.randint(1, 3), rif_loaded)
+                if rif_cost > 0:
+                    survivor["rifle_loaded"] = rif_loaded - rif_cost
+                    # Auto-reload from spare if mag is now empty
+                    if survivor["rifle_loaded"] == 0 and rif_spare > 0:
+                        reload_amt = min(12, rif_spare)
+                        survivor["rifle_loaded"] = reload_amt
+                        survivor["rifle_spare"]  = rif_spare - reload_amt
+
+                # Spend 1-2 revolver rounds if available
+                rev_cost = min(random.randint(1, 2), survivor.get("revolver_loaded", 0))
+                if rev_cost > 0:
+                    survivor["revolver_loaded"] = survivor.get("revolver_loaded", 0) - rev_cost
+                    # Auto-reload from spare if cylinder is empty
+                    if survivor["revolver_loaded"] == 0 and survivor.get("revolver_spare", 0) > 0:
+                        reload_amt = min(6, survivor["revolver_spare"])
+                        survivor["revolver_loaded"] = reload_amt
+                        survivor["revolver_spare"]  = survivor["revolver_spare"] - reload_amt
+
+                total_ammo_spent = rif_cost + rev_cost
+                if total_ammo_spent > 0:
+                    ammo_report_lines.append(
+                        f"🔫 {self._user_display(uid)} used {total_ammo_spent} round(s)"
+                    )
+
+            elif is_supply_choice and loot:
+                # Supply/scavenge choices gain ammo
                 rev_gain = loot["revolver_ammo"]
                 if rev_gain > 0:
                     space_in_cylinder = max(0, 6 - survivor.get("revolver_loaded", 0))
@@ -489,10 +503,19 @@ class ZombieSurvival(commands.Cog):
                     survivor["rifle_loaded"] = survivor.get("rifle_loaded", 0) + to_mag
                     survivor["rifle_spare"]  = survivor.get("rifle_spare",  0) + (rif_gain - to_mag)
 
+            # Loot stat bonuses on success (always apply HP/ST/MO regardless of choice type)
+            if loot:
+                survivor["health"]  = max(0, min(100, survivor["health"]  + loot["health"]))
+                survivor["stamina"] = max(0, min(100, survivor["stamina"] + loot["stamina"]))
+                survivor["morale"]  = max(0, min(100, survivor["morale"]  + loot["morale"]))
+
             # Death check
             if survivor["health"] <= 0 and survivor["status"] != "Deceased":
                 survivor["status"] = "Deceased"
                 death_report += f"\n💀 **{self._user_display(uid)} has fallen.**"
+
+        if ammo_report_lines:
+            outcome_text += f"\n\n**AMMO SPENT:** {', '.join(ammo_report_lines)}"
 
         if death_report:
             outcome_text += f"\n\n**CASUALTIES:**{death_report}"
@@ -511,8 +534,8 @@ class ZombieSurvival(commands.Cog):
 
         # ── Check if everyone is dead ─────────────────────────────────────────
         if self._all_dead():
-            self.state["active"] = False
-            await self._save_with_history(resolved_round, resolved_event, outcome_text)
+            # Append the final history entry, then let _send_game_over wipe everything.
+            await self.db.append_history(resolved_round, resolved_event, outcome_text)
             await self._send_game_over(channel, outcome_text)
             return
 
@@ -566,6 +589,7 @@ class ZombieSurvival(commands.Cog):
     # ── Game over ─────────────────────────────────────────────────────────────
 
     async def _send_game_over(self, channel: discord.abc.Messageable, final_outcome: str):
+        """Send the game-over embed, then fully wipe the game from DB and memory."""
         embed = discord.Embed(
             title="💀 THE LAST SURVIVOR HAS FALLEN",
             description=(
@@ -582,11 +606,16 @@ class ZombieSurvival(commands.Cog):
         )
         if roster:
             embed.add_field(name="The Fallen", value=roster, inline=False)
-        embed.set_footer(text="Their story ends here.")
+        embed.set_footer(text="Their story ends here. Use /zombie_survival to start a new game.")
         try:
             await channel.send(embed=embed)
         except discord.HTTPException as e:
             log.error(f"Failed to send game-over embed: {e}")
+
+        # Fully wipe DB and reset in-memory state so the next /zombie_survival
+        # starts completely fresh with no leftover survivors or history.
+        await self.db.reset()
+        self.state = ZombieDB._default_state()
 
     # ── Message sending ───────────────────────────────────────────────────────
 
@@ -624,11 +653,22 @@ class ZombieSurvival(commands.Cog):
             await ctx.defer()
 
             prompt = (
-                "The zombie apocalypse has just begun. A small group of survivors find themselves "
-                "trapped in a derelict convenience store as dusk falls. The undead are closing in "
-                "from every direction. Supplies are scarce and trust is thin. "
-                "Generate the opening event and exactly 4 choices for survival. "
-                "Keep it under 5 sentences — tense and immediate."
+                "Start a brand new zombie survival story. "
+                "Pick ONE of these opening scenarios at random — do not always use the same one:\n"
+                "1. Survivors barricaded in a crumbling hospital as the power grid fails\n"
+                "2. A small convoy ambushed on a highway overpass at dawn\n"
+                "3. Refugees sheltering in a flooded subway station\n"
+                "4. A farmhouse surrounded by a growing horde at nightfall\n"
+                "5. Survivors trapped in a collapsed shopping mall with dwindling supplies\n"
+                "6. A military checkpoint that has just gone dark and silent\n"
+                "7. Survivors on a fishing boat watching the infected overrun the docks\n"
+                "8. A school gymnasium turned refugee camp, now breached\n\n"
+                "Write event_text as a gripping 3-5 sentence opening that establishes: "
+                "WHERE the survivors are, WHAT immediate threat they face, and WHY they must "
+                "act NOW. Make it feel like the first page of a novel — specific, visceral, "
+                "with real stakes. Then provide exactly 4 distinct choices that reflect the "
+                "actual situation you described. Assign varied choice_odds that reflect how "
+                "risky each option genuinely is."
             )
             new_content = await self.generate_content(prompt)
             if not new_content:
@@ -672,8 +712,7 @@ class ZombieSurvival(commands.Cog):
             await ctx.send("There's no active game to stop.", ephemeral=True)
             return
 
-        self.state["active"] = False
-        await self._save()
+        # Wipe DB completely and reset in-memory state.
         await self.db.reset()
         self.state = ZombieDB._default_state()
 
@@ -771,25 +810,38 @@ class ZombieSurvival(commands.Cog):
 # ── Persistent UI ─────────────────────────────────────────────────────────────
 
 class ZombieView(discord.ui.View):
-    """Vote buttons only — one row, A/B/C/D."""
+    """Vote buttons only — one row, A/B/C/D.
+    custom_id encodes both the choice index AND the emoji set so the correct
+    emoji is always shown and persistent view re-registration is unambiguous.
+    """
     def __init__(self, cog: "ZombieSurvival"):
         super().__init__(timeout=None)
         self.cog = cog
         round_num     = cog.state.get("round", 1)
+        emoji_set_idx = round_num % len(_CHOICE_EMOJI_SETS)
         choice_emojis = _get_choice_emojis(round_num)
         num_choices   = len(cog.state.get("choices", [])[:4])
         for i in range(num_choices):
-            self.add_item(VoteButton(cog, i, choice_emojis[i]))
+            self.add_item(VoteButton(cog, i, choice_emojis[i], emoji_set_idx))
 
 
 class VoteButton(discord.ui.Button):
-    def __init__(self, cog: "ZombieSurvival", index: int, emoji: discord.PartialEmoji):
+    def __init__(
+        self,
+        cog: "ZombieSurvival",
+        index: int,
+        emoji: discord.PartialEmoji,
+        emoji_set_idx: int,
+    ):
         self.cog          = cog
         self.choice_index = index
+        # Include emoji_set_idx in custom_id so each round's buttons are
+        # uniquely registered and the correct emoji is always resolved.
         super().__init__(
             style=discord.ButtonStyle.primary,
-            custom_id=f"zombie_vote_{index}",
+            custom_id=f"zombie_vote_{index}_s{emoji_set_idx}",
             emoji=emoji,
+            label=CHOICE_LABELS[index],   # fallback text if emoji fails to render
         )
 
     async def callback(self, interaction: discord.Interaction):
@@ -824,14 +876,10 @@ class VoteButton(discord.ui.Button):
 
         label       = CHOICE_LABELS[self.choice_index]
         choice_text = self.cog.state["choices"][self.choice_index]
-        base_odds   = self.cog.state.get("choice_odds", [50] * 4)
-        odds_val    = base_odds[self.choice_index] if self.choice_index < len(base_odds) else 50
 
         # Acknowledge immediately
         await interaction.response.send_message(
-            f"Voted **{label}**: *{choice_text}*\n"
-            f"Base odds: **{odds_val}%** — every vote improves the chance.\n"
-            f"May it be the right call.",
+            f"Voted **{label}**: *{choice_text}*\nMay it be the right call.",
             ephemeral=True,
         )
 

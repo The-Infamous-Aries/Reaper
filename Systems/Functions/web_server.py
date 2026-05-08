@@ -58,6 +58,7 @@ from web.api.minigames_api import router as minigames_api
 from web.api.casino_lobby_api import router as casino_lobby_api
 from web.api.library import router as library_api
 from web.api.pets_api import router as pets_api
+from web.api.absorb_api import router as absorb_api
 from web.api.pnw_api import router as pnw_api
 from web.api.discord_auth import router as discord_auth_api
 from web.api.watch_api import router as watch_api
@@ -74,10 +75,12 @@ from web.api.scratch_api import router as scratch_api
 from web.api.cache_api import router as cache_api
 from web.api.battle_config_api import router as battle_config_api
 from web.api.user_battle_settings_api import router as user_battle_settings_api
-from web.api.tarot_api import router as tarot_api
 from web.api.rev_optimizer_api import router as rev_optimizer_api
-from web.api.access_api import router as access_api
 from web.api.raids_api import router as raids_api
+from web.api.image_proxy import router as image_proxy_api
+from web.api.news_api import router as news_api
+from web.api.colosseum_api import router as colosseum_api
+from web.api.dungeon_api import router as dungeon_api
 
 from Systems.Functions.database_manager import get_resource_prices_comparison, get_colors_comparison, get_resource_supply_comparison
 
@@ -103,6 +106,18 @@ class AstrologyRequest(BaseModel):
 
 app = FastAPI()
 
+# CORS must be outermost middleware (added first = outermost in Starlette's reverse stack).
+# allow_credentials=True is incompatible with allow_origins=["*"], so use explicit origin.
+# WebSocket upgrade requests don't send CORS preflight, but the initial HTTP upgrade
+# request must not be rejected by the CORS layer.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["https://reaper.qzz.io", "http://localhost:8080"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 # Add session middleware
 # IMPORTANT: This key should be a secret and loaded from environment variables in a real application
 app.add_middleware(
@@ -126,6 +141,7 @@ app.include_router(bot_info_api, prefix="/api", tags=["bot-info"])
 app.include_router(docs_api, prefix="/api", tags=["docs"])
 app.include_router(library_api, prefix="/api", tags=["library"])
 app.include_router(pets_api, prefix="/api", tags=["pets"])
+app.include_router(absorb_api, prefix="/api", tags=["absorb"])
 app.include_router(pnw_api, prefix="/api", tags=["pnw-graphs"])
 app.include_router(discord_auth_api, prefix="/api", tags=["discord-auth"])
 app.include_router(watch_api, prefix="/api", tags=["watch"])
@@ -142,10 +158,12 @@ app.include_router(scratch_api, prefix="/api", tags=["scratch"])
 app.include_router(cache_api, prefix="/api", tags=["cache"])
 app.include_router(battle_config_api, prefix="/api", tags=["battle-config"])
 app.include_router(user_battle_settings_api, prefix="/api", tags=["user-battle-settings"])
-app.include_router(tarot_api, prefix="/api", tags=["tarot"])
 app.include_router(rev_optimizer_api, prefix="/api", tags=["rev-optimizer"])
-app.include_router(access_api, prefix="/api", tags=["access"])
 app.include_router(raids_api, prefix="/api", tags=["raids"])
+app.include_router(image_proxy_api, prefix="/api", tags=["image-proxy"])
+app.include_router(news_api, prefix="/api", tags=["news"])
+app.include_router(colosseum_api, prefix="/api", tags=["colosseum"])
+app.include_router(dungeon_api, prefix="/api", tags=["dungeon"])
 
 
 @app.on_event("startup")
@@ -168,6 +186,12 @@ async def startup_event():
     # Initialise Powerball DB on startup
     from web.api.powerball_api import _ensure_db as _pb_ensure_db
     asyncio.create_task(_pb_ensure_db())
+    # Start Colosseum hourly battle loop
+    from web.api.colosseum_api import start_colosseum_loop
+    asyncio.create_task(start_colosseum_loop())
+    # Pre-warm the revenue cache in the background so the first user request
+    # after a turn boundary never hits a cold 15k-nation calculation.
+    asyncio.create_task(_revenue_prewarm_loop())
 
 app.include_router(astrology_api, prefix="/api", tags=["astrology"])
 
@@ -178,6 +202,11 @@ app.mount("/js", StaticFiles(directory="web/js"), name="js")
 app.mount("/Pages", StaticFiles(directory="web/Pages"), name="pages")
 app.mount("/Systems", StaticFiles(directory="Systems"), name="systems")
 app.mount("/node_modules", StaticFiles(directory="node_modules"), name="node_modules")
+
+@app.get("/api/access/check")
+async def access_check_stub():
+    """Stub for removed access control system — always returns full access."""
+    return JSONResponse(content={"allowed_pages": []})
 
 @app.get("/api/game-info/resource-prices")
 async def get_game_info_resource_prices():
@@ -430,14 +459,109 @@ async def broadcast_updates():
         except Exception as e:
             logger.error(f"Error in broadcast_updates: {e}", exc_info=True)
 
-# Add CORS middleware to allow cross-origin requests
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # Allows all origins - adjust for production
-    allow_credentials=True,
-    allow_methods=["GET", "POST"],  # Specify allowed methods
-    allow_headers=["Content-Type", "Authorization"],  # Specify allowed headers
-)
+
+async def _revenue_prewarm_loop():
+    """Background task that pre-warms the revenue cache at each PnW turn boundary.
+
+    PnW turns happen every 2 hours on even UTC hours.  This loop wakes up
+    ~30 seconds after each boundary and runs the full revenue calculation so
+    the cache is hot before any user requests it.  A 524 timeout is impossible
+    on a cache-hit response.
+
+    Waits until GlobalNations.db has at least one nation before attempting
+    any pre-warm — avoids the misleading "0 alliances" log on cold startup.
+    """
+    import datetime as _dt
+    # Small initial delay so the server finishes starting up first
+    await asyncio.sleep(60)
+
+    # ── Wait for GlobalNations.db to be populated ─────────────────────────────
+    # The harvester populates the DB asynchronously after startup.  Poll until
+    # at least one nation exists before attempting any revenue pre-warm.
+    _db_ready = False
+    for _attempt in range(30):  # up to 5 minutes (30 × 10s)
+        try:
+            from web.api.watch_api import _get_global_nations_db
+            _db = _get_global_nations_db()
+            _alliances = await _db.get_distinct_alliances()
+            if _alliances:
+                _db_ready = True
+                logger.info(
+                    f"Revenue pre-warm: GlobalNations.db ready "
+                    f"({len(_alliances)} alliances) — starting turn-boundary loop"
+                )
+                break
+        except Exception:
+            pass
+        await asyncio.sleep(10)
+
+    if not _db_ready:
+        logger.warning(
+            "Revenue pre-warm: GlobalNations.db still empty after 5 min — "
+            "pre-warm loop will continue but may log 0 alliances until data arrives"
+        )
+
+    while True:
+        try:
+            now = _dt.datetime.now(_dt.timezone.utc)
+            # Next even-hour boundary
+            next_hour = ((now.hour // 2) + 1) * 2
+            if next_hour >= 24:
+                next_boundary = now.replace(hour=0, minute=0, second=30, microsecond=0) + _dt.timedelta(days=1)
+            else:
+                next_boundary = now.replace(hour=next_hour, minute=0, second=30, microsecond=0)
+            wait_secs = (next_boundary - now).total_seconds()
+            logger.info(
+                f"Revenue pre-warm: next turn at "
+                f"{next_boundary.strftime('%Y-%m-%d %H:%M UTC')} "
+                f"(sleeping {wait_secs:.0f}s)"
+            )
+            await asyncio.sleep(max(wait_secs, 1))
+
+            # Trigger the revenue endpoint logic directly by calling the API handler
+            # with a fake request that passes the access check.
+            logger.info("Revenue pre-warm: starting background calculation")
+            from web.api.watch_api import get_watch_revenue, _get_revenue_cache, _get_global_nations_db
+
+            # Build a minimal fake request with an empty session so the handler
+            # can be called directly for cache pre-warming.
+            class _FakeSession(dict):
+                pass
+            class _FakeRequest:
+                session = _FakeSession()
+
+            # Warm revenue for every tracked alliance in GlobalNations.db
+            try:
+                _db = _get_global_nations_db()
+                _alliances = await _db.get_distinct_alliances()
+                _alliance_ids = [int(a["id"]) for a in _alliances if a.get("id")]
+            except Exception as _e:
+                logger.warning(f"Revenue pre-warm: could not fetch alliance list: {_e}")
+                _alliance_ids = []
+
+            if not _alliance_ids:
+                logger.warning(
+                    "Revenue pre-warm: no alliances in GlobalNations.db — "
+                    "harvester may not have synced yet; skipping this turn"
+                )
+                continue
+
+            _warmed = 0
+            _skipped = 0
+            for _aid in _alliance_ids:
+                if _get_revenue_cache(_aid) is not None:
+                    _skipped += 1
+                    continue
+                try:
+                    await get_watch_revenue(_FakeRequest(), alliance_id=_aid)
+                    _warmed += 1
+                except Exception as _e:
+                    logger.warning(f"Revenue pre-warm: handler call failed for alliance {_aid}: {_e}")
+
+            logger.info(f"Revenue pre-warm: cache populated for {_warmed} alliances ({_skipped} already cached)")
+        except Exception as e:
+            logger.error(f"Revenue pre-warm loop error: {e}", exc_info=True)
+            await asyncio.sleep(300)  # back off 5 min on unexpected error
 
 import hashlib as _hashlib
 
@@ -460,9 +584,10 @@ _CSP = ("default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' "
         "style-src-elem 'self' 'unsafe-inline' https://fonts.googleapis.com https://fonts.gstatic.com "
         "https://cdnjs.cloudflare.com; font-src 'self' https://fonts.gstatic.com "
         "https://cdnjs.cloudflare.com; img-src 'self' data: https://cdn.discordapp.com "
-        "https://media.discordapp.net https://reaper.qzz.io https://politicsandwar.com; "
-        "connect-src 'self' https://reaper.qzz.io https://cdn.jsdelivr.net https://unpkg.com "
-        "https://fonts.googleapis.com https://cdnjs.cloudflare.com https://api.groq.com;")
+        "https://media.discordapp.net https://reaper.qzz.io https://politicsandwar.com "
+        "https://upload.wikimedia.org; connect-src 'self' https://reaper.qzz.io "
+        "https://cdn.jsdelivr.net https://unpkg.com https://fonts.googleapis.com "
+        "https://cdnjs.cloudflare.com https://api.groq.com;")
 
 # Add request logging and security headers middleware
 @app.middleware("http")
@@ -534,6 +659,11 @@ async def get_library_page():
     """Serve the main library page."""
     return FileResponse("web/Pages/library.html")
 
+@app.get("/news", response_class=HTMLResponse)
+async def get_news_page():
+    """Serve the PnW News page."""
+    return FileResponse("web/Pages/news.html")
+
 @app.get("/casino", response_class=HTMLResponse)
 async def get_casino_page():
     """Serve the casino page."""
@@ -591,6 +721,44 @@ async def security_txt():
         "Canonical: https://reaper.qzz.io/.well-known/security.txt\n"
     )
     return Response(content=content, media_type="text/plain")
+
+
+@app.get("/robots.txt", include_in_schema=False)
+async def robots_txt():
+    """
+    Serves robots.txt to control crawler access.
+    - Blocks all bots from API endpoints and admin pages (no crawl value, saves bandwidth).
+    - Allows legitimate search engines full access to public pages.
+    - Everything not explicitly disallowed is crawlable so the site works normally.
+    """
+    content = (
+        "# Reaper Bot — robots.txt\n"
+        "# Block generic bots from internal/API paths\n"
+        "User-agent: *\n"
+        "Disallow: /api/\n"
+        "Disallow: /admin\n"
+        "Disallow: /admin/\n"
+        "Disallow: /.well-known/\n"
+        "Disallow: /ws\n"
+        "Allow: /\n"
+        "\n"
+        "# Allow major search engines full access to public pages\n"
+        "User-agent: Googlebot\n"
+        "Allow: /\n"
+        "\n"
+        "User-agent: Bingbot\n"
+        "Allow: /\n"
+        "\n"
+        "# Sitemap\n"
+        "Sitemap: https://reaper.qzz.io/sitemap.xml\n"
+    )
+    return Response(content=content, media_type="text/plain")
+
+
+@app.get("/sitemap.xml", include_in_schema=False)
+async def sitemap_xml():
+    """Serves sitemap.xml for search engine crawlers and Cloudflare."""
+    return FileResponse("sitemap.xml", media_type="application/xml")
 
 
 # Serve individual HTML pages — Pages are served as static files via StaticFiles mount,
@@ -997,66 +1165,90 @@ async def get_pnw_game_info():
         logger.error(f"Error getting game info: {e}")
         return JSONResponse(content={"error": "Failed to retrieve game info"}, status_code=500)
 
+@app.get("/api/discord/linked-nation")
+async def get_linked_nation(request: Request):
+    """Get the PnW nation linked to the current Discord user.
+    Looks up the user's Discord ID in IRSNations.db and GlobalNations.db.
+    """
+    try:
+        # Get Discord user from session
+        discord_user = request.session.get('discord_user')
+        if not discord_user:
+            return JSONResponse(content={"linked": False, "error": "Not logged in"}, status_code=401)
+        
+        discord_id = str(discord_user.get('id'))
+        if not discord_id:
+            return JSONResponse(content={"linked": False, "error": "No Discord ID found"}, status_code=400)
+        
+        from Systems.Functions.db_paths import GLOBAL_NATIONS_DB_STR
+        from PnWHarvester.db.global_nations_db import GlobalNationsDB
+
+        # GlobalNations.db is the single source of truth — NW nations are stored here too
+        def _search_by_discord_id(db_path: str, discord_id: str):
+            import sqlite3 as _sq
+            with _sq.connect(db_path) as conn:
+                conn.row_factory = _sq.Row
+                row = conn.execute(
+                    "SELECT id, nation_name FROM nations WHERE discord_id = ?",
+                    (discord_id,)
+                ).fetchone()
+                return dict(row) if row else None
+
+        nation_data = await asyncio.to_thread(_search_by_discord_id, GLOBAL_NATIONS_DB_STR, discord_id)
+        
+        if nation_data:
+            return JSONResponse(content={
+                "linked": True,
+                "nation_id": nation_data["id"],
+                "nation_name": nation_data["nation_name"]
+            })
+        else:
+            return JSONResponse(content={"linked": False, "message": "No nation linked to this Discord account"})
+    
+    except Exception as e:
+        logger.error(f"Error getting linked nation: {e}", exc_info=True)
+        return JSONResponse(content={"linked": False, "error": "Failed to retrieve linked nation"}, status_code=500)
+
+
 @app.get("/api/pnw/nation-info/{nation_query}")
 async def get_pnw_nation_info(nation_query: str):
     """Get PnW nation info for the calculator.
-    Checks IRS local DB first (no API query for members).
-    Falls back to PnW API for non-members.
+    Reads from GlobalNations.db (single source of truth — includes NW nations).
+    Never queries the live API.
     """
     try:
-        from Systems.Functions.irs_nations_db import IRSNationsDB
-        from Systems.Functions.db_paths import NW_NATIONS_DB_STR
-        nw_db = IRSNationsDB(NW_NATIONS_DB_STR)
+        from Systems.Functions.db_paths import GLOBAL_NATIONS_DB_STR
+        from PnWHarvester.db.global_nations_db import GlobalNationsDB
 
         nation_data = None
         cities = []
 
-        # --- Try IRS DB first ---
+        global_db = GlobalNationsDB(GLOBAL_NATIONS_DB_STR)
         if nation_query.isdigit():
-            nation_data = await nw_db.get_nation(int(nation_query))
+            nation_data = await global_db.get_nation(int(nation_query))
             if nation_data:
-                cities = await nw_db.get_cities_for_nation(int(nation_query))
+                cities = await global_db.get_cities_for_nation(int(nation_query))
         else:
-            # Search NW DB by name (case-insensitive) — offload to thread
-            def _search_by_name(db_path: str, query: str):
-                import sqlite3 as _sq, json as _json
-                with _sq.connect(db_path) as conn:
-                    conn.row_factory = _sq.Row
-                    row = conn.execute(
-                        "SELECT * FROM nations WHERE LOWER(nation_name) = LOWER(?)",
-                        (query,)
-                    ).fetchone()
-                    if not row:
-                        return None
-                    d = dict(row)
-                    mr = d.get("military_research")
-                    if isinstance(mr, str):
-                        try:
-                            d["military_research"] = _json.loads(mr)
-                        except Exception:
-                            d["military_research"] = None
-                    return d
-            nation_data = await asyncio.to_thread(_search_by_name, NW_DB_PATH, nation_query)
+            nation_data = await global_db.get_nation_by_name(nation_query)
             if nation_data:
-                cities = await nw_db.get_cities_for_nation(nation_data["id"])
+                cities = await global_db.get_cities_for_nation(nation_data["id"])
 
         if nation_data:
+            # Parse military_research JSON if it's a string
+            mr = nation_data.get("military_research")
+            if isinstance(mr, str):
+                try:
+                    import json as _json
+                    nation_data["military_research"] = _json.loads(mr)
+                except Exception:
+                    nation_data["military_research"] = None
+
             nation_data["cities"] = cities
-            nation_data["_source"] = "nights_watch_db"
+            nation_data["_source"] = "global_nations_db"
             return JSONResponse(content=nation_data)
 
-        # --- Fall back to PnW API ---
-        query_instance = create_v3_query_instance()
-        if nation_query.isdigit():
-            api_data = await query_instance.get_nation_by_id(nation_query)
-        else:
-            api_data = await query_instance.get_nation_by_name(nation_query)
-
-        if not api_data:
-            return JSONResponse(content={"error": "Nation not found"}, status_code=404)
-
-        api_data["_source"] = "pnw_api"
-        return JSONResponse(content=api_data)
+        # --- Nation not found in DB ---
+        return JSONResponse(content={"error": "Nation not found in database"}, status_code=404)
 
     except Exception as e:
         logger.error(f"Error getting nation info for '{nation_query}': {e}", exc_info=True)
@@ -1077,7 +1269,11 @@ async def catch_all(path: str):
     # Don't redirect if path looks like an API endpoint (contains hyphens, underscores, or 'astrology')
     if '-' in path or '_' in path or 'astrology' in path.lower():
         return HTMLResponse(content="Not found", status_code=404)
-    
+
+    # Silently 404 numeric-only paths — these are scanner/bot probes, not real navigation
+    if path.isdigit():
+        return HTMLResponse(content="Not found", status_code=404)
+
     logger.info(f"Redirecting unknown path '/{path}' to dashboard")
     return RedirectResponse(url="/")
 
