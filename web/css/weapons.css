@@ -286,3 +286,55 @@
   0%, 100% { box-shadow: 0 0 6px rgba(255,215,0,0.35); }
   50%       { box-shadow: 0 0 12px rgba(255,215,0,0.7); }
 }
+
+/* ── Targeted autocomplete dropdown ─────────────────────────────────────── */
+/* Allow dropdown to escape the card's overflow boundary */
+.wp-controls {
+  overflow: visible !important;
+}
+.wp-ac-wrap {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+.wp-ac-wrap .wp-input {
+  width: 100%;
+  min-width: 220px;
+}
+.wp-ac-dropdown {
+  position: fixed;
+  z-index: 9999;
+  background: rgba(14, 11, 5, 0.98);
+  border: 1px solid rgba(255, 215, 0, 0.35);
+  border-radius: 0.5rem;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+  max-height: 320px;
+  overflow-y: auto;
+}
+.wp-ac-item {
+  padding: 0.45rem 0.85rem;
+  font-size: 0.82rem;
+  color: rgba(255,255,255,0.82);
+  cursor: pointer;
+  border-bottom: 1px solid rgba(255,215,0,0.06);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: background 0.1s;
+}
+.wp-ac-item:last-child { border-bottom: none; }
+.wp-ac-item:hover,
+.wp-ac-item.wp-ac-active {
+  background: rgba(255, 215, 0, 0.1);
+  color: var(--gold-primary);
+}
+.wp-ac-alliance {
+  color: var(--gold-primary);
+  font-weight: 700;
+  background: rgba(255, 215, 0, 0.05);
+  border-bottom: 1px solid rgba(255,215,0,0.15) !important;
+}
+.wp-ac-alliance:hover,
+.wp-ac-alliance.wp-ac-active {
+  background: rgba(255, 215, 0, 0.15);
+}

@@ -3,7 +3,7 @@
 
 var ELEM_IMG_BASE = '/static/Emojis/Pets/Deco/';
 
-// Format large numbers: 3000→3k, 4530→4.53k, 1500000→1.5m, etc.
+// Fo// Format large numbers: 3000→3k, 4530→4.53k, 1500000→1.5m, etc.
 function fmtStat(n) {
     n = Number(n) || 0;
     var tiers = [
@@ -540,7 +540,7 @@ function buildInteractions(pet) {
         {id:'play',   label:'🎮 Play'},
         {id:'quest',  label:'🗡️ Quest'},
         {id:'market', label:'📦 Loot Market'},
-        {id:'gift',   label:'🎁 Gift Item'},
+        {id:'absorb', label:'⚡ Absorb'},
         {id:'abilities', label:'💎 Abilities'},
         {id:'battle', label:'⚔️ Battle Settings'},
         {id:'rename', label:'✏️ Rename'},
@@ -778,25 +778,6 @@ function buildInteractions(pet) {
         '<div id="lm-result" class="mt-3"></div>'+
         '</div>';
 
-    // ── Gift ───────────────────────────────────────────────────────────────
-    html += '<div id="panel-gift" style="display:none">'+
-        '<div class="mp-section-title">🎁 Gift an Item</div>'+
-        '<div class="mp-battle-card mb-3" style="font-size:0.82rem;color:var(--text-secondary)">'+
-        'Send one item from your inventory to another player\'s pet. Counts toward the Gift task.'+
-        '</div>'+
-        '<div class="mb-3">'+
-        '<label class="form-label" style="font-size:0.82rem;color:var(--text-secondary)">Recipient Discord User ID</label>'+
-        '<input type="text" class="form-control mp-input" id="gift-recipient-id" placeholder="e.g. 200967951958933504" style="max-width:280px">'+
-        '<div style="font-size:0.7rem;color:var(--text-secondary);margin-top:4px">Ask them to share their Discord User ID (right-click their name → Copy ID)</div>'+
-        '</div>'+
-        '<div class="mb-3">'+
-        '<label class="form-label" style="font-size:0.82rem;color:var(--text-secondary)">Item to Gift</label>'+
-        '<input type="text" class="form-control mp-input" id="gift-item-name" placeholder="Exact item name from your inventory" style="max-width:280px">'+
-        '</div>'+
-        '<button class="mp-adopt-btn" onclick="window._mpGift()">🎁 Send Gift</button>'+
-        '<div id="gift-result" class="mt-3"></div>'+
-        '</div>';
-
     // ── Rename ─────────────────────────────────────────────────────────────
     html += '<div id="panel-rename" style="display:none">'+
         '<div class="mp-section-title">Rename Pet &amp; Battle Actions</div>'+
@@ -862,6 +843,55 @@ function buildInteractions(pet) {
         '<span class="visually-hidden">Loading...</span>'+
         '</div>'+
         '<p class="mt-2" style="color: var(--text-secondary);">Loading battle settings...</p>'+
+        '</div>'+
+        '</div>'+
+        '</div>';
+
+    // ── Absorb ─────────────────────────────────────────────────────────────
+    html += '<div id="panel-absorb" style="display:none">'+
+        '<div class="mp-section-title">⚡ Absorb War Power</div>'+
+        '<div class="mp-battle-card mb-3" style="font-size:0.82rem;color:var(--text-secondary)">'+
+        'Your PnW nation\'s war history fuels your pet. Absorb your wins and unit kills as XP — each type absorbed once, nothing counted twice.'+
+        '</div>'+
+        '<div id="absorb-loading" class="text-center py-4">'+
+        '<div class="spinner-border" style="color:var(--gold-primary)" role="status"></div>'+
+        '<p class="mt-2" style="color:var(--text-secondary)">Loading war data...</p>'+
+        '</div>'+
+        '<div id="absorb-no-nation" style="display:none" class="mp-battle-card" style="text-align:center">'+
+        '<p style="color:var(--text-secondary);font-size:0.85rem">No PnW nation linked to your Discord account.<br>Link your nation in-game to use this feature.</p>'+
+        '</div>'+
+        '<div id="absorb-content" style="display:none">'+
+        // Nation lock banner
+        '<div id="absorb-lock-banner" class="mp-battle-card mb-3" style="border-color:rgba(255,215,0,0.25);padding:10px 14px"></div>'+
+        // Wins box
+        '<div class="mp-battle-card mb-3" id="absorb-wins-box">'+
+        '<div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">'+
+        '<div class="d-flex align-items-center gap-2">'+
+        '<img src="/static/Emojis/Military/wars.png" style="width:28px;height:28px;object-fit:contain" onerror="this.style.display=\'none\'">'+
+        '<span style="font-family:Orbitron,sans-serif;color:var(--gold-primary);font-size:0.95rem;font-weight:700">Wars Won</span>'+
+        '</div>'+
+        '<div id="absorb-wins-badge" style="font-size:0.78rem;color:var(--text-secondary)"></div>'+
+        '</div>'+
+        '<div id="absorb-wins-souls" style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:10px;min-height:32px"></div>'+
+        '<div style="font-size:0.75rem;color:var(--gold-secondary);margin-bottom:10px" id="absorb-wins-xp-preview"></div>'+
+        '<button class="mp-adopt-btn" id="absorb-wins-btn" onclick="window._mpAbsorbWins()" style="background:linear-gradient(135deg,#2d6e2d,#3a8f3a);border:1px solid rgba(76,175,80,0.8);color:#fff;opacity:1">'+
+        '⚡ Absorb Wins</button>'+
+        '<div id="absorb-wins-result" class="mt-2"></div>'+
+        '</div>'+
+        // Kills box
+        '<div class="mp-battle-card" id="absorb-kills-box">'+
+        '<div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">'+
+        '<div class="d-flex align-items-center gap-2">'+
+        '<img src="/static/Emojis/Military/soldier.png" style="width:28px;height:28px;object-fit:contain" onerror="this.style.display=\'none\'">'+
+        '<span style="font-family:Orbitron,sans-serif;color:var(--gold-primary);font-size:0.95rem;font-weight:700">Units Destroyed</span>'+
+        '</div>'+
+        '<div id="absorb-kills-badge" style="font-size:0.78rem;color:var(--text-secondary)"></div>'+
+        '</div>'+
+        '<div class="row g-2 mb-3" id="absorb-kills-stats"></div>'+
+        '<div style="font-size:0.75rem;color:var(--gold-secondary);margin-bottom:10px" id="absorb-kills-xp-preview"></div>'+
+        '<button class="mp-adopt-btn" id="absorb-kills-btn" onclick="window._mpAbsorbKills()" style="background:linear-gradient(135deg,#2d2d8f,#3a3ab0);border:1px solid rgba(120,120,255,0.8);color:#fff;opacity:1">'+
+        '⚡ Absorb Kills</button>'+
+        '<div id="absorb-kills-result" class="mt-2"></div>'+
         '</div>'+
         '</div>'+
         '</div>';
@@ -1084,7 +1114,7 @@ function buildPlayResult(d, loc, petBefore) {
 }
 
 window._mpTab = function(tab) {
-    ['train','mission','play','quest','market','gift','abilities','battle','rename','kill'].forEach(function(t) {
+    ['train','mission','play','quest','market','absorb','abilities','battle','rename','kill'].forEach(function(t) {
         var btn = el('tab-'+t), panel = el('panel-'+t);
         if (btn)   btn.classList.toggle('active', t===tab);
         if (panel) panel.style.display = t===tab ? '' : 'none';
@@ -1095,6 +1125,8 @@ window._mpTab = function(tab) {
         loadAbilitiesContent();
     } else if (tab === 'battle') {
         loadBattleSettingsContent();
+    } else if (tab === 'absorb') {
+        _mpLoadAbsorb();
     }
 };
 
@@ -2199,11 +2231,12 @@ function buildBreakdownCard(pet) {
 
     // ── XP Sources ──────────────────────────────────────────────
     var activities = [
-        { label: 'Play',    emoji: '🎮', keys: ['play'] },
-        { label: 'Train',   emoji: '🏋️', keys: ['training'] },
-        { label: 'Mission', emoji: '🎯', keys: ['mission', 'mission_fail'] },
-        { label: 'Quest',   emoji: '📜', keys: ['quest'] },
-        { label: 'Battle',  emoji: '⚔️', keys: ['battle', 'npc_battle', 'pvp_battle'] },
+        { label: 'Play',      emoji: '🎮', keys: ['play'] },
+        { label: 'Train',     emoji: '🏋️', keys: ['training'] },
+        { label: 'Mission',   emoji: '🎯', keys: ['mission', 'mission_fail'] },
+        { label: 'Quest',     emoji: '📜', keys: ['quest'] },
+        { label: 'Battle',    emoji: '⚔️', keys: ['battle', 'npc_battle', 'pvp_battle'] },
+        { label: 'Colosseum', emoji: '🏛️', keys: ['colosseum'] },
     ];
     var xpRows = activities.map(function(a) {
         var net = a.keys.reduce(function(sum, k) { return sum + (xs[k] || 0); }, 0);
@@ -2225,7 +2258,7 @@ function buildBreakdownCard(pet) {
     }
 
     // ── Battle Records ───────────────────────────────────────────
-    var battleTypes = [{key:'pvp',name:'PvP'},{key:'npc',name:'NPC'},{key:'wild_encounter',name:'Wild'},{key:'boss',name:'Boss'}];
+    var battleTypes = [{key:'pvp',name:'PvP'},{key:'npc',name:'NPC'},{key:'wild_encounter',name:'Wild'},{key:'boss',name:'Boss'},{key:'colosseum',name:'Colosseum'}];
     var battleHtml = '<div class="mp-breakdown-sub">Battle Records</div><div class="d-flex gap-2 flex-wrap mb-2">';
     battleTypes.forEach(function(bt) {
         var s = bs[bt.key] || {wins:0, losses:0};
@@ -2980,23 +3013,110 @@ function submitAdopt() {
     var actDef = defEl ? defEl.value.trim() : '';
     var actChg = chgEl ? chgEl.value.trim() : '';
 
+    // Show skill selection step before finalizing adoption
+    if(body) body.innerHTML='<div class="text-center py-4"><div class="spinner-border text-primary" role="status"></div><p class="mt-2">Drawing skill choices...</p></div>';
+
+    fetch('/api/pets/skills/adopt-draw', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({ element1: elem1, element2: elem2 || null })
+    })
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+        var choices = d.choices || [];
+        showSkillPickStep(body, choices, {
+            category: cat, species: _adoptSel.name,
+            element1: elem1, element2: elem2,
+            customName: name,
+            actions: { Attack: actAtk, Defense: actDef, Charge: actChg }
+        });
+    })
+    .catch(function(e){
+        // If skill draw fails, proceed without a skill
+        doFinalAdopt(body, {
+            category: cat, species: _adoptSel.name,
+            element1: elem1, element2: elem2,
+            customName: name, battleSkillId: '',
+            actions: { Attack: actAtk, Defense: actDef, Charge: actChg }
+        });
+    });
+}
+
+function showSkillPickStep(body, choices, adoptPayload) {
+    if(!body) return;
+    var elem1 = adoptPayload.element1 || 'basic';
+    var elem2 = adoptPayload.element2 || '';
+    var elemLabel = cap(elem1) + (elem2 ? ' / ' + cap(elem2) : '');
+
+    var ELEM_COLORS_LOCAL = {
+        basic:'#aaa', fire:'#e74c3c', water:'#3498db', electric:'#f1c40f',
+        ice:'#a8d8ea', plant:'#2ecc71', rock:'#95a5a6', air:'#bdc3c7',
+        magic:'#9b59b6', holy:'#f39c12', necro:'#8e44ad', psychic:'#e91e63', fighting:'#e67e22',
+    };
+    var EFFECT_LABELS = {
+        instant_damage:'Instant Damage', dot:'Damage Over Time', shield:'Shield',
+        damage_reduction:'Damage Reduction', elemental_damage:'Elemental Damage',
+        heal:'Heal', charge_boost:'Charge Boost', stat_debuff:'Stat Debuff',
+        stat_buff:'Stat Buff', lifesteal:'Lifesteal', stun:'Stun',
+        cleanse:'Cleanse', reflect:'Reflect',
+    };
+
+    var cardsHtml = choices.map(function(sk) {
+        var col = ELEM_COLORS_LOCAL[sk.element] || '#aaa';
+        var eff = EFFECT_LABELS[sk.effect && sk.effect.type] || (sk.effect && sk.effect.type) || '';
+        return '<div class="adopt-skill-card" data-skill-id="'+escHtml(sk.id)+'" onclick="window._mpPickSkill(this,'+JSON.stringify(sk.id).replace(/"/g,'&quot;')+')" style="border:2px solid '+col+';border-radius:10px;padding:12px;cursor:pointer;transition:background 0.15s;background:rgba(0,0,0,0.3)">' +
+            '<div style="font-weight:700;color:'+col+';margin-bottom:4px">'+escHtml(sk.name)+'</div>' +
+            '<div style="font-size:0.72rem;color:var(--text-secondary);margin-bottom:6px">'+cap(sk.element)+' · '+eff+'</div>' +
+            '<div style="font-size:0.8rem;color:var(--text-primary)">'+escHtml(sk.description)+'</div>' +
+        '</div>';
+    }).join('');
+
+    body.innerHTML =
+        '<div class="text-center mb-3">' +
+        '<h5 style="color:var(--gold-primary)">⚔️ Choose Your Starting Battle Skill</h5>' +
+        '<p style="font-size:0.85rem;color:var(--text-secondary)">Pick 1 skill from your <strong>'+escHtml(elemLabel)+'</strong> element pool. You can reroll later with ability points.</p>' +
+        '</div>' +
+        '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin-bottom:16px" id="adopt-skill-grid">' +
+        cardsHtml +
+        '</div>' +
+        '<div id="adopt-skill-selected" style="display:none;margin-bottom:12px;padding:10px;border-radius:8px;background:rgba(255,215,0,0.08);border:1px solid rgba(255,215,0,0.3);font-size:0.85rem;color:var(--gold-primary)"></div>' +
+        '<div class="d-flex gap-2 justify-content-end">' +
+        '<button class="btn btn-secondary btn-sm" onclick="window._mpForm()">← Back</button>' +
+        '<button class="btn btn-primary" id="adopt-skill-confirm-btn" disabled onclick="window._mpConfirmSkill()">🐾 Adopt with this Skill</button>' +
+        '</div>';
+
+    // Store payload for confirm step
+    window._adoptSkillPayload = adoptPayload;
+    window._adoptChosenSkillId = '';
+
+    window._mpPickSkill = function(cardEl, skillId) {
+        document.querySelectorAll('.adopt-skill-card').forEach(function(c){
+            c.style.background = 'rgba(0,0,0,0.3)';
+            c.style.boxShadow = '';
+        });
+        cardEl.style.background = 'rgba(255,215,0,0.12)';
+        cardEl.style.boxShadow = '0 0 0 2px rgba(255,215,0,0.5)';
+        window._adoptChosenSkillId = skillId;
+        var confirmBtn = el('adopt-skill-confirm-btn');
+        if(confirmBtn) confirmBtn.disabled = false;
+        var selDiv = el('adopt-skill-selected');
+        if(selDiv){ selDiv.style.display='block'; selDiv.textContent='✅ Selected: ' + skillId.replace(/_/g,' ').replace(/\b\w/g,function(c){return c.toUpperCase();}); }
+    };
+
+    window._mpConfirmSkill = function() {
+        if(!window._adoptChosenSkillId) return;
+        var payload = Object.assign({}, window._adoptSkillPayload, { battleSkillId: window._adoptChosenSkillId });
+        doFinalAdopt(body, payload);
+    };
+}
+
+function doFinalAdopt(body, payload) {
     if(body) body.innerHTML='<div class="text-center py-5"><div class="spinner-border text-primary" role="status"></div><p class="mt-3">Creating your pet...</p></div>';
 
     fetch('/api/pets/adopt',{
         method:'POST',
         headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({
-            category:   cat,
-            species:    _adoptSel.name,
-            element1:   elem1,
-            element2:   elem2,
-            customName: name,
-            actions: {
-                Attack:  actAtk,
-                Defense: actDef,
-                Charge:  actChg
-            }
-        })
+        body:JSON.stringify(payload)
     })
     .then(function(r){return r.json().then(function(d){return {ok:r.ok,d:d};});})
     .then(function(res){
@@ -3542,19 +3662,22 @@ function loadAbilitiesContent() {
         document.head.appendChild(lnk);
     }
     
-    // Load ability tree data and render inline using the full system
-    fetch('/api/pets/ability-tree')
-        .then(function(r){ return r.json(); })
-        .then(function(data) {
-            if (data && data.available_points !== undefined) {
-                renderFullAbilityTreeInline(data, container);
-            } else {
-                container.innerHTML = '<div class="mp-battle-card" style="color:#e74c3c">Failed to load abilities data</div>';
-            }
-        })
-        .catch(function(e) {
-            container.innerHTML = '<div class="mp-battle-card" style="color:#e74c3c">Error loading abilities: ' + e.message + '</div>';
-        });
+    // Load ability tree data + skill state in parallel
+    Promise.all([
+        fetch('/api/pets/ability-tree').then(function(r){ return r.json(); }),
+        fetch('/api/pets/skills').then(function(r){ return r.json(); }).catch(function(){ return null; }),
+    ]).then(function(results) {
+        var data = results[0];
+        var skillData = results[1];
+        if (data && data.available_points !== undefined) {
+            if (skillData) data.skill_state = skillData;
+            renderFullAbilityTreeInline(data, container);
+        } else {
+            container.innerHTML = '<div class="mp-battle-card" style="color:#e74c3c">Failed to load abilities data</div>';
+        }
+    }).catch(function(e) {
+        container.innerHTML = '<div class="mp-battle-card" style="color:#e74c3c">Error loading abilities: ' + e.message + '</div>';
+    });
 }
 window.loadAbilitiesContent = loadAbilitiesContent;
 function renderFullAbilityTreeInline(state, container) {
@@ -3564,9 +3687,19 @@ function renderFullAbilityTreeInline(state, container) {
     window._abilityTreeOpenStat = null;
     
     var pts = state.available_points || 0;
+    var skillState = state.skill_state || null;
+    var needsMigration = skillState && skillState.slots && skillState.slots.length > 0 && !skillState.slots[0].filled;
     
     // Create the full ability tree interface inline
     var html = '<div class="at-inline-container" style="background:linear-gradient(135deg,rgba(8,8,8,0.85),rgba(14,14,14,0.85));border-radius:8px;padding:12px">';
+    
+    // Migration banner for existing pets with no battle skill
+    if (needsMigration) {
+        html += '<div id="skill-migration-banner" style="background:rgba(231,76,60,0.12);border:1px solid rgba(231,76,60,0.4);border-radius:8px;padding:10px 14px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">' +
+            '<div style="font-size:0.82rem;color:#e74c3c"><strong>⚔️ No Battle Skill!</strong> Your pet doesn\'t have a starting battle skill yet.</div>' +
+            '<button class="mp-adopt-btn" style="font-size:0.75rem;padding:5px 14px;background:rgba(231,76,60,0.2);border-color:rgba(231,76,60,0.5);color:#e74c3c" onclick="window.migrateSkill()">Get Free Skill + 1 Point</button>' +
+        '</div>';
+    }
     
     // Header with points badge
     html += '<div class="at-inline-header" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">';
@@ -3581,9 +3714,9 @@ function renderFullAbilityTreeInline(state, container) {
     html += '</div>';
     
     // Main content layout
-    html += '<div class="at-content-layout" style="display:flex;gap:12px">';
-    html += '<div class="at-tree-container" style="flex:2;min-width:0">' + renderTreeInline(state) + '</div>';
-    html += '<div class="at-details-container" style="flex:1;min-width:250px" id="at-details-panel-inline">' + renderDetailsInline() + '</div>';
+    html += '<div class="at-content-layout" style="display:flex;gap:12px;align-items:flex-start">';
+    html += '<div class="at-tree-container" style="flex:2;min-width:0;padding-right:4px">' + renderTreeInline(state) + '</div>';
+    html += '<div class="at-details-container" style="flex:1;min-width:220px;position:sticky;top:0" id="at-details-panel-inline">' + renderDetailsInline() + '</div>';
     html += '</div>';
     
     html += '</div>';
@@ -3595,6 +3728,23 @@ function renderFullAbilityTreeInline(state, container) {
     
     // Expose global handlers for inline version
     exposeInlineAbilityHandlers();
+
+    // Migration handler
+    window.migrateSkill = function() {
+        var banner = el('skill-migration-banner');
+        if (banner) banner.innerHTML = '<div style="font-size:0.82rem;color:var(--text-secondary)">Assigning skill...</div>';
+        fetch('/api/pets/skills/migrate', { method:'POST', headers:{'Content-Type':'application/json'} })
+            .then(function(r){ return r.json(); })
+            .then(function(d){
+                if (d.ok) {
+                    showToastInline(d.message || 'Skill assigned!', true);
+                    loadAbilitiesContent();
+                } else {
+                    showToastInline(d.message || 'Failed', false);
+                }
+            })
+            .catch(function(e){ showToastInline('Error: ' + e.message, false); });
+    };
 }
 
 // ── Purchase bar for inline version ───────────────────────────────────────────
@@ -4083,10 +4233,18 @@ function renderTreeInline(state) {
                                     ? '<span class="at-row-badge at-badge-lv" style="background:#4caf50;color:#fff;padding:2px 6px;border-radius:10px;font-size:0.6rem;font-weight:700">Lv.' + lvl + '</span>'
                                     : '<span class="at-row-badge at-badge-lock" style="background:#888;color:#fff;padding:2px 6px;border-radius:10px;font-size:0.6rem;font-weight:700">🔒</span>';
 
+                        // Show the current value at the current level (or level-1 preview if locked)
+                        var valueChip = '';
+                        if (ab.formatted_value) {
+                            var chipColor = lvl > 0 ? (isMaxed ? '#ff9800' : '#4caf50') : 'rgba(255,255,255,0.3)';
+                            valueChip = '<span style="font-size:0.6rem;color:' + chipColor + ';font-weight:700;min-width:28px;text-align:right;flex-shrink:0">' + ab.formatted_value + '</span>';
+                        }
+
                         return '<div class="' + rowClass + '" data-ability-id="' + ab.id + '" style="display:flex;align-items:center;gap:8px;padding:6px 8px;margin-bottom:4px;border-radius:4px;cursor:pointer;transition:all 0.2s;background:' + (isSelAb ? 'rgba(255,215,0,0.1)' : 'rgba(0,0,0,0.3)') + ';border:1px solid ' + (isSelAb ? 'var(--gold-primary)' : 'rgba(255,215,0,0.1)') + '" onclick="selectAbilityNodeInline(\'' + ab.id + '\')">' +
                             '<span class="at-row-icon" style="font-size:1rem;flex-shrink:0">' + icon + '</span>' +
                             '<span class="at-row-name" style="flex:1;font-size:0.75rem;color:var(--text-primary);font-weight:600">' + ab.name + '</span>' +
                             '<div class="at-row-pips" style="display:flex;gap:2px;flex-shrink:0">' + pips + '</div>' +
+                            valueChip +
                             badge +
                             (canUp ? '<button class="at-ability-upgrade-btn" style="background:linear-gradient(135deg,var(--gold-primary),#ffb300);border:none;border-radius:3px;color:#000;font-size:0.6rem;font-weight:700;padding:2px 6px;margin-left:4px;cursor:pointer;transition:all 0.2s" onclick="event.stopPropagation(); upgradeAbilityInline(\'' + ab.id + '\')">+</button>' : '') +
                         '</div>';
@@ -4103,7 +4261,139 @@ function renderTreeInline(state) {
             '</div>' +
             (isOpen ? '<div class="at-section-content">' + abilitiesHtml + '</div>' : '') +
         '</div>';
-    }).join('');
+    }).join('') + renderSkillBranchInline(state);
+}
+
+// ── SKILL branch for inline version ───────────────────────────────────────────
+function renderSkillBranchInline(state) {
+    var ABILITY_ICONS_SKILL = {
+        'skill_slot_2':'🎴','skill_slot_3':'🎴','skill_slot_4':'🎴',
+        'skill_reroll_all':'🔄','skill_cross_element':'🌀',
+    };
+    var ELEM_COLORS_INLINE = {
+        basic:'#aaa', fire:'#e74c3c', water:'#3498db', electric:'#f1c40f',
+        ice:'#a8d8ea', plant:'#2ecc71', rock:'#95a5a6', air:'#bdc3c7',
+        magic:'#9b59b6', holy:'#f39c12', necro:'#8e44ad', psychic:'#e91e63', fighting:'#e67e22',
+    };
+    var EFFECT_LABELS_INLINE = {
+        instant_damage:'Instant Damage', dot:'Damage Over Time', shield:'Shield',
+        damage_reduction:'Damage Reduction', elemental_damage:'Elemental Damage',
+        heal:'Heal', charge_boost:'Charge Boost', stat_debuff:'Stat Debuff',
+        stat_buff:'Stat Buff', lifesteal:'Lifesteal', stun:'Stun',
+        cleanse:'Cleanse', reflect:'Reflect',
+    };
+
+    var abilities  = state.abilities || {};
+    var pts        = state.available_points || 0;
+    var skillState = state.skill_state || null;
+    var isOpen     = window._abilityTreeOpenStat === 'SKILL';
+
+    var skillAbs = Object.keys(abilities)
+        .map(function(id){ return abilities[id]; })
+        .filter(function(a){ return a.stat === 'SKILL'; });
+    var ownedCount = skillAbs.filter(function(a){ return (a.current_level || 0) > 0; }).length;
+    var totalCount = skillAbs.length;
+
+    var equippedCount = skillState ? skillState.slots.filter(function(s){ return s.filled; }).length : 0;
+    var isSelSkill = window._abilityTreeSelectedNode && window._abilityTreeSelectedNode.type === 'skill_branch';
+
+    var summaryHtml = '';
+    if (!isOpen) {
+        summaryHtml = '<span class="at-section-summary" style="display:flex;gap:4px;margin-left:auto">' +
+            '<span style="background:rgba(230,126,34,0.15);color:#e67e22;padding:2px 6px;border-radius:10px;font-size:0.6rem;font-weight:700">' + equippedCount + ' skill' + (equippedCount !== 1 ? 's' : '') + '</span>' +
+            (ownedCount > 0 ? '<span style="background:rgba(255,215,0,0.15);color:var(--gold-primary);padding:2px 6px;border-radius:10px;font-size:0.6rem;font-weight:700">' + ownedCount + '/' + totalCount + ' ab</span>' : '') +
+        '</span>';
+    }
+
+    var chevron = '<span class="at-chevron' + (isOpen ? ' at-chevron-open' : '') + '" style="margin-left:8px;transition:transform 0.2s;transform:rotate(' + (isOpen ? '90deg' : '0deg') + ');color:var(--gold-primary);font-weight:700">›</span>';
+
+    var headerRow =
+        '<div class="at-stat-mastery at-stat-unlocked' + (isSelSkill ? ' at-selected' : '') + '" style="display:flex;align-items:center;gap:8px;padding:8px;border-radius:6px;cursor:pointer;transition:all 0.2s;background:' + (isSelSkill ? 'rgba(255,215,0,0.1)' : 'rgba(0,0,0,0.2)') + ';border:1px solid ' + (isSelSkill ? 'var(--gold-primary)' : 'rgba(255,215,0,0.2)') + '" onclick="selectSkillBranchInline()">' +
+            '<div style="width:32px;height:32px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:1.2rem">⚔️</div>' +
+            '<div style="flex:1;min-width:0">' +
+                '<div style="font-size:0.8rem;font-weight:700;color:var(--gold-primary)">Battle Skills</div>' +
+                '<div style="display:flex;gap:8px;font-size:0.7rem;color:var(--text-secondary)">' +
+                    '<span>Free Branch</span>' +
+                    '<span>' + (skillState ? skillState.max_slots : 1) + ' slot' + ((skillState ? skillState.max_slots : 1) !== 1 ? 's' : '') + '</span>' +
+                '</div>' +
+            '</div>' +
+            summaryHtml +
+            '<div style="flex-shrink:0"></div>' +
+            chevron +
+        '</div>';
+
+    var contentHtml = '';
+    if (isOpen) {
+        // Equipped skill slots
+        var slotsHtml = '<div style="margin-top:8px;padding-left:16px">';
+        if (skillState && skillState.slots) {
+            skillState.slots.forEach(function(slot) {
+                var sk = slot.skill;
+                var elemColor = sk ? (ELEM_COLORS_INLINE[sk.element] || '#aaa') : '#555';
+                var effType = sk ? (EFFECT_LABELS_INLINE[sk.effect && sk.effect.type] || (sk.effect && sk.effect.type) || '') : '';
+                var isSelSlot = window._abilityTreeSelectedNode && window._abilityTreeSelectedNode.type === 'skill_slot' && window._abilityTreeSelectedNode.slot === slot.slot;
+                var canDraw = pts >= 1;
+                slotsHtml +=
+                    '<div style="display:flex;align-items:center;gap:8px;padding:8px;margin-bottom:6px;border-radius:6px;cursor:pointer;background:' + (isSelSlot ? 'rgba(255,215,0,0.08)' : 'rgba(0,0,0,0.3)') + ';border:1px solid ' + elemColor + ';transition:all 0.2s" onclick="selectSkillSlotInline(' + slot.slot + ')">' +
+                        '<div style="font-size:0.7rem;color:var(--text-secondary);flex-shrink:0;min-width:40px">Slot ' + (slot.slot + 1) + '</div>' +
+                        (sk
+                            ? '<div style="flex:1;min-width:0">' +
+                                '<div style="font-size:0.78rem;font-weight:700;color:' + elemColor + '">' + sk.name + '</div>' +
+                                '<div style="font-size:0.68rem;color:var(--text-secondary)">' + (sk.element.charAt(0).toUpperCase() + sk.element.slice(1)) + ' · ' + effType + '</div>' +
+                              '</div>'
+                            : '<div style="flex:1;font-size:0.75rem;color:#666;font-style:italic">Empty — draw to fill</div>') +
+                        (canDraw
+                            ? '<button style="background:rgba(255,215,0,0.12);border:1px solid rgba(255,215,0,0.3);border-radius:4px;color:var(--gold-primary);font-size:0.65rem;padding:3px 8px;cursor:pointer" onclick="event.stopPropagation(); drawSkillForSlotInline(' + slot.slot + ')">🎲 1pt</button>'
+                            : '<button style="background:rgba(128,128,128,0.1);border:1px solid rgba(128,128,128,0.2);border-radius:4px;color:#888;font-size:0.65rem;padding:3px 8px;cursor:not-allowed" disabled title="Need 1 ability point">🔒</button>') +
+                    '</div>';
+            });
+        }
+        slotsHtml += '</div>';
+
+        // Skill branch abilities
+        var skillAbHtml = '<div style="margin-top:8px;padding-left:16px">' +
+            skillAbs.map(function(ab) {
+                var lvl    = ab.current_level || 0;
+                var maxLvl = ab.effective_max_level || ab.max_level || 1;
+                var canUp  = ab.can_upgrade || false;
+                var isMaxed = lvl >= maxLvl;
+                var icon   = ABILITY_ICONS_SKILL[ab.id] || '⚔️';
+                var isSelAb = window._abilityTreeSelectedNode && window._abilityTreeSelectedNode.type === 'ability' && window._abilityTreeSelectedNode.abilityId === ab.id;
+
+                var pips = '';
+                for (var i = 1; i <= maxLvl; i++) {
+                    var pc = i <= lvl ? (isMaxed ? 'maxed' : 'filled') : (i === lvl + 1 && canUp ? 'next' : '');
+                    var pipColor = pc === 'maxed' ? '#ff9800' : pc === 'filled' ? '#4caf50' : pc === 'next' ? 'var(--gold-primary)' : 'rgba(255,255,255,0.2)';
+                    pips += '<div style="width:8px;height:8px;border-radius:50%;background:' + pipColor + ';border:1px solid rgba(255,255,255,0.3)"></div>';
+                }
+
+                var badge = isMaxed
+                    ? '<span style="background:#ff9800;color:#fff;padding:2px 6px;border-radius:10px;font-size:0.6rem;font-weight:700">MAX</span>'
+                    : canUp
+                        ? '<span style="background:var(--gold-primary);color:#000;padding:2px 6px;border-radius:10px;font-size:0.6rem;font-weight:700">' + (lvl === 0 ? 'UNLOCK' : 'UP') + '</span>'
+                        : lvl > 0
+                            ? '<span style="background:#4caf50;color:#fff;padding:2px 6px;border-radius:10px;font-size:0.6rem;font-weight:700">Lv.' + lvl + '</span>'
+                            : '<span style="background:#888;color:#fff;padding:2px 6px;border-radius:10px;font-size:0.6rem;font-weight:700">🔒</span>';
+
+                return '<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;margin-bottom:4px;border-radius:4px;cursor:pointer;transition:all 0.2s;background:' + (isSelAb ? 'rgba(255,215,0,0.1)' : 'rgba(0,0,0,0.3)') + ';border:1px solid ' + (isSelAb ? 'var(--gold-primary)' : 'rgba(255,215,0,0.1)') + '" onclick="selectAbilityNodeInline(\'' + ab.id + '\')">' +
+                    '<span style="font-size:1rem;flex-shrink:0">' + icon + '</span>' +
+                    '<span style="flex:1;font-size:0.75rem;color:var(--text-primary);font-weight:600">' + ab.name + '</span>' +
+                    '<div style="display:flex;gap:2px;flex-shrink:0">' + pips + '</div>' +
+                    badge +
+                    (canUp ? '<button style="background:linear-gradient(135deg,var(--gold-primary),#ffb300);border:none;border-radius:3px;color:#000;font-size:0.6rem;font-weight:700;padding:2px 6px;margin-left:4px;cursor:pointer" onclick="event.stopPropagation(); upgradeAbilityInline(\'' + ab.id + '\')">+</button>' : '') +
+                '</div>';
+            }).join('') +
+        '</div>';
+
+        contentHtml = slotsHtml + skillAbHtml;
+    }
+
+    return '<div class="at-stat-section' + (isOpen ? ' at-section-open' : '') + '" data-stat="SKILL" style="margin-bottom:8px">' +
+        '<div class="at-section-header" style="border-left:3px solid #e67e22;padding-left:8px" onclick="toggleStatSectionInline(\'SKILL\')">' +
+            headerRow +
+        '</div>' +
+        (isOpen ? '<div class="at-section-content">' + contentHtml + '</div>' : '') +
+    '</div>';
 }
 
 // ── Details panel for inline version ──────────────────────────────────────────
@@ -4117,6 +4407,96 @@ function renderDetailsInline() {
     
     var node = window._abilityTreeSelectedNode;
     var state = window._abilityTreeState;
+
+    // ── Skill branch header ───────────────────────────────────────────────────
+    if (node.type === 'skill_branch') {
+        return '<div style="padding:12px;background:rgba(0,0,0,0.2);border-radius:6px">' +
+            '<div style="font-size:1.5rem;text-align:center;margin-bottom:8px">⚔️</div>' +
+            '<div style="font-size:0.85rem;font-weight:700;color:var(--gold-primary);text-align:center;margin-bottom:4px">Battle Skills</div>' +
+            '<div style="font-size:0.72rem;color:var(--text-secondary);text-align:center;margin-bottom:10px">Free Branch — No mastery required</div>' +
+            '<div style="font-size:0.78rem;color:var(--text-primary)">Battle skills are active abilities used in combat — one per slot, usable every 3 turns. ' +
+                'Your first slot is free. Unlock more slots and utilities with ability points. ' +
+                'Click a skill slot to draw new choices or see details.</div>' +
+        '</div>';
+    }
+
+    // ── Skill slot detail ─────────────────────────────────────────────────────
+    if (node.type === 'skill_slot') {
+        var slotIdx = node.slot;
+        var skillState = state && state.skill_state;
+        var slotData = skillState && skillState.slots && skillState.slots[slotIdx];
+        var sk = slotData && slotData.skill;
+        var ELEM_COLORS_D = {
+            basic:'#aaa', fire:'#e74c3c', water:'#3498db', electric:'#f1c40f',
+            ice:'#a8d8ea', plant:'#2ecc71', rock:'#95a5a6', air:'#bdc3c7',
+            magic:'#9b59b6', holy:'#f39c12', necro:'#8e44ad', psychic:'#e91e63', fighting:'#e67e22',
+        };
+        var EFFECT_LABELS_D = {
+            instant_damage:'Instant Damage', dot:'Damage Over Time', shield:'Shield',
+            damage_reduction:'Damage Reduction', elemental_damage:'Elemental Damage',
+            heal:'Heal', charge_boost:'Charge Boost', stat_debuff:'Stat Debuff',
+            stat_buff:'Stat Buff', lifesteal:'Lifesteal', stun:'Stun',
+            cleanse:'Cleanse', reflect:'Reflect',
+        };
+        var elemColor = sk ? (ELEM_COLORS_D[sk.element] || '#aaa') : '#888';
+        var effType = sk ? (EFFECT_LABELS_D[sk.effect && sk.effect.type] || (sk.effect && sk.effect.type) || '') : '';
+        var pts = (state && state.available_points) || 0;
+        var canDraw = pts >= 1;
+
+        var skillInfo = sk
+            ? '<div style="border-left:3px solid ' + elemColor + ';padding-left:10px;margin:10px 0">' +
+                '<div style="font-weight:700;color:' + elemColor + ';margin-bottom:2px">' + sk.name + '</div>' +
+                '<div style="font-size:0.72rem;color:var(--text-secondary);margin-bottom:6px">' + (sk.element.charAt(0).toUpperCase() + sk.element.slice(1)) + ' · ' + effType + '</div>' +
+                '<div style="font-size:0.78rem;color:var(--text-primary)">' + sk.description + '</div>' +
+              '</div>'
+            : '<div style="color:var(--text-secondary);font-size:0.78rem;margin:10px 0">No skill equipped. Draw 5 choices from your element pool to pick one.</div>';
+
+        return '<div style="padding:12px;background:rgba(0,0,0,0.2);border-radius:6px">' +
+            '<div style="font-size:0.85rem;font-weight:700;color:var(--gold-primary);margin-bottom:4px">🎴 Skill Slot ' + (slotIdx + 1) + '</div>' +
+            '<div style="font-size:0.72rem;color:var(--text-secondary);margin-bottom:8px">' + (sk ? 'Equipped' : 'Empty') + '</div>' +
+            skillInfo +
+            '<div style="display:flex;justify-content:space-between;font-size:0.72rem;color:var(--text-secondary);margin:8px 0 4px">' +
+                '<span>Draw cost: <strong style="color:var(--gold-primary)">1 ability point</strong></span>' +
+                '<span>You have: <strong style="color:' + (canDraw ? '#4caf50' : '#e74c3c') + '">' + pts + ' pt' + (pts !== 1 ? 's' : '') + '</strong></span>' +
+            '</div>' +
+            (canDraw
+                ? '<button style="width:100%;background:linear-gradient(135deg,rgba(255,215,0,0.15),rgba(255,140,0,0.1));border:1px solid rgba(255,215,0,0.4);border-radius:6px;color:var(--gold-primary);font-size:0.78rem;font-weight:700;padding:8px;cursor:pointer;margin-top:4px" onclick="drawSkillForSlotInline(' + slotIdx + ')">🎲 Draw 5 Choices (1 pt)</button>'
+                : '<button style="width:100%;background:rgba(128,128,128,0.1);border:1px solid rgba(128,128,128,0.3);border-radius:6px;color:#888;font-size:0.78rem;font-weight:700;padding:8px;cursor:not-allowed;margin-top:4px" disabled>❌ Need 1 ability point to draw</button>') +
+            '<div id="at-skill-draw-result-inline" style="margin-top:10px"></div>' +
+        '</div>';
+    }
+
+    // ── Skill draw choices ────────────────────────────────────────────────────
+    if (node.type === 'skill_choices') {
+        var choices = node.choices || [];
+        var slotIdx2 = node.slot;
+        var ELEM_COLORS_C = {
+            basic:'#aaa', fire:'#e74c3c', water:'#3498db', electric:'#f1c40f',
+            ice:'#a8d8ea', plant:'#2ecc71', rock:'#95a5a6', air:'#bdc3c7',
+            magic:'#9b59b6', holy:'#f39c12', necro:'#8e44ad', psychic:'#e91e63', fighting:'#e67e22',
+        };
+        var EFFECT_LABELS_C = {
+            instant_damage:'Instant Damage', dot:'Damage Over Time', shield:'Shield',
+            damage_reduction:'Damage Reduction', elemental_damage:'Elemental Damage',
+            heal:'Heal', charge_boost:'Charge Boost', stat_debuff:'Stat Debuff',
+            stat_buff:'Stat Buff', lifesteal:'Lifesteal', stun:'Stun',
+            cleanse:'Cleanse', reflect:'Reflect',
+        };
+        var html = '<div style="padding:12px;background:rgba(0,0,0,0.2);border-radius:6px">' +
+            '<div style="font-size:0.85rem;font-weight:700;color:var(--gold-primary);margin-bottom:4px">🎲 Choose a Skill</div>' +
+            '<div style="font-size:0.72rem;color:var(--text-secondary);margin-bottom:10px">Slot ' + (slotIdx2 + 1) + ' — Pick one</div>';
+        choices.forEach(function(sk) {
+            var elemColor = ELEM_COLORS_C[sk.element] || '#aaa';
+            var effType = EFFECT_LABELS_C[sk.effect && sk.effect.type] || (sk.effect && sk.effect.type) || '';
+            html += '<div style="border:1px solid ' + elemColor + ';border-radius:6px;padding:8px;margin-bottom:8px;cursor:pointer;transition:background 0.15s;background:rgba(0,0,0,0.3)" onclick="equipSkillChoiceInline(\'' + sk.id + '\',' + slotIdx2 + ')" onmouseover="this.style.background=\'rgba(255,215,0,0.08)\'" onmouseout="this.style.background=\'rgba(0,0,0,0.3)\'">' +
+                '<div style="font-weight:700;color:' + elemColor + ';font-size:0.8rem;margin-bottom:2px">' + sk.name + '</div>' +
+                '<div style="font-size:0.68rem;color:var(--text-secondary);margin-bottom:4px">' + (sk.element.charAt(0).toUpperCase() + sk.element.slice(1)) + ' · ' + effType + '</div>' +
+                '<div style="font-size:0.75rem;color:var(--text-primary)">' + sk.description + '</div>' +
+            '</div>';
+        });
+        html += '</div>';
+        return html;
+    }
     
     if (node.type === 'mastery') {
         var stat = node.stat;
@@ -4190,10 +4570,39 @@ function renderDetailsInline() {
                     '<div style="margin-top:4px">' + statusLabel + '</div>' +
                 '</div>' +
             '</div>' +
-            (ab.description ? '<div class="at-details-description" style="font-size:0.75rem;color:var(--text-secondary);margin-bottom:12px">' + ab.description + '</div>' : '') +
+            (ab.description ? (function() {
+                // Replace {value} placeholder with the actual formatted value at current level
+                var displayVal = ab.formatted_value || '';
+                var desc = ab.description.replace(/\{value\}/g, '<strong style="color:var(--gold-primary)">' + displayVal + '</strong>');
+                return '<div class="at-details-description" style="font-size:0.75rem;color:var(--text-secondary);margin-bottom:12px">' + desc + '</div>';
+            })() : '') +
             '<div class="at-details-stats" style="margin-bottom:12px">' +
                 '<div class="at-detail-row" style="display:flex;justify-content:space-between;margin-bottom:4px;font-size:0.75rem"><span>Level</span><span style="color:var(--gold-secondary);font-weight:700">' + lvl + ' / ' + maxLvl + '</span></div>' +
-                (ab.effect_per_level ? '<div class="at-detail-row" style="display:flex;justify-content:space-between;font-size:0.75rem"><span>Effect/Level</span><span style="color:#4caf50;font-weight:700">' + ab.effect_per_level + '</span></div>' : '') +
+                (lvl > 0 && ab.formatted_value ? '<div class="at-detail-row" style="display:flex;justify-content:space-between;margin-bottom:4px;font-size:0.75rem"><span>Current Value</span><span style="color:#4caf50;font-weight:700">' + ab.formatted_value + '</span></div>' : '') +
+                (ab.effect && ab.effect.per_level ? (function() {
+                    // Calculate next level value for preview
+                    var nextLvl = Math.min(lvl + 1, maxLvl);
+                    var base = ab.effect.base || 0;
+                    var perLvl = ab.effect.per_level || 0;
+                    var nextVal = base + perLvl * (nextLvl - 1);
+                    // Format next value same way as formatted_value
+                    var fmtNext = '';
+                    var effType = (ab.effect && ab.effect.type) || '';
+                    if (effType.endsWith('_mult') || effType.endsWith('_multiplier')) {
+                        if (effType === 'battle_defense_mult' || effType === 'battle_damage_mult' || effType === 'xp_multiplier' || effType === 'casino_xp_gain_mult') {
+                            fmtNext = Math.round((nextVal - 1.0) * 100) + '%';
+                        } else {
+                            fmtNext = nextVal.toFixed(1);
+                        }
+                    } else if (effType === 'casino_xp_loss_reduction' || effType === 'battle_health_bonus' || effType === 'low_health_damage_reduction' || effType === 'charge_vulnerability_reduction' || effType === 'critical_hit_chance') {
+                        fmtNext = Math.round(nextVal * 100) + '%';
+                    } else if (effType === 'charge_limit_bonus' || effType === 'starting_charge_bonus' || effType === 'overcharged_bonus') {
+                        fmtNext = String(Math.round(nextVal));
+                    } else {
+                        fmtNext = nextVal.toFixed(1);
+                    }
+                    return (lvl < maxLvl ? '<div class="at-detail-row" style="display:flex;justify-content:space-between;font-size:0.75rem"><span>Next Level (' + nextLvl + ')</span><span style="color:var(--gold-primary);font-weight:700">' + fmtNext + '</span></div>' : '');
+                })() : '') +
             '</div>' +
             '<div style="display:flex;gap:4px;margin-bottom:12px">' + pips + '</div>' +
             '<div class="at-details-action">' +
@@ -4206,6 +4615,40 @@ function renderDetailsInline() {
         '</div>';
     }
     
+    if (node.type === 'adv') {
+        var advKey = node.key;
+        var advLabels = { type: 'Type Advantage', element: 'Element Advantage' };
+        var advIcons  = { type: '⚔️', element: '✨' };
+        var advDescs  = {
+            type:    'Each point adds +0.1 flat bonus to your type advantage multiplier when you have a type matchup advantage.',
+            element: 'Each point adds +0.1 flat bonus to your element advantage multiplier when you have an element matchup advantage.'
+        };
+        var advM   = (state.advantage_mastery || {})[advKey] || { points: 0, bonus: 0 };
+        var advPts = advM.points || 0;
+        var advBonus = advM.bonus !== undefined ? advM.bonus : (advPts * 0.1);
+        var canUpAdv = (state.available_points || 0) >= 1;
+        return '<div class="at-details-panel" style="background:rgba(0,0,0,0.2);border-radius:6px;padding:12px">' +
+            '<div class="at-details-header" style="display:flex;align-items:center;gap:8px;margin-bottom:12px">' +
+                '<span style="font-size:1.8rem;flex-shrink:0">' + (advIcons[advKey] || '✨') + '</span>' +
+                '<div>' +
+                    '<div class="at-details-title" style="font-size:0.9rem;font-weight:700;color:var(--gold-primary)">' + (advLabels[advKey] || advKey) + '</div>' +
+                    '<div class="at-details-subtitle" style="font-size:0.7rem;color:var(--text-secondary)">Advantage Mastery</div>' +
+                '</div>' +
+            '</div>' +
+            '<div class="at-details-description" style="font-size:0.75rem;color:var(--text-secondary);margin-bottom:12px">' + (advDescs[advKey] || '') + '</div>' +
+            '<div class="at-details-stats" style="margin-bottom:12px">' +
+                '<div class="at-detail-row" style="display:flex;justify-content:space-between;margin-bottom:4px;font-size:0.75rem"><span>Points Invested</span><span style="color:var(--gold-secondary);font-weight:700">' + advPts + '</span></div>' +
+                '<div class="at-detail-row" style="display:flex;justify-content:space-between;margin-bottom:4px;font-size:0.75rem"><span>Current Bonus</span><span style="color:#4caf50;font-weight:700">+' + advBonus.toFixed(1) + '</span></div>' +
+                '<div class="at-detail-row" style="display:flex;justify-content:space-between;font-size:0.75rem"><span>Next Point</span><span style="color:var(--gold-primary);font-weight:700">+' + (advBonus + 0.1).toFixed(1) + '</span></div>' +
+            '</div>' +
+            '<div class="at-details-action">' +
+                (canUpAdv
+                    ? '<button class="at-action-btn" style="width:100%;background:linear-gradient(135deg,#4caf50,#45a049);border:none;border-radius:4px;color:#fff;font-size:0.8rem;font-weight:700;padding:8px;cursor:pointer;transition:all 0.2s" onclick="upgradeAdvMasteryInline(\'' + advKey + '\')">⬆️ Spend 1 Point (+0.1 bonus)</button>'
+                    : '<button style="width:100%;background:rgba(80,80,80,0.4);border:none;border-radius:4px;color:rgba(255,255,255,0.4);font-size:0.8rem;font-weight:700;padding:8px;cursor:not-allowed" disabled>❌ Need more ability points</button>') +
+            '</div>' +
+        '</div>';
+    }
+
     return '<div class="at-details-empty" style="text-align:center;padding:20px;color:var(--text-secondary);background:rgba(0,0,0,0.2);border-radius:6px">Select an item to see details</div>';
 }
 
@@ -4388,6 +4831,79 @@ function exposeInlineAbilityHandlers() {
                 showToastInline('Error: ' + e.message, false); 
             });
     };
+
+    // ── Skill branch handlers ─────────────────────────────────────────────────
+    window.selectSkillBranchInline = function() {
+        window._abilityTreeSelectedNode = { type: 'skill_branch' };
+        document.querySelectorAll('.at-selected').forEach(function(n){ n.classList.remove('at-selected'); });
+        var dp = document.getElementById('at-details-panel-inline');
+        if (dp) dp.innerHTML = renderDetailsInline();
+    };
+
+    window.selectSkillSlotInline = function(slotIdx) {
+        window._abilityTreeSelectedNode = { type: 'skill_slot', slot: slotIdx };
+        document.querySelectorAll('.at-selected').forEach(function(n){ n.classList.remove('at-selected'); });
+        var dp = document.getElementById('at-details-panel-inline');
+        if (dp) dp.innerHTML = renderDetailsInline();
+    };
+
+    window.drawSkillForSlotInline = function(slotIdx) {
+        var pts = (window._abilityTreeState && window._abilityTreeState.available_points) || 0;
+        if (pts < 1) {
+            showToastInline('Not enough ability points — drawing costs 1 point.', false);
+            return;
+        }
+        if (!confirm('Draw 5 new skill choices for slot ' + (slotIdx + 1) + '? This costs 1 ability point.')) return;
+
+        fetch('/api/pets/skills/draw', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ slot: slotIdx, cross_element: false }),
+        })
+            .then(function(r){ return r.json(); })
+            .then(function(d){
+                if (!d.ok) {
+                    showToastInline(d.message || 'Draw failed.', false);
+                    return;
+                }
+                // Update local points count
+                if (window._abilityTreeState && d.ability_points !== undefined) {
+                    window._abilityTreeState.available_points = d.ability_points;
+                }
+                if (d.choices && d.choices.length) {
+                    window._abilityTreeSelectedNode = { type: 'skill_choices', slot: slotIdx, choices: d.choices };
+                    var dp = document.getElementById('at-details-panel-inline');
+                    if (dp) dp.innerHTML = renderDetailsInline();
+                } else {
+                    showToastInline('No skills available to draw.', false);
+                }
+            })
+            .catch(function(e){ showToastInline('Error: ' + e.message, false); });
+    };
+
+    window.equipSkillChoiceInline = function(skillId, slotIdx) {
+        fetch('/api/pets/skills/equip', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ skill_id: skillId, slot: slotIdx }),
+        })
+        .then(function(r){ return r.json(); })
+        .then(function(d){
+            if (d.ok) {
+                showToastInline(d.message, true);
+                // Update skill state and re-render
+                if (window._abilityTreeState) window._abilityTreeState.skill_state = d.skills;
+                var tc = document.querySelector('.at-tree-container');
+                if (tc && window._abilityTreeState) tc.innerHTML = renderTreeInline(window._abilityTreeState);
+                window._abilityTreeSelectedNode = { type: 'skill_slot', slot: slotIdx };
+                var dp = document.getElementById('at-details-panel-inline');
+                if (dp) dp.innerHTML = renderDetailsInline();
+            } else {
+                showToastInline(d.message || 'Failed', false);
+            }
+        })
+        .catch(function(e){ showToastInline('Error: ' + e.message, false); });
+    };
 }
 
 // ── Toast notifications for inline version ────────────────────────────────────
@@ -4481,3 +4997,564 @@ function showAbilityPurchaseResultModal(ok, message, tree) {
     modal.style.display = 'block';
 }
 
+
+// ══════════════════════════════════════════════════════════════════════════════
+// ── Absorb Tab ────────────────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════════════
+
+// Use document.getElementById directly — this code lives outside the IIFE
+// that defines el() and _absEsc(), so we can't use them here.
+function _absEl(id) { return document.getElementById(id); }
+function _absEsc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+// Military emoji paths — /static/Emojis/Military/
+var _ABSORB_EMOJI = {
+    soldier:  { img: '/static/Emojis/Military/soldier.png'  },
+    tank:     { img: '/static/Emojis/Military/tank.png'     },
+    jet:      { img: '/static/Emojis/Military/jet.png'      },
+    ship:     { img: '/static/Emojis/Military/ship.png'     },
+    missile:  { img: '/static/Emojis/Military/missile.png'  },
+    bomb:     { img: '/static/Emojis/Military/bomb.png'     },
+    wars:     { img: '/static/Emojis/Military/wars.png'     },
+};
+
+var _absorbData = null;  // cached status response
+
+function _mpLoadAbsorb() {
+    var loading  = _absEl('absorb-loading');
+    var noNation = _absEl('absorb-no-nation');
+    var content  = _absEl('absorb-content');
+    if (!loading || !content) return;
+
+    loading.style.display  = '';
+    if (noNation) noNation.style.display = 'none';
+    content.style.display  = 'none';
+
+    fetch('/api/pets/absorb/status')
+        .then(function(r) { return r.json(); })
+        .then(function(d) {
+            loading.style.display = 'none';
+            if (!d.linked) {
+                if (noNation) noNation.style.display = '';
+                return;
+            }
+            _absorbData = d;
+            content.style.display = '';
+            _renderAbsorbContent(d);
+        })
+        .catch(function(err) {
+            loading.style.display = 'none';
+            if (content) {
+                content.style.display = '';
+                content.innerHTML = '<div class="mp-battle-card" style="color:#e74c3c;font-size:0.85rem">Failed to load war data: ' + _absEsc(err.message) + '</div>';
+            }
+        });
+}
+
+function _renderAbsorbContent(d) {
+    var avail    = d.available   || {};
+    var absorbed = d.absorbed    || {};
+    var total    = d.total       || {};
+    var preview  = d.xp_preview  || {};
+    var isLocked = d.locked      || false;
+    var nationId = d.nation_id   || null;
+
+    // ── Nation lock banner ────────────────────────────────────────────────────
+    var lockBanner = _absEl('absorb-lock-banner');
+    if (lockBanner) {
+        if (isLocked) {
+            lockBanner.style.display = '';
+            lockBanner.innerHTML =
+                '<div style="display:flex;align-items:center;gap:8px;font-size:0.78rem;color:rgba(255,215,0,0.85)">' +
+                '<span style="font-size:1rem">🔒</span>' +
+                '<span>Nation <strong style="color:var(--gold-primary)">#' + nationId + '</strong> is permanently bound to this pet. ' +
+                'Wins and kills from this nation only.</span>' +
+                '</div>';
+        } else {
+            lockBanner.style.display = '';
+            lockBanner.innerHTML =
+                '<div style="display:flex;align-items:center;gap:8px;font-size:0.78rem;color:rgba(255,200,50,0.75)">' +
+                '<span style="font-size:1rem">⚠️</span>' +
+                '<span>Nation <strong style="color:var(--gold-primary)">#' + nationId + '</strong> is currently linked. ' +
+                'Once you absorb, this nation is <strong>permanently locked</strong> to your pet.</span>' +
+                '</div>';
+        }
+    }
+
+    // ── Wins box ──────────────────────────────────────────────────────────────
+    var winsBadge = _absEl('absorb-wins-badge');
+    if (winsBadge) {
+        winsBadge.textContent = absorbed.wins + ' already absorbed';
+    }
+
+    var winsAvail = avail.wins || 0;
+    var winsTotal = total.wins || 0;
+
+    // Build soul/spirit emoji grid — one icon per available win, randomly soul or spirit
+    var soulsContainer = _absEl('absorb-wins-souls');
+    if (soulsContainer) {
+        if (winsAvail <= 0) {
+            soulsContainer.innerHTML = '<span style="font-size:0.75rem;color:var(--text-secondary)">No new wins to absorb</span>';
+        } else {
+            var soulsHtml = '';
+            for (var wi = 0; wi < winsAvail; wi++) {
+                var sImg = Math.random() < 0.5 ? '/static/Emojis/Floaters/soul.png' : '/static/Emojis/Floaters/spirit.png';
+                soulsHtml += '<img src="' + sImg + '" class="absorb-soul-icon" data-idx="' + wi + '" ' +
+                    'style="width:24px;height:24px;object-fit:contain;flex-shrink:0;' +
+                    'filter:drop-shadow(0 0 4px rgba(255,215,0,0.6))" ' +
+                    'onerror="this.src=\'/static/Emojis/Pets/Deco/XP.png\'">';
+            }
+            soulsContainer.innerHTML = soulsHtml;
+        }
+    }
+
+    var winsXp = _absEl('absorb-wins-xp-preview');
+    if (winsXp) {
+        var xpW = preview.wins || 0;
+        winsXp.innerHTML = xpW > 0
+            ? '⚡ <strong style="color:var(--gold-primary)">' + xpW.toLocaleString() + ' XP</strong> ready to absorb'
+            : '<span style="color:var(--text-secondary)">No new wins to absorb</span>';
+    }
+
+    var winsBtn = _absEl('absorb-wins-btn');
+    if (winsBtn) {
+        winsBtn.disabled = winsAvail <= 0;
+        winsBtn.style.opacity = winsAvail <= 0 ? '0.45' : '1';
+    }
+
+    // ── Kills box ─────────────────────────────────────────────────────────────
+    var killsBadge = _absEl('absorb-kills-badge');
+    if (killsBadge) {
+        var totalAbsorbed = (absorbed.soldiers||0) + (absorbed.tanks||0) + (absorbed.aircraft||0) +
+                            (absorbed.ships||0) + (absorbed.missiles||0) + (absorbed.nukes||0);
+        killsBadge.textContent = totalAbsorbed.toLocaleString() + ' already absorbed';
+    }
+
+    var killsStats = _absEl('absorb-kills-stats');
+    if (killsStats) {
+        var unitDefs = [
+            { key:'soldiers', label:'Soldiers', emojiImg:'/static/Emojis/Military/soldier.png', xpKey:'soldiers' },
+            { key:'tanks',    label:'Tanks',    emojiImg:'/static/Emojis/Military/tank.png',    xpKey:'tanks'    },
+            { key:'aircraft', label:'Aircraft', emojiImg:'/static/Emojis/Military/jet.png',     xpKey:'aircraft' },
+            { key:'ships',    label:'Ships',    emojiImg:'/static/Emojis/Military/ship.png',    xpKey:'ships'    },
+            { key:'missiles', label:'Missiles', emojiImg:'/static/Emojis/Military/missile.png', xpKey:'missiles' },
+            { key:'nukes',    label:'Nukes',    emojiImg:'/static/Emojis/Military/bomb.png',    xpKey:'nukes'    },
+        ];
+        var killsHtml = '';
+        unitDefs.forEach(function(u) {
+            var cnt   = avail[u.key] || 0;
+            var tot   = total[u.key] || 0;
+            var xpAmt = preview[u.xpKey] || 0;
+            var hasUnits = cnt > 0;
+            // Each card is toggleable — selected by default if it has units
+            killsHtml +=
+                '<div class="col-6 col-md-4">' +
+                '<div class="mp-mini-stat-card absorb-unit-card' + (hasUnits ? ' absorb-unit-selected' : '') + '" ' +
+                'id="absorb-unit-' + u.key + '" ' +
+                'data-unit="' + u.key + '" ' +
+                'onclick="window._mpToggleUnit(\'' + u.key + '\')" ' +
+                'style="text-align:center;padding:8px 6px;cursor:' + (hasUnits ? 'pointer' : 'default') + ';' +
+                'transition:all 0.15s;' +
+                (hasUnits ? 'border-color:rgba(120,120,255,0.7);box-shadow:0 0 8px rgba(100,100,255,0.3);' : 'opacity:0.45;') + '">' +
+                '<img src="' + u.emojiImg + '" style="width:28px;height:28px;object-fit:contain;margin-bottom:3px" onerror="this.style.display=\'none\'">' +
+                '<div style="font-size:0.65rem;color:var(--text-secondary);margin-bottom:2px">' + u.label + '</div>' +
+                '<div style="font-size:1.1rem;font-weight:800;color:' + (hasUnits ? 'var(--gold-primary)' : 'rgba(255,255,255,0.3)') + ';font-family:Orbitron,sans-serif">' + cnt.toLocaleString() + '</div>' +
+                '<div style="font-size:0.58rem;color:rgba(255,255,255,0.3)">' + tot.toLocaleString() + ' total</div>' +
+                (xpAmt > 0 ? '<div style="font-size:0.6rem;color:#4caf50;margin-top:2px">+' + xpAmt.toLocaleString() + ' XP</div>' : '') +
+                '<div style="font-size:0.55rem;margin-top:4px;font-weight:700;' + (hasUnits ? 'color:rgba(120,120,255,0.9)' : 'color:rgba(255,255,255,0.2)') + '">' +
+                (hasUnits ? '&#10003; Selected' : 'None') + '</div>' +
+                '</div></div>';
+        });
+        killsStats.innerHTML = killsHtml;
+    }
+
+    var killsXp = _absEl('absorb-kills-xp-preview');
+    if (killsXp) {
+        var totalKillXp = (preview.soldiers||0) + (preview.tanks||0) + (preview.aircraft||0) +
+                          (preview.ships||0) + (preview.missiles||0) + (preview.nukes||0);
+        killsXp.innerHTML = totalKillXp > 0
+            ? '&#9889; <strong style="color:var(--gold-primary)">' + totalKillXp.toLocaleString() + ' XP</strong> ready to absorb &mdash; click units to select/deselect'
+            : '<span style="color:var(--text-secondary)">No new kills to absorb</span>';
+    }
+
+    var killsBtn = _absEl('absorb-kills-btn');
+    if (killsBtn) {
+        var anyKills = ['soldiers','tanks','aircraft','ships','missiles','nukes'].some(function(k){ return (avail[k]||0) > 0; });
+        killsBtn.disabled = !anyKills;
+        killsBtn.style.opacity = anyKills ? '1' : '0.45';
+    }
+}
+
+// ── Win absorb animation: feed soul/spirit icons from the grid to the pet ─────
+function _mpAbsorbWinsAnimation(onComplete) {
+    var petImgEl = document.querySelector('#my-pet-header .mp-pet-img');
+    var icons    = document.querySelectorAll('#absorb-wins-souls .absorb-soul-icon');
+
+    if (!petImgEl || icons.length === 0) { onComplete(); return; }
+
+    var petRect  = petImgEl.getBoundingClientRect();
+    var targetX  = petRect.left + petRect.width  / 2;
+    var targetY  = petRect.top  + petRect.height / 2;
+
+    var total    = icons.length;
+    var completed = 0;
+
+    // Inject keyframe once
+    if (!document.getElementById('absorb-soul-style')) {
+        var s = document.createElement('style');
+        s.id = 'absorb-soul-style';
+        s.textContent = '@keyframes absorbSoulPulse{0%,100%{filter:drop-shadow(0 0 5px gold) brightness(1.3)}50%{filter:drop-shadow(0 0 16px gold) brightness(2)}}';
+        document.head.appendChild(s);
+    }
+
+    icons.forEach(function(icon, idx) {
+        setTimeout(function() {
+            // Get the icon's current position in the grid
+            var rect   = icon.getBoundingClientRect();
+            var startX = rect.left + rect.width  / 2;
+            var startY = rect.top  + rect.height / 2;
+
+            // Hide the grid icon immediately so it looks like it left the row
+            icon.style.visibility = 'hidden';
+
+            // Create a flying clone
+            var node = document.createElement('img');
+            node.src = icon.src;
+            node.style.cssText = 'position:fixed;width:24px;height:24px;object-fit:contain;pointer-events:none;z-index:9999;animation:absorbSoulPulse 0.5s ease infinite;';
+            node.style.left = (startX - 12) + 'px';
+            node.style.top  = (startY - 12) + 'px';
+            document.body.appendChild(node);
+
+            var startTime = null;
+            var dur  = 420 + Math.random() * 160;
+            var arcH = 60 + Math.random() * 80;
+
+            function step(ts) {
+                if (!startTime) startTime = ts;
+                var p  = Math.min((ts - startTime) / dur, 1);
+                var ep = p * p;
+                var cx = startX + (targetX - startX) * ep;
+                var cy = startY + (targetY - startY) * ep - Math.sin(p * Math.PI) * arcH;
+                var sc = 1.1 - p * 0.65;
+                node.style.left      = (cx - 12) + 'px';
+                node.style.top       = (cy - 12) + 'px';
+                node.style.opacity   = p < 0.75 ? '1' : String(1 - (p - 0.75) / 0.25);
+                node.style.transform = 'scale(' + sc + ')';
+                if (p < 1) {
+                    requestAnimationFrame(step);
+                } else {
+                    node.remove();
+                    petImgEl.style.transition = 'transform 0.07s ease-out';
+                    petImgEl.style.transform  = 'scale(1.3)';
+                    setTimeout(function() { petImgEl.style.transform = 'scale(1)'; }, 110);
+                    completed++;
+                    if (completed === total) {
+                        setTimeout(function() {
+                            petImgEl.style.transition = 'transform 0.12s ease-out';
+                            petImgEl.style.transform  = 'scale(1.5)';
+                            setTimeout(function() {
+                                petImgEl.style.transform  = 'scale(1)';
+                                petImgEl.style.transition = '';
+                                onComplete();
+                            }, 200);
+                        }, 60);
+                    }
+                }
+            }
+            requestAnimationFrame(step);
+        }, idx * 70);
+    });
+}
+
+// ── Kill absorb animation: military unit emojis ───────────────────────────────
+
+// ── Kill absorb animation: steady stream of one unit type to the pet ──────────
+// count = total units, imgSrc = emoji path for that unit type
+function _mpAbsorbKillsAnimation(count, imgSrc, onComplete) {
+    var petImgEl = document.querySelector('#my-pet-header .mp-pet-img');
+    if (!petImgEl || count <= 0) { onComplete(); return; }
+
+    var petRect = petImgEl.getBoundingClientRect();
+    var targetX = petRect.left + petRect.width  / 2;
+    var targetY = petRect.top  + petRect.height / 2;
+
+    // Cap at 120 visible emojis — each represents (count/120) units
+    var visible  = Math.min(count, 120);
+    var interval = 18; // ms between launches — fast but visible
+    var completed = 0;
+
+    function launchOne() {
+        var node = document.createElement('img');
+        node.src = imgSrc;
+        node.onerror = function() { this.src = '/static/Emojis/Military/soldier.png'; };
+        node.style.cssText = 'position:fixed;width:22px;height:22px;object-fit:contain;pointer-events:none;z-index:9999;filter:drop-shadow(0 0 6px rgba(100,180,255,0.9));';
+        var startX = window.innerWidth * 0.1 + Math.random() * window.innerWidth * 0.8;
+        var startY = window.innerHeight * 0.75 + Math.random() * (window.innerHeight * 0.2);
+        node.style.left = startX + 'px';
+        node.style.top  = startY + 'px';
+        document.body.appendChild(node);
+
+        var startTime = null;
+        var dur  = 350 + Math.random() * 120;
+        var arcH = 50 + Math.random() * 60;
+
+        function step(ts) {
+            if (!startTime) startTime = ts;
+            var p  = Math.min((ts - startTime) / dur, 1);
+            var ep = p * p;
+            var cx = startX + (targetX - startX) * ep;
+            var cy = startY + (targetY - startY) * ep - Math.sin(p * Math.PI) * arcH;
+            var sc = 1 - p * 0.55;
+            node.style.left      = (cx - 11) + 'px';
+            node.style.top       = (cy - 11) + 'px';
+            node.style.opacity   = p < 0.8 ? '1' : String(1 - (p - 0.8) / 0.2);
+            node.style.transform = 'scale(' + sc + ')';
+            if (p < 1) {
+                requestAnimationFrame(step);
+            } else {
+                node.remove();
+                petImgEl.style.transition = 'transform 0.05s ease-out';
+                petImgEl.style.transform  = 'scale(1.18)';
+                setTimeout(function() { petImgEl.style.transform = 'scale(1)'; }, 80);
+                completed++;
+                if (completed === visible) {
+                    setTimeout(function() {
+                        petImgEl.style.transition = 'transform 0.12s ease-out';
+                        petImgEl.style.transform  = 'scale(1.5)';
+                        setTimeout(function() {
+                            petImgEl.style.transform  = 'scale(1)';
+                            petImgEl.style.transition = '';
+                            onComplete();
+                        }, 200);
+                    }, 60);
+                }
+            }
+        }
+        requestAnimationFrame(step);
+    }
+
+    for (var i = 0; i < visible; i++) {
+        setTimeout(launchOne, i * interval);
+    }
+}
+
+// ── Level-up result HTML ───────────────────────────────────────────────────────
+function _absorbLevelUpHtml(d) {
+    if (!d || !d.leveled_up || !d.level_data) return '';
+    var ld     = d.level_data || {};
+    var oldLvl = ld.old_level || '?';
+    var newLvl = ld.new_level || '?';
+    var gains  = ld.gains     || {};
+
+    // Build stat gains rows
+    var statImgs = { ATT:'/static/Emojis/Pets/Deco/ATT.png', DEF:'/static/Emojis/Pets/Deco/DEF.png',
+                     INT:'/static/Emojis/Pets/Deco/INT.png', DEX:'/static/Emojis/Pets/Deco/DEX.png',
+                     HAP:'/static/Emojis/Pets/Deco/HAP.png', ENE:'/static/Emojis/Pets/Deco/ENE.png' };
+    var gainRows = '';
+    Object.keys(gains).forEach(function(stat) {
+        var val = gains[stat];
+        if (!val) return;
+        gainRows +=
+            '<div style="display:flex;align-items:center;gap:6px;font-size:0.75rem;margin-bottom:2px">' +
+            '<img src="' + (statImgs[stat] || '') + '" style="width:16px;height:16px;object-fit:contain" onerror="this.style.display=\'none\'">' +
+            '<span style="color:var(--text-secondary)">' + stat + '</span>' +
+            '<span style="color:#4caf50;font-weight:700">+' + val + '</span>' +
+            '</div>';
+    });
+
+    var levelsGained = (typeof newLvl === 'number' && typeof oldLvl === 'number') ? (newLvl - oldLvl) : '';
+
+    return '<div style="background:linear-gradient(135deg,rgba(255,215,0,0.15),rgba(255,140,0,0.08));' +
+           'border:1px solid rgba(255,215,0,0.6);border-radius:8px;padding:12px 14px;margin-top:8px">' +
+           '<div style="font-family:Orbitron,sans-serif;color:var(--gold-primary);font-size:1rem;font-weight:800;margin-bottom:6px">' +
+           '&#127881; LEVEL UP' + (levelsGained > 1 ? ' x' + levelsGained : '') + '!</div>' +
+           '<div style="font-size:0.85rem;color:rgba(255,255,255,0.85);margin-bottom:8px">' +
+           'Level <span style="color:var(--gold-primary);font-weight:700">' + oldLvl + '</span>' +
+           ' &rarr; <span style="color:var(--gold-primary);font-weight:700;font-size:1rem">' + newLvl + '</span>' +
+           '</div>' +
+           (gainRows ? '<div style="border-top:1px solid rgba(255,215,0,0.2);padding-top:8px;margin-top:4px">' +
+           '<div style="font-size:0.65rem;color:var(--text-secondary);margin-bottom:4px;font-weight:700;letter-spacing:0.05em">STAT INCREASES</div>' +
+           gainRows + '</div>' : '') +
+           '</div>';
+}
+
+// ── Toggle unit card selection ────────────────────────────────────────────────
+window._mpToggleUnit = function(unitKey) {
+    var card = _absEl('absorb-unit-' + unitKey);
+    if (!card || card.style.cursor === 'default') return;
+    var isSelected = card.classList.contains('absorb-unit-selected');
+    var lbl = card.querySelector('.absorb-unit-sel-label');
+    if (isSelected) {
+        card.classList.remove('absorb-unit-selected');
+        card.style.borderColor = 'rgba(255,255,255,0.1)';
+        card.style.boxShadow   = 'none';
+        if (lbl) lbl.textContent = 'Click to select';
+    } else {
+        card.classList.add('absorb-unit-selected');
+        card.style.borderColor = 'rgba(120,120,255,0.7)';
+        card.style.boxShadow   = '0 0 8px rgba(100,100,255,0.3)';
+        if (lbl) lbl.textContent = '\u2713 Selected';
+    }
+    _absorbUpdateKillsPreview();
+};
+
+function _absorbGetSelectedUnits() {
+    var selected = [];
+    ['soldiers','tanks','aircraft','ships','missiles','nukes'].forEach(function(k) {
+        var card = _absEl('absorb-unit-' + k);
+        if (card && card.classList.contains('absorb-unit-selected')) selected.push(k);
+    });
+    return selected;
+}
+
+function _absorbUpdateKillsPreview() {
+    if (!_absorbData) return;
+    var preview  = _absorbData.xp_preview || {};
+    var selected = _absorbGetSelectedUnits();
+    var totalXp  = 0;
+    selected.forEach(function(k) { totalXp += (preview[k] || 0); });
+    var killsXp = _absEl('absorb-kills-xp-preview');
+    if (killsXp) {
+        killsXp.innerHTML = totalXp > 0
+            ? '&#9889; <strong style="color:var(--gold-primary)">' + totalXp.toLocaleString() + ' XP</strong> from ' + selected.length + ' selected type' + (selected.length !== 1 ? 's' : '')
+            : '<span style="color:var(--text-secondary)">Select units to absorb</span>';
+    }
+    var killsBtn = _absEl('absorb-kills-btn');
+    if (killsBtn) {
+        killsBtn.disabled      = selected.length === 0;
+        killsBtn.style.opacity = selected.length > 0 ? '1' : '0.45';
+    }
+}
+
+// ── Absorb Wins ───────────────────────────────────────────────────────────────
+window._mpAbsorbWins = async function() {
+    var btn    = _absEl('absorb-wins-btn');
+    var result = _absEl('absorb-wins-result');
+    if (btn) btn.disabled = true;
+    if (result) result.innerHTML = '<span style="color:var(--text-secondary);font-size:0.8rem">Absorbing...</span>';
+
+    try {
+        var resp = await fetch('/api/pets/absorb/wins', { method: 'POST' });
+        var d    = await resp.json();
+
+        if (!resp.ok || d.error) {
+            if (result) result.innerHTML = '<span style="color:#e74c3c;font-size:0.82rem">&#10060; ' + _absEsc(d.error || 'Failed') + '</span>';
+            if (btn) { btn.disabled = false; btn.style.opacity = '1'; }
+            return;
+        }
+
+        if ((d.wins_absorbed || 0) <= 0) {
+            if (result) result.innerHTML = '<span style="color:var(--text-secondary);font-size:0.82rem">No new wins to absorb.</span>';
+            if (btn) btn.disabled = true;
+            return;
+        }
+
+        _mpAbsorbWinsAnimation(function() {
+            if (result) {
+                result.innerHTML =
+                    '<div class="mp-battle-card" style="border-color:rgba(76,175,80,0.4);margin-top:8px">' +
+                    '<div style="color:#4caf50;font-weight:700;font-size:0.9rem;margin-bottom:4px">&#9989; ' + _absEsc(d.message) + '</div>' +
+                    '<div style="font-size:0.78rem;color:var(--text-secondary)">+' + (d.xp_gained||0).toLocaleString() + ' XP absorbed</div>' +
+                    _absorbLevelUpHtml(d) +
+                    '</div>';
+            }
+            if (d.pet) { _pet = d.pet; renderPetCard(d.pet); }
+            _mpLoadAbsorb();
+        });
+
+    } catch(err) {
+        if (result) result.innerHTML = '<span style="color:#e74c3c;font-size:0.82rem">&#10060; ' + _absEsc(err.message) + '</span>';
+        if (btn) { btn.disabled = false; btn.style.opacity = '1'; }
+    }
+};
+
+// ── Absorb Kills (per selected unit type) ────────────────────────────────────
+window._mpAbsorbKills = async function() {
+    var btn    = _absEl('absorb-kills-btn');
+    var result = _absEl('absorb-kills-result');
+
+    var selected = _absorbGetSelectedUnits();
+    if (selected.length === 0) {
+        if (result) result.innerHTML = '<span style="color:var(--text-secondary);font-size:0.82rem">Select at least one unit type first.</span>';
+        return;
+    }
+
+    if (btn) btn.disabled = true;
+    if (result) result.innerHTML = '<span style="color:var(--text-secondary);font-size:0.8rem">Absorbing...</span>';
+
+    // Unit emoji map for animation
+    var unitImgMap = {
+        soldiers: '/static/Emojis/Military/soldier.png',
+        tanks:    '/static/Emojis/Military/tank.png',
+        aircraft: '/static/Emojis/Military/jet.png',
+        ships:    '/static/Emojis/Military/ship.png',
+        missiles: '/static/Emojis/Military/missile.png',
+        nukes:    '/static/Emojis/Military/bomb.png',
+    };
+
+    // Absorb each selected unit type sequentially
+    var allBreakdown = {};
+    var allAbsorbed  = {};
+    var totalXpGained = 0;
+    var anyLevelUp   = false;
+    var lastLevelData = null;
+    var lastPet       = null;
+    var errors        = [];
+
+    async function absorbOne(unitKey) {
+        try {
+            var resp = await fetch('/api/pets/absorb/kills', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ unit_type: unitKey })
+            });
+            var d = await resp.json();
+            if (!resp.ok || d.error) { errors.push(unitKey + ': ' + (d.error || 'failed')); return; }
+            var cnt = (d.kills_absorbed || {})[unitKey] || 0;
+            if (cnt <= 0) return;
+
+            allAbsorbed[unitKey]  = cnt;
+            allBreakdown[unitKey] = (d.xp_breakdown || {})[unitKey] || 0;
+            totalXpGained += (d.xp_gained || 0);
+            if (d.leveled_up) { anyLevelUp = true; lastLevelData = d.level_data; }
+            if (d.pet) lastPet = d.pet;
+
+            // Run streaming animation for this unit type
+            await new Promise(function(resolve) {
+                _mpAbsorbKillsAnimation(cnt, unitImgMap[unitKey] || unitImgMap.soldiers, resolve);
+            });
+        } catch(e) {
+            errors.push(unitKey + ': ' + e.message);
+        }
+    }
+
+    for (var i = 0; i < selected.length; i++) {
+        await absorbOne(selected[i]);
+    }
+
+    // Build result card
+    var unitLabels = { soldiers:'Soldiers', tanks:'Tanks', aircraft:'Aircraft', ships:'Ships', missiles:'Missiles', nukes:'Nukes' };
+    var bkHtml = Object.keys(allAbsorbed).map(function(k) {
+        return '<div style="display:flex;justify-content:space-between;font-size:0.75rem;color:var(--text-secondary);margin-bottom:2px">' +
+            '<span>' + (unitLabels[k]||k) + ': ' + (allAbsorbed[k]||0).toLocaleString() + '</span>' +
+            '<span style="color:#4caf50">+' + (allBreakdown[k]||0).toLocaleString() + ' XP</span>' +
+            '</div>';
+    }).join('');
+
+    // Build a synthetic level_data that spans the full range if multiple unit types leveled up
+    var fakeD = { leveled_up: anyLevelUp, level_data: lastLevelData };
+
+    if (result) {
+        result.innerHTML =
+            '<div class="mp-battle-card" style="border-color:rgba(100,100,255,0.4);margin-top:8px">' +
+            '<div style="color:#7986cb;font-weight:700;font-size:0.9rem;margin-bottom:6px">&#9989; Absorbed!</div>' +
+            bkHtml +
+            '<div style="font-size:0.82rem;color:var(--gold-primary);font-weight:700;margin-top:6px;border-top:1px solid rgba(255,255,255,0.1);padding-top:6px">Total: +' + totalXpGained.toLocaleString() + ' XP</div>' +
+            _absorbLevelUpHtml(fakeD) +
+            (errors.length ? '<div style="font-size:0.7rem;color:#e74c3c;margin-top:4px">Errors: ' + errors.join(', ') + '</div>' : '') +
+            '</div>';
+    }
+
+    if (lastPet) { _pet = lastPet; renderPetCard(lastPet); }
+    _mpLoadAbsorb();
+};

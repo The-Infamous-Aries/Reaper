@@ -169,3 +169,35 @@
             border-left: 3px solid #28a745;
             padding-left: 8px;
         }
+
+/* ── Nation autocomplete dropdown ────────────────────────────────────────── */
+.cc-ac-wrap {
+    position: relative;
+}
+.cc-ac-dropdown {
+    position: fixed;
+    z-index: 9999;
+    background: rgba(14, 11, 5, 0.98);
+    border: 1px solid rgba(255, 215, 0, 0.35);
+    border-radius: 0.5rem;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+    max-height: 320px;
+    overflow-y: auto;
+}
+.cc-ac-item {
+    padding: 0.45rem 0.85rem;
+    font-size: 0.82rem;
+    color: rgba(255,255,255,0.82);
+    cursor: pointer;
+    border-bottom: 1px solid rgba(255,215,0,0.06);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    transition: background 0.1s;
+}
+.cc-ac-item:last-child { border-bottom: none; }
+.cc-ac-item:hover,
+.cc-ac-item.cc-ac-active {
+    background: rgba(255, 215, 0, 0.1);
+    color: #ffd700;
+}

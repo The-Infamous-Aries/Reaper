@@ -1,0 +1,449 @@
+/* ============================================================
+   what_are_pets.css — Pet System Guide Page
+   Dark gold theme, accordion cards, wap2- prefix
+   ============================================================ */
+
+/* ── Page wrapper ─────────────────────────────────────────── */
+.wap2-page {
+  padding: 1.5rem 1rem 3rem;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+/* ── Page header ──────────────────────────────────────────── */
+.wap2-header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.wap2-title {
+  font-family: 'Orbitron', 'Segoe UI', sans-serif;
+  font-size: clamp(1.6rem, 4vw, 2.4rem);
+  font-weight: 700;
+  color: var(--gold-primary);
+  text-shadow: 0 0 18px var(--gold-glow), 0 2px 4px rgba(0, 0, 0, 0.6);
+  margin-bottom: 0.4rem;
+  letter-spacing: 0.04em;
+}
+
+.wap2-subtitle {
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+  margin-bottom: 1rem;
+}
+
+/* ── Expand / Collapse All controls ──────────────────────── */
+.wap2-expand-controls {
+  display: flex;
+  justify-content: center;
+  gap: 0.6rem;
+  margin-top: 0.5rem;
+}
+
+.wap2-expand-all-btn {
+  background: rgba(255, 215, 0, 0.08);
+  border: 1px solid rgba(255, 215, 0, 0.3);
+  color: var(--gold-primary);
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 0.3rem 0.9rem;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+  letter-spacing: 0.03em;
+}
+
+.wap2-expand-all-btn:hover {
+  background: rgba(255, 215, 0, 0.18);
+  border-color: var(--gold-primary);
+  box-shadow: 0 0 8px var(--gold-glow);
+}
+
+.wap2-collapse-btn {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.15);
+  color: var(--text-secondary);
+}
+
+.wap2-collapse-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.3);
+  box-shadow: none;
+  color: var(--text-primary);
+}
+
+/* ── Card grid ────────────────────────────────────────────── */
+.wap2-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+@media (max-width: 768px) {
+  .wap2-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── Individual card ──────────────────────────────────────── */
+.wap2-card {
+  background: rgba(15, 15, 15, 0.85);
+  border: 1px solid rgba(255, 215, 0, 0.2);
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  overflow: hidden;
+  transition: border-color 0.25s ease, box-shadow 0.25s ease;
+}
+
+.wap2-card:hover {
+  border-color: rgba(255, 215, 0, 0.35);
+}
+
+/* ── Card header (clickable) ──────────────────────────────── */
+.wap2-card-header {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.9rem 1.2rem;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.2s ease, box-shadow 0.2s ease;
+  position: relative;
+}
+
+.wap2-card-header:hover {
+  background: rgba(255, 215, 0, 0.05);
+  box-shadow: inset 0 0 0 1px rgba(255, 215, 0, 0.25);
+}
+
+.wap2-card-header:focus-visible {
+  outline: 2px solid var(--gold-primary);
+  outline-offset: -2px;
+  border-radius: 12px 12px 0 0;
+}
+
+.wap2-card-emoji {
+  font-size: 1.2rem;
+  flex-shrink: 0;
+}
+
+.wap2-card-title {
+  font-family: 'Orbitron', 'Segoe UI', sans-serif;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--gold-primary);
+  letter-spacing: 0.03em;
+  flex-shrink: 0;
+}
+
+.wap2-card-subtitle {
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding-left: 0.3rem;
+}
+
+/* Chevron arrow */
+.wap2-chevron {
+  font-size: 1.1rem;
+  color: var(--gold-secondary);
+  margin-left: auto;
+  flex-shrink: 0;
+  display: inline-block;
+  transition: transform 0.3s ease;
+  line-height: 1;
+  padding-left: 0.5rem;
+}
+
+.wap2-card-open .wap2-chevron,
+.wap2-chevron-open {
+  transform: rotate(180deg);
+}
+
+/* Separator line when open */
+.wap2-card-open .wap2-card-header {
+  border-bottom: 1px solid rgba(255, 215, 0, 0.15);
+}
+
+/* ── Card body (accordion) ────────────────────────────────── */
+.wap2-card-body {
+  max-height: 0;
+  overflow: hidden;
+  padding: 0 1.6rem;
+  transition: max-height 0.45s cubic-bezier(0.4, 0, 0.2, 1),
+              padding 0.3s ease;
+}
+
+.wap2-card-open .wap2-card-body {
+  max-height: 4000px;
+  padding: 1.2rem 1.6rem 1.4rem;
+}
+
+/* ── Section titles inside cards ──────────────────────────── */
+.wap2-section-title {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--gold-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin: 1.2rem 0 0.5rem;
+  padding-bottom: 0.3rem;
+  border-bottom: 1px solid rgba(255, 215, 0, 0.15);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.wap2-card-body > .wap2-section-title:first-child {
+  margin-top: 0;
+}
+
+/* ── Body text ────────────────────────────────────────────── */
+.wap2-card-body p {
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  line-height: 1.65;
+  margin-bottom: 0.6rem;
+}
+
+.wap2-card-body strong {
+  color: var(--text-primary);
+}
+
+.wap2-card-body code {
+  background: rgba(255, 215, 0, 0.08);
+  border: 1px solid rgba(255, 215, 0, 0.2);
+  border-radius: 4px;
+  padding: 0.1em 0.4em;
+  font-size: 0.82em;
+  color: var(--gold-secondary);
+  font-family: 'JetBrains Mono', 'Courier New', monospace;
+}
+
+/* ── Lists ────────────────────────────────────────────────── */
+.wap2-list {
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  line-height: 1.7;
+  padding-left: 1.4rem;
+  margin-bottom: 0.6rem;
+}
+
+.wap2-list li {
+  margin-bottom: 0.2rem;
+}
+
+.wap2-list li strong {
+  color: var(--text-primary);
+}
+
+/* ── Tables ───────────────────────────────────────────────── */
+.wap2-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+  margin-bottom: 0.8rem;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.wap2-table thead tr {
+  background: rgba(255, 215, 0, 0.08);
+}
+
+.wap2-table thead th {
+  color: var(--gold-primary);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid rgba(255, 215, 0, 0.25);
+  text-align: left;
+}
+
+.wap2-table tbody tr {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  transition: background 0.15s ease;
+}
+
+.wap2-table tbody tr:last-child {
+  border-bottom: none;
+}
+
+.wap2-table tbody tr:nth-child(even) {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.wap2-table tbody tr:hover {
+  background: rgba(255, 215, 0, 0.04);
+}
+
+.wap2-table tbody td {
+  color: var(--text-secondary);
+  padding: 0.45rem 0.75rem;
+  vertical-align: top;
+  line-height: 1.5;
+}
+
+.wap2-table tbody td strong {
+  color: var(--text-primary);
+}
+
+/* ── Info / tip / note boxes ──────────────────────────────── */
+.wap2-tip-box {
+  background: rgba(46, 204, 113, 0.07);
+  border-left: 3px solid rgba(46, 204, 113, 0.6);
+  border-radius: 0 6px 6px 0;
+  padding: 0.6rem 0.9rem;
+  margin-bottom: 0.8rem;
+  font-size: 0.83rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+.wap2-tip-box strong {
+  color: #4caf50;
+}
+
+.wap2-note-box {
+  background: rgba(255, 215, 0, 0.06);
+  border-left: 3px solid rgba(255, 215, 0, 0.5);
+  border-radius: 0 6px 6px 0;
+  padding: 0.6rem 0.9rem;
+  margin-bottom: 0.8rem;
+  font-size: 0.83rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+.wap2-note-box strong {
+  color: var(--gold-primary);
+}
+
+/* ── Inline badges ────────────────────────────────────────── */
+.wap2-note-badge {
+  font-size: 0.68rem;
+  font-weight: 600;
+  background: rgba(255, 215, 0, 0.12);
+  border: 1px solid rgba(255, 215, 0, 0.3);
+  color: var(--gold-secondary);
+  border-radius: 10px;
+  padding: 0.1em 0.55em;
+  letter-spacing: 0.03em;
+  text-transform: none;
+  vertical-align: middle;
+}
+
+/* ── Stat pills ───────────────────────────────────────────── */
+.wap2-stat-pill {
+  display: inline-block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  border-radius: 4px;
+  padding: 0.1em 0.45em;
+  letter-spacing: 0.04em;
+  font-family: 'JetBrains Mono', monospace;
+  vertical-align: middle;
+}
+
+.wap2-stat-att {
+  background: rgba(220, 53, 69, 0.2);
+  border: 1px solid rgba(220, 53, 69, 0.5);
+  color: #ff6b7a;
+}
+
+.wap2-stat-def {
+  background: rgba(13, 110, 253, 0.2);
+  border: 1px solid rgba(13, 110, 253, 0.5);
+  color: #6ea8fe;
+}
+
+.wap2-stat-int {
+  background: rgba(111, 66, 193, 0.2);
+  border: 1px solid rgba(111, 66, 193, 0.5);
+  color: #c29ffa;
+}
+
+.wap2-stat-dex {
+  background: rgba(25, 135, 84, 0.2);
+  border: 1px solid rgba(25, 135, 84, 0.5);
+  color: #75d9a3;
+}
+
+.wap2-stat-hap {
+  background: rgba(255, 193, 7, 0.15);
+  border: 1px solid rgba(255, 193, 7, 0.45);
+  color: #ffc107;
+}
+
+.wap2-stat-ene {
+  background: rgba(13, 202, 240, 0.15);
+  border: 1px solid rgba(13, 202, 240, 0.45);
+  color: #6edff6;
+}
+
+/* ── Utility text colours ─────────────────────────────────── */
+.wap2-gold-text {
+  color: var(--gold-primary) !important;
+  font-weight: 600;
+}
+
+.wap2-warn-text {
+  color: #ff6b7a;
+  font-size: 0.8rem;
+}
+
+/* ── Responsive tweaks ────────────────────────────────────── */
+@media (max-width: 768px) {
+  .wap2-page {
+    padding: 1rem 0.5rem 2rem;
+  }
+
+  .wap2-card-header {
+    padding: 0.8rem 1rem;
+  }
+
+  .wap2-card-subtitle {
+    display: none; /* hide on very small screens to keep header tidy */
+  }
+
+  .wap2-card-open .wap2-card-body {
+    padding: 1rem 1rem 1.2rem;
+  }
+
+  .wap2-table {
+    font-size: 0.78rem;
+  }
+
+  .wap2-table thead th,
+  .wap2-table tbody td {
+    padding: 0.4rem 0.5rem;
+  }
+
+  .wap2-title {
+    font-size: 1.4rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .wap2-card-title {
+    font-size: 0.85rem;
+  }
+
+  .wap2-section-title {
+    font-size: 0.8rem;
+  }
+
+  .wap2-card-body p,
+  .wap2-list {
+    font-size: 0.82rem;
+  }
+}

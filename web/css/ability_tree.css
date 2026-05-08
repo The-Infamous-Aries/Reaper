@@ -219,8 +219,6 @@
     display: flex;
     flex-direction: column;
     gap: 3px;
-    max-height: 80vh;
-    overflow-y: auto;
     padding-right: 2px;
 }
 .at-tree-container::-webkit-scrollbar { width: 4px; }

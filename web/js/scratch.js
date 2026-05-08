@@ -102,7 +102,10 @@ function renderCardGrid() {
             <div class="sc-card-grid-badge">${info.grid || ''} Grid</div>
             <div class="sc-payout-row"><span>2 match</span><span>${info.two_mult || ''}×</span></div>
             <div class="sc-payout-row"><span>3 match</span><span>${info.three_mult || ''}×</span></div>
-            ${i === 5 ? `<div class="sc-payout-row"><span>Same-type ×2</span><span>${info.bonus_mult || 75}×</span></div>` : ''}
+            ${i === 5 ? `
+            <div class="sc-payout-row" style="opacity:0.75"><span>Type 2 match</span><span>${info.type_two_mult || 4}×</span></div>
+            <div class="sc-payout-row" style="opacity:0.75"><span>Type 3 match</span><span>${info.type_three_mult || 8}×</span></div>
+            <div class="sc-payout-row"><span>Same-type ×2</span><span>${info.bonus_mult || 75}×</span></div>` : ''}
         `;
         grid.appendChild(btn);
     }
@@ -291,6 +294,32 @@ function showResult() {
         winEl.textContent = `(Fun Mode — ${_result.multiplier}× would win)`;
     } else {
         winEl.style.display = 'none';
+    }
+
+    // Multi-line breakdown badge for 3×3 cards
+    const multiEl = $('sc-multiline-badge');
+    if (multiEl) {
+        const e3 = _result.exact_three_count || 0;
+        const e2 = _result.exact_two_count   || 0;
+        const t3 = _result.type_three_count  || 0;
+        const t2 = _result.type_two_count    || 0;
+        const totalWins = e3 + e2 + t3 + t2;
+
+        if (_result.grid_type === '3x3' && totalWins > 0) {
+            const parts = [];
+            if (e3) parts.push(`${e3}×exact-3 (${e3*25}×)`);
+            if (e2) parts.push(`${e2}×exact-2 (${e2*10}×)`);
+            if (t3) parts.push(`${t3}×type-3 (${t3*8}×)`);
+            if (t2) parts.push(`${t2}×type-2 (${t2*4}×)`);
+            if (totalWins > 1 || t3 || t2) {
+                multiEl.style.display = '';
+                multiEl.textContent = '🎯 ' + parts.join(' + ') + ` = ${_result.multiplier}× total`;
+            } else {
+                multiEl.style.display = 'none';
+            }
+        } else {
+            multiEl.style.display = 'none';
+        }
     }
 
     // Bonus badge for Card 5

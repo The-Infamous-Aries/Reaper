@@ -51,7 +51,7 @@ function init() {
     // Always fetch the latest state first, regardless of SSE
     function loadGameState() {
         console.log('[survive.js] Loading game state...');
-        fetch('/api/ss/state')
+        return fetch('/api/ss/state')
             .then(function(r){ 
                 console.log('[survive.js] ss/state response:', r.status);
                 return r.json(); 
@@ -87,11 +87,12 @@ function init() {
         })
         .finally(function(){
             console.log('[survive.js] User identity resolved, loading game state...');
-            // Load game state after identity is known
-            loadGameState();
+            // Load game state first so the DOM is fully painted before SSE
+            // starts firing events (avoids "Banner element not found" on fast init events)
+            loadGameState().finally(function() {
+                connectSSE();
+            });
         });
-
-    connectSSE();
     
     // Also refresh state every 10 seconds as a fallback
     if (_pollInterval) clearInterval(_pollInterval);
@@ -913,7 +914,7 @@ window.ssOpenJoinModal = function() {
         return pts * 0.1;
     }
 
-    function _fillCard(name, species, level, multiplier, ssAbilityMult, statMasteryMult, element, element2) {
+    function _fillCard(name, species, level, multiplier, ssAbilityMult, statMasteryMult, element, element2, startingCharge, chargeLimit) {
         var img = el('sj-pet-img');
         if (img) { img.src = petImg(species); }
 
@@ -935,7 +936,20 @@ window.ssOpenJoinModal = function() {
         var noteEl = el('sj-score-note');
         if (noteEl) {
             var tier = score >= 10 ? '🔥 Terrifying' : score >= 5 ? '⚡ Strong' : score >= 2 ? '🐾 Decent' : '🥚 Baby';
-            noteEl.textContent = '(' + tier + ')';
+            var multNote = '';
+            if (ssAMult !== 1.0) multNote += ' ×' + ssAMult.toFixed(2) + ' ability';
+            if (smMult  !== 1.0) multNote += ' ×' + smMult.toFixed(2) + ' mastery';
+            noteEl.textContent = '(' + tier + (multNote ? ' |' + multNote : '') + ')';
+        }
+
+        // Charge info
+        var chargeEl = el('sj-charge-info');
+        if (chargeEl) {
+            var sc  = parseInt(startingCharge || 0, 10);
+            var cl  = Math.max(8, parseInt(chargeLimit || 8, 10));
+            var txt = 'Limit: ' + cl;
+            if (sc > 0) txt += ' • Starts with: +' + sc;
+            chargeEl.textContent = txt;
         }
     }
 
@@ -944,10 +958,18 @@ window.ssOpenJoinModal = function() {
         .then(function(r){ return r.ok ? r.json() : null; })
         .then(function(d) {
             if (d && d.has_pet) {
-                var mult          = calcEquipMultiplier(d);
-                var ssAbilityMult = calcSsAbilityMult(d);
-                var statMastMult  = calcStatMasteryMult(d);
-                _fillCard(d.name, d.species, d.level, mult, ssAbilityMult, statMastMult, d.element, d.element2);
+                var mult           = calcEquipMultiplier(d);
+                var ssAbilityMult  = calcSsAbilityMult(d);
+                var statMastMult   = calcStatMasteryMult(d);
+                // Charge abilities
+                var abilities      = (d && d.abilities) || {};
+                var chargedLvl     = parseInt(abilities['ene_charged_start']  || 0, 10);
+                var overchargedLvl = parseInt(abilities['ene_overcharged']    || 0, 10);
+                var chargeMastLvl  = parseInt(abilities['ene_charge_mastery'] || 0, 10);
+                var startingCharge = (chargedLvl > 0 ? (1 + (chargedLvl - 1)) : 0)
+                                   + (overchargedLvl > 0 ? (1 + (overchargedLvl - 1)) : 0);
+                var chargeLimit    = 8 + (chargeMastLvl > 0 ? (1 + (chargeMastLvl - 1)) : 0);
+                _fillCard(d.name, d.species, d.level, mult, ssAbilityMult, statMastMult, d.element, d.element2, startingCharge, chargeLimit);
             }
         })
         .catch(function(){});

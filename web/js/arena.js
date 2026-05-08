@@ -131,6 +131,8 @@ function renderUnifiedGrid() {
 
     // Merge both room sets by room_id — a room is "occupied" if it appears in
     // either the arena or casino list with a non-empty state.
+    // Layout: rooms 0-3 (left bank), then Colosseum (center), then rooms 4-7 (right bank).
+    // Rooms 8-11 are still accessible but shown below as a second row.
     const cards = Array.from({length: 12}, (_, i) => {
         const arenaRoom  = _arenaRooms.find(r => r.room_id === i);
         const casinoRoom = _casinoRooms.find(r => r.room_id === i);
@@ -192,6 +194,7 @@ function renderUnifiedGrid() {
                      onclick="window._uClickRoom('${clickType}',${i})">${inner}</div>`;
     });
 
+    // Single flat row — CSS grid handles the 12-column layout
     grid.innerHTML = cards.join('');
 }
 
@@ -209,11 +212,17 @@ function refreshPanelIfNeeded() {
     if (!_viewRoomId) return;
     // Never interrupt an active battle or embedded casino game
     if (_battle || _bossBattle || _gameEmbedActive) return;
+
     const { id, type } = _viewRoomId;
     if (type === 'arena') {
         const room = _arenaRooms.find(r => r.room_id === id);
         if (!room) return;
         const isMine = room.occupants.some(o => o.user_id === _myUserId);
+
+        // If the server says this room is in an active battle state and we're in it,
+        // never overwrite the panel — the turn-based UI owns it until the battle ends.
+        if (isMine && (room.state === 'npc_battle' || room.state === 'pvp_battle' || room.state === 'boss_battle')) return;
+
         if (room.state === 'empty') { /* keep join panel */ }
         else if (isMine) {
             if (!_battle && !_bossBattle) {
@@ -1933,6 +1942,13 @@ window.addEventListener('beforeunload', cleanup);
 
 // Expose rooms array for combined online count
 window._arenaRooms = _arenaRooms;
+
+// ── Colosseum click handler (delegates to colosseum.js) ──────────────────────
+window._uClickColosseum = function() {
+    if (typeof window._colosseumOpen === 'function') {
+        window._colosseumOpen();
+    }
+};
 
 // ── Boot ──────────────────────────────────────────────────────────────────────
 init();

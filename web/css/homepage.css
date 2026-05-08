@@ -275,3 +275,175 @@
 .title-break::after {
     right: 10%;
 }
+
+/* ── Flip Card System ─────────────────────────────────────────────────────── */
+
+/* Outer wrapper — sets the collapsed/expanded size */
+.flip-card-wrap {
+    perspective: 1000px;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+/* The flipping container */
+.flip-card {
+    position: relative;
+    width: 100%;
+    /* Collapsed height: just title + emoji */
+    height: 80px;
+    transition: height 0.45s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+                transform 0.45s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    transform-style: preserve-3d;
+    cursor: pointer;
+}
+
+/* Expanded state */
+.flip-card.is-flipped {
+    height: 260px;
+    transform: rotateY(180deg);
+}
+
+/* Both faces share base styles */
+.flip-card-front,
+.flip-card-back {
+    position: absolute;
+    inset: 0;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+/* Front face — title + emoji, centered */
+.flip-card-front {
+    flex-direction: row;
+    gap: 0.75rem;
+    padding: 0 1.25rem;
+}
+
+.flip-card-front-icon {
+    width: 36px;
+    height: 36px;
+    filter: drop-shadow(0 0 6px var(--gold-glow));
+    flex-shrink: 0;
+    transition: transform 0.3s ease, filter 0.3s ease;
+}
+
+.flip-card-front-title {
+    color: var(--gold-primary);
+    font-family: 'Orbitron', sans-serif;
+    font-weight: 700;
+    font-size: 1.05rem;
+    text-shadow: 0 0 10px var(--gold-glow);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Back face — rotated 180deg, shows description + button */
+.flip-card-back {
+    transform: rotateY(180deg);
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: space-between;
+    padding: 1.25rem 1.5rem 1.25rem;
+    gap: 0.75rem;
+}
+
+.flip-card-back-title {
+    color: var(--gold-primary);
+    font-family: 'Orbitron', sans-serif;
+    font-weight: 700;
+    font-size: 0.9rem;
+    text-shadow: 0 0 8px var(--gold-glow);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding-bottom: 0.4rem;
+    border-bottom: 1px solid rgba(255, 215, 0, 0.2);
+    width: 100%;
+    flex-shrink: 0;
+}
+
+.flip-card-back-desc {
+    color: var(--text-primary);
+    font-size: 0.82rem;
+    line-height: 1.55;
+    flex: 1;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 5;
+    -webkit-box-orient: vertical;
+}
+
+.flip-card-back-btn {
+    display: inline-block;
+    background: linear-gradient(45deg, var(--gold-primary), #ffed4e);
+    color: #1a1a1a;
+    font-family: 'Orbitron', sans-serif;
+    font-weight: 700;
+    font-size: 0.72rem;
+    letter-spacing: 0.05em;
+    padding: 0.45rem 1.2rem;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: opacity 0.15s, transform 0.15s;
+    text-decoration: none;
+    flex-shrink: 0;
+    align-self: flex-end;
+}
+
+.flip-card-back-btn:hover {
+    opacity: 0.85;
+    transform: scale(1.04);
+    color: #1a1a1a;
+    text-decoration: none;
+}
+
+/* The home-card wrapper adapts to flip card */
+.home-card.flip-host {
+    padding: 0;
+    min-height: unset;
+    height: auto;
+    overflow: visible;
+    cursor: default;
+    animation: fadeIn 0.5s ease-in-out, cardPulseGlow 3s ease-in-out infinite;
+}
+
+.home-card.flip-host:hover {
+    transform: translateY(-4px) scale(1.01);
+}
+
+.home-card.flip-host.is-expanded {
+    animation: fadeIn 0.5s ease-in-out;
+}
+
+/* Hover hint on front face */
+.flip-card:not(.is-flipped) .flip-card-front-icon {
+    animation: iconBob 2.5s ease-in-out infinite;
+}
+
+@keyframes iconBob {
+    0%, 100% { transform: translateY(0); }
+    50%       { transform: translateY(-3px); }
+}
+
+.flip-card.is-flipped .flip-card-front-icon {
+    animation: none;
+}
+
+/* Column sizing for flip cards — let them be natural height */
+[class*="col-"]:has(.flip-host) {
+    display: flex;
+    flex-direction: column;
+}
+
+.row:has(.flip-host) {
+    align-items: flex-start;
+}

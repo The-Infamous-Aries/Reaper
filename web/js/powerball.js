@@ -69,25 +69,30 @@ function renderPage() {
     const potEl = $('pb-pot-display');
     if (potEl) {
         potEl.textContent = (_info.pot_xp || 0).toLocaleString() + ' XP';
-        
+
+        // Remove any stale rollover indicator before potentially re-adding
+        const existingRollover = potEl.parentNode.querySelector('.pb-rollover-indicator');
+        if (existingRollover) existingRollover.remove();
+
         // Check if pot grew due to rollover multiplier
         if (_info.last_draw && _info.last_draw.pot_after && _info.last_draw.pot_before) {
             const lastPot = _info.last_draw.pot_after;
             const beforePot = _info.last_draw.pot_before;
             const winners = _info.last_draw.winners || [];
             const majorWinners = winners.filter(w => w.tier === 'MEGA' || w.tier === 'TIER1');
-            
+
             // If pot grew significantly and no major winners, show rollover indicator
             if (majorWinners.length === 0 && lastPot > beforePot && (lastPot / beforePot) > 2) {
                 const rolloverEl = document.createElement('div');
+                rolloverEl.className = 'pb-rollover-indicator';
                 rolloverEl.style.cssText = `
-                    font-size: 0.6rem; 
-                    color: #27ae60; 
-                    margin-top: 2px; 
+                    font-size: 0.6rem;
+                    color: #27ae60;
+                    margin-top: 2px;
                     font-weight: 600;
                     animation: pbRolloverGlow 2s ease-in-out infinite;
                 `;
-                rolloverEl.textContent = `🚀 Rolled over from ${beforePot.toLocaleString()} XP (2.5x multiplier)`;
+                rolloverEl.textContent = `\uD83D\uDE80 Rolled over from ${beforePot.toLocaleString()} XP (2.5x multiplier)`;
                 potEl.parentNode.appendChild(rolloverEl);
             }
         }
@@ -504,11 +509,14 @@ async function buyTicket() {
 function startCountdown() {
     if (_countdownId) clearInterval(_countdownId);
 
-    // Target: midnight UTC at the start of draw_date (the draw happens at 00:00 UTC that day)
+    // Target: midnight UTC at the END of draw_date (i.e. the start of draw_date + 1 day).
+    // The draw fires at 00:00 UTC on the day AFTER draw_date, so for draw_date "2026-05-02"
+    // the target is 2026-05-03T00:00:00Z.
     function getTargetMs() {
         if (!_info || !_info.draw_date) return null;
         const parts = _info.draw_date.split('-').map(Number);
-        return Date.UTC(parts[0], parts[1] - 1, parts[2]);
+        // Add 1 to the day to get midnight ending draw_date
+        return Date.UTC(parts[0], parts[1] - 1, parts[2] + 1);
     }
 
     function tick() {

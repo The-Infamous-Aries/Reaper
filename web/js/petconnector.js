@@ -1,11 +1,19 @@
-(function () {
+﻿(function () {
 'use strict';
 
-// ── State ──────────────────────────────────────────────────────────────────
+// ── Enhanced State Variables ──────────────────────────────────────────────────
 var _users       = [];   // enriched user+pet objects from API
 var _currentUser = null; // entry where is_current_user === true
 var _detailUserId = null; // which user's detail panel is open
 var _giftTargetId = null; // target for the gift overlay
+var _filteredUsers = []; // users after applying search/filter
+var _currentSort = 'username'; // current sort field
+var _sortAsc = true; // sort direction
+var _currentRelFilter = 'all'; // relationship filter
+var _compareMode = false; // compare mode active
+var _compareSelected = []; // selected pets for comparison (max 2)
+var _leaderboardSort = 'level'; // current leaderboard sort
+var _PET_INFO_CACHE = null; // cached pet species info
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 function esc(s) {
@@ -43,12 +51,40 @@ function catImg(c) {
     return '/static/Emojis/Pets/Deco/' + (m[(c||'land').toLowerCase()] || 'Land') + '.png';
 }
 
-// ── Relationship helpers ───────────────────────────────────────────────────
+// ── Enhanced Relationship helpers with animations ─────────────────────────────
 var REL = {
-    best_friend: { label:'Best Friend', icon:'💚', color:'#4caf50', btnCls:'pc-rel-green'  },
-    friend:      { label:'Friend',      icon:'💙', color:'#2196f3', btnCls:'pc-rel-blue'   },
-    foe:         { label:'Foe',         icon:'🧡', color:'#ff9800', btnCls:'pc-rel-orange' },
-    enemy:       { label:'Enemy',       icon:'❤️', color:'#f44336', btnCls:'pc-rel-red'    },
+    best_friend: { 
+        label:'Best Friend', 
+        icon:'💚', 
+        color:'#4caf50', 
+        btnCls:'pc-rel-green',
+        emoji:'💚',
+        animation:'pcHeartbeat'
+    },
+    friend: { 
+        label:'Friend', 
+        icon:'💙', 
+        color:'#2196f3', 
+        btnCls:'pc-rel-blue',
+        emoji:'💙',
+        animation:'pcPulse'
+    },
+    foe: { 
+        label:'Foe', 
+        icon:'🧡', 
+        color:'#ff9800', 
+        btnCls:'pc-rel-orange',
+        emoji:'🧡',
+        animation:'pcShake'
+    },
+    enemy: { 
+        label:'Enemy', 
+        icon:'❤️', 
+        color:'#f44336', 
+        btnCls:'pc-rel-red',
+        emoji:'❤️',
+        animation:'pcIntensePulse'
+    },
 };
 function relColor(t) { return (REL[t] || {}).color  || '#9e9e9e'; }
 function relIcon(t)  { return (REL[t] || {}).icon   || '⚪'; }
@@ -61,7 +97,974 @@ function apiCall(url, opts) {
         .catch(function(e){ console.error('API error', e); return null; });
 }
 
-// ── Small pet cards ────────────────────────────────────────────────────────
+// ── Enhanced Search & Filter Functions ────────────────────────────────────────
+function pcApplyFilters() {
+    var searchTerm = (el('pc-search').value || '').toLowerCase();
+    var speciesFilter = el('pc-species-filter').value.toLowerCase();
+    var elementFilter = el('pc-element-filter').value.toLowerCase();
+    var categoryFilter = el('pc-category-filter').value.toLowerCase();
+    
+    _filteredUsers = _users.filter(function(user) {
+        var pet = user.pet || {};
+        var username = (user.username || '').toLowerCase();
+        var petName = (pet.name || '').toLowerCase();
+        var species = (pet.species || '').toLowerCase();
+        var element1 = (pet.element || '').toLowerCase();
+        var element2 = (pet.element2 || '').toLowerCase();
+        var category = (pet.category || '').toLowerCase();
+        
+        // Search filter
+        if (searchTerm && !username.includes(searchTerm) && !petName.includes(searchTerm) && 
+            !species.includes(searchTerm) && !element1.includes(searchTerm) && !element2.includes(searchTerm)) {
+            return false;
+        }
+        
+        // Species filter
+        if (speciesFilter && species !== speciesFilter) return false;
+        
+        // Element filter
+        if (elementFilter && element1 !== elementFilter && element2 !== elementFilter) return false;
+        
+        // Category filter
+        if (categoryFilter && category !== categoryFilter) return false;
+        
+        // Relationship filter
+        if (_currentRelFilter !== 'all') {
+            if (_currentRelFilter === 'none') {
+                if (user.relationship) return false;
+            } else {
+                if (user.relationship !== _currentRelFilter) return false;
+            }
+        }
+        
+        return true;
+    });
+    
+    // Apply sorting
+    pcSortUsers();
+    renderPets();
+    updateBadge();
+}
+
+function pcSortUsers() {
+    _filteredUsers.sort(function(a, b) {
+        var aVal = pcGetSortValue(a, _currentSort);
+        var bVal = pcGetSortValue(b, _currentSort);
+        
+        if (typeof aVal === 'string') {
+            aVal = aVal.toLowerCase();
+            bVal = bVal.toLowerCase();
+        }
+        
+        var result = aVal < bVal ? -1 : aVal > bVal ? 1 : 0;
+        return _sortAsc ? result : -result;
+    });
+}
+
+function pcGetSortValue(user, sortKey) {
+    var pet = user.pet || {};
+    var stats = pet.computed_stats || {};
+    
+    switch (sortKey) {
+        case 'username': return user.username || 'Unknown';
+        case 'level': return pet.level || 1;
+        case 'hp': return stats.hp || stats.max_health || 100;
+        case 'attack': return stats.attack || 10;
+        case 'defense': return stats.defense || 5;
+        case 'xp': return pet.experience || 0;
+        case 'total_xp': return pet.total_xp || 0;
+        case 'species': return pet.species || 'Cat';
+        case 'element': return pet.element || 'basic';
+        case 'relationship': 
+            var relOrder = {best_friend: 0, friend: 1, foe: 2, enemy: 3, null: 4};
+            return relOrder[user.relationship] || 4;
+        default: return 0;
+    }
+}
+
+function pcSetRelFilter(relType) {
+    _currentRelFilter = relType;
+    
+    // Update active tab
+    var tabs = document.querySelectorAll('.pc-filter-tab');
+    tabs.forEach(function(tab) {
+        tab.classList.remove('pc-filter-active');
+        if (tab.dataset.rel === relType) {
+            tab.classList.add('pc-filter-active');
+        }
+    });
+    
+    pcApplyFilters();
+}
+
+function pcToggleSortDir() {
+    _sortAsc = !_sortAsc;
+    el('pc-sort-dir').textContent = _sortAsc ? '↓' : '↑';
+    pcApplyFilters();
+}
+
+// ── Compare Mode Functions ─────────────────────────────────────────────────────
+window.pcToggleCompareMode = function() {
+    _compareMode = !_compareMode;
+    _compareSelected = [];
+
+    var btn     = el('pc-compare-mode-btn');
+    var clearBtn = el('pc-clear-compare-btn');
+    var icon    = el('pc-compare-icon');
+
+    if (_compareMode) {
+        btn.style.background  = 'rgba(76,175,80,0.2)';
+        btn.style.borderColor = '#4caf50';
+        btn.style.color       = '#4caf50';
+        icon.textContent      = '✓';
+        clearBtn.style.display = 'inline-block';
+        renderPets(); // re-render cards with compare-mode click handlers
+        showToast('Compare mode on — click 2 pets to compare', 'info');
+    } else {
+        btn.style.background  = '';
+        btn.style.borderColor = '';
+        btn.style.color       = '';
+        icon.textContent      = '⚖️';
+        clearBtn.style.display = 'none';
+        el('pc-compare-overlay').style.display = 'none';
+        document.body.style.overflow = '';
+        renderPets(); // re-render cards without compare-mode click handlers
+    }
+};
+
+window.pcClearCompare = function() {
+    _compareSelected = [];
+    el('pc-compare-overlay').style.display = 'none';
+    document.body.style.overflow = '';
+    // Remove selection badges without full re-render
+    document.querySelectorAll('.pc-pet-card').forEach(function(card) {
+        card.classList.remove('pc-compare-selected');
+        var badge = card.querySelector('.pc-compare-badge');
+        if (badge) badge.remove();
+    });
+};
+
+window.pcSelectForCompare = function(userId) {
+    if (!_compareMode) return;
+
+    var index = _compareSelected.indexOf(userId);
+    if (index !== -1) {
+        _compareSelected.splice(index, 1);
+    } else {
+        if (_compareSelected.length >= 2) {
+            showToast('Already have 2 pets selected — deselect one first', 'warning');
+            return;
+        }
+        _compareSelected.push(userId);
+    }
+
+    pcUpdateCompareVisuals();
+
+    if (_compareSelected.length === 2) {
+        pcShowComparison();
+    } else {
+        el('pc-compare-overlay').style.display = 'none';
+        document.body.style.overflow = '';
+    }
+};
+
+function pcUpdateCompareVisuals() {
+    document.querySelectorAll('.pc-pet-card').forEach(function(card) {
+        var userId = card.getAttribute('data-user-id');
+        var index  = _compareSelected.indexOf(userId);
+        var badge  = card.querySelector('.pc-compare-badge');
+
+        if (index !== -1) {
+            card.classList.add('pc-compare-selected');
+            if (!badge) {
+                badge = document.createElement('div');
+                badge.className = 'pc-compare-badge';
+                card.appendChild(badge);
+            }
+            badge.textContent = index + 1;
+        } else {
+            card.classList.remove('pc-compare-selected');
+            if (badge) badge.remove();
+        }
+    });
+}
+
+function pcShowComparison() {
+    var user1 = _users.find(function(u) { return u.user_id === _compareSelected[0]; });
+    var user2 = _users.find(function(u) { return u.user_id === _compareSelected[1]; });
+    if (!user1 || !user2) return;
+
+    var pet1 = user1.pet || {};
+    var pet2 = user2.pet || {};
+
+    // VS label
+    el('pc-compare-vs-label').innerHTML =
+        '<span style="color:var(--gold-primary)">' + esc(pet1.name || user1.username) + '</span>' +
+        '<span style="color:var(--text-secondary);margin:0 0.6rem">vs</span>' +
+        '<span style="color:var(--gold-primary)">' + esc(pet2.name || user2.username) + '</span>';
+
+    el('pc-compare-content').innerHTML = buildCompareModalBody(user1, user2);
+
+    el('pc-compare-overlay').style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+}
+
+// ── Build the full comparison modal body ──────────────────────────────────────
+function buildCompareModalBody(user1, user2) {
+    return '<div class="pc-cmp-grid">' +
+        buildCmpHeroCol(user1, user2) +
+        buildCmpDivider(user1, user2) +
+        buildCmpHeroCol(user2, user1) +
+    '</div>' +
+    '<div class="pc-cmp-stats-section">' +
+        buildCmpStatsTable(user1, user2) +
+    '</div>';
+}
+
+function buildCmpHeroCol(user, opponent) {
+    var pet     = user.pet || {};
+    var sp      = pet.species  || 'Cat';
+    var elem1   = pet.element  || 'basic';
+    var elem2   = pet.element2 || '';
+    var cat     = pet.category || 'land';
+    var lv      = pet.level    || 1;
+    var rel     = user.relationship || null;
+    var xpCur   = pet.experience || 0;
+    var xpMax   = pet.xp_for_next_level || 100;
+    var xpPct   = Math.min(100, Math.round(xpCur / Math.max(1, xpMax) * 100));
+    var specs   = (pet.specializations || pet.Spec || []);
+    var stats   = pet.computed_stats || {};
+
+    var relRingHtml = '';
+    if (rel) {
+        var rd = REL[rel] || {};
+        relRingHtml = '<div class="pc-hero-rel-ring" style="border-color:' + (rd.color || '#9e9e9e') + '">' + (rd.icon || '⚪') + '</div>';
+    }
+
+    var specHtml = specs.length
+        ? '<div class="pc-hero-specs">' + specs.map(function(s){ return '<span class="pc-hero-spec-tag">' + esc(s) + '</span>'; }).join('') + '</div>'
+        : '';
+
+    return '<div class="pc-cmp-hero-col">' +
+
+        // Portrait
+        '<div class="pc-hero-portrait" style="margin-bottom:0.6rem">' +
+            '<img src="' + petImg(sp) + '" class="pc-hero-pet-img" onerror="this.src=\'/static/Emojis/Pets/Cat.png\'">' +
+            '<div class="pc-hero-glow-ring"></div>' +
+            relRingHtml +
+        '</div>' +
+
+        // Pet name
+        '<div class="pc-hero-pet-name" style="font-size:1rem;margin-bottom:0.3rem">' + esc(pet.name || 'Unnamed') + '</div>' +
+
+        // Level + species
+        '<div class="pc-hero-level-species" style="margin-bottom:0.4rem">' +
+            '<span class="pc-hero-level">Lv. ' + lv + '</span>' +
+            '<span class="pc-hero-species">' + esc(sp) + '</span>' +
+        '</div>' +
+
+        // Badges
+        '<div class="pc-hero-badges" style="margin-bottom:0.4rem">' +
+            '<img src="' + elemImg(elem1) + '" class="pc-hero-badge" title="' + cap(elem1) + '">' +
+            (elem2 ? '<img src="' + elemImg(elem2) + '" class="pc-hero-badge" title="' + cap(elem2) + '">' : '') +
+            '<img src="' + catImg(cat) + '" class="pc-hero-badge" title="' + cap(cat) + '">' +
+        '</div>' +
+
+        specHtml +
+
+        // Owner
+        '<div class="pc-hero-owner" style="margin-bottom:0.8rem">' +
+            '<img src="' + esc(user.avatar_url) + '" class="pc-hero-owner-avatar" onerror="this.src=\'/static/Emojis/Pets/Cat.png\'">' +
+            '<span class="pc-hero-owner-name">' + esc(user.username) + '</span>' +
+        '</div>' +
+
+        // Quick combat stats
+        '<div class="pc-cmp-quick-stats">' +
+            buildCmpQuickStat('HP',  fmtStat(stats.hp  || stats.max_health || 100), '#4caf50') +
+            buildCmpQuickStat('ATK', fmtStat(stats.attack  || 10), '#f44336') +
+            buildCmpQuickStat('DEF', fmtStat(stats.defense || 5),  '#2196f3') +
+        '</div>' +
+
+        // XP bar
+        '<div class="pc-hero-xp" style="margin-top:auto">' +
+            '<div class="pc-hero-xp-label"><span>XP</span><span>' + fmtNum(xpCur) + ' / ' + fmtNum(xpMax) + '</span></div>' +
+            '<div class="pc-hero-xp-track"><div class="pc-hero-xp-fill" style="width:' + xpPct + '%"></div></div>' +
+            '<div class="pc-hero-total-xp">Total: ' + fmtNum(pet.total_xp || 0) + ' XP</div>' +
+        '</div>' +
+
+    '</div>';
+}
+
+function buildCmpQuickStat(label, val, color) {
+    return '<div class="pc-cmp-quick-stat">' +
+        '<div class="pc-cmp-quick-val" style="color:' + color + '">' + val + '</div>' +
+        '<div class="pc-cmp-quick-lbl">' + label + '</div>' +
+    '</div>';
+}
+
+function buildCmpDivider(user1, user2) {
+    var pet1 = user1.pet || {};
+    var pet2 = user2.pet || {};
+    var s1   = pet1.computed_stats || {};
+    var s2   = pet2.computed_stats || {};
+
+    // Determine overall winner by total of HP+ATK+DEF
+    var score1 = (s1.hp || s1.max_health || 100) + (s1.attack || 10) + (s1.defense || 5);
+    var score2 = (s2.hp || s2.max_health || 100) + (s2.attack || 10) + (s2.defense || 5);
+    var winnerName = score1 > score2 ? (pet1.name || user1.username)
+                   : score2 > score1 ? (pet2.name || user2.username)
+                   : null;
+
+    return '<div class="pc-cmp-divider">' +
+        '<div class="pc-cmp-vs">VS</div>' +
+        (winnerName ? '<div class="pc-cmp-winner-label">🏆 ' + esc(winnerName) + ' leads</div>' : '<div class="pc-cmp-winner-label">Tied</div>') +
+    '</div>';
+}
+
+function buildCmpStatsTable(user1, user2) {
+    var pet1 = user1.pet || {};
+    var pet2 = user2.pet || {};
+    var s1   = pet1.computed_stats || {};
+    var s2   = pet2.computed_stats || {};
+    var bs1  = pet1.battle_stats   || {};
+    var bs2  = pet2.battle_stats   || {};
+    var gs1  = pet1.gambling_stats || {};
+    var gs2  = pet2.gambling_stats || {};
+    var xs1  = pet1.xp_sources     || {};
+    var xs2  = pet2.xp_sources     || {};
+    var sm1  = pet1.stat_mastery   || {};
+    var sm2  = pet2.stat_mastery   || {};
+    var am1  = pet1.advantage_mastery || {};
+    var am2  = pet2.advantage_mastery || {};
+    var eq1  = getEquipSetState(pet1);
+    var eq2  = getEquipSetState(pet2);
+
+    // Helper: build a section header row
+    function sectionRow(label) {
+        return '<div class="pc-cmp-section-row">' + label + '</div>';
+    }
+
+    // Helper: build a numeric stat row
+    function numRow(icon, label, v1, v2) {
+        var w1 = v1 > v2 ? 'pc-cmp-row-win'  : '';
+        var w2 = v2 > v1 ? 'pc-cmp-row-win'  : '';
+        var l1 = v1 < v2 ? 'pc-cmp-row-lose' : '';
+        var l2 = v2 < v1 ? 'pc-cmp-row-lose' : '';
+        return '<div class="pc-cmp-row">' +
+            '<div class="pc-cmp-cell pc-cmp-cell-left ' + w1 + ' ' + l1 + '">' +
+                (v1 > v2 ? '<span class="pc-cmp-win-badge">▲</span>' : '') +
+                fmtStat(v1) +
+            '</div>' +
+            '<div class="pc-cmp-cell pc-cmp-cell-mid">' +
+                '<span class="pc-cmp-row-icon">' + icon + '</span>' +
+                '<span class="pc-cmp-row-label">' + label + '</span>' +
+            '</div>' +
+            '<div class="pc-cmp-cell pc-cmp-cell-right ' + w2 + ' ' + l2 + '">' +
+                fmtStat(v2) +
+                (v2 > v1 ? '<span class="pc-cmp-win-badge">▲</span>' : '') +
+            '</div>' +
+        '</div>';
+    }
+
+    // Helper: text row (no winner highlight — for non-numeric like species)
+    function txtRow(icon, label, t1, t2) {
+        return '<div class="pc-cmp-row">' +
+            '<div class="pc-cmp-cell pc-cmp-cell-left" style="color:var(--text-primary)">' + esc(String(t1)) + '</div>' +
+            '<div class="pc-cmp-cell pc-cmp-cell-mid">' +
+                '<span class="pc-cmp-row-icon">' + icon + '</span>' +
+                '<span class="pc-cmp-row-label">' + label + '</span>' +
+            '</div>' +
+            '<div class="pc-cmp-cell pc-cmp-cell-right" style="color:var(--text-primary)">' + esc(String(t2)) + '</div>' +
+        '</div>';
+    }
+
+    // Helper: battle type row  W/L/WR
+    function battleRow(icon, label, b1, b2) {
+        var w1 = b1.wins || 0, l1 = b1.losses || 0;
+        var w2 = b2.wins || 0, l2 = b2.losses || 0;
+        var wr1 = (w1+l1) > 0 ? ((w1/(w1+l1))*100).toFixed(0)+'%' : '—';
+        var wr2 = (w2+l2) > 0 ? ((w2/(w2+l2))*100).toFixed(0)+'%' : '—';
+        var winsWin1 = w1 > w2 ? 'pc-cmp-row-win' : w1 < w2 ? 'pc-cmp-row-lose' : '';
+        var winsWin2 = w2 > w1 ? 'pc-cmp-row-win' : w2 < w1 ? 'pc-cmp-row-lose' : '';
+        return '<div class="pc-cmp-row">' +
+            '<div class="pc-cmp-cell pc-cmp-cell-left ' + winsWin1 + '">' +
+                (w1 > w2 ? '<span class="pc-cmp-win-badge">▲</span>' : '') +
+                '<span style="color:#81c784">' + w1 + 'W</span>' +
+                '<span style="color:rgba(255,255,255,0.4);font-size:0.7rem"> / </span>' +
+                '<span style="color:#e57373">' + l1 + 'L</span>' +
+                '<span style="color:var(--text-secondary);font-size:0.65rem;margin-left:4px">' + wr1 + '</span>' +
+            '</div>' +
+            '<div class="pc-cmp-cell pc-cmp-cell-mid">' +
+                '<span class="pc-cmp-row-icon">' + icon + '</span>' +
+                '<span class="pc-cmp-row-label">' + label + '</span>' +
+            '</div>' +
+            '<div class="pc-cmp-cell pc-cmp-cell-right ' + winsWin2 + '">' +
+                '<span style="color:#81c784">' + w2 + 'W</span>' +
+                '<span style="color:rgba(255,255,255,0.4);font-size:0.7rem"> / </span>' +
+                '<span style="color:#e57373">' + l2 + 'L</span>' +
+                '<span style="color:var(--text-secondary);font-size:0.65rem;margin-left:4px">' + wr2 + '</span>' +
+                (w2 > w1 ? '<span class="pc-cmp-win-badge">▲</span>' : '') +
+            '</div>' +
+        '</div>';
+    }
+
+    // Helper: casino game row — net XP = won - lost (lost is stored as positive)
+    function casinoRow(icon, label, g1, g2, playedKey, wonKey, xpWonKey, xpLostKey) {
+        var p1 = g1[playedKey] || 0, p2 = g2[playedKey] || 0;
+        // xp_lost_total is stored as a POSITIVE number (absolute value of losses)
+        var n1 = (g1[xpWonKey] || 0) - (g1[xpLostKey] || 0);
+        var n2 = (g2[xpWonKey] || 0) - (g2[xpLostKey] || 0);
+        var wr1 = p1 > 0 ? (((g1[wonKey]||0)/p1)*100).toFixed(0)+'%' : '—';
+        var wr2 = p2 > 0 ? (((g2[wonKey]||0)/p2)*100).toFixed(0)+'%' : '—';
+        // Winner = more games played (activity) OR better net XP
+        var pw1 = p1 > p2 ? 'pc-cmp-row-win' : p1 < p2 ? 'pc-cmp-row-lose' : '';
+        var pw2 = p2 > p1 ? 'pc-cmp-row-win' : p2 < p1 ? 'pc-cmp-row-lose' : '';
+        var netCol1 = n1 >= 0 ? '#81c784' : '#e57373';
+        var netCol2 = n2 >= 0 ? '#81c784' : '#e57373';
+        return '<div class="pc-cmp-row">' +
+            '<div class="pc-cmp-cell pc-cmp-cell-left ' + pw1 + '">' +
+                (p1 > p2 ? '<span class="pc-cmp-win-badge">▲</span>' : '') +
+                p1 + ' played · ' + wr1 +
+                ' <span style="color:' + netCol1 + ';font-size:0.65rem">' + fmtXp(n1) + ' XP</span>' +
+            '</div>' +
+            '<div class="pc-cmp-cell pc-cmp-cell-mid">' +
+                '<span class="pc-cmp-row-icon">' + icon + '</span>' +
+                '<span class="pc-cmp-row-label">' + label + '</span>' +
+            '</div>' +
+            '<div class="pc-cmp-cell pc-cmp-cell-right ' + pw2 + '">' +
+                p2 + ' played · ' + wr2 +
+                ' <span style="color:' + netCol2 + ';font-size:0.65rem">' + fmtXp(n2) + ' XP</span>' +
+                (p2 > p1 ? '<span class="pc-cmp-win-badge">▲</span>' : '') +
+            '</div>' +
+        '</div>';
+    }
+
+    // Helper: casino row for games with no win-rate (powerball tickets, etc.)
+    function casinoSimpleRow(icon, label, g1, g2, playedKey) {
+        var p1 = g1[playedKey] || 0, p2 = g2[playedKey] || 0;
+        var n1 = (g1.xp_won_total || 0) - (g1.xp_lost_total || 0);
+        var n2 = (g2.xp_won_total || 0) - (g2.xp_lost_total || 0);
+        var pw1 = p1 > p2 ? 'pc-cmp-row-win' : p1 < p2 ? 'pc-cmp-row-lose' : '';
+        var pw2 = p2 > p1 ? 'pc-cmp-row-win' : p2 < p1 ? 'pc-cmp-row-lose' : '';
+        var netCol1 = n1 >= 0 ? '#81c784' : '#e57373';
+        var netCol2 = n2 >= 0 ? '#81c784' : '#e57373';
+        return '<div class="pc-cmp-row">' +
+            '<div class="pc-cmp-cell pc-cmp-cell-left ' + pw1 + '">' +
+                (p1 > p2 ? '<span class="pc-cmp-win-badge">▲</span>' : '') +
+                p1 + ' played' +
+                ' <span style="color:' + netCol1 + ';font-size:0.65rem">' + fmtXp(n1) + ' XP</span>' +
+            '</div>' +
+            '<div class="pc-cmp-cell pc-cmp-cell-mid">' +
+                '<span class="pc-cmp-row-icon">' + icon + '</span>' +
+                '<span class="pc-cmp-row-label">' + label + '</span>' +
+            '</div>' +
+            '<div class="pc-cmp-cell pc-cmp-cell-right ' + pw2 + '">' +
+                p2 + ' played' +
+                ' <span style="color:' + netCol2 + ';font-size:0.65rem">' + fmtXp(n2) + ' XP</span>' +
+                (p2 > p1 ? '<span class="pc-cmp-win-badge">▲</span>' : '') +
+            '</div>' +
+        '</div>';
+    }
+
+    var html = '';
+
+    // ── IDENTITY ──────────────────────────────────────────────────────────────
+    html += sectionRow('📋 Identity');
+    html += txtRow('📊', 'Species',  pet1.species  || 'Cat',  pet2.species  || 'Cat');
+    html += txtRow('🌍', 'Element',  cap(pet1.element || 'basic'), cap(pet2.element || 'basic'));
+    html += txtRow('🏷️', 'Category', cap(pet1.category || 'land'), cap(pet2.category || 'land'));
+    html += numRow('📊', 'Level',    pet1.level || 1,    pet2.level || 1);
+    html += numRow('✨', 'XP',       pet1.experience || 0, pet2.experience || 0);
+    html += numRow('🌟', 'Total XP', pet1.total_xp || 0,  pet2.total_xp || 0);
+
+    // Ability points: current unspent + all points ever spent (mastery + abilities)
+    function totalAbilityPointsEver(pet) {
+        var current = pet.ability_points || 0;
+        var sm = pet.stat_mastery || {};
+        var spentMastery = Object.keys(sm).reduce(function(s, k) { return s + (sm[k] || 0); }, 0);
+        var ab = pet.abilities || {};
+        // Each ability level costs 1 point per level
+        var spentAbilities = Object.keys(ab).reduce(function(s, k) { return s + (ab[k] || 0); }, 0);
+        // Advantage mastery
+        var am = pet.advantage_mastery || {};
+        var spentAdv = Object.keys(am).reduce(function(s, k) { return s + (am[k] || 0); }, 0);
+        return current + spentMastery + spentAbilities + spentAdv;
+    }
+    html += numRow('⚡', 'Ability Pts (total)', totalAbilityPointsEver(pet1), totalAbilityPointsEver(pet2));
+    html += numRow('⚡', 'Ability Pts (unspent)', pet1.ability_points || 0, pet2.ability_points || 0);
+    html += numRow('🎒', 'Inventory',    (pet1.inventory||[]).length, (pet2.inventory||[]).length);
+
+    // ── COMBAT STATS ──────────────────────────────────────────────────────────
+    html += sectionRow('⚔️ Combat Stats');
+    html += numRow('❤️', 'HP',      s1.hp || s1.max_health || 100, s2.hp || s2.max_health || 100);
+    html += numRow('⚔️', 'Attack',  s1.attack  || 10, s2.attack  || 10);
+    html += numRow('🛡️', 'Defense', s1.defense || 5,  s2.defense || 5);
+
+    // ── BASE STATS ────────────────────────────────────────────────────────────
+    html += sectionRow('📊 Base Stats');
+    html += numRow('⚔️', 'ATT', pet1.ATT || 0, pet2.ATT || 0);
+    html += numRow('🛡️', 'DEF', pet1.DEF || 0, pet2.DEF || 0);
+    html += numRow('🧠', 'INT', pet1.INT || 0, pet2.INT || 0);
+    html += numRow('💨', 'DEX', pet1.DEX || 0, pet2.DEX || 0);
+    html += numRow('💚', 'HAP', pet1.HAP || 0, pet2.HAP || 0);
+    html += numRow('⚡', 'ENE', pet1.ENE || 0, pet2.ENE || 0);
+
+    // ── EQUIPMENT ─────────────────────────────────────────────────────────────
+    html += sectionRow('🎒 Equipment');
+    html += numRow('⚡', 'Equip ×',      eq1.finalMult, eq2.finalMult);
+    html += numRow('🧵', 'Mat Pair',     eq1.matPair ? 1 : 0, eq2.matPair ? 1 : 0);
+    html += numRow('💎', 'Gem Pair',     eq1.gemPair ? 1 : 0, eq2.gemPair ? 1 : 0);
+    html += numRow('👹', 'Mon Pair',     eq1.monPair ? 1 : 0, eq2.monPair ? 1 : 0);
+    html += numRow('🎩', 'Hat Equipped', eq1.hatEquipped ? 1 : 0, eq2.hatEquipped ? 1 : 0);
+    html += numRow('🎯', 'Hat Spec Match', eq1.hatSpecMatches, eq2.hatSpecMatches);
+
+    // ── STAT MASTERY ──────────────────────────────────────────────────────────
+    var hasMastery = ['ATT','DEF','INT','DEX','HAP','ENE'].some(function(s){ return (sm1[s]||0)+(sm2[s]||0) > 0; });
+    if (hasMastery) {
+        html += sectionRow('🌟 Stat Mastery');
+        ['ATT','DEF','INT','DEX','HAP','ENE'].forEach(function(s) {
+            var icons = {ATT:'⚔️',DEF:'🛡️',INT:'🧠',DEX:'💨',HAP:'💚',ENE:'⚡'};
+            if ((sm1[s]||0) || (sm2[s]||0)) {
+                html += numRow(icons[s], s + ' Mastery', sm1[s]||0, sm2[s]||0);
+            }
+        });
+        if ((am1.type||0) || (am2.type||0)) html += numRow('🎯', 'Type Adv.',    am1.type||0, am2.type||0);
+        if ((am1.element||0) || (am2.element||0)) html += numRow('🔥', 'Elem Adv.', am1.element||0, am2.element||0);
+    }
+
+    // ── ACTIVITY ──────────────────────────────────────────────────────────────
+    html += sectionRow('🗺️ Activity');
+    // missions_completed / training_completed / play_attempts are top-level pet fields
+    var mc1 = pet1.missions_completed || 0, mc2 = pet2.missions_completed || 0;
+    var mf1 = pet1.missions_failed    || 0, mf2 = pet2.missions_failed    || 0;
+    var tc1 = pet1.training_completed || 0, tc2 = pet2.training_completed || 0;
+    var tf1 = pet1.training_failed    || 0, tf2 = pet2.training_failed    || 0;
+    var pa1 = pet1.play_attempts      || 0, pa2 = pet2.play_attempts      || 0;
+    html += numRow('🎯', 'Missions Done',   mc1, mc2);
+    html += numRow('❌', 'Missions Failed', mf1, mf2);
+    html += numRow('🏋️', 'Training Done',   tc1, tc2);
+    html += numRow('❌', 'Training Failed', tf1, tf2);
+    html += numRow('🎮', 'Play Attempts',   pa1, pa2);
+
+    // ── BATTLE RECORDS ────────────────────────────────────────────────────────
+    var battleTypes = [
+        {key:'pvp',             icon:'⚔️',  label:'PvP'},
+        {key:'npc',             icon:'🤖',  label:'NPC'},
+        {key:'wild_encounter',  icon:'🌿',  label:'Wild'},
+        {key:'boss',            icon:'👹',  label:'Boss'},
+        {key:'tournament',      icon:'🏆',  label:'Tournament'},
+        {key:'survivor_series', icon:'💀',  label:'Survivor Series'},
+    ];
+    var anyBattle = battleTypes.some(function(bt) {
+        var b1 = bs1[bt.key] || {}, b2 = bs2[bt.key] || {};
+        return (b1.wins||0)+(b1.losses||0)+(b2.wins||0)+(b2.losses||0) > 0;
+    });
+    if (anyBattle) {
+        html += sectionRow('🏆 Battle Records');
+        battleTypes.forEach(function(bt) {
+            var b1 = bs1[bt.key] || {wins:0,losses:0};
+            var b2 = bs2[bt.key] || {wins:0,losses:0};
+            if ((b1.wins||0)+(b1.losses||0)+(b2.wins||0)+(b2.losses||0) === 0) return;
+            html += battleRow(bt.icon, bt.label, b1, b2);
+            if ((b1.eliminations||0) || (b2.eliminations||0)) {
+                html += numRow('💥', bt.label + ' Elims', b1.eliminations||0, b2.eliminations||0);
+            }
+        });
+    }
+
+    // ── CASINO ────────────────────────────────────────────────────────────────
+    // All game types with their exact field names from user_data_manager.py
+    var casinoGames = [
+        {key:'slots',         icon:'🎰', label:'Slots',         playedKey:'total_games_played', wonKey:'games_won',   xpWonKey:'xp_won_total', xpLostKey:'xp_lost_total'},
+        {key:'blackjack',     icon:'🃏', label:'Blackjack',     playedKey:'rounds_played',      wonKey:'rounds_won',  xpWonKey:'xp_won_total', xpLostKey:'xp_lost_total'},
+        {key:'holdem',        icon:'♠️', label:"Hold'em",       playedKey:'games_played',       wonKey:'games_won',   xpWonKey:'xp_won_total', xpLostKey:'xp_lost_total'},
+        {key:'craps',         icon:'🎲', label:'Craps',         playedKey:'games_played',       wonKey:'games_won',   xpWonKey:'xp_won_total', xpLostKey:'xp_lost_total'},
+        {key:'races',         icon:'🏇', label:'Races',         playedKey:'races_played',       wonKey:'races_won',   xpWonKey:'xp_won_total', xpLostKey:'xp_lost_total'},
+        {key:'coinflip',      icon:'🪙', label:'Coin Flip',     playedKey:'games_played',       wonKey:'games_won',   xpWonKey:'xp_won_total', xpLostKey:'xp_lost_total'},
+        {key:'rps',           icon:'✊', label:'Rock Paper Scissors', playedKey:'games_played', wonKey:'games_won',   xpWonKey:'xp_won_total', xpLostKey:'xp_lost_total'},
+        {key:'wheel_of_pets', icon:'🎡', label:'Wheel of Pets', playedKey:'games_played',       wonKey:'games_won',   xpWonKey:'xp_won_total', xpLostKey:'xp_lost_total'},
+        {key:'keno',          icon:'🎯', label:'Keno',          playedKey:'games_played',       wonKey:'games_won',   xpWonKey:'xp_won_total', xpLostKey:'xp_lost_total'},
+        {key:'scratch_cards', icon:'🎫', label:'Scratch Cards', playedKey:'games_played',       wonKey:'games_won',   xpWonKey:'xp_won_total', xpLostKey:'xp_lost_total'},
+    ];
+    // Powerball uses tickets_bought instead of games_played
+    var powerball1 = gs1.powerball || {}, powerball2 = gs2.powerball || {};
+
+    var anyCasino = casinoGames.some(function(g) {
+        return (gs1[g.key]||{})[g.playedKey] || (gs2[g.key]||{})[g.playedKey];
+    }) || (powerball1.tickets_bought || 0) || (powerball2.tickets_bought || 0);
+
+    if (anyCasino) {
+        html += sectionRow('🎰 Casino');
+        casinoGames.forEach(function(g) {
+            var c1 = gs1[g.key] || {}, c2 = gs2[g.key] || {};
+            if (!(c1[g.playedKey]||0) && !(c2[g.playedKey]||0)) return;
+            html += casinoRow(g.icon, g.label, c1, c2, g.playedKey, g.wonKey, g.xpWonKey, g.xpLostKey);
+        });
+        if ((powerball1.tickets_bought || 0) || (powerball2.tickets_bought || 0)) {
+            html += casinoSimpleRow('🎟️', 'Powerball', powerball1, powerball2, 'tickets_bought');
+        }
+    }
+
+    // ── XP SOURCES ────────────────────────────────────────────────────────────
+    // xp_sources values can be negative (losses). Use absolute comparison for winner.
+    var xpGroups = [
+        {label:'Play XP',     icon:'🎮', keys:['play']},
+        {label:'Training XP', icon:'🏋️', keys:['training']},
+        {label:'Mission XP',  icon:'🎯', keys:['mission','mission_fail']},
+        {label:'Quest XP',    icon:'📜', keys:['quest']},
+        {label:'Battle XP',   icon:'⚔️', keys:['battle','npc_battle','pvp_battle']},
+        {label:'Slots XP',    icon:'🎰', keys:['slots_win','slots_bet']},
+        {label:'Blackjack XP',icon:'🃏', keys:['blackjack_win','blackjack_bet']},
+        {label:"Hold'em XP",  icon:'♠️', keys:['holdem_win','holdem_buyin','holdem_cashout']},
+        {label:'Craps XP',    icon:'🎲', keys:['craps_win','craps_bet']},
+        {label:'Races XP',    icon:'🏇', keys:['race_win','race_bet']},
+        {label:'Coin Flip XP',icon:'🪙', keys:['coinflip_win']},
+        {label:'Minigame XP', icon:'🎮', keys:['minigame_bet','rps_win','rps_tie']},
+        {label:'Casino XP (total)', icon:'🎰', keys:['slots_win','slots_bet','blackjack_win','blackjack_bet','holdem_win','holdem_buyin','holdem_cashout','craps_win','craps_bet','race_win','race_bet','coinflip_win','minigame_bet','rps_win','rps_tie']},
+    ];
+    var anyXp = xpGroups.some(function(g) {
+        var n1 = g.keys.reduce(function(s,k){ return s+(xs1[k]||0); }, 0);
+        var n2 = g.keys.reduce(function(s,k){ return s+(xs2[k]||0); }, 0);
+        return n1 || n2;
+    });
+    if (anyXp) {
+        html += sectionRow('✨ XP Sources');
+        xpGroups.forEach(function(g) {
+            var n1 = g.keys.reduce(function(s,k){ return s+(xs1[k]||0); }, 0);
+            var n2 = g.keys.reduce(function(s,k){ return s+(xs2[k]||0); }, 0);
+            if (!n1 && !n2) return;
+            // For XP sources: winner = higher absolute value (more activity), color by sign
+            var abs1 = Math.abs(n1), abs2 = Math.abs(n2);
+            var w1 = abs1 > abs2 ? 'pc-cmp-row-win' : abs1 < abs2 ? 'pc-cmp-row-lose' : '';
+            var w2 = abs2 > abs1 ? 'pc-cmp-row-win' : abs2 < abs1 ? 'pc-cmp-row-lose' : '';
+            var col1 = n1 >= 0 ? 'var(--text-primary)' : '#e57373';
+            var col2 = n2 >= 0 ? 'var(--text-primary)' : '#e57373';
+            html += '<div class="pc-cmp-row">' +
+                '<div class="pc-cmp-cell pc-cmp-cell-left ' + w1 + '" style="color:' + col1 + '">' +
+                    (abs1 > abs2 ? '<span class="pc-cmp-win-badge">▲</span>' : '') +
+                    fmtXp(n1) +
+                '</div>' +
+                '<div class="pc-cmp-cell pc-cmp-cell-mid">' +
+                    '<span class="pc-cmp-row-icon">' + g.icon + '</span>' +
+                    '<span class="pc-cmp-row-label">' + g.label + '</span>' +
+                '</div>' +
+                '<div class="pc-cmp-cell pc-cmp-cell-right ' + w2 + '" style="color:' + col2 + '">' +
+                    fmtXp(n2) +
+                    (abs2 > abs1 ? '<span class="pc-cmp-win-badge">▲</span>' : '') +
+                '</div>' +
+            '</div>';
+        });
+    }
+
+    return '<div class="pc-cmp-table-header">' +
+        '<div style="flex:1;text-align:right;color:var(--gold-primary);font-weight:700">' + esc(pet1.name || user1.username) + '</div>' +
+        '<div style="width:160px;text-align:center;color:var(--text-secondary);font-size:0.7rem;text-transform:uppercase;letter-spacing:1px">Stat</div>' +
+        '<div style="flex:1;text-align:left;color:var(--gold-primary);font-weight:700">'  + esc(pet2.name || user2.username) + '</div>' +
+    '</div>' +
+    '<div class="pc-cmp-table">' + html + '</div>';
+}
+
+function pcBuildCompareCard(user, opponent) {
+    var pet = user.pet || {};
+    var stats = pet.computed_stats || {};
+    var oppStats = (opponent.pet || {}).computed_stats || {};
+    
+    var compareStats = [
+        {key: 'Level', val: pet.level || 1, opp: (opponent.pet || {}).level || 1},
+        {key: 'HP', val: stats.hp || stats.max_health || 100, opp: oppStats.hp || oppStats.max_health || 100},
+        {key: 'ATK', val: stats.attack || 10, opp: oppStats.attack || 10},
+        {key: 'DEF', val: stats.defense || 5, opp: oppStats.defense || 5},
+        {key: 'ATT', val: pet.ATT || 0, opp: (opponent.pet || {}).ATT || 0},
+        {key: 'DEF', val: pet.DEF || 0, opp: (opponent.pet || {}).DEF || 0},
+        {key: 'INT', val: pet.INT || 0, opp: (opponent.pet || {}).INT || 0},
+        {key: 'DEX', val: pet.DEX || 0, opp: (opponent.pet || {}).DEX || 0},
+        {key: 'HAP', val: pet.HAP || 0, opp: (opponent.pet || {}).HAP || 0},
+        {key: 'ENE', val: pet.ENE || 0, opp: (opponent.pet || {}).ENE || 0},
+    ];
+    
+    var statsHtml = compareStats.map(function(stat) {
+        var isWinner = stat.val > stat.opp;
+        var isLoser = stat.val < stat.opp;
+        var cls = isWinner ? 'pc-compare-stat-winner' : isLoser ? 'pc-compare-stat-loser' : '';
+        
+        return '<div class="pc-compare-stat ' + cls + '">' +
+            '<span>' + stat.key + '</span>' +
+            '<span>' + fmtStat(stat.val) + '</span>' +
+        '</div>';
+    }).join('');
+    
+    return '<div class="pc-compare-pet">' +
+        '<div style="display:flex;align-items:center;gap:0.8rem;margin-bottom:0.8rem">' +
+            '<img src="' + esc(user.avatar_url) + '" style="width:32px;height:32px;border-radius:50%;border:1px solid rgba(255,215,0,0.3)">' +
+            '<div>' +
+                '<div style="font-weight:700;color:var(--gold-primary)">' + esc(pet.name || 'Unnamed') + '</div>' +
+                '<div style="font-size:0.75rem;color:var(--text-secondary)">' + esc(user.username) + '</div>' +
+            '</div>' +
+        '</div>' +
+        '<div class="pc-compare-stats">' + statsHtml + '</div>' +
+    '</div>';
+}
+
+// ── Enhanced Leaderboard Functions ─────────────────────────────────────────────
+function pcLbSort(sortKey) {
+    _leaderboardSort = sortKey;
+    
+    // Update active button
+    var btns = document.querySelectorAll('.pc-lb-sort-btn');
+    btns.forEach(function(btn) {
+        btn.classList.remove('pc-lb-active');
+        if (btn.dataset.lbkey === sortKey) {
+            btn.classList.add('pc-lb-active');
+        }
+    });
+    
+    pcUpdateLeaderboard();
+}
+
+function pcUpdateLeaderboard() {
+    var sortedUsers = _users.slice().sort(function(a, b) {
+        var aVal = pcGetLeaderboardValue(a, _leaderboardSort);
+        var bVal = pcGetLeaderboardValue(b, _leaderboardSort);
+        return bVal - aVal; // Always descending for leaderboard
+    });
+    
+    var html = sortedUsers.slice(0, 20).map(function(user, index) {
+        var value = pcGetLeaderboardValue(user, _leaderboardSort);
+        var displayValue = pcFormatLeaderboardValue(value, _leaderboardSort);
+        
+        return '<div class="pc-lb-item" onclick="openDetail(\'' + esc(user.user_id) + '\')">' +
+            '<div class="pc-lb-rank">' + (index + 1) + '</div>' +
+            '<img src="' + esc(user.avatar_url) + '" class="pc-lb-avatar">' +
+            '<div class="pc-lb-name">' + esc(user.username) + '</div>' +
+            '<div class="pc-lb-value">' + displayValue + '</div>' +
+        '</div>';
+    }).join('');
+    
+    el('pc-lb-list').innerHTML = html;
+}
+
+function pcGetLeaderboardValue(user, key) {
+    var pet = user.pet || {};
+    var stats = pet.computed_stats || {};
+    var battleStats = pet.battle_stats || {};
+    var gamblingStats = pet.gambling_stats || {};
+    var xpSources = pet.xp_sources || {};
+    
+    switch (key) {
+        // Identity & Progress
+        case 'level': return pet.level || 1;
+        case 'total_xp': return pet.total_xp || 0;
+        case 'xp_progress': 
+            var cur = pet.experience || 0;
+            var max = pet.xp_for_next_level || 100;
+            return Math.round((cur / max) * 100);
+            
+        // Base Stats
+        case 'ATT': return pet.ATT || 0;
+        case 'DEF': return pet.DEF || 0;
+        case 'INT': return pet.INT || 0;
+        case 'DEX': return pet.DEX || 0;
+        case 'HAP': return pet.HAP || 0;
+        case 'ENE': return pet.ENE || 0;
+        
+        // Combat Stats
+        case 'cs_hp': return stats.hp || stats.max_health || 100;
+        case 'cs_attack': return stats.attack || 10;
+        case 'cs_defense': return stats.defense || 5;
+        
+        // Battle Records
+        case 'pvp_wins': return (battleStats.pvp || {}).wins || 0;
+        case 'pvp_losses': return (battleStats.pvp || {}).losses || 0;
+        case 'pvp_wr': 
+            var pvp = battleStats.pvp || {};
+            var w = pvp.wins || 0, l = pvp.losses || 0;
+            return (w + l) > 0 ? Math.round((w / (w + l)) * 100) : 0;
+        case 'npc_wins': return (battleStats.npc || {}).wins || 0;
+        case 'boss_wins': return (battleStats.boss || {}).wins || 0;
+        case 'tournament_wins': return (battleStats.tournament || {}).wins || 0;
+        case 'total_wins': 
+            return Object.keys(battleStats).reduce(function(sum, type) {
+                return sum + ((battleStats[type] || {}).wins || 0);
+            }, 0);
+        case 'total_losses':
+            return Object.keys(battleStats).reduce(function(sum, type) {
+                return sum + ((battleStats[type] || {}).losses || 0);
+            }, 0);
+        case 'eliminations':
+            return Object.keys(battleStats).reduce(function(sum, type) {
+                return sum + ((battleStats[type] || {}).eliminations || 0);
+            }, 0);
+            
+        // Activity
+        case 'missions_completed': return pet.missions_completed || 0;
+        case 'missions_failed': return pet.missions_failed || 0;
+        case 'training_completed': return pet.training_completed || 0;
+        case 'training_failed': return pet.training_failed || 0;
+        case 'play_attempts': return pet.play_attempts || 0;
+        
+        // Casino
+        case 'casino_net':
+            return Object.keys(gamblingStats).reduce(function(sum, game) {
+                var g = gamblingStats[game] || {};
+                return sum + (g.xp_won_total || 0) + (g.xp_lost_total || 0);
+            }, 0);
+        case 'casino_played':
+            return Object.keys(gamblingStats).reduce(function(sum, game) {
+                var g = gamblingStats[game] || {};
+                return sum + (g.total_games_played || g.rounds_played || g.games_played || g.races_played || 0);
+            }, 0);
+        case 'slots_played': return (gamblingStats.slots || {}).total_games_played || 0;
+        case 'blackjack_played': return (gamblingStats.blackjack || {}).rounds_played || 0;
+        case 'holdem_played': return (gamblingStats.holdem || {}).games_played || 0;
+        case 'craps_played': return (gamblingStats.craps || {}).games_played || 0;
+        case 'races_played': return (gamblingStats.races || {}).races_played || 0;
+        
+        // Economy
+        case 'stock_tokens': return pet.stock_tokens || 0;
+        case 'ability_points': return pet.ability_points || 0;
+        case 'equip_mult': 
+            // Calculate equipment multiplier
+            var eq = pet.equipment || {};
+            var level = pet.level || 1;
+            var levelBonus = Math.floor(level / 50);
+            // Simplified calculation - would need full logic for accuracy
+            return 1 + levelBonus;
+        case 'inventory_count': return (pet.inventory || []).length;
+        
+        // XP Sources
+        case 'xp_play': return xpSources.play || 0;
+        case 'xp_training': return xpSources.training || 0;
+        case 'xp_mission': return (xpSources.mission || 0) + (xpSources.mission_fail || 0);
+        case 'xp_battle': return (xpSources.battle || 0) + (xpSources.npc_battle || 0) + (xpSources.pvp_battle || 0);
+        case 'xp_casino':
+            var casinoKeys = ['slots_win','slots_bet','blackjack_win','blackjack_bet','holdem_win','holdem_buyin','holdem_cashout','craps_win','craps_bet','race_win','race_bet','coinflip_win','minigame_bet','rps_win','rps_tie'];
+            return casinoKeys.reduce(function(sum, key) {
+                return sum + (xpSources[key] || 0);
+            }, 0);
+            
+        default: return 0;
+    }
+}
+
+function pcFormatLeaderboardValue(value, key) {
+    if (key.includes('_wr') || key === 'xp_progress') {
+        return value + '%';
+    }
+    if (key.includes('xp') || key.includes('tokens')) {
+        return fmtStat(value);
+    }
+    return value.toLocaleString();
+}
+
+function pcToggleLeaderboard() {
+    var list = el('pc-lb-list');
+    if (!list) return;
+    list.style.display = list.style.display === 'none' ? '' : 'none';
+}
+
+// ── Enhanced Gift Functions ────────────────────────────────────────────────────
+function pcUpdateGiftQty() {
+    var sel = el('pc-gift-select');
+    var opt = sel.options[sel.selectedIndex];
+    var max = opt ? (parseInt(opt.dataset.qty) || 1) : 1;
+    var inp = el('pc-gift-qty');
+    var maxSpan = el('pc-gift-qty-max');
+    
+    inp.max = max;
+    maxSpan.textContent = '/ ' + max;
+    if (parseInt(inp.value) > max) inp.value = max;
+    
+    // Update preview
+    var preview = el('pc-gift-item-preview');
+    if (opt && opt.value) {
+        var itemType = opt.dataset.type || 'Material';
+        var imgPath = '/static/Emojis/Pets/Equipment/' + opt.value.toLowerCase().replace(/ /g, '_') + '.png';
+        preview.innerHTML = '<img src="' + imgPath + '" onerror="this.src=\'/static/Emojis/Pets/Deco/Basic.png\'">';
+    } else {
+        preview.innerHTML = '';
+    }
+}
+
+// ── Enhanced Hover Tooltips ───────────────────────────────────────────────────
+function pcShowHoverTip(event, userId) {
+    var user = _users.find(function(u) { return u.user_id === userId; });
+    if (!user) return;
+    
+    var pet = user.pet || {};
+    var stats = pet.computed_stats || {};
+    
+    var html = '<div style="text-align:center;margin-bottom:0.5rem">' +
+        '<div style="font-weight:700;color:var(--gold-primary)">' + esc(pet.name || 'Unnamed') + '</div>' +
+        '<div style="font-size:0.7rem;color:var(--text-secondary)">' + esc(user.username) + '</div>' +
+    '</div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0.3rem;font-size:0.7rem">' +
+        '<div>Level: <strong>' + (pet.level || 1) + '</strong></div>' +
+        '<div>Species: <strong>' + esc(pet.species || 'Cat') + '</strong></div>' +
+        '<div>HP: <strong>' + fmtStat(stats.hp || stats.max_health || 100) + '</strong></div>' +
+        '<div>ATK: <strong>' + fmtStat(stats.attack || 10) + '</strong></div>' +
+        '<div>DEF: <strong>' + fmtStat(stats.defense || 5) + '</strong></div>' +
+        '<div>XP: <strong>' + fmtStat(pet.experience || 0) + '</strong></div>' +
+    '</div>';
+    
+    var tip = el('pc-hover-tip');
+    el('pc-hover-tip-inner').innerHTML = html;
+    tip.style.display = 'block';
+    tip.style.left = (event.pageX + 10) + 'px';
+    tip.style.top = (event.pageY - 10) + 'px';
+}
+
+function pcHideHoverTip() {
+    el('pc-hover-tip').style.display = 'none';
+}
+
+// ── Enhanced Initialization ───────────────────────────────────────────────────
+function pcInitializeFilters() {
+    // Populate species filter
+    var species = [...new Set(_users.map(function(u) { return (u.pet || {}).species || 'Cat'; }))].sort();
+    var speciesSelect = el('pc-species-filter');
+    species.forEach(function(sp) {
+        var opt = document.createElement('option');
+        opt.value = sp.toLowerCase();
+        opt.textContent = sp;
+        speciesSelect.appendChild(opt);
+    });
+    
+    // Populate element filter
+    var elements = [...new Set(_users.flatMap(function(u) {
+        var pet = u.pet || {};
+        var elems = [pet.element, pet.element2].filter(Boolean);
+        return elems.map(function(e) { return e || 'basic'; });
+    }))].sort();
+    var elementSelect = el('pc-element-filter');
+    elements.forEach(function(elem) {
+        var opt = document.createElement('option');
+        opt.value = elem.toLowerCase();
+        opt.textContent = cap(elem);
+        elementSelect.appendChild(opt);
+    });
+    
+    // Populate category filter
+    var categories = [...new Set(_users.map(function(u) { return (u.pet || {}).category || 'land'; }))].sort();
+    var categorySelect = el('pc-category-filter');
+    categories.forEach(function(cat) {
+        var opt = document.createElement('option');
+        opt.value = cat.toLowerCase();
+        opt.textContent = cap(cat);
+        categorySelect.appendChild(opt);
+    });
+    
+    // Set up sort change handler
+    el('pc-sort-select').addEventListener('change', function() {
+        _currentSort = this.value;
+        pcApplyFilters();
+    });
+    
+    // Show controls and compare button
+    el('pc-controls').style.display = '';
+    el('pc-compare-mode-btn').style.display = '';
+}
+
+// ── Enhanced Small pet cards with compare mode and hover ──────────────────────
 function buildCard(user) {
     var pet  = user.pet || {};
     var elem1 = pet.element  || 'basic';
@@ -75,8 +1078,16 @@ function buildCard(user) {
     var xpPct = Math.min(100, Math.round(xpCur / Math.max(1, xpMax) * 100));
     var rel   = user.relationship || null;
 
+    var cardClass = 'pc-pet-card' + (rel ? ' pc-rel-border-' + rel : '');
+    if (_compareMode) cardClass += ' pc-compare-mode';
+    
+    // Fix compare mode click handlers - prevent detail panel opening during compare mode
+    var cardEvents = _compareMode 
+        ? 'onclick="event.stopPropagation(); pcSelectForCompare(\'' + esc(user.user_id) + '\'); return false;"'
+        : 'onclick="openDetail(\'' + esc(user.user_id) + '\')" onmouseenter="pcShowHoverTip(event, \'' + esc(user.user_id) + '\')" onmouseleave="pcHideHoverTip()"';
+
     return '<div class="col-xl-2 col-lg-3 col-md-4 col-sm-6">' +
-        '<div class="pc-pet-card' + (rel ? ' pc-rel-border-' + rel : '') + '" style="' + (rel ? 'margin-bottom:14px' : '') + '" onclick="openDetail(\'' + esc(user.user_id) + '\')">' +
+        '<div class="' + cardClass + '" data-user-id="' + esc(user.user_id) + '" style="' + (rel ? 'margin-bottom:14px' : '') + '" ' + cardEvents + '>' +
 
             // Avatar + name row
             '<div class="pc-card-top">' +
@@ -117,7 +1128,7 @@ function buildCard(user) {
         '</div></div>';
 }
 
-// ── Detail panel ───────────────────────────────────────────────────────────
+// ── Enhanced Wide Detail Panel ────────────────────────────────────────────────
 function openDetail(userId) {
     var user = _users.find(function(u){ return u.user_id === userId; });
     if (!user) return;
@@ -137,79 +1148,330 @@ function openDetail(userId) {
     var mutual = user.mutual_relationship || {};
     var isMe  = !!user.is_current_user;
 
-    // Spec tags
-    var specs = (pet.specializations || pet.Spec || []);
-    var specHtml = specs.length
-        ? '<div class="pc-spec-tags">' + specs.map(function(s){ return '<span class="pc-spec-tag">' + esc(s) + '</span>'; }).join('') + '</div>'
-        : '';
+    // Build Hero Section (Left Column)
+    var heroHtml = buildHeroSection(user, pet, elem1, elem2, cat, sp, lv, xpCur, xpMax, xpPct, rel);
+    
+    // Build Stats Section (Right Column)
+    var statsHtml = buildStatsSection(pet, user);
+    
+    // Build Relationship Section (Bottom Left)
+    var relationshipHtml = buildRelationshipSectionWide(user, rel, mutual, isMe);
+    
+    // Build Gift Section (Bottom Right)
+    var giftHtml = buildGiftSectionWide(user, isMe);
 
-    var html =
-        // Top: avatar + pet portrait + identity (matching MyPet layout)
-        '<div class="pc-detail-hero">' +
-            '<div class="pc-detail-portrait">' +
-                '<img src="' + petImg(sp) + '" onerror="this.src=\'/static/Emojis/Pets/Cat.png\'" class="pc-detail-pet-img" alt="' + esc(sp) + '">' +
-                (rel ? '<div class="pc-detail-rel-ring" style="border-color:' + relColor(rel) + ';box-shadow:0 0 14px ' + relColor(rel) + '60">' + relIcon(rel) + '</div>' : '') +
-            '</div>' +
-            '<div class="pc-detail-identity">' +
-                '<div class="pc-detail-petname">' + esc(pet.name || 'Unnamed Pet') + '</div>' +
-                '<div class="pc-detail-owner">' +
-                    '<img src="' + esc(user.avatar_url) + '" onerror="this.src=\'/static/Emojis/Pets/Cat.png\'" class="pc-detail-owner-avatar" alt=""> ' +
-                    esc(user.username) +
-                '</div>' +
-                '<div class="pc-detail-meta">' +
-                    '<span class="pc-detail-lv">Lv. ' + lv + '</span>' +
-                    '<img src="' + elemImg(elem1) + '" class="pc-detail-elem-icon" title="' + cap(elem1) + '">' +
-                    (elem2 ? '<img src="' + elemImg(elem2) + '" class="pc-detail-elem-icon" title="' + cap(elem2) + '">' : '') +
-                    '<img src="' + catImg(cat) + '" class="pc-detail-elem-icon" title="' + cap(cat) + '">' +
-                '</div>' +
-                '<div class="pc-detail-species">' + esc(sp) + '</div>' +
-                specHtml +
-            '</div>' +
-        '</div>' +
+    // Populate the sections
+    el('pc-detail-hero').innerHTML = heroHtml;
+    el('pc-detail-stats').innerHTML = statsHtml;
+    el('pc-mutual-status').innerHTML = buildMutualStatus(user, mutual);
+    el('pc-relationship-cards').innerHTML = relationshipHtml;
+    el('pc-gift-items-grid').innerHTML = giftHtml;
+    
+    // Initialize gift functionality
+    if (!isMe) {
+        initializeGiftSection(user);
+    }
 
-        // XP bar
-        '<div class="pc-detail-xp">' +
-            '<div class="d-flex justify-content-between" style="font-size:0.72rem;color:var(--text-secondary);margin-bottom:3px">' +
-                '<span>Experience</span><span>' + fmtNum(xpCur) + ' / ' + fmtNum(xpMax) + ' XP</span>' +
-            '</div>' +
-            '<div class="pc-xp-track"><div class="pc-xp-fill" style="width:' + xpPct + '%"></div></div>' +
-        '</div>' +
-
-        // Equipment section (matching MyPet)
-        buildEquippedSection(pet) +
-
-        // Equipment bonus section (matching MyPet)
-        buildEquipBonusSection(pet) +
-
-        // Base stats section (collapsible like MyPet)
-        buildBaseStatsSection(pet) +
-
-        // Combat stats section
-        buildCombatStatsSection(pet) +
-
-        // Breakdown section (collapsible like MyPet)
-        buildBreakdownSection(pet, user) +
-
-        // Relationship section (only for other users)
-        (!isMe ? buildRelationshipSection(user, rel, mutual) : '') +
-
-        // Gift button (only for other users)
-        (!isMe ? '<div class="pc-detail-section"><button class="pc-rel-btn" style="color:var(--gold-secondary);border-color:rgba(255,215,0,0.4);width:100%" onclick="openGift(\'' + esc(userId) + '\')">🎁 Gift an Item</button></div>' : '');
-
-    el('pc-detail-inner').innerHTML = html;
+    // Show the panel
     el('pc-detail-overlay').style.display = 'flex';
     document.body.style.overflow = 'hidden';
 }
 
-function statBox(lbl, val, color) {
-    return '<div class="pc-stat-box">' +
-        '<div class="pc-stat-box-val" style="color:' + color + '">' + fmtStat(val) + '</div>' +
-        '<div class="pc-stat-box-lbl">' + lbl + '</div>' +
+function buildHeroSection(user, pet, elem1, elem2, cat, sp, lv, xpCur, xpMax, xpPct, rel) {
+    var specs = (pet.specializations || pet.Spec || []);
+    var specHtml = specs.length
+        ? '<div class="pc-hero-specs">' + specs.map(function(s){ return '<span class="pc-hero-spec-tag">' + esc(s) + '</span>'; }).join('') + '</div>'
+        : '';
+
+    var relRingHtml = '';
+    if (rel) {
+        var relData = REL[rel] || {};
+        relRingHtml = '<div class="pc-hero-rel-ring" style="border-color:' + (relData.color || '#9e9e9e') + '">' + (relData.icon || '⚪') + '</div>';
+    }
+
+    // Single wrapper div — flex column, everything stacked cleanly
+    return '<div class="pc-hero-inner">' +
+
+        // Portrait with glow ring + relationship ring
+        '<div class="pc-hero-portrait">' +
+            '<img src="' + petImg(sp) + '" class="pc-hero-pet-img" alt="' + esc(sp) + '" onerror="this.src=\'/static/Emojis/Pets/Cat.png\'">' +
+            '<div class="pc-hero-glow-ring"></div>' +
+            relRingHtml +
+        '</div>' +
+
+        // Pet name
+        '<div class="pc-hero-pet-name">' + esc(pet.name || 'Unnamed Pet') + '</div>' +
+
+        // Level + species row
+        '<div class="pc-hero-level-species">' +
+            '<span class="pc-hero-level">Lv. ' + lv + '</span>' +
+            '<span class="pc-hero-species">' + esc(sp) + '</span>' +
+        '</div>' +
+
+        // Element / category badges
+        '<div class="pc-hero-badges">' +
+            '<img src="' + elemImg(elem1) + '" class="pc-hero-badge" title="' + cap(elem1) + '">' +
+            (elem2 ? '<img src="' + elemImg(elem2) + '" class="pc-hero-badge" title="' + cap(elem2) + '">' : '') +
+            '<img src="' + catImg(cat) + '" class="pc-hero-badge" title="' + cap(cat) + '">' +
+        '</div>' +
+
+        // Spec tags
+        specHtml +
+
+        // Owner row
+        '<div class="pc-hero-owner">' +
+            '<img src="' + esc(user.avatar_url) + '" class="pc-hero-owner-avatar" alt="' + esc(user.username) + '" onerror="this.src=\'/static/Emojis/Pets/Cat.png\'">' +
+            '<span class="pc-hero-owner-name">' + esc(user.username) + '</span>' +
+        '</div>' +
+
+        // XP bar — pinned to bottom of left column via mt-auto
+        '<div class="pc-hero-xp">' +
+            '<div class="pc-hero-xp-label">' +
+                '<span>Experience</span>' +
+                '<span>' + fmtNum(xpCur) + ' / ' + fmtNum(xpMax) + '</span>' +
+            '</div>' +
+            '<div class="pc-hero-xp-track">' +
+                '<div class="pc-hero-xp-fill" style="width:' + xpPct + '%"></div>' +
+            '</div>' +
+            '<div class="pc-hero-total-xp">Total: ' + fmtNum(pet.total_xp || 0) + ' XP</div>' +
+        '</div>' +
+
     '</div>';
 }
-function baseRow(lbl, val) {
-    return '<div class="pc-base-row"><span class="pc-base-lbl">' + lbl + '</span><span class="pc-base-val">' + val + '</span></div>';
+
+function buildStatsSection(pet, user) {
+    return buildCombatStatsSection(pet) +
+           buildBaseStatsSection(pet) +
+           buildEquippedSection(pet) +
+           buildEquipBonusSection(pet) +
+           buildEquipDetailSection(pet) +
+           buildAbilitiesSection(pet) +
+           buildActivitySection(pet) +
+           buildBreakdownSection(pet, user) +
+           buildSpeciesSection(pet);
 }
+
+function buildMutualStatus(user, mutual) {
+    if (!mutual.user_to_target && !mutual.target_to_user) {
+        return '<div style="text-align:center;color:var(--text-secondary);font-style:italic;">No mutual relationship data</div>';
+    }
+    
+    return '<div style="display:flex;flex-direction:column;gap:0.3rem;">' +
+        '<div>You → ' + esc(user.username) + ': <strong style="color:' + relColor(mutual.user_to_target) + '">' + relLabel(mutual.user_to_target) + ' ' + relIcon(mutual.user_to_target) + '</strong></div>' +
+        '<div>' + esc(user.username) + ' → You: <strong style="color:' + relColor(mutual.target_to_user) + '">' + relLabel(mutual.target_to_user) + ' ' + relIcon(mutual.target_to_user) + '</strong></div>' +
+    '</div>';
+}
+
+function buildRelationshipSectionWide(user, rel, mutual, isMe) {
+    if (isMe) {
+        return '<div style="text-align:center;color:var(--text-secondary);font-style:italic;padding:2rem;">This is your own pet</div>';
+    }
+
+    var relationships = [
+        {key: 'best_friend', label: 'Best Friend', emoji: '💚', class: 'pc-rel-best-friend'},
+        {key: 'friend', label: 'Friend', emoji: '💙', class: 'pc-rel-friend'},
+        {key: 'foe', label: 'Foe', emoji: '🧡', class: 'pc-rel-foe'},
+        {key: 'enemy', label: 'Enemy', emoji: '❤️', class: 'pc-rel-enemy'}
+    ];
+
+    return relationships.map(function(r) {
+        var isActive = rel === r.key;
+        var cardClass = 'pc-rel-card ' + r.class + (isActive ? ' pc-rel-active' : '');
+        
+        return '<div class="' + cardClass + '" onclick="setRelWide(\'' + esc(user.user_id) + '\',\'' + r.key + '\')">' +
+            '<span class="pc-rel-emoji-large">' + r.emoji + '</span>' +
+            '<div class="pc-rel-label">' + r.label + '</div>' +
+        '</div>';
+    }).join('') + 
+    (rel ? '<div class="pc-rel-card" onclick="setRelWide(\'' + esc(user.user_id) + '\',null)" style="grid-column:span 2;background:rgba(244,67,54,0.1);border-color:rgba(244,67,54,0.3);">' +
+        '<span class="pc-rel-emoji-large">✕</span>' +
+        '<div class="pc-rel-label">Remove</div>' +
+    '</div>' : '');
+}
+
+function buildGiftSectionWide(user, isMe) {
+    if (isMe) {
+        return '<div style="text-align:center;color:var(--text-secondary);font-style:italic;padding:2rem;">Cannot gift to yourself</div>';
+    }
+
+    var inv = (_currentUser && _currentUser.pet && _currentUser.pet.inventory) || [];
+    if (inv.length === 0) {
+        return '<div style="text-align:center;color:var(--text-secondary);font-style:italic;padding:2rem;">No items in inventory</div>';
+    }
+
+    // Group items by name and sum quantities
+    var itemGroups = {};
+    inv.forEach(function(item) {
+        var name = item.name || 'Unknown';
+        if (!itemGroups[name]) {
+            itemGroups[name] = {
+                name: name,
+                type: item.type || 'Material',
+                rarity: item.rarity || 'Common',
+                count: 0
+            };
+        }
+        itemGroups[name].count += (item.count || item.quantity || 1);
+    });
+
+    // Sort items by rarity and name
+    var rarityOrder = {Mythic: 0, Epic: 1, Rare: 2, Uncommon: 3, Common: 4};
+    var sortedItems = Object.values(itemGroups).sort(function(a, b) {
+        var rarityDiff = (rarityOrder[a.rarity] || 4) - (rarityOrder[b.rarity] || 4);
+        if (rarityDiff !== 0) return rarityDiff;
+        return a.name.localeCompare(b.name);
+    });
+
+    return sortedItems.map(function(item) {
+        var imgPath = '/static/Emojis/Pets/Equipment/' + item.name.toLowerCase().replace(/ /g, '_') + '.png';
+        var rarityClass = 'pc-rarity-' + item.rarity.toLowerCase();
+        
+        return '<div class="pc-gift-item-card" data-item="' + esc(item.name) + '" data-count="' + item.count + '" data-type="' + esc(item.type) + '" onclick="selectGiftItem(this)">' +
+            '<img src="' + imgPath + '" class="pc-gift-item-img" onerror="this.src=\'/static/Emojis/Pets/Deco/Basic.png\'">' +
+            '<div class="pc-gift-item-name ' + rarityClass + '">' + esc(item.name) + '</div>' +
+            '<div class="pc-gift-item-qty">x' + item.count + '</div>' +
+        '</div>';
+    }).join('');
+}
+
+// Gift functionality
+var _selectedGiftItem = null;
+
+function initializeGiftSection(user) {
+    _selectedGiftItem = null;
+    updateGiftSelection();
+    
+    // Set up search functionality
+    var searchInput = el('pc-gift-search');
+    var filterSelect = el('pc-gift-filter');
+    
+    if (searchInput) {
+        searchInput.addEventListener('input', filterGiftItems);
+    }
+    if (filterSelect) {
+        filterSelect.addEventListener('change', filterGiftItems);
+    }
+}
+
+window.selectGiftItem = function(cardElement) {
+    // Remove previous selection
+    var cards = document.querySelectorAll('.pc-gift-item-card');
+    cards.forEach(function(card) {
+        card.classList.remove('pc-gift-selected');
+    });
+    
+    // Select new item
+    cardElement.classList.add('pc-gift-selected');
+    _selectedGiftItem = {
+        name: cardElement.dataset.item,
+        count: parseInt(cardElement.dataset.count),
+        type: cardElement.dataset.type
+    };
+    
+    updateGiftSelection();
+};
+
+function updateGiftSelection() {
+    var infoEl = el('pc-gift-selected-text');
+    var qtyEl = el('pc-gift-quantity');
+    var sendBtn = el('pc-gift-send-btn');
+    
+    if (_selectedGiftItem) {
+        infoEl.textContent = _selectedGiftItem.name + ' (x' + _selectedGiftItem.count + ' available)';
+        qtyEl.max = _selectedGiftItem.count;
+        qtyEl.value = Math.min(parseInt(qtyEl.value) || 1, _selectedGiftItem.count);
+        sendBtn.disabled = false;
+    } else {
+        infoEl.textContent = 'No item selected';
+        qtyEl.max = 1;
+        qtyEl.value = 1;
+        sendBtn.disabled = true;
+    }
+}
+
+function filterGiftItems() {
+    var searchTerm = (el('pc-gift-search').value || '').toLowerCase();
+    var typeFilter = el('pc-gift-filter').value;
+    
+    var cards = document.querySelectorAll('.pc-gift-item-card');
+    cards.forEach(function(card) {
+        var itemName = card.dataset.item.toLowerCase();
+        var itemType = card.dataset.type;
+        
+        var matchesSearch = !searchTerm || itemName.includes(searchTerm);
+        var matchesType = !typeFilter || itemType === typeFilter;
+        
+        card.style.display = (matchesSearch && matchesType) ? '' : 'none';
+    });
+}
+
+window.pcSendGiftInline = function() {
+    if (!_selectedGiftItem || !_detailUserId) {
+        showToast('Please select an item first', 'warning');
+        return;
+    }
+
+    var quantity = parseInt(el('pc-gift-quantity').value) || 1;
+    var sendBtn = el('pc-gift-send-btn');
+    
+    sendBtn.textContent = 'Sending…';
+    sendBtn.disabled = true;
+
+    apiCall('/api/world/gift', {
+        method: 'POST',
+        body: JSON.stringify({ 
+            target_user_id: _detailUserId, 
+            item_name: _selectedGiftItem.name, 
+            quantity: quantity 
+        })
+    }).then(function(r) {
+        sendBtn.textContent = 'Send Gift';
+        sendBtn.disabled = false;
+        
+        if (r && r.success) {
+            showToast(r.message || 'Gift sent!', 'success');
+            _selectedGiftItem = null;
+            updateGiftSelection();
+            // Refresh gift items
+            var user = _users.find(function(u){ return u.user_id === _detailUserId; });
+            if (user) {
+                loadPets(); // Refresh inventory
+            }
+        } else {
+            showToast((r && r.detail) || 'Failed to send gift', 'error');
+        }
+    });
+};
+
+// Enhanced relationship setting for wide panel
+window.setRelWide = function(userId, type) {
+    var user = _users.find(function(u){ return u.user_id === userId; });
+    if (!user) return;
+
+    var p;
+    if (!type) {
+        p = apiCall('/api/world/relationship/' + encodeURIComponent(userId), { method:'DELETE' });
+    } else {
+        p = apiCall('/api/world/relationship', {
+            method: 'POST',
+            body: JSON.stringify({ target_user_id: userId, relationship_type: type })
+        });
+    }
+
+    p.then(function(r) {
+        if (r && r.success) {
+            user.relationship = type || null;
+            // Refresh the relationship cards
+            var relationshipHtml = buildRelationshipSectionWide(user, type, user.mutual_relationship || {}, false);
+            el('pc-relationship-cards').innerHTML = relationshipHtml;
+            // Refresh main grid
+            renderPets();
+            showToast(r.message || 'Updated', 'success');
+        } else {
+            showToast((r && r.detail) || 'Failed', 'error');
+        }
+    });
+};
 
 // ── Equipment helpers (mirrors pet_brain.py StatsCalculator exactly) ─────────
 function equipImgFile(item) {
@@ -377,50 +1639,54 @@ function buildEquipBonusSection(pet) {
 
 function buildBaseStatsSection(pet) {
     var statKeys = ['ATT','DEF','INT','DEX','HAP','ENE'];
+    var statColors = {ATT:'#f44336',DEF:'#2196f3',INT:'#9c27b0',DEX:'#00bcd4',HAP:'#4caf50',ENE:'#ff9800'};
+    var statIcons  = {ATT:'⚔️',DEF:'🛡️',INT:'🧠',DEX:'💨',HAP:'💚',ENE:'⚡'};
     var specs = (pet.specializations || pet.Spec || []);
     var cs = pet.computed_stats || {};
-
-    // Raw base stats: pet.ATT etc. (top-level, set by _migrate_pet).
-    // computed_stats.ATT = base + equipment bonuses (the total).
-    // We show raw base here. If pet.ATT is missing/0 but computed_stats.ATT exists,
-    // back-calculate: base = total - equipment_bonus.
     var state = getEquipSetState(pet);
 
     var bodyId = 'pc-base-stats-body';
     var chevId = 'pc-base-stats-chev';
 
-    var html = '<div class="pc-detail-section">' +
-        '<div class="pc-collapse-header" onclick="pcToggleCollapse(\'' + bodyId + '\',\'' + chevId + '\')">' +
-            '<span class="pc-detail-section-title" style="margin:0">📊 Base Stats</span>' +
-            '<span id="' + chevId + '" class="pc-chev pc-chev-collapsed">▼</span>' +
-        '</div>' +
-        '<div id="' + bodyId + '" class="pc-collapse-body" style="display:none">' +
-            '<div class="row g-1 mb-2">';
-
+    // Compute base values and find max for bar scaling
+    var vals = {};
     statKeys.forEach(function(s) {
-        // pet[s] is the raw base value stored at the top level of the pet object.
-        // It may be a number, a string, or missing. Parse carefully.
         var raw = pet[s];
         var base;
         if (raw !== undefined && raw !== null && raw !== '') {
             base = parseInt(raw, 10);
             if (isNaN(base)) base = 0;
         } else {
-            // Not present at top level — try to back-calculate from computed total
-            // by subtracting the equipment bonus for this stat
             var total = cs[s] !== undefined ? parseInt(cs[s], 10) : 0;
             var equipBonus = calcEquipBonusForStat(pet, s, state);
             base = Math.max(0, total - equipBonus);
         }
+        vals[s] = base;
+    });
+    var maxVal = Math.max.apply(null, statKeys.map(function(s){ return vals[s]; })) || 1;
 
+    var html = '<div class="pc-detail-section">' +
+        '<div class="pc-collapse-header" onclick="pcToggleCollapse(\'' + bodyId + '\',\'' + chevId + '\')">' +
+            '<span class="pc-detail-section-title" style="margin:0">📊 Base Stats</span>' +
+            '<span id="' + chevId + '" class="pc-chev pc-chev-collapsed">▼</span>' +
+        '</div>' +
+        '<div id="' + bodyId + '" class="pc-collapse-body" style="display:none">';
+
+    statKeys.forEach(function(s) {
+        var v = vals[s];
         var isSp = specs.indexOf(s) !== -1;
-        html += '<div class="col-6"><div class="pc-stat-row">' +
-            '<img src="/static/Emojis/Pets/Deco/' + s + '.png" onerror="this.style.display=\'none\'" style="width:22px;height:22px;object-fit:contain">' +
-            '<span class="' + (isSp ? 'pc-stat-special' : '') + '">' + s + ': ' + base + '</span>' +
-            '</div></div>';
+        var pct = Math.round((v / maxVal) * 100);
+        var col = statColors[s] || 'var(--gold-primary)';
+        html += '<div class="pc-stat-bar-row">' +
+            '<span class="pc-stat-bar-label ' + (isSp ? 'pc-stat-special' : '') + '" style="color:' + col + '">' + statIcons[s] + ' ' + s + '</span>' +
+            '<div class="pc-stat-bar-track">' +
+                '<div class="pc-stat-bar-fill" style="width:' + pct + '%;background:' + col + ';' + (isSp ? 'box-shadow:0 0 6px ' + col + '80' : '') + '"></div>' +
+            '</div>' +
+            '<span class="pc-stat-bar-val" style="color:' + (isSp ? col : 'var(--text-primary)') + '">' + v + (isSp ? ' ★' : '') + '</span>' +
+        '</div>';
     });
 
-    return html + '</div></div></div>';
+    return html + '</div></div>';
 }
 
 // Calculate the equipment bonus for a single stat, mirroring Python logic
@@ -481,14 +1747,286 @@ function calcEquipBonusForStat(pet, stat, state) {
     return total;
 }
 
+// ── Species info: description + actions ───────────────────────────────────────
+// PET_INFO is injected inline from the server or loaded from a global.
+// We embed a compact lookup table here for the most common data.
+var _PET_INFO_CACHE = null;
+function getPetInfo(species) {
+    // Try window.PET_INFO first (if server injects it), then our cache
+    var src = (window.PET_INFO) || _PET_INFO_CACHE || {};
+    return src[species] || null;
+}
+
+function buildSpeciesSection(pet) {
+    var sp   = pet.species || 'Cat';
+    var info = getPetInfo(sp);
+    if (!info) return '';
+
+    var desc    = info.Descriptions || info.description || '';
+    var actions = info.Actions || {};
+    var atk  = actions.Attack  || '—';
+    var def  = actions.Defense || '—';
+    var chg  = actions.Charge  || '—';
+
+    // Custom action labels override defaults
+    var labels = pet.action_labels || {};
+    if (labels.attack)  atk = labels.attack;
+    if (labels.defense) def = labels.defense;
+    if (labels.charge)  chg = labels.charge;
+
+    var bodyId = 'pc-species-body';
+    var chevId = 'pc-species-chev';
+
+    return '<div class="pc-detail-section">' +
+        '<div class="pc-collapse-header" onclick="pcToggleCollapse(\'' + bodyId + '\',\'' + chevId + '\')">' +
+            '<span class="pc-detail-section-title" style="margin:0">🐾 Species Info</span>' +
+            '<span id="' + chevId + '" class="pc-chev pc-chev-collapsed">▼</span>' +
+        '</div>' +
+        '<div id="' + bodyId + '" class="pc-collapse-body" style="display:none">' +
+            (desc ? '<p class="pc-species-desc mb-3">' + esc(desc) + '</p>' : '') +
+            '<div class="d-flex gap-2 flex-wrap">' +
+                '<div class="pc-action-card">' +
+                    '<div class="pc-action-type">⚔️ Attack</div>' +
+                    '<div class="pc-action-name">' + esc(atk) + '</div>' +
+                '</div>' +
+                '<div class="pc-action-card">' +
+                    '<div class="pc-action-type">🛡️ Defense</div>' +
+                    '<div class="pc-action-name">' + esc(def) + '</div>' +
+                '</div>' +
+                '<div class="pc-action-card">' +
+                    '<div class="pc-action-type">⚡ Charge</div>' +
+                    '<div class="pc-action-name">' + esc(chg) + '</div>' +
+                '</div>' +
+            '</div>' +
+        '</div>' +
+    '</div>';
+}
+
+// ── Equipment detail: show each item's bonuses ────────────────────────────────
+function buildEquipDetailSection(pet) {
+    var eq = pet.equipment || {};
+    var state = getEquipSetState(pet);
+
+    // Collect all equipped items with their slot labels
+    var equipped = [];
+    var mat = eq.Material;
+    if (Array.isArray(mat)) { mat.forEach(function(m,i){ if(m&&m.name) equipped.push({slot:'Material '+(i+1), item:m}); }); }
+    else if (mat&&mat.name) equipped.push({slot:'Material', item:mat});
+    var gems = eq.Gems;
+    if (Array.isArray(gems)) { gems.forEach(function(g,i){ if(g&&g.name) equipped.push({slot:'Gem '+(i+1), item:g}); }); }
+    else if (gems&&gems.name) equipped.push({slot:'Gem', item:gems});
+    var mons = eq.Monsters;
+    if (Array.isArray(mons)) { mons.forEach(function(m,i){ if(m&&m.name) equipped.push({slot:'Monster '+(i+1), item:m}); }); }
+    else if (mons&&mons.name) equipped.push({slot:'Monster', item:mons});
+    var hat = eq.Hat;
+    if (Array.isArray(hat)) hat = hat[0]||null;
+    if (hat&&hat.name) equipped.push({slot:'Hat', item:hat});
+    var pot = eq.Potion;
+    if (Array.isArray(pot)) pot = pot[0]||null;
+    if (pot&&pot.name) equipped.push({slot:'Potion', item:pot});
+
+    if (!equipped.length) return '';
+
+    var rarityColor = {Common:'#9e9e9e',Uncommon:'#4caf50',Rare:'#2196f3',Epic:'#9c27b0',Mythic:'#f59e0b'};
+
+    var rows = equipped.map(function(e) {
+        var item = e.item;
+        var rCol = rarityColor[item.rarity] || '#9e9e9e';
+        var bonuses = item.bonuses || {};
+        var bonusChips = Object.keys(bonuses).map(function(k){
+            return '<span class="pc-equip-bonus-chip">+' + bonuses[k] + ' ' + k + '</span>';
+        }).join('');
+        var src = '/static/Emojis/Pets/Equipment/' + equipImgFile(item);
+        return '<div style="display:flex;align-items:flex-start;gap:8px;padding:6px 0;border-bottom:1px solid rgba(255,215,0,0.07)">' +
+            '<img src="' + src + '" onerror="this.src=\'/static/Emojis/Pets/Deco/Basic.png\'" style="width:32px;height:32px;object-fit:contain;flex-shrink:0">' +
+            '<div style="flex:1;min-width:0">' +
+                '<div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap">' +
+                    '<span style="font-size:0.72rem;font-weight:700;color:var(--text-primary)">' + esc(item.name) + '</span>' +
+                    '<span style="font-size:0.6rem;color:' + rCol + '">' + esc(item.rarity||'') + '</span>' +
+                    '<span style="font-size:0.58rem;color:var(--text-secondary)">' + esc(e.slot) + '</span>' +
+                '</div>' +
+                (bonusChips ? '<div class="pc-equip-bonus-row">' + bonusChips + '</div>' : '') +
+            '</div>' +
+        '</div>';
+    }).join('');
+
+    var bodyId = 'pc-equip-detail-body';
+    var chevId = 'pc-equip-detail-chev';
+
+    return '<div class="pc-detail-section">' +
+        '<div class="pc-collapse-header" onclick="pcToggleCollapse(\'' + bodyId + '\',\'' + chevId + '\')">' +
+            '<span class="pc-detail-section-title" style="margin:0">🎒 Equipment Details</span>' +
+            '<span id="' + chevId + '" class="pc-chev pc-chev-collapsed">▼</span>' +
+        '</div>' +
+        '<div id="' + bodyId + '" class="pc-collapse-body" style="display:none">' +
+            '<div style="font-size:0.65rem;color:var(--text-secondary);margin-bottom:6px">Multiplier: <strong style="color:var(--gold-primary)">x' + state.finalMult + '</strong></div>' +
+            rows +
+        '</div>' +
+    '</div>';
+}
+
+// ── Abilities & Mastery ───────────────────────────────────────────────────────
+function buildAbilitiesSection(pet) {
+    var abilities    = pet.abilities || {};
+    var statMastery  = pet.stat_mastery || {};
+    var advMastery   = pet.advantage_mastery || {};
+    var abilityPts   = pet.ability_points || 0;
+
+    var hasAny = Object.keys(abilities).length > 0 ||
+                 Object.keys(statMastery).some(function(k){ return (statMastery[k]||0) > 0; }) ||
+                 Object.keys(advMastery).some(function(k){ return (advMastery[k]||0) > 0; }) ||
+                 abilityPts > 0;
+
+    if (!hasAny) return '';
+
+    var bodyId = 'pc-abilities-body';
+    var chevId = 'pc-abilities-chev';
+
+    var statKeys = ['ATT','DEF','INT','DEX','HAP','ENE'];
+    var branchColors = {ATT:'#f44336',DEF:'#2196f3',INT:'#9c27b0',DEX:'#00bcd4',HAP:'#4caf50',ENE:'#ff9800'};
+    var branchIcons  = {ATT:'⚔️',DEF:'🛡️',INT:'🧠',DEX:'💨',HAP:'💚',ENE:'⚡'};
+
+    // ── Stat Mastery bars ─────────────────────────────────────────────────────
+    var masteryHtml = '';
+    var hasMastery = statKeys.some(function(s){ return (statMastery[s]||0) > 0; });
+    if (hasMastery) {
+        masteryHtml = '<div style="font-size:0.62rem;text-transform:uppercase;letter-spacing:1px;color:var(--text-secondary);margin-bottom:6px">Stat Mastery</div>';
+        statKeys.forEach(function(s) {
+            var pts = statMastery[s] || 0;
+            if (!pts) return;
+            var mult = (1.0 + pts * 0.1).toFixed(1);
+            var col = branchColors[s] || 'var(--gold-primary)';
+            var pct = Math.min(100, pts * 5); // 20 pts = 100%
+            masteryHtml += '<div class="pc-mastery-row">' +
+                '<span class="pc-mastery-label" style="color:' + col + '">' + branchIcons[s] + ' ' + s + '</span>' +
+                '<div class="pc-mastery-track"><div class="pc-mastery-fill" style="width:' + pct + '%;background:' + col + '"></div></div>' +
+                '<span class="pc-mastery-val">' + mult + 'x</span>' +
+            '</div>';
+        });
+    }
+
+    // ── Advantage Mastery ─────────────────────────────────────────────────────
+    var advHtml = '';
+    var typeAdv = advMastery['type'] || 0;
+    var elemAdv = advMastery['element'] || 0;
+    if (typeAdv > 0 || elemAdv > 0) {
+        advHtml = '<div class="pc-adv-mastery-row">' +
+            (typeAdv > 0 ? '<div class="pc-adv-card"><div class="pc-adv-label">Type Adv.</div><div class="pc-adv-val">+' + (typeAdv*0.1).toFixed(1) + '</div></div>' : '') +
+            (elemAdv > 0 ? '<div class="pc-adv-card"><div class="pc-adv-label">Elem Adv.</div><div class="pc-adv-val">+' + (elemAdv*0.1).toFixed(1) + '</div></div>' : '') +
+        '</div>';
+    }
+
+    // ── Unlocked Abilities ────────────────────────────────────────────────────
+    var abilitiesHtml = '';
+    var unlockedIds = Object.keys(abilities).filter(function(id){ return (abilities[id]||0) > 0; });
+    if (unlockedIds.length) {
+        abilitiesHtml = '<div style="font-size:0.62rem;text-transform:uppercase;letter-spacing:1px;color:var(--text-secondary);margin:8px 0 6px">Unlocked Abilities</div>' +
+            '<div style="display:grid;grid-template-columns:1fr 1fr;gap:5px">';
+        unlockedIds.forEach(function(id) {
+            var lvl = abilities[id] || 0;
+            // Derive stat branch from id prefix
+            var branch = id.split('_')[0].toUpperCase();
+            var col = branchColors[branch] || 'var(--gold-primary)';
+            var displayName = id.replace(/_/g,' ').replace(/\b\w/g,function(c){return c.toUpperCase();});
+            var pips = '';
+            for (var i = 1; i <= 5; i++) {
+                pips += '<div class="pc-pip' + (i <= lvl ? ' pc-pip-filled' : '') + '"></div>';
+            }
+            abilitiesHtml += '<div class="pc-ability-card">' +
+                '<div class="pc-ability-name" style="color:' + col + '">' + esc(displayName) + '</div>' +
+                '<div class="pc-ability-level-pips">' + pips + '</div>' +
+            '</div>';
+        });
+        abilitiesHtml += '</div>';
+    }
+
+    var html = '<div class="pc-detail-section">' +
+        '<div class="pc-collapse-header" onclick="pcToggleCollapse(\'' + bodyId + '\',\'' + chevId + '\')">' +
+            '<span class="pc-detail-section-title" style="margin:0">🌟 Abilities & Mastery</span>' +
+            '<span id="' + chevId + '" class="pc-chev pc-chev-collapsed">▼</span>' +
+        '</div>' +
+        '<div id="' + bodyId + '" class="pc-collapse-body" style="display:none">';
+
+    if (abilityPts > 0) {
+        html += '<div style="margin-bottom:8px"><span class="pc-ap-badge">✨ ' + abilityPts + ' Ability Point' + (abilityPts !== 1 ? 's' : '') + ' Available</span></div>';
+    }
+    html += masteryHtml + advHtml + abilitiesHtml;
+
+    return html + '</div></div>';
+}
+
+// ── Activity & Missions ───────────────────────────────────────────────────────
+function buildActivitySection(pet) {
+    var mc  = pet.missions_completed || 0;
+    var mf  = pet.missions_failed    || 0;
+    var tc  = pet.training_completed || 0;
+    var tf  = pet.training_failed    || 0;
+    var pa  = pet.play_attempts      || 0;
+
+    var hasAny = mc || mf || tc || tf || pa;
+    if (!hasAny) return '';
+
+    var bodyId = 'pc-activity-body';
+    var chevId = 'pc-activity-chev';
+
+    var mTotal = mc + mf;
+    var mWr = mTotal > 0 ? Math.round(mc/mTotal*100) : 0;
+    var tTotal = tc + tf;
+    var tWr = tTotal > 0 ? Math.round(tc/tTotal*100) : 0;
+
+    var html = '<div class="pc-detail-section">' +
+        '<div class="pc-collapse-header" onclick="pcToggleCollapse(\'' + bodyId + '\',\'' + chevId + '\')">' +
+            '<span class="pc-detail-section-title" style="margin:0">🗺️ Activity</span>' +
+            '<span id="' + chevId + '" class="pc-chev pc-chev-collapsed">▼</span>' +
+        '</div>' +
+        '<div id="' + bodyId + '" class="pc-collapse-body" style="display:none">' +
+            '<div class="d-flex gap-2 flex-wrap">';
+
+    if (mTotal > 0) {
+        html += '<div class="pc-activity-chip">' +
+            '<div class="pc-activity-chip-icon">🎯</div>' +
+            '<div class="pc-activity-chip-label">Missions</div>' +
+            '<div class="pc-activity-chip-val" style="color:#4caf50">' + mc + 'W</div>' +
+            '<div style="font-size:0.6rem;color:var(--text-secondary)">' + mf + 'F · ' + mWr + '%</div>' +
+        '</div>';
+    }
+    if (tTotal > 0) {
+        html += '<div class="pc-activity-chip">' +
+            '<div class="pc-activity-chip-icon">🏋️</div>' +
+            '<div class="pc-activity-chip-label">Training</div>' +
+            '<div class="pc-activity-chip-val" style="color:#2196f3">' + tc + 'W</div>' +
+            '<div style="font-size:0.6rem;color:var(--text-secondary)">' + tf + 'F · ' + tWr + '%</div>' +
+        '</div>';
+    }
+    if (pa > 0) {
+        html += '<div class="pc-activity-chip">' +
+            '<div class="pc-activity-chip-icon">🎮</div>' +
+            '<div class="pc-activity-chip-label">Play</div>' +
+            '<div class="pc-activity-chip-val" style="color:#ff9800">' + pa.toLocaleString() + '</div>' +
+            '<div style="font-size:0.6rem;color:var(--text-secondary)">attempts</div>' +
+        '</div>';
+    }
+
+    return html + '</div></div></div>';
+}
+
 function buildCombatStatsSection(pet) {
     var stats = pet.computed_stats || {};
     return '<div class="pc-detail-section">' +
         '<div class="pc-detail-section-title">⚔️ Combat Stats</div>' +
         '<div class="pc-detail-stats-grid">' +
-            statBox('HP',  stats.hp  || stats.max_health || 100, '#4caf50') +
-            statBox('ATK', stats.attack   || 10, '#f44336') +
-            statBox('DEF', stats.defense  || 5,  '#2196f3') +
+            '<div class="pc-stat-box pc-stat-box-glow-hp">' +
+                '<div class="pc-stat-box-val" style="color:#4caf50">' + fmtStat(stats.hp || stats.max_health || 100) + '</div>' +
+                '<div class="pc-stat-box-lbl">HP</div>' +
+            '</div>' +
+            '<div class="pc-stat-box pc-stat-box-glow-atk">' +
+                '<div class="pc-stat-box-val" style="color:#f44336">' + fmtStat(stats.attack || 10) + '</div>' +
+                '<div class="pc-stat-box-lbl">ATK</div>' +
+            '</div>' +
+            '<div class="pc-stat-box pc-stat-box-glow-def">' +
+                '<div class="pc-stat-box-val" style="color:#2196f3">' + fmtStat(stats.defense || 5) + '</div>' +
+                '<div class="pc-stat-box-lbl">DEF</div>' +
+            '</div>' +
         '</div>' +
     '</div>';
 }
@@ -505,6 +2043,7 @@ function buildBreakdownSection(pet, user) {
         { label:'Mission', emoji:'🎯', keys:['mission','mission_fail'] },
         { label:'Quest',   emoji:'📜', keys:['quest'] },
         { label:'Battle',  emoji:'⚔️', keys:['battle','npc_battle','pvp_battle'] },
+        { label:'Casino',  emoji:'🎰', keys:['slots_win','slots_bet','blackjack_win','blackjack_bet','holdem_win','holdem_buyin','holdem_cashout','craps_win','craps_bet','race_win','race_bet','coinflip_win','minigame_bet','rps_win','rps_tie'] },
     ];
     var xpRows = activities.map(function(a) {
         var net = a.keys.reduce(function(sum, k){ return sum + (xs[k] || 0); }, 0);
@@ -527,67 +2066,66 @@ function buildBreakdownSection(pet, user) {
 
     // ── Battle Records ────────────────────────────────────────────────────────
     var bs = pet.battle_stats || {};
-    var battleTypes = [{key:'pvp',name:'PvP'},{key:'npc',name:'NPC'},{key:'wild_encounter',name:'Wild'},{key:'boss',name:'Boss'}];
+    var battleTypes = [
+        {key:'pvp',name:'PvP',icon:'⚔️'},
+        {key:'npc',name:'NPC',icon:'🤖'},
+        {key:'wild_encounter',name:'Wild',icon:'🌿'},
+        {key:'boss',name:'Boss',icon:'👹'},
+        {key:'tournament',name:'Tourn.',icon:'🏆'},
+        {key:'survivor_series',name:'SS',icon:'💀'},
+    ];
     var battleHtml = '<div class="pc-breakdown-sub">Battle Records</div><div class="d-flex gap-2 flex-wrap mb-2">';
+    var anyBattle = false;
     battleTypes.forEach(function(bt) {
         var s = bs[bt.key] || {wins:0, losses:0};
-        var wr = (s.wins + s.losses) > 0 ? ((s.wins / (s.wins + s.losses)) * 100).toFixed(0) : 0;
-        battleHtml += '<div class="pc-mini-stat-card">' +
-            '<div class="pc-mini-label">' + bt.name + '</div>' +
-            '<div><span class="text-success" style="font-size:0.78rem;font-weight:700">' + (s.wins||0) + 'W</span>' +
-            '<span style="color:var(--text-secondary);font-size:0.7rem"> / </span>' +
-            '<span class="text-danger" style="font-size:0.78rem;font-weight:700">' + (s.losses||0) + 'L</span></div>' +
-            '<div style="font-size:0.62rem;color:var(--text-secondary)">' + wr + '% WR</div>' +
-            '</div>';
+        var w = s.wins || 0, l = s.losses || 0;
+        if (!w && !l) return;
+        anyBattle = true;
+        var wr = (w + l) > 0 ? ((w / (w + l)) * 100).toFixed(0) : 0;
+        var elims = s.eliminations ? (' · ' + s.eliminations + ' elim') : '';
+        battleHtml += '<div class="pc-battle-card">' +
+            '<div class="pc-battle-card-name">' + bt.icon + ' ' + bt.name + '</div>' +
+            '<div class="pc-battle-wl"><span class="text-success">' + w + 'W</span><span style="color:var(--text-secondary);font-size:0.7rem"> / </span><span class="text-danger">' + l + 'L</span></div>' +
+            '<div class="pc-battle-wr">' + wr + '% WR' + elims + '</div>' +
+        '</div>';
     });
     battleHtml += '</div>';
 
     // ── Casino ────────────────────────────────────────────────────────────────
     var gs = pet.gambling_stats || {};
     var games = [
-        {key:'slots',     name:'Slots',    playedKey:'total_games_played'},
-        {key:'blackjack', name:'BJ',       playedKey:'rounds_played'},
-        {key:'holdem',    name:"Hold'em",  playedKey:'games_played'},
-        {key:'craps',     name:'Craps',    playedKey:'games_played'},
-        {key:'races',     name:'Races',    playedKey:'races_played'},
-        {key:'coinflip',  name:'Coin Flip',playedKey:'games_played'},
-        {key:'rps',       name:'RPS',      playedKey:'games_played'},
+        {key:'slots',     name:'Slots',    icon:'🎰', playedKey:'total_games_played', wonKey:'games_won', wonXpKey:'xp_won_total', lostXpKey:'xp_lost_total'},
+        {key:'blackjack', name:'BJ',       icon:'🃏', playedKey:'rounds_played',      wonKey:'rounds_won', wonXpKey:'xp_won_total', lostXpKey:'xp_lost_total'},
+        {key:'holdem',    name:"Hold'em",  icon:'♠️', playedKey:'games_played',       wonKey:'games_won', wonXpKey:'xp_won_total', lostXpKey:'xp_lost_total'},
+        {key:'craps',     name:'Craps',    icon:'🎲', playedKey:'games_played',       wonKey:'games_won', wonXpKey:'xp_won_total', lostXpKey:'xp_lost_total'},
+        {key:'races',     name:'Races',    icon:'🏇', playedKey:'races_played',       wonKey:'races_won', wonXpKey:'xp_won_total', lostXpKey:'xp_lost_total'},
     ];
-    var netByGame = {
-        'Slots':    (xs.slots_win||0)     + (xs.slots_bet||0),
-        'Races':    (xs.race_win||0)      + (xs.race_bet||0),
-        'BJ':       (xs.blackjack_win||0) + (xs.blackjack_bet||0) + (xs.blackjack_double||0) + (xs.blackjack_split||0),
-        'Craps':    (xs.craps_win||0)     + (xs.craps_bet||0),
-        "Hold'em":  (xs.holdem_win||0)    + (xs.holdem_buyin||0)  + (xs.holdem_cashout||0),
-        'Coin Flip':(xs.coinflip_win||0)  + (xs.minigame_bet||0),
-        'RPS':      (xs.rps_win||0)       + (xs.rps_tie||0),
-    };
+    var casinoHtml = '';
     var playedGames = games.filter(function(g) {
         var s = gs[g.key] || {};
-        var played = s[g.playedKey] || s.games_played || s.races_played || s.rounds_played || s.total_games_played || 0;
-        return played > 0 || Math.abs(netByGame[g.name] || 0) > 0;
+        return (s[g.playedKey] || 0) > 0;
     });
-    var casinoHtml = '';
     if (playedGames.length) {
         casinoHtml += '<div class="pc-breakdown-sub">Casino</div><div class="d-flex gap-2 flex-wrap mb-2">';
         playedGames.forEach(function(g) {
             var s = gs[g.key] || {};
-            var played = s[g.playedKey] || s.games_played || s.races_played || s.rounds_played || s.total_games_played || 0;
-            var wins   = s.games_won || s.races_won || s.rounds_won || 0;
-            var net    = netByGame[g.name] || 0;
+            var played = s[g.playedKey] || 0;
+            var wins   = s[g.wonKey] || 0;
+            var wonXp  = s[g.wonXpKey] || 0;
+            var lostXp = s[g.lostXpKey] || 0;
+            var net    = wonXp + lostXp; // lostXp is stored negative
             var wr     = played > 0 ? ((wins / played) * 100).toFixed(0) : '—';
-            casinoHtml += '<div class="pc-mini-stat-card">' +
-                '<div class="pc-mini-label">' + g.name + '</div>' +
-                (played ? '<div style="font-size:0.72rem;color:var(--text-secondary)">' + played + ' played</div>' : '') +
-                (played ? '<div style="font-size:0.7rem">' + wr + '% WR</div>' : '') +
-                '<div style="font-size:0.68rem" class="' + (net >= 0 ? 'text-success' : 'text-danger') + '">' + fmtXp(net) + ' XP</div>' +
-                '</div>';
+            casinoHtml += '<div class="pc-casino-card">' +
+                '<div class="pc-casino-name">' + g.icon + ' ' + g.name + '</div>' +
+                '<div class="pc-casino-played">' + played + ' played</div>' +
+                '<div style="font-size:0.65rem;color:var(--text-secondary)">' + wr + '% WR</div>' +
+                '<div class="pc-casino-net ' + (net >= 0 ? 'text-success' : 'text-danger') + '">' + fmtXp(net) + ' XP</div>' +
+            '</div>';
         });
         casinoHtml += '</div>';
     }
 
-    // Show empty state if no data at all
-    var hasData = xpRows.length || battleTypes.some(function(bt){ var s=bs[bt.key]||{}; return (s.wins||0)+(s.losses||0)>0; }) || playedGames.length;
+    var hasData = xpRows.length || anyBattle || playedGames.length;
     var innerHtml = hasData
         ? (xpHtml + battleHtml + casinoHtml)
         : '<div style="font-size:0.75rem;color:var(--text-secondary);padding:8px 0">No activity data yet.</div>';
@@ -635,21 +2173,24 @@ function buildRelationshipSection(user, rel, mutual) {
             '</div>';
     }
 
-    // Four relationship toggle buttons
+    // Enhanced relationship toggle buttons with animated emojis
     var btnRow = ['best_friend','friend','foe','enemy'].map(function(type) {
         var r = REL[type];
         var active = rel === type;
+        var emojiClass = 'pc-rel-emoji';
+        if (active) emojiClass += ' ' + r.animation;
+        
         return '<button class="pc-rel-btn ' + (active ? 'pc-rel-active' : '') + '" ' +
             'style="border-color:' + r.color + ';' + (active ? 'background:' + r.color + ';color:#fff' : 'color:' + r.color) + '" ' +
             'onclick="setRel(\'' + esc(user.user_id) + '\',\'' + type + '\')">' +
-            r.icon + ' ' + r.label +
+            '<span class="' + emojiClass + '">' + r.emoji + '</span> ' + r.label +
             '</button>';
     }).join('');
 
     var removeBtn = rel ? '<button class="pc-rel-btn" style="color:var(--text-secondary);border-color:rgba(255,255,255,0.2)" onclick="setRel(\'' + esc(user.user_id) + '\',null)">✕ Remove</button>' : '';
 
     return '<div class="pc-detail-section">' +
-        '<div class="pc-detail-section-title">⚔️ Relationship</div>' +
+        '<div class="pc-detail-section-title">💫 Relationship</div>' +
         mutualHtml +
         '<div class="pc-rel-buttons">' + btnRow + removeBtn + '</div>' +
     '</div>';
@@ -708,7 +2249,7 @@ window.setRel = function(userId, type) {
     });
 };
 
-// ── Gift overlay ───────────────────────────────────────────────────────────
+// ── Enhanced Gift overlay with auto-populated inventory ───────────────────────
 window.openGift = function(userId) {
     _giftTargetId = userId;
     var target = _users.find(function(u){ return u.user_id === userId; });
@@ -719,17 +2260,44 @@ window.openGift = function(userId) {
     var inv = (_currentUser && _currentUser.pet && _currentUser.pet.inventory) || [];
     var sel = el('pc-gift-select');
     sel.innerHTML = '<option value="">Choose an item…</option>';
+    
+    // Group items by name and sum quantities
+    var itemGroups = {};
     inv.forEach(function(item) {
+        var name = item.name || 'Unknown';
+        if (!itemGroups[name]) {
+            itemGroups[name] = {
+                name: name,
+                type: item.type || 'Material',
+                rarity: item.rarity || 'Common',
+                count: 0
+            };
+        }
+        itemGroups[name].count += (item.count || item.quantity || 1);
+    });
+    
+    // Sort items by rarity and name
+    var rarityOrder = {Mythic: 0, Epic: 1, Rare: 2, Uncommon: 3, Common: 4};
+    var sortedItems = Object.values(itemGroups).sort(function(a, b) {
+        var rarityDiff = (rarityOrder[a.rarity] || 4) - (rarityOrder[b.rarity] || 4);
+        if (rarityDiff !== 0) return rarityDiff;
+        return a.name.localeCompare(b.name);
+    });
+    
+    sortedItems.forEach(function(item) {
         var opt = document.createElement('option');
         opt.value = item.name;
-        var qty = item.count || item.quantity || 1;
-        opt.textContent = item.name + ' (x' + qty + ')';
-        opt.dataset.qty = qty;
+        opt.textContent = item.name + ' (x' + item.count + ')' + (item.rarity !== 'Common' ? ' [' + item.rarity + ']' : '');
+        opt.dataset.qty = item.count;
+        opt.dataset.type = item.type;
+        opt.dataset.rarity = item.rarity;
         sel.appendChild(opt);
     });
 
     el('pc-gift-qty').value = 1;
     el('pc-gift-qty').max = 1;
+    el('pc-gift-qty-max').textContent = '/ 1';
+    el('pc-gift-item-preview').innerHTML = '';
     el('pc-gift-overlay').style.display = 'flex';
 };
 
@@ -771,6 +2339,432 @@ window.pcSendGift = function() {
     });
 };
 
+// ── Enhanced Search & Filter Functions ────────────────────────────────────────
+window.pcApplyFilters = function() {
+    console.log('pcApplyFilters called'); // Debug log
+    
+    var searchInput = el('pc-search');
+    var speciesSelect = el('pc-species-filter');
+    var elementSelect = el('pc-element-filter');
+    var categorySelect = el('pc-category-filter');
+    
+    var searchTerm = searchInput ? searchInput.value.toLowerCase() : '';
+    var speciesFilter = speciesSelect ? speciesSelect.value.toLowerCase() : '';
+    var elementFilter = elementSelect ? elementSelect.value.toLowerCase() : '';
+    var categoryFilter = categorySelect ? categorySelect.value.toLowerCase() : '';
+    
+    console.log('Filters:', {searchTerm, speciesFilter, elementFilter, categoryFilter, relFilter: _currentRelFilter}); // Debug log
+    
+    _filteredUsers = _users.filter(function(user) {
+        var pet = user.pet || {};
+        var username = (user.username || '').toLowerCase();
+        var petName = (pet.name || '').toLowerCase();
+        var species = (pet.species || '').toLowerCase();
+        var element1 = (pet.element || '').toLowerCase();
+        var element2 = (pet.element2 || '').toLowerCase();
+        var category = (pet.category || '').toLowerCase();
+        
+        // Search filter
+        if (searchTerm && !username.includes(searchTerm) && !petName.includes(searchTerm) && 
+            !species.includes(searchTerm) && !element1.includes(searchTerm) && !element2.includes(searchTerm)) {
+            return false;
+        }
+        
+        // Species filter
+        if (speciesFilter && species !== speciesFilter) return false;
+        
+        // Element filter
+        if (elementFilter && element1 !== elementFilter && element2 !== elementFilter) return false;
+        
+        // Category filter
+        if (categoryFilter && category !== categoryFilter) return false;
+        
+        // Relationship filter
+        if (_currentRelFilter !== 'all') {
+            if (_currentRelFilter === 'none') {
+                if (user.relationship) return false;
+            } else {
+                if (user.relationship !== _currentRelFilter) return false;
+            }
+        }
+        
+        return true;
+    });
+    
+    console.log('Filtered users count:', _filteredUsers.length); // Debug log
+    
+    // Apply sorting
+    pcSortUsers();
+    renderPets();
+    updateBadge();
+};
+
+function pcSortUsers() {
+    _filteredUsers.sort(function(a, b) {
+        var aVal = pcGetSortValue(a, _currentSort);
+        var bVal = pcGetSortValue(b, _currentSort);
+        
+        if (typeof aVal === 'string') {
+            aVal = aVal.toLowerCase();
+            bVal = bVal.toLowerCase();
+        }
+        
+        var result = aVal < bVal ? -1 : aVal > bVal ? 1 : 0;
+        return _sortAsc ? result : -result;
+    });
+}
+
+function pcGetSortValue(user, sortKey) {
+    var pet = user.pet || {};
+    var stats = pet.computed_stats || {};
+    
+    switch (sortKey) {
+        case 'username': return user.username || 'Unknown';
+        case 'level': return pet.level || 1;
+        case 'hp': return stats.hp || stats.max_health || 100;
+        case 'attack': return stats.attack || 10;
+        case 'defense': return stats.defense || 5;
+        case 'xp': return pet.experience || 0;
+        case 'total_xp': return pet.total_xp || 0;
+        case 'species': return pet.species || 'Cat';
+        case 'element': return pet.element || 'basic';
+        case 'relationship': 
+            var relOrder = {best_friend: 0, friend: 1, foe: 2, enemy: 3, null: 4};
+            return relOrder[user.relationship] || 4;
+        default: return 0;
+    }
+}
+
+window.pcSetRelFilter = function(relType) {
+    _currentRelFilter = relType;
+    
+    // Update active tab (handle both enhanced and inline versions)
+    var tabs = document.querySelectorAll('.pc-filter-tab, .pc-filter-tab-enhanced, .pc-filter-tab-inline');
+    tabs.forEach(function(tab) {
+        tab.classList.remove('pc-filter-active');
+        if (tab.dataset.rel === relType) {
+            tab.classList.add('pc-filter-active');
+        }
+    });
+    
+    pcApplyFilters();
+};
+
+window.pcToggleSortDir = function() {
+    _sortAsc = !_sortAsc;
+    var btn = el('pc-sort-dir');
+    var arrow = btn.querySelector('.pc-sort-arrow');
+    if (arrow) {
+        arrow.textContent = _sortAsc ? '↓' : '↑';
+        arrow.style.transform = _sortAsc ? 'rotate(0deg)' : 'rotate(180deg)';
+    } else {
+        btn.textContent = _sortAsc ? '↓' : '↑';
+    }
+    pcApplyFilters();
+};
+
+// ── Enhanced Leaderboard Functions ─────────────────────────────────────────────
+window.pcLbSort = function(sortKey) {
+    _leaderboardSort = sortKey;
+    
+    // Update the select dropdown to show active selection
+    var select = el('pc-lb-category');
+    if (select) {
+        select.value = sortKey;
+    }
+    
+    pcUpdateLeaderboard();
+};
+
+function pcUpdateLeaderboard() {
+    var sortedUsers = _users.slice().sort(function(a, b) {
+        var aVal = pcGetLeaderboardValue(a, _leaderboardSort);
+        var bVal = pcGetLeaderboardValue(b, _leaderboardSort);
+        return bVal - aVal; // Always descending for leaderboard
+    });
+    
+    var html = sortedUsers.slice(0, 15).map(function(user, index) {
+        var value = pcGetLeaderboardValue(user, _leaderboardSort);
+        var displayValue = pcFormatLeaderboardValue(value, _leaderboardSort);
+        var pet = user.pet || {};
+        var petSpecies = pet.species || 'Cat';
+        var petName = pet.name || 'Unnamed';
+        
+        // Add medal emojis for top 3
+        var rankDisplay = index + 1;
+        if (index === 0) rankDisplay = '🥇';
+        else if (index === 1) rankDisplay = '🥈';
+        else if (index === 2) rankDisplay = '🥉';
+        
+        return '<div class="pc-lb-item" onclick="openDetail(\'' + esc(user.user_id) + '\')">' +
+            '<div class="pc-lb-rank">' + rankDisplay + '</div>' +
+            '<img src="' + esc(user.avatar_url) + '" class="pc-lb-avatar" onerror="this.src=\'/static/Emojis/Pets/Cat.png\'">' +
+            '<img src="' + petImg(petSpecies) + '" class="pc-lb-pet-emoji" onerror="this.src=\'/static/Emojis/Pets/Cat.png\'" title="' + esc(petSpecies) + '">' +
+            '<div class="pc-lb-user-info">' +
+                '<div class="pc-lb-name">' + esc(user.username) + '</div>' +
+                '<div class="pc-lb-pet-name">' + esc(petName) + '</div>' +
+            '</div>' +
+            '<div class="pc-lb-value">' + displayValue + '</div>' +
+        '</div>';
+    }).join('');
+    
+    el('pc-lb-list').innerHTML = html;
+}
+
+function pcGetLeaderboardValue(user, key) {
+    var pet = user.pet || {};
+    var stats = pet.computed_stats || {};
+    var battleStats = pet.battle_stats || {};
+    var gamblingStats = pet.gambling_stats || {};
+    var xpSources = pet.xp_sources || {};
+    
+    switch (key) {
+        // Identity & Progress
+        case 'level': return pet.level || 1;
+        case 'total_xp': return pet.total_xp || 0;
+        case 'xp_progress': 
+            var cur = pet.experience || 0;
+            var max = pet.xp_for_next_level || 100;
+            return Math.round((cur / max) * 100);
+            
+        // Base Stats
+        case 'ATT': return pet.ATT || 0;
+        case 'DEF': return pet.DEF || 0;
+        case 'INT': return pet.INT || 0;
+        case 'DEX': return pet.DEX || 0;
+        case 'HAP': return pet.HAP || 0;
+        case 'ENE': return pet.ENE || 0;
+        
+        // Combat Stats
+        case 'cs_hp': return stats.hp || stats.max_health || 100;
+        case 'cs_attack': return stats.attack || 10;
+        case 'cs_defense': return stats.defense || 5;
+        
+        // Battle Records
+        case 'pvp_wins': return (battleStats.pvp || {}).wins || 0;
+        case 'pvp_losses': return (battleStats.pvp || {}).losses || 0;
+        case 'pvp_wr': 
+            var pvp = battleStats.pvp || {};
+            var w = pvp.wins || 0, l = pvp.losses || 0;
+            return (w + l) > 0 ? Math.round((w / (w + l)) * 100) : 0;
+        case 'npc_wins': return (battleStats.npc || {}).wins || 0;
+        case 'boss_wins': return (battleStats.boss || {}).wins || 0;
+        case 'tournament_wins': return (battleStats.tournament || {}).wins || 0;
+        case 'total_wins': 
+            return Object.keys(battleStats).reduce(function(sum, type) {
+                return sum + ((battleStats[type] || {}).wins || 0);
+            }, 0);
+        case 'total_losses':
+            return Object.keys(battleStats).reduce(function(sum, type) {
+                return sum + ((battleStats[type] || {}).losses || 0);
+            }, 0);
+        case 'eliminations':
+            return Object.keys(battleStats).reduce(function(sum, type) {
+                return sum + ((battleStats[type] || {}).eliminations || 0);
+            }, 0);
+            
+        // Activity
+        case 'missions_completed': return pet.missions_completed || 0;
+        case 'missions_failed': return pet.missions_failed || 0;
+        case 'training_completed': return pet.training_completed || 0;
+        case 'training_failed': return pet.training_failed || 0;
+        case 'play_attempts': return pet.play_attempts || 0;
+        
+        // Casino
+        case 'casino_net':
+            return Object.keys(gamblingStats).reduce(function(sum, game) {
+                var g = gamblingStats[game] || {};
+                return sum + (g.xp_won_total || 0) + (g.xp_lost_total || 0);
+            }, 0);
+        case 'casino_played':
+            return Object.keys(gamblingStats).reduce(function(sum, game) {
+                var g = gamblingStats[game] || {};
+                return sum + (g.total_games_played || g.rounds_played || g.games_played || g.races_played || 0);
+            }, 0);
+        case 'slots_played': return (gamblingStats.slots || {}).total_games_played || 0;
+        case 'blackjack_played': return (gamblingStats.blackjack || {}).rounds_played || 0;
+        case 'holdem_played': return (gamblingStats.holdem || {}).games_played || 0;
+        case 'craps_played': return (gamblingStats.craps || {}).games_played || 0;
+        case 'races_played': return (gamblingStats.races || {}).races_played || 0;
+        
+        // Economy
+        case 'stock_tokens': return pet.stock_tokens || 0;
+        case 'ability_points': return pet.ability_points || 0;
+        case 'equip_mult': 
+            // Calculate equipment multiplier
+            var eq = pet.equipment || {};
+            var level = pet.level || 1;
+            var levelBonus = Math.floor(level / 50);
+            // Simplified calculation - would need full logic for accuracy
+            return 1 + levelBonus;
+        case 'inventory_count': return (pet.inventory || []).length;
+        
+        // XP Sources
+        case 'xp_play': return xpSources.play || 0;
+        case 'xp_training': return xpSources.training || 0;
+        case 'xp_mission': return (xpSources.mission || 0) + (xpSources.mission_fail || 0);
+        case 'xp_battle': return (xpSources.battle || 0) + (xpSources.npc_battle || 0) + (xpSources.pvp_battle || 0);
+        case 'xp_casino':
+            var casinoKeys = ['slots_win','slots_bet','blackjack_win','blackjack_bet','holdem_win','holdem_buyin','holdem_cashout','craps_win','craps_bet','race_win','race_bet','coinflip_win','minigame_bet','rps_win','rps_tie'];
+            return casinoKeys.reduce(function(sum, key) {
+                return sum + (xpSources[key] || 0);
+            }, 0);
+            
+        default: return 0;
+    }
+}
+
+function pcFormatLeaderboardValue(value, key) {
+    if (key.includes('_wr') || key === 'xp_progress') {
+        return value + '%';
+    }
+    if (key.includes('xp') || key.includes('tokens')) {
+        return fmtStat(value);
+    }
+    return value.toLocaleString();
+}
+
+window.pcToggleLeaderboard = function() {
+    var list = el('pc-lb-list');
+    if (!list) return;
+    list.style.display = list.style.display === 'none' ? '' : 'none';
+};
+
+// ── Enhanced Hover Tooltips ───────────────────────────────────────────────────
+function pcShowHoverTip(event, userId) {
+    var user = _users.find(function(u) { return u.user_id === userId; });
+    if (!user) return;
+    
+    var pet = user.pet || {};
+    var stats = pet.computed_stats || {};
+    
+    var html = '<div style="text-align:center;margin-bottom:0.5rem">' +
+        '<div style="font-weight:700;color:var(--gold-primary)">' + esc(pet.name || 'Unnamed') + '</div>' +
+        '<div style="font-size:0.7rem;color:var(--text-secondary)">' + esc(user.username) + '</div>' +
+    '</div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0.3rem;font-size:0.7rem">' +
+        '<div>Level: <strong>' + (pet.level || 1) + '</strong></div>' +
+        '<div>Species: <strong>' + esc(pet.species || 'Cat') + '</strong></div>' +
+        '<div>HP: <strong>' + fmtStat(stats.hp || stats.max_health || 100) + '</strong></div>' +
+        '<div>ATK: <strong>' + fmtStat(stats.attack || 10) + '</strong></div>' +
+        '<div>DEF: <strong>' + fmtStat(stats.defense || 5) + '</strong></div>' +
+        '<div>XP: <strong>' + fmtStat(pet.experience || 0) + '</strong></div>' +
+    '</div>';
+    
+    var tip = el('pc-hover-tip');
+    el('pc-hover-tip-inner').innerHTML = html;
+    tip.style.display = 'block';
+    tip.style.left = (event.pageX + 10) + 'px';
+    tip.style.top = (event.pageY - 10) + 'px';
+}
+
+function pcHideHoverTip() {
+    el('pc-hover-tip').style.display = 'none';
+}
+
+// ── Enhanced Initialization ───────────────────────────────────────────────────
+function pcInitializeFilters() {
+    console.log('Initializing filters...'); // Debug log
+    
+    // Initialize filtered users
+    _filteredUsers = _users.slice();
+    
+    // Populate species filter
+    var species = [...new Set(_users.map(function(u) { return (u.pet || {}).species || 'Cat'; }))].sort();
+    var speciesSelect = el('pc-species-filter');
+    if (speciesSelect) {
+        // Clear existing options except first
+        speciesSelect.innerHTML = '<option value="">All Species</option>';
+        species.forEach(function(sp) {
+            var opt = document.createElement('option');
+            opt.value = sp.toLowerCase();
+            opt.textContent = sp;
+            speciesSelect.appendChild(opt);
+        });
+        console.log('Species options added:', species.length);
+    }
+    
+    // Populate element filter
+    var elements = [...new Set(_users.flatMap(function(u) {
+        var pet = u.pet || {};
+        var elems = [pet.element, pet.element2].filter(Boolean);
+        return elems.map(function(e) { return e || 'basic'; });
+    }))].sort();
+    var elementSelect = el('pc-element-filter');
+    if (elementSelect) {
+        elementSelect.innerHTML = '<option value="">All Elements</option>';
+        elements.forEach(function(elem) {
+            var opt = document.createElement('option');
+            opt.value = elem.toLowerCase();
+            opt.textContent = cap(elem);
+            elementSelect.appendChild(opt);
+        });
+        console.log('Element options added:', elements.length);
+    }
+    
+    // Populate category filter
+    var categories = [...new Set(_users.map(function(u) { return (u.pet || {}).category || 'land'; }))].sort();
+    var categorySelect = el('pc-category-filter');
+    if (categorySelect) {
+        categorySelect.innerHTML = '<option value="">All Categories</option>';
+        categories.forEach(function(cat) {
+            var opt = document.createElement('option');
+            opt.value = cat.toLowerCase();
+            opt.textContent = cap(cat);
+            categorySelect.appendChild(opt);
+        });
+        console.log('Category options added:', categories.length);
+    }
+    
+    // Set up sort change handler
+    var sortSelect = el('pc-sort-select');
+    if (sortSelect) {
+        sortSelect.addEventListener('change', function() {
+            console.log('Sort changed to:', this.value);
+            _currentSort = this.value;
+            pcApplyFilters();
+        });
+    }
+    
+    // Show controls and compare button
+    var controls = el('pc-controls');
+    var compareBtn = el('pc-compare-mode-btn');
+    if (controls) {
+        controls.style.display = '';
+        console.log('Controls shown');
+    }
+    if (compareBtn) {
+        compareBtn.style.display = '';
+        console.log('Compare button shown');
+    }
+    
+    // Initial filter application
+    pcApplyFilters();
+}
+
+// ── Enhanced Gift Functions ────────────────────────────────────────────────────
+window.pcUpdateGiftQty = function() {
+    var sel = el('pc-gift-select');
+    var opt = sel.options[sel.selectedIndex];
+    var max = opt ? (parseInt(opt.dataset.qty) || 1) : 1;
+    var inp = el('pc-gift-qty');
+    var maxSpan = el('pc-gift-qty-max');
+    
+    inp.max = max;
+    if (maxSpan) maxSpan.textContent = '/ ' + max;
+    if (parseInt(inp.value) > max) inp.value = max;
+    
+    // Update preview
+    var preview = el('pc-gift-item-preview');
+    if (preview && opt && opt.value) {
+        var itemType = opt.dataset.type || 'Material';
+        var imgPath = '/static/Emojis/Pets/Equipment/' + opt.value.toLowerCase().replace(/ /g, '_') + '.png';
+        preview.innerHTML = '<img src="' + imgPath + '" onerror="this.src=\'/static/Emojis/Pets/Deco/Basic.png\'">';
+    } else if (preview) {
+        preview.innerHTML = '';
+    }
+};
+
 // ── Toast ──────────────────────────────────────────────────────────────────
 function showToast(msg, type) {
     var bg = { success:'#4caf50', error:'#f44336', warning:'#ff9800' }[type] || '#2196f3';
@@ -788,32 +2782,65 @@ function showToast(msg, type) {
     setTimeout(function() { t.style.opacity = '0'; setTimeout(function(){ t.remove(); }, 350); }, 3000);
 }
 
-// ── Render grid ────────────────────────────────────────────────────────────
+// ── Enhanced Render grid with filtering ───────────────────────────────────────
 function renderPets() {
     var grid = el('pc-pets-grid');
     if (!grid) return;
-    if (_users.length === 0) {
+    
+    var usersToRender = _filteredUsers.length > 0 ? _filteredUsers : _users;
+    
+    if (usersToRender.length === 0) {
         grid.innerHTML = '<div class="col-12 text-center py-5" style="color:var(--text-secondary)">No pets found.</div>';
         return;
     }
-    grid.innerHTML = _users.map(buildCard).join('');
+    grid.innerHTML = usersToRender.map(buildCard).join('');
+    
+    // Update compare visuals if in compare mode
+    if (_compareMode) {
+        pcUpdateCompareVisuals();
+    }
 }
 
 function updateBadge() {
     var b = el('pc-count-badge');
     if (!b) return;
-    var count = _users.length;
-    b.textContent = count + ' pet' + (count === 1 ? '' : 's');
-    b.style.display = count > 0 ? '' : 'none';
+    var totalCount = _users.length;
+    var filteredCount = _filteredUsers.length > 0 ? _filteredUsers.length : totalCount;
+    
+    if (filteredCount !== totalCount) {
+        b.textContent = filteredCount + ' of ' + totalCount + ' pets';
+    } else {
+        b.textContent = totalCount + ' pet' + (totalCount === 1 ? '' : 's');
+    }
+    b.style.display = totalCount > 0 ? '' : 'none';
 }
 
-// ── Load data ──────────────────────────────────────────────────────────────
+// ── Enhanced Load data with initialization ─────────────────────────────────────
 function loadPets() {
+    console.log('Loading pets...'); // Debug log
+    
     el('pc-loading').style.display = '';
     el('pc-main').style.display    = 'none';
     el('pc-error').style.display   = 'none';
 
-    apiCall('/api/world/pets').then(function(data) {
+    // Load pet info (species descriptions/actions) and pet list in parallel
+    Promise.all([
+        apiCall('/api/world/pets'),
+        apiCall('/api/world/pet-info'),
+    ]).then(function(results) {
+        var data     = results[0];
+        var infoData = results[1];
+
+        console.log('API responses received:', {
+            pets: data ? data.users?.length : 0,
+            petInfo: infoData ? Object.keys(infoData.pets || {}).length : 0
+        });
+
+        // Cache species info globally for buildSpeciesSection
+        if (infoData && infoData.pets) {
+            _PET_INFO_CACHE = infoData.pets;
+        }
+
         if (!data || !data.users) {
             el('pc-loading').style.display = 'none';
             el('pc-error-msg').textContent = 'Failed to load pet data.';
@@ -822,21 +2849,136 @@ function loadPets() {
         }
         _users       = data.users;
         _currentUser = _users.find(function(u){ return u.is_current_user; }) || null;
+        _filteredUsers = _users.slice(); // Initialize filtered users
 
+        console.log('Data loaded successfully:', {
+            totalUsers: _users.length,
+            currentUser: _currentUser ? _currentUser.username : 'None'
+        });
+
+        // Initialize enhanced features
+        pcInitializeFilters();
+        pcUpdateLeaderboard();
+        
         renderPets();
         updateBadge();
 
         el('pc-loading').style.display = 'none';
         el('pc-main').style.display    = '';
-    }).catch(function() {
+        
+        // Debug function availability after load
+        setTimeout(function() {
+            if (window.pcDebugFunctions) {
+                console.log('Running function availability check...');
+                window.pcDebugFunctions();
+            }
+        }, 500);
+        
+    }).catch(function(error) {
+        console.error('Failed to load pets:', error);
         el('pc-loading').style.display = 'none';
         el('pc-error-msg').textContent = 'Network error — could not load pets.';
         el('pc-error').style.display   = '';
     });
 }
 
-// ── Expose globals ─────────────────────────────────────────────────────────
+function statBox(lbl, val, color) {
+    return '<div class="pc-stat-box">' +
+        '<div class="pc-stat-box-val" style="color:' + color + '">' + fmtStat(val) + '</div>' +
+        '<div class="pc-stat-box-lbl">' + lbl + '</div>' +
+    '</div>';
+}
+function baseRow(lbl, val) {
+    return '<div class="pc-base-row"><span class="pc-base-lbl">' + lbl + '</span><span class="pc-base-val">' + val + '</span></div>';
+}
+
+// ── Expose all globals for proper functionality ───────────────────────────────
 window.openDetail = openDetail;
+window.pcApplyFilters = pcApplyFilters;
+window.pcSetRelFilter = pcSetRelFilter;
+window.pcToggleSortDir = pcToggleSortDir;
+window.pcToggleCompareMode = pcToggleCompareMode;
+window.pcClearCompare = pcClearCompare;
+window.pcLbSort = pcLbSort;
+window.pcToggleLeaderboard = pcToggleLeaderboard;
+window.pcUpdateGiftQty = pcUpdateGiftQty;
+window.pcSendGift = pcSendGift;
+window.pcSendGiftInline = pcSendGiftInline;
+window.selectGiftItem = selectGiftItem;
+window.setRel = setRel;
+window.setRelWide = setRelWide;
+window.openGift = openGift;
+window.closeDetail = closeDetail;
+window.closeGiftOverlay = closeGiftOverlay;
+window.pcToggleCollapse = pcToggleCollapse;
+
+// Debug function to verify all functions are available
+window.pcDebugFunctions = function() {
+    var functions = [
+        'pcApplyFilters', 'pcSetRelFilter', 'pcToggleSortDir', 'pcToggleCompareMode',
+        'pcClearCompare', 'pcLbSort', 'pcToggleLeaderboard', 'openDetail', 'openGift',
+        'setRel', 'pcSendGift', 'closeDetail', 'closeGiftOverlay', 'pcUpdateGiftQty'
+    ];
+    
+    console.log('=== Pet Connector Function Check ===');
+    functions.forEach(function(funcName) {
+        var exists = typeof window[funcName] === 'function';
+        console.log(funcName + ': ' + (exists ? '✅ Available' : '❌ Missing'));
+    });
+    
+    console.log('Users loaded:', _users ? _users.length : 0);
+    console.log('Filtered users:', _filteredUsers ? _filteredUsers.length : 0);
+    console.log('Current filter:', _currentRelFilter);
+    console.log('Compare mode:', _compareMode);
+    console.log('=== End Function Check ===');
+};
+
+// ── Enhanced Rich Comparison Functions ────────────────────────────────────────
+function pcBuildRichCompareCard(user, opponent) {
+    var pet = user.pet || {};
+    var stats = pet.computed_stats || {};
+    var oppStats = (opponent.pet || {}).computed_stats || {};
+    var petSpecies = pet.species || 'Cat';
+    var petName = pet.name || 'Unnamed';
+    var level = pet.level || 1;
+    
+    var compareStats = [
+        {key: 'Level', val: level, opp: (opponent.pet || {}).level || 1},
+        {key: 'HP', val: stats.hp || stats.max_health || 100, opp: oppStats.hp || oppStats.max_health || 100},
+        {key: 'ATK', val: stats.attack || 10, opp: oppStats.attack || 10},
+        {key: 'DEF', val: stats.defense || 5, opp: oppStats.defense || 5},
+        {key: 'ATT', val: pet.ATT || 0, opp: (opponent.pet || {}).ATT || 0},
+        {key: 'DEF', val: pet.DEF || 0, opp: (opponent.pet || {}).DEF || 0},
+        {key: 'INT', val: pet.INT || 0, opp: (opponent.pet || {}).INT || 0},
+        {key: 'DEX', val: pet.DEX || 0, opp: (opponent.pet || {}).DEX || 0},
+        {key: 'HAP', val: pet.HAP || 0, opp: (opponent.pet || {}).HAP || 0},
+        {key: 'ENE', val: pet.ENE || 0, opp: (opponent.pet || {}).ENE || 0},
+    ];
+    
+    var statsHtml = compareStats.map(function(stat) {
+        var isWinner = stat.val > stat.opp;
+        var isLoser = stat.val < stat.opp;
+        var cls = isWinner ? 'pc-compare-stat-winner' : isLoser ? 'pc-compare-stat-loser' : '';
+        
+        return '<div class="pc-compare-stat ' + cls + '">' +
+            '<span>' + stat.key + '</span>' +
+            '<span>' + fmtStat(stat.val) + '</span>' +
+        '</div>';
+    }).join('');
+    
+    return '<div class="pc-compare-pet-rich">' +
+        '<div class="pc-compare-pet-header">' +
+            '<img src="' + esc(user.avatar_url) + '" class="pc-compare-user-avatar" onerror="this.src=\'/static/Emojis/Pets/Cat.png\'">' +
+            '<img src="' + petImg(petSpecies) + '" class="pc-compare-pet-img" onerror="this.src=\'/static/Emojis/Pets/Cat.png\'">' +
+            '<div class="pc-compare-pet-info">' +
+                '<div class="pc-compare-pet-name">' + esc(petName) + '</div>' +
+                '<div class="pc-compare-user-name">' + esc(user.username) + '</div>' +
+                '<div class="pc-compare-pet-level">Level ' + level + '</div>' +
+            '</div>' +
+        '</div>' +
+        '<div class="pc-compare-stats">' + statsHtml + '</div>' +
+    '</div>';
+}
 
 // ── Boot ───────────────────────────────────────────────────────────────────
 loadPets();

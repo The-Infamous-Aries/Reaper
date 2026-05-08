@@ -175,9 +175,10 @@ function navigateTo(page, params = {}, pushState = true) {
 }
 
 // Nav click delegation
-document.querySelector('nav.sidebar ul.nav, .sidebar ul.nav').addEventListener('click', function (e) {
+const _navContainer = document.querySelector('nav.sidebar ul.nav, .sidebar ul.nav');
+if (_navContainer) _navContainer.addEventListener('click', function (e) {
     const link = e.target.closest('.nav-link[data-page]');
-    if (!link || link.id === 'discord-login-link' || link.classList.contains('active')) return;
+    if (!link || link.id === 'discord-login-link') return;
     e.preventDefault();
     navLinks.forEach(l => l.classList.remove('active'));
     link.classList.add('active');
@@ -915,7 +916,10 @@ function showLinkedNation(nation) {
     document.getElementById('uc-nation-linked').style.display = 'block';
     document.getElementById('nation-linked-name').textContent = nation.nation_name || `Nation #${nation.nation_id}`;
     const flag = document.getElementById('nation-flag-img');
-    if (nation.flag) { flag.src = nation.flag; flag.style.display = 'inline-block'; }
+    if (nation.flag) { 
+        flag.src = window.ImageUtils ? window.ImageUtils.proxyImageUrl(nation.flag) : nation.flag; 
+        flag.style.display = 'inline-block'; 
+    }
     else flag.style.display = 'none';
     loadNationRanks(nation.nation_name || '');
 }
@@ -1261,112 +1265,4 @@ async function loadNationRanks(name) {
     };
 })();
 
-// ── Restricted Page Access Control ───────────────────────────────────────────
-// Pages that require explicit access grant (NW members only)
-const RESTRICTED_PAGES = new Set(['nations', 'watch', 'leaderboard', 'raids']);
 
-let _allowedPages    = new Set();  // pages this user is explicitly allowed to see
-let _pageAccessChecked = false;    // true once the check has completed
-
-function _canView(page) {
-    return !RESTRICTED_PAGES.has(page) || _allowedPages.has(page);
-}
-
-async function checkPageAccess() {
-    try {
-        const res = await fetch('/api/access/check');
-        if (!res.ok) { _allowedPages = new Set(); _pageAccessChecked = true; return; }
-        const data = await res.json();
-        _allowedPages = new Set(data.allowed_pages || []);
-        _pageAccessChecked = true;
-    } catch (_) {
-        _allowedPages = new Set();
-        _pageAccessChecked = true;
-    }
-}
-
-function applyAccessRestrictions() {
-    RESTRICTED_PAGES.forEach(page => {
-        const link = document.querySelector(`.nav-link[data-page="${page}"]`);
-        if (!link) return;
-        const li = link.closest('li.nav-item');
-        if (!li) return;
-        if (_allowedPages.has(page)) {
-            li.style.display = '';
-            li.removeAttribute('data-locked');
-        } else {
-            li.style.display = 'none';
-            li.setAttribute('data-locked', '1');
-        }
-    });
-}
-
-function showAccessDenied(page) {
-    const contentDiv = document.getElementById('content');
-    if (!contentDiv) return;
-    contentDiv.innerHTML = `
-        <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:40vh;gap:1.5rem;text-align:center;padding:2rem;">
-            <div style="font-size:5rem;">🖕</div>
-            <h2 style="color:var(--gold-primary);margin:0;font-size:1.8rem;letter-spacing:0.05em;">Get Fully Fucked</h2>
-            <p style="color:var(--text-secondary);max-width:480px;margin:0;line-height:1.6;">
-                Absolutely not. Do not pass Go, do not collect $200, do not even think about it — just fuck all the way off back to wherever you came from.
-                You have no access, you have never had access, and the sheer brass balls it took to click this link is genuinely offensive. 🖕
-            </p>
-            <p style="color:var(--text-muted);max-width:420px;margin:0;font-size:0.85rem;line-height:1.5;">
-                If you actually know Aries and genuinely think you should be in here, go bother him about it on Discord. Otherwise, kindly see above. 🖕
-            </p>
-            <button onclick="navigateTo('homepage')" style="padding:0.6rem 1.4rem;background:linear-gradient(45deg,#ffd700,#ffed4e);color:#1a1a1a;border:none;border-radius:999px;font-weight:700;cursor:pointer;font-size:0.9rem;">
-                ← Crawl Back to Homepage
-            </button>
-        </div>`;
-}
-
-// Patch navigateTo AND intercept nav clicks to block restricted pages from any call site
-const _origNavigateTo = window.navigateTo;
-window.navigateTo = function(page, params, pushState) {
-    if (!_canView(page)) {
-        if (pushState !== false) {
-            const url = new URL(window.location);
-            url.searchParams.set('page', page);
-            history.pushState({ page, params }, '', url.toString());
-        }
-        showAccessDenied(page);
-        return;
-    }
-    _origNavigateTo(page, params, pushState);
-};
-
-document.addEventListener('DOMContentLoaded', () => {
-    // Run access check on load
-    checkPageAccess().then(() => {
-        applyAccessRestrictions();
-
-        // If the URL already points at a restricted page and user has no access, show denied
-        const currentPage = new URLSearchParams(window.location.search).get('page') || 'homepage';
-        if (!_canView(currentPage)) {
-            showAccessDenied(currentPage);
-        }
-    });
-
-    // Intercept sidebar nav clicks in capture phase — fires before the original handler
-    document.addEventListener('click', function (e) {
-        const link = e.target.closest('.nav-link[data-page]');
-        if (!link) return;
-        const page = link.dataset.page;
-        if (!_canView(page)) {
-            e.stopImmediatePropagation();
-            e.preventDefault();
-            showAccessDenied(page);
-            const url = new URL(window.location);
-            url.searchParams.set('page', page);
-            history.pushState({ page }, '', url.toString());
-        }
-    }, true);
-});
-
-// Re-apply restrictions when user logs in/out
-const _origUpdateUserDisplay = window.updateUserDisplay || function(){};
-window.updateUserDisplay = function(user) {
-    _origUpdateUserDisplay(user);
-    checkPageAccess().then(() => applyAccessRestrictions());
-};

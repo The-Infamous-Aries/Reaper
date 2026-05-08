@@ -2468,8 +2468,9 @@ function _openPetPanel(uid) {
     var elem2 = p.element2 || '';
     var ring  = ELEM_RING[elem] || 'rgba(190,190,200,0.95)';
 
-    // Charge stacks — capped at 5
-    var chargeStacks = Math.min(5, (_map.chargeStacks||{})[uid] || 0);
+    // Charge stacks — respect per-pet charge_limit (default 8, raised by ene_charge_mastery)
+    var chargeLimit  = Math.max(8, parseInt((p.charge_limit || 8), 10));
+    var chargeStacks = Math.min(chargeLimit, (_map.chargeStacks||{})[uid] || 0);
 
     // Kills by this pet
     var kills = [];
@@ -2483,8 +2484,13 @@ function _openPetPanel(uid) {
     var elimEntry = null;
     (_map.eliminated||[]).forEach(function(e){ if (e.user_id===uid) elimEntry=e; });
 
-    // Survive score
-    var surviveScore = ((p.level||1) / Math.max(1, p.multiplier||1) / 10).toFixed(2);
+    // Survive score — mirrors survive_score() in ss_brain.py:
+    //   base = level / multiplier / 10
+    //   × ss_ability_mult (survive_score_mult abilities)
+    //   × stat_mastery_mult (average stat mastery multiplier)
+    var ssAMult = parseFloat(p.ss_ability_mult  || 1.0);
+    var smMult  = parseFloat(p.stat_mastery_mult || 1.0);
+    var surviveScore = ((p.level||1) / Math.max(1, p.multiplier||1) / 10 * ssAMult * smMult).toFixed(2);
 
     // Per-round feed lines mentioning this pet
     var petName = p.pet_name||p.username||'';
@@ -2557,15 +2563,26 @@ function _openPetPanel(uid) {
     var cat = p.category || 'land';
     var catDisplay = cat.charAt(0).toUpperCase() + cat.slice(1); // "Land", "Flying", "Swimming"
 
-    // Charge bar — 5 pips max
-    var chargeColor = chargeStacks >= 5 ? '#ff6b35' : chargeStacks >= 3 ? '#ffd700' : chargeStacks >= 1 ? '#4caf50' : 'rgba(160,160,160,0.5)';
-    var chargePips = '';
-    for (var ci=0; ci<5; ci++) {
+    // Charge bar — pips up to chargeLimit (max 13 with ene_charge_mastery maxed)
+    // Show up to 8 pips visually; if limit > 8 show a "+N" overflow indicator
+    var visiblePips  = Math.min(chargeLimit, 8);
+    var chargeColor  = chargeStacks >= chargeLimit ? '#ff6b35' : chargeStacks >= Math.ceil(chargeLimit*0.6) ? '#ffd700' : chargeStacks >= 1 ? '#4caf50' : 'rgba(160,160,160,0.5)';
+    var chargePips   = '';
+    for (var ci = 0; ci < visiblePips; ci++) {
         chargePips += '<span style="display:inline-block;width:10px;height:10px;border-radius:50%;margin:0 2px;'+
             'background:'+(ci<chargeStacks?chargeColor:'rgba(60,60,60,0.7)')+';'+
             'box-shadow:'+(ci<chargeStacks?'0 0 4px '+chargeColor:'none')+'"></span>';
     }
-    var chargeLabel = chargeStacks === 0 ? 'None' : chargeStacks+'/5';
+    // Overflow indicator when limit > 8
+    if (chargeLimit > 8 && chargeStacks > 8) {
+        chargePips += '<span style="color:'+chargeColor+';font-size:0.65rem;font-weight:700;margin-left:2px">+'+( chargeStacks - 8)+'</span>';
+    }
+    var chargeLabel  = chargeStacks === 0 ? 'None' : chargeStacks + '/' + chargeLimit;
+    // Starting charge indicator
+    var startingCharge = parseInt(p.starting_charge || 0, 10);
+    var startingChargeNote = startingCharge > 0
+        ? ' <span style="color:rgba(150,220,255,0.7);font-size:0.6rem">(starts +'+startingCharge+')</span>'
+        : '';
 
     var lbl = 'style="color:rgba(150,150,150,0.75);font-size:0.67rem;padding-top:1px"';
     var val  = 'style="font-size:0.72rem;color:rgba(220,220,220,0.9)"';
@@ -2582,15 +2599,24 @@ function _openPetPanel(uid) {
             (elem2&&elem2!=='basic'
                 ? '<span '+lbl+'>Element 2</span><span '+val+'>'+_eBadge(elem2)+'<span style="vertical-align:middle">'+esc(elem2)+'</span></span>'
                 : '')+
-            // Survive Score
+            // Survive Score (with ability + mastery breakdown)
             '<span '+lbl+'>Survive Score</span>'+
-            '<span style="color:var(--gold-primary,#ffd700);font-weight:700;font-size:0.72rem">'+surviveScore+'</span>'+
+            '<span style="color:var(--gold-primary,#ffd700);font-weight:700;font-size:0.72rem">'+surviveScore+
+                (ssAMult !== 1.0 ? ' <span style="color:rgba(180,255,180,0.7);font-size:0.6rem">×'+ssAMult.toFixed(2)+' ability</span>' : '')+
+                (smMult  !== 1.0 ? ' <span style="color:rgba(180,220,255,0.7);font-size:0.6rem">×'+smMult.toFixed(2)+' mastery</span>' : '')+
+            '</span>'+
             // Charge
             '<span '+lbl+'>Charge</span>'+
             '<span style="display:flex;align-items:center;gap:6px">'+
                 chargePips+
                 '<span style="color:'+chargeColor+';font-weight:600;font-size:0.67rem">'+chargeLabel+'</span>'+
+                startingChargeNote+
             '</span>'+
+            // Charge multiplier (only when charged)
+            (chargeStacks > 0
+                ? '<span '+lbl+'>Charge ×</span>'+
+                  '<span style="color:'+chargeColor+';font-weight:700;font-size:0.72rem">'+(1.0 + Math.min(chargeStacks, 8) * 0.15).toFixed(2)+'×</span>'
+                : '')+
             // Eliminations
             '<span '+lbl+'>Eliminations</span>'+
             '<span style="color:'+(kills.length>0?'#4caf50':'rgba(180,180,180,0.5)')+';font-weight:700;font-size:0.72rem">'+kills.length+'</span>'+

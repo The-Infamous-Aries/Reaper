@@ -1,4 +1,8 @@
-﻿let watchPageInitialized = false;
+﻿// ── Watch page — wrapped in IIFE so each SPA navigation gets a clean scope ──
+// (avoids dashboardPageLoaded listener accumulation on repeated visits)
+(() => {
+
+let watchPageInitialized = false;
 let currentSortKey = null;
 let currentSortDirection = "desc";
 let watchFetchToken = 0;
@@ -1159,11 +1163,8 @@ function initializeWatchPage() {
     fetchData();
 }
 
-if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", initializeWatchPage, { once: true });
-} else {
-    initializeWatchPage();
-}
-document.addEventListener("dashboardPageLoaded", (event) => {
-    if (event.detail && event.detail.page === "watch.html") initializeWatchPage();
-});
+// Script runs fresh on every SPA navigation (scriptManager loads a new copy each time).
+// Just call init directly — no dashboardPageLoaded listener needed.
+initializeWatchPage();
+
+})(); // end IIFE

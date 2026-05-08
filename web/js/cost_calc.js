@@ -28,6 +28,104 @@ const calculatorToggle = document.getElementById('calculator-toggle');
                 .catch(() => {});
         })();
 
+        // ── Nation autocomplete ────────────────────────────────────────────
+        let _ccAcData = null;
+        let _ccAcIdx  = -1;
+
+        async function loadCcAcData() {
+            if (_ccAcData) return _ccAcData;
+            try {
+                const r = await fetch('/api/weapons/ac_data');
+                _ccAcData = await r.json();
+            } catch (e) { _ccAcData = { nations: [], alliances: [] }; }
+            return _ccAcData;
+        }
+
+        function positionCcDropdown() {
+            const inp = document.getElementById('nation-query');
+            const dd  = document.getElementById('cc-ac-dropdown');
+            if (!inp || !dd || dd.style.display === 'none') return;
+            const r = inp.getBoundingClientRect();
+            dd.style.top   = (r.bottom + 4) + 'px';
+            dd.style.left  = r.left + 'px';
+            dd.style.width = r.width + 'px';
+        }
+
+        function buildCcDropdown(val) {
+            const dd = document.getElementById('cc-ac-dropdown');
+            if (!dd) return;
+            dd.innerHTML = '';
+            _ccAcIdx = -1;
+            const items = [];
+            const low = (val || '').toLowerCase().trim();
+
+            if (_ccAcData) {
+                for (const n of (_ccAcData.nations || [])) {
+                    const nm  = (n.nation_name  || '').toLowerCase();
+                    const ldr = (n.leader_name  || '').toLowerCase();
+                    if (!low || nm.includes(low) || ldr.includes(low) || String(n.id).includes(low)) {
+                        const label = `🌐 ${n.nation_name}${n.leader_name ? ' (' + n.leader_name + ')' : ''}`;
+                        items.push({ label, value: n.nation_name });
+                    }
+                    if (items.length >= 15) break;
+                }
+            }
+
+            if (!items.length) { dd.style.display = 'none'; return; }
+
+            items.forEach((item) => {
+                const el = document.createElement('div');
+                el.className = 'cc-ac-item';
+                el.textContent = item.label;
+                el.addEventListener('mousedown', ev => {
+                    ev.preventDefault();
+                    document.getElementById('nation-query').value = item.value;
+                    dd.style.display = 'none';
+                });
+                dd.appendChild(el);
+            });
+            dd.style.display = 'block';
+            positionCcDropdown();
+        }
+
+        (function initCcAC() {
+            const inp = document.getElementById('nation-query');
+            const dd  = document.getElementById('cc-ac-dropdown');
+            if (!inp || !dd) return;
+
+            inp.addEventListener('focus', async () => { await loadCcAcData(); buildCcDropdown(inp.value.trim()); });
+            inp.addEventListener('input', async () => { await loadCcAcData(); buildCcDropdown(inp.value.trim()); });
+
+            window.addEventListener('scroll', positionCcDropdown, true);
+            window.addEventListener('resize', positionCcDropdown);
+
+            inp.addEventListener('keydown', e => {
+                const items = dd.querySelectorAll('.cc-ac-item');
+                if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    _ccAcIdx = Math.min(_ccAcIdx + 1, items.length - 1);
+                    items.forEach((el, i) => el.classList.toggle('cc-ac-active', i === _ccAcIdx));
+                } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    _ccAcIdx = Math.max(_ccAcIdx - 1, 0);
+                    items.forEach((el, i) => el.classList.toggle('cc-ac-active', i === _ccAcIdx));
+                } else if (e.key === 'Enter') {
+                    if (_ccAcIdx >= 0 && items[_ccAcIdx]) {
+                        items[_ccAcIdx].dispatchEvent(new MouseEvent('mousedown'));
+                    } else {
+                        dd.style.display = 'none';
+                    }
+                } else if (e.key === 'Escape') {
+                    dd.style.display = 'none';
+                }
+            });
+
+            document.addEventListener('click', ev => {
+                if (!inp.contains(ev.target) && !dd.contains(ev.target)) dd.style.display = 'none';
+            });
+        })();
+        // ── End nation autocomplete ────────────────────────────────────────
+
         const buildingCalculator = document.getElementById('building-calculator');
         const militaryCalculator = document.getElementById('military-calculator');
         const calculateBtn = document.getElementById('calculate-btn');

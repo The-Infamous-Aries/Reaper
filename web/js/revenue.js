@@ -203,7 +203,7 @@ function renderMembersTable() {
       <td>${index + 1}</td>
       <td>
         <div class="rev-name-cell">
-          ${nation.flag ? `<img src="${nation.flag}" class="rev-flag" alt="Flag">` : ''}
+          ${nation.flag ? `<img src="${window.ImageUtils ? window.ImageUtils.proxyImageUrl(nation.flag) : nation.flag}" class="rev-flag" alt="Flag">` : ''}
           <div>
             <a href="https://politicsandwar.com/nation/id=${nation.nation_id}"
                target="_blank" class="rev-pnw-link">${escapeHtml(nation.nation_name)}</a>
@@ -249,7 +249,7 @@ function renderTopEarners() {
     item.innerHTML = `
       <div class="rev-top-rank">#${index + 1}</div>
       <div class="rev-top-nation">
-        ${nation.flag ? `<img src="${nation.flag}" class="rev-flag" alt="Flag">` : ''}
+        ${nation.flag ? `<img src="${window.ImageUtils ? window.ImageUtils.proxyImageUrl(nation.flag) : nation.flag}" class="rev-flag" alt="Flag">` : ''}
         <div>
           <a href="https://politicsandwar.com/nation/id=${nation.nation_id}"
              target="_blank" class="rev-pnw-link">${escapeHtml(nation.nation_name)}</a>

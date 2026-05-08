@@ -31,6 +31,31 @@
         'hap_races_win_bonus':'🏇','hap_coinflip_win_bonus':'🪙','hap_rps_win_bonus':'✂️',
         'ene_battle_stamina':'💪','ene_charge_mastery':'⚡','ene_speed_burst':'🚀',
         'ene_charged_start':'🔋','ene_overcharged':'⚡',
+        // SKILL branch
+        'skill_slot_2':'🎴','skill_slot_3':'🎴','skill_slot_4':'🎴',
+        'skill_reroll_all':'🔄','skill_cross_element':'🌀',
+    };
+
+    var SKILL_EFFECT_LABELS = {
+        'instant_damage':    'Instant Damage',
+        'dot':               'Damage Over Time',
+        'shield':            'Shield',
+        'damage_reduction':  'Damage Reduction',
+        'elemental_damage':  'Elemental Damage',
+        'heal':              'Heal',
+        'charge_boost':      'Charge Boost',
+        'stat_debuff':       'Stat Debuff',
+        'stat_buff':         'Stat Buff',
+        'lifesteal':         'Lifesteal',
+        'stun':              'Stun',
+        'cleanse':           'Cleanse',
+        'reflect':           'Reflect',
+    };
+
+    var ELEM_COLORS = {
+        basic:'#aaa', fire:'#e74c3c', water:'#3498db', electric:'#f1c40f',
+        ice:'#a8d8ea', plant:'#2ecc71', rock:'#95a5a6', air:'#bdc3c7',
+        magic:'#9b59b6', holy:'#f39c12', necro:'#8e44ad', psychic:'#e91e63', fighting:'#e67e22',
     };
 
     var STATS = ['ATT','DEF','INT','DEX','HAP','ENE'];
@@ -80,10 +105,16 @@
 
     // ── Fetch ─────────────────────────────────────────────────────────────────
     function fetchTree(cb) {
-        fetch('/api/pets/ability-tree')
-            .then(function(r){ return r.json(); })
-            .then(function(d){ _treeState = d; if (cb) cb(d); })
-            .catch(function(e){ showToast('Failed to load: ' + e.message, false); });
+        Promise.all([
+            fetch('/api/pets/ability-tree').then(function(r){ return r.json(); }),
+            fetch('/api/pets/skills').then(function(r){ return r.json(); }).catch(function(){ return null; }),
+        ]).then(function(results) {
+            var treeData = results[0];
+            var skillData = results[1];
+            if (skillData) treeData.skill_state = skillData;
+            _treeState = treeData;
+            if (cb) cb(treeData);
+        }).catch(function(e){ showToast('Failed to load: ' + e.message, false); });
     }
 
     // ── Render ────────────────────────────────────────────────────────────────
@@ -180,6 +211,10 @@
         window.upgradeAbility    = function(id){ window.AbilityTree._unlockAbility(id); };
         window.selectAdvNode     = selectAdvNode;
         window.upgradeAdvMastery = function(k){ window.AbilityTree._spendAdvMastery(k); };
+        window.selectSkillBranch = selectSkillBranch;
+        window.selectSkillSlot   = selectSkillSlot;
+        window.drawSkillForSlot  = drawSkillForSlot;
+        window.equipSkillChoice  = equipSkillChoice;
     }
 
     // ── Stat sections tree ────────────────────────────────────────────────────
@@ -187,8 +222,9 @@
         var mastery   = state.stat_mastery || {};
         var abilities = state.abilities    || {};
         var pts       = state.available_points || 0;
+        var skillState = state.skill_state || null;
 
-        return STATS.map(function(stat) {
+        var statSections = STATS.map(function(stat) {
             var m    = mastery[stat] || { points:0, multiplier:1.0 };
             var meta = STAT_META[stat];
             var isUnlocked = m.points > 0;
@@ -290,8 +326,129 @@
                 '</div>' +
                 (isOpen ? '<div class="at-section-content">' + abilitiesHtml + '</div>' : '') +
             '</div>';
-        }).join('');
+        }).join('') + renderSkillBranch(state);
     }
+
+    // ── SKILL branch ──────────────────────────────────────────────────────────
+    function renderSkillBranch(state) {
+        var abilities  = state.abilities || {};
+        var pts        = state.available_points || 0;
+        var skillState = state.skill_state || null;
+        var isOpen     = _openStat === 'SKILL';
+
+        // Skill branch abilities from the tree
+        var skillAbs = Object.keys(abilities)
+            .map(function(id){ return abilities[id]; })
+            .filter(function(a){ return a.stat === 'SKILL'; });
+
+        var ownedCount = skillAbs.filter(function(a){ return (a.current_level || 0) > 0; }).length;
+        var totalCount = skillAbs.length;
+
+        var isSelSkill = _selectedNode && _selectedNode.type === 'skill_branch';
+        var summaryHtml = '';
+        if (!isOpen) {
+            var equippedCount = skillState ? skillState.slots.filter(function(s){ return s.filled; }).length : 0;
+            summaryHtml = '<span class="at-section-summary">' +
+                '<span class="at-summary-ab">' + equippedCount + ' skill' + (equippedCount !== 1 ? 's' : '') + ' equipped</span>' +
+                (ownedCount > 0 ? '<span class="at-summary-ab">' + ownedCount + '/' + totalCount + ' ab</span>' : '') +
+            '</span>';
+        }
+
+        var chevron = '<span class="at-chevron' + (isOpen ? ' at-chevron-open' : '') + '">›</span>';
+
+        var headerRow =
+            '<div class="at-stat-mastery at-stat-unlocked' + (isSelSkill ? ' at-selected' : '') + '">' +
+                '<div class="at-stat-icon">⚔️</div>' +
+                '<div class="at-stat-info">' +
+                    '<div class="at-stat-name">Battle Skills</div>' +
+                    '<div class="at-stat-multiplier" style="font-size:0.7rem;color:var(--text-secondary)">Free Branch</div>' +
+                    '<div class="at-stat-points">' + (skillState ? skillState.max_slots : 1) + ' slot' + ((skillState ? skillState.max_slots : 1) !== 1 ? 's' : '') + '</div>' +
+                '</div>' +
+                summaryHtml +
+                '<div class="at-stat-action"></div>' +
+                chevron +
+            '</div>';
+
+        var contentHtml = '';
+        if (isOpen) {
+            // Equipped skills display
+            var slotsHtml = '';
+            if (skillState) {
+                slotsHtml = '<div class="at-skill-slots">';
+                skillState.slots.forEach(function(slot) {
+                    var sk = slot.skill;
+                    var elemColor = sk ? (ELEM_COLORS[sk.element] || '#aaa') : '#555';
+                    var effType = sk ? (SKILL_EFFECT_LABELS[sk.effect && sk.effect.type] || sk.effect && sk.effect.type || '') : '';
+                    var isSelSlot = _selectedNode && _selectedNode.type === 'skill_slot' && _selectedNode.slot === slot.slot;
+                    var canDrawSlot = pts >= 1;
+                    slotsHtml +=
+                        '<div class="at-skill-slot' + (isSelSlot ? ' at-selected' : '') + '" onclick="selectSkillSlot(' + slot.slot + ')" style="border-color:' + elemColor + '">' +
+                            '<div class="at-skill-slot-num">Slot ' + (slot.slot + 1) + '</div>' +
+                            (sk
+                                ? '<div class="at-skill-name" style="color:' + elemColor + '">' + sk.name + '</div>' +
+                                  '<div class="at-skill-meta">' + cap(sk.element) + ' · ' + effType + '</div>' +
+                                  '<div class="at-skill-desc">' + sk.description + '</div>'
+                                : '<div class="at-skill-empty">Empty — draw skills to fill</div>') +
+                            (canDrawSlot
+                                ? '<button class="at-skill-draw-btn" onclick="event.stopPropagation(); drawSkillForSlot(' + slot.slot + ')">🎲 Draw (1 pt)</button>'
+                                : '<button class="at-skill-draw-btn" disabled style="opacity:0.4;cursor:not-allowed" title="Need 1 ability point">🔒 Need pt</button>') +
+                        '</div>';
+                });
+                slotsHtml += '</div>';
+            }
+
+            // Skill branch abilities (slot unlocks, reroll, cross-element)
+            var skillAbHtml = '<div class="at-abilities-list" style="margin-top:10px">' +
+                skillAbs.map(function(ab) {
+                    var lvl    = ab.current_level || 0;
+                    var maxLvl = ab.effective_max_level || ab.max_level || 1;
+                    var canUp  = ab.can_upgrade || false;
+                    var isMaxed = lvl >= maxLvl;
+                    var icon   = ABILITY_ICONS[ab.id] || '⚔️';
+                    var isSelAb = _selectedNode && _selectedNode.type === 'ability' && _selectedNode.abilityId === ab.id;
+
+                    var rowClass = 'at-ability-row ' +
+                        (isMaxed ? 'at-ability-maxed' :
+                         lvl > 0  ? 'at-ability-owned' :
+                         canUp    ? 'at-ability-available' : 'at-ability-locked') +
+                        (isSelAb ? ' at-selected' : '');
+
+                    var pips = '';
+                    for (var i = 1; i <= maxLvl; i++) {
+                        var pc = i <= lvl ? (isMaxed ? 'maxed' : 'filled') :
+                                 (i === lvl + 1 && canUp ? 'next' : '');
+                        pips += '<div class="at-pip' + (pc ? ' ' + pc : '') + '"></div>';
+                    }
+
+                    var badge = isMaxed
+                        ? '<span class="at-row-badge at-badge-max">MAX</span>'
+                        : canUp
+                            ? '<span class="at-row-badge at-badge-up">' + (lvl === 0 ? 'UNLOCK' : 'UP') + '</span>'
+                            : lvl > 0
+                                ? '<span class="at-row-badge at-badge-lv">Lv.' + lvl + '</span>'
+                                : '<span class="at-row-badge at-badge-lock">🔒</span>';
+
+                    return '<div class="' + rowClass + '" onclick="selectAbilityNode(\'' + ab.id + '\')">' +
+                        '<span class="at-row-icon">' + icon + '</span>' +
+                        '<span class="at-row-name">' + ab.name + '</span>' +
+                        '<div class="at-row-pips">' + pips + '</div>' +
+                        badge +
+                    '</div>';
+                }).join('') +
+            '</div>';
+
+            contentHtml = slotsHtml + skillAbHtml;
+        }
+
+        return '<div class="at-stat-section' + (isOpen ? ' at-section-open' : '') + '" data-stat="SKILL">' +
+            '<div class="at-section-header" style="border-color:#e67e22" onclick="toggleStatSection(\'SKILL\'); selectSkillBranch();">' +
+                headerRow +
+            '</div>' +
+            (isOpen ? '<div class="at-section-content">' + contentHtml + '</div>' : '') +
+        '</div>';
+    }
+
+    function cap(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : ''; }
 
     // ── Details panel ─────────────────────────────────────────────────────────
     function renderDetails() {
@@ -302,6 +459,78 @@
             '</div>';
         }
         var node = _selectedNode;
+
+        // ── Skill branch header ───────────────────────────────────────────────
+        if (node.type === 'skill_branch') {
+            return '<div class="at-details-header">' +
+                '<div class="at-details-icon-large">⚔️</div>' +
+                '<div><div class="at-details-title">Battle Skills</div>' +
+                '<div class="at-details-subtitle">Free Branch — No mastery required</div></div>' +
+            '</div>' +
+            '<div class="at-details-description">Battle skills are active abilities used in combat — one per slot, usable every 3 turns. ' +
+                'Your first slot is free. Unlock more slots and utilities with ability points. ' +
+                'Click a skill slot to draw new choices or see details.</div>';
+        }
+
+        // ── Skill slot detail ─────────────────────────────────────────────────
+        if (node.type === 'skill_slot') {
+            var slotIdx = node.slot;
+            var skillState = _treeState && _treeState.skill_state;
+            var slotData = skillState && skillState.slots && skillState.slots[slotIdx];
+            var sk = slotData && slotData.skill;
+            var elemColor = sk ? (ELEM_COLORS[sk.element] || '#aaa') : '#888';
+            var effType = sk ? (SKILL_EFFECT_LABELS[sk.effect && sk.effect.type] || (sk.effect && sk.effect.type) || '') : '';
+            var pts = (_treeState && _treeState.available_points) || 0;
+            var canDraw = pts >= 1;
+
+            var skillInfo = sk
+                ? '<div class="at-details-description" style="border-left:3px solid ' + elemColor + ';padding-left:10px">' +
+                    '<strong style="color:' + elemColor + '">' + sk.name + '</strong><br>' +
+                    '<span style="font-size:0.75rem;color:var(--text-secondary)">' + cap(sk.element) + ' · ' + effType + '</span><br>' +
+                    sk.description +
+                  '</div>'
+                : '<div class="at-details-description" style="color:var(--text-secondary)">No skill equipped in this slot. Draw 5 choices from your element pool to pick one.</div>';
+
+            return '<div class="at-details-header">' +
+                '<div class="at-details-icon-large">🎴</div>' +
+                '<div><div class="at-details-title">Skill Slot ' + (slotIdx + 1) + '</div>' +
+                '<div class="at-details-subtitle">' + (sk ? 'Equipped' : 'Empty') + '</div></div>' +
+            '</div>' +
+            skillInfo +
+            '<div class="at-details-stats">' +
+                '<div class="at-detail-row"><span class="at-detail-label">Draw Cost</span><span class="at-detail-value">1 ability point</span></div>' +
+                '<div class="at-detail-row"><span class="at-detail-label">Your Points</span><span class="at-detail-value">' + pts + '</span></div>' +
+            '</div>' +
+            '<div class="at-details-action">' +
+                (canDraw
+                    ? '<button class="at-action-btn at-action-upgrade" onclick="drawSkillForSlot(' + slotIdx + ')">🎲 Draw 5 Choices (1 pt)</button>'
+                    : '<button class="at-action-btn at-action-disabled" disabled>❌ Need 1 ability point to draw</button>') +
+            '</div>' +
+            '<div id="at-skill-draw-result" style="margin-top:10px"></div>';
+        }
+
+        // ── Skill draw choices ────────────────────────────────────────────────
+        if (node.type === 'skill_choices') {
+            var choices = node.choices || [];
+            var slotIdx2 = node.slot;
+            var html = '<div class="at-details-header">' +
+                '<div class="at-details-icon-large">🎲</div>' +
+                '<div><div class="at-details-title">Choose a Skill</div>' +
+                '<div class="at-details-subtitle">Slot ' + (slotIdx2 + 1) + ' — Pick one</div></div>' +
+            '</div>';
+            html += '<div class="at-skill-choices">';
+            choices.forEach(function(sk) {
+                var elemColor = ELEM_COLORS[sk.element] || '#aaa';
+                var effType = SKILL_EFFECT_LABELS[sk.effect && sk.effect.type] || (sk.effect && sk.effect.type) || '';
+                html += '<div class="at-skill-choice-card" onclick="equipSkillChoice(\'' + sk.id + '\',' + slotIdx2 + ')" style="border-color:' + elemColor + '">' +
+                    '<div class="at-skill-choice-name" style="color:' + elemColor + '">' + sk.name + '</div>' +
+                    '<div class="at-skill-choice-meta">' + cap(sk.element) + ' · ' + effType + '</div>' +
+                    '<div class="at-skill-choice-desc">' + sk.description + '</div>' +
+                '</div>';
+            });
+            html += '</div>';
+            return html;
+        }
 
         // ── Advantage mastery detail ──────────────────────────────────────────
         if (node.type === 'adv') {
@@ -480,6 +709,82 @@
         }
     });
 
+    function selectSkillBranch() {
+        _selectedNode = { type: 'skill_branch' };
+        _clearSelection();
+        _refreshPanel();
+    }
+
+    function selectSkillSlot(slotIdx) {
+        _selectedNode = { type: 'skill_slot', slot: slotIdx };
+        _clearSelection();
+        _refreshPanel();
+    }
+
+    function drawSkillForSlot(slotIdx) {
+        var cross = false;
+        // Check if cross-element ability is unlocked
+        if (_treeState && _treeState.abilities) {
+            var crossAb = _treeState.abilities['skill_cross_element'];
+            cross = crossAb && (crossAb.current_level || 0) >= 1;
+        }
+        var pts = (_treeState && _treeState.available_points) || 0;
+        if (pts < 1) {
+            showToast('Not enough ability points — drawing costs 1 point.', false);
+            return;
+        }
+        if (!confirm('Draw 5 new skill choices for slot ' + (slotIdx + 1) + '? This costs 1 ability point.')) return;
+
+        fetch('/api/pets/skills/draw', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ slot: slotIdx, cross_element: cross }),
+        })
+            .then(function(r){ return r.json(); })
+            .then(function(d){
+                if (!d.ok) {
+                    showToast(d.message || 'Draw failed.', false);
+                    return;
+                }
+                // Update local points count
+                if (_treeState && d.ability_points !== undefined) {
+                    _treeState.available_points = d.ability_points;
+                    var badge = el('at-points-badge');
+                    if (badge) badge.textContent = '✨ ' + d.ability_points + ' pt' + (d.ability_points !== 1 ? 's' : '');
+                }
+                if (d.choices && d.choices.length) {
+                    _selectedNode = { type: 'skill_choices', slot: slotIdx, choices: d.choices };
+                    _refreshPanel();
+                } else {
+                    showToast('No skills available to draw.', false);
+                }
+            })
+            .catch(function(e){ showToast('Error: ' + e.message, false); });
+    }
+
+    function equipSkillChoice(skillId, slotIdx) {
+        fetch('/api/pets/skills/equip', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ skill_id: skillId, slot: slotIdx }),
+        })
+        .then(function(r){ return r.json(); })
+        .then(function(d){
+            if (d.ok) {
+                showToast(d.message, true);
+                // Update skill state in tree and re-render
+                if (_treeState) _treeState.skill_state = d.skills;
+                var tc = document.querySelector('.at-tree-container');
+                if (tc && _treeState) { tc.innerHTML = renderTree(_treeState); exposeGlobalHandlers(); }
+                _selectedNode = { type: 'skill_slot', slot: slotIdx };
+                _refreshPanel();
+            } else {
+                showToast(d.message || 'Failed', false);
+            }
+        })
+        .catch(function(e){ showToast('Error: ' + e.message, false); });
+    }
+
     // ── Actions ───────────────────────────────────────────────────────────────
     function spendMastery(stat) {
         if (_loading) return;
@@ -512,7 +817,16 @@
             _loading = false;
             if (d.ok) {
                 showToast(d.message, true);
-                render(d.tree);
+                // For skill branch abilities, also refresh skill state
+                var isSkillAb = abilityId.indexOf('skill_') === 0;
+                if (isSkillAb) {
+                    fetch('/api/pets/skills').then(function(r){ return r.json(); }).then(function(sk){
+                        d.tree.skill_state = sk;
+                        render(d.tree);
+                    }).catch(function(){ render(d.tree); });
+                } else {
+                    render(d.tree);
+                }
                 setTimeout(function(){
                     var ab = d.tree.abilities && d.tree.abilities[abilityId];
                     showUnlockEffect(ab ? ab.stat : null, true, abilityId);

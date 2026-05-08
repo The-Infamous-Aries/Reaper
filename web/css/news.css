@@ -1,0 +1,1626 @@
+/* ── PnW News Page ─────────────────────────────────────────────────────────── */
+
+/* ── Layout shell ─────────────────────────────────────────────────────────── */
+.news-shell {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 1.5rem 1rem 3rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+/* ── Masthead ─────────────────────────────────────────────────────────────── */
+.news-masthead {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+    padding: 1.25rem 1.5rem;
+    background: linear-gradient(135deg, rgba(20,20,20,0.95) 0%, rgba(30,20,10,0.95) 100%);
+    border: 1px solid rgba(255,215,0,0.25);
+    border-radius: 12px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,215,0,0.1);
+}
+
+.news-masthead-left {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.news-masthead-icon {
+    width: 48px;
+    height: 48px;
+    object-fit: contain;
+    filter: drop-shadow(0 0 8px rgba(255,215,0,0.4));
+}
+
+.news-masthead-title {
+    font-family: 'Orbitron', 'Roboto', sans-serif;
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: var(--gold-primary);
+    text-shadow: 0 0 20px rgba(255,215,0,0.3);
+    letter-spacing: 0.05em;
+    margin: 0;
+    line-height: 1.1;
+}
+
+.news-masthead-subtitle {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    margin: 0;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.news-masthead-live {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.7rem;
+    color: #4ade80;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+}
+
+.news-live-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #4ade80;
+    animation: news-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes news-pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(0.7); }
+}
+
+/* ── Control bar ──────────────────────────────────────────────────────────── */
+.news-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    padding: 1rem 1.25rem;
+    background: rgba(15,15,15,0.9);
+    border: 1px solid rgba(255,215,0,0.15);
+    border-radius: 10px;
+}
+
+.news-toggle-group {
+    display: flex;
+    background: rgba(0,0,0,0.4);
+    border: 1px solid rgba(255,215,0,0.2);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.news-toggle-btn {
+    padding: 0.45rem 1rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+}
+
+.news-toggle-btn:hover {
+    color: var(--gold-primary);
+    background: rgba(255,215,0,0.08);
+}
+
+.news-toggle-btn.is-active {
+    color: #0a0a0a;
+    background: var(--gold-primary);
+    font-weight: 700;
+}
+
+.news-controls-sep {
+    width: 1px;
+    height: 28px;
+    background: rgba(255,215,0,0.15);
+    flex-shrink: 0;
+}
+
+.news-period-label {
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    white-space: nowrap;
+}
+
+/* Calendar icons inside period toggle buttons */
+.news-period-cal-icon {
+    width: 16px;
+    height: 16px;
+    object-fit: contain;
+    vertical-align: middle;
+    margin-right: 4px;
+    margin-bottom: 1px;
+    filter: drop-shadow(0 0 3px rgba(255,215,0,0.3));
+}
+
+.news-toggle-btn.is-active .news-period-cal-icon {
+    filter: brightness(0) saturate(100%); /* darken on gold bg */
+}
+
+/* ── Summary cards ────────────────────────────────────────────────────────── */
+.news-summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 0.75rem;
+}
+
+.news-stat-card {
+    background: rgba(15,15,15,0.9);
+    border: 1px solid rgba(255,215,0,0.15);
+    border-radius: 10px;
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    position: relative;
+    overflow: hidden;
+}
+
+.news-stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--gold-primary), transparent);
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.news-stat-card:hover {
+    border-color: rgba(255,215,0,0.35);
+    box-shadow: 0 4px 16px rgba(255,215,0,0.08);
+}
+
+.news-stat-card:hover::before {
+    opacity: 1;
+}
+
+.news-stat-icon {
+    font-size: 1.4rem;
+    line-height: 1;
+}
+
+/* Static emoji images inside stat cards */
+.news-stat-img {
+    width: 28px;
+    height: 28px;
+    object-fit: contain;
+    display: block;
+}
+
+/* Static emoji images inside filter chips */
+.news-chip-img {
+    width: 14px;
+    height: 14px;
+    object-fit: contain;
+    vertical-align: middle;
+    margin-right: 2px;
+}
+
+/* Static emoji images inside event badge */
+.news-badge-img {
+    width: 22px;
+    height: 22px;
+    object-fit: contain;
+}
+
+/* Static emoji images used inline in JS-rendered content */
+.news-emoji-icon {
+    display: inline-block;
+    vertical-align: middle;
+}
+
+.news-stat-value {
+    font-family: 'Orbitron', monospace;
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--gold-primary);
+    line-height: 1.1;
+}
+
+.news-stat-label {
+    font-size: 0.68rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+}
+
+.news-stat-scope {
+    font-size: 0.6rem;
+    color: rgba(255,215,0,0.4);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+/* ── Main content area ────────────────────────────────────────────────────── */
+.news-content-grid {
+    display: grid;
+    grid-template-columns: 1fr 340px;
+    gap: 1.25rem;
+    align-items: start;
+}
+
+@media (max-width: 1024px) {
+    .news-content-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* ── Feed panel ───────────────────────────────────────────────────────────── */
+.news-feed-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    background: rgba(12,12,12,0.95);
+    border: 1px solid rgba(255,215,0,0.15);
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.news-feed-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.9rem 1.25rem;
+    border-bottom: 1px solid rgba(255,215,0,0.12);
+    background: rgba(20,15,5,0.6);
+}
+
+.news-feed-title {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--gold-primary);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+
+.news-feed-filter {
+    display: flex;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+}
+
+.news-filter-chip {
+    padding: 0.2rem 0.6rem;
+    font-size: 0.65rem;
+    font-weight: 600;
+    border-radius: 20px;
+    border: 1px solid rgba(255,215,0,0.2);
+    background: transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.15s;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.news-filter-chip:hover,
+.news-filter-chip.is-active {
+    background: rgba(255,215,0,0.15);
+    border-color: var(--gold-primary);
+    color: var(--gold-primary);
+}
+
+/* ── Event items ──────────────────────────────────────────────────────────── */
+.news-event-list {
+    display: flex;
+    flex-direction: column;
+}
+
+.news-event-item {
+    display: grid;
+    grid-template-columns: 44px 1fr auto;
+    gap: 0.75rem;
+    align-items: start;
+    padding: 0.9rem 1.25rem;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    transition: background 0.15s;
+    cursor: pointer;
+    position: relative;
+}
+
+.news-event-item:last-child {
+    border-bottom: none;
+}
+
+.news-event-item:hover {
+    background: rgba(255,215,0,0.04);
+}
+
+.news-event-item.is-nw {
+    border-left: 3px solid rgba(255,215,0,0.5);
+}
+
+/* Event type icon badge */
+.news-event-badge {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+.news-event-badge.type-city_purchase    { background: rgba(74,222,128,0.15); border: 1px solid rgba(74,222,128,0.3); }
+.news-event-badge.type-project_purchase { background: rgba(96,165,250,0.15); border: 1px solid rgba(96,165,250,0.3); }
+.news-event-badge.type-city_upgrade     { background: rgba(251,191,36,0.15); border: 1px solid rgba(251,191,36,0.3); }
+.news-event-badge.type-war_declared     { background: rgba(239,68,68,0.15);  border: 1px solid rgba(239,68,68,0.3); }
+.news-event-badge.type-war_ended        { background: rgba(168,85,247,0.15); border: 1px solid rgba(168,85,247,0.3); }
+.news-event-badge.type-wmd_attack       { background: rgba(239,68,68,0.2);   border: 1px solid rgba(239,68,68,0.5); }
+.news-event-badge.type-loot_attack      { background: rgba(251,146,60,0.15); border: 1px solid rgba(251,146,60,0.3); }
+.news-event-badge.type-military_purchase{ background: rgba(148,163,184,0.15);border: 1px solid rgba(148,163,184,0.3); }
+.news-event-badge.type-alliance_join    { background: rgba(34,197,94,0.15);  border: 1px solid rgba(34,197,94,0.3); }
+.news-event-badge.type-alliance_leave   { background: rgba(239,68,68,0.1);   border: 1px solid rgba(239,68,68,0.2); }
+.news-event-badge.type-alliance_change  { background: rgba(251,191,36,0.1);  border: 1px solid rgba(251,191,36,0.2); }
+
+.news-event-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    min-width: 0;
+}
+
+.news-event-headline {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    line-height: 1.35;
+    word-break: break-word;
+}
+
+.news-event-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.news-event-alliance {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.68rem;
+    color: var(--text-secondary);
+}
+
+.news-event-alliance-flag {
+    width: 16px;
+    height: 12px;
+    object-fit: cover;
+    border-radius: 2px;
+    border: 1px solid rgba(255,255,255,0.1);
+}
+
+.news-event-nation-flag {
+    width: 18px;
+    height: 13px;
+    object-fit: cover;
+    border-radius: 2px;
+    border: 1px solid rgba(255,255,255,0.1);
+}
+
+.news-event-type-tag {
+    font-size: 0.6rem;
+    padding: 0.1rem 0.4rem;
+    border-radius: 4px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    background: rgba(255,215,0,0.1);
+    color: rgba(255,215,0,0.7);
+    border: 1px solid rgba(255,215,0,0.15);
+}
+
+.news-event-value {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--gold-primary);
+    white-space: nowrap;
+    text-align: right;
+    padding-top: 2px;
+}
+
+.news-event-time {
+    font-size: 0.62rem;
+    color: rgba(185,187,190,0.5);
+    white-space: nowrap;
+}
+
+/* ── Load more ────────────────────────────────────────────────────────────── */
+.news-load-more {
+    padding: 0.9rem;
+    text-align: center;
+    border-top: 1px solid rgba(255,215,0,0.1);
+}
+
+.news-load-more-btn {
+    padding: 0.5rem 1.5rem;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--gold-primary);
+    background: rgba(255,215,0,0.08);
+    border: 1px solid rgba(255,215,0,0.25);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: 0.04em;
+}
+
+.news-load-more-btn:hover {
+    background: rgba(255,215,0,0.15);
+    border-color: var(--gold-primary);
+}
+
+/* ── Leaderboard sidebar ──────────────────────────────────────────────────── */
+.news-sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    position: sticky;
+    top: 1rem;
+}
+
+.news-leaderboard-card {
+    background: rgba(12,12,12,0.95);
+    border: 1px solid rgba(255,215,0,0.15);
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.news-lb-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.8rem 1rem;
+    border-bottom: 1px solid rgba(255,215,0,0.1);
+    background: rgba(20,15,5,0.6);
+}
+
+.news-lb-title {
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--gold-primary);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+
+.news-lb-sort-select {
+    font-size: 0.65rem;
+    background: rgba(0,0,0,0.5);
+    border: 1px solid rgba(255,215,0,0.2);
+    color: var(--text-secondary);
+    border-radius: 4px;
+    padding: 0.15rem 0.4rem;
+    cursor: pointer;
+}
+
+.news-lb-sort-select:focus {
+    outline: none;
+    border-color: var(--gold-primary);
+}
+
+.news-lb-list {
+    display: flex;
+    flex-direction: column;
+}
+
+.news-lb-item {
+    display: grid;
+    grid-template-columns: 22px 28px 1fr auto;
+    gap: 0.5rem;
+    align-items: center;
+    padding: 0.6rem 1rem;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    transition: background 0.15s;
+}
+
+.news-lb-item:last-child {
+    border-bottom: none;
+}
+
+.news-lb-item:hover {
+    background: rgba(255,215,0,0.04);
+}
+
+.news-lb-rank {
+    font-size: 0.65rem;
+    font-weight: 700;
+    color: var(--text-secondary);
+    text-align: center;
+}
+
+.news-lb-rank.rank-1 { color: #ffd700; }
+.news-lb-rank.rank-2 { color: #c0c0c0; }
+.news-lb-rank.rank-3 { color: #cd7f32; }
+
+.news-lb-flag {
+    width: 24px;
+    height: 18px;
+    object-fit: cover;
+    border-radius: 3px;
+    border: 1px solid rgba(255,255,255,0.1);
+}
+
+.news-lb-flag-placeholder {
+    width: 24px;
+    height: 18px;
+    background: rgba(255,215,0,0.1);
+    border-radius: 3px;
+    border: 1px solid rgba(255,215,0,0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.55rem;
+    color: rgba(255,215,0,0.5);
+}
+
+.news-lb-name {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.news-lb-name-sub {
+    font-size: 0.6rem;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.news-lb-value {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--gold-primary);
+    text-align: right;
+    white-space: nowrap;
+}
+
+/* ── Empty / loading states ───────────────────────────────────────────────── */
+.news-empty {
+    padding: 3rem 1.5rem;
+    text-align: center;
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+}
+
+.news-empty-icon {
+    font-size: 2.5rem;
+    margin-bottom: 0.75rem;
+    opacity: 0.4;
+}
+
+.news-loading {
+    padding: 2rem;
+    text-align: center;
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+}
+
+.news-spinner {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 2px solid rgba(255,215,0,0.2);
+    border-top-color: var(--gold-primary);
+    border-radius: 50%;
+    animation: news-spin 0.7s linear infinite;
+    margin-right: 0.5rem;
+    vertical-align: middle;
+}
+
+@keyframes news-spin {
+    to { transform: rotate(360deg); }
+}
+
+/* ── Period info bar ──────────────────────────────────────────────────────── */
+.news-period-bar {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.6rem 1.25rem;
+    background: rgba(255,215,0,0.04);
+    border-bottom: 1px solid rgba(255,215,0,0.08);
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    flex-wrap: wrap;
+}
+
+.news-period-chip {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+}
+
+.news-period-chip-label {
+    color: rgba(185,187,190,0.5);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+.news-period-chip-value {
+    color: var(--gold-primary);
+    font-weight: 600;
+}
+
+/* ── Event detail expand ──────────────────────────────────────────────────── */
+.news-event-detail {
+    grid-column: 1 / -1;
+    padding: 0.75rem 1rem;
+    background: rgba(255,215,0,0.04);
+    border-radius: 6px;
+    border: 1px solid rgba(255,215,0,0.1);
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    display: none;
+    margin-top: 0.25rem;
+    overflow: hidden;
+    min-width: 0;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.news-event-item.is-expanded .news-event-detail {
+    display: block;
+}
+
+/* Two-column layout inside the expand panel:
+   Left: key-value stats  |  Right: resource table
+   Right column is fixed-width enough to show the full resource grid.
+   Left column takes remaining space. */
+.news-expand-layout {
+    display: flex;
+    gap: 1.25rem;
+    align-items: flex-start;
+    min-width: 0;
+    width: 100%;
+}
+
+.news-expand-left {
+    flex: 1 1 0;
+    min-width: 0;
+}
+
+/* Right panel: never shrinks below the resource table's natural width */
+.news-expand-right {
+    flex: 0 0 auto;
+    min-width: min(100%, 340px);
+    max-width: 100%;
+}
+
+/* Key-value stats grid — flows naturally in the left column */
+.news-detail-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+    gap: 0.5rem 1rem;
+    min-width: 0;
+}
+
+.news-detail-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+    min-width: 0;
+}
+
+.news-detail-key {
+    font-size: 0.6rem;
+    color: rgba(185,187,190,0.5);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    white-space: nowrap;
+}
+
+.news-detail-val {
+    font-size: 0.72rem;
+    color: var(--text-primary);
+    font-weight: 600;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+}
+
+/* ── WMD damage breakdown panel ──────────────────────────────────────────── */
+/* Clean vertical list — no auto-fill grid, labels and values on one row each */
+.news-wmd-damage {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    min-width: 180px;
+}
+
+.news-wmd-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 1rem;
+    padding: 0.22rem 0;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+
+.news-wmd-row:last-child {
+    border-bottom: none;
+}
+
+.news-wmd-label {
+    font-size: 0.65rem;
+    color: rgba(185,187,190,0.55);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.news-wmd-val {
+    font-size: 0.75rem;
+    color: var(--text-primary);
+    font-weight: 600;
+    text-align: right;
+    white-space: nowrap;
+}
+
+/* Separator row — thin line between sections */
+.news-wmd-sep {
+    height: 1px;
+    background: rgba(255,255,255,0.08);
+    margin: 0.3rem 0;
+}
+
+/* Total row — slightly highlighted */
+.news-wmd-row.is-total .news-wmd-label,
+.news-wmd-row.is-total .news-wmd-val {
+    color: var(--gold-primary, #ffd700);
+    font-size: 0.78rem;
+}
+
+/* ── Expand hint indicator ────────────────────────────────────────────────── */
+.news-expand-hint {
+    font-size: 0.65rem;
+    color: rgba(255,215,0,0.45);
+    letter-spacing: 0.05em;
+    cursor: pointer;
+    transition: color 0.2s;
+    user-select: none;
+    margin-left: auto;
+}
+
+.news-event-item:hover .news-expand-hint {
+    color: rgba(255,215,0,0.75);
+}
+
+.news-event-item.is-expanded .news-expand-hint {
+    color: var(--gold-primary);
+}
+
+.news-event-item.is-expanded .news-expand-hint::before {
+    content: '▲ ';
+}
+
+.news-event-item.is-expanded .news-expand-hint {
+    /* override the text set in JS */
+}
+
+/* Rotate the arrow when expanded */
+.news-event-item.is-expanded .news-expand-hint {
+    color: var(--gold-primary);
+}
+
+/* ── Responsive ───────────────────────────────────────────────────────────── */
+@media (max-width: 640px) {
+    .news-masthead-title { font-size: 1.2rem; }
+    .news-summary-grid { grid-template-columns: repeat(2, 1fr); }
+    .news-event-item { grid-template-columns: 36px 1fr; }
+    .news-event-value { display: none; }
+    .news-controls { gap: 0.5rem; }
+}
+
+/* ── Alliance table rows ──────────────────────────────────────────────────── */
+
+/* Alliance: rank | name | cities | projects | infra | military | declared | won | lost | loot | missiles | nukes | total */
+/* Nations:  rank | name | alliance | cities | projects | infra | military | declared | won | lost | loot | total */
+
+.news-alliance-table-header,
+.news-nations-table-header {
+    display: grid;
+    padding: 0.5rem 1rem;
+    background: rgba(255,215,0,0.06);
+    border-bottom: 1px solid rgba(255,215,0,0.12);
+    font-size: 0.62rem;
+    font-weight: 700;
+    color: rgba(255,215,0,0.6);
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.news-alliance-table-header {
+    grid-template-columns: 28px 1fr repeat(10, minmax(52px,72px)) minmax(80px,100px);
+}
+
+.news-nations-table-header {
+    grid-template-columns: 28px 1fr minmax(80px,120px) repeat(9, minmax(52px,72px)) minmax(80px,100px);
+}
+
+/* Sortable column header */
+.news-th-sortable {
+    cursor: pointer;
+    user-select: none;
+    transition: color 0.15s;
+    white-space: nowrap;
+}
+
+.news-th-sortable:hover {
+    color: var(--gold-primary);
+}
+
+.news-th-sortable.is-active-sort {
+    color: var(--gold-primary);
+}
+
+/* Colored header variants */
+.news-th-gold  { color: rgba(255,215,0,0.75); }
+.news-th-green { color: rgba(74,222,128,0.75); }
+.news-th-red   { color: rgba(239,68,68,0.75); }
+
+.news-th-gold:hover,  .news-th-gold.is-active-sort  { color: #ffd700; }
+.news-th-green:hover, .news-th-green.is-active-sort { color: #4ade80; }
+.news-th-red:hover,   .news-th-red.is-active-sort   { color: #f87171; }
+
+/* Sort direction arrow */
+.news-sort-arrow {
+    display: inline-block;
+    font-size: 0.55rem;
+    margin-left: 2px;
+    opacity: 0.5;
+    vertical-align: middle;
+}
+
+.news-th-sortable.is-active-sort .news-sort-arrow {
+    opacity: 1;
+}
+
+.news-alliance-row,
+.news-nation-row {
+    display: grid;
+    gap: 0.5rem;
+    align-items: center;
+    padding: 0.65rem 1rem;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    transition: background 0.15s;
+    font-size: 0.78rem;
+}
+
+.news-alliance-row {
+    grid-template-columns: 28px 1fr repeat(10, minmax(52px,72px)) minmax(80px,100px);
+}
+
+.news-nation-row {
+    grid-template-columns: 28px 1fr minmax(80px,120px) repeat(9, minmax(52px,72px)) minmax(80px,100px);
+}
+
+.news-alliance-row:last-child,
+.news-nation-row:last-child {
+    border-bottom: none;
+}
+
+.news-alliance-row:hover,
+.news-nation-row:hover {
+    background: rgba(255,215,0,0.04);
+}
+
+/* NW highlight on rows */
+.news-alliance-row.is-nw-row,
+.news-nation-row.is-nw-row {
+    border-left: 3px solid rgba(255,215,0,0.5);
+    background: rgba(255,215,0,0.03);
+}
+
+.news-alliance-name-cell,
+.news-nation-name-cell,
+.news-nation-alliance-cell {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-width: 0;
+    overflow: hidden;
+}
+
+.news-cell-num {
+    color: var(--text-secondary);
+    font-size: 0.75rem;
+    text-align: right;
+    white-space: nowrap;
+}
+
+.news-cell-total {
+    color: var(--gold-primary);
+    font-weight: 700;
+}
+
+/* Negative total_spent = net profit (loot > spending) */
+.news-cell-profit {
+    color: #4ade80 !important;  /* green */
+    font-weight: 700;
+}
+
+/* Explicit color utility classes for leaderboard cells */
+.news-cell-green {
+    color: #4ade80 !important;
+    font-weight: 700;
+}
+
+.news-cell-red {
+    color: #f87171 !important;
+    font-weight: 700;
+}
+
+.news-cell-gold {
+    color: var(--gold-primary) !important;
+    font-weight: 700;
+}
+
+/* ── Modal ────────────────────────────────────────────────────────────────── */
+.news-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.75);
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+}
+
+.news-modal-box {
+    background: #111;
+    border: 1px solid rgba(255,215,0,0.3);
+    border-radius: 12px;
+    width: 100%;
+    max-width: 560px;
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.8);
+}
+
+.news-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid rgba(255,215,0,0.15);
+    background: rgba(20,15,5,0.8);
+    position: sticky;
+    top: 0;
+}
+
+.news-modal-title {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--gold-primary);
+    letter-spacing: 0.04em;
+}
+
+.news-modal-close {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 1.1rem;
+    cursor: pointer;
+    padding: 0.2rem 0.4rem;
+    border-radius: 4px;
+    transition: color 0.15s;
+}
+
+.news-modal-close:hover { color: var(--gold-primary); }
+
+.news-modal-body {
+    padding: 1.25rem;
+}
+
+/* ── Responsive table: hide columns on small screens ─────────────────────── */
+@media (max-width: 900px) {
+    .hide-mobile { display: none !important; }
+    .news-alliance-table-header { grid-template-columns: 28px 1fr minmax(80px,100px); }
+    .news-nations-table-header  { grid-template-columns: 28px 1fr minmax(80px,100px); }
+    .news-alliance-row          { grid-template-columns: 28px 1fr minmax(80px,100px); }
+    .news-nation-row            { grid-template-columns: 28px 1fr minmax(80px,100px); }
+}
+
+/* ── PnW in-game links (nation, alliance, city) in headlines ─────────────── */
+.news-pnw-link,
+.news-city-link {
+    color: var(--gold-primary);
+    text-decoration: none;
+    font-weight: 600;
+    border-bottom: 1px solid rgba(255,215,0,0.3);
+    transition: all 0.15s ease;
+    padding: 0 2px;
+}
+
+.news-pnw-link:hover,
+.news-city-link:hover {
+    color: #ffed4e;
+    border-bottom-color: #ffed4e;
+    background: rgba(255,215,0,0.1);
+    border-radius: 2px;
+}
+
+/* Alliance name link in the meta row (smaller, muted) */
+.news-event-alliance .news-pnw-link {
+    color: var(--text-secondary);
+    border-bottom-color: rgba(185,187,190,0.25);
+    font-weight: 400;
+}
+
+.news-event-alliance .news-pnw-link:hover {
+    color: var(--gold-primary);
+    border-bottom-color: rgba(255,215,0,0.4);
+    background: rgba(255,215,0,0.06);
+}
+
+/* ── War costs toggle button ─────────────────────────────────────────────── */
+.news-war-costs-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.2rem 0.55rem;
+    font-size: 0.68rem;
+    font-weight: 600;
+    color: rgba(168,85,247,0.9);
+    background: rgba(168,85,247,0.1);
+    border: 1px solid rgba(168,85,247,0.3);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
+    white-space: nowrap;
+}
+
+.news-war-costs-btn:hover {
+    background: rgba(168,85,247,0.2);
+    border-color: rgba(168,85,247,0.6);
+    color: #c084fc;
+}
+
+.news-war-costs-btn[aria-expanded="true"] {
+    background: rgba(168,85,247,0.2);
+    border-color: rgba(168,85,247,0.5);
+    color: #c084fc;
+}
+
+.news-war-costs-btn:disabled {
+    opacity: 0.6;
+    cursor: wait;
+}
+
+/* ── War costs panel ─────────────────────────────────────────────────────── */
+.news-war-costs-panel {
+    grid-column: 1 / -1;
+    margin-top: 0.5rem;
+    padding: 0.75rem 1rem;
+    background: rgba(168,85,247,0.05);
+    border: 1px solid rgba(168,85,247,0.2);
+    border-radius: 6px;
+}
+
+.news-war-costs-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+
+@media (max-width: 560px) {
+    .news-war-costs-grid { grid-template-columns: 1fr; }
+}
+
+.news-wc-side {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.news-wc-side-label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: rgba(168,85,247,0.9);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 0.35rem;
+    padding-bottom: 0.25rem;
+    border-bottom: 1px solid rgba(168,85,247,0.2);
+}
+
+.news-wc-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.5rem;
+    font-size: 0.72rem;
+}
+
+.news-wc-key {
+    color: rgba(185,187,190,0.6);
+}
+
+.news-wc-val {
+    color: var(--text-primary);
+    font-weight: 600;
+    text-align: right;
+}
+
+.news-wc-loading {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    text-align: center;
+    padding: 0.5rem;
+}
+
+.news-war-costs-error {
+    font-size: 0.75rem;
+    color: rgba(239,68,68,0.8);
+    padding: 0.25rem 0;
+}
+
+/* ── Search box ───────────────────────────────────────────────────────────── */
+.news-search-box {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.news-search-input {
+    width: 180px;
+    padding: 0.42rem 2rem 0.42rem 0.7rem;
+    font-size: 0.78rem;
+    font-weight: 500;
+    color: var(--text-primary);
+    background: rgba(0,0,0,0.45);
+    border: 1px solid rgba(255,215,0,0.22);
+    border-radius: 8px;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    letter-spacing: 0.02em;
+}
+
+.news-search-input::placeholder {
+    color: rgba(185,187,190,0.4);
+}
+
+.news-search-input:focus {
+    border-color: rgba(255,215,0,0.55);
+    box-shadow: 0 0 0 2px rgba(255,215,0,0.08);
+}
+
+.news-search-input.has-value {
+    border-color: rgba(255,215,0,0.5);
+    color: var(--gold-primary);
+}
+
+.news-search-clear {
+    position: absolute;
+    right: 0.45rem;
+    background: none;
+    border: none;
+    color: rgba(185,187,190,0.5);
+    cursor: pointer;
+    font-size: 0.7rem;
+    padding: 0.1rem 0.2rem;
+    line-height: 1;
+    transition: color 0.15s;
+}
+
+.news-search-clear:hover {
+    color: var(--gold-primary);
+}
+
+.news-search-dropdown {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    width: 240px;
+    max-height: 220px;
+    overflow-y: auto;
+    background: rgba(18,14,6,0.98);
+    border: 1px solid rgba(255,215,0,0.25);
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.7);
+    z-index: 500;
+    list-style: none;
+    margin: 0;
+    padding: 0.25rem 0;
+    display: none;
+}
+
+.news-search-dropdown.is-open {
+    display: block;
+}
+
+.news-search-dropdown li {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.45rem 0.75rem;
+    font-size: 0.78rem;
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: background 0.12s;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.news-search-dropdown li:hover,
+.news-search-dropdown li.is-focused {
+    background: rgba(255,215,0,0.1);
+    color: var(--gold-primary);
+}
+
+.news-search-dropdown li .news-search-item-sub {
+    font-size: 0.62rem;
+    color: var(--text-secondary);
+    margin-left: auto;
+    flex-shrink: 0;
+}
+
+.news-search-dropdown li .news-search-item-type {
+    font-size: 0.58rem;
+    padding: 0.05rem 0.3rem;
+    border-radius: 3px;
+    background: rgba(255,215,0,0.1);
+    color: rgba(255,215,0,0.6);
+    border: 1px solid rgba(255,215,0,0.15);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    flex-shrink: 0;
+}
+
+.news-search-no-results {
+    padding: 0.6rem 0.75rem;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    text-align: center;
+}
+
+/* ── Grim Reaper body text ────────────────────────────────────────────────── */
+.news-event-reaper-body {
+    font-size: 0.78rem;
+    line-height: 1.5;
+    color: rgba(185,187,190,0.75);
+    font-style: italic;
+    margin-top: 0.3rem;
+    padding: 0.4rem 0.6rem;
+    border-left: 2px solid rgba(255,215,0,0.2);
+    background: rgba(255,215,0,0.02);
+    border-radius: 0 4px 4px 0;
+    display: block; /* always visible — the Reaper always has something to say */
+}
+
+/* NW events always show body (already block, but explicit for clarity) */
+.news-event-item.is-nw .news-event-reaper-body {
+    display: block;
+}
+
+/* ── Tone-based NW event styling ─────────────────────────────────────────── */
+
+/* Happy / excited — NW builds, wins, loots */
+.news-event-item.is-nw.tone-happy {
+    border-left: 3px solid rgba(74,222,128,0.7);
+    background: rgba(74,222,128,0.03);
+}
+.news-event-item.is-nw.tone-happy .news-event-reaper-body {
+    border-left-color: rgba(74,222,128,0.4);
+    background: rgba(74,222,128,0.04);
+    color: rgba(134,239,172,0.85);
+}
+.news-event-item.is-nw.tone-happy .news-event-headline {
+    color: #86efac;
+}
+
+/* Sad — NW losses, looted, hit by WMD */
+.news-event-item.is-nw.tone-sad {
+    border-left: 3px solid rgba(239,68,68,0.7);
+    background: rgba(239,68,68,0.03);
+}
+.news-event-item.is-nw.tone-sad .news-event-reaper-body {
+    border-left-color: rgba(239,68,68,0.4);
+    background: rgba(239,68,68,0.04);
+    color: rgba(252,165,165,0.85);
+}
+.news-event-item.is-nw.tone-sad .news-event-headline {
+    color: #fca5a5;
+}
+
+/* War / aggressive — NW declares war, fires WMD */
+.news-event-item.is-nw.tone-war {
+    border-left: 3px solid rgba(251,146,60,0.7);
+    background: rgba(251,146,60,0.03);
+}
+.news-event-item.is-nw.tone-war .news-event-reaper-body {
+    border-left-color: rgba(251,146,60,0.4);
+    background: rgba(251,146,60,0.04);
+    color: rgba(253,186,116,0.85);
+}
+.news-event-item.is-nw.tone-war .news-event-headline {
+    color: #fdba74;
+}
+
+/* Funny — missed WMD */
+.news-event-item.tone-funny {
+    border-left: 3px solid rgba(168,85,247,0.7);
+    background: rgba(168,85,247,0.03);
+}
+.news-event-item.tone-funny .news-event-reaper-body {
+    display: block; /* always show funny body */
+    border-left-color: rgba(168,85,247,0.4);
+    background: rgba(168,85,247,0.04);
+    color: rgba(216,180,254,0.85);
+}
+.news-event-item.tone-funny .news-event-headline {
+    color: #d8b4fe;
+}
+
+/* Neutral NW events */
+.news-event-item.is-nw.tone-neutral {
+    border-left: 3px solid rgba(255,215,0,0.5);
+}
+
+/* ── Missed WMD badge ─────────────────────────────────────────────────────── */
+.news-missed-badge {
+    display: inline-block;
+    margin-left: 0.5rem;
+    padding: 0.1rem 0.45rem;
+    font-size: 0.6rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    background: rgba(168,85,247,0.2);
+    border: 1px solid rgba(168,85,247,0.4);
+    border-radius: 4px;
+    color: #d8b4fe;
+    vertical-align: middle;
+}
+
+/* ── Non-NW events: subtle random tone via CSS nth-child ─────────────────── */
+/* Give non-NW events a very subtle left accent so the feed isn't monotone */
+.news-event-item:not(.is-nw):nth-child(5n+1) { border-left: 2px solid rgba(96,165,250,0.2); }
+.news-event-item:not(.is-nw):nth-child(5n+2) { border-left: 2px solid rgba(251,191,36,0.15); }
+.news-event-item:not(.is-nw):nth-child(5n+3) { border-left: 2px solid rgba(74,222,128,0.15); }
+.news-event-item:not(.is-nw):nth-child(5n+4) { border-left: 2px solid rgba(239,68,68,0.15); }
+.news-event-item:not(.is-nw):nth-child(5n+5) { border-left: 2px solid rgba(168,85,247,0.15); }
+
+/* ── Resource images (16×16 inline icons from /static/Emojis/Resources/) ──── */
+.news-res-img {
+    width: 16px;
+    height: 16px;
+    object-fit: contain;
+    vertical-align: middle;
+    display: inline-block;
+    image-rendering: crisp-edges;
+}
+
+/* 💰 emoji used for cash — sized to match the 16px resource images */
+.news-res-emoji-char {
+    font-size: 15px;
+    line-height: 16px;
+    vertical-align: middle;
+    display: inline-block;
+}
+
+.news-res-fallback {
+    font-size: 0.9rem;
+    vertical-align: middle;
+}
+
+/* ── Loot breakdown panel ─────────────────────────────────────────────────── */
+.news-loot-breakdown {
+    margin-top: 0.5rem;
+    padding: 0.75rem 1rem;
+    background: rgba(251,146,60,0.06);
+    border: 1px solid rgba(251,146,60,0.25);
+    border-radius: 8px;
+    font-size: 0.78rem;
+    overflow: hidden;
+    min-width: 0;
+    box-sizing: border-box;
+}
+
+.news-loot-breakdown-title {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: rgba(251,146,60,0.9);
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    margin-bottom: 0.5rem;
+}
+
+/* ── Resource grid (used for both loot and resource costs) ────────────────── */
+.news-resource-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    width: 100%;
+    min-width: 0;
+}
+
+/*
+  5-col layout: icon(24px) | name(flex) | amount(56px) | price(80px) | value(64px)
+  Using minmax so columns never collapse below readable widths.
+*/
+.news-resource-grid-header,
+.news-resource-row,
+.news-loot-total-row {
+    display: grid;
+    grid-template-columns: 1.5rem minmax(5rem, 1fr) minmax(3.5rem, auto) minmax(5rem, auto) minmax(4rem, auto);
+    gap: 0.4rem;
+    align-items: center;
+    padding: 0.2rem 0.3rem;
+    min-width: 0;
+}
+
+.news-resource-grid-header {
+    font-size: 0.6rem;
+    font-weight: 700;
+    color: rgba(185,187,190,0.45);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    margin-bottom: 0.15rem;
+    padding-bottom: 0.3rem;
+}
+
+.news-resource-row {
+    border-radius: 4px;
+    transition: background 0.12s;
+}
+
+.news-resource-row:hover {
+    background: rgba(255,255,255,0.04);
+}
+
+.news-loot-total-row {
+    border-top: 1px solid rgba(251,146,60,0.3);
+    margin-top: 0.2rem;
+    padding-top: 0.3rem;
+}
+
+.news-resource-emoji {
+    font-size: 0.9rem;
+    text-align: center;
+    line-height: 1;
+    flex-shrink: 0;
+}
+
+.news-resource-name {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+}
+
+.news-resource-amt {
+    font-size: 0.73rem;
+    color: var(--text-primary);
+    font-weight: 600;
+    text-align: right;
+    white-space: nowrap;
+}
+
+.news-resource-price {
+    font-size: 0.68rem;
+    color: rgba(185,187,190,0.55);
+    text-align: right;
+    white-space: nowrap;
+}
+
+.news-resource-value {
+    font-size: 0.73rem;
+    font-weight: 700;
+    color: var(--gold-primary);
+    text-align: right;
+    white-space: nowrap;
+}
+
+/* Loot-specific row styling */
+.news-loot-row .news-resource-name {
+    color: rgba(253,186,116,0.9);
+}
+
+.news-loot-value {
+    color: #fbbf24 !important;
+}
+
+.news-loot-total-label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: rgba(251,146,60,0.9);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.news-loot-total-value {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #fb923c;
+    text-align: right;
+    grid-column: 5; /* always in the value column */
+}
+
+/* Price note (timestamp) */
+.news-price-note {
+    display: block;
+    margin-top: 0.4rem;
+    font-size: 0.6rem;
+    color: rgba(185,187,190,0.35);
+    font-style: italic;
+}
+
+/* ── Resource costs section (military/project purchases) ─────────────────── */
+/* Always visible when rendered — the expand panel handles show/hide */
+.news-resource-section {
+    padding: 0.5rem 0.75rem;
+    background: rgba(96,165,250,0.05);
+    border: 1px solid rgba(96,165,250,0.15);
+    border-radius: 6px;
+    overflow: hidden;
+    min-width: 0;
+    box-sizing: border-box;
+    width: 100%;
+}
+
+.news-resource-section-title {
+    font-size: 0.65rem;
+    font-weight: 700;
+    color: rgba(96,165,250,0.7);
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    margin-bottom: 0.35rem;
+    white-space: nowrap;
+}
+
+/* Always show loot breakdown (not hidden behind expand) */
+.news-loot-breakdown {
+    display: block !important;
+}
+
+/* Responsive: hide price column and stack layout on narrow screens */
+@media (max-width: 640px) {
+    .news-expand-layout {
+        flex-direction: column;
+    }
+    .news-expand-right {
+        width: 100%;
+        min-width: 0;
+    }
+    .news-resource-grid-header { display: none; }
+    .news-resource-grid-header,
+    .news-resource-row,
+    .news-loot-total-row {
+        grid-template-columns: 1.5rem minmax(4rem, 1fr) minmax(3rem, auto) minmax(4rem, auto);
+    }
+    .news-resource-price { display: none; }
+}
