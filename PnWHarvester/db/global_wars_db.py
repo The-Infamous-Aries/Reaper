@@ -82,6 +82,9 @@ class GlobalWarsDB:
                         def_missiles_used INTEGER,
                         att_nukes_used INTEGER,
                         def_nukes_used INTEGER,
+                        att_war_policy TEXT,
+                        def_war_policy TEXT,
+                        att_has_ape INTEGER DEFAULT 0,
                         created_at TEXT,
                         updated_at TEXT
                     )
@@ -148,12 +151,33 @@ class GlobalWarsDB:
                     self._ensure_column(cursor, 'war_attacks', col, 'REAL')
                 for resource in LOOT_RESOURCE_COLUMNS:
                     self._ensure_column(cursor, 'war_attacks', f'{resource}_looted', 'REAL')
+                # is_active / end_reason — same semantics as IRSWarsDB
+                self._ensure_column(cursor, 'wars', 'is_active', 'INTEGER DEFAULT 1')
+                self._ensure_column(cursor, 'wars', 'end_reason', 'TEXT')
+                # Loot-critical policy fields — persisted so back-calculation
+                # of defender's remaining holdings survives harvester restarts.
+                self._ensure_column(cursor, 'wars', 'att_war_policy', 'TEXT')
+                self._ensure_column(cursor, 'wars', 'def_war_policy', 'TEXT')
+                self._ensure_column(cursor, 'wars', 'att_has_ape', 'INTEGER DEFAULT 0')
+
+                # Back-fill is_active for existing rows that are clearly ended
+                cursor.execute("""
+                    UPDATE wars SET is_active = 0
+                    WHERE (is_active IS NULL OR is_active = 1)
+                      AND (
+                        (turns_left IS NOT NULL AND turns_left <= 0)
+                        OR (end_date IS NOT NULL AND end_date != '')
+                        OR (winner_id IS NOT NULL AND winner_id != 0)
+                        OR (att_peace = 1 AND def_peace = 1)
+                      )
+                """)
 
                 cursor.execute('CREATE INDEX IF NOT EXISTS idx_gw_att_alliance ON wars(att_alliance_id)')
                 cursor.execute('CREATE INDEX IF NOT EXISTS idx_gw_def_alliance ON wars(def_alliance_id)')
                 cursor.execute('CREATE INDEX IF NOT EXISTS idx_gw_att_id       ON wars(att_id)')
                 cursor.execute('CREATE INDEX IF NOT EXISTS idx_gw_def_id       ON wars(def_id)')
                 cursor.execute('CREATE INDEX IF NOT EXISTS idx_gwa_war_id      ON war_attacks(war_id)')
+                cursor.execute('CREATE INDEX IF NOT EXISTS idx_gw_is_active    ON wars(is_active)')
 
                 conn.commit()
                 logger.info("GlobalWarsDB initialized successfully")
@@ -177,7 +201,13 @@ class GlobalWarsDB:
         return v if v is not None else attack_data.get(fallback)
 
     async def save_war(self, war_data: Dict[str, Any]) -> bool:
-        """Upsert a war record — never overwrites non-null with NULL."""
+        """Upsert a war record.
+
+        Same semantics as IRSWarsDB.save_war:
+        - Never overwrites non-null with NULL.
+        - turns_left=0 is always written.
+        - Computes is_active and end_reason from incoming data.
+        """
         async with self._lock:
             try:
                 with sqlite3.connect(self.db_path) as conn:
@@ -185,6 +215,34 @@ class GlobalWarsDB:
                     attacker = war_data.get("attacker") or {}
                     defender = war_data.get("defender") or {}
                     now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+
+                    turns_left  = war_data.get("turns_left")
+                    winner_id   = war_data.get("winner_id")
+                    end_date    = war_data.get("end_date")
+                    att_peace   = war_data.get("att_peace")
+                    def_peace   = war_data.get("def_peace")
+
+                    turns_ended  = turns_left is not None and int(turns_left) <= 0
+                    date_ended   = bool(end_date and str(end_date).strip())
+                    winner_ended = winner_id is not None and int(winner_id) != 0
+                    peace_ended  = (att_peace is not None and def_peace is not None
+                                    and int(att_peace) == 1 and int(def_peace) == 1)
+
+                    war_ended = turns_ended or date_ended or winner_ended or peace_ended
+
+                    if war_ended:
+                        if winner_ended:
+                            end_reason = "win"
+                        elif peace_ended:
+                            end_reason = "peace"
+                        elif turns_ended:
+                            end_reason = "expire"
+                        else:
+                            end_reason = "ended"
+                    else:
+                        end_reason = None
+
+                    is_active = 0 if war_ended else 1
 
                     fields = {
                         "date": war_data.get("date"),
@@ -236,6 +294,20 @@ class GlobalWarsDB:
                         "def_missiles_used": war_data.get("def_missiles_used"),
                         "att_nukes_used": war_data.get("att_nukes_used"),
                         "def_nukes_used": war_data.get("def_nukes_used"),
+                        # Loot-critical policy fields — persisted so back-calculation
+                        # of defender's remaining holdings survives harvester restarts.
+                        "att_war_policy": (
+                            attacker.get("war_policy") or war_data.get("att_war_policy") or ""
+                        ),
+                        "def_war_policy": (
+                            defender.get("war_policy") or war_data.get("def_war_policy") or ""
+                        ),
+                        "att_has_ape": int(bool(
+                            attacker.get("advanced_pirate_economy")
+                            or war_data.get("att_has_ape")
+                        )),
+                        "is_active": is_active,
+                        "end_reason": end_reason,
                         "updated_at": now,
                     }
 
@@ -247,11 +319,20 @@ class GlobalWarsDB:
                         ph   = ", ".join(["?"] * (1 + len(fields)))
                         cursor.execute(f"INSERT INTO wars ({cols}) VALUES ({ph})", [war_id] + list(fields.values()))
                     else:
-                        upd = {k: v for k, v in fields.items() if v is not None}
-                        if upd:
-                            set_clause = ", ".join(f"{k} = ?" for k in upd)
+                        update_fields = {}
+                        for k, v in fields.items():
+                            if v is not None:
+                                update_fields[k] = v
+                            elif k == "turns_left" and turns_left is not None:
+                                update_fields[k] = 0
+                        if is_active == 0:
+                            update_fields["is_active"] = 0
+                            if end_reason:
+                                update_fields["end_reason"] = end_reason
+                        if update_fields:
+                            set_clause = ", ".join(f"{k} = ?" for k in update_fields)
                             cursor.execute(f"UPDATE wars SET {set_clause} WHERE id = ?",
-                                           list(upd.values()) + [war_id])
+                                           list(update_fields.values()) + [war_id])
                     conn.commit()
                     return True
             except Exception as e:

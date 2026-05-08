@@ -1,13 +1,3 @@
 # PnWHarvester DB modules
-from PnWHarvester.db.holdings_db import HoldingsDB
-from PnWHarvester.db.pnw_costs   import (
-    city_cost,
-    infra_cost,
-    land_cost,
-    improvement_purchase_cost,
-    city_improvements_cost,
-    projects_purchased_cost,
-    IMPROVEMENT_CASH_COSTS,
-    PROJECT_BUILD_COSTS,
-    ALL_PROJECT_FIELDS,
-)
+# Intentionally empty — import each module directly to avoid circular imports.
+# e.g.: from PnWHarvester.db.holdings_db import HoldingsDB

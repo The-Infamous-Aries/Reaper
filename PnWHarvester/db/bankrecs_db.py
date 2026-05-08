@@ -41,9 +41,19 @@ class BankrecsDB:
 
     def _init_database(self):
         try:
+            # Ensure the parent directory exists before SQLite touches the file
+            from pathlib import Path
+            Path(self.db_path).parent.mkdir(parents=True, exist_ok=True)
+
             with sqlite3.connect(self.db_path) as conn:
                 conn.row_factory = sqlite3.Row
                 c = conn.cursor()
+
+                # Enable WAL mode for better concurrency
+                conn.execute("PRAGMA journal_mode=WAL")
+                conn.execute("PRAGMA synchronous=NORMAL")
+                conn.execute("PRAGMA wal_autocheckpoint=1000")
+                conn.execute("PRAGMA busy_timeout=15000")
 
                 c.execute("""
                     CREATE TABLE IF NOT EXISTS bankrecs (
@@ -83,6 +93,19 @@ class BankrecsDB:
         except Exception as e:
             logger.error(f"BankrecsDB init error: {e}", exc_info=True)
             raise
+
+    def _ensure_schema(self):
+        """Re-run schema creation if the bankrecs table is missing. Self-heals a 0-byte or wiped DB."""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                exists = conn.execute(
+                    "SELECT name FROM sqlite_master WHERE type='table' AND name='bankrecs'"
+                ).fetchone()
+                if not exists:
+                    logger.warning("BankrecsDB: bankrecs table missing — re-initialising schema")
+                    self._init_database()
+        except Exception as e:
+            logger.error(f"BankrecsDB._ensure_schema: {e}", exc_info=True)
 
     async def save_bankrec(self, rec: Dict[str, Any]) -> bool:
         """
@@ -142,9 +165,60 @@ class BankrecsDB:
                     ))
                     conn.commit()
                     return c.rowcount > 0
+            except sqlite3.OperationalError as e:
+                if "no such table" in str(e):
+                    # DB was wiped or created empty — rebuild schema and retry once
+                    logger.warning(f"BankrecsDB.save_bankrec: schema missing, rebuilding and retrying")
+                    self._init_database()
+                    return await self._save_bankrec_direct(rec, rec_id)
+                logger.error(f"BankrecsDB.save_bankrec({rec_id}): {e}", exc_info=True)
+                return False
             except Exception as e:
                 logger.error(f"BankrecsDB.save_bankrec({rec_id}): {e}", exc_info=True)
                 return False
+
+    async def _save_bankrec_direct(self, rec: Dict[str, Any], rec_id: Any) -> bool:
+        """Retry insert after schema rebuild — called only from save_bankrec error path."""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+                conn.execute("""
+                    INSERT OR IGNORE INTO bankrecs (
+                        id, date, sender_id, sender_type, receiver_id, receiver_type,
+                        banker_id, note, money,
+                        coal, oil, uranium, iron, bauxite, lead,
+                        gasoline, munitions, steel, aluminum, food,
+                        tax_id, created_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (
+                    rec_id,
+                    rec.get("date"),
+                    rec.get("sender_id"),
+                    rec.get("sender_type"),
+                    rec.get("receiver_id"),
+                    rec.get("receiver_type"),
+                    rec.get("banker_id"),
+                    rec.get("note"),
+                    float(rec.get("money") or 0),
+                    float(rec.get("coal") or 0),
+                    float(rec.get("oil") or 0),
+                    float(rec.get("uranium") or 0),
+                    float(rec.get("iron") or 0),
+                    float(rec.get("bauxite") or 0),
+                    float(rec.get("lead") or 0),
+                    float(rec.get("gasoline") or 0),
+                    float(rec.get("munitions") or 0),
+                    float(rec.get("steel") or 0),
+                    float(rec.get("aluminum") or 0),
+                    float(rec.get("food") or 0),
+                    rec.get("tax_id"),
+                    now,
+                ))
+                conn.commit()
+                return True
+        except Exception as e:
+            logger.error(f"BankrecsDB._save_bankrec_direct({rec_id}): {e}", exc_info=True)
+            return False
 
     async def save_bankrecs_bulk(self, recs: List[Dict[str, Any]]) -> int:
         """Bulk insert bank records. Returns count of new records inserted."""
@@ -199,8 +273,57 @@ class BankrecsDB:
                         if c.rowcount > 0:
                             saved += 1
                     conn.commit()
+            except sqlite3.OperationalError as e:
+                if "no such table" in str(e):
+                    logger.warning("BankrecsDB.save_bankrecs_bulk: schema missing, rebuilding")
+                    self._init_database()
+                    # Retry the whole batch after rebuild
+                    return await self._save_bankrecs_bulk_direct(recs)
+                logger.error(f"BankrecsDB.save_bankrecs_bulk: {e}", exc_info=True)
             except Exception as e:
                 logger.error(f"BankrecsDB.save_bankrecs_bulk: {e}", exc_info=True)
+        return saved
+
+    async def _save_bankrecs_bulk_direct(self, recs: List[Dict[str, Any]]) -> int:
+        """Retry bulk insert after schema rebuild."""
+        saved = 0
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                c = conn.cursor()
+                now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+                for rec in recs:
+                    rec_id = rec.get("id")
+                    if not rec_id:
+                        continue
+                    date_val = rec.get("date")
+                    if date_val is not None:
+                        rec["date"] = str(date_val).replace("T", " ")
+                    c.execute("""
+                        INSERT OR IGNORE INTO bankrecs (
+                            id, date, sender_id, sender_type, receiver_id, receiver_type,
+                            banker_id, note, money,
+                            coal, oil, uranium, iron, bauxite, lead,
+                            gasoline, munitions, steel, aluminum, food,
+                            tax_id, created_at
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """, (
+                        rec_id, rec.get("date"),
+                        rec.get("sender_id"), rec.get("sender_type"),
+                        rec.get("receiver_id"), rec.get("receiver_type"),
+                        rec.get("banker_id"), rec.get("note"),
+                        float(rec.get("money") or 0),
+                        float(rec.get("coal") or 0), float(rec.get("oil") or 0),
+                        float(rec.get("uranium") or 0), float(rec.get("iron") or 0),
+                        float(rec.get("bauxite") or 0), float(rec.get("lead") or 0),
+                        float(rec.get("gasoline") or 0), float(rec.get("munitions") or 0),
+                        float(rec.get("steel") or 0), float(rec.get("aluminum") or 0),
+                        float(rec.get("food") or 0), rec.get("tax_id"), now,
+                    ))
+                    if c.rowcount > 0:
+                        saved += 1
+                conn.commit()
+        except Exception as e:
+            logger.error(f"BankrecsDB._save_bankrecs_bulk_direct: {e}", exc_info=True)
         return saved
 
     async def get_bankrecs_for_nation(

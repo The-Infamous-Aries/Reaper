@@ -6,12 +6,13 @@ Unfiltered WebSocket subscription for ALL bank records in the game.
 Listens to:
   - bankrec/create — every bank transfer in the game
 
-On every event, updates HoldingsDB immediately:
-  - Receiver (receiver_type=1): ADD cash + resources to their holdings.
-  - Sender   (sender_type=1):   SUBTRACT cash + resources from their holdings.
-
-bankrecs.db is populated separately by scripts/seed_holdings.py --bankrecs.
-This subscription only cares about keeping holdings.db current in real time.
+On every event:
+  1. Saves the record to BankrecsDB (bankrecs.db) — used by /offshore command.
+  2. Updates HoldingsDB immediately:
+       - Receiver (receiver_type=1): ADD cash + resources to their holdings.
+       - Sender   (sender_type=1):   SUBTRACT cash + resources from their holdings.
+  3. Writes a news event (deposit / withdrawal / transfer) via NewsWriter
+     for any transfer above the $1M threshold.
 """
 
 import asyncio
@@ -19,6 +20,7 @@ import logging
 from collections import deque
 from typing import Any, Dict
 
+import aiohttp
 from pnwkit.new import QueryKit
 from pnwkit import errors as pnwkit_errors
 
@@ -34,12 +36,14 @@ def _obj_to_dict(obj: Any) -> Dict[str, Any]:
 
 
 class BankrecsSubscription:
-    def __init__(self, api_key: str, holdings_db=None):
+    def __init__(self, api_key: str, holdings_db=None, bankrecs_db=None):
         """
         api_key     : PnW API v3 key
         holdings_db : HoldingsDB — updated immediately on every bankrec/create event
+        bankrecs_db : BankrecsDB — every event is persisted here for /offshore queries
         """
         self.holdings_db = holdings_db
+        self.bankrecs_db = bankrecs_db
         self.api_key     = api_key
         self.kit         = QueryKit(api_key)
         self.running     = False
@@ -72,6 +76,13 @@ class BankrecsSubscription:
                     if date_val is not None:
                         rec["date"] = str(date_val).replace("T", " ")
 
+                    # ── 1. Persist to bankrecs.db (used by /offshore) ─────────
+                    if self.bankrecs_db:
+                        saved = await self.bankrecs_db.save_bankrec(rec)
+                        if saved:
+                            logger.debug(f"bankrec {rec_id} saved to bankrecs.db")
+
+                    # ── 2. Update holdings for nation-type parties ────────────
                     # Only update holdings for nation-type parties (type=1)
                     sid   = rec.get("sender_id")
                     stype = int(rec.get("sender_type") or 0)
@@ -104,11 +115,30 @@ class BankrecsSubscription:
                             f"(no nation-type party)"
                         )
 
+                    # ── 3. Write news event (deposit / withdrawal / transfer) ─
+                    # Fires for nation-involved transfers only; alliance-to-alliance
+                    # transfers are skipped inside record_bank_transfer.
+                    if has_nation_party:
+                        try:
+                            from PnWHarvester.db.news_writer import record_bank_transfer
+                            await record_bank_transfer(
+                                rec=rec,
+                                sender_nation_id   = int(sid) if sid and stype == 1 else None,
+                                receiver_nation_id = int(rid) if rid and rtype == 1 else None,
+                                sender_alliance_id = int(sid) if sid and stype == 2 else None,
+                                receiver_alliance_id = int(rid) if rid and rtype == 2 else None,
+                            )
+                        except Exception as _news_err:
+                            logger.warning(f"bankrec news event failed for {rec_id}: {_news_err}")
+
                 except Exception as e:
                     logger.error(f"bankrec/create event error: {e}", exc_info=True)
 
         except asyncio.CancelledError:
             logger.info("bankrec/create listener cancelled")
+            raise
+        except (ConnectionResetError, OSError, aiohttp.ClientError) as e:
+            logger.warning(f"bankrec/create WebSocket disconnected: {e} — will restart")
             raise
         except Exception as e:
             logger.error(f"bankrec/create subscription crashed: {e}", exc_info=True)
@@ -143,7 +173,7 @@ class BankrecsSubscription:
             except asyncio.CancelledError:
                 logger.info("BankrecsSubscription cancelled")
                 break
-            except pnwkit_errors.NoReconnect as e:
+            except (pnwkit_errors.NoReconnect, aiohttp.ClientError, ConnectionResetError, OSError) as e:
                 logger.warning(f"BankrecsSubscription disconnected ({e}) — restarting in 30s")
             except Exception as e:
                 logger.error(f"BankrecsSubscription crashed ({e}) — restarting in 30s", exc_info=True)

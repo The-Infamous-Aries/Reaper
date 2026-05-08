@@ -1,66 +1,29 @@
 """
-HoldingsDB — per-nation running ledger of cash and resources on hand.
+HoldingsDB -- adapter over GlobalNationsDB nations table.
 
-One row per nation. This is the SOLE source of truth for Est Loot on the
-raids page. The raids command reads holdings directly — it never touches
-loot.db or bankrecs.db at query time.
+ALL cash/resource/military data lives in GlobalNations.db (one file, all nations).
+IRSNations.db is the NW-only snapshot DB managed by nations_subscription — HoldingsDB
+never touches it. This eliminates phantom NW rows for non-NW nations and the
+confusion of dual-write paths.
 
-How it works
-------------
-Live maintenance (subscription-driven, all applied immediately):
-  warattack/create (win attack)
-    → Defender LOST the looted amounts — deduct from their holdings.
-      We also back-calculate their full pre-loot holdings from the loot
-      amount + war type + policies, then SET their holdings to that value
-      minus what was looted. This gives us the most accurate baseline.
-    → Attacker GAINED the looted amounts — add to their holdings.
+Column mapping (holdings API -> nations table):
+  money_held      -> money
+  coal_held       -> coal  (and all other resources)
+  soldiers_held   -> soldiers  (and all other military units)
 
-  bankrec/create
-    → Nation received cash/resources (receiver_type=1) → ADD to holdings.
-    → Nation sent cash/resources (sender_type=1) → SUBTRACT from holdings.
-    Applied immediately in BankrecsSubscription so holdings is always
-    current. The raids command never needs to read bankrecs.
+Extra tracking columns added to nations table via migration:
+  confidence        TEXT DEFAULT 'seeded'
+  last_loot_date    TEXT
+  last_bankrec_date TEXT
+  last_revenue_date TEXT
+  last_event_date   TEXT
 
-  nation/update + city/update
-    → Detect purchases (city, infra, land, improvements, projects) by
-      diffing old vs new state BEFORE saving to GlobalNationsDB.
-    → DEDUCT the cash cost from money_held.
-
-Confidence levels
------------------
-  'tracked' — at least one live subscription event has updated this row
-  'fresh'   — row was reset by a live loot event (most accurate baseline)
-
-Loot percentage formula
------------------------
-  base_pct  = war_type_base  (raid=0.075, ordinary=0.05, attrition=0.06)
-  att_mult  = 1.4 if attacker is Pirate else 1.0
-  att_mult *= 1.1 if attacker has APE else 1.0
-  def_mult  = 0.6 if defender is Moneybags else 1.0
-  loot_pct  = base_pct * att_mult * def_mult
-
-  holdings_at_loot_time = looted / loot_pct
-
-Schema
-------
-  nation_id       INTEGER PRIMARY KEY
-  nation_name     TEXT
-  money_held      REAL    -- estimated cash on hand (can be negative if spending detected before baseline)
-  coal_held       REAL
-  oil_held        REAL
-  uranium_held    REAL
-  iron_held       REAL
-  bauxite_held    REAL
-  lead_held       REAL
-  gasoline_held   REAL
-  munitions_held  REAL
-  steel_held      REAL
-  aluminum_held   REAL
-  food_held       REAL
-  confidence      TEXT    -- 'tracked' | 'fresh'
-  last_loot_date  TEXT    -- timestamp of the loot event that last reset this row
-  last_event_date TEXT    -- timestamp of the most recent event that touched this row
-  updated_at      TEXT
+Loot formula (apply_loot_event):
+  loot_pct = base(war_type) × att_policy_mult × ape_mult × def_policy_mult
+  looted   = holdings × loot_pct          (what the attacker takes)
+  remaining = holdings - looted           (what the defender has left)
+  → defender SET to remaining = looted × (1/loot_pct - 1)
+  → attacker ADD looted amounts
 """
 
 import sqlite3
@@ -75,13 +38,27 @@ RESOURCE_COLS = (
     "coal", "oil", "uranium", "iron", "bauxite", "lead",
     "gasoline", "munitions", "steel", "aluminum", "food",
 )
+MILITARY_COLS = ("soldiers", "tanks", "aircraft", "ships", "missiles", "nukes", "spies")
 
+# War-type base loot percentages — used by apply_loot_event to back-calculate
+# the defender's exact post-loot balance via: remaining = looted * (1/pct - 1)
 _WAR_TYPE_BASE: Dict[str, float] = {
     "raid":      0.075,
     "ordinary":  0.050,
     "attrition": 0.060,
 }
 _DEFAULT_BASE = 0.075
+
+# Military unit purchase costs (cash + resources per unit)
+MILITARY_COSTS: Dict[str, Dict[str, float]] = {
+    "soldiers": {"cash": 5.0},
+    "tanks":    {"cash": 60.0,      "steel": 0.5},
+    "aircraft": {"cash": 4000.0,    "aluminum": 10.0},
+    "ships":    {"cash": 50000.0,   "steel": 30.0},
+    "missiles": {"cash": 150000.0,  "gasoline": 100.0, "munitions": 100.0, "aluminum": 150.0},
+    "nukes":    {"cash": 1750000.0, "uranium": 500.0,  "gasoline": 500.0,  "aluminum": 1000.0},
+    "spies":    {"cash": 50000.0},
+}
 
 
 def _calc_loot_pct(
@@ -90,88 +67,72 @@ def _calc_loot_pct(
     def_war_policy: Optional[str] = None,
     att_has_ape: bool = False,
 ) -> float:
+    """
+    Return the fraction of a defender's holdings looted per ground-win attack.
+
+    Multipliers:
+      Pirate war policy (attacker): ×1.4
+      Advanced Pirate Economy (attacker project): ×1.1
+      Turtle war policy (defender): ×1.2  (defender loses 20% more loot)
+      Moneybags war policy (defender): ×0.6  (defender keeps more)
+    """
     wt   = (war_type or "").lower().replace("_war", "").replace(" ", "_")
     base = _WAR_TYPE_BASE.get(wt, _DEFAULT_BASE)
-    att_mult = 1.0
+    mult = 1.0
     if (att_war_policy or "").lower() == "pirate":
-        att_mult *= 1.4
+        mult *= 1.4
     if att_has_ape:
-        att_mult *= 1.1
-    def_mult = 0.6 if (def_war_policy or "").lower() == "moneybags" else 1.0
-    return base * att_mult * def_mult
+        mult *= 1.1
+    if (def_war_policy or "").lower() == "turtle":
+        mult *= 1.2
+    if (def_war_policy or "").lower() == "moneybags":
+        mult *= 0.6
+    return base * mult
 
 
 class HoldingsDB:
     """
-    Per-nation running ledger of cash and resources on hand.
-
-    Concurrency model
-    -----------------
-    Three subscriptions write to this DB concurrently:
-      - nations_subscription  → deduct_spending()   (city/infra/land/project purchases)
-      - wars_subscription     → apply_loot_event()  (ground-win attacks)
-      - bankrecs_subscription → apply_bankrec()     (bank transfers)
-
-    We use SQLite WAL mode so concurrent writers don't block each other.
-    Each public method opens its own short-lived connection and commits
-    immediately — no long-held locks, no asyncio.Lock contention.
+    Single-DB adapter: all holdings data lives in GlobalNations.db.
+    Never writes to IRSNations.db — that DB is managed exclusively by
+    nations_subscription for NW-member snapshots.
     """
 
     def __init__(self, db_path: str):
-        self.db_path = db_path
-        self._lock   = asyncio.Lock()
-        self._init_database()
+        self.db_path = db_path  # kept for backward compat; not used for storage
+        from Systems.Functions.db_paths import GLOBAL_NATIONS_DB_STR
+        self._global_path = GLOBAL_NATIONS_DB_STR
+        self._lock        = asyncio.Lock()
+        self._ensure_extra_columns()
 
-    # ── Schema ────────────────────────────────────────────────────────────────
+    # ── Schema migration ──────────────────────────────────────────────────────
 
-    def _init_database(self):
+    def _ensure_extra_columns(self):
+        """Add tracking columns to GlobalNations.db if not present."""
+        extra = [
+            ("confidence",        "TEXT DEFAULT 'seeded'"),
+            ("last_loot_date",    "TEXT"),
+            ("last_bankrec_date", "TEXT"),
+            ("last_revenue_date", "TEXT"),
+            ("last_event_date",   "TEXT"),
+            ("alliance_flag",     "TEXT"),
+        ]
         try:
-            with sqlite3.connect(self.db_path) as conn:
-                # WAL mode: readers never block writers, writers never block readers
+            with sqlite3.connect(self._global_path) as conn:
                 conn.execute("PRAGMA journal_mode=WAL")
                 conn.execute("PRAGMA synchronous=NORMAL")
-                c = conn.cursor()
-                c.execute("""
-                    CREATE TABLE IF NOT EXISTS nation_holdings (
-                        nation_id       INTEGER PRIMARY KEY,
-                        nation_name     TEXT,
-                        money_held      REAL    NOT NULL DEFAULT 0,
-                        coal_held       REAL    NOT NULL DEFAULT 0,
-                        oil_held        REAL    NOT NULL DEFAULT 0,
-                        uranium_held    REAL    NOT NULL DEFAULT 0,
-                        iron_held       REAL    NOT NULL DEFAULT 0,
-                        bauxite_held    REAL    NOT NULL DEFAULT 0,
-                        lead_held       REAL    NOT NULL DEFAULT 0,
-                        gasoline_held   REAL    NOT NULL DEFAULT 0,
-                        munitions_held  REAL    NOT NULL DEFAULT 0,
-                        steel_held      REAL    NOT NULL DEFAULT 0,
-                        aluminum_held   REAL    NOT NULL DEFAULT 0,
-                        food_held       REAL    NOT NULL DEFAULT 0,
-                        confidence      TEXT    NOT NULL DEFAULT 'tracked',
-                        last_loot_date  TEXT,
-                        last_event_date TEXT,
-                        updated_at      TEXT    NOT NULL
-                    )
-                """)
-                c.execute("""
-                    CREATE TABLE IF NOT EXISTS spending_log (
-                        id              INTEGER PRIMARY KEY AUTOINCREMENT,
-                        nation_id       INTEGER NOT NULL,
-                        event_type      TEXT    NOT NULL,
-                        cash_delta      REAL    NOT NULL DEFAULT 0,
-                        description     TEXT,
-                        event_date      TEXT,
-                        recorded_at     TEXT    NOT NULL
-                    )
-                """)
-                c.execute("CREATE INDEX IF NOT EXISTS idx_nh_nation_id  ON nation_holdings(nation_id)")
-                c.execute("CREATE INDEX IF NOT EXISTS idx_sl_nation_id  ON spending_log(nation_id)")
-                c.execute("CREATE INDEX IF NOT EXISTS idx_sl_event_date ON spending_log(event_date DESC)")
+                conn.execute("PRAGMA wal_autocheckpoint=1000")
+                conn.execute("PRAGMA busy_timeout=15000")
+                for col, typedef in extra:
+                    try:
+                        conn.execute(f"ALTER TABLE nations ADD COLUMN {col} {typedef}")
+                    except sqlite3.OperationalError:
+                        pass  # already exists
+                conn.execute(
+                    "UPDATE nations SET confidence='seeded' WHERE confidence IS NULL"
+                )
                 conn.commit()
-                logger.info("HoldingsDB initialised (WAL mode)")
         except Exception as e:
-            logger.error(f"HoldingsDB init error: {e}", exc_info=True)
-            raise
+            logger.warning(f"HoldingsDB._ensure_extra_columns: {e}")
 
     # ── Internal helpers ──────────────────────────────────────────────────────
 
@@ -179,588 +140,312 @@ class HoldingsDB:
     def _now() -> str:
         return datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
 
-    @staticmethod
-    def _ensure_row_sql() -> str:
-        return """
-            INSERT OR IGNORE INTO nation_holdings (
-                nation_id, nation_name, money_held,
-                coal_held, oil_held, uranium_held, iron_held,
-                bauxite_held, lead_held, gasoline_held, munitions_held,
-                steel_held, aluminum_held, food_held,
-                confidence, last_loot_date, last_event_date, updated_at
-            ) VALUES (?, ?, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'tracked', NULL, ?, ?)
-        """
-
     def _conn(self) -> sqlite3.Connection:
-        """Open a WAL-mode connection for a single operation."""
-        conn = sqlite3.connect(self.db_path, timeout=10)
+        conn = sqlite3.connect(self._global_path, timeout=15)
         conn.execute("PRAGMA journal_mode=WAL")
         conn.execute("PRAGMA synchronous=NORMAL")
+        conn.execute("PRAGMA wal_autocheckpoint=1000")
+        conn.execute("PRAGMA busy_timeout=15000")
         conn.row_factory = sqlite3.Row
         return conn
 
-    @staticmethod
-    def _bankrec_parties(rec: Dict[str, Any]):
+    async def _run_sync(self, fn):
         """
-        Yield (nation_id, sign) for every nation-type party in a bank record.
+        Run a blocking SQLite function in the default thread-pool executor so it
+        never blocks the asyncio event loop.  All public write methods use this.
 
-        sender_type=1   → nation sent funds  → sign = -1 (subtract from holdings)
-        receiver_type=1 → nation received funds → sign = +1 (add to holdings)
+        Usage:
+            result = await self._run_sync(lambda: <synchronous sqlite work>)
         """
-        sender_id   = rec.get("sender_id")
-        sender_type = int(rec.get("sender_type") or 0)
-        receiver_id   = rec.get("receiver_id")
-        receiver_type = int(rec.get("receiver_type") or 0)
+        loop = asyncio.get_event_loop()
+        return await loop.run_in_executor(None, fn)
 
-        if sender_id and sender_type == 1:
-            yield (int(sender_id), -1)
-        if receiver_id and receiver_type == 1:
-            yield (int(receiver_id), +1)
+    def checkpoint(self) -> None:
+        """Run a WAL TRUNCATE checkpoint synchronously (call from non-async context)."""
+        try:
+            with sqlite3.connect(self._global_path, timeout=10) as conn:
+                conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+        except Exception as e:
+            logger.warning(f"HoldingsDB.checkpoint: {e}")
 
-    # ── Ensure row exists ─────────────────────────────────────────────────────
+    def _row_to_holdings(self, row: sqlite3.Row) -> Dict[str, Any]:
+        """Convert a nations table row to the holdings dict format consumers expect."""
+        d = dict(row)
+        result = {
+            "nation_id":          d.get("id"),
+            "nation_name":        d.get("nation_name"),
+            "money_held":         float(d.get("money") or 0),
+            "confidence":         d.get("confidence") or "seeded",
+            "last_loot_date":     d.get("last_loot_date"),
+            "last_bankrec_date":  d.get("last_bankrec_date"),
+            "last_revenue_date":  d.get("last_revenue_date"),
+            "last_event_date":    d.get("last_event_date"),
+        }
+        for r in RESOURCE_COLS:
+            result[f"{r}_held"] = float(d.get(r) or 0)
+        for m in MILITARY_COLS:
+            result[f"{m}_held"] = int(d.get(m) or 0)
+        return result
 
-    async def ensure_nation(self, nation_id: int, nation_name: Optional[str] = None) -> bool:
-        """Insert a zero-balance row if one doesn't exist. Never overwrites."""
-        async with self._lock:
-            try:
-                with sqlite3.connect(self.db_path) as conn:
-                    now = self._now()
-                    conn.execute(self._ensure_row_sql(), (nation_id, nation_name, now, now))
-                    conn.commit()
-                    return True
-            except Exception as e:
-                logger.error(f"HoldingsDB.ensure_nation({nation_id}): {e}")
-                return False
-
-    # ── Deduct spending (city/infra/land/improvements/projects) ──────────────
-
-    async def deduct_spending(
-        self,
-        nation_id: int,
-        cash_cost: float,
-        event_type: str,
-        description: str = "",
-        event_date: Optional[str] = None,
-        nation_name: Optional[str] = None,
-    ) -> bool:
-        """
-        Deduct a cash purchase from a nation's money_held.
-        Allows going negative — a negative balance means we detected spending
-        before we had a loot-event baseline, which is fine; it will self-correct
-        when the next loot event arrives.
-        """
-        if cash_cost <= 0:
-            return True
-
-        async with self._lock:
-            try:
-                with sqlite3.connect(self.db_path) as conn:
-                    now = self._now()
-                    ev_date = event_date or now
-
-                    conn.execute(self._ensure_row_sql(), (nation_id, nation_name, ev_date, now))
-
-                    conn.execute("""
-                        UPDATE nation_holdings
-                        SET money_held      = money_held - ?,
-                            confidence      = CASE WHEN confidence = 'seeded' THEN 'tracked' ELSE confidence END,
-                            last_event_date = ?,
-                            updated_at      = ?
-                        WHERE nation_id = ?
-                    """, (cash_cost, ev_date, now, nation_id))
-
-                    conn.execute("""
-                        INSERT INTO spending_log
-                            (nation_id, event_type, cash_delta, description, event_date, recorded_at)
-                        VALUES (?, ?, ?, ?, ?, ?)
-                    """, (nation_id, event_type, -cash_cost, description, ev_date, now))
-
-                    conn.commit()
-                    return True
-            except Exception as e:
-                logger.error(f"HoldingsDB.deduct_spending({nation_id}, {event_type}): {e}", exc_info=True)
-                return False
-
-    # ── Apply loot event (war win attack) ─────────────────────────────────────
-
-    async def apply_loot_event(
-        self,
-        attacker_id: int,
-        defender_id: int,
-        money_looted: float,
-        resources_looted: Dict[str, float],
-        loot_date: str,
-        war_type: Optional[str] = None,
-        att_war_policy: Optional[str] = None,
-        def_war_policy: Optional[str] = None,
-        att_has_ape: bool = False,
-        attacker_name: Optional[str] = None,
-        defender_name: Optional[str] = None,
-    ) -> bool:
-        """
-        A ground-win attack occurred.
-
-        Defender:
-          Only updates holdings if actual loot occurred (money_looted > 0 OR
-          any resource > 0). Back-calculates their full holdings at the moment
-          of the loot using the correct loot percentage, then SETs their
-          holdings to the post-loot value. Confidence is set to 'fresh'.
-
-          If no loot occurred (e.g. a ground win with zero loot), we do NOT
-          touch the defender's holdings — wiping them to zero would be wrong.
-
-        Attacker:
-          Add the looted amounts to their holdings (only if loot > 0).
-        """
-        # Check if any loot actually occurred
-        total_looted = money_looted + sum(resources_looted.get(r, 0.0) for r in RESOURCE_COLS)
-        if total_looted <= 0:
-            return True  # no loot — nothing to update
-
-        loot_pct = _calc_loot_pct(
-            war_type=war_type,
-            att_war_policy=att_war_policy,
-            def_war_policy=def_war_policy,
-            att_has_ape=att_has_ape,
+    def _ensure_row(self, conn: sqlite3.Connection, nation_id: int, nation_name: Optional[str]):
+        """INSERT OR IGNORE a minimal row so UPDATE has something to hit."""
+        conn.execute(
+            "INSERT OR IGNORE INTO nations (id, nation_name, confidence) VALUES (?,?,?)",
+            (nation_id, nation_name or None, "seeded"),
         )
-        if loot_pct <= 0:
-            loot_pct = _DEFAULT_BASE
 
-        def _post(looted: float) -> float:
-            if looted <= 0:
-                return 0.0
-            return max(0.0, looted / loot_pct - looted)
-
-        def_money = _post(money_looted)
-        def_rss   = {r: _post(resources_looted.get(r, 0.0)) for r in RESOURCE_COLS}
-
-        try:
-            now = self._now()
-            with self._conn() as conn:
-                # Defender: SET to post-loot value (fresh baseline)
-                conn.execute(self._ensure_row_sql(), (defender_id, defender_name, loot_date, now))
-                conn.execute("""
-                    UPDATE nation_holdings SET
-                        money_held      = ?,
-                        coal_held       = ?, oil_held        = ?, uranium_held    = ?,
-                        iron_held       = ?, bauxite_held    = ?, lead_held       = ?,
-                        gasoline_held   = ?, munitions_held  = ?, steel_held      = ?,
-                        aluminum_held   = ?, food_held       = ?,
-                        confidence      = 'fresh',
-                        last_loot_date  = ?,
-                        last_event_date = ?,
-                        updated_at      = ?
-                    WHERE nation_id = ?
-                """, (
-                    def_money,
-                    def_rss["coal"],    def_rss["oil"],      def_rss["uranium"],
-                    def_rss["iron"],    def_rss["bauxite"],  def_rss["lead"],
-                    def_rss["gasoline"],def_rss["munitions"],def_rss["steel"],
-                    def_rss["aluminum"],def_rss["food"],
-                    loot_date, loot_date, now, defender_id,
-                ))
-
-                # Attacker: ADD looted amounts
-                conn.execute(self._ensure_row_sql(), (attacker_id, attacker_name, loot_date, now))
-                conn.execute("""
-                    UPDATE nation_holdings SET
-                        money_held      = money_held + ?,
-                        coal_held       = coal_held + ?,      oil_held        = oil_held + ?,
-                        uranium_held    = uranium_held + ?,   iron_held       = iron_held + ?,
-                        bauxite_held    = bauxite_held + ?,   lead_held       = lead_held + ?,
-                        gasoline_held   = gasoline_held + ?,  munitions_held  = munitions_held + ?,
-                        steel_held      = steel_held + ?,     aluminum_held   = aluminum_held + ?,
-                        food_held       = food_held + ?,
-                        confidence      = CASE WHEN confidence = 'seeded' THEN 'tracked' ELSE confidence END,
-                        last_event_date = ?,
-                        updated_at      = ?
-                    WHERE nation_id = ?
-                """, (
-                    money_looted,
-                    resources_looted.get("coal", 0),    resources_looted.get("oil", 0),
-                    resources_looted.get("uranium", 0), resources_looted.get("iron", 0),
-                    resources_looted.get("bauxite", 0), resources_looted.get("lead", 0),
-                    resources_looted.get("gasoline", 0),resources_looted.get("munitions", 0),
-                    resources_looted.get("steel", 0),   resources_looted.get("aluminum", 0),
-                    resources_looted.get("food", 0),
-                    loot_date, now, attacker_id,
-                ))
-                conn.commit()
-            return True
-        except Exception as e:
-            logger.error(
-                f"HoldingsDB.apply_loot_event(att={attacker_id}, def={defender_id}): {e}",
-                exc_info=True,
-            )
-            return False
-
-    # ── Apply bankrec ─────────────────────────────────────────────────────────
-
-    async def apply_bankrec(self, rec: Dict[str, Any]) -> bool:
-        """
-        Apply a bank record to holdings for all nation-type parties.
-
-        Called directly from BankrecsSubscription on every bankrec/create event
-        so holdings is always current — the raids command never needs to read
-        bankrecs.db at query time.
-
-        Receiver (receiver_type=1): ADD cash + resources.
-        Sender   (sender_type=1):   SUBTRACT cash + resources.
-
-        Cash (money_held) can go negative — that's valid and means the nation
-        sent more than we currently have tracked (will self-correct on next
-        loot event). Resources are floored at 0 since you can't hold negative
-        resources in PnW.
-        """
-        parties = list(self._bankrec_parties(rec))
-        if not parties:
-            return True  # no nation parties — nothing to do
-
-        rec_date = str(rec.get("date") or self._now()).replace("T", " ")
-
-        async with self._lock:
-            try:
-                with sqlite3.connect(self.db_path) as conn:
-                    now = self._now()
-                    for nation_id, sign in parties:
-                        conn.execute(self._ensure_row_sql(), (nation_id, None, rec_date, now))
-
-                        money_delta = sign * float(rec.get("money") or 0)
-                        rss_deltas  = {r: sign * float(rec.get(r) or 0) for r in RESOURCE_COLS}
-
-                        conn.execute("""
-                            UPDATE nation_holdings SET
-                                money_held      = money_held + ?,
-                                coal_held       = MAX(0, coal_held + ?),
-                                oil_held        = MAX(0, oil_held + ?),
-                                uranium_held    = MAX(0, uranium_held + ?),
-                                iron_held       = MAX(0, iron_held + ?),
-                                bauxite_held    = MAX(0, bauxite_held + ?),
-                                lead_held       = MAX(0, lead_held + ?),
-                                gasoline_held   = MAX(0, gasoline_held + ?),
-                                munitions_held  = MAX(0, munitions_held + ?),
-                                steel_held      = MAX(0, steel_held + ?),
-                                aluminum_held   = MAX(0, aluminum_held + ?),
-                                food_held       = MAX(0, food_held + ?),
-                                confidence      = CASE WHEN confidence = 'seeded' THEN 'tracked' ELSE confidence END,
-                                last_event_date = ?,
-                                updated_at      = ?
-                            WHERE nation_id = ?
-                        """, (
-                            money_delta,
-                            rss_deltas["coal"],    rss_deltas["oil"],
-                            rss_deltas["uranium"], rss_deltas["iron"],
-                            rss_deltas["bauxite"], rss_deltas["lead"],
-                            rss_deltas["gasoline"],rss_deltas["munitions"],
-                            rss_deltas["steel"],   rss_deltas["aluminum"],
-                            rss_deltas["food"],
-                            rec_date, now,
-                            nation_id,
-                        ))
-
-                    conn.commit()
-                    return True
-            except Exception as e:
-                logger.error(f"HoldingsDB.apply_bankrec: {e}", exc_info=True)
-                return False
-
-    # ── Queries ───────────────────────────────────────────────────────────────
-
-    async def get_holdings(self, nation_id: int) -> Optional[Dict[str, Any]]:
-        """Get the holdings row for a nation, or None if not tracked."""
-        async with self._lock:
-            try:
-                with sqlite3.connect(self.db_path) as conn:
-                    conn.row_factory = sqlite3.Row
-                    row = conn.execute(
-                        "SELECT * FROM nation_holdings WHERE nation_id = ?", (nation_id,)
-                    ).fetchone()
-                    return dict(row) if row else None
-            except Exception as e:
-                logger.error(f"HoldingsDB.get_holdings({nation_id}): {e}")
-                return None
-
-    async def get_holdings_bulk(self, nation_ids: List[int]) -> Dict[int, Dict[str, Any]]:
-        """Fetch holdings for multiple nations in one query."""
-        if not nation_ids:
-            return {}
-        async with self._lock:
-            try:
-                with sqlite3.connect(self.db_path) as conn:
-                    conn.row_factory = sqlite3.Row
-                    ph = ",".join("?" * len(nation_ids))
-                    rows = conn.execute(
-                        f"SELECT * FROM nation_holdings WHERE nation_id IN ({ph})",
-                        nation_ids,
-                    ).fetchall()
-                    return {int(r["nation_id"]): dict(r) for r in rows}
-            except Exception as e:
-                logger.error(f"HoldingsDB.get_holdings_bulk: {e}")
-                return {}
-
-    async def get_stats(self) -> Dict[str, Any]:
-        """Return summary stats for logging/monitoring."""
-        async with self._lock:
-            try:
-                with sqlite3.connect(self.db_path) as conn:
-                    total = conn.execute("SELECT COUNT(*) FROM nation_holdings").fetchone()[0]
-                    by_conf = conn.execute(
-                        "SELECT confidence, COUNT(*) FROM nation_holdings GROUP BY confidence"
-                    ).fetchall()
-                    log_count = conn.execute("SELECT COUNT(*) FROM spending_log").fetchone()[0]
-                    return {
-                        "total_nations": total,
-                        "by_confidence": {r[0]: r[1] for r in by_conf},
-                        "spending_log_entries": log_count,
-                    }
-            except Exception as e:
-                logger.error(f"HoldingsDB.get_stats: {e}")
-                return {}
-    # ── Live subscription methods (no lock — WAL handles concurrency) ─────────
+    # ── Public API ────────────────────────────────────────────────────────────
 
     async def ensure_nation(self, nation_id: int, nation_name: Optional[str] = None) -> bool:
-        """Insert a zero-balance row if one doesn't exist. Never overwrites."""
-        try:
-            now = self._now()
+        """Ensure a row exists in GlobalNations.db. INSERT OR IGNORE."""
+        def _work():
             with self._conn() as conn:
-                conn.execute(self._ensure_row_sql(), (nation_id, nation_name, now, now))
+                self._ensure_row(conn, nation_id, nation_name)
                 conn.commit()
+        try:
+            await self._run_sync(_work)
             return True
         except Exception as e:
-            logger.error(f"HoldingsDB.ensure_nation({nation_id}): {e}")
+            logger.error(f"ensure_nation({nation_id}): {e}")
             return False
-
-    async def deduct_spending(
-        self,
-        nation_id: int,
-        cash_cost: float,
-        event_type: str,
-        description: str = "",
-        event_date: Optional[str] = None,
-        nation_name: Optional[str] = None,
-    ) -> bool:
-        """
-        Deduct a cash purchase from money_held.
-        Called by nations_subscription on city/infra/land/project purchases.
-        No lock — WAL mode handles concurrent writes safely.
-        Allows going negative (self-corrects on next loot event).
-        """
-        if cash_cost <= 0:
-            return True
-        try:
-            now     = self._now()
-            ev_date = event_date or now
-            with self._conn() as conn:
-                conn.execute(self._ensure_row_sql(), (nation_id, nation_name, ev_date, now))
-                conn.execute("""
-                    UPDATE nation_holdings
-                    SET money_held      = money_held - ?,
-                        confidence      = CASE WHEN confidence = 'seeded' THEN 'tracked' ELSE confidence END,
-                        last_event_date = ?,
-                        updated_at      = ?
-                    WHERE nation_id = ?
-                """, (cash_cost, ev_date, now, nation_id))
-                conn.execute("""
-                    INSERT INTO spending_log
-                        (nation_id, event_type, cash_delta, description, event_date, recorded_at)
-                    VALUES (?, ?, ?, ?, ?, ?)
-                """, (nation_id, event_type, -cash_cost, description, ev_date, now))
-                conn.commit()
-            return True
-        except Exception as e:
-            logger.error(f"HoldingsDB.deduct_spending({nation_id}, {event_type}): {e}", exc_info=True)
-            return False
-
-    async def apply_loot_event(
-        self,
-        attacker_id: int,
-        defender_id: int,
-        money_looted: float,
-        resources_looted: Dict[str, float],
-        loot_date: str,
-        war_type: Optional[str] = None,
-        att_war_policy: Optional[str] = None,
-        def_war_policy: Optional[str] = None,
-        att_has_ape: bool = False,
-        attacker_name: Optional[str] = None,
-        defender_name: Optional[str] = None,
-    ) -> bool:
-        """
-        Ground-win attack: SET defender to post-loot holdings, ADD to attacker.
-        Called by wars_subscription. No lock — WAL mode handles concurrency.
-        """
-        loot_pct = _calc_loot_pct(war_type, att_war_policy, def_war_policy, att_has_ape)
-        if loot_pct <= 0:
-            loot_pct = _DEFAULT_BASE
-
-        def _post(looted: float) -> float:
-            return max(0.0, looted / loot_pct - looted) if looted > 0 else 0.0
-
-        def_money = _post(money_looted)
-        def_rss   = {r: _post(resources_looted.get(r, 0.0)) for r in RESOURCE_COLS}
-
-        try:
-            now = self._now()
-            with self._conn() as conn:
-                # Defender: SET to post-loot value (fresh baseline)
-                conn.execute(self._ensure_row_sql(), (defender_id, defender_name, loot_date, now))
-                conn.execute("""
-                    UPDATE nation_holdings SET
-                        money_held      = ?,
-                        coal_held       = ?, oil_held        = ?, uranium_held    = ?,
-                        iron_held       = ?, bauxite_held    = ?, lead_held       = ?,
-                        gasoline_held   = ?, munitions_held  = ?, steel_held      = ?,
-                        aluminum_held   = ?, food_held       = ?,
-                        confidence      = 'fresh',
-                        last_loot_date  = ?,
-                        last_event_date = ?,
-                        updated_at      = ?
-                    WHERE nation_id = ?
-                """, (
-                    def_money,
-                    def_rss["coal"],    def_rss["oil"],      def_rss["uranium"],
-                    def_rss["iron"],    def_rss["bauxite"],  def_rss["lead"],
-                    def_rss["gasoline"],def_rss["munitions"],def_rss["steel"],
-                    def_rss["aluminum"],def_rss["food"],
-                    loot_date, loot_date, now, defender_id,
-                ))
-                # Attacker: ADD looted amounts
-                conn.execute(self._ensure_row_sql(), (attacker_id, attacker_name, loot_date, now))
-                conn.execute("""
-                    UPDATE nation_holdings SET
-                        money_held      = money_held + ?,
-                        coal_held       = coal_held + ?,      oil_held        = oil_held + ?,
-                        uranium_held    = uranium_held + ?,   iron_held       = iron_held + ?,
-                        bauxite_held    = bauxite_held + ?,   lead_held       = lead_held + ?,
-                        gasoline_held   = gasoline_held + ?,  munitions_held  = munitions_held + ?,
-                        steel_held      = steel_held + ?,     aluminum_held   = aluminum_held + ?,
-                        food_held       = food_held + ?,
-                        confidence      = CASE WHEN confidence = 'seeded' THEN 'tracked' ELSE confidence END,
-                        last_event_date = ?,
-                        updated_at      = ?
-                    WHERE nation_id = ?
-                """, (
-                    money_looted,
-                    resources_looted.get("coal", 0),    resources_looted.get("oil", 0),
-                    resources_looted.get("uranium", 0), resources_looted.get("iron", 0),
-                    resources_looted.get("bauxite", 0), resources_looted.get("lead", 0),
-                    resources_looted.get("gasoline", 0),resources_looted.get("munitions", 0),
-                    resources_looted.get("steel", 0),   resources_looted.get("aluminum", 0),
-                    resources_looted.get("food", 0),
-                    loot_date, now, attacker_id,
-                ))
-                conn.commit()
-            return True
-        except Exception as e:
-            logger.error(f"HoldingsDB.apply_loot_event(att={attacker_id}, def={defender_id}): {e}", exc_info=True)
-            return False
-
-    async def apply_bankrec(self, rec: Dict[str, Any]) -> bool:
-        """
-        Apply a bank record to holdings for all nation-type parties.
-        Called by bankrecs_subscription. No lock — WAL mode handles concurrency.
-        Receiver (type=1): ADD. Sender (type=1): SUBTRACT.
-        Cash can go negative; resources floored at 0.
-        """
-        parties = list(self._bankrec_parties(rec))
-        if not parties:
-            return True
-        rec_date = str(rec.get("date") or self._now()).replace("T", " ")
-        try:
-            now = self._now()
-            with self._conn() as conn:
-                for nation_id, sign in parties:
-                    conn.execute(self._ensure_row_sql(), (nation_id, None, rec_date, now))
-                    money_delta = sign * float(rec.get("money") or 0)
-                    rss_deltas  = {r: sign * float(rec.get(r) or 0) for r in RESOURCE_COLS}
-                    conn.execute("""
-                        UPDATE nation_holdings SET
-                            money_held      = money_held + ?,
-                            coal_held       = MAX(0, coal_held + ?),
-                            oil_held        = MAX(0, oil_held + ?),
-                            uranium_held    = MAX(0, uranium_held + ?),
-                            iron_held       = MAX(0, iron_held + ?),
-                            bauxite_held    = MAX(0, bauxite_held + ?),
-                            lead_held       = MAX(0, lead_held + ?),
-                            gasoline_held   = MAX(0, gasoline_held + ?),
-                            munitions_held  = MAX(0, munitions_held + ?),
-                            steel_held      = MAX(0, steel_held + ?),
-                            aluminum_held   = MAX(0, aluminum_held + ?),
-                            food_held       = MAX(0, food_held + ?),
-                            confidence      = CASE WHEN confidence = 'seeded' THEN 'tracked' ELSE confidence END,
-                            last_event_date = ?,
-                            updated_at      = ?
-                        WHERE nation_id = ?
-                    """, (
-                        money_delta,
-                        rss_deltas["coal"],    rss_deltas["oil"],      rss_deltas["uranium"],
-                        rss_deltas["iron"],    rss_deltas["bauxite"],  rss_deltas["lead"],
-                        rss_deltas["gasoline"],rss_deltas["munitions"],rss_deltas["steel"],
-                        rss_deltas["aluminum"],rss_deltas["food"],
-                        rec_date, now, nation_id,
-                    ))
-                conn.commit()
-            return True
-        except Exception as e:
-            logger.error(f"HoldingsDB.apply_bankrec: {e}", exc_info=True)
-            return False
-
-    # ── Queries (read-only, no lock needed) ───────────────────────────────────
 
     async def get_holdings(self, nation_id: int) -> Optional[Dict[str, Any]]:
-        try:
+        def _work():
             with self._conn() as conn:
-                row = conn.execute(
-                    "SELECT * FROM nation_holdings WHERE nation_id = ?", (nation_id,)
-                ).fetchone()
-                return dict(row) if row else None
+                row = conn.execute("SELECT * FROM nations WHERE id=?", (nation_id,)).fetchone()
+                return self._row_to_holdings(row) if row else None
+        try:
+            return await self._run_sync(_work)
         except Exception as e:
-            logger.error(f"HoldingsDB.get_holdings({nation_id}): {e}")
+            logger.error(f"get_holdings({nation_id}): {e}")
             return None
 
     async def get_holdings_bulk(self, nation_ids: List[int]) -> Dict[int, Dict[str, Any]]:
         if not nation_ids:
             return {}
-        try:
+        def _work():
+            ph = ",".join("?" * len(nation_ids))
             with self._conn() as conn:
-                ph   = ",".join("?" * len(nation_ids))
                 rows = conn.execute(
-                    f"SELECT * FROM nation_holdings WHERE nation_id IN ({ph})",
-                    nation_ids,
+                    f"SELECT * FROM nations WHERE id IN ({ph})", nation_ids
                 ).fetchall()
-                return {int(r["nation_id"]): dict(r) for r in rows}
-        except Exception as e:
-            logger.error(f"HoldingsDB.get_holdings_bulk: {e}")
-            return {}
-
-    async def get_stats(self) -> Dict[str, Any]:
+                return {int(r["id"]): self._row_to_holdings(r) for r in rows}
         try:
-            with self._conn() as conn:
-                total     = conn.execute("SELECT COUNT(*) FROM nation_holdings").fetchone()[0]
-                by_conf   = conn.execute(
-                    "SELECT confidence, COUNT(*) FROM nation_holdings GROUP BY confidence"
-                ).fetchall()
-                log_count = conn.execute("SELECT COUNT(*) FROM spending_log").fetchone()[0]
-                return {
-                    "total_nations": total,
-                    "by_confidence": {r[0]: r[1] for r in by_conf},
-                    "spending_log_entries": log_count,
-                }
+            return await self._run_sync(_work)
         except Exception as e:
-            logger.error(f"HoldingsDB.get_stats: {e}")
+            logger.error(f"get_holdings_bulk: {e}")
             return {}
 
     async def get_all_tracked_nation_ids(self) -> List[int]:
-        """Return all nation_ids currently in the holdings ledger."""
-        try:
+        def _work():
             with self._conn() as conn:
-                rows = conn.execute(
-                    "SELECT nation_id FROM nation_holdings"
-                ).fetchall()
+                rows = conn.execute("SELECT id FROM nations").fetchall()
                 return [int(r[0]) for r in rows]
+        try:
+            return await self._run_sync(_work)
         except Exception as e:
-            logger.error(f"HoldingsDB.get_all_tracked_nation_ids: {e}")
+            logger.error(f"get_all_tracked_nation_ids: {e}")
             return []
+
+    async def get_stats(self) -> Dict[str, Any]:
+        def _work():
+            with self._conn() as conn:
+                total = conn.execute("SELECT COUNT(*) FROM nations").fetchone()[0]
+                by_conf = conn.execute(
+                    "SELECT confidence, COUNT(*) FROM nations GROUP BY confidence"
+                ).fetchall()
+                return {
+                    "total_nations": total,
+                    "by_confidence": {r[0]: r[1] for r in by_conf},
+                }
+        try:
+            return await self._run_sync(_work)
+        except Exception as e:
+            logger.error(f"get_stats: {e}")
+            return {}
+
+    async def apply_loot_event(
+        self,
+        attacker_id: int,
+        defender_id: int,
+        money_looted: float,
+        resources_looted: Dict[str, float],
+        loot_date: str,
+        war_type: Optional[str] = None,
+        att_war_policy: Optional[str] = None,
+        def_war_policy: Optional[str] = None,
+        att_has_ape: bool = False,
+        attacker_name: Optional[str] = None,
+        defender_name: Optional[str] = None,
+    ) -> bool:
+        """
+        On a ground-win attack:
+          - Defender: SET holdings to the back-calculated post-loot value.
+            We know exactly what was looted and the loot percentage, so we can
+            derive the defender's exact remaining balance:
+              remaining = looted * (1/loot_pct - 1)
+            This gives a fresh, accurate baseline regardless of prior drift.
+            Mark confidence='fresh' and record last_loot_date.
+          - Attacker: ADD looted amounts to their holdings.
+
+        Using SET (not DEDUCT) for the defender is critical: it resets their
+        holdings to a known-correct value after each loot, preventing compounding
+        errors from prior drift. The loot percentage is calculated from war_type,
+        attacker policy, APE project, and defender policy.
+        """
+        total = money_looted + sum(resources_looted.get(r, 0.0) for r in RESOURCE_COLS)
+        if total <= 0:
+            return True
+
+        loot_date_str = str(loot_date or self._now()).replace("T", " ")
+
+        # ── Calculate loot percentage to back-derive defender's remaining balance ──
+        loot_pct = _calc_loot_pct(war_type, att_war_policy, def_war_policy, att_has_ape)
+
+        # remaining = looted * (1/loot_pct - 1)
+        # Guard against division by zero (loot_pct should always be > 0)
+        if loot_pct > 0:
+            money_remaining = money_looted * (1.0 / loot_pct - 1.0)
+            rss_remaining   = {
+                r: resources_looted.get(r, 0.0) * (1.0 / loot_pct - 1.0)
+                for r in RESOURCE_COLS
+            }
+        else:
+            # Fallback: can't back-calculate, floor at 0
+            money_remaining = 0.0
+            rss_remaining   = {r: 0.0 for r in RESOURCE_COLS}
+
+        # Sanity floor — remaining can't be negative
+        money_remaining = max(0.0, money_remaining)
+        rss_remaining   = {r: max(0.0, v) for r, v in rss_remaining.items()}
+
+        def _work():
+            with self._conn() as conn:
+                # Ensure both rows exist
+                self._ensure_row(conn, defender_id, defender_name)
+                self._ensure_row(conn, attacker_id, attacker_name)
+
+                # ── Defender: SET to back-calculated post-loot balance ────────
+                # Build a single UPDATE covering money + all resources atomically
+                # so a partial failure can't leave money SET but resources stale.
+                def_rss_parts = ", ".join(f"{r}=?" for r in RESOURCE_COLS)
+                def_rss_vals  = [max(0.0, rss_remaining.get(r, 0.0)) for r in RESOURCE_COLS]
+                conn.execute(
+                    f"UPDATE nations SET "
+                    f"money=?, {def_rss_parts}, "
+                    f"confidence='fresh', "
+                    f"last_loot_date=?, "
+                    f"last_event_date=? "
+                    f"WHERE id=?",
+                    [money_remaining] + def_rss_vals + [loot_date_str, loot_date_str, defender_id],
+                )
+
+                # ── Attacker: ADD looted money + resources in one statement ───
+                att_rss_parts = []
+                att_rss_vals  = []
+                for r in RESOURCE_COLS:
+                    v = resources_looted.get(r, 0.0)
+                    if v > 0:
+                        att_rss_parts.append(f"{r}=MAX(0, COALESCE({r},0)+?)")
+                        att_rss_vals.append(v)
+                att_extra = (", " + ", ".join(att_rss_parts)) if att_rss_parts else ""
+                conn.execute(
+                    f"UPDATE nations SET "
+                    f"money=MAX(0, COALESCE(money,0)+?), "
+                    f"confidence=CASE WHEN confidence='seeded' THEN 'tracked' ELSE confidence END, "
+                    f"last_event_date=?"
+                    f"{att_extra} WHERE id=?",
+                    [money_looted, loot_date_str] + att_rss_vals + [attacker_id],
+                )
+
+                conn.commit()
+
+        try:
+            await self._run_sync(_work)
+            logger.info(
+                f"Holdings loot SET: att={attacker_id}({attacker_name}) "
+                f"def={defender_id}({defender_name}) "
+                f"war_type={war_type} loot_pct={loot_pct:.4f} "
+                f"money_looted=${money_looted:,.0f} → def_remaining=${money_remaining:,.0f}"
+                + (
+                    " | resources looted: " + ", ".join(
+                        f"{r}={v:,.2f}" for r, v in resources_looted.items() if v > 0
+                    ) if any(v > 0 for v in resources_looted.values()) else ""
+                )
+            )
+            return True
+        except Exception as e:
+            logger.error(
+                f"apply_loot_event(att={attacker_id}, def={defender_id}): {e}",
+                exc_info=True,
+            )
+            return False
+
+    async def apply_bankrec(self, rec: Dict[str, Any]) -> bool:
+        """Apply a bank record: deduct from sender nation, add to receiver nation.
+
+        Deposit  (nation→alliance): sender_type=1, receiver_type=2 — deduct from nation.
+        Withdrawal (alliance→nation): sender_type=2, receiver_type=1 — add to nation.
+        Transfer (nation→nation): both type=1 — deduct from sender, add to receiver.
+        """
+        sender_id   = rec.get("sender_id")
+        sender_type = int(rec.get("sender_type") or 0)
+        recv_id     = rec.get("receiver_id")
+        recv_type   = int(rec.get("receiver_type") or 0)
+
+        # sender_type/receiver_type == 1 means nation; 2 means alliance bank
+        parties = []
+        if sender_id and sender_type == 1:
+            parties.append((int(sender_id), -1))
+        if recv_id and recv_type == 1:
+            parties.append((int(recv_id), +1))
+        if not parties:
+            return True
+
+        rec_date = str(rec.get("date") or self._now()).replace("T", " ")
+        money    = float(rec.get("money") or 0)
+        rss      = {r: float(rec.get(r) or 0) for r in RESOURCE_COLS}
+
+        def _work():
+            with self._conn() as conn:
+                for nation_id, sign in parties:
+                    self._ensure_row(conn, nation_id, None)
+                    if sign > 0:
+                        conn.execute(
+                            "UPDATE nations SET "
+                            "money=COALESCE(money,0)+?, "
+                            "confidence=CASE WHEN confidence='seeded' THEN 'tracked' ELSE confidence END, "
+                            "last_bankrec_date=?, last_event_date=? WHERE id=?",
+                            (money, rec_date, rec_date, nation_id),
+                        )
+                    else:
+                        conn.execute(
+                            "UPDATE nations SET "
+                            "money=MAX(0, COALESCE(money,0)-?), "
+                            "confidence=CASE WHEN confidence='seeded' THEN 'tracked' ELSE confidence END, "
+                            "last_bankrec_date=?, last_event_date=? WHERE id=?",
+                            (money, rec_date, rec_date, nation_id),
+                        )
+                    for r, v in rss.items():
+                        if v != 0:
+                            if sign > 0:
+                                conn.execute(
+                                    f"UPDATE nations SET {r}=COALESCE({r},0)+? WHERE id=?",
+                                    (v, nation_id),
+                                )
+                            else:
+                                conn.execute(
+                                    f"UPDATE nations SET {r}=MAX(0, COALESCE({r},0)-?) WHERE id=?",
+                                    (v, nation_id),
+                                )
+                conn.commit()
+
+        try:
+            await self._run_sync(_work)
+            return True
+        except Exception as e:
+            logger.error(f"apply_bankrec: {e}", exc_info=True)
+            return False
 
     async def apply_turn_revenue(
         self,
@@ -770,59 +455,350 @@ class HoldingsDB:
         turn_date: str,
         nation_name: Optional[str] = None,
     ) -> bool:
-        """
-        Add one turn's worth of net revenue to a nation's holdings.
-
-        Called by TurnRevenueLoop at midnight UTC and every 2 hours after.
-        money_delta      : net cash income for this turn (net_cash_num from revenue_calc).
-                           Can be negative if upkeep exceeds income.
-        resource_deltas  : net resource production per turn (positive = produced,
-                           negative = consumed). Resources are floored at 0 since
-                           you can't hold negative resources.
-        turn_date        : ISO-ish timestamp of the turn boundary.
-        """
-        try:
-            now = self._now()
+        """Apply one turn of revenue to a nation in GlobalNations.db."""
+        def _work():
             with self._conn() as conn:
-                conn.execute(self._ensure_row_sql(), (nation_id, nation_name, turn_date, now))
-                conn.execute("""
-                    UPDATE nation_holdings SET
-                        money_held      = money_held + ?,
-                        coal_held       = MAX(0, coal_held + ?),
-                        oil_held        = MAX(0, oil_held + ?),
-                        uranium_held    = MAX(0, uranium_held + ?),
-                        iron_held       = MAX(0, iron_held + ?),
-                        bauxite_held    = MAX(0, bauxite_held + ?),
-                        lead_held       = MAX(0, lead_held + ?),
-                        gasoline_held   = MAX(0, gasoline_held + ?),
-                        munitions_held  = MAX(0, munitions_held + ?),
-                        steel_held      = MAX(0, steel_held + ?),
-                        aluminum_held   = MAX(0, aluminum_held + ?),
-                        food_held       = MAX(0, food_held + ?),
-                        confidence      = CASE WHEN confidence = 'seeded' THEN 'tracked' ELSE confidence END,
-                        last_event_date = ?,
-                        updated_at      = ?
-                    WHERE nation_id = ?
-                """, (
-                    money_delta,
-                    resource_deltas.get("coal", 0),
-                    resource_deltas.get("oil", 0),
-                    resource_deltas.get("uranium", 0),
-                    resource_deltas.get("iron", 0),
-                    resource_deltas.get("bauxite", 0),
-                    resource_deltas.get("lead", 0),
-                    resource_deltas.get("gasoline", 0),
-                    resource_deltas.get("munitions", 0),
-                    resource_deltas.get("steel", 0),
-                    resource_deltas.get("aluminum", 0),
-                    resource_deltas.get("food", 0),
-                    turn_date, now, nation_id,
-                ))
+                self._ensure_row(conn, nation_id, nation_name)
+                conn.execute(
+                    "UPDATE nations SET "
+                    "money=COALESCE(money,0)+?, "
+                    "confidence=CASE WHEN confidence='seeded' THEN 'tracked' ELSE confidence END, "
+                    "last_revenue_date=?, last_event_date=? WHERE id=?",
+                    (money_delta, turn_date, turn_date, nation_id),
+                )
+                for r, v in resource_deltas.items():
+                    if v != 0 and r in RESOURCE_COLS:
+                        conn.execute(
+                            f"UPDATE nations SET {r}=MAX(0, COALESCE({r},0)+?) WHERE id=?",
+                            (v, nation_id),
+                        )
                 conn.commit()
+        try:
+            await self._run_sync(_work)
             return True
         except Exception as e:
-            logger.error(
-                f"HoldingsDB.apply_turn_revenue(nation={nation_id}): {e}",
-                exc_info=True,
-            )
+            logger.error(f"apply_turn_revenue({nation_id}): {e}", exc_info=True)
             return False
+
+    async def deduct_spending(
+        self,
+        nation_id: int,
+        cash_cost: float,
+        event_type: str,
+        description: str = "",
+        event_date: Optional[str] = None,
+        nation_name: Optional[str] = None,
+        item_type: Optional[str] = None,
+        item_quantity: Optional[float] = None,
+        item_details: Optional[str] = None,
+        resource_costs: Optional[Dict[str, float]] = None,
+    ) -> bool:
+        """Deduct cash (and optionally resources) for a purchase event."""
+        if cash_cost <= 0 and not resource_costs:
+            return True
+        ev_date = event_date or self._now()
+        def _work():
+            with self._conn() as conn:
+                self._ensure_row(conn, nation_id, nation_name)
+                if cash_cost > 0:
+                    conn.execute(
+                        "UPDATE nations SET "
+                        "money=MAX(0, COALESCE(money,0)-?), "
+                        "confidence=CASE WHEN confidence='seeded' THEN 'tracked' ELSE confidence END, "
+                        "last_event_date=? WHERE id=?",
+                        (cash_cost, ev_date, nation_id),
+                    )
+                for resource, amount in (resource_costs or {}).items():
+                    if amount > 0 and resource in RESOURCE_COLS:
+                        conn.execute(
+                            f"UPDATE nations SET {resource}=MAX(0, COALESCE({resource},0)-?) WHERE id=?",
+                            (amount, nation_id),
+                        )
+                conn.commit()
+        try:
+            await self._run_sync(_work)
+            return True
+        except Exception as e:
+            logger.error(f"deduct_spending({nation_id}): {e}", exc_info=True)
+            return False
+
+    async def apply_military_update(
+        self,
+        nation_id: int,
+        old_military: Dict[str, int],
+        new_military: Dict[str, int],
+        event_date: Optional[str] = None,
+        nation_name: Optional[str] = None,
+    ) -> bool:
+        """
+        Called by nations_subscription on every nation/update event.
+
+        - Units INCREASED (purchased): update count + deduct cash AND resources.
+        - Units DECREASED (lost/disbanded): update count only, no cost deducted.
+
+        Both dicts must contain the same keys — the caller already filters to
+        only keys present in the incoming event payload.
+        """
+        ev_date = event_date or self._now()
+        total_cash_cost = 0.0
+        resource_costs: Dict[str, float] = {}
+        mil_updates: Dict[str, Any] = {}
+
+        for unit in MILITARY_COLS:
+            if unit not in old_military or unit not in new_military:
+                continue
+            old_v = int(old_military[unit] or 0)
+            new_v = int(new_military[unit] or 0)
+            if new_v == old_v:
+                continue
+            mil_updates[unit] = new_v
+            if new_v > old_v:
+                bought = new_v - old_v
+                costs  = MILITARY_COSTS.get(unit, {})
+                total_cash_cost += costs.get("cash", 0.0) * bought
+                for resource, per_unit in costs.items():
+                    if resource == "cash":
+                        continue
+                    resource_costs[resource] = resource_costs.get(resource, 0.0) + per_unit * bought
+
+        if not mil_updates:
+            return True
+
+        def _work():
+            with self._conn() as conn:
+                self._ensure_row(conn, nation_id, nation_name)
+                row = conn.execute(
+                    "SELECT confidence FROM nations WHERE id=?", (nation_id,)
+                ).fetchone()
+                is_fresh = row is not None and (row["confidence"] or "seeded") not in ("seeded",)
+
+                set_clause = ", ".join(f"{k}=?" for k in mil_updates)
+                conn.execute(
+                    f"UPDATE nations SET {set_clause}, "
+                    "confidence=CASE WHEN confidence='seeded' THEN 'tracked' ELSE confidence END, "
+                    "last_event_date=? WHERE id=?",
+                    list(mil_updates.values()) + [ev_date, nation_id],
+                )
+
+                if is_fresh:
+                    if total_cash_cost > 0:
+                        conn.execute(
+                            "UPDATE nations SET money=MAX(0, COALESCE(money,0)-?) WHERE id=?",
+                            (total_cash_cost, nation_id),
+                        )
+                    for resource, amount in resource_costs.items():
+                        if amount > 0 and resource in RESOURCE_COLS:
+                            conn.execute(
+                                f"UPDATE nations SET {resource}=MAX(0, COALESCE({resource},0)-?) WHERE id=?",
+                                (amount, nation_id),
+                            )
+                conn.commit()
+            return is_fresh
+
+        try:
+            is_fresh = await self._run_sync(_work)
+
+            if is_fresh and (total_cash_cost > 0 or resource_costs):
+                rss_str = ", ".join(f"{r}={v:,.1f}" for r, v in resource_costs.items())
+                logger.info(
+                    f"Holdings: nation {nation_id} military purchase "
+                    f"${total_cash_cost:,.0f} cash"
+                    + (f" + {rss_str}" if rss_str else "")
+                )
+
+            # ── News: record each unit type purchased ─────────────────────────
+            try:
+                import asyncio as _asyncio
+                import PnWHarvester.db.news_writer as _nw
+                _nation_row: Dict[str, Any] = {}
+                try:
+                    def _fetch_nation_info():
+                        with self._conn() as _c:
+                            try:
+                                _r = _c.execute(
+                                    "SELECT alliance_id, alliance_name, alliance_flag, flag "
+                                    "FROM nations WHERE id=?",
+                                    (nation_id,),
+                                ).fetchone()
+                            except Exception:
+                                _r = _c.execute(
+                                    "SELECT alliance_id, alliance_name, flag "
+                                    "FROM nations WHERE id=?",
+                                    (nation_id,),
+                                ).fetchone()
+                            return dict(_r) if _r else {}
+                    _nation_row = await self._run_sync(_fetch_nation_info)
+                except Exception:
+                    pass
+                _alliance_id   = _nation_row.get("alliance_id") or None
+                _alliance_name = _nation_row.get("alliance_name") or None
+                _alliance_flag = _nation_row.get("alliance_flag") or None
+                _nation_flag   = _nation_row.get("flag") or None
+                for unit in MILITARY_COLS:
+                    if unit not in old_military or unit not in new_military:
+                        continue
+                    _old_v = int(old_military[unit] or 0)
+                    _new_v = int(new_military[unit] or 0)
+                    if _new_v <= _old_v:
+                        continue
+                    _bought     = _new_v - _old_v
+                    _unit_costs = MILITARY_COSTS.get(unit, {})
+                    _cash_cost  = _unit_costs.get("cash", 0.0) * _bought
+                    _res_costs: Dict[str, float] = {
+                        res: per_unit * _bought
+                        for res, per_unit in _unit_costs.items()
+                        if res != "cash" and per_unit > 0
+                    }
+                    if _cash_cost < 100_000 and not _res_costs:
+                        continue
+                    _asyncio.create_task(_nw.record_military_purchase(
+                        nation_id=nation_id,
+                        nation_name=nation_name,
+                        nation_flag=_nation_flag,
+                        alliance_id=_alliance_id,
+                        alliance_name=_alliance_name,
+                        alliance_flag=_alliance_flag,
+                        unit_type=unit,
+                        quantity=_bought,
+                        cash_cost=_cash_cost,
+                        resource_costs=_res_costs or None,
+                        event_date=ev_date,
+                    ))
+            except Exception as _ne:
+                logger.debug(f"news military_purchase: {_ne}")
+
+            return True
+        except Exception as e:
+            logger.error(f"apply_military_update({nation_id}): {e}", exc_info=True)
+            return False
+
+    async def apply_war_consumption(
+        self,
+        nation_id: int,
+        gasoline: float,
+        munitions: float,
+        event_date: Optional[str] = None,
+        nation_name: Optional[str] = None,
+    ) -> bool:
+        """Deduct gasoline and/or munitions consumed by a war attack."""
+        if gasoline <= 0 and munitions <= 0:
+            return True
+        ev_date = event_date or self._now()
+        def _work():
+            with self._conn() as conn:
+                self._ensure_row(conn, nation_id, nation_name)
+                if gasoline > 0:
+                    conn.execute(
+                        "UPDATE nations SET gasoline=MAX(0, COALESCE(gasoline,0)-?), "
+                        "last_event_date=? WHERE id=?",
+                        (gasoline, ev_date, nation_id),
+                    )
+                if munitions > 0:
+                    conn.execute(
+                        "UPDATE nations SET munitions=MAX(0, COALESCE(munitions,0)-?), "
+                        "last_event_date=? WHERE id=?",
+                        (munitions, ev_date, nation_id),
+                    )
+                conn.commit()
+        try:
+            await self._run_sync(_work)
+            return True
+        except Exception as e:
+            logger.error(f"apply_war_consumption({nation_id}): {e}", exc_info=True)
+            return False
+
+    async def apply_combat_losses(
+        self,
+        attacker_id: int,
+        defender_id: int,
+        att_losses: Dict[str, int],
+        def_losses: Dict[str, int],
+        event_date: Optional[str] = None,
+        attacker_name: Optional[str] = None,
+        defender_name: Optional[str] = None,
+    ) -> bool:
+        """
+        Subtract military unit losses from war attacks.
+        Only decrements unit counts — no cash or resource deduction.
+        """
+        ev_date = event_date or self._now()
+        def _work():
+            with self._conn() as conn:
+                for nation_id, losses, name in [
+                    (attacker_id, att_losses, attacker_name),
+                    (defender_id, def_losses, defender_name),
+                ]:
+                    if not any(losses.values()):
+                        continue
+                    self._ensure_row(conn, nation_id, name)
+                    for unit, lost in losses.items():
+                        if lost > 0 and unit in MILITARY_COLS:
+                            conn.execute(
+                                f"UPDATE nations SET {unit}=MAX(0, COALESCE({unit},0)-?), "
+                                "last_event_date=? WHERE id=?",
+                                (lost, ev_date, nation_id),
+                            )
+                conn.commit()
+        try:
+            await self._run_sync(_work)
+            return True
+        except Exception as e:
+            logger.error(f"apply_combat_losses: {e}", exc_info=True)
+            return False
+
+    async def set_complete_holdings(
+        self,
+        nation_id: int,
+        money: float,
+        resources: Dict[str, float],
+        military: Dict[str, int],
+        confidence: str = "fresh",
+        event_date: Optional[str] = None,
+        nation_name: Optional[str] = None,
+        description: str = "",
+    ) -> bool:
+        ev_date = event_date or self._now()
+        updates: Dict[str, Any] = {
+            "money":           money,
+            "confidence":      confidence,
+            "last_event_date": ev_date,
+        }
+        for r in RESOURCE_COLS:
+            updates[r] = resources.get(r, 0.0)
+        for m in MILITARY_COLS:
+            updates[m] = military.get(m, 0)
+
+        def _work():
+            with self._conn() as conn:
+                self._ensure_row(conn, nation_id, nation_name)
+                if nation_name:
+                    conn.execute(
+                        "UPDATE nations SET nation_name=? WHERE id=? AND nation_name IS NULL",
+                        (nation_name, nation_id),
+                    )
+                set_clause = ", ".join(f"{k}=?" for k in updates)
+                conn.execute(
+                    f"UPDATE nations SET {set_clause} WHERE id=?",
+                    list(updates.values()) + [nation_id],
+                )
+                conn.commit()
+        try:
+            await self._run_sync(_work)
+            return True
+        except Exception as e:
+            logger.error(f"set_complete_holdings({nation_id}): {e}", exc_info=True)
+            return False
+
+    # ── Compat stubs ──────────────────────────────────────────────────────────
+
+    async def get_holdings_history(self, nation_id: int, **kwargs) -> List[Dict[str, Any]]:
+        """Stub — audit log removed; returns empty list."""
+        return []
+
+    async def get_spending_summary(self, nation_id: int, **kwargs) -> List[Dict[str, Any]]:
+        """Stub — spending log removed; returns empty list."""
+        return []
+
+    async def cleanup_old_logs(self, days: int = 90) -> Dict[str, int]:
+        """Stub — no separate log tables."""
+        return {"holdings_log": 0, "spending_log": 0}
