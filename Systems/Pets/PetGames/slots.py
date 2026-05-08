@@ -315,29 +315,14 @@ class SlotMachineView(discord.ui.View):
 
             if not self.fun_mode:
                 xp_delta = winnings if winnings > 0 else -self.bet
-                
-                # Apply ability tree effects
-                pet_data = await user_data_manager.get_pet_data_async(str(self.user.id))
-                if pet_data:
-                    try:
-                        from Systems.Pets.Logic.ability_tree import get_ability_effect
-                        if xp_delta > 0:
-                            # Apply casino win bonus
-                            win_mult = get_ability_effect(pet_data, "casino_xp_gain_mult", game="slots")
-                            if win_mult != 1.0:
-                                xp_delta = int(xp_delta * win_mult)
-                        else:
-                            # Apply casino loss reduction
-                            loss_reduction = get_ability_effect(pet_data, "casino_xp_loss_reduction", game="slots")
-                            if loss_reduction > 0:
-                                xp_delta = int(xp_delta * (1.0 - loss_reduction))
-                    except Exception:
-                        pass
-                
                 winnings_val = xp_delta
                 
-                # Task 1: XP Change
-                gather_tasks.append(LootCalculator.apply_xp_change(self.user.id, xp_delta, source="slots"))
+                # Task 1: XP Change — ability effects (win bonus / loss reduction) are
+                # applied centrally in LootCalculator.apply_xp_change via source string.
+                gather_tasks.append(LootCalculator.apply_xp_change(
+                    self.user.id, xp_delta,
+                    source="slots_win" if xp_delta > 0 else "slots_bet",
+                ))
                 
                 # Task 2: Loot (processed separately due to different return type)
                 if winnings > 0:
@@ -451,25 +436,6 @@ class SlotMachineView(discord.ui.View):
         try:
             xp_delta = winnings if winnings > 0 else -self.bet
             
-            # Apply ability tree effects
-            if not self.fun_mode:
-                pet_data = await user_data_manager.get_pet_data_async(str(self.user.id))
-                if pet_data:
-                    try:
-                        from Systems.Pets.Logic.ability_tree import get_ability_effect
-                        if xp_delta > 0:
-                            # Apply casino win bonus
-                            win_mult = get_ability_effect(pet_data, "casino_xp_gain_mult", game="slots")
-                            if win_mult != 1.0:
-                                xp_delta = int(xp_delta * win_mult)
-                        else:
-                            # Apply casino loss reduction
-                            loss_reduction = get_ability_effect(pet_data, "casino_xp_loss_reduction", game="slots")
-                            if loss_reduction > 0:
-                                xp_delta = int(xp_delta * (1.0 - loss_reduction))
-                    except Exception:
-                        pass
-            
             # Prepare stats update
             extra: Dict[str, Any] = {}
             extra["games_by_difficulty"] = {"insanity": 1}
@@ -493,9 +459,12 @@ class SlotMachineView(discord.ui.View):
                 extra_data=extra
             ))
             
-            # 2. XP Change (conditional)
+            # 2. XP Change — ability effects applied centrally via source string
             if not self.fun_mode:
-                gather_tasks.append(LootCalculator.apply_xp_change(self.user.id, xp_delta, source="slots"))
+                gather_tasks.append(LootCalculator.apply_xp_change(
+                    self.user.id, xp_delta,
+                    source="slots_win" if xp_delta > 0 else "slots_bet",
+                ))
                 
             # 3. Loot (conditional, and handled separately)
             loot_messages: List[str] = []

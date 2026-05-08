@@ -58,6 +58,8 @@ from typing import Any, Dict, List, Optional, Tuple
 
 # ── Stat keys ────────────────────────────────────────────────────────────────
 STATS = ["ATT", "DEF", "INT", "DEX", "HAP", "ENE"]
+# SKILL is a free branch — no stat mastery required. Listed separately so UI can render it.
+SKILL_BRANCH_STAT = "SKILL"
 
 # ── Advantage Mastery keys ────────────────────────────────────────────────────
 ADVANTAGE_MASTERY_KEYS = ["type", "element"]
@@ -545,13 +547,70 @@ ABILITIES: List[Dict[str, Any]] = [
         "requires_abilities": ["ene_charged_start", "ene_charge_mastery"],
         "requires_max_level": True,
     },
+
+    # ── SKILL Branch — Battle Skill Slots (FREE: no stat mastery required to unlock) ──
+    # free_branch=True means stat_mastery_met check is bypassed for these abilities.
+    # Players can spend ability points here without investing in any stat mastery first.
+    {
+        "id": "skill_slot_2",
+        "name": "Skill Slot II",
+        "stat": "SKILL",
+        "max_level": 1,
+        "cost": 2,
+        "free_branch": True,
+        "description": "Unlock a 2nd battle skill slot. Draw 5 skills from your element pool to choose from.",
+        "effect": {"type": "skill_slot", "slot": 2},
+    },
+    {
+        "id": "skill_slot_3",
+        "name": "Skill Slot III",
+        "stat": "SKILL",
+        "max_level": 1,
+        "cost": 3,
+        "free_branch": True,
+        "description": "Unlock a 3rd battle skill slot. Draw 5 skills from your element pool to choose from.",
+        "effect": {"type": "skill_slot", "slot": 3},
+        "requires_abilities": ["skill_slot_2"],
+    },
+    {
+        "id": "skill_slot_4",
+        "name": "Skill Slot IV",
+        "stat": "SKILL",
+        "max_level": 1,
+        "cost": 4,
+        "free_branch": True,
+        "description": "Unlock a 4th battle skill slot. Draw 5 skills from your element pool to choose from.",
+        "effect": {"type": "skill_slot", "slot": 4},
+        "requires_abilities": ["skill_slot_3"],
+    },
+    {
+        "id": "skill_reroll_all",
+        "name": "Skill Remaster",
+        "stat": "SKILL",
+        "max_level": 1,
+        "cost": 2,
+        "free_branch": True,
+        "description": "Reroll ALL equipped skill slots at once, drawing from your full element pool.",
+        "effect": {"type": "skill_reroll_all"},
+    },
+    {
+        "id": "skill_cross_element",
+        "name": "Elemental Fusion",
+        "stat": "SKILL",
+        "max_level": 1,
+        "cost": 3,
+        "free_branch": True,
+        "description": "Change one skill slot to a skill from ANY other element — draw 10 cross-element choices.",
+        "effect": {"type": "skill_cross_element"},
+    },
 ]
 
 # Quick lookup by id
 ABILITY_BY_ID: Dict[str, Dict[str, Any]] = {a["id"]: a for a in ABILITIES}
 
-# Abilities grouped by stat branch
-ABILITIES_BY_STAT: Dict[str, List[Dict[str, Any]]] = {s: [] for s in STATS}
+# Abilities grouped by stat branch (SKILL is a free branch, not in STATS)
+_ALL_BRANCH_KEYS = STATS + ["SKILL"]
+ABILITIES_BY_STAT: Dict[str, List[Dict[str, Any]]] = {s: [] for s in _ALL_BRANCH_KEYS}
 for _ab in ABILITIES:
     ABILITIES_BY_STAT[_ab["stat"]].append(_ab)
 
@@ -628,8 +687,15 @@ def get_ability_level(pet: Dict[str, Any], ability_id: str) -> int:
 
 
 def get_ability_effect_value(ability: Dict[str, Any], level: int) -> float:
-    """Calculate the effect value for an ability at a given level."""
+    """Calculate the effect value for an ability at a given level.
+    SKILL branch abilities (skill_slot, skill_reroll_all, skill_cross_element)
+    have no base/per_level — they return 0.0 so get_ability_effect ignores them.
+    """
     effect = ability.get("effect", {})
+    eff_type = effect.get("type", "")
+    # SKILL branch effect types have no numeric value — return 0.0
+    if eff_type in ("skill_slot", "skill_reroll_all", "skill_cross_element"):
+        return 0.0
     base = effect.get("base", 1.0)
     per_level = effect.get("per_level", 0.0)
     return base + (per_level * (level - 1))
@@ -827,12 +893,13 @@ def unlock_ability(pet: Dict[str, Any], ability_id: str) -> Tuple[bool, str]:
     if not ab:
         return False, f"Unknown ability: {ability_id}"
 
-    # Check stat mastery requirement
+    # Check stat mastery requirement (skipped for free_branch abilities like SKILL branch)
     stat = ab["stat"]
-    mastery = pet.get("stat_mastery") or {}
-    stat_points = int(mastery.get(stat, 0))
-    if stat_points < 1:
-        return False, f"Requires at least 1 point in {stat} stat mastery first."
+    if not ab.get("free_branch", False):
+        mastery = pet.get("stat_mastery") or {}
+        stat_points = int(mastery.get(stat, 0))
+        if stat_points < 1:
+            return False, f"Requires at least 1 point in {stat} stat mastery first."
 
     # Check special ability requirements (for Overcharged)
     if ab.get("requires_abilities"):
@@ -880,7 +947,14 @@ def unlock_ability(pet: Dict[str, Any], ability_id: str) -> Tuple[bool, str]:
     effect_value = get_ability_effect_value(ab, new_level)
     
     # Format the effect value for display
-    if ab["effect"]["type"].endswith("_mult") or ab["effect"]["type"].endswith("_multiplier"):
+    _eff_type_u = ab["effect"]["type"]
+    if _eff_type_u == "skill_slot":
+        formatted_value = f"Slot {ab['effect'].get('slot', '?')}"
+    elif _eff_type_u == "skill_reroll_all":
+        formatted_value = "Reroll All"
+    elif _eff_type_u == "skill_cross_element":
+        formatted_value = "10 Choices"
+    elif ab["effect"]["type"].endswith("_mult") or ab["effect"]["type"].endswith("_multiplier"):
         if ab["effect"]["type"] == "battle_defense_mult":
             # Defense is shown as damage reduction percentage (boost above 1.0)
             boost_pct = int((effect_value - 1.0) * 100)
@@ -958,10 +1032,13 @@ def get_tree_state(pet: Dict[str, Any]) -> Dict[str, Any]:
         current_ab_level = get_ability_level(pet, ab_id)
         max_level = ab["max_level"]
         
-        # Check stat mastery requirement
+        # Check stat mastery requirement (free_branch abilities bypass this)
         stat = ab["stat"]
-        stat_mastery_points = int((pet.get("stat_mastery") or {}).get(stat, 0))
-        stat_mastery_met = stat_mastery_points >= 1
+        if ab.get("free_branch", False):
+            stat_mastery_met = True
+        else:
+            stat_mastery_points = int((pet.get("stat_mastery") or {}).get(stat, 0))
+            stat_mastery_met = stat_mastery_points >= 1
         
         # Check special ability requirements
         requirements_met = True
@@ -1001,7 +1078,15 @@ def get_tree_state(pet: Dict[str, Any]) -> Dict[str, Any]:
             effect_value = get_ability_effect_value(ab, 1)  # Show level 1 preview
         
         # Format the effect value for display
-        if ab["effect"]["type"].endswith("_mult") or ab["effect"]["type"].endswith("_multiplier"):
+        _eff_type = ab["effect"]["type"]
+        # SKILL branch abilities have no numeric effect value — show a fixed label
+        if _eff_type == "skill_slot":
+            formatted_value = f"Slot {ab['effect'].get('slot', '?')}"
+        elif _eff_type == "skill_reroll_all":
+            formatted_value = "Reroll All"
+        elif _eff_type == "skill_cross_element":
+            formatted_value = "10 Choices"
+        elif ab["effect"]["type"].endswith("_mult") or ab["effect"]["type"].endswith("_multiplier"):
             if ab["effect"]["type"] == "battle_defense_mult":
                 # Defense is shown as damage reduction percentage (boost above 1.0)
                 boost_pct = int((effect_value - 1.0) * 100)

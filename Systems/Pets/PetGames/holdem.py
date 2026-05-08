@@ -900,22 +900,10 @@ class HoldemSession(discord.ui.View):
             self.players[uid].win_streak += 1
             
             if not self.players[uid].is_bot:
-                # Award XP to winner
+                # Award XP to winner — ability effects (win bonus) applied centrally
+                # in LootCalculator.apply_xp_change via source="holdem_win".
                 if not self.fun_mode and share > 0:
-                    # Apply ability tree effects
-                    modified_share = share
-                    try:
-                        pet_data = await user_data_manager.get_pet_data_async(str(uid))
-                        if pet_data:
-                            from Systems.Pets.Logic.ability_tree import get_ability_effect
-                            # Apply casino win bonus
-                            win_mult = get_ability_effect(pet_data, "casino_xp_gain_mult", game="holdem")
-                            if win_mult != 1.0:
-                                modified_share = int(share * win_mult)
-                    except Exception:
-                        pass
-                    
-                    await LootCalculator.apply_xp_change(uid, modified_share, source="holdem_win")
+                    await LootCalculator.apply_xp_change(uid, share, source="holdem_win")
 
                 highest_bet = 0
                 ps = self.players.get(uid)

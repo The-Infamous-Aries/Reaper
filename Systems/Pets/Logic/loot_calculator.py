@@ -707,28 +707,71 @@ class LootCalculator:
             # Consolidate inventory
             inventory = user_data_manager._consolidate_inventory(inventory)
             
-            # Find potion
+            # Find potion — match by display name first, then fall back to
+            # emoji_file stem (e.g. "mega_potion") for legacy inventory entries.
             potion_idx = -1
             potion_item = None
+            canonical_potion: Optional[Dict[str, Any]] = None
+
+            # Build a lookup from equipment.json so we can normalise legacy names
+            try:
+                eq_data = LootCalculator._get_equipment_data()
+                all_potions = eq_data.get("Potions", [])
+            except Exception as _e:
+                logger.error(f"use_potion: failed to load equipment data: {_e}")
+                all_potions = []
+
+            # Build emoji_file-stem → canonical potion map for legacy matching
+            _stem_to_potion: Dict[str, Dict[str, Any]] = {}
+            for _p in all_potions:
+                _ef = _p.get("emoji_file", "")
+                _stem = _ef.replace(".png", "").replace(".jpg", "").lower() if _ef else ""
+                if _stem:
+                    _stem_to_potion[_stem] = _p
+
             for i, item in enumerate(inventory):
-                if item.get("name") == potion_name and item.get("type") == "Potion":
+                if item.get("type") != "Potion":
+                    continue
+                item_name_stored = item.get("name", "")
+                # Exact display-name match
+                if item_name_stored == potion_name:
                     potion_idx = i
                     potion_item = item
                     break
-            
+                # Legacy: stored name is the emoji_file stem (e.g. "mega_potion")
+                # and the user is requesting by display name (e.g. "Mega Potion")
+                _canon = _stem_to_potion.get(item_name_stored.lower())
+                if _canon and _canon.get("name") == potion_name:
+                    potion_idx = i
+                    potion_item = item
+                    canonical_potion = _canon
+                    break
+
             if potion_idx == -1 or potion_item is None:
                 return False, f"You don't have any {potion_name}!"
-            
+
             effect = potion_item.get("use_effect")
             if not effect:
-                # Fallback: Try to find in equipment.json
-                eq_data = LootCalculator._get_equipment_data()
-                potions = eq_data.get("Potions", [])
-                for p in potions:
-                    if p["name"] == potion_name:
-                        effect = p.get("use_effect")
-                        break
-            
+                # Fallback 1: canonical potion already resolved via legacy stem match
+                if canonical_potion:
+                    effect = canonical_potion.get("use_effect")
+                    # Also fix the stored name so future uses work without the fallback
+                    potion_item["name"] = canonical_potion["name"]
+                    potion_item["rarity"] = canonical_potion.get("rarity", potion_item.get("rarity", "Common"))
+
+            if not effect:
+                # Fallback 2: item stored without use_effect (e.g. purchased via bazaar).
+                # Look up the canonical definition from equipment.json by display name.
+                try:
+                    for p in all_potions:
+                        if p["name"] == potion_name:
+                            effect = p.get("use_effect")
+                            break
+                    if not effect:
+                        logger.warning(f"use_potion: no use_effect found for '{potion_name}' in equipment.json (potions count={len(all_potions)})")
+                except Exception as _e:
+                    logger.error(f"use_potion: equipment.json fallback failed: {_e}")
+
             if not effect:
                 return False, "This potion has no effect!"
 
@@ -1807,22 +1850,22 @@ class LootCalculator:
                 try:
                     from Systems.Pets.Logic.ability_tree import get_ability_effect
                     # Map win source strings to the game name the ability tree expects.
-                    # keno_win and wheel_win are NOT listed here because casino_api.py
-                    # applies the multiplier itself before calling apply_xp_change.
-                    # holdem_cashout is treated the same as holdem_win (player cashing out
-                    # their stack is a win outcome).
+                    # All casino win sources are handled here centrally — do NOT apply
+                    # casino_xp_gain_mult locally in the game files to avoid double-application.
                     _WIN_SOURCE_TO_GAME = {
-                        "blackjack_win":  "blackjack",
-                        "scratch_win":    "scratch_cards",
-                        "powerball_win":  "powerball",
-                        "race_win":       "races",
-                        "coinflip_win":   "coinflip",
-                        "rps_win":        "rps",
-                        "rps_pvp_win":    "rps",
-                        "holdem_win":     "holdem",
-                        "holdem_cashout": "holdem",
-                        "craps_win":      "craps",
-                        "slots_win":      "slots",
+                        "slots_win":          "slots",
+                        "blackjack_win":      "blackjack",
+                        "holdem_win":         "holdem",
+                        "holdem_cashout":     "holdem",
+                        "craps_win":          "craps",
+                        "wheel_of_pets_win":  "wheel_of_pets",
+                        "race_win":           "races",
+                        "scratch_win":        "scratch_cards",
+                        "powerball_win":      "powerball",
+                        "coinflip_win":       "coinflip",
+                        "rps_win":            "rps",
+                        "rps_pvp_win":        "rps",
+                        "keno_win":           "keno",
                     }
                     game_name = _WIN_SOURCE_TO_GAME.get(source)
                     if game_name:
@@ -1838,26 +1881,27 @@ class LootCalculator:
                 try:
                     from Systems.Pets.Logic.ability_tree import get_ability_effect
                     # Map bet/loss source strings to the game name the ability tree expects.
-                    # keno_bet and wheel_bet are NOT listed here because casino_api.py
-                    # handles loss reduction itself (via a separate refund call) to avoid
-                    # double-application.
-                    # blackjack_double and blackjack_split are additional bet deductions
-                    # that should also benefit from loss reduction.
-                    # minigame_bet is split into coinflip_bet / rps_bet at the call sites.
+                    # All casino loss sources are handled here centrally — do NOT apply
+                    # casino_xp_loss_reduction locally in the game files to avoid double-application.
+                    # NOTE: craps uses a separate refund pattern (craps_loss_reduction source)
+                    # so craps_bet is intentionally NOT listed here — the bet deduction is the
+                    # full amount (goes to pot), and the refund is issued separately.
                     _LOSS_SOURCE_TO_GAME = {
                         "slots_bet":          "slots",
                         "blackjack_bet":      "blackjack",
+                        "blackjack_loss":     "blackjack",
                         "blackjack_double":   "blackjack",
                         "blackjack_split":    "blackjack",
                         "holdem_buyin":       "holdem",
                         "holdem_rebuy":       "holdem",
-                        "craps_bet":          "craps",
+                        "wheel_of_pets_bet":  "wheel_of_pets",
                         "scratch_bet":        "scratch_cards",
                         "powerball_ticket":   "powerball",
                         "race_bet":           "races",
                         "race_loss":          "races",
                         "coinflip_bet":       "coinflip",
                         "rps_bet":            "rps",
+                        "keno_bet":           "keno",
                     }
                     game_name = _LOSS_SOURCE_TO_GAME.get(source)  # None if not a casino loss
                     if game_name:

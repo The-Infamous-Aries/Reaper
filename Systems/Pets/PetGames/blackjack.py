@@ -598,25 +598,12 @@ class BlackjackSession(discord.ui.View):
                     total_change += change
 
                     if change != 0 and not isinstance(ps.user, BotMember):
-                        # Apply ability tree effects
-                        try:
-                            pet_data = await user_data_manager.get_pet_data_async(str(uid))
-                            if pet_data:
-                                from Systems.Pets.Logic.ability_tree import get_ability_effect
-                                if change > 0:
-                                    # Apply casino win bonus
-                                    win_mult = get_ability_effect(pet_data, "casino_xp_gain_mult", game="blackjack")
-                                    if win_mult != 1.0:
-                                        change = int(change * win_mult)
-                                else:
-                                    # Apply casino loss reduction
-                                    loss_reduction = get_ability_effect(pet_data, "casino_xp_loss_reduction", game="blackjack")
-                                    if loss_reduction > 0:
-                                        change = int(change * (1.0 - loss_reduction))
-                        except Exception:
-                            pass
-                        
-                        await LootCalculator.apply_xp_change(uid, change, source="blackjack_round")
+                        # Ability effects (win bonus / loss reduction) are applied
+                        # centrally in LootCalculator.apply_xp_change via source string.
+                        await LootCalculator.apply_xp_change(
+                            uid, change,
+                            source="blackjack_win" if change > 0 else "blackjack_loss",
+                        )
 
             if self.betting_mode:
                 # Update Win Streak

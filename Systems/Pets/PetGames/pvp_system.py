@@ -172,6 +172,27 @@ class BattleMode(Enum):
     ONE_VS_ONE = auto()
     FREE_FOR_ALL = auto()
 
+
+def _pvp_effective_atk(player_data: dict) -> int:
+    """Return the player's effective ATK including active skill stat_buff multipliers."""
+    base = int(player_data.get('total_attack', player_data.get('attack', 10)))
+    try:
+        from Systems.Pets.Logic.battle_skills import get_atk_multiplier
+        mult = get_atk_multiplier(player_data)
+        return max(1, int(base * mult))
+    except Exception:
+        return base
+
+
+def _pvp_effective_def(player_data: dict) -> int:
+    """Return the player's effective DEF including active skill stat_buff multipliers."""
+    base = int(player_data.get('total_defense', player_data.get('defense', 5)))
+    try:
+        from Systems.Pets.Logic.battle_skills import get_def_multiplier
+        mult = get_def_multiplier(player_data)
+        return max(1, int(base * mult))
+    except Exception:
+        return base
 class PvPBattleView(discord.ui.View):
     """View for PvP battles between players"""
     
@@ -352,9 +373,48 @@ class PvPBattleView(discord.ui.View):
                     'element': str(pet.get('element','')).lower(),
                     'element2': str(pet.get('element2','')).lower() if pet.get('element2') else None
                 })
+                # Initialise battle skill state
+                try:
+                    from Systems.Pets.Logic.battle_skills import init_battle_skill_state
+                    init_battle_skill_state(player_data)
+                except Exception:
+                    pass
         except Exception as e:
             logger.error(f"Error loading pet data for {player_id}: {e}")
     
+    async def _process_pvp_skill(self, player_id: str, action_data: dict):
+        """Apply a battle skill in PvP context."""
+        skill_id = action_data.get('skill_id', '')
+        pdata = self.players.get(player_id)
+        if not pdata:
+            return
+        try:
+            from Systems.Pets.Logic.battle_skills import apply_skill, get_atk_multiplier
+            # In PvP, target is the first alive enemy
+            target_data = None
+            my_team = self.team_assignments.get(player_id)
+            for pid, pd in self.players.items():
+                if pid != player_id and pd.get('alive') and self.team_assignments.get(pid) != my_team:
+                    target_data = pd
+                    break
+            slot_index = action_data.get('slot_index', 0)
+            skill_result = apply_skill(skill_id, pdata, target_data, battle_type="pvp", slot_index=slot_index)
+            if skill_result['ok']:
+                if skill_result['hp_delta_user'] != 0:
+                    pdata['hp'] = max(0, min(pdata['max_hp'], pdata['hp'] + skill_result['hp_delta_user']))
+                if skill_result['hp_delta_target'] != 0 and target_data:
+                    target_data['hp'] = max(0, min(target_data['max_hp'],
+                                                   target_data['hp'] + skill_result['hp_delta_target']))
+                self.battle_log.append(f"✨ {pdata['user'].display_name}: {skill_result['message']}")
+            pdata['last_action'] = 'skill'
+            pdata['last_action_info'] = {
+                'type': 'skill',
+                'skill_name': skill_result.get('skill_name', '?'),
+                'message': skill_result.get('message', ''),
+            }
+        except Exception as e:
+            logger.error(f"PvP skill error: {e}")
+
     async def start_battle(self):
         battle_emoji = emoji_mod.mention('Casino') or "⚔️"
         embed = self.build_battle_embed(f"{battle_emoji} Battle starting!")
@@ -595,24 +655,49 @@ class PvPBattleView(discord.ui.View):
     async def process_turn(self):
         """Process all actions for the current turn with new mechanics"""
         alive_players = [p_id for p_id, p in self.players.items() if p['alive']]
-        
+
+        # ── Tick active skill effects for all alive players ───────────────────
+        # Check stun BEFORE tick so a stun with turns_left=1 fires correctly.
+        # tick_battle_effects decrements turns_left and removes expired effects,
+        # so checking after tick would miss a stun on its last turn.
+        skill_tick_lines: list = []
+        try:
+            from Systems.Pets.Logic.battle_skills import tick_battle_effects, is_stunned, consume_stun
+            for pid in alive_players:
+                pdata = self.players[pid]
+                # 1. Check and consume stun FIRST
+                if is_stunned(pdata):
+                    consume_stun(pdata)
+                    self.player_actions[pid] = {'action': 'defend', 'target': None, 'action_label': 'Stunned!'}
+                    self.battle_log.append(f"💫 {pdata['user'].display_name} is stunned and cannot act!")
+                # 2. Tick effects (decrements turns, applies DoT/HoT, ticks cooldowns)
+                net_delta, tick_lines = tick_battle_effects(pdata, pdata.get('attack', 10))
+                if net_delta != 0:
+                    pdata['hp'] = max(0, min(pdata['max_hp'], pdata['hp'] + net_delta))
+                skill_tick_lines.extend(tick_lines)
+        except Exception:
+            pass
+
         # Group actions by type for simultaneous processing
         attackers = []
         defenders = []
         chargers = []
-        
+        skillers = []
+
         for player_id in alive_players:
             if player_id in self.player_actions and self.players[player_id]['alive']:
                 action_data = self.player_actions[player_id]
                 action = action_data['action']
-                
+
                 if action == 'attack':
                     attackers.append((player_id, action_data))
                 elif action == 'defend':
                     defenders.append((player_id, action_data))
                 elif action == 'charge':
                     chargers.append((player_id, action_data))
-        
+                elif action == 'skill':
+                    skillers.append((player_id, action_data))
+
         # Order actions by lobby join order to respect turn cycle
         def _order_key(pid):
             try:
@@ -622,14 +707,19 @@ class PvPBattleView(discord.ui.View):
         attackers.sort(key=lambda x: _order_key(x[0]))
         defenders.sort(key=lambda x: _order_key(x[0]))
         chargers.sort(key=lambda x: _order_key(x[0]))
-        
+        skillers.sort(key=lambda x: _order_key(x[0]))
+
+        # Process skills (self-targeted or enemy-targeted)
+        for player_id, action_data in skillers:
+            await self._process_pvp_skill(player_id, action_data)
+
         # Process charges first (they just increase multipliers)
         for player_id, action_data in chargers:
             await self.process_charge(player_id)
-        
+
         # Process attacks and defenses simultaneously
         await self.process_combat_interactions(attackers, defenders)
-        
+
         # Check for battle end conditions
         if self.check_battle_end():
             await self.end_battle()
@@ -748,8 +838,8 @@ class PvPBattleView(discord.ui.View):
         
         # Use new damage calculator
         result = DamageCalculator.calculate_battle_action(
-            attacker_attack=int(cast(Any, attacker.get('total_attack', attacker.get('attack', 10)))),
-            target_defense=int(cast(Any, defender.get('total_defense', defender.get('defense', 5)))),
+            attacker_attack=_pvp_effective_atk(attacker),
+            target_defense=_pvp_effective_def(defender),
             charge_multiplier=cast(float, attacker.get('charge', 1.0)),
             target_charge_multiplier=1.0,
             action_type="attack",
@@ -773,18 +863,42 @@ class PvPBattleView(discord.ui.View):
             damage_to_target = int(damage_to_target * 1.25)
         parry_damage = result['parry_damage']
         
+        # Apply skill-based damage reduction, shields, and reflect on target
+        reflect_dmg_to_attacker = 0
+        try:
+            from Systems.Pets.Logic.battle_skills import (
+                get_damage_reduction, absorb_damage_through_shield, get_reflect_value
+            )
+            if damage_to_target > 0:
+                skill_dr = get_damage_reduction(target)
+                if skill_dr > 0:
+                    damage_to_target = max(1, int(damage_to_target * (1.0 - skill_dr)))
+                damage_to_target, _absorbed, _shield_log = absorb_damage_through_shield(target, damage_to_target)
+                reflect_frac = get_reflect_value(target)
+                if reflect_frac > 0 and damage_to_target > 0:
+                    reflect_dmg_to_attacker = max(1, int(damage_to_target * reflect_frac))
+        except Exception:
+            pass
+
         # Apply damage to target
         if damage_to_target > 0:
             target['hp'] = max(0, target['hp'] - damage_to_target)
             attacker['damage_dealt'] = attacker.get('damage_dealt', 0) + damage_to_target
             target['damage_taken'] = target.get('damage_taken', 0) + damage_to_target
-        
+
+        # Apply reflect damage to attacker
+        if reflect_dmg_to_attacker > 0:
+            attacker['hp'] = max(0, attacker['hp'] - reflect_dmg_to_attacker)
+            target['damage_dealt'] = target.get('damage_dealt', 0) + reflect_dmg_to_attacker
+            attacker['damage_taken'] = attacker.get('damage_taken', 0) + reflect_dmg_to_attacker
+            self.battle_log.append(f"🪞 {target['user'].display_name} reflects {reflect_dmg_to_attacker} damage!")
+
         # Apply parry damage to attacker
         if parry_damage > 0:
             attacker['hp'] = max(0, attacker['hp'] - parry_damage)
             defender['damage_dealt'] = defender.get('damage_dealt', 0) + parry_damage
             attacker['damage_taken'] = attacker.get('damage_taken', 0) + parry_damage
-        
+
         # Reset charge multipliers after use
         attacker['charge'] = 1.0
         defender['charge'] = 1.0
@@ -842,7 +956,7 @@ class PvPBattleView(discord.ui.View):
         
         # Use new damage calculator with no defense
         result = DamageCalculator.calculate_battle_action(
-            attacker_attack=int(cast(Any, attacker.get('total_attack', attacker.get('attack', 10)))),
+            attacker_attack=_pvp_effective_atk(attacker),
             target_defense=0,
             charge_multiplier=cast(float, attacker.get('charge', 1.0)),
             target_charge_multiplier=1.0,
@@ -861,12 +975,36 @@ class PvPBattleView(discord.ui.View):
         damage = result['final_damage']
         if target.get('charging', False) and damage > 0:
             damage = int(damage * 1.25)
+
+        # Apply skill-based damage reduction, shields, and reflect on target
+        reflect_dmg_to_attacker = 0
+        try:
+            from Systems.Pets.Logic.battle_skills import (
+                get_damage_reduction, absorb_damage_through_shield, get_reflect_value
+            )
+            skill_dr = get_damage_reduction(target)
+            if skill_dr > 0:
+                damage = max(1, int(damage * (1.0 - skill_dr)))
+            damage, _absorbed, _shield_log = absorb_damage_through_shield(target, damage)
+            reflect_frac = get_reflect_value(target)
+            if reflect_frac > 0 and damage > 0:
+                reflect_dmg_to_attacker = max(1, int(damage * reflect_frac))
+        except Exception:
+            pass
+
         target['hp'] = max(0, target['hp'] - damage)
         attacker['damage_dealt'] = attacker.get('damage_dealt', 0) + damage
         target['damage_taken'] = target.get('damage_taken', 0) + damage
-        
+
+        # Apply reflect damage to attacker
+        if reflect_dmg_to_attacker > 0:
+            attacker['hp'] = max(0, attacker['hp'] - reflect_dmg_to_attacker)
+            target['damage_dealt'] = target.get('damage_dealt', 0) + reflect_dmg_to_attacker
+            attacker['damage_taken'] = attacker.get('damage_taken', 0) + reflect_dmg_to_attacker
+            self.battle_log.append(f"🪞 {target['user'].display_name} reflects {reflect_dmg_to_attacker} damage!")
+
         # No persistent stat depletion
-        
+
         # Reset charge multiplier after use
         attacker['charge'] = 1.0
 
@@ -904,7 +1042,7 @@ class PvPBattleView(discord.ui.View):
         
         # Calculate damage for player1 attacking player2
         result1 = DamageCalculator.calculate_battle_action(
-            attacker_attack=int(cast(Any, player1.get('total_attack', player1.get('attack', 10)))),
+            attacker_attack=_pvp_effective_atk(player1),
             target_defense=0,
             charge_multiplier=float(cast(Any, player1.get('charge', 1.0))),
             target_charge_multiplier=1.0,
@@ -921,7 +1059,7 @@ class PvPBattleView(discord.ui.View):
         
         # Calculate damage for player2 attacking player1
         result2 = DamageCalculator.calculate_battle_action(
-            attacker_attack=int(cast(Any, player2.get('total_attack', player2.get('attack', 10)))),
+            attacker_attack=_pvp_effective_atk(player2),
             target_defense=0,
             charge_multiplier=float(cast(Any, player2.get('charge', 1.0))),
             target_charge_multiplier=1.0,
@@ -950,17 +1088,57 @@ class PvPBattleView(discord.ui.View):
         if player1.get('charging', False) and damage2 > 0:
             damage2 = int(damage2 * 1.25)
         
+        # Apply skill-based damage reduction, shields, and reflect on both players
+        reflect1_to_p1 = 0  # player2 reflects back to player1
+        reflect2_to_p2 = 0  # player1 reflects back to player2
+        try:
+            from Systems.Pets.Logic.battle_skills import (
+                get_damage_reduction, absorb_damage_through_shield, get_reflect_value
+            )
+            # damage1 hits player2
+            if damage1 > 0:
+                dr2 = get_damage_reduction(player2)
+                if dr2 > 0:
+                    damage1 = max(1, int(damage1 * (1.0 - dr2)))
+                damage1, _a, _sl = absorb_damage_through_shield(player2, damage1)
+                rf2 = get_reflect_value(player2)
+                if rf2 > 0 and damage1 > 0:
+                    reflect1_to_p1 = max(1, int(damage1 * rf2))
+            # damage2 hits player1
+            if damage2 > 0:
+                dr1 = get_damage_reduction(player1)
+                if dr1 > 0:
+                    damage2 = max(1, int(damage2 * (1.0 - dr1)))
+                damage2, _a, _sl = absorb_damage_through_shield(player1, damage2)
+                rf1 = get_reflect_value(player1)
+                if rf1 > 0 and damage2 > 0:
+                    reflect2_to_p2 = max(1, int(damage2 * rf1))
+        except Exception:
+            pass
+
         player2['hp'] = max(0, player2['hp'] - damage1)
         player1['hp'] = max(0, player1['hp'] - damage2)
-        
+
+        # Apply reflect damage
+        if reflect1_to_p1 > 0:
+            player1['hp'] = max(0, player1['hp'] - reflect1_to_p1)
+            player2['damage_dealt'] = player2.get('damage_dealt', 0) + reflect1_to_p1
+            player1['damage_taken'] = player1.get('damage_taken', 0) + reflect1_to_p1
+            self.battle_log.append(f"🪞 {player2['user'].display_name} reflects {reflect1_to_p1} damage!")
+        if reflect2_to_p2 > 0:
+            player2['hp'] = max(0, player2['hp'] - reflect2_to_p2)
+            player1['damage_dealt'] = player1.get('damage_dealt', 0) + reflect2_to_p2
+            player2['damage_taken'] = player2.get('damage_taken', 0) + reflect2_to_p2
+            self.battle_log.append(f"🪞 {player1['user'].display_name} reflects {reflect2_to_p2} damage!")
+
         # Update damage stats
         player1['damage_dealt'] = player1.get('damage_dealt', 0) + damage1
         player2['damage_taken'] = player2.get('damage_taken', 0) + damage1
         player2['damage_dealt'] = player2.get('damage_dealt', 0) + damage2
         player1['damage_taken'] = player1.get('damage_taken', 0) + damage2
-        
+
         # No persistent stat depletion
-        
+
         # Reset charge multipliers after use
         player1['charge'] = 1.0
         player2['charge'] = 1.0

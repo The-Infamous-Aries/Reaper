@@ -330,6 +330,7 @@ class DamageCalculator:
         monster_type: Optional[str] = None,
         monster_element: Optional[str] = None,
         monster_pet_data: Optional[Dict[str, Any]] = None,
+        battle_type: str = "npc",
     ) -> Dict[str, Any]:
         try:
             monster_attack = max(0, int(monster_attack)) if monster_attack is not None else 10
@@ -375,7 +376,7 @@ class DamageCalculator:
                 defender_user_id=defense_info.get('user_id'),
                 defender_current_hp=defense_info.get('current_hp'),
                 defender_max_hp=defense_info.get('max_hp'),
-                battle_type="npc",
+                battle_type=battle_type,
             )
 
             results[player_id] = {

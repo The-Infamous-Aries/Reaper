@@ -333,14 +333,14 @@ class UnifiedBattleView(discord.ui.View):
                 max_charge_limit = 5.0  # Default max charge
                 try:
                     from Systems.Pets.Logic.ability_tree import get_starting_charge_bonus, get_ability_effect
-                    charge_bonus = get_starting_charge_bonus(pet)
-                    if charge_bonus > 0:
-                        starting_charge = min(max_charge_limit, 1.0 + charge_bonus)
-                    
-                    # Apply charge limit bonus
+                    # Apply charge limit bonus FIRST so starting_charge can be clamped correctly
                     charge_limit_bonus = get_ability_effect(pet, "charge_limit_bonus")
                     if charge_limit_bonus > 0:
                         max_charge_limit = 5.0 + charge_limit_bonus
+
+                    charge_bonus = get_starting_charge_bonus(pet)
+                    if charge_bonus > 0:
+                        starting_charge = min(max_charge_limit, 1.0 + charge_bonus)
                 except Exception:
                     pass
                 
@@ -362,6 +362,12 @@ class UnifiedBattleView(discord.ui.View):
                     'type': str(pet.get('category','')).lower(),
                     'element': str(pet.get('element','')).lower()
                 }
+                # Initialise battle skill state (cooldown, active effects, equipped snapshot)
+                try:
+                    from Systems.Pets.Logic.battle_skills import init_battle_skill_state
+                    init_battle_skill_state(self.player_data[user.id])
+                except Exception:
+                    pass
                 
                 # Initialize damage tracking
                 self.total_damage_dealt[user.id] = 0
@@ -374,6 +380,8 @@ class UnifiedBattleView(discord.ui.View):
             self.total_monster_damage_received = 0
             # Track previous monster HP for NPC brain decisions
             self.prev_monster_hp = self.monster_hp
+            # Active skill effects on the monster (DoT, debuff, stun from player skills)
+            self.monster_active_effects = []
   
     def create_hp_bar(self, current: int, max_hp: int, bar_type: str = "default", pet=None) -> str:
         """Create visual HP bar with element themes"""
@@ -446,6 +454,9 @@ class UnifiedBattleView(discord.ui.View):
                 elif last_action == 'charge':
                     mult = last_info.get('multiplier', pdata.get('charge_multiplier', 1.0))
                     last_line = f"\nLast round: {emoji_mod.mention('Charge') or '⚡'} Charge → x{mult}"
+                elif last_action == 'skill':
+                    sname = last_info.get('skill_name', '?')
+                    last_line = f"\nLast round: ✨ {sname}"
 
                 embed = discord.Embed(
                     title=f"{emoji_mod.mention('Attack') or '⚔️'} Battle Action Required",
@@ -554,7 +565,56 @@ class UnifiedBattleView(discord.ui.View):
 
         # Initialize defense results storage
         self.defense_results = {}
-        
+
+        # ── Tick active skill effects (DoT, HoT, buff/debuff countdowns) ──────
+        # IMPORTANT: check stun BEFORE tick so a stun with turns_left=1 fires
+        # correctly — tick would decrement it to 0 and remove it before we see it.
+        try:
+            from Systems.Pets.Logic.battle_skills import tick_battle_effects, is_stunned, consume_stun
+            for pid, pdata in self.player_data.items():
+                if not pdata.get('alive'):
+                    continue
+                # 1. Check stun FIRST (before tick removes it)
+                if is_stunned(pdata):
+                    consume_stun(pdata)
+                    self.player_actions[pid] = {'action': 'defend', 'target': None, 'action_label': 'Stunned!'}
+                    action_lines.append(f"💫 {pdata['user'].display_name} is stunned and cannot act!")
+                # 2. Tick effects (decrements turns_left, applies DoT/HoT, ticks cooldowns)
+                net_delta, tick_lines = tick_battle_effects(pdata, pdata.get('total_attack', 10))
+                if net_delta != 0:
+                    pdata['hp'] = max(0, min(pdata['max_hp'], pdata['hp'] + net_delta))
+                for line in tick_lines:
+                    action_lines.append(line)
+        except Exception as _e:
+            logger.debug(f"Skill tick error: {_e}")
+
+        # ── Tick monster active skill effects (DoT, debuff, stun from player skills) ──
+        if self.monster_hp > 0 and hasattr(self, 'monster_active_effects') and self.monster_active_effects:
+            try:
+                from Systems.Pets.Logic.battle_skills import tick_battle_effects, is_stunned, consume_stun
+                # Build a minimal proxy for tick (monster ATK used for any HoT scaling, irrelevant here)
+                monster_tick_proxy = {
+                    'active_effects': self.monster_active_effects,
+                    'skill_cooldowns': {},
+                    'skill_cooldown': 0,
+                }
+                # Check monster stun BEFORE tick
+                if is_stunned(monster_tick_proxy):
+                    consume_stun(monster_tick_proxy)
+                    # Stunned monster is forced to defend this round
+                    monster_action = "defend"
+                    action_lines.append(f"💫 {self.monster['name']} is stunned and cannot act!")
+                net_delta, tick_lines = tick_battle_effects(monster_tick_proxy, self.monster.get('attack', 10))
+                self.monster_active_effects = monster_tick_proxy['active_effects']
+                if net_delta != 0:
+                    # Negative delta = damage to monster from DoT
+                    self.monster_hp = max(0, self.monster_hp + net_delta)
+                    self.total_monster_damage_received += max(0, -net_delta)
+                for line in tick_lines:
+                    action_lines.append(f"[Monster] {line}")
+            except Exception as _me:
+                logger.debug(f"Monster tick error: {_me}")
+
         # Process player actions
         for player_id, action_data in self.player_actions.items():
             if player_id not in self.player_data or not self.player_data[player_id]['alive']:
@@ -565,15 +625,25 @@ class UnifiedBattleView(discord.ui.View):
             player_name = player_data['user'].display_name
             
             if action == "attack":
+                # Determine battle type for ability effects
+                _battle_type = "boss" if self.is_boss_battle else "npc"
+                # Apply active skill ATK buff/debuff multipliers
+                _skill_atk_mult = 1.0
+                try:
+                    from Systems.Pets.Logic.battle_skills import get_atk_multiplier
+                    _skill_atk_mult = get_atk_multiplier(player_data)
+                except Exception:
+                    pass
                 # Use new roll-based attack system
                 battle_result = DamageCalculator.calculate_battle_action(
-                    attacker_attack=player_data['total_attack'],
+                    attacker_attack=int(player_data['total_attack'] * _skill_atk_mult),
                     # Defense only applies if monster is defending this round
                     target_defense=self.monster['defense'] if getattr(self, 'monster_defending', False) else 0,
                     charge_multiplier=player_data.get('charge_multiplier', 1.0),
                     # Charge does not boost defense; keep at 1.0
                     target_charge_multiplier=1.0,
                     action_type="attack",
+                    attacker_action_type="attack",
                     target_action_type=(
                         "defend" if getattr(self, 'monster_defending', False)
                         else ("charge" if monster_action == "charge" else "attack")
@@ -583,7 +653,9 @@ class UnifiedBattleView(discord.ui.View):
                     attacker_element2=player_data['pet'].get('element2'),
                     defender_type=str(self.monster.get('type','')).lower(),
                     defender_element=str(self.monster.get('element','')).lower(),
-                    attacker_pet_data=player_data['pet']  # Add pet data for critical hits
+                    attacker_pet_data=player_data['pet'],
+                    attacker_user_id=str(player_data['user'].id),
+                    battle_type=_battle_type,
                 )
 
                 # Use calculator's final damage (includes charging vulnerability when applicable)
@@ -635,17 +707,22 @@ class UnifiedBattleView(discord.ui.View):
             elif action == "defend":
                 # Use new roll-based defend system
                 target_id = action_data.get('target', player_id)
-                
+                _battle_type = "boss" if self.is_boss_battle else "npc"
+
                 battle_result = DamageCalculator.calculate_battle_action(
                     attacker_attack=player_data['total_defense'],
                     target_defense=0,  # Defense doesn't have an opposing stat
                     charge_multiplier=player_data.get('charge_multiplier', 1.0),
                     action_type="defend",
+                    attacker_action_type="defend",
                     attacker_type=str(player_data['pet'].get('category','')).lower(),
                     attacker_element=str(player_data['pet'].get('element','')).lower(),
                     attacker_element2=player_data['pet'].get('element2'),
                     defender_type=str(self.monster.get('type','')).lower(),
-                    defender_element=str(self.monster.get('element','')).lower()
+                    defender_element=str(self.monster.get('element','')).lower(),
+                    attacker_pet_data=player_data['pet'],
+                    attacker_user_id=str(player_data['user'].id),
+                    battle_type=_battle_type,
                 )
                 
                 # Store defense information with roll result
@@ -704,6 +781,52 @@ class UnifiedBattleView(discord.ui.View):
                     'multiplier': next_multiplier,
                     'action_label': self.player_actions.get(player_id, {}).get('action_label', 'Charge')
                 }
+
+            elif action == "skill":
+                # ── Battle skill use ──────────────────────────────────────────
+                skill_id = action_data.get('skill_id', '')
+                try:
+                    from Systems.Pets.Logic.battle_skills import apply_skill
+                    # Monster is the target for NPC/boss battles.
+                    # Use self.monster_active_effects so DoT/debuff/stun effects
+                    # persist across rounds and get ticked correctly.
+                    if not hasattr(self, 'monster_active_effects'):
+                        self.monster_active_effects = []
+                    monster_proxy = {
+                        'element': str(self.monster.get('element', 'basic')).lower(),
+                        'active_effects': self.monster_active_effects,
+                        'max_hp': self.max_monster_hp,
+                        'total_attack': self.monster.get('attack', 10),
+                        'skill_cooldowns': {},
+                        'skill_cooldown': 0,
+                    }
+                    _battle_type = "boss" if self.is_boss_battle else "npc"
+                    slot_index = action_data.get('slot_index', 0)
+                    skill_result = apply_skill(skill_id, player_data, monster_proxy, battle_type=_battle_type, slot_index=slot_index)
+                    if skill_result['ok']:
+                        # Apply HP deltas
+                        if skill_result['hp_delta_user'] != 0:
+                            player_data['hp'] = max(0, min(player_data['max_hp'],
+                                                           player_data['hp'] + skill_result['hp_delta_user']))
+                        if skill_result['hp_delta_target'] != 0:
+                            self.monster_hp = max(0, self.monster_hp + skill_result['hp_delta_target'])
+                            self.total_damage_dealt[player_id] += max(0, -skill_result['hp_delta_target'])
+                            self.total_monster_damage_received += max(0, -skill_result['hp_delta_target'])
+                        msg = skill_result['message']
+                        self.battle_log.append(f"✨ {player_name} uses {skill_result['skill_name']}! {msg}")
+                        action_lines.append(f"✨ {player_name}: {msg}")
+                    else:
+                        action_lines.append(f"❌ {player_name} skill failed: {skill_result['message']}")
+                    player_data['last_action'] = 'skill'
+                    player_data['last_action_info'] = {
+                        'type': 'skill',
+                        'skill_name': skill_result.get('skill_name', '?'),
+                        'message': skill_result.get('message', ''),
+                        'action_label': skill_result.get('skill_name', 'Skill'),
+                    }
+                except Exception as _se:
+                    logger.error(f"Skill use error: {_se}")
+                    action_lines.append(f"❌ {player_name} skill error.")
                 
         # Process monster action
         if self.monster_hp > 0:
@@ -731,16 +854,21 @@ class UnifiedBattleView(discord.ui.View):
                         'element': str(player_data['pet'].get('element', '')).lower(),
                         'element2': player_data['pet'].get('element2'),
                         'species': player_data['pet'].get('species'),
-                        'pet_data': player_data['pet']
+                        'pet_data': player_data['pet'],
+                        'user_id': str(player_data['user'].id),
+                        'current_hp': player_data['hp'],
+                        'max_hp': player_data['max_hp'],
                     }
                 
                 # Calculate monster attack against all players
+                _battle_type = "boss" if self.is_boss_battle else "npc"
                 battle_results = DamageCalculator.calculate_monster_vs_players(
                     monster_attack=self.monster['attack'],
                     player_defenses=player_defenses,
                     monster_charge_multiplier=self.monster_charge_multiplier,
                     monster_type=str(self.monster.get('type','')).lower(),
-                    monster_element=str(self.monster.get('element','')).lower()
+                    monster_element=str(self.monster.get('element','')).lower(),
+                    battle_type=_battle_type,
                 )
                 
                 # Apply results to each player
@@ -753,19 +881,33 @@ class UnifiedBattleView(discord.ui.View):
                         
                     player_data = self.player_data[player_id]
                     
-                    # Use calculator's final damage (already accounts for charging vulnerability)
+                    # Use calculator's final damage (already accounts for charging vulnerability
+                    # and Last Stand low-health reduction via defender_current_hp/max_hp in dict)
                     incoming_damage = battle_result['final_damage']
-                    
-                    # Apply low health damage reduction if player is below 25% health
-                    current_hp_percent = player_data['hp'] / player_data['max_hp']
-                    if current_hp_percent < 0.25:
-                        try:
-                            from Systems.Pets.Logic.ability_tree import get_low_health_damage_reduction
-                            damage_reduction = get_low_health_damage_reduction(player_data['pet'])
-                            if damage_reduction > 0:
-                                incoming_damage = int(incoming_damage * (1.0 - damage_reduction))
-                        except Exception:
-                            pass
+
+                    # ── Apply skill-based damage reduction, shields, and reflect ──
+                    try:
+                        from Systems.Pets.Logic.battle_skills import (
+                            get_damage_reduction, absorb_damage_through_shield, get_reflect_value
+                        )
+                        # Damage reduction from active skill effects
+                        skill_dr = get_damage_reduction(player_data)
+                        if skill_dr > 0:
+                            incoming_damage = max(1, int(incoming_damage * (1.0 - skill_dr)))
+                        # Shield absorption
+                        incoming_damage, _absorbed, shield_log = absorb_damage_through_shield(player_data, incoming_damage)
+                        for sl in shield_log:
+                            action_lines.append(sl)
+                        # Reflect damage back to monster
+                        reflect_frac = get_reflect_value(player_data)
+                        if reflect_frac > 0 and incoming_damage > 0:
+                            reflect_dmg = max(1, int(incoming_damage * reflect_frac))
+                            self.monster_hp = max(0, self.monster_hp - reflect_dmg)
+                            self.total_damage_dealt[player_id] += reflect_dmg
+                            self.total_monster_damage_received += reflect_dmg
+                            action_lines.append(f"🪞 {player_data['user'].display_name} reflects {reflect_dmg} damage!")
+                    except Exception:
+                        pass
 
                     # Apply damage to player
                     player_data['hp'] = max(0, player_data['hp'] - incoming_damage)
@@ -912,7 +1054,10 @@ class UnifiedBattleView(discord.ui.View):
                     charge_multiplier=player_data.get('charge_multiplier', 1.0),
                     action_type="defend",
                     attacker_action_type="defend",
-                    attacker_species=player_data['pet'].get('species')
+                    attacker_species=player_data['pet'].get('species'),
+                    attacker_pet_data=player_data['pet'],
+                    attacker_user_id=str(player_data['user'].id),
+                    battle_type="pvp",
                 )
                 
                 # Store defense effectiveness for later use
@@ -996,6 +1141,7 @@ class UnifiedBattleView(discord.ui.View):
                     charge_multiplier=attacker_data.get('charge_multiplier', 1.0),
                     target_charge_multiplier=1.0,
                     action_type="attack",
+                    attacker_action_type="attack",
                     target_action_type=(
                         'defend' if defender_defending else (
                             'charge' if defender_data.get('charging', False) else 'attack'
@@ -1007,23 +1153,17 @@ class UnifiedBattleView(discord.ui.View):
                     defender_element=str(defender_data['pet'].get('element','')).lower(),
                     attacker_species=attacker_data['pet'].get('species'),
                     defender_species=defender_data['pet'].get('species'),
-                    attacker_pet_data=attacker_data['pet'],  # Add pet data for critical hits
-                    defender_pet_data=defender_data['pet']   # Add pet data for charge vulnerability
+                    attacker_pet_data=attacker_data['pet'],
+                    defender_pet_data=defender_data['pet'],
+                    attacker_user_id=str(attacker_data['user'].id),
+                    defender_user_id=str(defender_data['user'].id),
+                    defender_current_hp=defender_data['hp'],
+                    defender_max_hp=defender_data['max_hp'],
+                    battle_type="pvp",
                 )
                 
                 final_damage = battle_result['final_damage']
                 parry_damage = battle_result.get('parry_damage', 0)
-                
-                # Apply low health damage reduction to defender if below 25% health
-                defender_current_hp_percent = defender_data['hp'] / defender_data['max_hp']
-                if defender_current_hp_percent < 0.25 and final_damage > 0:
-                    try:
-                        from Systems.Pets.Logic.ability_tree import get_low_health_damage_reduction
-                        damage_reduction = get_low_health_damage_reduction(defender_data['pet'])
-                        if damage_reduction > 0:
-                            final_damage = int(final_damage * (1.0 - damage_reduction))
-                    except Exception:
-                        pass
                 
                 # Apply low health damage reduction to attacker if taking parry damage and below 25% health
                 attacker_current_hp_percent = attacker_data['hp'] / attacker_data['max_hp']
@@ -1704,38 +1844,38 @@ class UnifiedBattleView(discord.ui.View):
             logger.error(f"Error handling defeat: {e}")
 
 class EphemeralActionView(discord.ui.View):
-    """Ephemeral action view for individual players"""
-    
+    """
+    Ephemeral action view for individual players.
+
+    Row 0: Attack | Defend | Charge  (always present)
+    Row 1+: One button per equipped skill slot (1 always shown, up to 4 total).
+            Each button shows the skill name and its per-slot cooldown status.
+            Pressing a skill button immediately queues that skill as the full action
+            and disables all buttons — skills count as the complete action for the round.
+
+    Skill buttons are disabled (greyed out with cooldown shown) when that slot's cooldown > 0.
+    """
+
     def __init__(self, battle_view: UnifiedBattleView, user_id: int):
         super().__init__(timeout=300)
         self.battle_view = battle_view
         self.user_id = user_id
+
         try:
             pdata = self.battle_view.player_data.get(user_id, {})
             pet = pdata.get('pet', {})
-            ptype = str(pet.get('category','')).lower()
-            pelem = str(pet.get('element','')).lower()
+            ptype = str(pet.get('category', '')).lower()
+            pelem = str(pet.get('element', '')).lower()
             custom_labels = pet.get('action_labels', {})
 
-            # Fallback to default labels if custom ones are not set
-            default_labels = DamageCalculator.get_action_labels(
-                ptype,
-                pelem
-            )
-
+            default_labels = DamageCalculator.get_action_labels(ptype, pelem)
             labels = {
                 'attack': custom_labels.get('attack') or default_labels.get('attack', 'Attack'),
                 'defend': custom_labels.get('defense') or custom_labels.get('defend') or default_labels.get('defend', 'Defend'),
                 'charge': custom_labels.get('charge') or default_labels.get('charge', 'Charge'),
             }
-            type_emojis = {'flying':'☁️','land':'🌿','swimming':'🌊'}
-            elem_emojis = {
-                'basic':'⚖️','fire':'🔥','water':'💧','electric':'⚡','ice':'❄️',
-                'plant':'🌱','rock':'🪨','air':'💨','magic':'🔮','holy':'🕯️','necro':'🪦'
-            }
-            e_emoji = elem_emojis.get(pelem,'✨')
-            t_emoji = type_emojis.get(ptype,'⚔️')
-            # Apply labels after buttons are added (they are added by decorators on super().__init__)
+
+            # Row 0: core action buttons
             self.attack_button.label = labels['attack']
             self.attack_button.style = discord.ButtonStyle.danger
             atk_emoji_id = emoji_mod.id_for('Attack')
@@ -1750,7 +1890,7 @@ class EphemeralActionView(discord.ui.View):
 
             current_charge = 1
             try:
-                current_charge = int(self.battle_view.player_data.get(user_id, {}).get('charge_multiplier', 1))
+                current_charge = int(pdata.get('charge_multiplier', 1))
             except Exception:
                 current_charge = 1
             self.charge_button.label = f"{labels['charge']} x{current_charge}"
@@ -1758,6 +1898,43 @@ class EphemeralActionView(discord.ui.View):
             chg_emoji_id = emoji_mod.id_for('Charge')
             if chg_emoji_id:
                 self.charge_button.emoji = discord.PartialEmoji(name='Charge', id=chg_emoji_id)
+
+            # Row 1+: one button per equipped skill slot
+            try:
+                from Systems.Pets.Logic.battle_skills import SKILL_BY_ID, get_slot_cooldown
+                equipped = pdata.get('equipped_skills', [])
+                cooldowns = pdata.get('skill_cooldowns', {})
+
+                for slot_idx, skill_id in enumerate(equipped):
+                    sk = SKILL_BY_ID.get(skill_id)
+                    if not sk:
+                        continue
+                    cd = cooldowns.get(slot_idx, 0)
+                    ready = (cd == 0)
+                    label = sk['name'][:20]
+                    if not ready:
+                        label = f"{label} ({cd}t)"
+                    # Rows 1-4 for skill slots (Discord max 5 rows total)
+                    btn_row = min(1 + slot_idx, 4)
+                    btn = discord.ui.Button(
+                        label=label,
+                        style=discord.ButtonStyle.secondary,
+                        emoji="✨" if ready else "⏳",
+                        disabled=not ready,
+                        row=btn_row,
+                        custom_id=f"skill_{slot_idx}_{skill_id}",
+                    )
+
+                    def make_skill_callback(sidx: int, skid: str):
+                        async def skill_callback(interaction: discord.Interaction):
+                            await self.handle_skill_selection(interaction, sidx, skid)
+                        return skill_callback
+
+                    btn.callback = make_skill_callback(slot_idx, skill_id)
+                    self.add_item(btn)
+            except Exception as _se:
+                logger.debug(f"Skill button build error: {_se}")
+
         except Exception:
             pass
 
@@ -1773,14 +1950,60 @@ class EphemeralActionView(discord.ui.View):
     async def charge_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         await self.handle_action_selection(interaction, "charge")
 
-    async def handle_action_selection(self, interaction: discord.Interaction, action: str):
-        """Handle the action selection"""
-        # Verify this is the correct user
+    async def handle_skill_selection(self, interaction: discord.Interaction, slot_index: int, skill_id: str):
+        """Handle a skill button press — queues the skill as the player's full action for this round."""
         if interaction.user.id != self.user_id:
-            await interaction.response.send_message("❌ This isn't your action menu!", ephemeral=True, delete_after=3)
+            await interaction.response.send_message("This isn't your action menu!", ephemeral=True, delete_after=3)
             return
-        
-        # Store the action
+
+        pdata = self.battle_view.player_data.get(self.user_id, {})
+
+        # Re-check cooldown in case the button state was stale
+        try:
+            from Systems.Pets.Logic.battle_skills import can_use_skill, SKILL_BY_ID
+            if not can_use_skill(pdata, slot_index):
+                cd = pdata.get('skill_cooldowns', {}).get(slot_index, 0)
+                await interaction.response.send_message(
+                    f"That skill is on cooldown — {cd} turn(s) remaining.", ephemeral=True, delete_after=5
+                )
+                return
+            sk = SKILL_BY_ID.get(skill_id)
+            skill_name = sk['name'] if sk else skill_id
+        except Exception:
+            skill_name = skill_id
+
+        # Queue skill as the full action — no other action can be taken this round
+        self.battle_view.player_actions[self.user_id] = {
+            'action': 'skill',
+            'skill_id': skill_id,
+            'slot_index': slot_index,
+            'target': None,
+            'action_label': f"Skill: {skill_name}",
+        }
+
+        # Disable ALL buttons — skill is the complete action for this round
+        try:
+            for item in self.children:
+                if hasattr(item, 'disabled'):
+                    item.disabled = True
+            await interaction.response.edit_message(
+                content=f"✨ **{skill_name}** queued!", view=self
+            )
+        except Exception as e:
+            logger.debug(f"Error disabling skill buttons: {e}")
+            try:
+                await interaction.response.defer()
+            except Exception:
+                pass
+
+        await self.battle_view.check_all_actions_submitted()
+
+    async def handle_action_selection(self, interaction: discord.Interaction, action: str):
+        """Handle attack/defend/charge selection."""
+        if interaction.user.id != self.user_id:
+            await interaction.response.send_message("This isn't your action menu!", ephemeral=True, delete_after=3)
+            return
+
         button_label = ''
         if action == 'attack':
             button_label = self.attack_button.label or ""
@@ -1794,7 +2017,7 @@ class EphemeralActionView(discord.ui.View):
             'target': None,
             'action_label': button_label
         }
-        # Disable buttons on the ephemeral action message for a clean UX
+        # Disable ALL buttons — action is locked in for this round
         try:
             for item in self.children:
                 if hasattr(item, 'disabled'):
@@ -1802,8 +2025,7 @@ class EphemeralActionView(discord.ui.View):
             await interaction.response.edit_message(view=self)
         except Exception as e:
             logger.debug(f"Error editing ephemeral action message: {e}")
-        
-        # Check if all players have chosen actions
+
         await self.battle_view.check_all_actions_submitted()
 
 class BattleSystem:

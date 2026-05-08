@@ -501,20 +501,8 @@ class CrapsSession(discord.ui.View):
                     payout = profit if stay_up else (bet.amount + profit)
                     
                     if self.betting_mode:
-                        # Apply ability tree effects
-                        modified_payout = payout
-                        try:
-                            pet_data = await user_data_manager.get_pet_data_async(str(uid))
-                            if pet_data:
-                                from Systems.Pets.Logic.ability_tree import get_ability_effect
-                                # Apply casino win bonus
-                                win_mult = get_ability_effect(pet_data, "casino_xp_gain_mult", game="craps")
-                                if win_mult != 1.0:
-                                    modified_payout = int(payout * win_mult)
-                        except Exception:
-                            pass
-                        
-                        await LootCalculator.apply_xp_change(uid, modified_payout, source="craps_win")
+                        # Ability effects (win bonus) applied centrally via source="craps_win".
+                        await LootCalculator.apply_xp_change(uid, payout, source="craps_win")
 
                     won_total += profit
                     
@@ -523,7 +511,8 @@ class CrapsSession(discord.ui.View):
                 elif loss:
                     lost_total += bet.amount
                     
-                    # Apply loss reduction ability
+                    # Apply loss reduction ability: full bet was already deducted (goes to pot),
+                    # so we issue a separate refund for the reduced portion.
                     if self.betting_mode:
                         try:
                             pet_data = await user_data_manager.get_pet_data_async(str(uid))

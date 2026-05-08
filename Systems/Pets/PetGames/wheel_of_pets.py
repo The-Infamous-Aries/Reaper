@@ -574,14 +574,6 @@ class WheelOfPetsView(discord.ui.View):
             raw_win = int(bet * _BASE_MULT * _HOUSE_EDGE)
             if own_pet_bonus:
                 raw_win = int(raw_win * _OWN_PET_MULT)
-            # Apply casino win bonus abilities
-            try:
-                from Systems.Pets.Logic.ability_tree import get_ability_effect
-                casino_mult = get_ability_effect(pet, "casino_xp_gain_mult", game="wheel_of_pets")
-                if casino_mult != 1.0:
-                    raw_win = int(raw_win * casino_mult)
-            except Exception:
-                pass
             xp_delta = raw_win
         else:
             xp_delta = -bet
@@ -595,7 +587,8 @@ class WheelOfPetsView(discord.ui.View):
             old_level = int(pet.get("level", 1)) if pet else 1
 
             xp_result = await LootCalculator.apply_xp_change(
-                self.user.id, xp_delta, source="wheel_of_pets"
+                self.user.id, xp_delta,
+                source="wheel_of_pets_win" if won else "wheel_of_pets_bet",
             )
 
             if isinstance(xp_result, tuple) and xp_result[0] and xp_result[1]:
