@@ -9,6 +9,8 @@ Extra query methods:
   - get_nations_by_alliance(id)     → replaces query_instance.get_alliance_nations()
   - get_nation_by_name(name)        → lookup by nation_name
   - get_nation_by_id(nation_id)     → lookup by id
+
+Now inherits from BaseDB for unified async patterns and connection management.
 """
 
 import sqlite3
@@ -16,6 +18,7 @@ import logging
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 import asyncio
+from .base_db import BaseDB, AsyncMode
 
 logger = logging.getLogger(__name__)
 
@@ -25,30 +28,34 @@ LOOT_RESOURCE_COLUMNS = (
 )
 
 
-class GlobalNationsDB:
+class GlobalNationsDB(BaseDB):
     def __init__(self, db_path: str):
-        self.db_path = db_path
-        self._lock = asyncio.Lock()
-        self._init_database()
+        """
+        Initialize GlobalNationsDB with BaseDB infrastructure.
+        
+        Args:
+            db_path: Path to the SQLite database file
+        """
+        super().__init__(
+            db_path=db_path,
+            async_mode=AsyncMode.THREAD_POOL,
+            wal_mode=True,
+            synchronous="NORMAL",
+            busy_timeout=15000,
+            wal_autocheckpoint=1000,
+            enable_locking=True,
+            use_lock_manager=True,
+        )
+        # Override _init_database to create our specific schema
+        self._init_global_nations_schema()
 
     # ── Schema ────────────────────────────────────────────────────────────────
 
-    def _init_database(self):
+    def _init_global_nations_schema(self):
+        """Initialize the GlobalNationsDB-specific schema (nations and cities tables)."""
         try:
-            with sqlite3.connect(self.db_path) as conn:
-                conn.row_factory = sqlite3.Row
+            with self._get_connection() as conn:
                 c = conn.cursor()
-
-                # ── WAL mode + performance pragmas ────────────────────────────
-                # journal_mode=WAL is persisted in the DB header after first set.
-                # synchronous=NORMAL is safe with WAL and much faster than FULL.
-                # busy_timeout prevents immediate SQLITE_BUSY errors under load.
-                # wal_autocheckpoint=1000 allows WAL to grow to ~4MB before auto-checkpoint.
-                # We also run manual checkpoints every 5 minutes in the harvester loop.
-                conn.execute("PRAGMA journal_mode=WAL")
-                conn.execute("PRAGMA synchronous=NORMAL")
-                conn.execute("PRAGMA busy_timeout=15000")
-                conn.execute("PRAGMA wal_autocheckpoint=1000")
 
                 c.execute("""
                     CREATE TABLE IF NOT EXISTS nations (
@@ -198,30 +205,6 @@ class GlobalNationsDB:
     # ── Helpers ───────────────────────────────────────────────────────────────
 
     @staticmethod
-    def _ensure_column(cursor: sqlite3.Cursor, table: str, col: str, col_type: str):
-        cursor.execute(f"PRAGMA table_info({table})")
-        if col not in {r[1] for r in cursor.fetchall()}:
-            cursor.execute(f"ALTER TABLE {table} ADD COLUMN {col} {col_type}")
-
-    def checkpoint(self):
-        """
-        Run a TRUNCATE WAL checkpoint synchronously.
-        Call this periodically (e.g. every 5 minutes) from the harvester loop
-        to keep the WAL file small.  Safe to call while the asyncio lock is NOT held.
-        """
-        try:
-            with sqlite3.connect(self.db_path) as conn:
-                result = conn.execute("PRAGMA wal_checkpoint(TRUNCATE)").fetchone()
-                # result = (busy, log_pages, checkpointed_pages)
-                # busy=1 means a reader blocked the checkpoint — not an error
-                if result and result[0] == 0:
-                    logger.debug(f"GlobalNationsDB checkpoint: {result[1]} pages checkpointed")
-                else:
-                    logger.debug(f"GlobalNationsDB checkpoint (busy): {result}")
-        except Exception as e:
-            logger.warning(f"GlobalNationsDB.checkpoint: {e}")
-
-    @staticmethod
     def _bool_opt(nation: Dict[str, Any], key: str):
         if key not in nation:
             return None
@@ -276,9 +259,8 @@ class GlobalNationsDB:
         if not nation_id:
             return False
 
-        loop = asyncio.get_event_loop()
         try:
-            return await loop.run_in_executor(None, self._save_nation_sync, nation)
+            return await self._run_sync(lambda: self._save_nation_sync(nation))
         except Exception as e:
             logger.error(f"GlobalNationsDB.save_nation({nation_id}): {e}", exc_info=True)
             return False
@@ -289,9 +271,7 @@ class GlobalNationsDB:
         if not nation_id:
             return False
         try:
-            with sqlite3.connect(self.db_path) as conn:
-                conn.execute("PRAGMA synchronous=NORMAL")
-                conn.execute("PRAGMA busy_timeout=15000")
+            with self._get_connection() as conn:
                 c = conn.cursor()
                 now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
 
@@ -450,11 +430,9 @@ class GlobalNationsDB:
     async def increment_num_cities(self, nation_id: int) -> None:
         """Increment num_cities by 1 for a nation. Called on city/create events
         so the count stays accurate without waiting for the next nation/update."""
-        loop = asyncio.get_event_loop()
         def _work():
             try:
-                with sqlite3.connect(self.db_path) as conn:
-                    conn.execute("PRAGMA busy_timeout=15000")
+                with self._get_connection() as conn:
                     conn.execute(
                         "UPDATE nations SET num_cities = MAX(0, COALESCE(num_cities, 0) + 1) WHERE id = ?",
                         (nation_id,),
@@ -462,7 +440,7 @@ class GlobalNationsDB:
                     conn.commit()
             except Exception as e:
                 logger.warning(f"increment_num_cities(nation={nation_id}): {e}")
-        await loop.run_in_executor(None, _work)
+        await self._run_sync(_work)
 
     async def update_war_counts(
         self,
@@ -479,11 +457,9 @@ class GlobalNationsDB:
         """
         if off_delta == 0 and def_delta == 0 and won_delta == 0 and lost_delta == 0:
             return
-        loop = asyncio.get_event_loop()
         def _work():
             try:
-                with sqlite3.connect(self.db_path) as conn:
-                    conn.execute("PRAGMA busy_timeout=15000")
+                with self._get_connection() as conn:
                     parts = []
                     vals  = []
                     if off_delta != 0:
@@ -509,19 +485,16 @@ class GlobalNationsDB:
                     f"update_war_counts(nation={nation_id}, off={off_delta}, def={def_delta}, "
                     f"won={won_delta}, lost={lost_delta}): {e}"
                 )
-        await loop.run_in_executor(None, _work)
+        await self._run_sync(_work)
 
     async def upsert_city(self, nation_id: int, city: Dict[str, Any]) -> bool:
         """Upsert a single city row. Only writes fields present in the event."""
         city_id = city.get("id")
         if not city_id:
             return False
-        loop = asyncio.get_event_loop()
         def _work():
             try:
-                with sqlite3.connect(self.db_path) as conn:
-                    conn.execute("PRAGMA synchronous=NORMAL")
-                    conn.execute("PRAGMA busy_timeout=15000")
+                with self._get_connection() as conn:
                     c = conn.cursor()
                     now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
                     _powered_raw = city.get("powered")
@@ -582,7 +555,7 @@ class GlobalNationsDB:
             except Exception as e:
                 logger.error(f"GlobalNationsDB.upsert_city({city_id}): {e}", exc_info=True)
                 return False
-        return await loop.run_in_executor(None, _work)
+        return await self._run_sync(_work)
 
     async def save_cities(self, nation_id: int, cities: List[Dict[str, Any]]) -> int:
         """Bulk upsert cities for a nation. Returns count saved."""
@@ -595,26 +568,20 @@ class GlobalNationsDB:
     # ── Queries ───────────────────────────────────────────────────────────────
 
     async def get_nation(self, nation_id: int) -> Optional[Dict[str, Any]]:
-        loop = asyncio.get_event_loop()
         def _work():
             try:
-                with sqlite3.connect(self.db_path) as conn:
-                    conn.row_factory = sqlite3.Row
-                    conn.execute("PRAGMA busy_timeout=15000")
+                with self._get_connection() as conn:
                     row = conn.execute("SELECT * FROM nations WHERE id = ?", (nation_id,)).fetchone()
                     return dict(row) if row else None
             except Exception as e:
                 logger.error(f"get_nation({nation_id}): {e}")
                 return None
-        return await loop.run_in_executor(None, _work)
+        return await self._run_sync(_work)
 
     async def get_nation_by_name(self, name: str) -> Optional[Dict[str, Any]]:
-        loop = asyncio.get_event_loop()
         def _work():
             try:
-                with sqlite3.connect(self.db_path) as conn:
-                    conn.row_factory = sqlite3.Row
-                    conn.execute("PRAGMA busy_timeout=15000")
+                with self._get_connection() as conn:
                     row = conn.execute(
                         "SELECT * FROM nations WHERE nation_name = ? COLLATE NOCASE LIMIT 1",
                         (name,)
@@ -623,21 +590,18 @@ class GlobalNationsDB:
             except Exception as e:
                 logger.error(f"get_nation_by_name({name}): {e}")
                 return None
-        return await loop.run_in_executor(None, _work)
+        return await self._run_sync(_work)
 
     async def get_cities_for_nation(self, nation_id: int) -> List[Dict[str, Any]]:
-        loop = asyncio.get_event_loop()
         def _work():
             try:
-                with sqlite3.connect(self.db_path) as conn:
-                    conn.row_factory = sqlite3.Row
-                    conn.execute("PRAGMA busy_timeout=15000")
+                with self._get_connection() as conn:
                     rows = conn.execute("SELECT * FROM cities WHERE nation_id = ?", (nation_id,)).fetchall()
                     return [dict(r) for r in rows]
             except Exception as e:
                 logger.error(f"get_cities_for_nation({nation_id}): {e}")
                 return []
-        return await loop.run_in_executor(None, _work)
+        return await self._run_sync(_work)
 
     async def get_all_cities_bulk(self) -> Dict[int, List[Dict[str, Any]]]:
         """Return all cities grouped by nation_id in a single query.
@@ -645,10 +609,9 @@ class GlobalNationsDB:
         Used by the revenue endpoint to avoid N individual city lookups.
         Returns: {nation_id: [city_dict, ...]}
         """
-        async with self._lock:
+        async with self._get_lock():
             try:
-                with sqlite3.connect(self.db_path) as conn:
-                    conn.row_factory = sqlite3.Row
+                with self._get_connection() as conn:
                     rows = conn.execute("SELECT * FROM cities").fetchall()
                     result: Dict[int, List[Dict[str, Any]]] = {}
                     for row in rows:
@@ -667,10 +630,9 @@ class GlobalNationsDB:
         Much faster than get_all_cities_bulk when only one alliance is needed.
         Returns: {nation_id: [city_dict, ...]}
         """
-        async with self._lock:
+        async with self._get_lock():
             try:
-                with sqlite3.connect(self.db_path) as conn:
-                    conn.row_factory = sqlite3.Row
+                with self._get_connection() as conn:
                     rows = conn.execute(
                         """
                         SELECT c.* FROM cities c
@@ -692,10 +654,9 @@ class GlobalNationsDB:
 
     async def get_nations_by_alliance(self, alliance_id: int) -> List[Dict[str, Any]]:
         """Return all nations for a given alliance_id. Used to replace API calls."""
-        async with self._lock:
+        async with self._get_lock():
             try:
-                with sqlite3.connect(self.db_path) as conn:
-                    conn.row_factory = sqlite3.Row
+                with self._get_connection() as conn:
                     # id < 900000 excludes test/synthetic nation IDs written by test scripts
                     rows = conn.execute(
                         "SELECT * FROM nations "
@@ -712,10 +673,9 @@ class GlobalNationsDB:
     async def get_distinct_alliances(self, current: str = "") -> List[Dict[str, Any]]:
         """Return distinct (alliance_id, alliance_name) pairs for autocomplete dropdowns.
         Filters by current search string if provided."""
-        async with self._lock:
+        async with self._get_lock():
             try:
-                with sqlite3.connect(self.db_path) as conn:
-                    conn.row_factory = sqlite3.Row
+                with self._get_connection() as conn:
                     rows = conn.execute(
                         """
                         SELECT alliance_id, alliance_name, COUNT(*) as member_count
@@ -741,10 +701,9 @@ class GlobalNationsDB:
 
     async def search_nations(self, current: str, limit: int = 25) -> List[Dict[str, Any]]:
         """Search nations by name for autocomplete."""
-        async with self._lock:
+        async with self._get_lock():
             try:
-                with sqlite3.connect(self.db_path) as conn:
-                    conn.row_factory = sqlite3.Row
+                with self._get_connection() as conn:
                     rows = conn.execute(
                         "SELECT id, nation_name, leader_name, alliance_id, alliance_name, score "
                         "FROM nations "
@@ -759,10 +718,9 @@ class GlobalNationsDB:
 
     async def get_all_nations(self) -> List[Dict[str, Any]]:
         """Return all nations in the database."""
-        async with self._lock:
+        async with self._get_lock():
             try:
-                with sqlite3.connect(self.db_path) as conn:
-                    conn.row_factory = sqlite3.Row
+                with self._get_connection() as conn:
                     c = conn.cursor()
                     c.execute("SELECT * FROM nations")
                     rows = c.fetchall()
@@ -773,9 +731,9 @@ class GlobalNationsDB:
 
     async def get_all_nation_ids(self) -> List[int]:
         """Return all nation IDs in the database (fast — no full row fetch)."""
-        async with self._lock:
+        async with self._get_lock():
             try:
-                with sqlite3.connect(self.db_path) as conn:
+                with self._get_connection() as conn:
                     rows = conn.execute(
                         "SELECT id FROM nations WHERE nation_name IS NOT NULL AND nation_name != ''"
                     ).fetchall()
@@ -788,9 +746,9 @@ class GlobalNationsDB:
         """Return a mapping of nation_id → nation_name for the given IDs (bulk lookup)."""
         if not nation_ids:
             return {}
-        async with self._lock:
+        async with self._get_lock():
             try:
-                with sqlite3.connect(self.db_path) as conn:
+                with self._get_connection() as conn:
                     placeholders = ",".join("?" * len(nation_ids))
                     rows = conn.execute(
                         f"SELECT id, nation_name FROM nations WHERE id IN ({placeholders}) AND nation_name IS NOT NULL AND nation_name != ''",
@@ -803,10 +761,9 @@ class GlobalNationsDB:
 
     async def get_nations_by_alliance_name(self, alliance_name: str) -> List[Dict[str, Any]]:
         """Return all nations for a given alliance_name (case-insensitive)."""
-        async with self._lock:
+        async with self._get_lock():
             try:
-                with sqlite3.connect(self.db_path) as conn:
-                    conn.row_factory = sqlite3.Row
+                with self._get_connection() as conn:
                     rows = conn.execute(
                         "SELECT * FROM nations "
                         "WHERE alliance_name LIKE ? AND nation_name IS NOT NULL AND nation_name != '' "
@@ -821,10 +778,9 @@ class GlobalNationsDB:
 
     async def get_alliance_summary(self) -> List[Dict[str, Any]]:
         """Return summary statistics for all alliances with member counts and average scores."""
-        async with self._lock:
+        async with self._get_lock():
             try:
-                with sqlite3.connect(self.db_path) as conn:
-                    conn.row_factory = sqlite3.Row
+                with self._get_connection() as conn:
                     rows = conn.execute(
                         """
                         SELECT 
@@ -941,13 +897,9 @@ class GlobalNationsDB:
             "gasoline","munitions","steel","aluminum","food",
         )
 
-        async with self._lock:
+        async with self._get_lock():
             try:
-                with sqlite3.connect(self.db_path) as conn:
-                    conn.execute("PRAGMA journal_mode=WAL")
-                    conn.execute("PRAGMA synchronous=NORMAL")
-                    conn.execute("PRAGMA wal_autocheckpoint=1000")
-                    conn.execute("PRAGMA busy_timeout=15000")
+                with self._get_connection() as conn:
 
                     db_city_cols = [
                         r[1] for r in conn.execute("PRAGMA table_info(cities)").fetchall()
@@ -1067,9 +1019,9 @@ class GlobalNationsDB:
                 return 0, 0
 
     async def get_stats(self) -> Dict[str, int]:
-        async with self._lock:
+        async with self._get_lock():
             try:
-                with sqlite3.connect(self.db_path) as conn:
+                with self._get_connection() as conn:
                     c = conn.cursor()
                     nations  = c.execute("SELECT COUNT(*) FROM nations WHERE nation_name IS NOT NULL AND nation_name != ''").fetchone()[0]
                     cities   = c.execute("SELECT COUNT(*) FROM cities").fetchone()[0]
@@ -1085,9 +1037,9 @@ class GlobalNationsDB:
 
     async def purge_skeleton_rows(self) -> int:
         """Remove rows that have no nation_name (skeleton rows from partial events)."""
-        async with self._lock:
+        async with self._get_lock():
             try:
-                with sqlite3.connect(self.db_path) as conn:
+                with self._get_connection() as conn:
                     cur = conn.execute(
                         "DELETE FROM nations WHERE nation_name IS NULL OR nation_name = ''"
                     )
@@ -1109,9 +1061,9 @@ class GlobalNationsDB:
         from Systems.Functions.db_paths import NW_ALLIANCE_ID as _NW_AID
         if not current_ids:
             return 0
-        async with self._lock:
+        async with self._get_lock():
             try:
-                with sqlite3.connect(self.db_path) as conn:
+                with self._get_connection() as conn:
                     placeholders = ",".join("?" * len(current_ids))
                     cur = conn.execute(
                         f"DELETE FROM nations WHERE alliance_id = ? AND id NOT IN ({placeholders})",

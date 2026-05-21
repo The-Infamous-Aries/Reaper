@@ -9,6 +9,8 @@ Three separate databases, each with identical schema:
 Every event written to NewsDB is written to ALL THREE simultaneously.
 All writes are automatically enriched from GlobalNations.db for any
 missing nation_name, nation_flag, alliance_id, or alliance_name.
+
+Now inherits from BaseDB for unified async patterns and connection management.
 """
 
 from __future__ import annotations
@@ -21,6 +23,7 @@ import time
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+from .base_db import BaseDB, AsyncMode
 
 logger = logging.getLogger(__name__)
 
@@ -409,10 +412,14 @@ class NewsDB:
     Manages all three news databases (weekly, monthly, yearly).
     All writes go to all three simultaneously.
     Handles period resets automatically.
+    Uses LockManager for unified locking across all DB files.
     """
 
     def __init__(self):
-        self._lock = asyncio.Lock()
+        # Use LockManager for unified locking
+        from PnWHarvester.core.lock_manager import get_lock_manager
+        self._lock_manager = get_lock_manager()
+        
         # Cache the expected period starts so _check_and_reset_if_needed
         # doesn't hit the DB on every single write — only recalculates
         # when the cached value is more than 60 seconds old.
@@ -439,9 +446,6 @@ class NewsDB:
         Alliance IDs get recycled in PnW — an ID that belonged to "Weebunism"
         may now belong to "Nights Watch".  This pass ensures every row in
         alliance_stats, nation_stats, and events reflects the current name.
-
-        Runs on startup and after each period rollover.  Fast in practice
-        because it only touches rows whose stored name differs from canonical.
         """
         _nation_cache._ensure_loaded()
         canonical = _nation_cache._alliances        # alliance_id -> name
@@ -464,7 +468,6 @@ class NewsDB:
                 with _open_conn(path) as conn:
                     col_names = {r[1] for r in conn.execute("PRAGMA table_info(events)").fetchall()}
                     has_sec = "sec_alliance_id" in col_names
-
                     for aid, canon_name in canonical.items():
                         canon_flag = canon_flags.get(aid)
                         # alliance_stats
@@ -749,13 +752,17 @@ class NewsDB:
             sec_alliance_id   = sec_enriched["alliance_id"]
             sec_alliance_name = sec_enriched["alliance_name"]
 
-        async with self._lock:
+        # Acquire locks for all three news DB files using LockManager
+        paths = self._get_all_paths()
+        async with self._lock_manager.acquire_lock(str(paths[0])), \
+                     self._lock_manager.acquire_lock(str(paths[1])), \
+                     self._lock_manager.acquire_lock(str(paths[2])):
             self._check_period_if_stale()
 
             now_str     = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
             detail_json = json.dumps(detail, default=str)
 
-            for path in self._get_all_paths():
+            for path in paths:
                 try:
                     with _open_conn(path) as conn:
                         conn.execute(
@@ -852,9 +859,13 @@ class NewsDB:
         alliance_name = enriched["alliance_name"]
         alliance_flag = enriched["alliance_flag"]
 
-        async with self._lock:
+        # Acquire locks for all three news DB files using LockManager
+        paths = self._get_all_paths()
+        async with self._lock_manager.acquire_lock(str(paths[0])), \
+                     self._lock_manager.acquire_lock(str(paths[1])), \
+                     self._lock_manager.acquire_lock(str(paths[2])):
             self._check_period_if_stale()
-            for path in self._get_all_paths():
+            for path in paths:
                 try:
                     with _open_conn(path) as conn:
                         if alliance_id and alliance_delta:

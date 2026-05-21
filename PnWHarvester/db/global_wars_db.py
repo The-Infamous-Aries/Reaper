@@ -2,6 +2,8 @@
 GlobalWarsDB — SQLite storage for ALL PnW wars (game-wide).
 
 Schema is identical to IRSWarsDB. No alliance filter applied.
+
+Now inherits from BaseDB for unified async patterns and connection management.
 """
 
 import sqlite3
@@ -10,6 +12,7 @@ import logging
 from datetime import datetime, timezone, date
 from typing import Dict, List, Any, Optional
 import asyncio
+from .base_db import BaseDB, AsyncMode
 
 logger = logging.getLogger(__name__)
 
@@ -19,15 +22,30 @@ LOOT_RESOURCE_COLUMNS = (
 )
 
 
-class GlobalWarsDB:
+class GlobalWarsDB(BaseDB):
     def __init__(self, db_path: str):
-        self.db_path = db_path
-        self._lock = asyncio.Lock()
-        self._init_database()
+        """
+        Initialize GlobalWarsDB with BaseDB infrastructure.
+        
+        Args:
+            db_path: Path to the SQLite database file
+        """
+        super().__init__(
+            db_path=db_path,
+            async_mode=AsyncMode.THREAD_POOL,
+            wal_mode=True,
+            synchronous="NORMAL",
+            busy_timeout=15000,
+            wal_autocheckpoint=1000,
+            enable_locking=True,
+            use_lock_manager=True,
+        )
+        self._init_global_wars_schema()
 
-    def _init_database(self):
+    def _init_global_wars_schema(self):
+        """Initialize the GlobalWarsDB-specific schema (wars and war_attacks tables)."""
         try:
-            with sqlite3.connect(self.db_path) as conn:
+            with self._get_connection() as conn:
                 cursor = conn.cursor()
 
                 cursor.execute('''
@@ -210,7 +228,7 @@ class GlobalWarsDB:
         """
         async with self._lock:
             try:
-                with sqlite3.connect(self.db_path) as conn:
+                with self._get_connection() as conn:
                     cursor = conn.cursor()
                     attacker = war_data.get("attacker") or {}
                     defender = war_data.get("defender") or {}
@@ -343,7 +361,7 @@ class GlobalWarsDB:
         """Upsert a war attack — never overwrites non-null with NULL."""
         async with self._lock:
             try:
-                with sqlite3.connect(self.db_path) as conn:
+                with self._get_connection() as conn:
                     cursor = conn.cursor()
 
                     improvements_destroyed = attack_data.get("improvements_destroyed")
@@ -425,7 +443,7 @@ class GlobalWarsDB:
     async def get_war(self, war_id: int) -> Optional[Dict[str, Any]]:
         async with self._lock:
             try:
-                with sqlite3.connect(self.db_path) as conn:
+                with self._get_connection() as conn:
                     cursor = conn.cursor()
                     cursor.execute('SELECT * FROM wars WHERE id = ?', (war_id,))
                     row = cursor.fetchone()
@@ -440,7 +458,7 @@ class GlobalWarsDB:
         """Return all wars where alliance_id is attacker or defender."""
         async with self._lock:
             try:
-                with sqlite3.connect(self.db_path) as conn:
+                with self._get_connection() as conn:
                     cursor = conn.cursor()
                     cursor.execute(
                         'SELECT * FROM wars WHERE att_alliance_id = ? OR def_alliance_id = ? ORDER BY date DESC',
@@ -462,7 +480,7 @@ class GlobalWarsDB:
     ) -> List[Dict[str, Any]]:
         async with self._lock:
             try:
-                with sqlite3.connect(self.db_path) as conn:
+                with self._get_connection() as conn:
                     cursor = conn.cursor()
                     if role == 'attacker':
                         where = 'att_alliance_id = ?'
@@ -492,7 +510,7 @@ class GlobalWarsDB:
     async def get_war_attacks(self, war_id: int) -> List[Dict[str, Any]]:
         async with self._lock:
             try:
-                with sqlite3.connect(self.db_path) as conn:
+                with self._get_connection() as conn:
                     cursor = conn.cursor()
                     cursor.execute('SELECT * FROM war_attacks WHERE war_id = ? ORDER BY date', (war_id,))
                     rows = cursor.fetchall()
@@ -515,7 +533,7 @@ class GlobalWarsDB:
     async def get_stats(self) -> Dict[str, int]:
         async with self._lock:
             try:
-                with sqlite3.connect(self.db_path) as conn:
+                with self._get_connection() as conn:
                     c = conn.cursor()
                     wars    = c.execute("SELECT COUNT(*) FROM wars").fetchone()[0]
                     attacks = c.execute("SELECT COUNT(*) FROM war_attacks").fetchone()[0]

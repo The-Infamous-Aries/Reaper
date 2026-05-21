@@ -17,6 +17,8 @@ Schema:
   - money, coal, oil, ...: amounts transferred (11 resources + money)
   - tax_id: tax bracket ID if this was a tax collection
   - created_at: when we recorded it
+
+Now inherits from BaseDB for unified async patterns and connection management.
 """
 
 import sqlite3
@@ -24,6 +26,7 @@ import logging
 from datetime import datetime, timezone, timedelta
 from typing import Any, Dict, List, Optional
 import asyncio
+from .base_db import BaseDB, AsyncMode
 
 logger = logging.getLogger(__name__)
 
@@ -33,27 +36,31 @@ BANKREC_RESOURCE_COLUMNS = (
 )
 
 
-class BankrecsDB:
+class BankrecsDB(BaseDB):
     def __init__(self, db_path: str):
-        self.db_path = db_path
-        self._lock = asyncio.Lock()
-        self._init_database()
+        """
+        Initialize BankrecsDB with BaseDB infrastructure.
+        
+        Args:
+            db_path: Path to the SQLite database file
+        """
+        super().__init__(
+            db_path=db_path,
+            async_mode=AsyncMode.THREAD_POOL,
+            wal_mode=True,
+            synchronous="NORMAL",
+            busy_timeout=15000,
+            wal_autocheckpoint=1000,
+            enable_locking=True,
+            use_lock_manager=True,
+        )
+        self._init_bankrecs_schema()
 
-    def _init_database(self):
+    def _init_bankrecs_schema(self):
+        """Initialize the BankrecsDB-specific schema (bankrecs table)."""
         try:
-            # Ensure the parent directory exists before SQLite touches the file
-            from pathlib import Path
-            Path(self.db_path).parent.mkdir(parents=True, exist_ok=True)
-
-            with sqlite3.connect(self.db_path) as conn:
-                conn.row_factory = sqlite3.Row
+            with self._get_connection() as conn:
                 c = conn.cursor()
-
-                # Enable WAL mode for better concurrency
-                conn.execute("PRAGMA journal_mode=WAL")
-                conn.execute("PRAGMA synchronous=NORMAL")
-                conn.execute("PRAGMA wal_autocheckpoint=1000")
-                conn.execute("PRAGMA busy_timeout=15000")
 
                 c.execute("""
                     CREATE TABLE IF NOT EXISTS bankrecs (
@@ -97,13 +104,13 @@ class BankrecsDB:
     def _ensure_schema(self):
         """Re-run schema creation if the bankrecs table is missing. Self-heals a 0-byte or wiped DB."""
         try:
-            with sqlite3.connect(self.db_path) as conn:
+            with self._get_connection() as conn:
                 exists = conn.execute(
                     "SELECT name FROM sqlite_master WHERE type='table' AND name='bankrecs'"
                 ).fetchone()
                 if not exists:
                     logger.warning("BankrecsDB: bankrecs table missing — re-initialising schema")
-                    self._init_database()
+                    self._init_bankrecs_schema()
         except Exception as e:
             logger.error(f"BankrecsDB._ensure_schema: {e}", exc_info=True)
 
@@ -125,9 +132,9 @@ class BankrecsDB:
             rec = dict(rec)
             rec["date"] = str(date_val).replace("T", " ")
 
-        async with self._lock:
+        async with self._get_lock():
             try:
-                with sqlite3.connect(self.db_path) as conn:
+                with self._get_connection() as conn:
                     c = conn.cursor()
                     now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
 
@@ -169,7 +176,7 @@ class BankrecsDB:
                 if "no such table" in str(e):
                     # DB was wiped or created empty — rebuild schema and retry once
                     logger.warning(f"BankrecsDB.save_bankrec: schema missing, rebuilding and retrying")
-                    self._init_database()
+                    self._init_bankrecs_schema()
                     return await self._save_bankrec_direct(rec, rec_id)
                 logger.error(f"BankrecsDB.save_bankrec({rec_id}): {e}", exc_info=True)
                 return False
@@ -225,9 +232,9 @@ class BankrecsDB:
         if not recs:
             return 0
         saved = 0
-        async with self._lock:
+        async with self._get_lock():
             try:
-                with sqlite3.connect(self.db_path) as conn:
+                with self._get_connection() as conn:
                     c = conn.cursor()
                     now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
                     for rec in recs:
@@ -276,7 +283,7 @@ class BankrecsDB:
             except sqlite3.OperationalError as e:
                 if "no such table" in str(e):
                     logger.warning("BankrecsDB.save_bankrecs_bulk: schema missing, rebuilding")
-                    self._init_database()
+                    self._init_bankrecs_schema()
                     # Retry the whole batch after rebuild
                     return await self._save_bankrecs_bulk_direct(recs)
                 logger.error(f"BankrecsDB.save_bankrecs_bulk: {e}", exc_info=True)
@@ -333,9 +340,9 @@ class BankrecsDB:
         limit: int = 100,
     ) -> List[Dict[str, Any]]:
         """Get all bankrecs where nation_id was sender or receiver (type=1)."""
-        async with self._lock:
+        async with self._get_lock():
             try:
-                with sqlite3.connect(self.db_path) as conn:
+                with self._get_connection() as conn:
                     conn.row_factory = sqlite3.Row
                     params: list = [nation_id, nation_id]
                     since_clause = ""
@@ -364,9 +371,9 @@ class BankrecsDB:
         limit: int = 500,
     ) -> List[Dict[str, Any]]:
         """Get all bankrecs where alliance_id was sender or receiver (type=2)."""
-        async with self._lock:
+        async with self._get_lock():
             try:
-                with sqlite3.connect(self.db_path) as conn:
+                with self._get_connection() as conn:
                     conn.row_factory = sqlite3.Row
                     params: list = [alliance_id, alliance_id]
                     since_clause = ""
@@ -405,9 +412,9 @@ class BankrecsDB:
         """
         if not nation_ids:
             return {}
-        async with self._lock:
+        async with self._get_lock():
             try:
-                with sqlite3.connect(self.db_path) as conn:
+                with self._get_connection() as conn:
                     conn.row_factory = sqlite3.Row
                     placeholders = ",".join("?" * len(nation_ids))
 
@@ -453,9 +460,9 @@ class BankrecsDB:
 
     async def get_newest_date(self) -> Optional[str]:
         """Return the most recent `date` value stored, or None if the table is empty."""
-        async with self._lock:
+        async with self._get_lock():
             try:
-                with sqlite3.connect(self.db_path) as conn:
+                with self._get_connection() as conn:
                     row = conn.execute(
                         "SELECT MAX(date) as newest FROM bankrecs"
                     ).fetchone()
@@ -466,9 +473,9 @@ class BankrecsDB:
 
     async def cleanup_old_bankrecs(self, days: int = 30):
         """Delete bankrecs older than N days."""
-        async with self._lock:
+        async with self._get_lock():
             try:
-                with sqlite3.connect(self.db_path) as conn:
+                with self._get_connection() as conn:
                     cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).strftime("%Y-%m-%d %H:%M:%S")
                     c = conn.cursor()
                     c.execute("DELETE FROM bankrecs WHERE date < ?", (cutoff,))

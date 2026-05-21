@@ -24,6 +24,8 @@ Loot formula (apply_loot_event):
   remaining = holdings - looted           (what the defender has left)
   → defender SET to remaining = looted × (1/loot_pct - 1)
   → attacker ADD looted amounts
+
+Now inherits from BaseDB for unified async patterns and connection management.
 """
 
 import sqlite3
@@ -31,6 +33,7 @@ import logging
 import asyncio
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
+from .base_db import BaseDB, AsyncMode
 
 logger = logging.getLogger(__name__)
 
@@ -90,18 +93,40 @@ def _calc_loot_pct(
     return base * mult
 
 
-class HoldingsDB:
+class HoldingsDB(BaseDB):
     """
     Single-DB adapter: all holdings data lives in GlobalNations.db.
     Never writes to IRSNations.db — that DB is managed exclusively by
     nations_subscription for NW-member snapshots.
+
+    Now inherits from BaseDB for unified async patterns and connection management.
     """
 
     def __init__(self, db_path: str):
-        self.db_path = db_path  # kept for backward compat; not used for storage
+        """
+        Initialize HoldingsDB with BaseDB infrastructure.
+        
+        Args:
+            db_path: Path to the database (kept for backward compat; actual storage is in GLOBAL_NATIONS_DB)
+        """
         from Systems.Functions.db_paths import GLOBAL_NATIONS_DB_STR
+        # Always use GlobalNations.db — that's where the nations table lives.
+        # The db_path argument is accepted for backward-compat but ignored;
+        # overwriting self.db_path after super().__init__ was the root cause
+        # of the "no such table: nations" errors.
+        super().__init__(
+            db_path=GLOBAL_NATIONS_DB_STR,
+            async_mode=AsyncMode.THREAD_POOL,
+            wal_mode=True,
+            synchronous="NORMAL",
+            busy_timeout=15000,
+            wal_autocheckpoint=1000,
+            enable_locking=True,
+            use_lock_manager=True,
+        )
+        # self.db_path is already GLOBAL_NATIONS_DB_STR — do NOT overwrite it.
         self._global_path = GLOBAL_NATIONS_DB_STR
-        self._lock        = asyncio.Lock()
+        # Ensure extra columns exist
         self._ensure_extra_columns()
 
     # ── Schema migration ──────────────────────────────────────────────────────
@@ -117,11 +142,7 @@ class HoldingsDB:
             ("alliance_flag",     "TEXT"),
         ]
         try:
-            with sqlite3.connect(self._global_path) as conn:
-                conn.execute("PRAGMA journal_mode=WAL")
-                conn.execute("PRAGMA synchronous=NORMAL")
-                conn.execute("PRAGMA wal_autocheckpoint=1000")
-                conn.execute("PRAGMA busy_timeout=15000")
+            with self._get_connection() as conn:
                 for col, typedef in extra:
                     try:
                         conn.execute(f"ALTER TABLE nations ADD COLUMN {col} {typedef}")
@@ -141,32 +162,8 @@ class HoldingsDB:
         return datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
 
     def _conn(self) -> sqlite3.Connection:
-        conn = sqlite3.connect(self._global_path, timeout=15)
-        conn.execute("PRAGMA journal_mode=WAL")
-        conn.execute("PRAGMA synchronous=NORMAL")
-        conn.execute("PRAGMA wal_autocheckpoint=1000")
-        conn.execute("PRAGMA busy_timeout=15000")
-        conn.row_factory = sqlite3.Row
-        return conn
-
-    async def _run_sync(self, fn):
-        """
-        Run a blocking SQLite function in the default thread-pool executor so it
-        never blocks the asyncio event loop.  All public write methods use this.
-
-        Usage:
-            result = await self._run_sync(lambda: <synchronous sqlite work>)
-        """
-        loop = asyncio.get_event_loop()
-        return await loop.run_in_executor(None, fn)
-
-    def checkpoint(self) -> None:
-        """Run a WAL TRUNCATE checkpoint synchronously (call from non-async context)."""
-        try:
-            with sqlite3.connect(self._global_path, timeout=10) as conn:
-                conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
-        except Exception as e:
-            logger.warning(f"HoldingsDB.checkpoint: {e}")
+        """Get a configured connection using BaseDB infrastructure."""
+        return self._get_connection()
 
     def _row_to_holdings(self, row: sqlite3.Row) -> Dict[str, Any]:
         """Convert a nations table row to the holdings dict format consumers expect."""
