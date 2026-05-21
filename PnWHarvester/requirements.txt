@@ -1,3 +1,0 @@
-pnwkit
-python-dotenv
-aiosqlite
