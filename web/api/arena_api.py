@@ -16,6 +16,9 @@ from fastapi import APIRouter, Body, HTTPException, Request, WebSocket, WebSocke
 from fastapi.responses import JSONResponse
 
 from Systems.Functions.user_data_manager import user_data_manager
+from Systems.Pets.Logic.event_bus import EventQueue
+from Systems.Pets.Logic.pet_components import AnimationComponent
+from web.api.pets.gpp_helpers import _invalidate_stats_cache
 
 logger = logging.getLogger("arena_api")
 router = APIRouter()
@@ -191,7 +194,15 @@ async def join_room(request: Request, data: Dict[str, Any] = Body(...)):
     room.updated_at = time.time()
 
     await _broadcast_rooms()
-    return JSONResponse({"success": True, "room_id": room_id, "player_count": len(room.occupants)})
+
+    # ── GPP: emit event + animation (Observer pattern + Component pattern) ─────────
+    queue = EventQueue()
+    queue.push("arena_joined", {"user_id": user_id, "room_id": room_id, "mode": mode})
+    await queue.flush()
+
+    animation = AnimationComponent.for_ui_update("arena_join", 400)
+
+    return JSONResponse({"success": True, "room_id": room_id, "player_count": len(room.occupants), "animation": animation})
 
 
 # ── REST: leave a room ────────────────────────────────────────────────────────
@@ -205,7 +216,15 @@ async def leave_room(request: Request):
         if r.has_user(user_id):
             r.remove_user(user_id)
     await _broadcast_rooms()
-    return JSONResponse({"success": True})
+
+    # ── GPP: emit event + animation (Observer pattern + Component pattern) ─────────
+    queue = EventQueue()
+    queue.push("arena_left", {"user_id": user_id})
+    await queue.flush()
+
+    animation = AnimationComponent.for_ui_update("arena_leave", 400)
+
+    return JSONResponse({"success": True, "animation": animation})
 
 
 # ── REST: NPC battle (full simulation, streams log via broadcast) ─────────────
@@ -266,7 +285,20 @@ async def arena_npc_battle(request: Request, data: Dict[str, Any] = Body(...)):
     room.updated_at = time.time()
     await _broadcast_rooms()
 
-    return JSONResponse({**result, "log": log_lines})
+    # ── GPP: emit event + animation (Observer pattern + Component pattern) ─────────
+    queue = EventQueue()
+    queue.push("arena_npc_battle", {"user_id": user_id, "difficulty": difficulty, "won": result["won"], "xp_gained": result["xp_gained"]})
+    await queue.flush()
+
+    animation = AnimationComponent.for_battle_action(
+        action="attack",
+        damage=result.get("total_damage_dealt", 0),
+        is_player=True,
+        element_mult=1.0,
+        effect="victory" if result["won"] else "defeat"
+    )
+
+    return JSONResponse({**result, "log": log_lines, "animation": animation})
 
 
 # ── REST: PvP challenge (accept another user in a pvp_waiting room) ───────────
@@ -326,7 +358,20 @@ async def arena_pvp_battle(request: Request, data: Dict[str, Any] = Body(...)):
     room.updated_at = time.time()
     await _broadcast_rooms()
 
-    return JSONResponse(result)
+    # ── GPP: emit event + animation (Observer pattern + Component pattern) ─────────
+    queue = EventQueue()
+    queue.push("arena_pvp_battle", {"user_id": user_id, "challenger_id": challenger_id, "winner": result.get("winner")})
+    await queue.flush()
+
+    animation = AnimationComponent.for_battle_action(
+        action="attack",
+        damage=result.get("total_damage_dealt", 0),
+        is_player=True,
+        element_mult=1.0,
+        effect="victory" if result.get("winner") == user_id else "defeat"
+    )
+
+    return JSONResponse({**result, "animation": animation})
 
 
 # ── REST: Boss battle — start (generates boss from player avg stats) ──────────
@@ -489,7 +534,20 @@ async def arena_boss_start(request: Request, data: Dict[str, Any] = Body(...)):
         occ["status"] = "battling"
     await _broadcast_rooms()
 
-    return JSONResponse({"success": True, "battle": battle_state})
+    # ── GPP: emit event + animation (Observer pattern + Component pattern) ─────────
+    queue = EventQueue()
+    queue.push("arena_boss_started", {"user_id": user_id, "room_id": room_id, "boss_name": boss_name, "player_count": n})
+    await queue.flush()
+
+    animation = AnimationComponent.for_battle_action(
+        action="attack",
+        damage=0,
+        is_player=True,
+        element_mult=1.0,
+        effect="boss_spawn"
+    )
+
+    return JSONResponse({"success": True, "battle": battle_state, "animation": animation})
 
 
 @router.get("/arena/battle/boss/state")
@@ -810,13 +868,11 @@ async def arena_boss_action(request: Request, data: Dict[str, Any] = Body(...)):
                         uid, "npc", wins=1 if player["alive"] else 0,
                         losses=0, xp_earned=xp, damage_dealt=0, damage_taken=0
                     )
-                    # Task tracking — boss win
+                    # ── GPP: emit boss battle event via EventBus ─────────────
                     if player["alive"]:
-                        try:
-                            from web.api.tasks_api import record_action as _task_record
-                            await _task_record(uid, "boss", won=True)
-                        except Exception:
-                            pass
+                        queue = EventQueue()
+                        queue.push("boss_battle_ended", {"user_id": uid, "won": True})
+                        await queue.flush()
             except Exception as e:
                 logger.error(f"Boss XP award error for {uid}: {e}")
 
@@ -844,7 +900,20 @@ async def arena_boss_action(request: Request, data: Dict[str, Any] = Body(...)):
         room.updated_at = time.time()
         await _broadcast_rooms()
 
-    return JSONResponse({"battle": battle, "resolved": True, "turn_log": turn_log})
+    # ── GPP: emit event + animation (Observer pattern + Component pattern) ─────────
+    queue = EventQueue()
+    queue.push("arena_boss_action", {"user_id": user_id, "room_id": room_id, "action": action, "turn": battle["turn"], "over": battle["over"]})
+    await queue.flush()
+
+    animation = AnimationComponent.for_battle_action(
+        action=action,
+        damage=total_player_dmg,
+        is_player=True,
+        element_mult=1.0,
+        effect="boss_hit" if total_player_dmg > 0 else "boss_block"
+    )
+
+    return JSONResponse({"battle": battle, "resolved": True, "turn_log": turn_log, "animation": animation})
 
 
 # ── Unified WebSocket endpoint (arena + casino in one feed) ───────────────────

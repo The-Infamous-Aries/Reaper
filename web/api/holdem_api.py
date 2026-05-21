@@ -16,17 +16,12 @@ from starlette.requests import Request
 from Systems.Functions.user_data_manager import user_data_manager
 from Systems.Pets.Logic.pet_brain import LootCalculator
 from Systems.Functions.ai_gambling import get_hand_rank, get_holdem_bot_action
+from Systems.Pets.Logic.event_bus import EventQueue
+from Systems.Pets.Logic.pet_components import AnimationComponent
+from web.api.pets.gpp_helpers import _invalidate_stats_cache, _compute_total_xp, _get_user_lock
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("holdem_api")
 router = APIRouter()
-
-# ── Per-user locks ────────────────────────────────────────────────────────────
-_user_locks: Dict[str, asyncio.Lock] = {}
-
-def _get_user_lock(user_id: str) -> asyncio.Lock:
-    if user_id not in _user_locks:
-        _user_locks[user_id] = asyncio.Lock()
-    return _user_locks[user_id]
 
 # ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -68,11 +63,6 @@ def _set_game(session, game: dict):
 
 def _clear_game(session):
     session.pop("holdem_game", None)
-
-def _compute_total_xp(pet: dict) -> int:
-    lvl = int(pet.get("level", 1))
-    exp = int(pet.get("experience", 0))
-    return int(LootCalculator.get_total_experience_for_level(lvl)) + exp
 
 # ── Game factory ──────────────────────────────────────────────────────────────
 
@@ -495,7 +485,15 @@ async def holdem_start(request: Request):
         _deal_hand(game)
         _run_bots_until_player(game)
         _set_game(request.session, game)
-        return JSONResponse(_game_response(game))
+
+        # ── GPP: emit event + animation (Observer pattern + Component pattern) ─────────
+        queue = EventQueue()
+        queue.push("holdem_start", {"user_id": user_id, "buy_in": buy_in, "fun_mode": fun_mode, "num_bots": num_bots})
+        await queue.flush()
+
+        animation = AnimationComponent.for_ui_update("cards_deal", 400)
+
+        return JSONResponse(_game_response(game), animation=animation)
 
 
 @router.post("/casino/holdem/action")
@@ -572,7 +570,15 @@ async def holdem_action(request: Request):
             _run_bots_until_player(game)
 
         _set_game(request.session, game)
-        return JSONResponse(_game_response(game))
+
+        # ── GPP: emit event + animation (Observer pattern + Component pattern) ─────────
+        queue = EventQueue()
+        queue.push("holdem_action", {"user_id": user_id, "action": action, "amount": amount, "stage": game["stage"]})
+        await queue.flush()
+
+        animation = AnimationComponent.for_ui_update("card_action", 300)
+
+        return JSONResponse(_game_response(game), animation=animation)
 
 
 @router.post("/casino/holdem/next_hand")
@@ -626,7 +632,15 @@ async def holdem_next_hand(request: Request):
         _deal_hand(game)
         _run_bots_until_player(game)
         _set_game(request.session, game)
-        return JSONResponse(_game_response(game))
+
+        # ── GPP: emit event + animation (Observer pattern + Component pattern) ─────────
+        queue = EventQueue()
+        queue.push("holdem_next_hand", {"user_id": user_id, "hand_num": game["hand_num"]})
+        await queue.flush()
+
+        animation = AnimationComponent.for_ui_update("cards_deal", 400)
+
+        return JSONResponse(_game_response(game), animation=animation)
 
 
 @router.post("/casino/holdem/cashout")
@@ -653,7 +667,15 @@ async def holdem_cashout(request: Request):
             )
 
         _clear_game(request.session)
-        return JSONResponse({"ok": True, "cashed_out": stack, "fun_mode": game["fun_mode"]})
+
+        # ── GPP: emit event + animation (Observer pattern + Component pattern) ─────────
+        queue = EventQueue()
+        queue.push("holdem_cashout", {"user_id": user_id, "stack": stack, "net": stack - game["buy_in"]})
+        await queue.flush()
+
+        animation = AnimationComponent.for_ui_update("cashout", 400)
+
+        return JSONResponse({"ok": True, "cashed_out": stack, "fun_mode": game["fun_mode"], "animation": animation})
 
 
 @router.get("/casino/holdem/state")
@@ -745,7 +767,14 @@ async def holdem_room_start(request: Request):
         _run_bots_until_player(game, player_seat=0)
         _room_games[room_id] = game
 
-    return JSONResponse({**_game_response(game, player_seat=0), "room_id": room_id})
+    # ── GPP: emit event + animation (Observer pattern + Component pattern) ─────────
+    queue = EventQueue()
+    queue.push("holdem_room_start", {"user_id": user_id, "room_id": room_id, "buy_in": buy_in, "fun_mode": fun_mode, "num_bots": num_bots})
+    await queue.flush()
+
+    animation = AnimationComponent.for_ui_update("cards_deal", 400)
+
+    return JSONResponse({**_game_response(game, player_seat=0), "room_id": room_id, "animation": animation})
 
 
 @router.post("/casino/holdem/room/action")
@@ -820,7 +849,14 @@ async def holdem_room_action(request: Request):
         if game["stage"] not in ("idle", "showdown"):
             _run_bots_until_player(game, player_seat=player_seat)
 
-    return JSONResponse({**_game_response(game, player_seat=player_seat), "room_id": room_id})
+    # ── GPP: emit event + animation (Observer pattern + Component pattern) ─────────
+    queue = EventQueue()
+    queue.push("holdem_room_action", {"user_id": user_id, "room_id": room_id, "action": action, "amount": amount, "stage": game["stage"]})
+    await queue.flush()
+
+    animation = AnimationComponent.for_ui_update("card_action", 300)
+
+    return JSONResponse({**_game_response(game, player_seat=player_seat), "room_id": room_id, "animation": animation})
 
 
 @router.post("/casino/holdem/room/next_hand")
@@ -910,7 +946,14 @@ async def holdem_room_next_hand(request: Request):
         _deal_hand(game)
         _run_bots_until_player(game, player_seat=player_seat)
 
-    return JSONResponse({**_game_response(game, player_seat=player_seat), "room_id": room_id})
+    # ── GPP: emit event + animation (Observer pattern + Component pattern) ─────────
+    queue = EventQueue()
+    queue.push("holdem_room_next_hand", {"user_id": user_id, "room_id": room_id, "hand_num": game["hand_num"]})
+    await queue.flush()
+
+    animation = AnimationComponent.for_ui_update("cards_deal", 400)
+
+    return JSONResponse({**_game_response(game, player_seat=player_seat), "room_id": room_id, "animation": animation})
 
 
 @router.post("/casino/holdem/room/cashout")
@@ -951,4 +994,11 @@ async def holdem_room_cashout(request: Request):
         if not real_players:
             _room_games.pop(room_id, None)
 
-    return JSONResponse({"ok": True, "cashed_out": stack})
+    # ── GPP: emit event + animation (Observer pattern + Component pattern) ─────────
+    queue = EventQueue()
+    queue.push("holdem_room_cashout", {"user_id": user_id, "room_id": room_id, "stack": stack})
+    await queue.flush()
+
+    animation = AnimationComponent.for_ui_update("cashout", 400)
+
+    return JSONResponse({"ok": True, "cashed_out": stack, "animation": animation})

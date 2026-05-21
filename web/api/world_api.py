@@ -14,6 +14,9 @@ from pydantic import BaseModel
 from Systems.Functions.user_data_manager import user_data_manager
 from Systems.Functions.pets_db import pets_db
 from Systems.Pets.Logic.pet_brain import StatsCalculator, LootCalculator
+from Systems.Pets.Logic.event_bus import EventQueue
+from Systems.Pets.Logic.pet_components import AnimationComponent
+from web.api.pets.gpp_helpers import _invalidate_stats_cache
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -356,8 +359,15 @@ async def set_relationship(request: Request, data: RelationshipRequest):
         success = await pets_db.set_user_relationship(current_user_id, data.target_user_id, data.relationship_type)
         if not success:
             raise HTTPException(status_code=500, detail="Failed to set relationship")
-        
-        return JSONResponse({"success": True, "message": f"Relationship set to {data.relationship_type}"})
+
+        # ── GPP: emit event + animation (Observer pattern + Component pattern) ─────────
+        queue = EventQueue()
+        queue.push("world_relationship_set", {"user_id": current_user_id, "target_user_id": data.target_user_id, "relationship_type": data.relationship_type})
+        await queue.flush()
+
+        animation = AnimationComponent.for_ui_update("relationship_set", 300)
+
+        return JSONResponse({"success": True, "message": f"Relationship set to {data.relationship_type}", "animation": animation})
     
     except HTTPException:
         raise
@@ -377,8 +387,15 @@ async def remove_relationship(request: Request, target_user_id: str):
         success = await pets_db.remove_user_relationship(current_user_id, target_user_id)
         if not success:
             raise HTTPException(status_code=500, detail="Failed to remove relationship")
-        
-        return JSONResponse({"success": True, "message": "Relationship removed"})
+
+        # ── GPP: emit event + animation (Observer pattern + Component pattern) ─────────
+        queue = EventQueue()
+        queue.push("world_relationship_removed", {"user_id": current_user_id, "target_user_id": target_user_id})
+        await queue.flush()
+
+        animation = AnimationComponent.for_ui_update("relationship_removed", 300)
+
+        return JSONResponse({"success": True, "message": "Relationship removed", "animation": animation})
     
     except HTTPException:
         raise
@@ -449,9 +466,17 @@ async def gift_item(request: Request, data: GiftRequest):
         except Exception as exc:
             logger.warning(f"gift task tracking failed: {exc}")
 
+        # ── GPP: emit event + animation (Observer pattern + Component pattern) ─────────
+        queue = EventQueue()
+        queue.push("world_gift", {"sender_id": current_user_id, "recipient_id": data.target_user_id, "item_name": data.item_name, "quantity": qty})
+        await queue.flush()
+
+        animation = AnimationComponent.for_ui_update("gift_sent", 400)
+
         return JSONResponse({
             "success": True,
             "message": f"Gifted {qty}x {data.item_name} successfully",
+            "animation": animation
         })
 
     except HTTPException:

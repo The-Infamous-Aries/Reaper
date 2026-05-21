@@ -111,6 +111,8 @@
 }
 .raids-bell:hover { opacity: 1; transform: scale(1.2); }
 .raids-bell.active { opacity: 1; color: var(--gold-primary); }
+.raids-bell.raids-bell-disabled,
+.raids-bell[disabled] { opacity: 0.2; cursor: default; pointer-events: none; }
 
 /* Autocomplete */
 .raids-ac-wrap { position: relative; flex: 1; min-width: 160px; }

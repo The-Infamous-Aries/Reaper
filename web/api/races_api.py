@@ -18,17 +18,12 @@ from starlette.requests import Request
 
 from Systems.Functions.user_data_manager import user_data_manager
 from Systems.Pets.Logic.pet_brain import LootCalculator
+from Systems.Pets.Logic.event_bus import EventQueue
+from Systems.Pets.Logic.pet_components import AnimationComponent
+from web.api.pets.gpp_helpers import _invalidate_stats_cache, _compute_total_xp, _get_user_lock
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
-
-# ── Per-user locks ────────────────────────────────────────────────────────────
-_user_locks: Dict[str, asyncio.Lock] = {}
-
-def _get_user_lock(user_id: str) -> asyncio.Lock:
-    if user_id not in _user_locks:
-        _user_locks[user_id] = asyncio.Lock()
-    return _user_locks[user_id]
 
 # ── Server-side game store (keyed by user_id) ─────────────────────────────────
 # Storing game state server-side instead of in the session cookie prevents
@@ -102,11 +97,6 @@ ALL_PETS = [
 ]
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
-
-def _compute_total_xp(pet: dict) -> int:
-    lvl = int(pet.get("level", 1))
-    exp = int(pet.get("experience", 0))
-    return int(LootCalculator.get_total_experience_for_level(lvl)) + exp
 
 def _pet_speed(stats: dict, pet_data: dict = None) -> float:
     """Return a randomised speed value for one tick. Stats influence variance and mean."""
@@ -380,6 +370,13 @@ async def _races_start_inner(request: Request, user_id: str, difficulty: str, be
     racer_info = [{"id": r["id"], "name": r["name"], "species": r["species"],
                    "img": r["img"], "is_player": r["is_player"]} for r in racers]
 
+    # ── GPP: emit event + animation (Observer pattern + Component pattern) ─────────
+    queue = EventQueue()
+    queue.push("races_start", {"user_id": user_id, "difficulty": difficulty, "bet": bet, "player_won": player_won})
+    await queue.flush()
+
+    animation = AnimationComponent.for_ui_update("race_start", 500)
+
     return JSONResponse({
         "racers":        racer_info,
         "ticks":         ticks,
@@ -394,6 +391,7 @@ async def _races_start_inner(request: Request, user_id: str, difficulty: str, be
         "difficulty":    difficulty,
         "max_segments":  MAX_SEGMENTS,
         "tick_ms":       180,
+        "animation": animation
     })
 
 
@@ -428,11 +426,20 @@ async def races_cashout(request: Request):
                     )
 
         _clear_game_for_user(user_id)
+
+        # ── GPP: emit event + animation (Observer pattern + Component pattern) ─────────
+        queue = EventQueue()
+        queue.push("races_cashout", {"user_id": user_id, "cashed_xp": pending_xp, "cashed_keys": len(pending_keys)})
+        await queue.flush()
+
+        animation = AnimationComponent.for_loot({"xp": pending_xp, "keys": pending_keys}, 600)
+
         return JSONResponse({
             "ok":          True,
             "cashed_xp":   pending_xp,
             "cashed_keys": pending_keys,
             "fun_mode":    fun_mode,
+            "animation": animation
         })
 
 
@@ -446,7 +453,15 @@ async def races_quit(request: Request):
 
     # Stats already tracked per-race — just clear the session
     _clear_game_for_user(user_id)
-    return JSONResponse({"ok": True})
+
+    # ── GPP: emit event + animation (Observer pattern + Component pattern) ─────────
+    queue = EventQueue()
+    queue.push("races_quit", {"user_id": user_id})
+    await queue.flush()
+
+    animation = AnimationComponent.for_ui_update("race_quit", 300)
+
+    return JSONResponse({"ok": True, "animation": animation})
 
 
 @router.get("/casino/races/state")
@@ -642,6 +657,14 @@ async def races_room_start(request: Request):
         except Exception:
             pass
 
+    # ── GPP: emit event + animation (Observer pattern + Component pattern) ─────────
+    queue = EventQueue()
+    queue.push("races_room_start", {"user_id": user_id, "room_id": room_id, "difficulty": difficulty, "bet": bet, "winner_id": winner["id"]})
+    await queue.flush()
+
+    animation = AnimationComponent.for_ui_update("race_start", 500)
+
+    race_result["animation"] = animation
     return JSONResponse(race_result)
 
 
@@ -682,4 +705,11 @@ async def races_room_join(request: Request):
     except Exception as e:
         logger.warning(f"races_room_join error: {e}")
 
-    return JSONResponse({"ok": True, "message": "You'll race in the next round"})
+    # ── GPP: emit event + animation (Observer pattern + Component pattern) ─────────
+    queue = EventQueue()
+    queue.push("races_room_join", {"user_id": user_id, "room_id": room_id})
+    await queue.flush()
+
+    animation = AnimationComponent.for_ui_update("race_join", 300)
+
+    return JSONResponse({"ok": True, "message": "You'll race in the next round", "animation": animation})

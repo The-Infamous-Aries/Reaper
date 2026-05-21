@@ -15,17 +15,12 @@ from starlette.requests import Request
 
 from Systems.Functions.user_data_manager import user_data_manager
 from Systems.Pets.Logic.pet_brain import LootCalculator
+from Systems.Pets.Logic.event_bus import EventQueue
+from Systems.Pets.Logic.pet_components import AnimationComponent
+from web.api.pets.gpp_helpers import _invalidate_stats_cache, _compute_total_xp, _get_user_lock
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("craps_api")
 router = APIRouter()
-
-# ── Per-user locks ────────────────────────────────────────────────────────────
-_user_locks: Dict[str, asyncio.Lock] = {}
-
-def _get_user_lock(user_id: str) -> asyncio.Lock:
-    if user_id not in _user_locks:
-        _user_locks[user_id] = asyncio.Lock()
-    return _user_locks[user_id]
 
 # ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -42,11 +37,6 @@ PLACE_PAYOUTS = {4: 9/5, 5: 7/5, 6: 7/6, 8: 7/6, 9: 7/5, 10: 9/5}
 HARD_PAYOUTS  = {4: 7.0, 6: 9.0, 8: 9.0, 10: 7.0}
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
-
-def _compute_total_xp(pet: dict) -> int:
-    lvl = int(pet.get("level", 1))
-    exp = int(pet.get("experience", 0))
-    return int(LootCalculator.get_total_experience_for_level(lvl)) + exp
 
 def _dice_img(value: int, color: str) -> str:
     return f"/static/Emojis/Dice/{color}{value}.png"
@@ -226,7 +216,15 @@ async def craps_start(request: Request):
 
     game = _new_game(fun_mode, dice_color)
     _set_game(request.session, game)
-    return JSONResponse(_game_response(game))
+
+    # ── GPP: emit event + animation (Observer pattern + Component pattern) ─────────
+    queue = EventQueue()
+    queue.push("craps_start", {"user_id": str(user["id"]), "fun_mode": fun_mode, "dice_color": dice_color})
+    await queue.flush()
+
+    animation = AnimationComponent.for_ui_update("dice_roll_start", 400)
+
+    return JSONResponse(_game_response(game), animation=animation)
 
 
 @router.post("/casino/craps/bet")
@@ -266,7 +264,15 @@ async def craps_bet(request: Request):
 
         game["bets"].append({"type": btype, "amount": amount})
         _set_game(request.session, game)
-        return JSONResponse(_game_response(game))
+
+        # ── GPP: emit event + animation (Observer pattern + Component pattern) ─────────
+        queue = EventQueue()
+        queue.push("craps_bet", {"user_id": user_id, "type": btype, "amount": amount})
+        await queue.flush()
+
+        animation = AnimationComponent.for_ui_update("bet_place", 300)
+
+        return JSONResponse(_game_response(game), animation=animation)
 
 
 @router.post("/casino/craps/clear_bets")
@@ -290,6 +296,15 @@ async def craps_clear_bets(request: Request):
         _set_game(request.session, game)
         resp = _game_response(game)
         resp["refunded"] = refund
+
+        # ── GPP: emit event + animation (Observer pattern + Component pattern) ─────────
+        queue = EventQueue()
+        queue.push("craps_clear_bets", {"user_id": user_id, "refund": refund})
+        await queue.flush()
+
+        animation = AnimationComponent.for_ui_update("bets_clear", 300)
+
+        resp["animation"] = animation
         return JSONResponse(resp)
 
 
@@ -408,6 +423,13 @@ async def _craps_roll_inner(game: dict, request: Request, user_id: str):
 
     _set_game(request.session, game)
 
+    # ── GPP: emit event + animation (Observer pattern + Component pattern) ─────────
+    queue = EventQueue()
+    queue.push("craps_roll", {"user_id": user_id, "total": total, "d1": d1, "d2": d2, "event": event, "xp_change": resolution["xp_change"]})
+    await queue.flush()
+
+    animation = AnimationComponent.for_ui_update("dice_roll", 500, {"d1": d1, "d2": d2, "total": total})
+
     resp = _game_response(game)
     resp["roll"]       = total
     resp["d1"]         = d1
@@ -416,6 +438,7 @@ async def _craps_roll_inner(game: dict, request: Request, user_id: str):
     resp["headline"]   = headline
     resp["xp_change"]  = resolution["xp_change"]
     resp["result_lines"] = resolution["result_lines"]
+    resp["animation"] = animation
     return JSONResponse(resp)
 
 
@@ -446,4 +469,12 @@ async def craps_quit(request: Request):
         if not game["fun_mode"] and refund > 0:
             await LootCalculator.apply_xp_change(int(user_id), refund, source="craps_refund")
     _clear_game(request.session)
-    return JSONResponse({"ok": True})
+
+    # ── GPP: emit event + animation (Observer pattern + Component pattern) ─────────
+    queue = EventQueue()
+    queue.push("craps_quit", {"user_id": user_id, "refund": refund})
+    await queue.flush()
+
+    animation = AnimationComponent.for_ui_update("game_quit", 300)
+
+    return JSONResponse({"ok": True, "animation": animation})

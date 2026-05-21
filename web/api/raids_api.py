@@ -39,19 +39,14 @@ WAR_RANGE_MIN   = 0.75
 WAR_RANGE_MAX   = 2.5
 INACTIVITY_DAYS = 7
 
-LOOT_MULTIPLIERS = {
-    "war_type": {
-        "ordinary_war": 0.10,
-        "raid":         0.075,
-        "attrition_war":0.12,
-        "blockade":     0.05,
-    },
-    "offense": {"pirate": 1.4, "ape": 1.1},
-    "defense":  {"fortress": 0.9, "moneybags": 0.6, "turtle": 1.2, "pirate": 1.1},
-}
-
-RESOURCES = ["coal", "oil", "uranium", "iron", "bauxite", "lead",
-             "gasoline", "munitions", "steel", "aluminum", "food"]
+# Import shared loot constants from beige_alerts_db so harvester + reaper +
+# web all use the same values without a cross-layer dependency.
+from Systems.Functions.beige_alerts_db import (
+    LOOT_MULTIPLIERS,
+    RESOURCES as _RESOURCES_TUPLE,
+)
+# Keep as a list for backward compatibility with code that iterates it
+RESOURCES: List[str] = list(_RESOURCES_TUPLE)
 
 # ── Revenue accumulation since last loot ─────────────────────────────────────
 # PnW constants
@@ -102,6 +97,29 @@ def _is_inactive(nation: dict) -> bool:
         return (datetime.now(timezone.utc) - dt).days >= INACTIVITY_DAYS
     except Exception:
         return True
+
+
+def _turns_since_last_looted(nation: dict) -> int:
+    """
+    Return the number of PnW turns (1 turn = 2 hours) elapsed since the nation
+    was last looted.  Used only in the fallback loot path when no holdings row
+    exists.
+
+    Looks for last_loot_date on the nation dict (set by the holdings tracker).
+    Falls back to 0 (caller will substitute a default) if the field is absent
+    or unparseable.
+    """
+    raw = nation.get("last_loot_date")
+    if not raw:
+        return 0
+    try:
+        dt = datetime.fromisoformat(str(raw).replace("Z", "+00:00").replace(" ", "T"))
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        elapsed_seconds = (datetime.now(timezone.utc) - dt).total_seconds()
+        return max(0, int(elapsed_seconds / 7200))  # 7200 s = 1 turn = 2 h
+    except Exception:
+        return 0
 
 
 def _military_strength(n: dict) -> float:
@@ -217,7 +235,7 @@ async def _fetch_all_nations_local(
 
     try:
         import sqlite3
-        async with db._lock:
+        async with db._get_lock():
             with sqlite3.connect(db.db_path) as conn:
                 conn.row_factory = sqlite3.Row
 

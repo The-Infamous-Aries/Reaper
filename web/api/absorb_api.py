@@ -45,6 +45,9 @@ from Systems.Functions.db_paths import (
 )
 from Systems.Functions.user_data_manager import user_data_manager
 from Systems.Pets.Logic.pet_brain import LootCalculator, StatsCalculator
+from Systems.Pets.Logic.event_bus import EventQueue
+from Systems.Pets.Logic.pet_components import AnimationComponent
+from web.api.pets.gpp_helpers import _invalidate_stats_cache
 
 logger = logging.getLogger(__name__)
 
@@ -432,6 +435,13 @@ async def absorb_wins(request: Request):
 
     pet = await user_data_manager.get_pet_data_async(user_id)
 
+    # ── GPP: emit event + animation (Observer pattern + Component pattern) ─────────
+    queue = EventQueue()
+    queue.push("absorb_wins", {"user_id": user_id, "wins_absorbed": available_wins, "xp_gained": xp_gain, "leveled_up": actually_leveled_up})
+    await queue.flush()
+
+    animation = AnimationComponent.for_ui_update("absorb_wins", 500, {"xp_gained": xp_gain, "wins": available_wins})
+
     return JSONResponse(content={
         "xp_gained":     xp_gain,
         "wins_absorbed": available_wins,
@@ -441,6 +451,7 @@ async def absorb_wins(request: Request):
         "nation_id":     nation_id,
         "pet":           pet,
         "message":       f"Absorbed {available_wins:,} war win{'s' if available_wins != 1 else ''} for {xp_gain:,} XP!",
+        "animation": animation
     })
 
 
@@ -535,12 +546,20 @@ async def absorb_kills(request: Request):
 
     pet = await user_data_manager.get_pet_data_async(user_id)
 
+    # ── GPP: emit event + animation (Observer pattern + Component pattern) ─────────
+    queue = EventQueue()
+    queue.push("absorb_kills", {"user_id": user_id, "kills_absorbed": available, "xp_gained": total_xp, "leveled_up": actually_leveled_up})
+    await queue.flush()
+
+    animation = AnimationComponent.for_ui_update("absorb_kills", 500, {"xp_gained": total_xp, "kills": available})
+
     return JSONResponse(content={
         "xp_gained":      total_xp,
         "xp_breakdown":   xp_breakdown,
         "kills_absorbed": available,
         "leveled_up":     actually_leveled_up,
         "level_data":     level_data,
+        "animation": animation,
         "locked":         True,
         "nation_id":      nation_id,
         "pet":            pet,

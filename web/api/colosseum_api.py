@@ -24,6 +24,9 @@ from fastapi.responses import JSONResponse
 
 from Systems.Functions.db_paths import COLOSSEUM_DB_STR
 from Systems.Functions.user_data_manager import user_data_manager
+from Systems.Pets.Logic.event_bus import EventQueue
+from Systems.Pets.Logic.pet_components import AnimationComponent
+from web.api.pets.gpp_helpers import _invalidate_stats_cache
 
 logger = logging.getLogger("colosseum_api")
 router = APIRouter()
@@ -131,7 +134,10 @@ async def _upsert_member(user_id: str, data: Dict[str, Any]) -> None:
 async def _get_all_members() -> List[Dict[str, Any]]:
     async with aiosqlite.connect(COLOSSEUM_DB_STR) as db:
         db.row_factory = aiosqlite.Row
-        async with db.execute("SELECT * FROM members ORDER BY wins DESC, rounds DESC") as cur:
+        # Only return members who are currently active (joined_at > 0)
+        async with db.execute(
+            "SELECT * FROM members WHERE joined_at > 0 ORDER BY wins DESC, rounds DESC"
+        ) as cur:
             rows = await cur.fetchall()
             return [dict(r) for r in rows]
 
@@ -583,13 +589,23 @@ async def _battle_member_vs_npc(
     new_losses  = member["losses"] + (0 if a_won else 1)
     new_rounds  = member["rounds"] + 1
 
-    # Award a random key on win (NPC battle)
+    # Award keys based on win milestones: every 2 wins = Key1, every 5 wins = Key2, every 10 wins = Key3
     existing_keys    = json.loads(member.get("pending_keys",    "[]") or "[]")
     existing_potions = json.loads(member.get("pending_potions", "[]") or "[]")
     awarded_key = ""
     if a_won:
-        awarded_key = _pick_random_key()
-        existing_keys.append(awarded_key)
+        awarded_keys = []
+        # Check milestone rewards (cumulative on milestone wins)
+        if new_wins % 10 == 0:  # Every 10 wins: Key1 + Key2 + Key3
+            awarded_keys = ["Key1", "Key2", "Key3"]
+        elif new_wins % 5 == 0:  # Every 5 wins (not divisible by 10): Key1 + Key2
+            awarded_keys = ["Key1", "Key2"]
+        elif new_wins % 2 == 0:  # Every 2 wins (not divisible by 5): Key1
+            awarded_keys = ["Key1"]
+        
+        for key in awarded_keys:
+            existing_keys.append(key)
+        awarded_key = ", ".join(awarded_keys) if awarded_keys else ""
 
     await _upsert_member(member["user_id"], {
         "user_id":          member["user_id"],
@@ -660,38 +676,7 @@ async def _battle_two_members(
     xp_a  = result["xp_a"]
     xp_b  = result["xp_b"]
 
-    # PvP rewards: winner gets 2 potions + 1 key; loser gets 1 potion
-    keys_a    = json.loads(member_a.get("pending_keys",    "[]") or "[]")
-    keys_b    = json.loads(member_b.get("pending_keys",    "[]") or "[]")
-    potions_a = json.loads(member_a.get("pending_potions", "[]") or "[]")
-    potions_b = json.loads(member_b.get("pending_potions", "[]") or "[]")
-
-    if a_won:
-        # A wins: 2 potions + 1 key
-        winner_key = _pick_random_key()
-        keys_a.append(winner_key)
-        for _ in range(2):
-            p = _pick_random_potion()
-            if p:
-                potions_a.append(p.get("name") or p.get("emoji_file", "basic_potion"))
-        # B loses: 1 potion
-        p = _pick_random_potion()
-        if p:
-            potions_b.append(p.get("name") or p.get("emoji_file", "basic_potion"))
-    else:
-        # B wins: 2 potions + 1 key
-        winner_key = _pick_random_key()
-        keys_b.append(winner_key)
-        for _ in range(2):
-            p = _pick_random_potion()
-            if p:
-                potions_b.append(p.get("name") or p.get("emoji_file", "basic_potion"))
-        # A loses: 1 potion
-        p = _pick_random_potion()
-        if p:
-            potions_a.append(p.get("name") or p.get("emoji_file", "basic_potion"))
-
-    # Compute new totals for both members
+    # Compute new totals for both members FIRST (before awarding keys)
     new_wins_a   = member_a["wins"]   + (1 if a_won else 0)
     new_losses_a = member_a["losses"] + (0 if a_won else 1)
     new_rounds_a = member_a["rounds"] + 1
@@ -701,6 +686,60 @@ async def _battle_two_members(
     new_losses_b = member_b["losses"] + (1 if a_won else 0)
     new_rounds_b = member_b["rounds"] + 1
     new_xp_b     = member_b["pending_xp"] + xp_b
+
+    # PvP rewards: winner gets 2 potions + milestone keys; loser gets 1 potion
+    keys_a    = json.loads(member_a.get("pending_keys",    "[]") or "[]")
+    keys_b    = json.loads(member_b.get("pending_keys",    "[]") or "[]")
+    potions_a = json.loads(member_a.get("pending_potions", "[]") or "[]")
+    potions_b = json.loads(member_b.get("pending_potions", "[]") or "[]")
+
+    winner_key = ""
+    if a_won:
+        # A wins: 2 potions + milestone keys
+        awarded_keys = []
+        # Check milestone rewards (cumulative on milestone wins)
+        if new_wins_a % 10 == 0:  # Every 10 wins: Key1 + Key2 + Key3
+            awarded_keys = ["Key1", "Key2", "Key3"]
+        elif new_wins_a % 5 == 0:  # Every 5 wins (not divisible by 10): Key1 + Key2
+            awarded_keys = ["Key1", "Key2"]
+        elif new_wins_a % 2 == 0:  # Every 2 wins (not divisible by 5): Key1
+            awarded_keys = ["Key1"]
+        
+        for key in awarded_keys:
+            keys_a.append(key)
+        winner_key = ", ".join(awarded_keys) if awarded_keys else ""
+        
+        for _ in range(2):
+            p = _pick_random_potion()
+            if p:
+                potions_a.append(p.get("name") or p.get("emoji_file", "basic_potion"))
+        # B loses: 1 potion
+        p = _pick_random_potion()
+        if p:
+            potions_b.append(p.get("name") or p.get("emoji_file", "basic_potion"))
+    else:
+        # B wins: 2 potions + milestone keys
+        awarded_keys = []
+        # Check milestone rewards (cumulative on milestone wins)
+        if new_wins_b % 10 == 0:  # Every 10 wins: Key1 + Key2 + Key3
+            awarded_keys = ["Key1", "Key2", "Key3"]
+        elif new_wins_b % 5 == 0:  # Every 5 wins (not divisible by 10): Key1 + Key2
+            awarded_keys = ["Key1", "Key2"]
+        elif new_wins_b % 2 == 0:  # Every 2 wins (not divisible by 5): Key1
+            awarded_keys = ["Key1"]
+        
+        for key in awarded_keys:
+            keys_b.append(key)
+        winner_key = ", ".join(awarded_keys) if awarded_keys else ""
+        
+        for _ in range(2):
+            p = _pick_random_potion()
+            if p:
+                potions_b.append(p.get("name") or p.get("emoji_file", "basic_potion"))
+        # A loses: 1 potion
+        p = _pick_random_potion()
+        if p:
+            potions_a.append(p.get("name") or p.get("emoji_file", "basic_potion"))
 
     # Update member A
     await _upsert_member(member_a["user_id"], {
@@ -774,7 +813,11 @@ async def colosseum_join(request: Request) -> JSONResponse:
     from Systems.Functions.discord_utils import get_discord_avatar_url
     avatar_url = get_discord_avatar_url(user_id, user.get("avatar") or "", size=64)
 
-    await _upsert_member(user_id, {
+    # Check if user has existing colosseum stats (rejoining)
+    existing_member = await _get_member(user_id)
+    
+    # Preserve all-time stats if rejoining, otherwise start fresh
+    member_data = {
         "user_id":          user_id,
         "username":         user.get("username", "Unknown"),
         "pet_name":         pet.get("name", "Unknown"),
@@ -785,15 +828,34 @@ async def colosseum_join(request: Request) -> JSONResponse:
         "pet_level":        int(pet.get("level", 1)),
         "joined_at":        time.time(),
         "avatar":           avatar_url,
-    })
+    }
+    
+    # If rejoining, preserve wins/losses/rounds from previous sessions
+    if existing_member:
+        member_data["wins"]   = existing_member.get("wins", 0)
+        member_data["losses"] = existing_member.get("losses", 0)
+        member_data["rounds"] = existing_member.get("rounds", 0)
+        # Note: pending rewards are intentionally NOT preserved (they were lost on leave)
+    
+    await _upsert_member(user_id, member_data)
+
+    # ── GPP: emit event + animation (Observer pattern + Component pattern) ─────────
+    queue = EventQueue()
+    queue.push("colosseum_join", {"user_id": user_id, "pet_name": pet.get("name", "Unknown")})
+    await queue.flush()
+
+    animation = AnimationComponent.for_ui_update("colosseum_join", 400)
 
     logger.info("[Colosseum] %s joined", user_id)
-    return JSONResponse({"success": True, "message": "You have entered the Colosseum!"})
+    return JSONResponse({"success": True, "message": "You have entered the Colosseum!", "animation": animation})
 
 
 @router.post("/colosseum/leave")
 async def colosseum_leave(request: Request) -> JSONResponse:
-    """Leave the Colosseum."""
+    """
+    Leave the Colosseum. Pending rewards are forfeited, but all-time stats
+    (wins/losses/rounds) are preserved in the DB for when the user rejoins.
+    """
     user = request.session.get("discord_user")
     if not user:
         raise HTTPException(status_code=401, detail="Not logged in")
@@ -801,11 +863,27 @@ async def colosseum_leave(request: Request) -> JSONResponse:
     user_id = str(user["id"])
     await _ensure_db()
 
-    async with aiosqlite.connect(COLOSSEUM_DB_STR) as db:
-        await db.execute("DELETE FROM members WHERE user_id=?", (user_id,))
-        await db.commit()
+    # Instead of deleting, we mark as inactive by clearing pending rewards
+    # and setting last_battle to 0 (so they won't be matched in battles)
+    member = await _get_member(user_id)
+    if member:
+        await _upsert_member(user_id, {
+            "user_id":          user_id,
+            "pending_xp":       0,
+            "pending_keys":     "[]",
+            "pending_potions":  "[]",
+            "last_battle":      0,  # Mark as inactive
+            "joined_at":        0,  # Mark as not currently joined
+        })
 
-    return JSONResponse({"success": True, "message": "You have left the Colosseum."})
+    # ── GPP: emit event + animation (Observer pattern + Component pattern) ─────────
+    queue = EventQueue()
+    queue.push("colosseum_leave", {"user_id": user_id})
+    await queue.flush()
+
+    animation = AnimationComponent.for_ui_update("colosseum_leave", 300)
+
+    return JSONResponse({"success": True, "message": "You have left the Colosseum.", "animation": animation})
 
 
 @router.get("/colosseum/state")
@@ -943,9 +1021,17 @@ async def colosseum_claim(request: Request) -> JSONResponse:
     if potions_claimed:
         msg_parts.append(", ".join(potions_claimed))
 
+    # ── GPP: emit event + animation (Observer pattern + Component pattern) ─────────
+    queue = EventQueue()
+    queue.push("colosseum_claim", {"user_id": user_id, "xp_claimed": pending_xp, "keys_claimed": len(keys_claimed), "potions_claimed": len(potions_claimed)})
+    await queue.flush()
+
+    animation = AnimationComponent.for_loot({"xp": pending_xp, "keys": keys_claimed, "potions": potions_claimed}, 600)
+
     return JSONResponse({
         "success":         True,
         "message":         "Rewards claimed: " + " | ".join(msg_parts) if msg_parts else "Claimed!",
+        "animation": animation,
         "xp_claimed":      pending_xp,
         "keys_claimed":    keys_claimed,
         "potions_claimed": potions_claimed,
@@ -989,7 +1075,14 @@ async def colosseum_sync_pet(request: Request) -> JSONResponse:
     # Also sync colosseum totals → pets DB
     await _sync_colosseum_stats_to_pet(user_id, member)
 
-    return JSONResponse({"success": True})
+    # ── GPP: emit event + animation (Observer pattern + Component pattern) ─────────
+    queue = EventQueue()
+    queue.push("colosseum_sync_pet", {"user_id": user_id})
+    await queue.flush()
+
+    animation = AnimationComponent.for_ui_update("stats_synced", 300)
+
+    return JSONResponse({"success": True, "animation": animation})
 
 
 @router.post("/colosseum/sync_stats")
@@ -1014,13 +1107,22 @@ async def colosseum_sync_stats(request: Request) -> JSONResponse:
         return JSONResponse({"success": False, "message": "Not in Colosseum"})
 
     await _sync_colosseum_stats_to_pet(user_id, member)
+
+    # ── GPP: emit event + animation (Observer pattern + Component pattern) ─────────
+    queue = EventQueue()
+    queue.push("colosseum_sync_stats", {"user_id": user_id})
+    await queue.flush()
+
+    animation = AnimationComponent.for_ui_update("stats_synced", 300)
+
     return JSONResponse({
         "success": True,
         "synced": {
             "wins":    member.get("wins",   0),
             "losses":  member.get("losses", 0),
             "rounds":  member.get("rounds", 0),
-        }
+        },
+        "animation": animation
     })
 
 

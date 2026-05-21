@@ -2151,23 +2151,18 @@
     text-overflow: ellipsis;
 }
 
-/* Equipment glow effects (matching MyPet) */
+/* Equipment glow effects (matching MyPet - static, no animation) */
 .pc-equip-filled {
-    border-color: rgba(255,215,0,0.6);
-    box-shadow: 0 0 5px rgba(255,215,0,0.3);
+    border-color: rgba(255,215,0,0.35) !important;
+    box-shadow: 0 0 5px rgba(255,215,0,0.2), inset 0 0 3px rgba(255,215,0,0.06);
 }
 .pc-equip-filled.pc-equip-pair {
-    border-color: rgba(87,217,163,0.8);
-    box-shadow: 0 0 8px rgba(87,217,163,0.4);
+    border-color: rgba(255,215,0,0.75) !important;
+    box-shadow: 0 0 10px rgba(255,215,0,0.55), inset 0 0 5px rgba(255,215,0,0.15) !important;
 }
 .pc-equip-filled.pc-equip-fullset {
-    border-color: rgba(245,158,11,0.9);
-    box-shadow: 0 0 12px rgba(245,158,11,0.5);
-    animation: pcEquipFullsetGlow 2s ease-in-out infinite alternate;
-}
-@keyframes pcEquipFullsetGlow {
-    from { box-shadow: 0 0 12px rgba(245,158,11,0.5); }
-    to   { box-shadow: 0 0 20px rgba(245,158,11,0.8), 0 0 30px rgba(245,158,11,0.3); }
+    border-color: var(--gold-primary) !important;
+    box-shadow: 0 0 16px var(--gold-primary), 0 0 32px rgba(255,215,0,0.5), inset 0 0 6px rgba(255,215,0,0.2) !important;
 }
 
 /* Mini stat cards (matching MyPet) */
@@ -2950,23 +2945,18 @@
     text-overflow: ellipsis;
 }
 
-/* Equipment glow effects (matching MyPet) */
+/* Equipment glow effects (matching MyPet - static, no animation) */
 .pc-equip-filled {
-    border-color: rgba(255,215,0,0.6);
-    box-shadow: 0 0 5px rgba(255,215,0,0.3);
+    border-color: rgba(255,215,0,0.35) !important;
+    box-shadow: 0 0 5px rgba(255,215,0,0.2), inset 0 0 3px rgba(255,215,0,0.06);
 }
 .pc-equip-filled.pc-equip-pair {
-    border-color: rgba(87,217,163,0.8);
-    box-shadow: 0 0 8px rgba(87,217,163,0.4);
+    border-color: rgba(255,215,0,0.75) !important;
+    box-shadow: 0 0 10px rgba(255,215,0,0.55), inset 0 0 5px rgba(255,215,0,0.15) !important;
 }
 .pc-equip-filled.pc-equip-fullset {
-    border-color: rgba(245,158,11,0.9);
-    box-shadow: 0 0 12px rgba(245,158,11,0.5);
-    animation: pcEquipFullsetGlow 2s ease-in-out infinite alternate;
-}
-@keyframes pcEquipFullsetGlow {
-    from { box-shadow: 0 0 12px rgba(245,158,11,0.5); }
-    to   { box-shadow: 0 0 20px rgba(245,158,11,0.8), 0 0 30px rgba(245,158,11,0.3); }
+    border-color: var(--gold-primary) !important;
+    box-shadow: 0 0 16px var(--gold-primary), 0 0 32px rgba(255,215,0,0.5), inset 0 0 6px rgba(255,215,0,0.2) !important;
 }
 
 /* Mini stat cards (matching MyPet) */
@@ -3707,4 +3697,17 @@ select[id*="pc-"] *, select[class*="pc-"] * {
 
 select[id*="pc-"] optgroup, select[class*="pc-"] optgroup {
     color: var(--gold-secondary) !important;
+}
+
+/* ── Multiplier row cards — fixed size, no flex-grow, vertically centered ── */
+.pc-multi-row .pc-mini-stat-card {
+    flex: 0 0 auto !important;
+    min-width: 0 !important;
+    width: 46px !important;
+    padding: 3px 4px !important;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1px;
 }

@@ -14,6 +14,9 @@ from fastapi.responses import JSONResponse
 
 from Systems.Functions.tasks_db import tasks_db
 from Systems.Functions.user_data_manager import user_data_manager
+from Systems.Pets.Logic.event_bus import EventQueue
+from Systems.Pets.Logic.pet_components import AnimationComponent
+from web.api.pets.gpp_helpers import _invalidate_stats_cache
 
 logger = logging.getLogger("tasks_api")
 router = APIRouter()
@@ -179,10 +182,18 @@ async def ensure_all_tasks(request: Request):
     
     try:
         pet_owners = await ensure_all_pet_owners_have_tasks()
+        # ── GPP: emit event + animation (Observer pattern + Component pattern) ─────────
+        queue = EventQueue()
+        queue.push("tasks_ensure_all", {"pet_owners_count": len(pet_owners)})
+        await queue.flush()
+
+        animation = AnimationComponent.for_ui_update("tasks_ensured", 400)
+
         return JSONResponse({
-            "success": True, 
+            "success": True,
             "pet_owners": pet_owners,
-            "message": f"Ensured tasks for {len(pet_owners)} pet owners"
+            "message": f"Ensured tasks for {len(pet_owners)} pet owners",
+            "animation": animation
         })
     except Exception as e:
         logger.error(f"ensure_all_tasks error: {e}", exc_info=True)
@@ -215,7 +226,15 @@ async def dismiss_task(request: Request, data: Dict[str, Any] = Body(...)):
                 s["seconds_remaining"] = max(0, int(s["cooldown_until"] - now))
             else:
                 s["seconds_remaining"] = 0
-        return JSONResponse({"success": True, "slots": slots})
+
+        # ── GPP: emit event + animation (Observer pattern + Component pattern) ─────────
+        queue = EventQueue()
+        queue.push("tasks_dismiss", {"user_id": user_id, "slot": slot})
+        await queue.flush()
+
+        animation = AnimationComponent.for_ui_update("task_dismissed", 300)
+
+        return JSONResponse({"success": True, "slots": slots, "animation": animation})
     except Exception as e:
         logger.error(f"dismiss_task error: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to dismiss task.")
@@ -252,7 +271,15 @@ async def set_dm_prefs(request: Request, data: Dict[str, Any] = Body(...)):
     dm_enabled = bool(data.get("dm_enabled", False))
     dm_mode = str(data.get("dm_mode", "all"))
     await tasks_db.set_dm_prefs(user_id, dm_enabled, dm_mode)
-    return JSONResponse({"success": True, "dm_enabled": dm_enabled, "dm_mode": dm_mode})
+
+    # ── GPP: emit event + animation (Observer pattern + Component pattern) ─────────
+    queue = EventQueue()
+    queue.push("tasks_dm_prefs", {"user_id": user_id, "dm_enabled": dm_enabled, "dm_mode": dm_mode})
+    await queue.flush()
+
+    animation = AnimationComponent.for_ui_update("dm_prefs_updated", 300)
+
+    return JSONResponse({"success": True, "dm_enabled": dm_enabled, "dm_mode": dm_mode, "animation": animation})
 
 
 # ── Internal progress hook (called by pets_api after each action) ─────────────
@@ -342,12 +369,20 @@ async def claim_task(request: Request, data: Dict[str, Any] = Body(...)):
             else:
                 s["seconds_remaining"] = 0
 
+        # ── GPP: emit event + animation (Observer pattern + Component pattern) ─────────
+        queue = EventQueue()
+        queue.push("tasks_claim", {"user_id": user_id, "slot": slot, "reward": reward})
+        await queue.flush()
+
+        animation = AnimationComponent.for_loot({"reward": reward}, 500)
+
         return JSONResponse({
             "success": True,
             "reward": reward,
             "reward_msg": reward_msg,
             "goal_ready_to_claim": goal_just_completed,
             "slots": slots,
+            "animation": animation
         })
     except Exception as e:
         logger.error(f"claim_task error for {user_id} slot {slot}: {e}", exc_info=True)
@@ -382,11 +417,19 @@ async def claim_daily_goal(request: Request):
             else:
                 s["seconds_remaining"] = 0
 
+        # ── GPP: emit event + animation (Observer pattern + Component pattern) ─────────
+        queue = EventQueue()
+        queue.push("tasks_claim_goal", {"user_id": user_id, "reward": reward})
+        await queue.flush()
+
+        animation = AnimationComponent.for_loot({"reward": reward}, 600)
+
         return JSONResponse({
             "success": True,
             "reward": reward,
             "reward_msg": reward_msg,
             "slots": slots,
+            "animation": animation
         })
     except Exception as e:
         logger.error(f"claim_daily_goal error for {user_id}: {e}", exc_info=True)

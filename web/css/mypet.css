@@ -122,18 +122,17 @@
     justify-content: center;
     transition: border-color 0.2s, box-shadow 0.2s;
     position: relative;
+    margin-bottom: 0;
 }
 .mp-equip-slot:hover { border-color: var(--gold-primary); box-shadow: 0 0 8px var(--gold-glow); }
 .mp-equip-slot img { width: 38px; height: 38px; object-fit: contain; }
 .mp-equip-slot.empty img { opacity: 0.25; }
-.mp-equip-slot .mp-slot-label {
-    position: absolute;
-    bottom: -15px;
-    left: 50%;
-    transform: translateX(-50%);
-    font-size: 0.5rem;
-    color: var(--text-secondary);
-    white-space: nowrap;
+/* Labels removed — tooltips carry the name info now */
+
+/* Ring sub-slots row */
+.mp-equip-row2 {
+    margin-top: 2px;
+    padding-bottom: 4px;
 }
 
 /* Section headers inside the right panel */
@@ -346,6 +345,19 @@
     min-width: 58px;
     flex: 1;
 }
+
+/* Multiplier row cards — fixed size, no flex-grow, vertically centered */
+.mp-multi-row .mp-mini-stat-card {
+    flex: 0 0 auto;
+    min-width: 0;
+    width: 46px;
+    padding: 3px 4px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1px;
+}
 .mp-mini-label {
     font-size: 0.62rem;
     color: var(--gold-secondary);
@@ -409,40 +421,45 @@
 }
 
 /* ── Filled equipment slot glow ───────────────────────────────────────────── */
+
+/* Base: any filled slot — dim gold glow */
 .mp-equip-filled {
-    border-color: rgba(255,215,0,0.35) !important;
-    box-shadow: 0 0 4px rgba(255,215,0,0.18), inset 0 0 3px rgba(255,215,0,0.06);
-    animation: equipGlow 5s ease-in-out infinite alternate;
-}
-@keyframes equipGlow {
-    from { box-shadow: 0 0 3px rgba(255,215,0,0.15); }
-    to   { box-shadow: 0 0 8px rgba(255,215,0,0.35), 0 0 12px rgba(255,215,0,0.12); }
+    border-color: rgba(255,215,0,0.25) !important;
+    box-shadow: 0 0 3px rgba(255,215,0,0.12), inset 0 0 2px rgba(255,215,0,0.04);
 }
 
-/* Pair bonus — solid, slightly brighter, no pulse */
+/* Ring sub-slots — same dim base */
+.mp-equip-filled.equip-ring-sub {
+    box-shadow: 0 0 3px rgba(255,215,0,0.12), inset 0 0 2px rgba(255,215,0,0.04);
+}
+
+/* Partial set match (Helmet/Armor/Boots/Shield/Weapon share a set) — brighter gold */
 .mp-equip-filled.equip-pair {
-    border-color: rgba(255,215,0,0.75) !important;
-    box-shadow: 0 0 10px rgba(255,215,0,0.55), inset 0 0 5px rgba(255,215,0,0.15) !important;
-    animation: none !important;
+    border-color: rgba(255,215,0,0.55) !important;
+    box-shadow: 0 0 6px rgba(255,215,0,0.3), inset 0 0 3px rgba(255,215,0,0.08) !important;
 }
 
-/* Full set — bright dancing glow */
-.mp-equip-filled.equip-fullset {
-    border-color: var(--gold-primary) !important;
-    animation: equipFullSet 1.6s ease-in-out infinite !important;
+/* Ring sub-slot matching pair — green glow */
+.mp-equip-filled.equip-ring-sub.equip-pair {
+    border-color: rgba(87,217,163,0.55) !important;
+    box-shadow: 0 0 6px rgba(87,217,163,0.28), inset 0 0 3px rgba(87,217,163,0.08) !important;
 }
-@keyframes equipFullSet {
-    0%   { box-shadow: 0 0 10px var(--gold-glow), 0 0 22px rgba(255,215,0,0.4); transform: scale(1); }
-    25%  { box-shadow: 0 0 18px var(--gold-primary), 0 0 36px rgba(255,215,0,0.6); transform: scale(1.06) rotate(-1deg); }
-    50%  { box-shadow: 0 0 24px var(--gold-primary), 0 0 48px rgba(255,215,0,0.8), 0 0 8px #fff; transform: scale(1.08); }
-    75%  { box-shadow: 0 0 18px var(--gold-primary), 0 0 36px rgba(255,215,0,0.6); transform: scale(1.06) rotate(1deg); }
-    100% { box-shadow: 0 0 10px var(--gold-glow), 0 0 22px rgba(255,215,0,0.4); transform: scale(1); }
+
+/* Full set — strong steady gold glow, no animation */
+.mp-equip-filled.equip-fullset {
+    border-color: rgba(255,215,0,0.85) !important;
+    box-shadow: 0 0 10px rgba(255,215,0,0.45), 0 0 18px rgba(255,215,0,0.2), inset 0 0 4px rgba(255,215,0,0.1) !important;
+}
+
+/* Full set ring sub-slots — same strong glow */
+.mp-equip-filled.equip-ring-sub.equip-fullset {
+    border-color: rgba(255,215,0,0.85) !important;
+    box-shadow: 0 0 10px rgba(255,215,0,0.45), 0 0 18px rgba(255,215,0,0.2), inset 0 0 4px rgba(255,215,0,0.1) !important;
 }
 
 .mp-equip-filled:hover {
     border-color: var(--gold-primary) !important;
     box-shadow: 0 0 16px var(--gold-primary) !important;
-    animation: none !important;
 }
 
 /* ── Item hover card ──────────────────────────────────────────────────────── */
@@ -715,4 +732,357 @@
 .mp-type-chip:hover,
 .mp-elem-chip:hover {
     text-decoration: underline dotted rgba(255,215,0,0.5);
+}
+
+/* ── Image tabs (MyPet emoji tabs) ────────────────────────────────────────── */
+.mp-action-tab-img {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    padding: 6px 10px;
+    min-width: 58px;
+    /* Base button appearance — matches mp-action-tab */
+    background: rgba(0,0,0,0.4);
+    border: 1px solid rgba(255,215,0,0.3);
+    border-radius: 6px;
+    color: var(--text-secondary);
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.mp-action-tab-img:hover {
+    border-color: var(--gold-primary);
+    color: var(--gold-secondary);
+    background: rgba(0,0,0,0.5);
+}
+.mp-action-tab-img.active {
+    background: linear-gradient(135deg, rgba(255,215,0,0.15), rgba(255,215,0,0.05));
+    border-color: var(--gold-primary);
+    color: var(--gold-primary);
+    box-shadow: 0 0 8px var(--gold-glow);
+}
+.mp-tab-icon {
+    width: 26px;
+    height: 26px;
+    object-fit: contain;
+    filter: grayscale(0.4) brightness(0.85);
+    transition: filter 0.2s;
+}
+.mp-action-tab-img:hover .mp-tab-icon,
+.mp-action-tab-img.active .mp-tab-icon {
+    filter: grayscale(0) brightness(1.1) drop-shadow(0 0 4px var(--gold-glow));
+}
+.mp-action-tab-img span {
+    font-size: 0.62rem;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+}
+
+/* ── Stats panel ──────────────────────────────────────────────────────────── */
+.mp-stats-section-head {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.65rem;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--gold-secondary);
+    text-shadow: 0 0 6px var(--gold-glow);
+    margin-bottom: 0.5rem;
+    padding-bottom: 4px;
+    border-bottom: 1px solid rgba(255,215,0,0.15);
+}
+
+.mp-stats-card {
+    background: rgba(0,0,0,0.35);
+    border: 1px solid rgba(255,215,0,0.15);
+    border-radius: 8px;
+    padding: 8px 10px;
+    text-align: center;
+    min-width: 72px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+.mp-stats-card:hover {
+    border-color: rgba(255,215,0,0.35);
+    box-shadow: 0 0 8px rgba(255,215,0,0.1);
+}
+.mp-stats-card-icon {
+    width: 28px;
+    height: 28px;
+    object-fit: contain;
+    margin-bottom: 2px;
+    filter: drop-shadow(0 0 4px var(--gold-glow));
+}
+.mp-stats-card-label {
+    font-size: 0.62rem;
+    color: var(--gold-secondary);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+.mp-stats-card-val {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    text-shadow: 0 0 6px rgba(255,215,0,0.3);
+}
+.mp-stats-card-bonus {
+    font-size: 0.6rem;
+    color: var(--text-secondary);
+    margin-top: 1px;
+}
+.mp-stats-card-spec .mp-stats-card-label,
+.mp-stats-card-spec-val {
+    color: var(--gold-primary) !important;
+    text-shadow: 0 0 8px var(--gold-glow);
+}
+.mp-stats-card-spec-badge {
+    font-size: 0.58rem;
+    background: linear-gradient(135deg, var(--gold-primary), var(--gold-secondary));
+    color: #000;
+    font-weight: 700;
+    border-radius: 4px;
+    padding: 1px 5px;
+    margin-top: 2px;
+}
+
+/* ── Inventory panel ──────────────────────────────────────────────────────── */
+.mp-inv-section {
+    margin-bottom: 8px;
+    border: 1px solid rgba(255,215,0,0.1);
+    border-radius: 8px;
+    overflow: hidden;
+}
+.mp-inv-section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    background: rgba(0,0,0,0.4);
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.15s;
+}
+.mp-inv-section-header:hover {
+    background: rgba(255,215,0,0.05);
+}
+.mp-inv-count-badge {
+    font-size: 0.65rem;
+    font-weight: 700;
+    background: rgba(255,215,0,0.15);
+    border: 1px solid rgba(255,215,0,0.3);
+    color: var(--gold-secondary);
+    border-radius: 10px;
+    padding: 1px 8px;
+}
+.mp-inv-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 8px;
+    padding: 8px;
+    background: rgba(0,0,0,0.2);
+}
+.mp-inv-panel-item {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    background: rgba(0,0,0,0.3);
+    border: 1px solid rgba(255,215,0,0.12);
+    border-radius: 8px;
+    padding: 8px;
+    transition: border-color 0.15s, box-shadow 0.15s;
+}
+.mp-inv-panel-item.mp-inv-clickable:hover {
+    border-color: var(--gold-primary);
+    box-shadow: 0 0 10px rgba(255,215,0,0.15);
+    cursor: pointer;
+}
+.mp-inv-panel-img-wrap {
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 4px 0;
+}
+.mp-inv-panel-img {
+    width: 48px;
+    height: 48px;
+    object-fit: contain;
+    filter: drop-shadow(0 1px 4px rgba(0,0,0,0.5));
+}
+.mp-inv-equipped-badge {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    width: 14px;
+    height: 14px;
+    background: var(--gold-primary);
+    color: #000;
+    font-size: 0.55rem;
+    font-weight: 900;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.mp-inv-panel-info {
+    flex: 1;
+    min-width: 0;
+    text-align: center;
+}
+.mp-inv-panel-name {
+    font-size: 0.78rem;
+    font-weight: 700;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.mp-inv-panel-meta {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    margin-top: 2px;
+}
+.mp-inv-rarity-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+.mp-inv-panel-bonuses {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 3px;
+    margin-top: 3px;
+}
+.mp-inv-bonus-chip {
+    font-size: 0.6rem;
+    font-weight: 700;
+    color: #4caf50;
+    background: rgba(76,175,80,0.1);
+    border: 1px solid rgba(76,175,80,0.25);
+    border-radius: 4px;
+    padding: 1px 5px;
+}
+.mp-inv-panel-right {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    padding-top: 4px;
+    border-top: 1px solid rgba(255,215,0,0.1);
+}
+.mp-inv-qty {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    font-family: 'Orbitron', sans-serif;
+}
+.mp-inv-action {
+    font-size: 0.62rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+/* -- GPP Game Loop UI elements ----------------------------------------------- */
+
+/* Floating number pops spawned by NumberPopRenderer */
+.pgp-number-pop {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.9rem;
+    font-weight: 700;
+    pointer-events: none;
+    user-select: none;
+    white-space: nowrap;
+    will-change: transform, opacity;
+}
+
+/* XP label shown next to the bar (optional � rendered by XpBarRenderer) */
+.mp-xp-label {
+    font-size: 0.68rem;
+    color: var(--text-secondary);
+    text-align: right;
+    margin-top: 1px;
+}
+
+/* Battle HP bar targets used by battle_action animations */
+.mp-battle-player-hp,
+.mp-battle-enemy-hp {
+    /* These are positioned by the battle UI; the game loop just needs them to exist */
+    position: relative;
+}
+
+/* Particle canvas � full-screen overlay, pointer-events:none so it never blocks clicks */
+#pgp-canvas {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    pointer-events: none;
+    z-index: 9996;
+}
+
+/* Screen flash overlay */
+#pgp-flash {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 9995;
+    opacity: 0;
+}
+
+/* ── Key badges (Inventory tab + Loot Market) ─────────────────────────────── */
+.mp-inv-keys-bar {
+    background: rgba(0,0,0,0.3);
+    border: 1px solid rgba(255,215,0,0.2);
+    border-radius: 8px;
+    padding: 8px 12px;
+    margin-bottom: 10px;
+}
+.mp-key-badge {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    background: rgba(0,0,0,0.4);
+    border: 1px solid rgba(255,215,0,0.25);
+    border-radius: 8px;
+    padding: 6px 10px;
+    min-width: 58px;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+.mp-key-badge:hover {
+    border-color: var(--gold-primary);
+    box-shadow: 0 0 8px var(--gold-glow);
+}
+.mp-key-badge img {
+    width: 28px;
+    height: 28px;
+    object-fit: contain;
+    filter: drop-shadow(0 0 4px rgba(255,215,0,0.4));
+}
+.mp-key-badge-count {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--gold-primary);
+}
+.mp-key-badge-name {
+    font-size: 0.58rem;
+    color: var(--text-secondary);
+    text-align: center;
+    white-space: nowrap;
+}
+
+/* ── Ability tree inline wrapper ──────────────────────────────────────────── */
+.at-inline-wrap {
+    width: 100%;
 }

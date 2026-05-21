@@ -1,3 +1,14 @@
+/* ── Inline tab panel mode ───────────────────────────────────────────────── */
+/* When rendered inside panel-abilities instead of the modal overlay */
+.at-inline-wrap {
+    background: linear-gradient(135deg, rgba(8,8,8,0.85), rgba(14,14,14,0.85));
+    border-radius: 6px;
+    padding: 12px 14px;
+}
+.at-inline-wrap .at-details-container {
+    max-height: 70vh;
+}
+
 /* ── Abilities Modal — Compact MyPet Theme ─────────────────────────────── */
 
 #ability-tree-overlay {

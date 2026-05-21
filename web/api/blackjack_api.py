@@ -15,25 +15,17 @@ from starlette.requests import Request
 
 from Systems.Functions.user_data_manager import user_data_manager
 from Systems.Pets.Logic.pet_brain import LootCalculator
+from Systems.Pets.Logic.event_bus import EventQueue
+from Systems.Pets.Logic.pet_components import AnimationComponent
+from web.api.pets.gpp_helpers import _invalidate_stats_cache, _compute_total_xp, _get_user_lock
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("blackjack_api")
 router = APIRouter()
 
 # ── Shared table state (room_id → table dict) ─────────────────────────────────
 # Allows multiple players to share the same deck (card counting is possible).
 _shared_tables: Dict[int, Dict] = {}
 _table_lock = asyncio.Lock()
-
-# ── Per-user locks ────────────────────────────────────────────────────────────
-# Prevents race conditions when a player fires multiple requests simultaneously
-# (e.g. double-clicking Hit, or having two tabs open).
-
-_user_locks: Dict[str, asyncio.Lock] = {}
-
-def _get_user_lock(user_id: str) -> asyncio.Lock:
-    if user_id not in _user_locks:
-        _user_locks[user_id] = asyncio.Lock()
-    return _user_locks[user_id]
 
 # ── Deck helpers ──────────────────────────────────────────────────────────────
 
@@ -74,11 +66,6 @@ def _serialize_hand(hand: List[str], hide_hole: bool = False):
         else:
             cards.append({"code": c, "img": _card_img(c), "hidden": False})
     return cards
-
-def _compute_total_xp(pet: dict) -> int:
-    lvl = int(pet.get("level", 1))
-    exp = int(pet.get("experience", 0))
-    return int(LootCalculator.get_total_experience_for_level(lvl)) + exp
 
 # ── Session helpers ───────────────────────────────────────────────────────────
 
@@ -230,7 +217,15 @@ async def _bj_deal_inner(request: Request, user_id: str, bet: int, fun_mode: boo
         "message":     msg,
     }
     _set_bj(request.session, game)
-    return JSONResponse(_game_response(game, hide_hole=(phase == "player")))
+
+    # ── GPP: emit event + animation (Observer pattern + Component pattern) ─────────
+    queue = EventQueue()
+    queue.push("blackjack_deal", {"user_id": user_id, "bet": bet, "fun_mode": fun_mode, "result": result})
+    await queue.flush()
+
+    animation = AnimationComponent.for_ui_update("card_deal", 400)
+
+    return JSONResponse(_game_response(game, hide_hole=(phase == "player")), animation=animation)
 
 
 @router.post("/casino/blackjack/hit")
@@ -270,7 +265,15 @@ async def bj_hit(request: Request):
                     await _finish_dealer(game, request)
 
         _set_bj(request.session, game)
-        return JSONResponse(_game_response(game, hide_hole=(game["phase"] == "player")))
+
+        # ── GPP: emit event + animation (Observer pattern + Component pattern) ─────────
+        queue = EventQueue()
+        queue.push("blackjack_hit", {"user_id": user_id, "active_hand": game.get("active_hand")})
+        await queue.flush()
+
+        animation = AnimationComponent.for_ui_update("card_hit", 300)
+
+        return JSONResponse(_game_response(game, hide_hole=(game["phase"] == "player")), animation=animation)
 
 
 @router.post("/casino/blackjack/stand")
@@ -294,7 +297,15 @@ async def bj_stand(request: Request):
 
         await _finish_dealer(game, request)
         _set_bj(request.session, game)
-        return JSONResponse(_game_response(game, hide_hole=False))
+
+        # ── GPP: emit event + animation (Observer pattern + Component pattern) ─────────
+        queue = EventQueue()
+        queue.push("blackjack_stand", {"user_id": user_id, "active_hand": active})
+        await queue.flush()
+
+        animation = AnimationComponent.for_ui_update("card_stand", 300)
+
+        return JSONResponse(_game_response(game, hide_hole=False), animation=animation)
 
 
 @router.post("/casino/blackjack/double")
@@ -324,7 +335,15 @@ async def bj_double(request: Request):
         game["player_hand"].append(game["deck"].pop())
         await _finish_dealer(game, request)
         _set_bj(request.session, game)
-        return JSONResponse(_game_response(game, hide_hole=False))
+
+        # ── GPP: emit event + animation (Observer pattern + Component pattern) ─────────
+        queue = EventQueue()
+        queue.push("blackjack_double", {"user_id": user_id, "bet": bet * 2})
+        await queue.flush()
+
+        animation = AnimationComponent.for_ui_update("card_double", 400)
+
+        return JSONResponse(_game_response(game, hide_hole=False), animation=animation)
 
 
 @router.post("/casino/blackjack/split")
@@ -359,7 +378,15 @@ async def bj_split(request: Request):
         game["active_hand"] = "main"
 
         _set_bj(request.session, game)
-        return JSONResponse(_game_response(game, hide_hole=True))
+
+        # ── GPP: emit event + animation (Observer pattern + Component pattern) ─────────
+        queue = EventQueue()
+        queue.push("blackjack_split", {"user_id": user_id, "bet": bet})
+        await queue.flush()
+
+        animation = AnimationComponent.for_ui_update("card_split", 400)
+
+        return JSONResponse(_game_response(game, hide_hole=True), animation=animation)
 
 
 @router.post("/casino/blackjack/insurance")
@@ -371,7 +398,15 @@ async def bj_insurance(request: Request):
     game = _get_bj(request.session)
     if not game:
         return JSONResponse({"error": "No active hand"}, status_code=400)
-    return JSONResponse(_game_response(game, hide_hole=(game["phase"] == "player")))
+
+    # ── GPP: emit event + animation (Observer pattern + Component pattern) ─────────
+    queue = EventQueue()
+    queue.push("blackjack_insurance", {"user_id": user_id})
+    await queue.flush()
+
+    animation = AnimationComponent.for_ui_update("insurance_decline", 300)
+
+    return JSONResponse(_game_response(game, hide_hole=(game["phase"] == "player")), animation=animation)
 
 
 @router.get("/casino/blackjack/state")
@@ -519,7 +554,14 @@ async def bj_table_join(request: Request):
             "xp_change": 0,
         }
 
-    return JSONResponse({"ok": True, "room_id": room_id, "deck_remaining": len(table["deck"])})
+    # ── GPP: emit event + animation (Observer pattern + Component pattern) ─────────
+    queue = EventQueue()
+    queue.push("blackjack_table_join", {"user_id": user_id, "room_id": room_id, "bet": bet})
+    await queue.flush()
+
+    animation = AnimationComponent.for_ui_update("table_join", 400)
+
+    return JSONResponse({"ok": True, "room_id": room_id, "deck_remaining": len(table["deck"]), "animation": animation})
 
 
 @router.get("/casino/blackjack/table/state")
@@ -579,4 +621,11 @@ async def bj_table_leave(request: Request):
             if not table["players"]:
                 _shared_tables.pop(room_id, None)
 
-    return JSONResponse({"ok": True})
+    # ── GPP: emit event + animation (Observer pattern + Component pattern) ─────────
+    queue = EventQueue()
+    queue.push("blackjack_table_leave", {"user_id": user_id, "room_id": room_id})
+    await queue.flush()
+
+    animation = AnimationComponent.for_ui_update("table_leave", 400)
+
+    return JSONResponse({"ok": True, "animation": animation})

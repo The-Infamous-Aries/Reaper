@@ -9,6 +9,14 @@ from Systems.Pets.Logic.battle_skills import (
     draw_initial_skill_choices, draw_skill_choices, equip_skill,
     get_skill_state, get_equipped_skills, SKILL_BY_ID, ALL_ELEMENTS
 )
+# ── GPP patterns ──────────────────────────────────────────────────────────────
+from Systems.Pets.Logic.pet_components import (
+    StatsComponent, AnimationComponent, StateComponent,
+    InventoryComponent, CombatComponent,
+)
+from Systems.Pets.Logic.event_bus import event_bus, EventQueue
+from Systems.Pets.Logic.pet_object_pool import stats_cache
+# ─────────────────────────────────────────────────────────────────────────────
 from fastapi.responses import JSONResponse
 import asyncio
 import json
@@ -24,6 +32,10 @@ logger = logging.getLogger(__name__)
 project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 router = APIRouter()
+
+# ── Arena NPC battle skill sessions (server-side state between turns) ─────────
+# Keyed by user_id. Cleared when a new battle starts or the battle ends.
+_arena_battle_sessions: Dict[str, Any] = {}
 
 # ── Cooldown helpers (DB-backed, survives restarts) ───────────────────────────
 _ACTIVITY_COOLDOWN_SECS = 5  # 5 seconds
@@ -46,22 +58,40 @@ def _level_scaled_xp(base_xp: int, pet_level: int) -> int:
 
 
 def _enrich_pet(pet: dict) -> dict:
-    """Add computed_stats, xp_for_next_level, and total_xp to a raw pet dict.
-    Call this on every pet dict before returning it to the frontend so the
-    XP bar and stats always have the data they need."""
+    """
+    Add computed_stats, xp_for_next_level, and total_xp to a raw pet dict.
+    Uses the GPP Object Pool stats cache to avoid redundant StatsCalculator
+    calls within the same request burst.
+    """
     if not pet:
         return pet
-    computed_stats    = StatsCalculator.calculate_pet_stats(pet)
+
+    user_id = str(pet.get("id") or "")
+
+    # Try the short-lived stats cache first (Object Pool pattern)
+    cached = stats_cache.get(user_id) if user_id else None
+    if cached is None:
+        cached = StatsCalculator.calculate_pet_stats(pet)
+        if user_id:
+            stats_cache.put(user_id, cached)
+
     lvl               = int(pet.get("level", 1))
     rem               = int(pet.get("experience", 0))
     xp_for_next_level = LootCalculator.get_next_level_xp(lvl)
     total_xp          = int(LootCalculator.get_total_experience_for_level(lvl)) + rem
     return {
         **pet,
-        "computed_stats":    computed_stats,
+        "computed_stats":    cached,
         "xp_for_next_level": xp_for_next_level,
         "total_xp":          total_xp,
     }
+
+
+def _invalidate_stats_cache(pet: dict) -> None:
+    """Invalidate the stats cache entry for this pet after a mutation."""
+    user_id = str(pet.get("id") or "")
+    if user_id:
+        stats_cache.invalidate(user_id)
 
 
 def _load_json(path: str) -> Any:
@@ -322,16 +352,19 @@ async def adopt_pet(request: Request, adoption_data: Dict[str, Any] = Body(...))
 
             # Re-fetch after potential skill save
             pet_data = await user_data_manager.get_pet_data_async(str(user_id))
-            
-            # Automatically generate tasks for the new pet owner
-            try:
-                from web.api.tasks_api import tasks_db
-                await tasks_db.get_slots(str(user_id))  # This will create tasks if they don't exist
-                logger.info(f"Tasks generated for new pet owner {user_id}")
-            except Exception as e:
-                logger.error(f"Error generating tasks for new pet owner {user_id}: {e}")
-            
-            return JSONResponse(content={"success": True, "pet": pet_data})
+
+            # ── GPP: emit adoption event (Observer pattern) ───────────────────
+            queue = EventQueue()
+            queue.push("pet_adopted", {"user_id": str(user_id), "pet_name": pet_data.get("name") if pet_data else ""})
+            await queue.flush()
+            # Invalidate any stale cache entry for this new pet
+            if pet_data:
+                _invalidate_stats_cache(pet_data)
+
+            # ── GPP: build animation metadata (Component pattern) ─────────────
+            animation = AnimationComponent.for_level_up(0, int(pet_data.get("level", 1)), {})
+
+            return JSONResponse(content={"success": True, "pet": pet_data, "animation": animation})
         else:
             logger.error(f"Pet adoption failed: {result.get('message', 'Unknown error')}")
             raise HTTPException(status_code=400, detail=result.get("message", "Adoption failed"))
@@ -377,20 +410,21 @@ async def rename_pet(request: Request, data: Dict[str, Any] = Body(...)):
 
         await user_data_manager.save_pet_data(str(user_id), user.get("username", "Unknown"), pet)
         logger.info(f"Pet renamed for user {user_id}: {new_name}")
+        _invalidate_stats_cache(pet)
 
-        # Task tracking — record once per renamed action so all three can satisfy tasks
-        try:
-            from web.api.tasks_api import record_action as _task_record
-            if actions:
-                for key in ("Attack", "Defense", "Charge"):
-                    if (actions.get(key) or "").strip():
-                        await _task_record(str(user_id), "rename", meta={"battle_action": key})
-            else:
-                await _task_record(str(user_id), "rename", meta=None)
-        except Exception:
-            pass
+        # ── GPP: emit rename event (Observer pattern handles task tracking) ───
+        queue = EventQueue()
+        queue.push("pet_renamed", {
+            "user_id": str(user_id),
+            "new_name": new_name,
+            "actions": actions,
+        })
+        await queue.flush()
 
-        return JSONResponse(content={"success": True, "name": new_name})
+        # ── GPP: build animation metadata (Component pattern) ─────────────
+        animation = AnimationComponent.for_ui_update("flash", 400)
+
+        return JSONResponse(content={"success": True, "name": new_name, "animation": animation})
 
     except HTTPException:
         raise
@@ -413,12 +447,24 @@ async def kill_pet(request: Request):
         if not pet:
             raise HTTPException(status_code=404, detail="No pet found")
 
+        # ── GPP: invalidate stats cache before deletion ───────────────────────
+        _invalidate_stats_cache(pet)
+
         success = await user_data_manager.delete_pet_data(str(user_id))
         if not success:
             raise HTTPException(status_code=500, detail="Failed to delete pet")
 
         logger.info(f"Pet killed for user {user_id}")
-        return JSONResponse(content={"success": True})
+
+        # ── GPP: emit pet_released event (Observer pattern) ───────────────────
+        queue = EventQueue()
+        queue.push("pet_released", {"user_id": str(user_id), "pet_name": pet.get("name")})
+        await queue.flush()
+
+        # ── GPP: build animation metadata (Component pattern) ─────────────
+        animation = AnimationComponent.for_ui_update("fade_out", 600)
+
+        return JSONResponse(content={"success": True, "animation": animation})
 
     except HTTPException:
         raise
@@ -494,11 +540,17 @@ async def train_pet(request: Request, data: Dict[str, Any] = Body(...)):
         await user_data_manager.save_pet_data(user_id, pet.get("name", "Pet"), pet)
         await _aset_cooldown("train", user_id)
 
-        try:
-            from web.api.tasks_api import record_action as _task_record
-            await _task_record(user_id, "train")
-        except Exception:
-            pass
+        # ── GPP: emit event via EventBus (Observer pattern) ───────────────────
+        queue = EventQueue()
+        queue.push("pet_trained", {"user_id": user_id, "stat": stat, "delta": change_amount if success else -actual_loss})
+        await queue.flush()
+
+        # ── GPP: invalidate stats cache (Object Pool pattern) ─────────────────
+        _invalidate_stats_cache(pet)
+
+        # ── GPP: build animation metadata (Component pattern) ─────────────────
+        delta = change_amount if success else -actual_loss
+        animation = AnimationComponent.for_train(stat, success, delta)
 
         result = {
             "success": success,
@@ -506,6 +558,7 @@ async def train_pet(request: Request, data: Dict[str, Any] = Body(...)):
             "stat": stat,
             "change": change_amount if success else -actual_loss,
             "new_value": int(pet.get(stat, 0)),
+            "animation": animation,
         }
         result["pet"] = _enrich_pet(await user_data_manager.get_pet_data_async(user_id))
         return JSONResponse(content=result)
@@ -575,12 +628,14 @@ async def run_mission(request: Request, data: Dict[str, Any] = Body(...)):
                 level_up = lvl_data
                 outcome_lines.append(f"🎉 Level Up! Now level {lvl_data['new_level']}!")
 
-            result = {"success": True, "outcome": "\n".join(outcome_lines), "xp": xp, "level_up": level_up}
-            try:
-                from web.api.tasks_api import record_action as _task_record
-                await _task_record(user_id, "mission")
-            except Exception:
-                pass
+            # ── GPP: emit event + animation ───────────────────────────────────
+            queue = EventQueue()
+            queue.push("mission_completed", {"user_id": user_id, "difficulty": difficulty, "xp": xp})
+            await queue.flush()
+            _invalidate_stats_cache(pet)
+            animation = AnimationComponent.for_mission(True, xp, difficulty)
+
+            result = {"success": True, "outcome": "\n".join(outcome_lines), "xp": xp, "level_up": level_up, "animation": animation}
         else:
             outcome_lines.append("❌ Mission failed.")
             level_down = None
@@ -590,7 +645,12 @@ async def run_mission(request: Request, data: Dict[str, Any] = Body(...)):
                 if res and res.get("new_level", 0) < res.get("old_level", 0):
                     level_down = res
                     outcome_lines.append(f"📉 Level Down! Now level {res['new_level']}.")
-            result = {"success": False, "outcome": "\n".join(outcome_lines), "xp": -gamble_xp, "level_up": None, "level_down": level_down}
+
+            # ── GPP: emit event + animation ───────────────────────────────────
+            _invalidate_stats_cache(pet)
+            animation = AnimationComponent.for_mission(False, -gamble_xp, difficulty)
+
+            result = {"success": False, "outcome": "\n".join(outcome_lines), "xp": -gamble_xp, "level_up": None, "level_down": level_down, "animation": animation}
 
         result["pet"] = _enrich_pet(await user_data_manager.get_pet_data_async(user_id))
         return JSONResponse(content=result)
@@ -664,18 +724,25 @@ async def play_pet(request: Request, data: Dict[str, Any] = Body(...)):
             level_up = lvl_data
             outcome_lines.append(f"🎉 Level Up! Now level {lvl_data['new_level']}!")
 
+        # ── GPP: emit event + animation ───────────────────────────────────────
+        queue = EventQueue()
+        queue.push("play_completed", {"user_id": user_id, "location": location, "xp": xp})
+        await queue.flush()
+        _invalidate_stats_cache(pet)
+        animation = AnimationComponent.for_play(
+            location, xp,
+            (pet.get("element") or "basic").lower(),
+            (pet.get("element2") or None),
+        )
+
         result = {
             "success": True,
             "outcome": "\n".join(outcome_lines),
             "xp": xp,
             "level_up": level_up,
+            "animation": animation,
             "pet": _enrich_pet(await user_data_manager.get_pet_data_async(user_id))
         }
-        try:
-            from web.api.tasks_api import record_action as _task_record
-            await _task_record(user_id, "play")
-        except Exception:
-            pass
         return JSONResponse(content=result)
 
     except HTTPException:
@@ -788,7 +855,17 @@ async def quest_start(request: Request, data: Dict[str, Any] = Body(...)):
         _quest_sessions[user_id] = session
         await _aset_cooldown("quest", user_id)
 
+        # ── GPP: invalidate stats cache + emit event ──────────────────────────
+        _invalidate_stats_cache(pet)
+        queue = EventQueue()
+        queue.push("quest_started", {"user_id": user_id, "location": location, "difficulty": difficulty})
+        await queue.flush()
+
         stage = stages[0]
+
+        # ── GPP: build animation metadata (Component pattern) ─────────────
+        animation = AnimationComponent.for_ui_update("quest_start", 600)
+
         return JSONResponse(content={
             "stage_idx":       0,
             "total_stages":    len(stages),
@@ -804,6 +881,7 @@ async def quest_start(request: Request, data: Dict[str, Any] = Body(...)):
                 "species": hostile_pet.get("species", "Creature"),
                 "level":   hostile_pet.get("level", 1),
             },
+            "animation": animation,
         })
 
     except HTTPException:
@@ -980,6 +1058,15 @@ async def quest_choice(request: Request, data: Dict[str, Any] = Body(...)):
                 return await _quest_finish(user_id, session, True)
             next_stage = stages[next_idx]
 
+        # ── GPP: invalidate stats cache + emit event ──────────────────────────
+        _invalidate_stats_cache(pet)
+        queue = EventQueue()
+        queue.push("quest_choice", {"user_id": user_id, "stage": stage_name, "success": success, "xp": xp_gain})
+        await queue.flush()
+
+        # ── GPP: build animation metadata (Component pattern) ─────────────
+        animation = AnimationComponent.for_ui_update("choice_result", 500, {"success": success})
+
         return JSONResponse(content={
             "stage_idx":       next_idx,
             "total_stages":    len(stages),
@@ -990,6 +1077,7 @@ async def quest_choice(request: Request, data: Dict[str, Any] = Body(...)):
             "xp_so_far":       session["xp"],
             "done":            False,
             "battle_required": False,
+            "animation": animation,
         })
 
     except HTTPException:
@@ -1049,6 +1137,16 @@ async def quest_battle_result(request: Request, data: Dict[str, Any] = Body(...)
                 return await _quest_finish(user_id, session, True)
             next_stage = stages[next_idx]
 
+        # ── GPP: invalidate stats cache + emit event ──────────────────────────
+        pet = session.get("pet", {})
+        _invalidate_stats_cache(pet)
+        queue = EventQueue()
+        queue.push("quest_battle_result", {"user_id": user_id, "won": won, "xp": xp_bonus})
+        await queue.flush()
+
+        # ── GPP: build animation metadata (Component pattern) ─────────────
+        animation = AnimationComponent.for_battle_action("attack", xp_bonus, True, 1.0)
+
         return JSONResponse(content={
             "stage_idx":       next_idx,
             "total_stages":    len(stages),
@@ -1059,6 +1157,7 @@ async def quest_battle_result(request: Request, data: Dict[str, Any] = Body(...)
             "xp_so_far":       session["xp"],
             "done":            False,
             "battle_required": False,
+            "animation": animation,
         })
 
     except HTTPException:
@@ -1087,14 +1186,23 @@ async def quest_abandon(request: Request):
             pet = session.get("pet", {})
             for item in loot:
                 await LootCalculator.add_item_to_inventory(int(user_id), item, pet)
-    return JSONResponse(content={"ok": True})
+
+    # ── GPP: emit quest_abandoned event (Observer pattern) ───────────────────
+    queue = EventQueue()
+    queue.push("quest_abandoned", {"user_id": user_id})
+    await queue.flush()
+
+    # ── GPP: build animation metadata (Component pattern) ─────────────
+    animation = AnimationComponent.for_ui_update("fade_out", 400)
+
+    return JSONResponse(content={"ok": True, "animation": animation})
 
 
 def _generate_quest_loot_web(amount: int, difficulty: str) -> list:
     import random as _random
     from Systems.Pets.Logic.pet_brain import LootCalculator
     loot = []
-    types = ["Material","Gem","Monster","Potion","Hat"]
+    types = ["Material","Gem","Monster","Potion"]
     for _ in range(amount):
         t    = _random.choice(types)
         item = None
@@ -1102,7 +1210,6 @@ def _generate_quest_loot_web(amount: int, difficulty: str) -> list:
         elif t == "Gem":    item = LootCalculator.get_gem_loot_item(difficulty, bypass_chance=True)
         elif t == "Monster":item = LootCalculator.get_monster_loot_item(difficulty, bypass_chance=True)
         elif t == "Potion": item = LootCalculator.get_potion_loot(difficulty, bypass_chance=True)
-        elif t == "Hat":    item = LootCalculator.get_hat_loot_item(difficulty, bypass_chance=True)
         if item:
             found = next((x for x in loot if x["name"] == item["name"] and x["type"] == item["type"]), None)
             if found: found["count"] = found.get("count", 1) + 1
@@ -1132,13 +1239,14 @@ async def _quest_finish(user_id: str, session: dict, success: bool):
         for item in loot:
             await LootCalculator.add_item_to_inventory(int(user_id), item, pet)
 
-    # Task tracking
+    # ── GPP: emit quest event + invalidate cache ──────────────────────────────
+    pet_after = await user_data_manager.get_pet_data_async(user_id)
+    if pet_after:
+        _invalidate_stats_cache(pet_after)
     if success:
-        try:
-            from web.api.tasks_api import record_action as _task_record
-            await _task_record(user_id, "quest")
-        except Exception:
-            pass
+        queue = EventQueue()
+        queue.push("quest_completed", {"user_id": user_id, "xp": xp, "loot_count": len(loot)})
+        await queue.flush()
 
     refreshed  = _enrich_pet(await user_data_manager.get_pet_data_async(user_id))
     loot_names = [f"{i.get('count',1)}x {i['name']}" for i in loot]
@@ -1175,7 +1283,11 @@ async def loot_open(request: Request, data: Dict[str, Any] = Body(...)):
         if chest_type not in ("chest1", "chest2", "chest3", "chest4"):
             raise HTTPException(status_code=400, detail="Invalid chest type")
 
-        if chest_type == "chest4" and selected_type not in ("Material", "Gem", "Monster", "Potion", "Hat"):
+        if chest_type == "chest4" and selected_type not in (
+            "Material", "Gem", "Monster", "Potion",
+            "Ring", "Helmet", "Armor", "Boots", "Shield",
+            "Dagger", "Katana", "Sword", "Axe", "Hammer", "Bow"
+        ):
             raise HTTPException(status_code=400, detail="Chest 4 requires a valid item type selection")
 
         # chest4 can only be opened 1 at a time (costs all 3 key types)
@@ -1197,17 +1309,21 @@ async def loot_open(request: Request, data: Dict[str, Any] = Body(...)):
             if any(first.startswith(p) for p in ("Not enough", "Invalid", "You don't have", "Error:")):
                 raise HTTPException(status_code=400, detail=first)
 
+        # ── GPP: invalidate stats cache + emit event ──────────────────────────
+        pet_after = await user_data_manager.get_pet_data_async(user_id)
+        if pet_after:
+            _invalidate_stats_cache(pet_after)
+        queue = EventQueue()
+        queue.push("chest_opened", {"user_id": user_id, "chest_type": chest_type, "amount": amount, "items": awarded_items})
+        await queue.flush()
+
+        # ── GPP: build loot animation metadata ───────────────────────────────
+        animation = AnimationComponent.for_loot(awarded_items)
+
         # Re-fetch pet to get updated inventory/XP for the response
         refreshed = _enrich_pet(await user_data_manager.get_pet_data_async(user_id))
 
         logger.info(f"Loot opened for user {user_id}: {chest_type} x{amount} -> {[i.get('name') for i in awarded_items]}")
-
-        try:
-            from web.api.tasks_api import record_action as _task_record
-            for _ in range(amount):
-                await _task_record(user_id, "loot")
-        except Exception:
-            pass
 
         return JSONResponse(content={
             "success": True,
@@ -1215,6 +1331,7 @@ async def loot_open(request: Request, data: Dict[str, Any] = Body(...)):
             "amount":  amount,
             "items":   awarded_items,
             "messages": messages,
+            "animation": animation,
             "pet":     refreshed,
         })
 
@@ -1245,7 +1362,11 @@ async def inventory_open_chest(request: Request, data: Dict[str, Any] = Body(...
 
         if chest_type not in ("chest1", "chest2", "chest3", "chest4"):
             raise HTTPException(status_code=400, detail="Invalid chest type")
-        if chest_type == "chest4" and selected_type not in ("Material", "Gem", "Monster", "Potion", "Hat"):
+        if chest_type == "chest4" and selected_type not in (
+            "Material", "Gem", "Monster", "Potion",
+            "Ring", "Helmet", "Armor", "Boots", "Shield",
+            "Dagger", "Katana", "Sword", "Axe", "Hammer", "Bow"
+        ):
             raise HTTPException(status_code=400, detail="Chest 4 requires a valid item type selection")
 
         pet = await user_data_manager.get_pet_data_async(user_id)
@@ -1292,7 +1413,8 @@ async def inventory_open_chest(request: Request, data: Dict[str, Any] = Body(...
                 ["Common", "Uncommon", "Rare", "Epic", "Mythic"], item_type=selected_type
             )
             if sel_item: items_to_add.append(sel_item)
-            bonus = LootCalculator.get_item_by_rarity(["Uncommon", "Rare", "Epic", "Mythic"])
+            # Bonus random item: any rarity Common–Mythic, no Hats
+            bonus = LootCalculator.get_item_by_rarity(["Common", "Uncommon", "Rare", "Epic", "Mythic"])
             if bonus: items_to_add.append(bonus)
 
         awarded_items = []
@@ -1307,12 +1429,22 @@ async def inventory_open_chest(request: Request, data: Dict[str, Any] = Body(...
         refreshed = _enrich_pet(await user_data_manager.get_pet_data_async(user_id))
         logger.info(f"Inventory chest opened for {user_id}: {chest_type} -> {[i.get('name') for i in awarded_items]}")
 
+        # ── GPP: invalidate stats cache + emit event + animation ──────────────
+        pet_after = await user_data_manager.get_pet_data_async(user_id)
+        if pet_after:
+            _invalidate_stats_cache(pet_after)
+        queue = EventQueue()
+        queue.push("chest_opened", {"user_id": user_id, "chest_type": chest_type, "amount": 1, "items": awarded_items})
+        await queue.flush()
+        animation = AnimationComponent.for_loot(awarded_items)
+
         return JSONResponse(content={
-            "success":  True,
-            "chest":    chest_type,
-            "items":    awarded_items,
-            "messages": messages,
-            "pet":      refreshed,
+            "success":   True,
+            "chest":     chest_type,
+            "items":     awarded_items,
+            "messages":  messages,
+            "animation": animation,
+            "pet":       refreshed,
         })
 
     except HTTPException:
@@ -1339,28 +1471,45 @@ async def equip_item(request: Request, data: Dict[str, Any] = Body(...)):
 
         from Systems.Pets.Logic.pet_brain import LootCalculator
 
-        # Route to the correct equip_items parameter based on type
+        # Map item type to the correct equip_items kwarg
+        WEAPON_TYPES = {'Dagger', 'Katana', 'Sword', 'Axe', 'Hammer', 'Bow'}
         type_map = {
+            "Helmet":   dict(helmet_name=item_name),
+            "Armor":    dict(armor_name=item_name),
+            "Boots":    dict(boots_name=item_name),
+            "Ring":     dict(ring_name=item_name),
+            "Shield":   dict(shield_name=item_name),
             "Material": dict(material_names=item_name),
             "Gem":      dict(gem_names=item_name),
             "Monster":  dict(monster_names=item_name),
-            "Hat":      dict(hat_name=item_name),
         }
-        if item_type not in type_map:
+        # Weapon types all route to weapon_name
+        if item_type in WEAPON_TYPES:
+            kwargs = dict(weapon_name=item_name)
+        elif item_type in type_map:
+            kwargs = type_map[item_type]
+        else:
             raise HTTPException(status_code=400, detail=f"Cannot equip item type: {item_type}")
 
         success, msg = await LootCalculator.equip_items(
-            user_id, user.get("username", "Unknown"), **type_map[item_type]
+            user_id, user.get("username", "Unknown"), **kwargs
         )
 
-        refreshed = _enrich_pet(await user_data_manager.get_pet_data_async(user_id))
+        # ── GPP: invalidate stats cache + emit event ──────────────────────────
+        pet_after = await user_data_manager.get_pet_data_async(user_id)
+        if pet_after:
+            _invalidate_stats_cache(pet_after)
         if success:
-            try:
-                from web.api.tasks_api import record_action as _task_record
-                await _task_record(user_id, "equip")
-            except Exception:
-                pass
-        return JSONResponse(content={"success": success, "message": msg, "pet": refreshed})
+            queue = EventQueue()
+            queue.push("item_equipped", {"user_id": user_id, "item_name": item_name, "item_type": item_type})
+            await queue.flush()
+
+        refreshed = _enrich_pet(await user_data_manager.get_pet_data_async(user_id))
+
+        # ── GPP: build animation metadata (Component pattern) ─────────────
+        animation = AnimationComponent.for_ui_update("equip_flash", 500)
+
+        return JSONResponse(content={"success": success, "message": msg, "pet": refreshed, "animation": animation})
 
     except HTTPException:
         raise
@@ -1395,24 +1544,27 @@ async def use_potion(request: Request, data: Dict[str, Any] = Body(...)):
                 success = True
                 messages.append(msg)
             else:
-                # Stop early if we run out or hit an error
                 if not success:
-                    # Failed on first use — return the error
                     refreshed = _enrich_pet(await user_data_manager.get_pet_data_async(user_id))
                     return JSONResponse(content={"success": False, "message": msg, "pet": refreshed})
                 break
 
-        refreshed = _enrich_pet(await user_data_manager.get_pet_data_async(user_id))
-        # Merge messages: combine all stat changes into one summary
-        combined = "; ".join(messages) if messages else "Used!"
+        # ── GPP: invalidate stats cache + emit event ──────────────────────────
         if success:
-            try:
-                from web.api.tasks_api import record_action as _task_record
-                for _ in range(len(messages)):
-                    await _task_record(user_id, "potion")
-            except Exception:
-                pass
-        return JSONResponse(content={"success": success, "message": combined, "pet": refreshed})
+            pet_after = await user_data_manager.get_pet_data_async(user_id)
+            if pet_after:
+                _invalidate_stats_cache(pet_after)
+            queue = EventQueue()
+            queue.push("potion_used", {"user_id": user_id, "potion_name": potion_name, "quantity": len(messages)})
+            await queue.flush()
+
+        refreshed = _enrich_pet(await user_data_manager.get_pet_data_async(user_id))
+        combined = "; ".join(messages) if messages else "Used!"
+
+        # ── GPP: build animation metadata (Component pattern) ─────────────
+        animation = AnimationComponent.for_ui_update("potion_use", 600)
+
+        return JSONResponse(content={"success": success, "message": combined, "pet": refreshed, "animation": animation})
 
     except HTTPException:
         raise
@@ -1432,13 +1584,27 @@ async def unequip_item(request: Request, data: Dict[str, Any] = Body(...)):
 
     try:
         slot = (data.get("slot") or "").strip()
-        if slot not in ("Material", "Gems", "Monsters", "Hat"):
+        VALID_SLOTS = {"Helmet","Armor","Boots","Ring","Shield","Weapon",
+                       "Material","Gems","Monsters","Hat"}
+        if slot not in VALID_SLOTS:
             raise HTTPException(status_code=400, detail=f"Invalid slot: {slot}")
 
         from Systems.Pets.Logic.pet_brain import LootCalculator
         success, msg = await LootCalculator.unequip_items(user_id, slot)
+        # ── GPP: invalidate stats cache + emit event ──────────────────────────
+        pet_after = await user_data_manager.get_pet_data_async(user_id)
+        if pet_after:
+            _invalidate_stats_cache(pet_after)
+        if success:
+            queue = EventQueue()
+            queue.push("item_unequipped", {"user_id": user_id, "slot": slot})
+            await queue.flush()
         refreshed = _enrich_pet(await user_data_manager.get_pet_data_async(user_id))
-        return JSONResponse(content={"success": success, "message": msg, "pet": refreshed})
+
+        # ── GPP: build animation metadata (Component pattern) ─────────────
+        animation = AnimationComponent.for_ui_update("unequip_flash", 500)
+
+        return JSONResponse(content={"success": success, "message": msg, "pet": refreshed, "animation": animation})
 
     except HTTPException:
         raise
@@ -1503,8 +1669,17 @@ async def consume_item(request: Request, data: Dict[str, Any] = Body(...)):
         await user_data_manager.save_pet_data(user_id, pet.get("name", "Pet"), pet)
 
         # Award XP through the proper channel so leveling is handled correctly
+        from Systems.Pets.Logic.pet_brain import StatsCalculator as _SC
         from Systems.Pets.pets_system import add_experience
         _, lvl_data = await add_experience(int(user_id), total_xp, "consume")
+
+        # ── GPP: invalidate stats cache + emit event ──────────────────────────
+        pet_after = await user_data_manager.get_pet_data_async(user_id)
+        if pet_after:
+            _invalidate_stats_cache(pet_after)
+        queue = EventQueue()
+        queue.push("item_consumed", {"user_id": user_id, "item_name": item_name, "count": count, "xp": total_xp})
+        await queue.flush()
 
         refreshed = _enrich_pet(await user_data_manager.get_pet_data_async(user_id))
         leveled_up = lvl_data and lvl_data.get("new_level", 0) > lvl_data.get("old_level", 0)
@@ -1512,15 +1687,14 @@ async def consume_item(request: Request, data: Dict[str, Any] = Body(...)):
         msg = f"Consumed {count}x {item_name} ({rarity}) for +{total_xp:,} XP{mult_str}"
         if leveled_up:
             msg += f" · Level Up! Now Lv.{lvl_data['new_level']} 🎉"
-        try:
-            from web.api.tasks_api import record_action as _task_record
-            for _ in range(count):
-                await _task_record(user_id, "consume")
-        except Exception:
-            pass
+
+        # ── GPP: build animation metadata (Component pattern) ─────────────
+        animation = AnimationComponent.for_xp_change(0, int(pet_after.get("experience", 0)) if pet_after else 0,
+                                                    LootCalculator.get_next_level_xp(int(pet_after.get("level", 1))) if pet_after else 100)
+
         return JSONResponse(content={"success": True, "message": msg, "xp_gained": total_xp,
                                      "equip_multiplier": equip_mult,
-                                     "level_up": lvl_data if leveled_up else None, "pet": refreshed})
+                                     "level_up": lvl_data if leveled_up else None, "pet": refreshed, "animation": animation})
 
     except HTTPException:
         raise
@@ -1580,6 +1754,8 @@ async def gift_item(request: Request, data: Dict[str, Any] = Body(...)):
             inventory[item_idx] = {**item, "count": count - 1}
         sender_pet["inventory"] = inventory
         await user_data_manager.save_pet_data(sender_id, user.get("username", "Unknown"), sender_pet)
+        # ── GPP: invalidate sender's stats cache ──────────────────────────────
+        _invalidate_stats_cache(sender_pet)
 
         # Add 1 to recipient
         gift_item_obj = {**item, "count": 1}
@@ -1588,17 +1764,19 @@ async def gift_item(request: Request, data: Dict[str, Any] = Body(...)):
 
         logger.info(f"Gift: {sender_id} → {recipient_id}: {item_name}")
 
-        # Task tracking
-        try:
-            from web.api.tasks_api import record_action as _task_record
-            await _task_record(sender_id, "gift")
-        except Exception:
-            pass
+        # ── GPP: emit gift event (Observer pattern handles task tracking) ─────
+        queue = EventQueue()
+        queue.push("item_gifted", {"sender_id": sender_id, "recipient_id": recipient_id, "item_name": item_name})
+        await queue.flush()
+
+        # ── GPP: build animation metadata (Component pattern) ─────────────
+        animation = AnimationComponent.for_ui_update("gift_send", 600)
 
         return JSONResponse(content={
             "success": True,
             "gifted":  item_name,
             "to":      recipient_pet.get("name", "Unknown"),
+            "animation": animation,
         })
 
     except HTTPException:
@@ -1722,6 +1900,80 @@ async def battle_npc_start(request: Request, data: Dict[str, Any] = Body(...)):
             if len(mons) > 1: slots.append(_item(mons[1]))
             return slots
 
+        # ── Initialise server-side skill state for this battle ────────────────
+        from Systems.Pets.Logic.battle_skills import (
+            init_battle_skill_state, get_equipped_skills, get_max_skill_slots, SKILL_BY_ID
+        )
+        from Systems.Pets.Logic.ability_tree import (
+            get_ability_effect, get_starting_charge_bonus
+        )
+
+        # Apply battle_health_bonus (HAP/ENE branches)
+        health_bonus = get_ability_effect(pet, "battle_health_bonus")
+        if health_bonus > 0:
+            p_hp = int(p_hp * (1.0 + health_bonus))
+
+        # Apply charge_limit_bonus (ENE branch)
+        charge_limit_bonus_val = int(get_ability_effect(pet, "charge_limit_bonus"))
+        p_charge_limit = 8 + charge_limit_bonus_val  # dungeon default is 8
+
+        # Apply starting_charge_bonus (ENE branch — Charged + Overcharged)
+        p_starting_charge = 1.0 + int(get_starting_charge_bonus(pet))
+        p_starting_charge = min(p_starting_charge, float(p_charge_limit))
+
+        skill_state: Dict[str, Any] = {
+            "pet": pet,
+            "total_attack": p_atk,
+            "max_hp": p_hp,          # already includes battle_health_bonus
+            "active_effects": [],
+            "skill_cooldowns": {},
+            "equipped_skills": [],
+        }
+        init_battle_skill_state(skill_state)
+        # Enemy skill state (for DoT/stun/debuff applied by player skills)
+        enemy_skill_state: Dict[str, Any] = {
+            "element": e_elem,
+            "active_effects": [],
+            "max_hp": e_hp,
+        }
+        # Store in the module-level session dict keyed by user_id
+        _arena_battle_sessions[user_id] = {
+            "skill_state": skill_state,
+            "enemy_skill_state": enemy_skill_state,
+            "e_atk_base": e_atk,
+            "e_def_base": e_def,
+            "p_charge_limit": p_charge_limit,
+        }
+
+        # Build equipped skills display list — one entry per unlocked slot.
+        # Slots with a skill get full data; unlocked-but-empty slots get null.
+        max_slots = get_max_skill_slots(pet)
+        equipped_ids = skill_state.get("equipped_skills", [])
+        equipped_skills_display = []
+        for slot_idx in range(max_slots):
+            sid = equipped_ids[slot_idx] if slot_idx < len(equipped_ids) else None
+            sk = SKILL_BY_ID.get(sid) if sid else None
+            if sk:
+                equipped_skills_display.append({
+                    "id": sid,
+                    "name": sk["name"],
+                    "description": sk["description"],
+                    "element": sk.get("element", ""),
+                    "unlocked": True,
+                })
+            else:
+                # Slot is unlocked but no skill equipped
+                equipped_skills_display.append(None)
+
+        # ── GPP: invalidate stats cache + emit event ──────────────────────────
+        _invalidate_stats_cache(pet)
+        queue = EventQueue()
+        queue.push("battle_npc_started", {"user_id": user_id, "difficulty": difficulty, "enemy_name": enemy_name})
+        await queue.flush()
+
+        # ── GPP: build animation metadata (Component pattern) ─────────────
+        animation = AnimationComponent.for_ui_update("battle_start", 800)
+
         return JSONResponse(content={
             "success": True,
             "difficulty": difficulty,
@@ -1735,9 +1987,12 @@ async def battle_npc_start(request: Request, data: Dict[str, Any] = Body(...)):
                 "element": p_elem,
                 "element2": p_elem2 or "",
                 "species": p_spec,
-                "charge": 1.0,
+                "charge": p_starting_charge,
+                "charge_limit": p_charge_limit,
                 "last_action": None,
                 "equipment": _equip_items(pet),
+                "equipped_skills": equipped_skills_display,
+                "skill_cooldowns": {str(k): v for k, v in skill_state.get("skill_cooldowns", {}).items()},
             },
             "enemy": {
                 "name": enemy_name,
@@ -1755,6 +2010,7 @@ async def battle_npc_start(request: Request, data: Dict[str, Any] = Body(...)):
             "over": False,
             "won": None,
             "action_labels": action_labels,
+            "animation": animation,
         })
 
     except HTTPException:
@@ -1774,9 +2030,17 @@ async def battle_npc_turn(request: Request, data: Dict[str, Any] = Body(...)):
 
     try:
         from Systems.Pets.Logic.pet_brain import DamageCalculator, LootCalculator, NPCBrain
+        from Systems.Pets.Logic.battle_skills import (
+            apply_skill, tick_battle_effects, tick_monster_effects,
+            is_stunned, consume_stun,
+            get_atk_multiplier, get_def_multiplier, get_damage_reduction,
+            absorb_damage_through_shield, get_reflect_value, can_use_skill,
+            SKILL_BY_ID,
+        )
 
         p_action = (data.get("action") or "attack").lower()
-        if p_action not in ("attack", "defend", "charge"):
+        slot_index = int(data.get("slot_index", 0))
+        if p_action not in ("attack", "defend", "charge", "skill"):
             p_action = "attack"
 
         # Unpack state sent from client
@@ -1785,94 +2049,207 @@ async def battle_npc_turn(request: Request, data: Dict[str, Any] = Body(...)):
         turn_num = int(data.get("turn", 0)) + 1
         difficulty = (data.get("difficulty") or "easy").lower()
 
-        p_atk   = int(ps["attack"])
-        p_def   = int(ps["defense"])
-        p_type  = str(ps.get("type", "land"))
-        p_elem  = str(ps.get("element", "basic"))
-        p_elem2 = str(ps.get("element2") or "") or None
-        p_spec  = str(ps.get("species", ""))
-        p_hp    = int(ps["max_hp"])
+        p_atk    = int(ps["attack"])
+        p_def    = int(ps["defense"])
+        p_type   = str(ps.get("type", "land"))
+        p_elem   = str(ps.get("element", "basic"))
+        p_elem2  = str(ps.get("element2") or "") or None
+        p_spec   = str(ps.get("species", ""))
+        p_hp     = int(ps["max_hp"])
         cur_p_hp = int(ps["cur_hp"])
         p_charge = float(ps.get("charge", 1.0))
-        p_last   = ps.get("last_action")
 
-        e_atk   = int(es["attack"])
-        e_def   = int(es["defense"])
-        e_type  = str(es.get("type", "land"))
-        e_elem  = str(es.get("element", "basic"))
-        e_hp    = int(es["max_hp"])
+        e_atk    = int(es["attack"])
+        e_def    = int(es["defense"])
+        e_type   = str(es.get("type", "land"))
+        e_elem   = str(es.get("element", "basic"))
+        e_hp     = int(es["max_hp"])
         cur_e_hp = int(es["cur_hp"])
         e_charge = float(es.get("charge", 1.0))
         e_last   = es.get("last_action")
         enemy_name = str(es.get("name", "Enemy"))
         pet_name   = str(ps.get("name", "Your Pet"))
 
-        # NPC decides
-        npc_brain = NPCBrain()
-        monster_state = {
-            "hp": cur_e_hp, "max_hp": e_hp, "prev_hp": cur_e_hp,
-            "charge_multiplier": e_charge, "last_action": e_last,
-            "attack_stat": float(e_atk), "defense_stat": float(e_def),
-            "seed": turn_num
-        }
-        player_state = [{"alive": cur_p_hp > 0, "hp": cur_p_hp, "max_hp": p_hp, "charging": p_action == "charge"}]
-        e_action = npc_brain.decide_action(monster_state, player_state).get("action", "attack")
+        # ── Retrieve server-side skill session ────────────────────────────────
+        session = _arena_battle_sessions.get(user_id, {})
+        skill_state       = session.get("skill_state", {})
+        enemy_skill_state = session.get("enemy_skill_state", {"element": e_elem, "active_effects": [], "max_hp": e_hp})
 
-        # Charge accumulation
+        # Sync current HP into skill state so heal/lifesteal caps correctly
+        skill_state["max_hp"] = p_hp
+        skill_state["total_attack"] = p_atk
+        enemy_skill_state["max_hp"] = e_hp
+        enemy_skill_state["element"] = e_elem
+
+        extra_lines: list = []  # skill/effect log lines to append to `lines`
+
+        # ── Tick active effects (DoT/HoT, cooldowns) ─────────────────────────
+        if skill_state:
+            p_net_delta, p_tick_lines = tick_battle_effects(skill_state, p_atk)
+            if p_net_delta != 0:
+                cur_p_hp = max(0, min(p_hp, cur_p_hp + p_net_delta))
+            extra_lines.extend(p_tick_lines)
+
+        e_net_delta, e_tick_lines = tick_monster_effects(enemy_skill_state)
+        if e_net_delta != 0:
+            cur_e_hp = max(0, cur_e_hp + e_net_delta)
+        extra_lines.extend(e_tick_lines)
+
+        # ── Stun check on player ──────────────────────────────────────────────
+        if skill_state and is_stunned(skill_state):
+            consume_stun(skill_state)
+            p_action = "defend"
+            extra_lines.append(f"💫 {pet_name} is stunned and cannot act!")
+
+        # ── Apply stat multipliers from active effects ────────────────────────
+        p_atk_mult = get_atk_multiplier(skill_state) if skill_state else 1.0
+        p_def_mult = get_def_multiplier(skill_state) if skill_state else 1.0
+        e_atk_mult = get_atk_multiplier(enemy_skill_state)
+        e_def_mult = get_def_multiplier(enemy_skill_state)
+        effective_p_atk = int(p_atk * p_atk_mult)
+        effective_e_atk = int(e_atk * e_atk_mult)
+        effective_e_def = int(e_def * e_def_mult)
+
+        # ── Skill action ──────────────────────────────────────────────────────
+        skill_hp_delta_p = 0   # net HP change on player from skill
+        skill_hp_delta_e = 0   # net HP change on enemy from skill
+        skill_used = False
+
+        if p_action == "skill" and skill_state:
+            equipped = skill_state.get("equipped_skills", [])
+            if slot_index < len(equipped) and can_use_skill(skill_state, slot_index):
+                skill_id = equipped[slot_index]
+                # Inject charge so charge_boost can read it
+                skill_state["charge"] = p_charge
+                skill_state["charge_limit"] = float(session.get("p_charge_limit", 8.0))
+                skill_state["max_charge_limit"] = float(session.get("p_charge_limit", 8.0))
+                result = apply_skill(skill_id, skill_state, enemy_skill_state,
+                                     battle_type="npc", slot_index=slot_index)
+                if result["ok"]:
+                    skill_hp_delta_p = result.get("hp_delta_user", 0)
+                    skill_hp_delta_e = result.get("hp_delta_target", 0)
+                    # Apply damage to enemy
+                    if skill_hp_delta_e < 0:
+                        cur_e_hp = max(0, cur_e_hp + skill_hp_delta_e)
+                    # Apply heal/lifesteal to player
+                    if skill_hp_delta_p > 0:
+                        cur_p_hp = min(p_hp, cur_p_hp + skill_hp_delta_p)
+                    elif skill_hp_delta_p < 0:
+                        cur_p_hp = max(0, cur_p_hp + skill_hp_delta_p)
+                    # Sync charge_boost
+                    if "_charge_boost_result" in skill_state:
+                        p_charge = float(skill_state.pop("_charge_boost_result"))
+                    extra_lines.append(f"✨ {result.get('message', result.get('skill_name', 'Skill used'))}")
+                    skill_used = True
+                else:
+                    extra_lines.append(f"❌ {result.get('message', 'Skill failed')}")
+            if not skill_used:
+                p_action = "attack"
+                extra_lines.append(f"⏳ Skill on cooldown — attacking instead!")
+
+        # ── NPC decides ───────────────────────────────────────────────────────
+        npc_brain = NPCBrain()
+        # Check if enemy is stunned
+        e_stunned = is_stunned(enemy_skill_state)
+        if e_stunned:
+            consume_stun(enemy_skill_state)
+            e_action = "defend"
+            extra_lines.append(f"💫 {enemy_name} is stunned and cannot act!")
+        else:
+            monster_state = {
+                "hp": cur_e_hp, "max_hp": e_hp, "prev_hp": cur_e_hp,
+                "charge_multiplier": e_charge, "last_action": e_last,
+                "attack_stat": float(e_atk), "defense_stat": float(e_def),
+                "seed": turn_num
+            }
+            player_state_for_brain = [{"alive": cur_p_hp > 0, "hp": cur_p_hp, "max_hp": p_hp, "charging": p_action == "charge"}]
+            e_action = npc_brain.decide_action(monster_state, player_state_for_brain).get("action", "attack")
+
+        # ── Charge accumulation ───────────────────────────────────────────────
         if p_action == "charge":
             p_charge = DamageCalculator.get_next_charge_multiplier(p_charge)
         if e_action == "charge":
             e_charge = DamageCalculator.get_next_charge_multiplier(e_charge)
 
-        # Resolve combat
-        # p_result = player attacking enemy (player is attacker, enemy is target)
-        # e_result = enemy attacking player (enemy is attacker, player is target)
-        p_result = DamageCalculator.calculate_battle_action(
-            attacker_attack=p_atk, target_defense=e_def,
-            charge_multiplier=p_charge if p_action in ("attack", "defend") else 1.0,
-            target_charge_multiplier=e_charge if e_action == "defend" else 1.0,
-            attacker_action_type=p_action, target_action_type=e_action,
-            attacker_type=p_type, attacker_element=p_elem, attacker_element2=p_elem2,
-            defender_type=e_type, defender_element=e_elem,
-            attacker_species=p_spec
-        )
-        e_result = DamageCalculator.calculate_battle_action(
-            attacker_attack=e_atk, target_defense=p_def,
-            charge_multiplier=e_charge if e_action in ("attack", "defend") else 1.0,
-            target_charge_multiplier=p_charge if p_action == "defend" else 1.0,
-            attacker_action_type=e_action, target_action_type=p_action,
-            attacker_type=e_type, attacker_element=e_elem,
-            defender_type=p_type, defender_element=p_elem, defender_element2=p_elem2,
-            defender_species=p_spec
-        )
+        # ── Resolve combat (only for non-skill actions) ───────────────────────
+        p_dmg_dealt = 0
+        e_dmg_dealt = 0
+        p_parry = 0
+        e_parry = 0
 
-        p_dmg_dealt = p_result["final_damage"]
-        e_dmg_dealt = e_result["final_damage"]
-        p_parry     = p_result["parry_damage"]   # player defended → parry back at enemy
-        e_parry     = e_result["parry_damage"]   # enemy defended → parry back at player
+        if p_action != "skill":
+            # Retrieve the raw pet from the skill session so DamageCalculator can apply
+            # ability effects (battle_damage_mult, critical_hit_chance, advantage_mastery, etc.)
+            p_pet_data = session.get("skill_state", {}).get("pet") if session else None
+            p_result = DamageCalculator.calculate_battle_action(
+                attacker_attack=effective_p_atk, target_defense=effective_e_def,
+                charge_multiplier=p_charge if p_action in ("attack", "defend") else 1.0,
+                target_charge_multiplier=e_charge if e_action == "defend" else 1.0,
+                attacker_action_type=p_action, target_action_type=e_action,
+                attacker_type=p_type, attacker_element=p_elem, attacker_element2=p_elem2,
+                defender_type=e_type, defender_element=e_elem,
+                attacker_species=p_spec,
+                attacker_pet_data=p_pet_data,
+                battle_type=difficulty,
+            )
+            p_dmg_dealt = p_result["final_damage"]
+            p_parry     = p_result["parry_damage"]
+        else:
+            p_result = {"attack_roll": None, "attack_result": "", "parry_damage": 0,
+                        "type_element_bonus_mult_attack": 1.0, "final_attack": 0, "final_defense": 0}
 
-        # Both defend: no damage, no parry — stalemate
+        if e_action != "defend" or p_action != "defend":
+            p_pet_data = session.get("skill_state", {}).get("pet") if session else None
+            e_result = DamageCalculator.calculate_battle_action(
+                attacker_attack=effective_e_atk, target_defense=int(p_def * p_def_mult),
+                charge_multiplier=e_charge if e_action in ("attack", "defend") else 1.0,
+                target_charge_multiplier=p_charge if p_action == "defend" else 1.0,
+                attacker_action_type=e_action, target_action_type=p_action,
+                attacker_type=e_type, attacker_element=e_elem,
+                defender_type=p_type, defender_element=p_elem, defender_element2=p_elem2,
+                defender_species=p_spec,
+                defender_pet_data=p_pet_data,
+                defender_current_hp=cur_p_hp,
+                defender_max_hp=p_hp,
+                battle_type=difficulty,
+            )
+            e_dmg_dealt = e_result["final_damage"]
+            e_parry     = e_result["parry_damage"]
+        else:
+            e_result = {"attack_roll": None, "attack_result": "", "parry_damage": 0,
+                        "type_element_bonus_mult_attack": 1.0, "final_attack": 0, "final_defense": 0}
+
+        # Both defend: stalemate
         if p_action == "defend" and e_action == "defend":
-            p_dmg_dealt = 0
-            e_dmg_dealt = 0
-            p_parry     = 0
-            e_parry     = 0
+            p_dmg_dealt = 0; e_dmg_dealt = 0; p_parry = 0; e_parry = 0
 
+        # ── Apply skill-based damage reduction / shield / reflect on player ───
+        if e_dmg_dealt > 0 and skill_state:
+            dr = get_damage_reduction(skill_state)
+            e_dmg_dealt = max(1, int(e_dmg_dealt * (1.0 - dr))) if dr > 0 else e_dmg_dealt
+            e_dmg_dealt, _absorbed, shield_log = absorb_damage_through_shield(skill_state, e_dmg_dealt)
+            extra_lines.extend(shield_log)
+            reflect_frac = get_reflect_value(skill_state)
+            if reflect_frac > 0 and e_dmg_dealt > 0:
+                reflect_dmg = max(1, int(e_dmg_dealt * reflect_frac))
+                cur_e_hp = max(0, cur_e_hp - reflect_dmg)
+                extra_lines.append(f"🔄 {pet_name} reflects {reflect_dmg} damage!")
+
+        # ── Apply HP changes ──────────────────────────────────────────────────
         cur_e_hp = max(0, cur_e_hp - p_dmg_dealt - e_parry)
         cur_p_hp = max(0, cur_p_hp - e_dmg_dealt - p_parry)
 
-        # Reset charge after it's spent (attack or defend consumes it)
+        # Reset charge after use
         if p_action in ("attack", "defend"): p_charge = 1.0
         if e_action in ("attack", "defend"): e_charge = 1.0
+
         action_labels = data.get("action_labels", {})
         p_action_label = action_labels.get(p_action, p_action.title())
-
-        # ── Structured combat data for rich frontend rendering ────────────────
-        p_charge_used = float(data.get("player", {}).get("charge", 1.0))  # charge BEFORE reset
+        p_charge_used = float(data.get("player", {}).get("charge", 1.0))
         e_charge_used = float(data.get("enemy", {}).get("charge", 1.0))
 
+        # ── Build combat dict ─────────────────────────────────────────────────
         combat = {
-            # Player → Enemy
             "p_action": p_action,
             "p_action_label": p_action_label,
             "p_dmg": p_dmg_dealt,
@@ -1880,20 +2257,17 @@ async def battle_npc_turn(request: Request, data: Dict[str, Any] = Body(...)):
             "p_charge_mult": p_charge_used if p_action == "attack" else (p_charge if p_action == "charge" else (p_charge_used if p_action == "defend" else 1.0)),
             "p_attack_roll": p_result.get("attack_roll"),
             "p_attack_result": p_result.get("attack_result", ""),
-            # Player's own defense roll is in e_result (enemy attacks player, player defends)
             "p_defense_roll": e_result.get("defense_roll") if p_action == "defend" else None,
             "p_defense_result": e_result.get("defense_result", "") if p_action == "defend" else "",
             "p_final_attack": p_result.get("final_attack", 0),
             "p_final_defense": e_result.get("final_defense", 0),
             "p_type_elem_mult": round(p_result.get("type_element_bonus_mult_attack", 1.0), 2),
-            # Enemy → Player
             "e_action": e_action,
             "e_dmg": e_dmg_dealt,
             "e_parry": e_parry,
             "e_charge_mult": e_charge_used if e_action == "attack" else (e_charge if e_action == "charge" else (e_charge_used if e_action == "defend" else 1.0)),
             "e_attack_roll": e_result.get("attack_roll"),
             "e_attack_result": e_result.get("attack_result", ""),
-            # Enemy's own defense roll is in p_result (player attacks enemy, enemy defends)
             "e_defense_roll": p_result.get("defense_roll") if e_action == "defend" else None,
             "e_defense_result": p_result.get("defense_result", "") if e_action == "defend" else "",
             "e_final_attack": e_result.get("final_attack", 0),
@@ -1904,9 +2278,12 @@ async def battle_npc_turn(request: Request, data: Dict[str, Any] = Body(...)):
             "both_defend": p_action == "defend" and e_action == "defend",
         }
 
-        lines = []
+        # ── Build log lines ───────────────────────────────────────────────────
+        lines = list(extra_lines)
         if p_action == "charge":
             lines.append(f"⚡ {pet_name} charges up! (x{p_charge:.0f})")
+        elif p_action == "skill":
+            pass  # already in extra_lines
         elif p_dmg_dealt > 0:
             mult = p_result.get("type_element_bonus_mult_attack", 1.0)
             bonus = " 🔥 Super effective!" if mult > 1.0 else (" 💨 Not very effective..." if mult < 1.0 else "")
@@ -1936,6 +2313,10 @@ async def battle_npc_turn(request: Request, data: Dict[str, Any] = Body(...)):
         over = cur_p_hp <= 0 or cur_e_hp <= 0
         player_won = cur_p_hp > 0 and cur_e_hp <= 0
 
+        # Clean up session on battle end
+        if over:
+            _arena_battle_sessions.pop(user_id, None)
+
         # If battle is over, apply XP/loot
         loot_result = None
         level_change = None
@@ -1953,17 +2334,43 @@ async def battle_npc_turn(request: Request, data: Dict[str, Any] = Body(...)):
                     wins=1 if player_won else 0, losses=0 if player_won else 1,
                     xp_earned=loot_result["xp_gained"], damage_dealt=0, damage_taken=0
                 )
+                # ── GPP: invalidate stats cache + emit battle event ───────────
+                _invalidate_stats_cache(pet)
+                queue = EventQueue()
+                queue.push("npc_battle_ended", {
+                    "user_id":    user_id,
+                    "won":        player_won,
+                    "difficulty": difficulty,
+                    "xp_gained":  loot_result["xp_gained"],
+                })
+                await queue.flush()
+
                 refreshed_pet = _enrich_pet(await user_data_manager.get_pet_data_async(user_id))
                 new_level = int(refreshed_pet.get("level", 1)) if refreshed_pet else old_level
                 level_change = loot_result.get("level_change")
                 if level_change is None and new_level != old_level:
                     level_change = {"old_level": old_level, "new_level": new_level, "gains": {}}
-                # Task tracking
-                try:
-                    from web.api.tasks_api import record_action as _task_record
-                    await _task_record(user_id, "battle_npc", won=player_won)
-                except Exception:
-                    pass
+
+        # Build per-slot cooldown map for the frontend
+        skill_cooldowns = {str(k): v for k, v in skill_state.get("skill_cooldowns", {}).items()} if skill_state else {}
+
+        # ── GPP: build per-action animation metadata (Component pattern) ──────
+        p_anim = AnimationComponent.for_battle_action(
+            p_action, p_dmg_dealt, True,
+            p_result.get("type_element_bonus_mult_attack", 1.0),
+        )
+        e_anim = AnimationComponent.for_battle_action(
+            e_action, e_dmg_dealt, False,
+            e_result.get("type_element_bonus_mult_attack", 1.0),
+        )
+
+        # ── GPP: invalidate stats cache + emit event ──────────────────────────
+        pet = await user_data_manager.get_pet_data_async(user_id)
+        if pet:
+            _invalidate_stats_cache(pet)
+        queue = EventQueue()
+        queue.push("battle_npc_turn", {"user_id": user_id, "turn": turn_num, "player_action": p_action, "enemy_action": e_action, "won": player_won if over else None})
+        await queue.flush()
 
         return JSONResponse(content={
             "success": True,
@@ -1977,6 +2384,7 @@ async def battle_npc_turn(request: Request, data: Dict[str, Any] = Body(...)):
                 "cur_hp": cur_p_hp,
                 "charge": p_charge,
                 "last_action": p_action,
+                "skill_cooldowns": skill_cooldowns,
             },
             "enemy": {
                 **es,
@@ -1990,6 +2398,9 @@ async def battle_npc_turn(request: Request, data: Dict[str, Any] = Body(...)):
             "messages": loot_result["messages"] if loot_result else [],
             "level_change": level_change,
             "pet": refreshed_pet,
+            "skill_cooldowns": skill_cooldowns,
+            "animations": [p_anim, e_anim],
+            "animation": p_anim,
         })
 
     except (KeyError, TypeError, ValueError) as e:
@@ -2000,7 +2411,6 @@ async def battle_npc_turn(request: Request, data: Dict[str, Any] = Body(...)):
     except Exception as e:
         logger.error(f"battle_npc_turn error: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Battle turn failed.")
-
 
 # ── NPC Battle (legacy full-simulation) ──────────────────────────────────────
 
@@ -2243,6 +2653,15 @@ async def battle_npc(request: Request, data: Dict[str, Any] = Body(...)):
         if level_change is None and new_level != old_level:
             level_change = {"old_level": old_level, "new_level": new_level, "gains": {}}
 
+        # ── GPP: invalidate stats cache + emit event ──────────────────────────
+        _invalidate_stats_cache(pet)
+        queue = EventQueue()
+        queue.push("battle_npc_completed", {"user_id": user_id, "won": player_won, "difficulty": difficulty, "xp_gained": loot_result["xp_gained"]})
+        await queue.flush()
+
+        # ── GPP: build animation metadata (Component pattern) ─────────────
+        animation = AnimationComponent.for_mission(player_won, loot_result["xp_gained"], difficulty)
+
         return JSONResponse(content={
             "success": True,
             "won": player_won,
@@ -2265,6 +2684,7 @@ async def battle_npc(request: Request, data: Dict[str, Any] = Body(...)):
             "messages": loot_result["messages"],
             "level_change": level_change,
             "pet": refreshed,
+            "animation": animation,
         })
 
     except HTTPException:
@@ -2588,7 +3008,16 @@ async def spend_mastery_points(request: Request, data: Dict[str, Any] = Body(...
         return JSONResponse(content={"ok": False, "message": message}, status_code=400)
 
     await user_data_manager.save_pet_data(user_id, pet.get("name", "Pet"), pet)
-    return JSONResponse(content={"ok": True, "message": message, "tree": get_tree_state(pet)})
+    _invalidate_stats_cache(pet)
+
+    # ── GPP: emit event + animation ────────────────────────────────────────
+    queue = EventQueue()
+    queue.push("stat_mastery_spent", {"user_id": user_id, "stat": stat, "points": points})
+    await queue.flush()
+
+    animation = AnimationComponent.for_ui_update("mastery_gain", 500)
+
+    return JSONResponse(content={"ok": True, "message": message, "tree": get_tree_state(pet), "animation": animation})
 
 
 @router.post("/pets/ability-tree/advantage-mastery")
@@ -2619,7 +3048,16 @@ async def spend_advantage_mastery_points(request: Request, data: Dict[str, Any] 
         return JSONResponse(content={"ok": False, "message": message}, status_code=400)
 
     await user_data_manager.save_pet_data(user_id, pet.get("name", "Pet"), pet)
-    return JSONResponse(content={"ok": True, "message": message, "tree": get_tree_state(pet)})
+    _invalidate_stats_cache(pet)
+
+    # ── GPP: emit event + animation ────────────────────────────────────────
+    queue = EventQueue()
+    queue.push("advantage_mastery_spent", {"user_id": user_id, "key": key, "points": points})
+    await queue.flush()
+
+    animation = AnimationComponent.for_ui_update("mastery_gain", 500)
+
+    return JSONResponse(content={"ok": True, "message": message, "tree": get_tree_state(pet), "animation": animation})
 
 
 @router.post("/pets/ability-tree/unlock")
@@ -2646,7 +3084,16 @@ async def unlock_ability_endpoint(request: Request, data: Dict[str, Any] = Body(
         return JSONResponse(content={"ok": False, "message": message}, status_code=400)
 
     await user_data_manager.save_pet_data(user_id, pet.get("name", "Pet"), pet)
-    return JSONResponse(content={"ok": True, "message": message, "tree": get_tree_state(pet)})
+    _invalidate_stats_cache(pet)
+
+    # ── GPP: emit event + animation ────────────────────────────────────────
+    queue = EventQueue()
+    queue.push("ability_unlocked", {"user_id": user_id, "ability_id": ability_id})
+    await queue.flush()
+
+    animation = AnimationComponent.for_ui_update("ability_unlock", 600)
+
+    return JSONResponse(content={"ok": True, "message": message, "tree": get_tree_state(pet), "animation": animation})
 
 
 @router.post("/pets/ability-tree/purchase")
@@ -2668,7 +3115,16 @@ async def purchase_ability_point_endpoint(request: Request):
         return JSONResponse(content={"ok": False, "message": message}, status_code=400)
 
     await user_data_manager.save_pet_data(user_id, pet.get("name", "Pet"), pet)
-    return JSONResponse(content={"ok": True, "message": message, "tree": get_tree_state(pet)})
+    _invalidate_stats_cache(pet)
+
+    # ── GPP: emit event + animation ────────────────────────────────────────
+    queue = EventQueue()
+    queue.push("ability_point_purchased", {"user_id": user_id})
+    await queue.flush()
+
+    animation = AnimationComponent.for_ui_update("point_purchase", 500)
+
+    return JSONResponse(content={"ok": True, "message": message, "tree": get_tree_state(pet), "animation": animation})
 
 
 # ── Battle Skills ─────────────────────────────────────────────────────────────
@@ -2715,9 +3171,17 @@ async def draw_skill_choices_endpoint(request: Request, data: Dict[str, Any] = B
     # Deduct the point before returning choices
     pet["ability_points"] = available_points - 1
     await user_data_manager.save_pet_data(user_id, pet.get("name", "Pet"), pet)
+    _invalidate_stats_cache(pet)
+
+    # ── GPP: emit event + animation ────────────────────────────────────────
+    queue = EventQueue()
+    queue.push("skill_choices_drawn", {"user_id": user_id, "cross_element": cross, "count": 5})
+    await queue.flush()
+
+    animation = AnimationComponent.for_ui_update("skill_draw", 600)
 
     choices = draw_skill_choices(pet, count=5, cross_element=cross)
-    return JSONResponse(content={"ok": True, "choices": choices, "ability_points": pet["ability_points"]})
+    return JSONResponse(content={"ok": True, "choices": choices, "ability_points": pet["ability_points"], "animation": animation})
 
 
 @router.post("/pets/skills/equip")
@@ -2748,7 +3212,16 @@ async def equip_skill_endpoint(request: Request, data: Dict[str, Any] = Body(...
         return JSONResponse(content={"ok": False, "message": message}, status_code=400)
 
     await user_data_manager.save_pet_data(user_id, pet.get("name", "Pet"), pet)
-    return JSONResponse(content={"ok": True, "message": message, "skills": get_skill_state(pet)})
+    _invalidate_stats_cache(pet)
+
+    # ── GPP: emit event + animation ────────────────────────────────────────
+    queue = EventQueue()
+    queue.push("skill_equipped", {"user_id": user_id, "skill_id": skill_id, "slot": slot_index})
+    await queue.flush()
+
+    animation = AnimationComponent.for_ui_update("skill_equip", 500)
+
+    return JSONResponse(content={"ok": True, "message": message, "skills": get_skill_state(pet), "animation": animation})
 
 
 @router.post("/pets/skills/migrate")
@@ -2791,12 +3264,22 @@ async def migrate_pet_skills(request: Request):
     pet["ability_points"] = int(pet.get("ability_points") or 0) + 1
 
     await user_data_manager.save_pet_data(user_id, pet.get("name", "Pet"), pet)
+    _invalidate_stats_cache(pet)
+
+    # ── GPP: emit event + animation ────────────────────────────────────────
+    queue = EventQueue()
+    queue.push("skills_migrated", {"user_id": user_id, "skill_id": chosen["id"]})
+    await queue.flush()
+
+    animation = AnimationComponent.for_ui_update("migration_complete", 600)
+
     return JSONResponse(content={
         "ok": True,
         "already_migrated": False,
         "message": f"Assigned **{chosen['name']}** as your starting battle skill and granted 1 free ability point to reroll if you'd like.",
         "assigned_skill": chosen,
         "skills": get_skill_state(pet),
+        "animation": animation,
     })
 
 
@@ -2820,4 +3303,13 @@ async def draw_adoption_skills(request: Request, data: Dict[str, Any] = Body(...
         element2 = None
 
     choices = draw_initial_skill_choices(element1, element2, count=5)
-    return JSONResponse(content={"choices": choices})
+
+    # ── GPP: emit skill_draw event (Observer pattern) ───────────────────────
+    queue = EventQueue()
+    queue.push("skill_draw", {"user_id": str(user.get("id")), "elements": [element1, element2], "count": len(choices)})
+    await queue.flush()
+
+    # ── GPP: build animation metadata (Component pattern) ─────────────
+    animation = AnimationComponent.for_ui_update("skill_draw", 500)
+
+    return JSONResponse(content={"choices": choices, "animation": animation})

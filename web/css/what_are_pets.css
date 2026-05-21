@@ -1,12 +1,12 @@
 /* ============================================================
    what_are_pets.css — Pet System Guide Page
-   Dark gold theme, accordion cards, wap2- prefix
+   Dark gold theme, toggle cards + modal tabs, wap2- prefix
    ============================================================ */
 
 /* ── Page wrapper ─────────────────────────────────────────── */
 .wap2-page {
   padding: 1.5rem 1rem 3rem;
-  max-width: 1400px;
+  max-width: 1200px;
   margin: 0 auto;
 }
 
@@ -29,171 +29,277 @@
 .wap2-subtitle {
   color: var(--text-secondary);
   font-size: 0.95rem;
-  margin-bottom: 1rem;
 }
 
-/* ── Expand / Collapse All controls ──────────────────────── */
-.wap2-expand-controls {
-  display: flex;
-  justify-content: center;
-  gap: 0.6rem;
-  margin-top: 0.5rem;
-}
-
-.wap2-expand-all-btn {
-  background: rgba(255, 215, 0, 0.08);
-  border: 1px solid rgba(255, 215, 0, 0.3);
-  color: var(--gold-primary);
-  font-size: 0.8rem;
-  font-weight: 600;
-  padding: 0.3rem 0.9rem;
-  border-radius: 20px;
-  cursor: pointer;
-  transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
-  letter-spacing: 0.03em;
-}
-
-.wap2-expand-all-btn:hover {
-  background: rgba(255, 215, 0, 0.18);
-  border-color: var(--gold-primary);
-  box-shadow: 0 0 8px var(--gold-glow);
-}
-
-.wap2-collapse-btn {
-  background: rgba(255, 255, 255, 0.04);
-  border-color: rgba(255, 255, 255, 0.15);
-  color: var(--text-secondary);
-}
-
-.wap2-collapse-btn:hover {
-  background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(255, 255, 255, 0.3);
-  box-shadow: none;
-  color: var(--text-primary);
-}
-
-/* ── Card grid ────────────────────────────────────────────── */
+/* ── Toggle Card Grid ─────────────────────────────────────── */
 .wap2-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 16px;
-  align-items: start;
+  gap: 14px;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 640px) {
   .wap2-grid {
     grid-template-columns: 1fr;
   }
 }
 
-/* ── Individual card ──────────────────────────────────────── */
-.wap2-card {
+/* ── Toggle Card ──────────────────────────────────────────── */
+.wap2-toggle-card {
   background: rgba(15, 15, 15, 0.85);
   border: 1px solid rgba(255, 215, 0, 0.2);
   border-radius: 12px;
+  cursor: pointer;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease, background 0.2s ease;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.03);
-  overflow: hidden;
-  transition: border-color 0.25s ease, box-shadow 0.25s ease;
+  user-select: none;
 }
 
-.wap2-card:hover {
-  border-color: rgba(255, 215, 0, 0.35);
+.wap2-toggle-card:hover {
+  border-color: rgba(255, 215, 0, 0.5);
+  box-shadow: 0 6px 28px rgba(0, 0, 0, 0.5), 0 0 12px rgba(255, 215, 0, 0.12);
+  transform: translateY(-2px);
+  background: rgba(20, 20, 20, 0.9);
 }
 
-/* ── Card header (clickable) ──────────────────────────────── */
-.wap2-card-header {
-  width: 100%;
+.wap2-toggle-card:active {
+  transform: translateY(0);
+}
+
+/* Tips card gets a slightly different accent */
+.wap2-toggle-card-tips {
+  border-color: rgba(46, 204, 113, 0.25);
+}
+
+.wap2-toggle-card-tips:hover {
+  border-color: rgba(46, 204, 113, 0.55);
+  box-shadow: 0 6px 28px rgba(0, 0, 0, 0.5), 0 0 12px rgba(46, 204, 113, 0.12);
+}
+
+.wap2-toggle-card-inner {
   display: flex;
   align-items: center;
-  gap: 0.6rem;
-  padding: 0.9rem 1.2rem;
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  text-align: left;
-  transition: background 0.2s ease, box-shadow 0.2s ease;
-  position: relative;
+  gap: 0.9rem;
+  padding: 1rem 1.2rem;
 }
 
-.wap2-card-header:hover {
-  background: rgba(255, 215, 0, 0.05);
-  box-shadow: inset 0 0 0 1px rgba(255, 215, 0, 0.25);
-}
-
-.wap2-card-header:focus-visible {
-  outline: 2px solid var(--gold-primary);
-  outline-offset: -2px;
-  border-radius: 12px 12px 0 0;
-}
-
-.wap2-card-emoji {
-  font-size: 1.2rem;
+.wap2-toggle-emoji {
+  font-size: 1.6rem;
   flex-shrink: 0;
+  line-height: 1;
 }
 
-.wap2-card-title {
+.wap2-toggle-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.wap2-toggle-title {
   font-family: 'Orbitron', 'Segoe UI', sans-serif;
   font-size: 0.95rem;
   font-weight: 700;
   color: var(--gold-primary);
   letter-spacing: 0.03em;
-  flex-shrink: 0;
-}
-
-.wap2-card-subtitle {
-  font-size: 0.78rem;
-  color: var(--text-secondary);
-  flex: 1;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  padding-left: 0.3rem;
 }
 
-/* Chevron arrow */
-.wap2-chevron {
-  font-size: 1.1rem;
-  color: var(--gold-secondary);
-  margin-left: auto;
-  flex-shrink: 0;
-  display: inline-block;
-  transition: transform 0.3s ease;
-  line-height: 1;
-  padding-left: 0.5rem;
-}
-
-.wap2-card-open .wap2-chevron,
-.wap2-chevron-open {
-  transform: rotate(180deg);
-}
-
-/* Separator line when open */
-.wap2-card-open .wap2-card-header {
-  border-bottom: 1px solid rgba(255, 215, 0, 0.15);
-}
-
-/* ── Card body (accordion) ────────────────────────────────── */
-.wap2-card-body {
-  max-height: 0;
+.wap2-toggle-sub {
+  font-size: 0.76rem;
+  color: var(--text-secondary);
+  white-space: nowrap;
   overflow: hidden;
-  padding: 0 1.6rem;
-  transition: max-height 0.45s cubic-bezier(0.4, 0, 0.2, 1),
-              padding 0.3s ease;
+  text-overflow: ellipsis;
 }
 
-.wap2-card-open .wap2-card-body {
-  max-height: 4000px;
-  padding: 1.2rem 1.6rem 1.4rem;
+.wap2-toggle-arrow {
+  font-size: 1.4rem;
+  color: var(--gold-secondary);
+  flex-shrink: 0;
+  opacity: 0.6;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  line-height: 1;
 }
 
-/* ── Section titles inside cards ──────────────────────────── */
+.wap2-toggle-card:hover .wap2-toggle-arrow {
+  opacity: 1;
+  transform: translateX(3px);
+}
+
+/* ── Modal Backdrop ───────────────────────────────────────── */
+.wap2-modal-backdrop {
+  display: none !important;
+  position: fixed !important;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.72);
+  z-index: 9000;
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+}
+
+.wap2-modal-backdrop.wap2-active {
+  display: block !important;
+  animation: wap2FadeIn 0.2s ease;
+}
+
+@keyframes wap2FadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* ── Modal ────────────────────────────────────────────────── */
+.wap2-modal {
+  display: none !important;
+  position: fixed !important;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(0.96);
+  width: min(92vw, 860px);
+  max-height: 88vh;
+  background: #0e0e0e;
+  border: 1px solid rgba(255, 215, 0, 0.3);
+  border-radius: 16px;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 215, 0, 0.08);
+  z-index: 9001;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.wap2-modal.wap2-active {
+  display: flex !important;
+  animation: wap2ModalIn 0.22s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+@keyframes wap2ModalIn {
+  from { opacity: 0; transform: translate(-50%, -50%) scale(0.93); }
+  to   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+
+/* ── Modal Header ─────────────────────────────────────────── */
+.wap2-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.4rem 0.8rem;
+  border-bottom: 1px solid rgba(255, 215, 0, 0.12);
+  flex-shrink: 0;
+}
+
+.wap2-modal-title {
+  font-family: 'Orbitron', 'Segoe UI', sans-serif;
+  font-size: clamp(1rem, 2.5vw, 1.3rem);
+  font-weight: 700;
+  color: var(--gold-primary);
+  text-shadow: 0 0 12px var(--gold-glow);
+  letter-spacing: 0.04em;
+  margin: 0;
+}
+
+.wap2-modal-close {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--text-secondary);
+  font-size: 1.3rem;
+  line-height: 1;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  flex-shrink: 0;
+}
+
+.wap2-modal-close:hover {
+  background: rgba(255, 80, 80, 0.15);
+  border-color: rgba(255, 80, 80, 0.4);
+  color: #ff6b7a;
+}
+
+/* ── Modal Tabs ───────────────────────────────────────────── */
+.wap2-modal-tabs {
+  display: flex;
+  gap: 0;
+  padding: 0 1.4rem;
+  border-bottom: 1px solid rgba(255, 215, 0, 0.1);
+  overflow-x: auto;
+  flex-shrink: 0;
+  scrollbar-width: none;
+}
+
+.wap2-modal-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.wap2-tab {
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 0.65rem 0.9rem;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 0.15s ease, border-color 0.15s ease;
+  letter-spacing: 0.02em;
+  margin-bottom: -1px;
+}
+
+.wap2-tab:hover {
+  color: var(--text-primary);
+}
+
+.wap2-tab.active {
+  color: var(--gold-primary);
+  border-bottom-color: var(--gold-primary);
+}
+
+/* ── Modal Body ───────────────────────────────────────────── */
+.wap2-modal-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1.2rem 1.4rem 1.6rem;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 215, 0, 0.2) transparent;
+}
+
+.wap2-modal-body::-webkit-scrollbar {
+  width: 5px;
+}
+
+.wap2-modal-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.wap2-modal-body::-webkit-scrollbar-thumb {
+  background: rgba(255, 215, 0, 0.2);
+  border-radius: 3px;
+}
+
+/* ── Tab Panels ───────────────────────────────────────────── */
+.wap2-tab-panel {
+  display: none;
+}
+
+.wap2-tab-panel.active {
+  display: block;
+}
+
+/* ── Section titles inside modals ────────────────────────── */
 .wap2-section-title {
-  font-size: 0.88rem;
+  font-size: 0.85rem;
   font-weight: 700;
   color: var(--gold-primary);
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  margin: 1.2rem 0 0.5rem;
+  margin: 1.3rem 0 0.5rem;
   padding-bottom: 0.3rem;
   border-bottom: 1px solid rgba(255, 215, 0, 0.15);
   display: flex;
@@ -201,23 +307,23 @@
   gap: 0.5rem;
 }
 
-.wap2-card-body > .wap2-section-title:first-child {
+.wap2-tab-panel > .wap2-section-title:first-child {
   margin-top: 0;
 }
 
 /* ── Body text ────────────────────────────────────────────── */
-.wap2-card-body p {
+.wap2-modal-body p {
   color: var(--text-secondary);
   font-size: 0.875rem;
   line-height: 1.65;
   margin-bottom: 0.6rem;
 }
 
-.wap2-card-body strong {
+.wap2-modal-body strong {
   color: var(--text-primary);
 }
 
-.wap2-card-body code {
+.wap2-modal-body code {
   background: rgba(255, 215, 0, 0.08);
   border: 1px solid rgba(255, 215, 0, 0.2);
   border-radius: 4px;
@@ -237,11 +343,15 @@
 }
 
 .wap2-list li {
-  margin-bottom: 0.2rem;
+  margin-bottom: 0.25rem;
 }
 
 .wap2-list li strong {
   color: var(--text-primary);
+}
+
+ol.wap2-list {
+  list-style-type: decimal;
 }
 
 /* ── Tables ───────────────────────────────────────────────── */
@@ -263,7 +373,7 @@
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  font-size: 0.75rem;
+  font-size: 0.73rem;
   padding: 0.5rem 0.75rem;
   border-bottom: 1px solid rgba(255, 215, 0, 0.25);
   text-align: left;
@@ -302,7 +412,7 @@
   background: rgba(46, 204, 113, 0.07);
   border-left: 3px solid rgba(46, 204, 113, 0.6);
   border-radius: 0 6px 6px 0;
-  padding: 0.6rem 0.9rem;
+  padding: 0.65rem 0.9rem;
   margin-bottom: 0.8rem;
   font-size: 0.83rem;
   color: var(--text-secondary);
@@ -317,7 +427,7 @@
   background: rgba(255, 215, 0, 0.06);
   border-left: 3px solid rgba(255, 215, 0, 0.5);
   border-radius: 0 6px 6px 0;
-  padding: 0.6rem 0.9rem;
+  padding: 0.65rem 0.9rem;
   margin-bottom: 0.8rem;
   font-size: 0.83rem;
   color: var(--text-secondary);
@@ -407,16 +517,27 @@
     padding: 1rem 0.5rem 2rem;
   }
 
-  .wap2-card-header {
-    padding: 0.8rem 1rem;
+  .wap2-modal {
+    width: 96vw;
+    max-height: 92vh;
+    border-radius: 12px;
   }
 
-  .wap2-card-subtitle {
-    display: none; /* hide on very small screens to keep header tidy */
+  .wap2-modal-header {
+    padding: 0.8rem 1rem 0.7rem;
   }
 
-  .wap2-card-open .wap2-card-body {
-    padding: 1rem 1rem 1.2rem;
+  .wap2-modal-tabs {
+    padding: 0 0.8rem;
+  }
+
+  .wap2-tab {
+    font-size: 0.74rem;
+    padding: 0.55rem 0.65rem;
+  }
+
+  .wap2-modal-body {
+    padding: 1rem 1rem 1.4rem;
   }
 
   .wap2-table {
@@ -428,21 +549,25 @@
     padding: 0.4rem 0.5rem;
   }
 
-  .wap2-title {
-    font-size: 1.4rem;
+  .wap2-toggle-card-inner {
+    padding: 0.85rem 1rem;
+  }
+
+  .wap2-toggle-sub {
+    display: none;
   }
 }
 
 @media (max-width: 480px) {
-  .wap2-card-title {
+  .wap2-toggle-title {
     font-size: 0.85rem;
   }
 
   .wap2-section-title {
-    font-size: 0.8rem;
+    font-size: 0.78rem;
   }
 
-  .wap2-card-body p,
+  .wap2-modal-body p,
   .wap2-list {
     font-size: 0.82rem;
   }

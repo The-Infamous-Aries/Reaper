@@ -14,8 +14,11 @@ from starlette.requests import Request
 
 from Systems.Functions.user_data_manager import user_data_manager
 from Systems.Pets.Logic.pet_brain import LootCalculator
+from Systems.Pets.Logic.event_bus import EventQueue
+from Systems.Pets.Logic.pet_components import AnimationComponent
+from web.api.pets.gpp_helpers import _invalidate_stats_cache, _compute_total_xp
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("minigames_api")
 router = APIRouter()
 
 # ── Shared data (mirrors web_server.py exactly) ───────────────────────────────
@@ -49,11 +52,6 @@ RPS_THEMES = {
 }
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
-
-def _compute_total_xp(pet: dict) -> int:
-    lvl = int(pet.get("level", 1))
-    exp = int(pet.get("experience", 0))
-    return int(LootCalculator.get_total_experience_for_level(lvl)) + exp
 
 async def _deduct(user_id: str, amount: int, source: str = "minigame_bet") -> bool:
     pet = await user_data_manager.get_pet_data_async(user_id)
@@ -139,6 +137,13 @@ async def coinflip(request: Request):
     except Exception:
         pass
 
+    # ── GPP: emit event + animation (Observer pattern + Component pattern) ─────────
+    queue = EventQueue()
+    queue.push("coinflip_flip", {"user_id": user_id, "result": result, "won": won, "bet": bet, "theme": theme})
+    await queue.flush()
+
+    animation = AnimationComponent.for_ui_update("coin_flip", 400, {"result": result, "won": won})
+
     return JSONResponse({
         "result":     result,
         "won":        won,
@@ -151,6 +156,7 @@ async def coinflip(request: Request):
         "xp_change":  xp_change,
         "fun_mode":   fun_mode,
         "bet":        bet,
+        "animation": animation
     })
 
 # ── Rock Paper Scissors ───────────────────────────────────────────────────────
@@ -217,6 +223,13 @@ async def rps_play(request: Request):
             user_id, "rps", xp_change, bet_amount=bet
         )
 
+    # ── GPP: emit event + animation (Observer pattern + Component pattern) ─────────
+    queue = EventQueue()
+    queue.push("rps_play", {"user_id": user_id, "result": result, "choice": choice, "ai_choice": ai_choice, "bet": bet, "theme": theme})
+    await queue.flush()
+
+    animation = AnimationComponent.for_ui_update("rps_play", 400, {"result": result, "player_choice": choice, "ai_choice": ai_choice})
+
     return JSONResponse({
         "result":       result,
         "player_choice": choice,
@@ -229,6 +242,7 @@ async def rps_play(request: Request):
         "fun_mode":     fun_mode,
         "bet":          bet,
         "theme":        theme,
+        "animation": animation
     })
 
 
@@ -285,7 +299,14 @@ async def rps_pvp_challenge(request: Request):
             "state":             "waiting",  # waiting | choosing | done
         }
 
-    return JSONResponse({"ok": True, "room_id": room_id})
+    # ── GPP: emit event + animation (Observer pattern + Component pattern) ─────────
+    queue = EventQueue()
+    queue.push("rps_pvp_challenge", {"user_id": user_id, "room_id": room_id, "wager": wager, "theme": theme})
+    await queue.flush()
+
+    animation = AnimationComponent.for_ui_update("challenge_created", 400)
+
+    return JSONResponse({"ok": True, "room_id": room_id, "animation": animation})
 
 
 @router.post("/casino/rps/pvp/accept")
@@ -320,7 +341,14 @@ async def rps_pvp_accept(request: Request):
         match["challenger_name"] = user.get("username", "?")
         match["state"]           = "choosing"
 
-    return JSONResponse({"ok": True, "theme": match["theme"], "wager": match["wager"]})
+    # ── GPP: emit event + animation (Observer pattern + Component pattern) ─────────
+    queue = EventQueue()
+    queue.push("rps_pvp_accept", {"user_id": user_id, "room_id": room_id, "host_id": match["host"]})
+    await queue.flush()
+
+    animation = AnimationComponent.for_ui_update("challenge_accepted", 400)
+
+    return JSONResponse({"ok": True, "theme": match["theme"], "wager": match["wager"], "animation": animation})
 
 
 @router.post("/casino/rps/pvp/choose")
@@ -398,6 +426,13 @@ async def rps_pvp_choose(request: Request):
             except Exception:
                 pass
 
+            # ── GPP: emit event + animation (Observer pattern + Component pattern) ─────────
+            queue = EventQueue()
+            queue.push("rps_pvp_choose", {"user_id": user_id, "room_id": room_id, "result": result, "winner_id": winner_id, "pot": pot})
+            await queue.flush()
+
+            animation = AnimationComponent.for_ui_update("rps_pvp_resolve", 500, {"result": result, "winner_id": winner_id})
+
             return JSONResponse({
                 "resolved":          True,
                 "result":            result,
@@ -408,6 +443,7 @@ async def rps_pvp_choose(request: Request):
                 "challenger_choice_name": cd["name"],
                 "pot":               pot,
                 "fun_mode":          match["fun_mode"],
+                "animation": animation
             })
 
     return JSONResponse({"resolved": False, "waiting": True})
@@ -473,4 +509,11 @@ async def coinflip_observer_bet(request: Request):
     except Exception as e:
         logger.warning(f"coinflip_observer_bet lobby error: {e}")
 
-    return JSONResponse({"ok": True, "pick": pick, "amount": amount})
+    # ── GPP: emit event + animation (Observer pattern + Component pattern) ─────────
+    queue = EventQueue()
+    queue.push("coinflip_observer_bet", {"user_id": user_id, "room_id": room_id, "pick": pick, "amount": amount})
+    await queue.flush()
+
+    animation = AnimationComponent.for_ui_update("bet_placed", 300)
+
+    return JSONResponse({"ok": True, "pick": pick, "amount": amount, "animation": animation})

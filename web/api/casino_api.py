@@ -12,24 +12,13 @@ from Systems.Pets.PetGames.holdem import HoldemSession
 from Systems.Pets.PetGames.craps import CrapsSession
 from Systems.Pets.PetGames.slots import SlotMachineView, get_emojis_for_difficulty, PAYOUTS
 from Systems.Pets.PetGames.races import RaceSession
+from Systems.Pets.Logic.event_bus import EventQueue
+from Systems.Pets.Logic.pet_components import AnimationComponent
+from web.api.pets.gpp_helpers import _invalidate_stats_cache, _compute_total_xp, _get_user_lock
 
 logger = logging.getLogger(__name__)
 
 casino_api = APIRouter()
-
-# ── Per-user locks ────────────────────────────────────────────────────────────
-_user_locks: Dict[str, asyncio.Lock] = {}
-
-def _get_user_lock(user_id: str) -> asyncio.Lock:
-    if user_id not in _user_locks:
-        _user_locks[user_id] = asyncio.Lock()
-    return _user_locks[user_id]
-
-def compute_total_xp(pet_data: dict) -> int:
-    """Total XP = cumulative XP to reach current level + current level's remaining XP."""
-    lvl = int(pet_data.get("level", 1))
-    rem = int(pet_data.get("experience", 0))
-    return int(LootCalculator.get_total_experience_for_level(lvl)) + rem
 
 # Emoji categories for slots
 # Matches Discord emoji.py CATEGORIES — keys map to static file paths
@@ -71,7 +60,7 @@ async def get_casino_xp(request: Request):
     pet_data = await user_data_manager.get_pet_data_async(user_id)
     if not pet_data:
         return JSONResponse(content={"has_pet": False, "total_xp": 0})
-    total_xp = compute_total_xp(pet_data)
+    total_xp = _compute_total_xp(pet_data)
     return JSONResponse(content={
         "has_pet": True,
         "total_xp": total_xp,
@@ -156,7 +145,7 @@ async def _spin_slots_inner(request: Request, user_id: str, theme: str, bet_amou
 
     # Check XP balance if not fun mode
     if not fun_mode:
-        total_xp = compute_total_xp(pet_data)
+        total_xp = _compute_total_xp(pet_data)
         if bet_amount > total_xp:
             return JSONResponse(content={'error': 'Insufficient XP'}, status_code=400)
         # Deduct bet amount
@@ -397,7 +386,7 @@ async def _play_keno_inner(user_id: str, bet_amount: int, fun_mode: bool,
     if not fun_mode:
         if bet_amount < 10:
             return JSONResponse(content={"error": "Minimum bet is 10 XP"}, status_code=400)
-        total_xp = compute_total_xp(pet_data)
+        total_xp = _compute_total_xp(pet_data)
         if bet_amount > total_xp:
             return JSONResponse(content={"error": "Insufficient XP"}, status_code=400)
         await LootCalculator.apply_xp_change(int(user_id), -bet_amount, source="keno_bet")
@@ -540,10 +529,10 @@ WHEEL_MATERIALS: List[str] = [
 
 # Gems - From equipment.json
 WHEEL_GEMS: List[str] = [
-    'EmberHeart','MintGaze','EmeraldSoul','ForestEye','SolarSphere','SkySpire',
-    'ZephyrShard','AzureApex','MagmaDiamond','PrismaticFlux','FrostShard','EmberCube',
-    'JadeSlab','FluxDiamond','MoonQuartz','FuryRose','SolarCore','VoidSpark',
-    'GildedPrism','OceanTear'
+    'Ember Heart','Mint Gaze','Emerald Soul','Forest Eye','Solar Sphere','Sky Spire',
+    'Zephyr Shard','Azure Apex','Magma Diamond','Prismatic Flux','Frost Shard','Ember Cube',
+    'Jade Slab','Flux Diamond','Moon Quartz','Fury Rose','Solar Core','Void Spark',
+    'Gilded Prism','Ocean Tear'
 ]
 
 # Hats - From equipment.json
@@ -638,35 +627,35 @@ WHEEL_MODES = {
     },
     'monsters': {
         'items': WHEEL_MONSTERS,
-        'path_template': '/static/Emojis/Pets/Equipment/{}.png',
+        'path_template': '/static/Emojis/Pets/Equipment/Monsters/{}.png',
         'title': 'Wheel of Monsters',
         'subtitle': 'Summon your creature · Place your bet · Spin to win',
         'description': f'{len(WHEEL_MONSTERS)} monsters · equal odds · 5% house edge'
     },
     'materials': {
         'items': WHEEL_MATERIALS,
-        'path_template': '/static/Emojis/Pets/Equipment/{}.png',
+        'path_template': '/static/Emojis/Pets/Equipment/Materials/{}.png',
         'title': 'Wheel of Materials',
         'subtitle': 'Choose your material · Place your bet · Spin to win',
         'description': f'{len(WHEEL_MATERIALS)} materials · equal odds · 5% house edge'
     },
     'gems': {
         'items': WHEEL_GEMS,
-        'path_template': '/static/Emojis/Pets/Equipment/{}.png',
+        'path_template': '/static/Emojis/Pets/Equipment/Gems/{}.png',
         'title': 'Wheel of Gems',
         'subtitle': 'Select your gem · Place your bet · Spin to win',
         'description': f'{len(WHEEL_GEMS)} gems · equal odds · 5% house edge'
     },
     'hats': {
         'items': WHEEL_HATS,
-        'path_template': '/static/Emojis/Pets/Equipment/{}.png',
+        'path_template': '/static/Emojis/Pets/Equipment/Hats/{}.png',
         'title': 'Wheel of Hats',
         'subtitle': 'Pick your headwear · Place your bet · Spin to win',
         'description': f'{len(WHEEL_HATS)} hats · equal odds · 5% house edge'
     },
     'potions': {
         'items': WHEEL_POTIONS,
-        'path_template': '/static/Emojis/Pets/Equipment/{}.png',
+        'path_template': '/static/Emojis/Pets/Equipment/Potions/{}.png',
         'title': 'Wheel of Potions',
         'subtitle': 'Brew your fortune · Place your bet · Spin to win',
         'description': f'{len(WHEEL_POTIONS)} potions · equal odds · 5% house edge'
@@ -861,7 +850,7 @@ async def _spin_wheel_inner(user_id: str, bet_amount: int, chosen_item: str, mod
     if not fun_mode:
         if bet_amount < 10:
             return JSONResponse(content={"error": "Minimum bet is 10 XP"}, status_code=400)
-        total_xp = compute_total_xp(pet_data)
+        total_xp = _compute_total_xp(pet_data)
         if bet_amount > total_xp:
             return JSONResponse(content={"error": "Insufficient XP"}, status_code=400)
         await LootCalculator.apply_xp_change(int(user_id), -bet_amount, source="wheel_bet")
@@ -967,7 +956,7 @@ async def create_blackjack_game(request: Request):
             if not pet_data:
                 return JSONResponse(content={'error': 'No pet found'}, status_code=404)
             
-            total_xp = compute_total_xp(pet_data)
+            total_xp = _compute_total_xp(pet_data)
             if buy_in > total_xp:
                 return JSONResponse(content={'error': 'Insufficient XP'}, status_code=400)
         
@@ -1046,7 +1035,7 @@ async def create_race_game(request: Request):
         if not pet_data:
             return JSONResponse(content={'error': 'No pet found'}, status_code=404)
         
-        total_xp = compute_total_xp(pet_data)
+        total_xp = _compute_total_xp(pet_data)
         if bet_amount > total_xp:
             return JSONResponse(content={'error': 'Insufficient XP'}, status_code=400)
         

@@ -13,61 +13,61 @@ from fastapi.responses import JSONResponse
 
 from Systems.Functions.user_data_manager import user_data_manager
 from Systems.Pets.Logic.pet_brain import LootCalculator
+from Systems.Pets.Logic.event_bus import EventQueue
+from Systems.Pets.Logic.pet_components import AnimationComponent
+from web.api.pets.gpp_helpers import _invalidate_stats_cache, _compute_total_xp, _get_user_lock
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
-
-# ── Per-user locks ────────────────────────────────────────────────────────────
-_user_locks: Dict[str, asyncio.Lock] = {}
-
-def _get_user_lock(user_id: str) -> asyncio.Lock:
-    if user_id not in _user_locks:
-        _user_locks[user_id] = asyncio.Lock()
-    return _user_locks[user_id]
-
-
-def _compute_total_xp(pet_data: dict) -> int:
-    lvl = int(pet_data.get("level", 1))
-    rem = int(pet_data.get("experience", 0))
-    return int(LootCalculator.get_total_experience_for_level(lvl)) + rem
-
 
 # ── Emoji pools ───────────────────────────────────────────────────────────────
 
 def _ep(name: str) -> str:
     """Return the static image path for an emoji name."""
-    # Equipment folder (hats, gems, materials, monsters, potions, keys, chests)
-    _EQUIPMENT = {
-        # Hats
+    _HATS = {
         "boater","aviator","ushanka","bearskin","turban","bowler","beret","nursing","gat",
         "peaked","stovepipe","capotain","keffiyeh","mortarboard","fool","safety","pith",
         "toque","rice","beanie","santa","ballcap","fez","service","tricorne","mitre",
         "sombrero","fedora","sorcerer","cattleman",
-        # Gems
-        "EmberHeart","MintGaze","EmeraldSoul","ForestEye","SolarSphere","SkySpire",
-        "ZephyrShard","AzureApex","MagmaDiamond","PrismaticFlux","FrostShard","EmberCube",
-        "JadeSlab","FluxDiamond","MoonQuartz","FuryRose","SolarCore","VoidSpark",
-        "GildedPrism","OceanTear",
-        # Materials
+        "knights","necromancer","tank","jet","ship","rps","rock_1","paper","scissor",
+    }
+    _GEMS = {
+        "Ember Heart","Mint Gaze","Emerald Soul","Forest Eye","Solar Sphere","Sky Spire",
+        "Zephyr Shard","Azure Apex","Magma Diamond","Prismatic Flux","Frost Shard","Ember Cube",
+        "Jade Slab","Flux Diamond","Moon Quartz","Fury Rose","Solar Core","Void Spark",
+        "Gilded Prism","Ocean Tear",
+    }
+    _MATERIALS = {
         "Dirt","Sand","Leaf","Stone","Bone","Fabric","Leather","Glass","Wood","Brick",
         "Gold","Steel","plutonium","Smart","Laser",
-        # Monsters
+    }
+    _MONSTERS = {
         "Dwep","Krep","Bood","Lozd","Yoa","Nad","Ztuk","Gufi","Rowr","Jle","Zlik","Sili",
         "Qizi","Pir","Wirm","Dodl","Dwim","Zhy","Felr","Drak","Bliz","Smuj","Dvod","Neri",
         "Fwit","Plat","Mok","Jlum","Itle",
-        # Potions
+    }
+    _POTIONS = {
         "basic_potion","fire_potion","water_potion","electric_potion","ice_potion",
         "air_potion","rock_potion","plant_potion","magic_potion","holy_potion",
         "necro_potion","psychic_potion","fighting_potion","mega_potion",
         "greater_health_potion","health_potion","lesser_health_potion","xp_potion",
         "lesser_xp_potion","luck_potion","att_potion","def_potion","dex_potion",
         "int_potion","hap_potion","ene_potion","s1_potion","s2_potion","s3_potion",
-        # Keys/Chests
-        "Key1","Key2","Key3","chest1","chest2","chest3","chest4",
-        # RPS/Military in Equipment
-        "knights","necromancer","tank","jet","ship","rps","rock_1","paper","scissor",
     }
-    if name in _EQUIPMENT:
+    # Keys/Chests stay in Equipment root
+    _EQUIPMENT_ROOT = {"Key1","Key2","Key3","chest1","chest2","chest3","chest4"}
+
+    if name in _HATS:
+        return f"/static/Emojis/Pets/Equipment/Hats/{name}.png"
+    if name in _GEMS:
+        return f"/static/Emojis/Pets/Equipment/Gems/{name}.png"
+    if name in _MATERIALS:
+        return f"/static/Emojis/Pets/Equipment/Materials/{name}.png"
+    if name in _MONSTERS:
+        return f"/static/Emojis/Pets/Equipment/Monsters/{name}.png"
+    if name in _POTIONS:
+        return f"/static/Emojis/Pets/Equipment/Potions/{name}.png"
+    if name in _EQUIPMENT_ROOT:
         return f"/static/Emojis/Pets/Equipment/{name}.png"
     # Pets
     _PETS = {
@@ -128,10 +128,10 @@ CARD5_MONSTERS  = ["Dwep","Krep","Bood","Lozd","Yoa","Nad","Ztuk","Gufi","Rowr",
                    "Bliz","Smuj","Dvod","Neri","Fwit","Plat","Mok","Jlum","Itle"]
 CARD5_MATERIALS = ["Dirt","Sand","Leaf","Stone","Bone","Fabric","Leather","Glass","Wood",
                    "Brick","Gold","Steel","plutonium","Smart","Laser"]
-CARD5_GEMS      = ["EmberHeart","MintGaze","EmeraldSoul","ForestEye","SolarSphere",
-                   "SkySpire","ZephyrShard","AzureApex","MagmaDiamond","PrismaticFlux",
-                   "FrostShard","EmberCube","JadeSlab","FluxDiamond","MoonQuartz",
-                   "FuryRose","SolarCore","VoidSpark","GildedPrism","OceanTear"]
+CARD5_GEMS      = ["Ember Heart","Mint Gaze","Emerald Soul","Forest Eye","Solar Sphere",
+                   "Sky Spire","Zephyr Shard","Azure Apex","Magma Diamond","Prismatic Flux",
+                   "Frost Shard","Ember Cube","Jade Slab","Flux Diamond","Moon Quartz",
+                   "Fury Rose","Solar Core","Void Spark","Gilded Prism","Ocean Tear"]
 CARD5_HATS      = ["boater","aviator","ushanka","bearskin","turban","bowler","beret",
                    "nursing","gat","peaked","stovepipe","capotain","keffiyeh","mortarboard",
                    "fool","safety","pith","toque","rice","beanie","santa","ballcap","fez",
@@ -651,8 +651,16 @@ async def _play_scratch_inner(user_id: str, card_type: int, bet_amount: int, fun
     except Exception:
         pass
 
+    # ── GPP: emit event + animation (Observer pattern + Component pattern) ─────────
+    queue = EventQueue()
+    queue.push("scratch_play", {"user_id": user_id, "card_type": card_type, "winnings": result.get("winnings", 0)})
+    await queue.flush()
+
+    animation = AnimationComponent.for_ui_update("scratch_reveal", 500, {"card_type": card_type, "winnings": result.get("winnings", 0)})
+
     result["fun_mode"] = fun_mode
     result["card_type"] = card_type
     if fun_mode:
         result["winnings"] = 0
+    result["animation"] = animation
     return JSONResponse(content=result)

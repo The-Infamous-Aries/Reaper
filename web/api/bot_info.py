@@ -22,6 +22,10 @@ logger = logging.getLogger("Reaper.BotInfoAPI")
 # Global variable to store bot instance (will be set by web server)
 bot_instance = None
 
+# Cache for bot banner — fetched at most once every 5 minutes
+_banner_cache: dict = {"url": None, "fetched_at": 0.0}
+_BANNER_TTL = 300  # seconds
+
 def set_bot_instance(bot):
     """Set the bot instance for this module."""
     global bot_instance
@@ -31,18 +35,23 @@ def set_bot_instance(bot):
 @router.get("/bot-info")
 async def get_bot_info():
     """Get bot information for the dashboard."""
+    import time
     try:
         bot_data = {}
         
         if bot_instance and bot_instance.user and hasattr(bot_instance.user, 'avatar'):
-            # Get actual bot data from Discord
-            try:
-                # Fetch the bot's user object to get the latest profile data, including the banner
-                user = await bot_instance.fetch_user(bot_instance.user.id)
-                banner_url = str(user.banner.url) if user.banner else None
-            except Exception as e:
-                logger.error(f"Failed to fetch bot user or banner: {e}")
-                banner_url = None
+            # Get actual bot data from Discord — cache the banner to avoid a
+            # live fetch_user call on every single page load.
+            now = time.monotonic()
+            if now - _banner_cache["fetched_at"] > _BANNER_TTL:
+                try:
+                    user = await bot_instance.fetch_user(bot_instance.user.id)
+                    _banner_cache["url"] = str(user.banner.url) if user.banner else None
+                    _banner_cache["fetched_at"] = now
+                except Exception as e:
+                    logger.error(f"Failed to fetch bot user or banner: {e}")
+                    _banner_cache["fetched_at"] = now  # don't retry immediately on failure
+            banner_url = _banner_cache["url"]
 
             logger.info(f"Bot info requested. Name: {bot_instance.user.name}, Banner URL: {banner_url}")
             

@@ -54,8 +54,11 @@ from fastapi.responses import JSONResponse
 
 from Systems.Functions.user_data_manager import user_data_manager
 from Systems.Pets.Logic.pet_brain import LootCalculator, StatsCalculator
+from Systems.Pets.Logic.event_bus import EventQueue
+from Systems.Pets.Logic.pet_components import AnimationComponent
+from web.api.pets.gpp_helpers import _invalidate_stats_cache, _compute_total_xp, _get_user_lock
 
-logger = logging.getLogger("powerball_api")
+logger = logging.getLogger(__name__)
 router = APIRouter()
 
 # ── Constants ─────────────────────────────────────────────────────────────────
@@ -93,14 +96,6 @@ ALL_ELEMENTS: List[str] = [
     "Air","Basic","Electric","Fire","Holy","Ice","Magic","Necro","Plant","Rock",
     "Water","Psychic","Fighting",
 ]
-
-# ── Per-user locks ─────────────────────────────────────────────────────────────
-_user_locks: Dict[str, asyncio.Lock] = {}
-
-def _get_user_lock(uid: str) -> asyncio.Lock:
-    if uid not in _user_locks:
-        _user_locks[uid] = asyncio.Lock()
-    return _user_locks[uid]
 
 # ── DB helpers ─────────────────────────────────────────────────────────────────
 
@@ -264,12 +259,6 @@ def _compute_ticket_cost(pet_data: Dict[str, Any], with_em: bool) -> Tuple[int, 
     if with_em:
         base = int(base * EM_SURCHARGE)
     return max(500, base), equip_mult   # floor at 500 XP
-
-
-def _compute_total_xp(pet_data: Dict[str, Any]) -> int:
-    lvl = int(pet_data.get("level", 1))
-    rem = int(pet_data.get("experience", 0))
-    return int(LootCalculator.get_total_experience_for_level(lvl)) + rem
 
 
 def _pet_img(name: str) -> str:
@@ -697,6 +686,13 @@ async def buy_ticket(request: Request):
         # Refresh pot display
         pot_updated = await _get_or_create_pot(draw_date)
 
+        # ── GPP: emit event + animation (Observer pattern + Component pattern) ─────────
+        queue = EventQueue()
+        queue.push("powerball_buy", {"user_id": user_id, "draw_date": draw_date, "pets": pets, "element": element, "cost": cost})
+        await queue.flush()
+
+        animation = AnimationComponent.for_ui_update("ticket_purchased", 400)
+
         return JSONResponse({
             "success":    True,
             "draw_date":  draw_date,
@@ -706,6 +702,7 @@ async def buy_ticket(request: Request):
             "pot_contrib": pot_contrib,
             "pot_xp":     pot_updated["pot_xp"],
             "purchased_at": now_str,
+            "animation": animation
         })
 
 
@@ -785,12 +782,20 @@ async def admin_update_pot_multiplier(request: Request):
     
     result = await update_current_pot_for_multiplier()
     if result:
+        # ── GPP: emit event + animation (Observer pattern + Component pattern) ─────────
+        queue = EventQueue()
+        queue.push("powerball_pot_multiplier", {"pot_date": result["pot_date"], "old_pot": result["old_pot"], "new_pot": result["new_pot"]})
+        await queue.flush()
+
+        animation = AnimationComponent.for_ui_update("pot_multiplier_applied", 500)
+
         return JSONResponse({
             "success": True,
             "message": f"Pot for {result['pot_date']} updated from {result['old_pot']:,} to {result['new_pot']:,} XP",
             "old_pot": result["old_pot"],
             "new_pot": result["new_pot"],
-            "pot_date": result["pot_date"]
+            "pot_date": result["pot_date"],
+            "animation": animation
         })
     else:
         return JSONResponse({

@@ -2,6 +2,9 @@ from fastapi import APIRouter, Request, Body, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse
 from Systems.Functions.user_data_manager import user_data_manager
 from Systems.Functions.pets_db import pets_db
+from Systems.Pets.Logic.event_bus import EventQueue
+from Systems.Pets.Logic.pet_components import AnimationComponent
+from web.api.pets.gpp_helpers import _invalidate_stats_cache
 import logging
 from typing import Dict, Any, List, Set
 import asyncio
@@ -203,9 +206,16 @@ async def post_listing(request: Request, data: Dict[str, Any] = Body(...)):
     except Exception:
         pass
 
+    # ── GPP: emit event + animation (Observer pattern + Component pattern) ─────────
+    queue = EventQueue()
+    queue.push("bazaar_post", {"user_id": uid, "item_name": item_name, "quantity": quantity, "listing_id": listing_id})
+    await queue.flush()
+
+    animation = AnimationComponent.for_ui_update("listing_posted", 400)
+
     listings = await pets_db.bazaar_get_active_listings()
     await _broadcast({"type": "board", "listings": listings})
-    return JSONResponse({"ok": True, "listing_id": listing_id})
+    return JSONResponse({"ok": True, "listing_id": listing_id, "animation": animation})
 
 
 # ── BUY a listing ─────────────────────────────────────────────────────────────
@@ -248,6 +258,13 @@ async def buy_listing(listing_id: int, request: Request):
     updated_seller_pet = await user_data_manager.get_pet_data_async(str(listing["seller_id"])) or seller_pet
     updated_buyer_pet  = await user_data_manager.get_pet_data_async(uid) or buyer_pet
 
+    # ── GPP: emit event + animation (Observer pattern + Component pattern) ─────────
+    queue = EventQueue()
+    queue.push("bazaar_buy", {"buyer_id": uid, "seller_id": str(listing["seller_id"]), "listing_id": listing_id, "item_name": listing.get("item_name")})
+    await queue.flush()
+
+    animation = AnimationComponent.for_ui_update("listing_purchased", 400)
+
     listings = await pets_db.bazaar_get_active_listings()
     await _broadcast({"type": "board", "listings": listings})
 
@@ -261,7 +278,7 @@ async def buy_listing(listing_id: int, request: Request):
         level_before=seller_level_before,
     ))
 
-    return JSONResponse({"ok": True})
+    return JSONResponse({"ok": True, "animation": animation})
 
 
 # ── CANCEL a listing ──────────────────────────────────────────────────────────
@@ -281,6 +298,13 @@ async def cancel_listing(listing_id: int, request: Request):
     if not result.get("ok"):
         return JSONResponse({"error": result.get("error", "Cancel failed")}, status_code=400)
 
+    # ── GPP: emit event + animation (Observer pattern + Component pattern) ─────────
+    queue = EventQueue()
+    queue.push("bazaar_cancel", {"user_id": uid, "listing_id": listing_id})
+    await queue.flush()
+
+    animation = AnimationComponent.for_ui_update("listing_cancelled", 300)
+
     listings = await pets_db.bazaar_get_active_listings()
     await _broadcast({"type": "board", "listings": listings})
-    return JSONResponse({"ok": True})
+    return JSONResponse({"ok": True, "animation": animation})

@@ -13,7 +13,9 @@ from fastapi import APIRouter, Body, HTTPException, Request, WebSocket, WebSocke
 from fastapi.responses import JSONResponse
 
 from Systems.Functions.user_data_manager import user_data_manager
-from Systems.Pets.Logic.pet_brain import LootCalculator
+from Systems.Pets.Logic.event_bus import EventQueue
+from Systems.Pets.Logic.pet_components import AnimationComponent
+from web.api.pets.gpp_helpers import _invalidate_stats_cache
 
 logger = logging.getLogger("casino_lobby_api")
 router = APIRouter()
@@ -235,8 +237,15 @@ async def casino_join(request: Request, data: Dict[str, Any] = Body(...)):
         room.state = "picking"
     room.add_activity(f"🚪 {user.get('username','?')} entered the room.")
 
+    # ── GPP: emit event + animation (Observer pattern + Component pattern) ─────────
+    queue = EventQueue()
+    queue.push("casino_lobby_join", {"user_id": user_id, "room_id": room_id, "game": room.game})
+    await queue.flush()
+
+    animation = AnimationComponent.for_ui_update("room_join", 400)
+
     await _broadcast_casino_rooms()
-    return JSONResponse({"success": True, "room_id": room_id})
+    return JSONResponse({"success": True, "room_id": room_id, "animation": animation})
 
 
 # ── REST: observe a room (watch only) ────────────────────────────────────────
@@ -279,8 +288,15 @@ async def casino_observe(request: Request, data: Dict[str, Any] = Body(...)):
     room.add_observer(info)
     room.add_activity(f"👁️ {user.get('username','?')} is watching.")
 
+    # ── GPP: emit event + animation (Observer pattern + Component pattern) ─────────
+    queue = EventQueue()
+    queue.push("casino_lobby_observe", {"user_id": user_id, "room_id": room_id})
+    await queue.flush()
+
+    animation = AnimationComponent.for_ui_update("room_observe", 300)
+
     await _broadcast_casino_rooms()
-    return JSONResponse({"success": True, "room_id": room_id, "room": room.to_dict()})
+    return JSONResponse({"success": True, "room_id": room_id, "room": room.to_dict(), "animation": animation})
 
 
 # ── REST: leave a room ────────────────────────────────────────────────────────
@@ -298,8 +314,15 @@ async def casino_leave(request: Request):
             r.add_activity(f"🚶 {username} left the room.")
             r.remove_user(user_id)
 
+    # ── GPP: emit event + animation (Observer pattern + Component pattern) ─────────
+    queue = EventQueue()
+    queue.push("casino_lobby_leave", {"user_id": user_id})
+    await queue.flush()
+
+    animation = AnimationComponent.for_ui_update("room_leave", 300)
+
     await _broadcast_casino_rooms()
-    return JSONResponse({"success": True})
+    return JSONResponse({"success": True, "animation": animation})
 
 
 # ── REST: set game ────────────────────────────────────────────────────────────
@@ -333,8 +356,16 @@ async def casino_set_game(request: Request, data: Dict[str, Any] = Body(...)):
             occ["status"] = "playing"
 
     room.add_activity(f"{gi['icon']} {username} started {gi['label']}.")
+
+    # ── GPP: emit event + animation (Observer pattern + Component pattern) ─────────
+    queue = EventQueue()
+    queue.push("casino_lobby_set_game", {"user_id": user_id, "game": game})
+    await queue.flush()
+
+    animation = AnimationComponent.for_ui_update("game_start", 400)
+
     await _broadcast_casino_rooms()
-    return JSONResponse({"success": True, "game": game})
+    return JSONResponse({"success": True, "game": game, "animation": animation})
 
 
 # ── REST: request a seat (join next round) ────────────────────────────────────
@@ -370,8 +401,15 @@ async def casino_request_seat(request: Request, data: Dict[str, Any] = Body(...)
         room.pending_seats.append(dict(obs))
         room.add_activity(f"🪑 {obs['username']} is waiting for the next round.")
 
+    # ── GPP: emit event + animation (Observer pattern + Component pattern) ─────────
+    queue = EventQueue()
+    queue.push("casino_lobby_request_seat", {"user_id": user_id, "room_id": room_id})
+    await queue.flush()
+
+    animation = AnimationComponent.for_ui_update("seat_requested", 300)
+
     await _broadcast_casino_rooms()
-    return JSONResponse({"success": True, "message": "You'll be seated at the next round"})
+    return JSONResponse({"success": True, "message": "You'll be seated at the next round", "animation": animation})
 
 
 # ── REST: observer place bet on a player/racer ────────────────────────────────
@@ -423,8 +461,15 @@ async def casino_observer_bet(request: Request, data: Dict[str, Any] = Body(...)
     username = user.get("username", "?")
     room.add_activity(f"💰 {username} bet {amount} XP on {target}.")
 
+    # ── GPP: emit event + animation (Observer pattern + Component pattern) ─────────
+    queue = EventQueue()
+    queue.push("casino_lobby_observer_bet", {"user_id": user_id, "room_id": room_id, "target": target, "amount": amount})
+    await queue.flush()
+
+    animation = AnimationComponent.for_ui_update("bet_placed", 300)
+
     await _broadcast_casino_rooms()
-    return JSONResponse({"success": True, "bets": room.observer_bets[user_id]})
+    return JSONResponse({"success": True, "bets": room.observer_bets[user_id], "animation": animation})
 
 
 # ── REST: settle observer bets (called by game logic after result) ─────────────
@@ -459,8 +504,16 @@ async def settle_observer_bets(request: Request, data: Dict[str, Any] = Body(...
             # Losers already had XP deducted on placement
 
     room.observer_bets = {}
+
+    # ── GPP: emit event + animation (Observer pattern + Component pattern) ─────────
+    queue = EventQueue()
+    queue.push("casino_lobby_settle_observer_bets", {"room_id": room_id, "winner_id": winner_id, "results": results})
+    await queue.flush()
+
+    animation = AnimationComponent.for_ui_update("bets_settled", 400)
+
     await _broadcast_casino_rooms()
-    return JSONResponse({"settled": results})
+    return JSONResponse({"settled": results, "animation": animation})
 
 
 # ── REST: craps swap roller ───────────────────────────────────────────────────
@@ -501,8 +554,16 @@ async def craps_swap_roller(request: Request, data: Dict[str, Any] = Body(...)):
     room.craps_roller_id = new_roller
 
     room.add_activity(f"🎲 {new_obs['username']} is now rolling!")
+
+    # ── GPP: emit event + animation (Observer pattern + Component pattern) ─────────
+    queue = EventQueue()
+    queue.push("casino_lobby_craps_swap_roller", {"user_id": user_id, "room_id": room_id, "new_roller": new_roller})
+    await queue.flush()
+
+    animation = AnimationComponent.for_ui_update("roller_swapped", 400)
+
     await _broadcast_casino_rooms()
-    return JSONResponse({"success": True, "new_roller": new_roller})
+    return JSONResponse({"success": True, "new_roller": new_roller, "animation": animation})
 
 
 # ── REST: post activity line ──────────────────────────────────────────────────
@@ -520,7 +581,14 @@ async def casino_activity(request: Request, data: Dict[str, Any] = Body(...)):
         room.add_activity(line)
         await _broadcast_casino_rooms()
 
-    return JSONResponse({"ok": True})
+    # ── GPP: emit event + animation (Observer pattern + Component pattern) ─────────
+    queue = EventQueue()
+    queue.push("casino_lobby_activity", {"user_id": user_id, "line": line})
+    await queue.flush()
+
+    animation = AnimationComponent.for_ui_update("activity_post", 300)
+
+    return JSONResponse({"ok": True, "animation": animation})
 
 
 # ── REST: update shared state (game APIs push state for observers) ─────────────
@@ -540,8 +608,16 @@ async def casino_update_state(request: Request, data: Dict[str, Any] = Body(...)
     state_update = data.get("state", {})
     room.shared_state.update(state_update)
     room.updated_at = time.time()
+
+    # ── GPP: emit event + animation (Observer pattern + Component pattern) ─────────
+    queue = EventQueue()
+    queue.push("casino_lobby_update_state", {"user_id": user_id, "state": state_update})
+    await queue.flush()
+
+    animation = AnimationComponent.for_ui_update("state_updated", 300)
+
     await _broadcast_casino_rooms()
-    return JSONResponse({"ok": True})
+    return JSONResponse({"ok": True, "animation": animation})
 
 
 # ── REST: get my room ─────────────────────────────────────────────────────────
@@ -589,5 +665,13 @@ async def casino_promote_pending(request: Request, data: Dict[str, Any] = Body(.
         room.add_activity(f"🪑 {pending['username']} joined the table!")
 
     room.pending_seats = [p for p in room.pending_seats if p["user_id"] not in promoted]
+
+    # ── GPP: emit event + animation (Observer pattern + Component pattern) ─────────
+    queue = EventQueue()
+    queue.push("casino_lobby_promote_pending", {"user_id": user_id, "room_id": room_id, "promoted": promoted})
+    await queue.flush()
+
+    animation = AnimationComponent.for_ui_update("pending_promoted", 400)
+
     await _broadcast_casino_rooms()
-    return JSONResponse({"promoted": promoted})
+    return JSONResponse({"promoted": promoted, "animation": animation})

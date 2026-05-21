@@ -22,6 +22,9 @@ from Systems.Functions.user_data_manager import user_data_manager
 from Systems.Pets.Logic.pet_brain import LootCalculator
 from Systems.Functions.ss_db import ss_db
 from web.api import ss_brain as _brain
+from Systems.Pets.Logic.event_bus import EventQueue
+from Systems.Pets.Logic.pet_components import AnimationComponent
+from web.api.pets.gpp_helpers import _invalidate_stats_cache
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -234,75 +237,65 @@ async def _dm_user(user_id: str, title: str, body: str) -> None:
 
 def _compute_pet_multiplier(pet: Dict[str, Any]) -> int:
     """
-    Mirrors StatsCalculator._calculate_equipment_bonuses multiplier exactly:
-      - level_bonus = level // 50  (always applies regardless of equipment)
-      - set_mult: 1 (no full set), 3 (full set), 4 (full set + both hat specs match)
-      - final = set_mult + level_bonus  (minimum 1)
-
-    Note: pairs (2× per-item) don't change the global set_mult — only a full set does.
-    A full set requires: mat pair + gem pair + mon pair + hat equipped.
+    Mirrors StatsCalculator.get_equipment_xp_multiplier exactly (new slot system):
+      - slots_filled: +1 per filled main slot (Helmet/Armor/Boots/Ring/Shield/Weapon)
+      - set_bonus: +3 if all 6 main slots share the same 'set' tag
+      - ring_sub_bonus: +1 matching monsters, +1 matching gems, +1 material on ring
+      - level_bonus: level // 50
+      - full_set (all 6 matching + all ring sub-slots): result × 2
+      - minimum 1
     """
-    level      = max(1, int(pet.get("level", 1)))
+    level       = max(1, int(pet.get("level", 1)))
     level_bonus = level // 50
 
     equipment = pet.get("equipment") or {}
     if not equipment:
         return max(1, 1 + level_bonus)
 
-    # ── Collect items exactly as pet_brain does ───────────────────────────────
-    mat_counts: Dict[str, int] = {}
-    gem_counts: Dict[str, int] = {}
-    mon_counts: Dict[str, int] = {}
+    def _get_single(key: str):
+        v = equipment.get(key)
+        if isinstance(v, list): v = v[0] if v else None
+        return v if isinstance(v, dict) and v.get("name") else None
 
-    mat = equipment.get("Material")
-    if isinstance(mat, list):
-        for m in mat:
-            if isinstance(m, dict) and m.get("name"):
-                n = m["name"].lower()
-                mat_counts[n] = mat_counts.get(n, 0) + 1
-    elif isinstance(mat, dict) and mat.get("name"):
-        mat_counts[mat["name"].lower()] = 1
+    def _get_list(key: str):
+        v = equipment.get(key, [])
+        if isinstance(v, dict): v = [v] if v.get("name") else []
+        return [i for i in v if isinstance(i, dict) and i.get("name")]
 
-    gems = equipment.get("Gems", [])
-    if isinstance(gems, list):
-        for g in gems:
-            if isinstance(g, dict) and g.get("name"):
-                n = g["name"].lower()
-                gem_counts[n] = gem_counts.get(n, 0) + 1
-    elif isinstance(gems, dict) and gems.get("name"):
-        gem_counts[gems["name"].lower()] = 1
+    helmet  = _get_single("Helmet")
+    armor   = _get_single("Armor")
+    boots   = _get_single("Boots")
+    ring    = _get_single("Ring")
+    shield  = _get_single("Shield")
+    weapon  = _get_single("Weapon")
+    main_filled = [s for s in [helmet, armor, boots, ring, shield, weapon] if s is not None]
 
-    mons = equipment.get("Monsters", [])
-    if isinstance(mons, list):
-        for m in mons:
-            if isinstance(m, dict) and m.get("name"):
-                n = m["name"].lower()
-                mon_counts[n] = mon_counts.get(n, 0) + 1
-    elif isinstance(mons, dict) and mons.get("name"):
-        mon_counts[mons["name"].lower()] = 1
+    material = _get_single("Material")
+    monsters = _get_list("Monsters")
+    gems     = _get_list("Gems")
 
-    hat = equipment.get("Hat")
-    if isinstance(hat, list):
-        hat = hat[0] if hat else None
-    hat_equipped = isinstance(hat, dict) and bool(hat.get("name"))
+    def _set_tag(item):
+        return item.get("set") if item else None
 
-    has_mat_pair = any(v >= 2 for v in mat_counts.values())
-    has_gem_pair = any(v >= 2 for v in gem_counts.values())
-    has_mon_pair = any(v >= 2 for v in mon_counts.values())
-    full_set     = has_mat_pair and has_gem_pair and has_mon_pair and hat_equipped
+    main_set_tags = [_set_tag(s) for s in main_filled if _set_tag(s)]
+    matching_set = (len(main_filled) == 6 and len(main_set_tags) == 6 and len(set(main_set_tags)) == 1)
 
-    if full_set:
-        # Mirror LootCalculator._get_pet_specs exactly:
-        # field is "specializations" first, then "specs" fallback
-        raw_specs = pet.get("specializations") or pet.get("specs") or []
-        specs = [s.upper() for s in raw_specs] if isinstance(raw_specs, list) else []
-        hat_bonus_stats = [s.upper() for s in (hat.get("bonuses") or {}).keys()]
-        hat_spec_matches = sum(1 for s in hat_bonus_stats if s in specs)
-        set_mult = 4 if hat_spec_matches >= 2 else 3
-    else:
-        set_mult = 1
+    mon_names = [(m.get("name") or "").lower() for m in monsters]
+    gem_names = [(g.get("name") or "").lower() for g in gems]
+    matching_monsters = len(mon_names) == 2 and mon_names[0] == mon_names[1]
+    matching_gems     = len(gem_names) == 2 and gem_names[0] == gem_names[1]
+    has_material      = material is not None
 
-    return max(1, set_mult + level_bonus)
+    ring_sub_bonus = (1 if matching_monsters else 0) + (1 if matching_gems else 0) + (1 if has_material else 0)
+
+    full_set = (len(main_filled) == 6 and matching_set and ring is not None
+                and has_material and matching_monsters and matching_gems)
+
+    slots_filled_bonus = len(main_filled)
+    set_bonus = 3 if matching_set else 0
+    base_mult = max(1, slots_filled_bonus + set_bonus + ring_sub_bonus + level_bonus)
+
+    return base_mult * 2 if full_set else base_mult
 
 
 def _patch_participant_multipliers(game: Dict[str, Any]) -> None:
@@ -519,18 +512,32 @@ def _make_npc(idx: int, level_min: int = 1, level_max: int = 500) -> Dict[str, A
     # NPC levels are calibrated to the real player range passed in
     level = random.randint(max(1, level_min), max(1, level_max))
 
-    # Simulate realistic equipment multiplier using only valid set_mult values
-    # that real pets can actually have: 1 (no set), 3 (full set), 4 (full set + hat specs).
-    # set_mult=2 was invalid and produced artificially low multipliers (inflated scores).
+    # Simulate realistic equipment multiplier using new slot system values.
+    # New system: slots_filled (0-6) + set_bonus (0 or 3) + ring_sub (0-3) + level_bonus
+    # Full set doubles the result. Approximate NPC distribution:
     level_bonus = level // 50
     roll = random.random()
-    if roll < 0.55:
-        set_mult = 1   # no full set (most common)
-    elif roll < 0.85:
-        set_mult = 3   # full set
+    if roll < 0.30:
+        slots_bonus = random.randint(0, 2)   # few slots filled
+        set_bonus = 0
+        ring_sub = 0
+        full_set_mult = 1
+    elif roll < 0.65:
+        slots_bonus = random.randint(3, 5)   # partial set
+        set_bonus = 0
+        ring_sub = random.randint(0, 2)
+        full_set_mult = 1
+    elif roll < 0.88:
+        slots_bonus = 6                       # full slots, matching set
+        set_bonus = 3
+        ring_sub = random.randint(1, 3)
+        full_set_mult = 1
     else:
-        set_mult = 4   # full set + both hat specs match
-    multiplier = max(1, set_mult + level_bonus)
+        slots_bonus = 6                       # full set doubled
+        set_bonus = 3
+        ring_sub = 3
+        full_set_mult = 2
+    multiplier = max(1, (slots_bonus + set_bonus + ring_sub + level_bonus) * full_set_mult)
 
     return {
         "user_id": f"npc_{idx}",
@@ -1477,12 +1484,10 @@ async def ss_join(request: Request):
         await _broadcast("player_joined", {"participant": participant, "total": len(_ss_game["participants"])})
         await _save_state()
 
-    # Task tracking — ss_join (once per game, like boss)
-    try:
-        from web.api.tasks_api import record_action as _task_record
-        await _task_record(user_id, "ss_join")
-    except Exception:
-        pass
+    # ── GPP: emit ss_join event via EventBus ─────────────────────────────────
+    queue = EventQueue()
+    queue.push("ss_joined", {"user_id": user_id})
+    await queue.flush()
 
     return JSONResponse({"ok": True, "game": _ss_game})
 
