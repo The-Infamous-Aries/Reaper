@@ -922,13 +922,11 @@ function pcGetLeaderboardValue(user, key) {
         // Economy
         case 'stock_tokens': return pet.stock_tokens || 0;
         case 'ability_points': return pet.ability_points || 0;
-        case 'equip_mult': 
-            // Calculate equipment multiplier
-            var eq = pet.equipment || {};
-            var level = pet.level || 1;
-            var levelBonus = Math.floor(level / 50);
-            // Simplified calculation - would need full logic for accuracy
-            return 1 + levelBonus;
+        case 'equip_mult': {
+            // Full equipment multiplier using the new slot system
+            var _eqState = getEquipSetState(pet);
+            return _eqState.finalMult;
+        }
         case 'inventory_count': return (pet.inventory || []).length;
         
         // XP Sources
@@ -978,7 +976,8 @@ function pcUpdateGiftQty() {
     var preview = el('pc-gift-item-preview');
     if (opt && opt.value) {
         var itemType = opt.dataset.type || 'Material';
-        var imgPath = '/static/Emojis/Pets/Equipment/' + opt.value.toLowerCase().replace(/ /g, '_') + '.png';
+        var itemData = (typeof getEquipItem === 'function') ? getEquipItem(opt.value) : null;
+        var imgPath = '/static/Emojis/Pets/Equipment/' + equipImgFile(itemData || {name: opt.value});
         preview.innerHTML = '<img src="' + imgPath + '" onerror="this.src=\'/static/Emojis/Pets/Deco/Basic.png\'">';
     } else {
         preview.innerHTML = '';
@@ -986,7 +985,7 @@ function pcUpdateGiftQty() {
 }
 
 // ── Enhanced Hover Tooltips ───────────────────────────────────────────────────
-function pcShowHoverTip(event, userId) {
+window.pcShowHoverTip = function pcShowHoverTip(event, userId) {
     var user = _users.find(function(u) { return u.user_id === userId; });
     if (!user) return;
     
@@ -1011,11 +1010,11 @@ function pcShowHoverTip(event, userId) {
     tip.style.display = 'block';
     tip.style.left = (event.pageX + 10) + 'px';
     tip.style.top = (event.pageY - 10) + 'px';
-}
+};
 
-function pcHideHoverTip() {
+window.pcHideHoverTip = function pcHideHoverTip() {
     el('pc-hover-tip').style.display = 'none';
-}
+};
 
 // ── Enhanced Initialization ───────────────────────────────────────────────────
 function pcInitializeFilters() {
@@ -1308,6 +1307,7 @@ function buildGiftSectionWide(user, isMe) {
                 name: name,
                 type: item.type || 'Material',
                 rarity: item.rarity || 'Common',
+                emoji_file: item.emoji_file || null,
                 count: 0
             };
         }
@@ -1323,9 +1323,11 @@ function buildGiftSectionWide(user, isMe) {
     });
 
     return sortedItems.map(function(item) {
-        var imgPath = '/static/Emojis/Pets/Equipment/' + item.name.toLowerCase().replace(/ /g, '_') + '.png';
-        var rarityClass = 'pc-rarity-' + item.rarity.toLowerCase();
-        
+        // Use cache-aware equipImgFile for correct subfolder paths
+        var f = equipImgFile(item);
+        var imgPath = '/static/Emojis/Pets/Equipment/' + f;
+        var rarityClass = 'pc-rarity-' + (item.rarity || 'Common').toLowerCase();
+
         return '<div class="pc-gift-item-card" data-item="' + esc(item.name) + '" data-count="' + item.count + '" data-type="' + esc(item.type) + '" onclick="selectGiftItem(this)">' +
             '<img src="' + imgPath + '" class="pc-gift-item-img" onerror="this.src=\'/static/Emojis/Pets/Deco/Basic.png\'">' +
             '<div class="pc-gift-item-name ' + rarityClass + '">' + esc(item.name) + '</div>' +
@@ -1474,82 +1476,117 @@ window.setRelWide = function(userId, type) {
 };
 
 // ── Equipment helpers (mirrors pet_brain.py StatsCalculator exactly) ─────────
+
+// Equipment data cache — loaded from /api/equipment-data (same as mypet.js)
+var _pcEquipData = {};
+
+function pcLoadEquipData() {
+    fetch('/api/equipment-data')
+        .then(function(r){ return r.json(); })
+        .then(function(d) {
+            ['Materials','Gems','Monsters','Potions',
+             'Hats','Rings','Helmets','Armor','Boots','Shields',
+             'Daggers','Katanas','Swords','Axes','Hammers','Bows'].forEach(function(cat) {
+                var arr = d[cat] || [];
+                arr.forEach(function(item) {
+                    if (item && item.name) {
+                        _pcEquipData[item.name.toLowerCase()] = item;
+                    }
+                });
+            });
+        })
+        .catch(function(){});
+}
+pcLoadEquipData();
+
+function pcGetEquipItem(name) {
+    return _pcEquipData[(name||'').toLowerCase()] || null;
+}
+
 function equipImgFile(item) {
     var name = (item && item.name) ? item.name : (typeof item === 'string' ? item : '');
+    // Check cache first (has correct emoji_file with subfolder prefix)
+    var cached = pcGetEquipItem(name);
+    if (cached && cached.emoji_file) return cached.emoji_file;
+    // Fall back to item's own emoji_file field
+    if (item && item.emoji_file) return item.emoji_file;
     return name.toLowerCase().replace(/ /g, '_') + '.png';
 }
 
 function getEquipSetState(pet) {
     var eq    = pet.equipment || {};
     var level = parseInt(pet.level || 1, 10);
-    // specs come from specializations or Spec array, uppercased
-    var specs = (pet.specializations || pet.Spec || []).map(function(s){ return s.toUpperCase(); });
-
-    // ── Collect typed items (mirrors Python logic) ────────────────────────────
-    var items = [];  // [{t, item}]
-    var mat = eq.Material;
-    if (Array.isArray(mat)) {
-        mat.forEach(function(m){ if (m && m.name) items.push({t:'Material', item:m}); });
-    } else if (mat && typeof mat === 'object' && mat.name) {
-        items.push({t:'Material', item:mat});
-    }
-    var gems = eq.Gems;
-    if (Array.isArray(gems)) {
-        gems.forEach(function(g){ if (g && g.name) items.push({t:'Gem', item:g}); });
-    } else if (gems && typeof gems === 'object' && gems.name) {
-        items.push({t:'Gem', item:gems});
-    }
-    var mons = eq.Monsters;
-    if (Array.isArray(mons)) {
-        mons.forEach(function(m){ if (m && m.name) items.push({t:'Monster', item:m}); });
-    } else if (mons && typeof mons === 'object' && mons.name) {
-        items.push({t:'Monster', item:mons});
-    }
-    var hat = eq.Hat;
-    // Hat may be stored as a list (from backend) or a plain dict (legacy)
-    if (Array.isArray(hat)) hat = hat[0] || null;
-    var hatEquipped = !!(hat && typeof hat === 'object' && hat.name);
-    if (hatEquipped) items.push({t:'Hat', item:hat});
-
-    // ── Count duplicates ──────────────────────────────────────────────────────
-    var matCounts = {}, gemCounts = {}, monCounts = {};
-    items.forEach(function(e) {
-        var n = (e.item.name || '').toLowerCase();
-        if (!n) return;
-        if (e.t === 'Material') matCounts[n] = (matCounts[n] || 0) + 1;
-        else if (e.t === 'Gem')     gemCounts[n] = (gemCounts[n] || 0) + 1;
-        else if (e.t === 'Monster') monCounts[n] = (monCounts[n] || 0) + 1;
-    });
-
-    var hasMatPair = Object.keys(matCounts).some(function(k){ return matCounts[k] >= 2; });
-    var hasGemPair = Object.keys(gemCounts).some(function(k){ return gemCounts[k] >= 2; });
-    var hasMonPair = Object.keys(monCounts).some(function(k){ return monCounts[k] >= 2; });
-
-    // ── Hat spec matching — mirrors Python exactly ────────────────────────────
-    // hat.bonuses is an object like {"ATT": 5, "DEF": 3}
-    // hatSpecMatches = how many of those bonus keys are in the pet's specs
-    var hatSpecMatches = 0;
-    if (hatEquipped && specs.length) {
-        var hatBonusStats = Object.keys((hat.bonuses) || {}).map(function(s){ return s.toUpperCase(); });
-        hatSpecMatches = hatBonusStats.filter(function(s){ return specs.indexOf(s) !== -1; }).length;
-    }
-
-    // ── Set multiplier (mirrors Python) ──────────────────────────────────────
-    var fullSet = hasMatPair && hasGemPair && hasMonPair && hatEquipped;
-    var setMult;
-    if (fullSet) {
-        setMult = hatSpecMatches >= 2 ? 4 : 3;
-    } else {
-        setMult = 1;
-    }
     var levelBonus = Math.floor(level / 50);
-    var finalMult  = setMult + levelBonus;
+
+    // ── Helper: get single-slot item ─────────────────────────────────────────
+    function getSingle(key) {
+        var v = eq[key];
+        if (Array.isArray(v)) v = v[0] || null;
+        return (v && v.name) ? v : null;
+    }
+    function getList(key) {
+        var v = eq[key] || [];
+        if (!Array.isArray(v)) v = (v && v.name) ? [v] : [];
+        return v.filter(function(i){ return i && i.name; });
+    }
+
+    // ── Main slots ────────────────────────────────────────────────────────────
+    var helmet = getSingle('Helmet');
+    var armor  = getSingle('Armor');
+    var boots  = getSingle('Boots');
+    var ring   = getSingle('Ring');
+    var shield = getSingle('Shield');
+    var weapon = getSingle('Weapon');
+    var mainSlots  = [helmet, armor, boots, ring, shield, weapon];
+    var mainFilled = mainSlots.filter(function(s){ return s !== null; });
+
+    // ── Ring sub-slots ────────────────────────────────────────────────────────
+    var material = getSingle('Material');
+    var monsters = getList('Monsters');   // up to 2
+    var gems     = getList('Gems');       // up to 2
+
+    // ── Set matching (Helmet + Armor + Boots + Shield + Weapon only; Ring excluded) ──
+    function setTag(item) { return item ? (item.set || null) : null; }
+    var setSlots = [helmet, armor, boots, shield, weapon];
+    var setSlotsFilled = setSlots.filter(function(s){ return s !== null; });
+    var setSlotTags = setSlotsFilled.map(setTag).filter(function(t){ return t; });
+    var matchingSet = (setSlotsFilled.length === 5 && setSlotTags.length === 5 &&
+        (new Set(setSlotTags)).size === 1);
+    var mainSetTags = setSlotTags;
+
+    // ── Ring sub-slot matching ────────────────────────────────────────────────
+    var monNames = monsters.map(function(m){ return (m.name || '').toLowerCase(); });
+    var gemNames = gems.map(function(g){ return (g.name || '').toLowerCase(); });
+    var matchingMonsters = (monNames.length === 2 && monNames[0] === monNames[1]);
+    var matchingGems     = (gemNames.length === 2 && gemNames[0] === gemNames[1]);
+    var hasMaterial      = material !== null;
+
+    var ringSubBonus = (matchingMonsters ? 1 : 0) + (matchingGems ? 1 : 0) + (hasMaterial ? 1 : 0);
+
+    // ── Full set ──────────────────────────────────────────────────────────────
+    var fullSet = (matchingSet && ring !== null &&
+                   hasMaterial && matchingMonsters && matchingGems);
+
+    // ── Multiplier ────────────────────────────────────────────────────────────
+    var slotsFilledBonus = mainFilled.length;
+    var setBonus  = matchingSet ? 3 : 0;
+    var baseMult  = slotsFilledBonus + setBonus + ringSubBonus + levelBonus;
+    if (baseMult < 1) baseMult = 1;
+    var finalMult = fullSet ? baseMult * 2 : baseMult;
 
     return {
-        matPair: hasMatPair, gemPair: hasGemPair, monPair: hasMonPair,
-        hatEquipped: hatEquipped, hatSpecMatches: hatSpecMatches,
-        fullSet: fullSet, setMult: setMult, finalMult: finalMult,
-        hatMatchesSpec: hatSpecMatches >= 1
+        helmet: helmet, armor: armor, boots: boots, ring: ring,
+        shield: shield, weapon: weapon,
+        material: material, monsters: monsters, gems: gems,
+        mainFilled: mainFilled.length,
+        matchingSet: matchingSet, setTag: matchingSet ? mainSetTags[0] : null,
+        matchingMonsters: matchingMonsters, matchingGems: matchingGems,
+        hasMaterial: hasMaterial, ringSubBonus: ringSubBonus,
+        fullSet: fullSet, baseMult: baseMult, finalMult: finalMult,
+        levelBonus: levelBonus,
+        // Legacy aliases kept so callers that reference old fields don't break
+        matPair: hasMaterial, gemPair: matchingGems, monPair: matchingMonsters,
+        hatEquipped: false, hatSpecMatches: 0, setMult: baseMult
     };
 }
 
@@ -1558,79 +1595,123 @@ function buildEquippedSection(pet) {
     var eq = pet.equipment || {};
     var state = getEquipSetState(pet);
 
-    var slots = [
-        {type:'Monsters',idx:0,label:'Monster 1'},{type:'Gems',idx:0,label:'Gem 1'},
-        {type:'Material',idx:0,label:'Material 1'},{type:'Hat',label:'Hat'},
-        {type:'Material',idx:1,label:'Material 2'},{type:'Gems',idx:1,label:'Gem 2'},
-        {type:'Monsters',idx:1,label:'Monster 2'}
+    // ── Row 1: main gear slots ────────────────────────────────────────────────
+    var row1 = [
+        {key:'Helmet', label:'Helmet'},
+        {key:'Armor',  label:'Armor'},
+        {key:'Boots',  label:'Boots'},
+        {key:'Ring',   label:'Ring'},
+        {key:'Shield', label:'Shield'},
+        {key:'Weapon', label:'Weapon'},
     ];
-    
-    var html = '<div class="pc-detail-section">' +
-        '<div class="pc-detail-section-title">⚔️ Equipped</div>' +
-        '<div class="d-flex flex-wrap gap-1 mb-1" style="padding-bottom:18px">';
-    
-    slots.forEach(function(sl) {
-        var item = sl.type==='Hat' ? (Array.isArray(eq.Hat) ? (eq.Hat[0]||null) : (eq.Hat||null)) : ((eq[sl.type]||[])[sl.idx]||null);
-        var isEmpty = !item || !item.name;
-        var src = isEmpty ? '/static/Emojis/Pets/Deco/Basic.png' : '/static/Emojis/Pets/Equipment/' + equipImgFile(item);
+
+    // ── Row 2: ring sub-slots ─────────────────────────────────────────────────
+    var row2 = [
+        {key:'Monsters', idx:0, label:'Monster 1'},
+        {key:'Gems',     idx:0, label:'Gem 1'},
+        {key:'Material', idx:-1, label:'Material'},
+        {key:'Gems',     idx:1, label:'Gem 2'},
+        {key:'Monsters', idx:1, label:'Monster 2'},
+    ];
+
+    function getItem(sl) {
+        if (sl.idx === undefined || sl.idx === -1) {
+            var v = eq[sl.key];
+            if (Array.isArray(v)) v = v[0] || null;
+            return (v && v.name) ? v : null;
+        }
+        var arr = eq[sl.key] || [];
+        if (!Array.isArray(arr)) arr = (arr && arr.name) ? [arr] : [];
+        return (arr[sl.idx] && arr[sl.idx].name) ? arr[sl.idx] : null;
+    }
+
+    function glowClass(sl, item) {
+        if (!item) return '';
+        if (state.fullSet) return ' pc-equip-fullset';
+        // Row 1 set glow — only on the 5 set pieces (not Ring)
+        if (sl.idx === undefined || sl.idx === -1) {
+            if (state.matchingSet && ['Helmet','Armor','Boots','Shield','Weapon'].indexOf(sl.key) !== -1)
+                return ' pc-equip-pair';
+            if (sl.key === 'Ring' && state.ringSubBonus > 0) return ' pc-equip-pair';
+        }
+        // Row 2 ring sub-slot glow
+        if (sl.key === 'Monsters' && state.matchingMonsters) return ' pc-equip-pair';
+        if (sl.key === 'Gems'     && state.matchingGems)     return ' pc-equip-pair';
+        if (sl.key === 'Material' && state.hasMaterial)      return ' pc-equip-pair';
+        return '';
+    }
+
+    function renderSlot(sl, isRingSub) {
+        var item = getItem(sl);
+        var isEmpty = !item;
+        var f   = isEmpty ? 'Basic.png' : equipImgFile(item);
+        var src = isEmpty ? '/static/Emojis/Pets/Deco/Basic.png' : '/static/Emojis/Pets/Equipment/' + f;
+        var gc  = isEmpty ? '' : glowClass(sl, item);
+        var ringRequired = ['Monsters','Gems','Material'].indexOf(sl.key) !== -1;
+        var ringMissing  = ringRequired && !state.ring;
 
         if (isEmpty) {
-            html += '<div class="pc-equip-slot pc-equip-empty" title="' + sl.label + ' (empty)">' +
+            var emptyLabel = ringMissing ? sl.label + ' (need Ring)' : sl.label + ' (empty)';
+            return '<div class="pc-equip-slot pc-equip-empty" title="' + esc(emptyLabel) + '">' +
                 '<img src="' + src + '">' +
-                '<span class="pc-slot-label">' + sl.label + '</span></div>';
-        } else {
-            var tip = item.name + ' (equipped)';
-            
-            // Determine glow tier for this slot
-            var glowClass = '';
-            if (state.fullSet) {
-                glowClass = ' pc-equip-fullset';
-            } else {
-                var isPair = (sl.type === 'Monsters' && state.monPair) ||
-                             (sl.type === 'Gems' && state.gemPair) ||
-                             (sl.type === 'Material' && state.matPair) ||
-                             (sl.type === 'Hat' && state.hatMatchesSpec);
-                if (isPair) glowClass = ' pc-equip-pair';
-            }
-
-            html += '<div class="pc-equip-slot pc-equip-filled' + glowClass + '" title="' + esc(tip) + '">' +
-                '<img src="' + src + '" onerror="this.src=\'/static/Emojis/Pets/Deco/Basic.png\'">' +
-                '<span class="pc-slot-label">' + esc(item.name) + '</span></div>';
+                (isRingSub ? '<span class="pc-slot-label">' + esc(sl.label) + '</span>' : '') +
+                '</div>';
         }
-    });
-    
-    return html + '</div></div>';
+        var tip = item.name + ' (equipped)';
+        return '<div class="pc-equip-slot pc-equip-filled' + gc + '" title="' + esc(tip) + '">' +
+            '<img src="' + src + '" onerror="this.src=\'/static/Emojis/Pets/Deco/Basic.png\'">' +
+            (isRingSub ? '<span class="pc-slot-label">' + esc(item.name) + '</span>' : '') +
+            '</div>';
+    }
+
+    var html = '<div class="pc-detail-section">' +
+        '<div class="pc-detail-section-title">⚔️ Equipped</div>';
+
+    // Row 1 — main gear
+    html += '<div class="d-flex flex-wrap gap-1 mb-1">';
+    row1.forEach(function(sl){ html += renderSlot(sl, false); });
+    html += '</div>';
+
+    // Row 2 — ring sub-slots
+    var ringLabel = state.ring
+        ? '<span style="font-size:0.55rem;color:var(--gold-secondary);opacity:0.7">💍 Ring slots</span>'
+        : '<span style="font-size:0.55rem;color:var(--text-secondary);opacity:0.5">💍 Ring slots (equip a Ring first)</span>';
+    html += '<div style="margin-top:4px">' + ringLabel +
+        '<div class="d-flex flex-wrap gap-1 mt-1">';
+    row2.forEach(function(sl){ html += renderSlot(sl, true); });
+    html += '</div></div>';
+
+    return html + '</div>';
 }
 
 function buildEquipBonusSection(pet) {
     var state = getEquipSetState(pet);
-    if (!state.matPair && !state.gemPair && !state.monPair && !state.hatEquipped) return '';
+    if (state.mainFilled === 0 && !state.hasMaterial && state.monsters.length === 0 && state.gems.length === 0) return '';
 
-    var multColor = state.fullSet
-        ? (state.hatSpecMatches >= 2 ? '#f59e0b' : '#a855f7')
-        : '#57d9a3';
+    var multColor = state.fullSet ? '#f59e0b' : (state.matchingSet ? '#a855f7' : '#57d9a3');
 
-    var cardStyle = 'style="flex:0 0 auto;min-width:0;width:52px;padding:4px 6px"';
+    var cardStyle = 'style="flex:0 0 auto;min-width:0;width:46px;padding:3px 4px"';
     var html = '<div class="pc-detail-section">' +
         '<div class="pc-detail-section-title">⚡ Equipment Bonus</div>' +
-        '<div class="d-flex gap-1 mb-2" style="padding:4px 0;flex-wrap:nowrap">';
+        '<div class="d-flex gap-1 mb-2 pc-multi-row" style="padding:4px 0;flex-wrap:nowrap;align-items:center">';
     
     html += '<div class="pc-mini-stat-card" ' + cardStyle + '>' +
-        '<div class="pc-mini-label" style="font-size:0.58rem">Multi</div>' +
-        '<div style="font-size:0.82rem;font-weight:700;color:' + multColor + '">x' + state.finalMult + '</div>' +
+        '<div class="pc-mini-label" style="font-size:0.55rem">Multi</div>' +
+        '<div style="font-size:0.78rem;font-weight:700;color:' + multColor + '">x' + state.finalMult + (state.fullSet ? '🔥' : '') + '</div>' +
         '</div>';
 
     var checks = [
-        {label:'🧵', ok: state.matPair},
-        {label:'💎', ok: state.gemPair},
-        {label:'👹', ok: state.monPair},
-        {label:'👤', ok: state.hatEquipped},
-        {label:'👥', ok: state.hatSpecMatches >= 2},
+        {label:'⚔️',  ok: state.mainFilled >= 1, tip: state.mainFilled + '/6 slots'},
+        {label:'🎯',  ok: state.matchingSet,      tip: state.matchingSet ? 'Set: ' + state.setTag : 'No matching set'},
+        {label:'💍',  ok: state.ring !== null,    tip: state.ring ? state.ring.name : 'No ring'},
+        {label:'👹',  ok: state.matchingMonsters, tip: 'Matching monsters'},
+        {label:'💎',  ok: state.matchingGems,     tip: 'Matching gems'},
+        {label:'🧵',  ok: state.hasMaterial,      tip: 'Material on ring'},
     ];
     checks.forEach(function(c) {
-        html += '<div class="pc-mini-stat-card" ' + cardStyle + '>' +
-            '<div style="font-size:1rem;line-height:1">' + c.label + '</div>' +
-            '<div style="font-size:0.9rem">' + (c.ok ? '✅' : '❌') + '</div>' +
+        html += '<div class="pc-mini-stat-card" ' + cardStyle + ' title="' + (c.tip || '') + '">' +
+            '<div style="font-size:0.85rem;line-height:1.2">' + c.label + '</div>' +
+            '<div style="font-size:0.78rem;line-height:1.2">' + (c.ok ? '✅' : '❌') + '</div>' +
             '</div>';
     });
     
@@ -1689,62 +1770,40 @@ function buildBaseStatsSection(pet) {
     return html + '</div></div>';
 }
 
-// Calculate the equipment bonus for a single stat, mirroring Python logic
+// Calculate the equipment bonus for a single stat, mirroring Python _calculate_equipment_bonuses
 function calcEquipBonusForStat(pet, stat, state) {
     var eq = pet.equipment || {};
-    var items = [];
-    var mat = eq.Material;
-    if (Array.isArray(mat)) {
-        mat.forEach(function(m){ if (m && m.name) items.push({t:'Material', item:m}); });
-    } else if (mat && typeof mat === 'object' && mat.name) {
-        items.push({t:'Material', item:mat});
-    }
-    var gems = eq.Gems;
-    if (Array.isArray(gems)) {
-        gems.forEach(function(g){ if (g && g.name) items.push({t:'Gem', item:g}); });
-    } else if (gems && typeof gems === 'object' && gems.name) {
-        items.push({t:'Gem', item:gems});
-    }
-    var mons = eq.Monsters;
-    if (Array.isArray(mons)) {
-        mons.forEach(function(m){ if (m && m.name) items.push({t:'Monster', item:m}); });
-    } else if (mons && typeof mons === 'object' && mons.name) {
-        items.push({t:'Monster', item:mons});
-    }
-    var hat = eq.Hat;
-    if (Array.isArray(hat)) hat = hat[0] || null;
-    if (hat && typeof hat === 'object' && hat.name) items.push({t:'Hat', item:hat});
 
-    var matCounts = {}, gemCounts = {}, monCounts = {};
-    items.forEach(function(e) {
-        var n = (e.item.name || '').toLowerCase();
-        if (!n) return;
-        if (e.t === 'Material') matCounts[n] = (matCounts[n] || 0) + 1;
-        else if (e.t === 'Gem')     gemCounts[n] = (gemCounts[n] || 0) + 1;
-        else if (e.t === 'Monster') monCounts[n] = (monCounts[n] || 0) + 1;
+    // Collect all equipped items from new slot system
+    function getSingle(key) {
+        var v = eq[key];
+        if (Array.isArray(v)) v = v[0] || null;
+        return (v && v.name) ? v : null;
+    }
+    function getList(key) {
+        var v = eq[key] || [];
+        if (!Array.isArray(v)) v = (v && v.name) ? [v] : [];
+        return v.filter(function(i){ return i && i.name; });
+    }
+
+    var allItems = [];
+    ['Helmet','Armor','Boots','Ring','Shield','Weapon'].forEach(function(k){
+        var item = getSingle(k);
+        if (item) allItems.push(item);
+    });
+    var mat = getSingle('Material');
+    if (mat) allItems.push(mat);
+    getList('Monsters').forEach(function(m){ allItems.push(m); });
+    getList('Gems').forEach(function(g){ allItems.push(g); });
+
+    // Sum raw bonuses for this stat, then apply the shared multiplier
+    var raw = 0;
+    allItems.forEach(function(item) {
+        var val = parseInt((item.bonuses || {})[stat] || 0, 10);
+        if (val) raw += val;
     });
 
-    var level = parseInt(pet.level || 1, 10);
-    var levelBonus = Math.floor(level / 50);
-    var total = 0;
-
-    items.forEach(function(e) {
-        var bonuses = (e.item.bonuses) || {};
-        var val = parseInt(bonuses[stat] || 0, 10);
-        if (!val) return;
-        var n = (e.item.name || '').toLowerCase();
-        var itemMult;
-        if (state.fullSet) {
-            itemMult = state.finalMult;
-        } else {
-            var isPair = (e.t === 'Material' && (matCounts[n] || 0) >= 2) ||
-                         (e.t === 'Gem'      && (gemCounts[n] || 0) >= 2) ||
-                         (e.t === 'Monster'  && (monCounts[n] || 0) >= 2);
-            itemMult = (isPair ? 2 : 1) + levelBonus;
-        }
-        total += val * itemMult;
-    });
-    return total;
+    return raw * state.finalMult;
 }
 
 // ── Species info: description + actions ───────────────────────────────────────
@@ -2590,13 +2649,11 @@ function pcGetLeaderboardValue(user, key) {
         // Economy
         case 'stock_tokens': return pet.stock_tokens || 0;
         case 'ability_points': return pet.ability_points || 0;
-        case 'equip_mult': 
-            // Calculate equipment multiplier
-            var eq = pet.equipment || {};
-            var level = pet.level || 1;
-            var levelBonus = Math.floor(level / 50);
-            // Simplified calculation - would need full logic for accuracy
-            return 1 + levelBonus;
+        case 'equip_mult': {
+            // Full equipment multiplier using the new slot system
+            var _eqState = getEquipSetState(pet);
+            return _eqState.finalMult;
+        }
         case 'inventory_count': return (pet.inventory || []).length;
         
         // XP Sources
@@ -2629,38 +2686,6 @@ window.pcToggleLeaderboard = function() {
     if (!list) return;
     list.style.display = list.style.display === 'none' ? '' : 'none';
 };
-
-// ── Enhanced Hover Tooltips ───────────────────────────────────────────────────
-function pcShowHoverTip(event, userId) {
-    var user = _users.find(function(u) { return u.user_id === userId; });
-    if (!user) return;
-    
-    var pet = user.pet || {};
-    var stats = pet.computed_stats || {};
-    
-    var html = '<div style="text-align:center;margin-bottom:0.5rem">' +
-        '<div style="font-weight:700;color:var(--gold-primary)">' + esc(pet.name || 'Unnamed') + '</div>' +
-        '<div style="font-size:0.7rem;color:var(--text-secondary)">' + esc(user.username) + '</div>' +
-    '</div>' +
-    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0.3rem;font-size:0.7rem">' +
-        '<div>Level: <strong>' + (pet.level || 1) + '</strong></div>' +
-        '<div>Species: <strong>' + esc(pet.species || 'Cat') + '</strong></div>' +
-        '<div>HP: <strong>' + fmtStat(stats.hp || stats.max_health || 100) + '</strong></div>' +
-        '<div>ATK: <strong>' + fmtStat(stats.attack || 10) + '</strong></div>' +
-        '<div>DEF: <strong>' + fmtStat(stats.defense || 5) + '</strong></div>' +
-        '<div>XP: <strong>' + fmtStat(pet.experience || 0) + '</strong></div>' +
-    '</div>';
-    
-    var tip = el('pc-hover-tip');
-    el('pc-hover-tip-inner').innerHTML = html;
-    tip.style.display = 'block';
-    tip.style.left = (event.pageX + 10) + 'px';
-    tip.style.top = (event.pageY - 10) + 'px';
-}
-
-function pcHideHoverTip() {
-    el('pc-hover-tip').style.display = 'none';
-}
 
 // ── Enhanced Initialization ───────────────────────────────────────────────────
 function pcInitializeFilters() {
@@ -2758,7 +2783,8 @@ window.pcUpdateGiftQty = function() {
     var preview = el('pc-gift-item-preview');
     if (preview && opt && opt.value) {
         var itemType = opt.dataset.type || 'Material';
-        var imgPath = '/static/Emojis/Pets/Equipment/' + opt.value.toLowerCase().replace(/ /g, '_') + '.png';
+        var itemData2 = (typeof getEquipItem === 'function') ? getEquipItem(opt.value) : null;
+        var imgPath = '/static/Emojis/Pets/Equipment/' + equipImgFile(itemData2 || {name: opt.value});
         preview.innerHTML = '<img src="' + imgPath + '" onerror="this.src=\'/static/Emojis/Pets/Deco/Basic.png\'">';
     } else if (preview) {
         preview.innerHTML = '';

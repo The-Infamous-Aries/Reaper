@@ -13,6 +13,10 @@ const EVENT_EMOJIS = {
     'monster': '⚔️',
     'boss': '👹',
     'chest': '📦',
+    'chest1': '📦',
+    'chest2': '🎁',
+    'chest3': '💎',
+    'chest4': '✨',
     'trap': '🪤',
     'shrine': '⛩️'
 };
@@ -313,6 +317,9 @@ function renderMap() {
         let imgSrc = EVENT_IMGS[room.event_type] || '/static/Emojis/Crawl/shrine.png';
         if (room.event_type === 'chest' && room.chest_emoji) {
             imgSrc = `/static/Emojis/Pets/Equipment/${room.chest_emoji}.png`;
+        } else if (['chest1','chest2','chest3','chest4'].includes(room.event_type)) {
+            const chestEmoji = room.chest_emoji || room.event_type;
+            imgSrc = `/static/Emojis/Pets/Equipment/${chestEmoji}.png`;
         }
 
         // Locked rooms show a ? — don't reveal event type
@@ -376,7 +383,7 @@ function renderActiveEffects() {
     
     effectsContainer.innerHTML = allEffects.map(effect => `
         <div class="effect-item ${effect.type}">
-            <div class="effect-emoji">${effect.emoji}</div>
+            <div class="effect-emoji">${_renderEmoji(effect.emoji, 18)}</div>
             <div class="effect-info">
                 <div class="effect-name">${effect.name}</div>
                 <div class="effect-duration">${effect.rooms_remaining} rooms remaining</div>
@@ -404,6 +411,10 @@ function renderCurrentRoom() {
             renderBossRoom(roomContent, roomData);
             break;
         case 'chest':
+        case 'chest1':
+        case 'chest2':
+        case 'chest3':
+        case 'chest4':
             renderChestRoom(roomContent, roomData);
             break;
         case 'trap':
@@ -525,14 +536,24 @@ function renderTrapRoom(container, roomData) {
             </div>
         `;
     } else {
-        const trap = roomData.trap_data || { name: 'Unknown Trap', emoji: '🪤', effect: 'unknown' };
+        const trap = roomData.trap_data || { name: 'Unknown Trap', emoji: '🪤', effect: 'unknown', value: 0, duration: 0 };
+        const effectDesc = _describeTrapEffect(trap);
+        const durationDesc = trap.duration ? `Lasts <strong>${trap.duration} room${trap.duration !== 1 ? 's' : ''}</strong>` : '';
+        const tf = trap.target_filter;
+        let targetDesc = '⚠️ Affects <strong>all party members</strong>';
+        if (tf) {
+            const targets = tf.values.map(v => v.charAt(0).toUpperCase() + v.slice(1)).join(', ');
+            const mode = tf.mode === 'type' ? 'Type' : 'Element';
+            targetDesc = `⚠️ Full effect on <strong>${mode}: ${targets}</strong> pets — 50% splash on others`;
+        }
         container.innerHTML = `
             <div class="trap-display">
                 <div class="trap-icon"><img src="/static/Emojis/Crawl/trap.png" style="width:60px;height:60px;object-fit:contain"></div>
-                <div class="trap-name">${trap.name}</div>
-                <div class="trap-effect">
-                    ⚠️ This trap will affect your entire party!<br>
-                    Effect: ${trap.effect}
+                <div class="trap-name">${_renderEmoji(trap.emoji, 20)} ${trap.name}</div>
+                <div class="trap-effect" style="margin:8px 0;line-height:1.6">
+                    ${targetDesc}<br>
+                    📉 ${effectDesc}<br>
+                    ${durationDesc ? `⏱️ ${durationDesc}` : ''}
                 </div>
                 <button class="btn-dungeon-primary" onclick="triggerTrap()">Continue (Trigger Trap)</button>
             </div>
@@ -550,18 +571,64 @@ function renderShrineRoom(container, roomData) {
             </div>
         `;
     } else {
-        const shrine = roomData.shrine_data || { name: 'Unknown Shrine', emoji: '⛩️', effect: 'unknown' };
+        const shrine = roomData.shrine_data || { name: 'Unknown Shrine', emoji: '⛩️', effect: 'unknown', value: 0, duration: 0 };
+        const effectDesc = _describeShrineEffect(shrine);
+        const durationDesc = shrine.duration ? `Lasts <strong>${shrine.duration} room${shrine.duration !== 1 ? 's' : ''}</strong>` : '';
+        const tf = shrine.target_filter;
+        let targetDesc = '✨ Blesses <strong>all party members</strong>';
+        if (tf) {
+            const targets = tf.values.map(v => v.charAt(0).toUpperCase() + v.slice(1)).join(', ');
+            const mode = tf.mode === 'type' ? 'Type' : 'Element';
+            targetDesc = `✨ Only blesses <strong>${mode}: ${targets}</strong> pets`;
+        }
         container.innerHTML = `
             <div class="shrine-display">
                 <div class="shrine-icon"><img src="/static/Emojis/Crawl/shrine.png" style="width:60px;height:60px;object-fit:contain"></div>
-                <div class="shrine-name">${shrine.name}</div>
-                <div class="shrine-effect">
-                    ✨ This shrine will bless your entire party!<br>
-                    Effect: ${shrine.effect}
+                <div class="shrine-name">${_renderEmoji(shrine.emoji, 20)} ${shrine.name}</div>
+                <div class="shrine-effect" style="margin:8px 0;line-height:1.6">
+                    ${targetDesc}<br>
+                    📈 ${effectDesc}<br>
+                    ${durationDesc ? `⏱️ ${durationDesc}` : ''}
                 </div>
                 <button class="btn-dungeon-primary" onclick="activateShrine()">Receive Blessing</button>
             </div>
         `;
+    }
+}
+
+// Render an emoji field — if it's a static path (/static/...) render as <img>, else as text
+function _renderEmoji(emoji, size) {
+    size = size || 18;
+    if (!emoji) return '';
+    if (emoji.startsWith('/')) {
+        return `<img src="${_escHtml(emoji)}" style="width:${size}px;height:${size}px;object-fit:contain;vertical-align:middle" onerror="this.style.display='none'">`;
+    }
+    return emoji;
+}
+function _describeTrapEffect(trap) {
+    const pct = trap.value ? Math.round(trap.value * 100) : 0;
+    switch (trap.effect) {
+        case 'att_reduction':  return `Reduces <strong>ATT (Attack)</strong> by <strong>${pct}%</strong>`;
+        case 'def_reduction':  return `Reduces <strong>DEF (Defense)</strong> by <strong>${pct}%</strong>`;
+        case 'dex_reduction':  return `Reduces <strong>DEX (Dexterity)</strong> by <strong>${pct}%</strong>`;
+        case 'int_reduction':  return `Reduces <strong>INT (Intelligence)</strong> by <strong>${pct}%</strong>`;
+        case 'health_half':    return `Reduces current <strong>HP</strong> by <strong>${pct}%</strong>`;
+        case 'no_defend':      return `<strong>Cannot Defend</strong> — forced to attack each turn`;
+        default:               return `Unknown effect: ${trap.effect}`;
+    }
+}
+
+// Human-readable shrine effect descriptions
+function _describeShrineEffect(shrine) {
+    const pct = shrine.value ? Math.round(shrine.value * 100) : 0;
+    switch (shrine.effect) {
+        case 'att_boost':    return `Boosts <strong>ATT (Attack)</strong> by <strong>${pct}%</strong>`;
+        case 'def_boost':    return `Boosts <strong>DEF (Defense)</strong> by <strong>${pct}%</strong>`;
+        case 'dex_boost':    return `Boosts <strong>DEX (Dexterity)</strong> by <strong>${pct}%</strong>`;
+        case 'int_boost':    return `Boosts <strong>INT (Intelligence)</strong> by <strong>${pct}%</strong>`;
+        case 'health_boost': return `Restores <strong>HP</strong> by <strong>${pct}%</strong> of max`;
+        case 'charge_boost': return `Grants <strong>+${shrine.value || 0} Charge</strong> immediately`;
+        default:             return `Unknown effect: ${shrine.effect}`;
     }
 }
 
@@ -675,19 +742,24 @@ function _buildSkillButton(member) {
     if (!member || !member.pet) return '';
     const skills = member.pet.equipped_skills || [];
     if (!skills.length) return '';
-    const skill = skills[0]; // first equipped skill
-    if (!skill) return '';
-    const skillName = skill.name || 'Skill';
-    const skillDesc = skill.description || '';
-    const cooldown  = member.pet.skill_cooldown || 0;
-    const onCd = cooldown > 0;
-    return `<button class="btn-battle-action btn-skill${onCd ? ' btn-skill-cd' : ''}"
-                    id="btn-skill"
-                    onclick="submitBattleAction('skill')"
-                    ${onCd ? 'disabled' : ''}
-                    title="${_escHtml(skillDesc)}">
-        ✨ Skill<span style="display:block;font-size:0.6rem;opacity:0.75;font-family:sans-serif;font-weight:400">${_escHtml(skillName)}${onCd ? ` (${cooldown})` : ''}</span>
-    </button>`;
+
+    // Render one button per equipped skill slot
+    return skills.map((skill, slotIdx) => {
+        if (!skill) return '';
+        const skillName = skill.name || 'Skill';
+        const skillDesc = skill.description || '';
+        // Initial cooldown from pet data (slot 0 legacy key, or 0 for others)
+        const cooldown = slotIdx === 0 ? (member.pet.skill_cooldown || 0) : 0;
+        const onCd = cooldown > 0;
+        return `<button class="btn-battle-action btn-skill${onCd ? ' btn-skill-cd' : ''}"
+                        id="btn-skill-${slotIdx}"
+                        data-slot="${slotIdx}"
+                        onclick="submitBattleAction('skill', ${slotIdx})"
+                        ${onCd ? 'disabled' : ''}
+                        title="${_escHtml(skillDesc)}">
+            ✨ ${_escHtml(skillName)}<span style="display:block;font-size:0.6rem;opacity:0.75;font-family:sans-serif;font-weight:400">${onCd ? `(${cooldown})` : 'Ready'}</span>
+        </button>`;
+    }).join('');
 }
 
 function renderBattleUI(battleData) {
@@ -791,7 +863,7 @@ function renderBattleUI(battleData) {
                             ${buildEquipBar(member.pet.equipment || [])}
                             ${member.buffs && member.buffs.length > 0 ? `
                                 <div class="battle-buffs">
-                                    ${member.buffs.map(b => `<span title="${_escHtml(b.name)}">${b.emoji}</span>`).join('')}
+                                    ${member.buffs.map(b => `<span title="${_escHtml(b.name)}">${_renderEmoji(b.emoji, 16)}</span>`).join('')}
                                 </div>
                             ` : ''}
                         </div>`;
@@ -818,22 +890,28 @@ function renderBattleUI(battleData) {
     `;
 }
 
-async function submitBattleAction(action) {
+async function submitBattleAction(action, slotIndex) {
     if (!currentBattle || !currentUser) return;
     
     try {
-        // Disable buttons
+        // Disable all action buttons
         document.querySelectorAll('.btn-battle-action').forEach(btn => btn.disabled = true);
         document.getElementById('battle-status').textContent = 'Action submitted! Waiting for party...';
+        
+        // Build the request body — include slot_index for skill actions
+        const body = {
+            battle_id: currentBattle.battle_id,
+            action: action,
+            user_id: String(currentUser.id)
+        };
+        if (action === 'skill' && slotIndex !== undefined) {
+            body.slot_index = slotIndex;
+        }
         
         const response = await fetch(`/api/dungeon/${currentDungeon.dungeon_id}/battle/action`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                battle_id: currentBattle.battle_id,
-                action: action,
-                user_id: String(currentUser.id)
-            })
+            body: JSON.stringify(body)
         });
         
         if (!response.ok) {
@@ -911,6 +989,10 @@ function processTurnResult(result) {
             }
             msg += `</p>`;
             return msg;
+        } else if (entry.action === 'defend') {
+            return `<p style="color:#3498db">🛡️ ${_escHtml(entry.message || entry.actor + ' defends!')}</p>`;
+        } else if (entry.action === 'charge') {
+            return `<p style="color:#9b59b6">⚡ ${_escHtml(entry.message || entry.actor + ' charges up!')}</p>`;
         } else if (entry.message) {
             return `<p style="color:var(--text-secondary)">${_escHtml(entry.message)}</p>`;
         }
@@ -970,8 +1052,8 @@ function processTurnResult(result) {
                     chargeDisplay.style.cssText = 'font-size:0.65rem;color:#9b59b6;margin-top:2px';
                     memberEl.appendChild(chargeDisplay);
                 }
-                // charge is the multiplier (1.0 = no charge, 2.0+ = charged)
-                chargeDisplay.textContent = charge > 1.0 ? `⚡ ×${charge.toFixed(0)} Charge` : '';
+                // charge > 1.0 means the player has built up charge via the Charge action
+                chargeDisplay.textContent = charge > 1.0 ? `⚡ ×${charge.toFixed(0)} Charge ready` : '';
             }
             // Update charge ring level (charge value = ring level)
             const ring = document.getElementById(`charge-ring-${userId}`);
@@ -996,21 +1078,26 @@ function processTurnResult(result) {
     } else {
         document.querySelectorAll('.btn-battle-action').forEach(btn => btn.disabled = false);
         document.getElementById('battle-status').textContent = 'Choose your next action...';
-        // Update skill button cooldown from turn result
+        // Update skill button cooldowns from turn result (all slots)
         if (result.skill_cooldowns && currentUser) {
-            const cd = result.skill_cooldowns[String(currentUser.id)] || 0;
-            const skillBtn = document.getElementById('btn-skill');
-            if (skillBtn) {
-                const myMember = currentBattle && currentBattle.party
-                    ? currentBattle.party.find(m => m.user_id === String(currentUser.id))
-                    : null;
-                const skillName = myMember && myMember.pet && myMember.pet.equipped_skills && myMember.pet.equipped_skills[0]
-                    ? myMember.pet.equipped_skills[0].name : 'Skill';
+            const mySlots = result.skill_cooldowns[String(currentUser.id)] || {};
+            const myMember = currentBattle && currentBattle.party
+                ? currentBattle.party.find(m => m.user_id === String(currentUser.id))
+                : null;
+            const mySkills = (myMember && myMember.pet && myMember.pet.equipped_skills) || [];
+            mySkills.forEach((skill, slotIdx) => {
+                const skillBtn = document.getElementById(`btn-skill-${slotIdx}`);
+                if (!skillBtn) return;
+                // mySlots is {slot_str: cooldown_int}
+                const cd = typeof mySlots === 'object' && !Array.isArray(mySlots)
+                    ? (mySlots[String(slotIdx)] || 0)
+                    : (slotIdx === 0 ? (mySlots || 0) : 0);  // backwards compat
+                const skillName = skill ? skill.name : 'Skill';
                 skillBtn.disabled = cd > 0;
                 skillBtn.classList.toggle('btn-skill-cd', cd > 0);
                 const sub = skillBtn.querySelector('span');
-                if (sub) sub.textContent = skillName + (cd > 0 ? ` (${cd})` : '');
-            }
+                if (sub) sub.textContent = cd > 0 ? `(${cd})` : 'Ready';
+            });
         }
     }
 }
@@ -1040,10 +1127,11 @@ async function completeBattleVictory() {
         if (myLoot.length > 0) {
             battleLog.innerHTML += '<p class="text-warning"><strong>💰 Loot Received!</strong></p>';
             myLoot.forEach(item => {
-                const imgFile = item.name.replace(/ /g, '') + '.png';
+                const imgSrc = _dungeonItemImgSrc(item);
+                const rarityColor = _dungeonRarityColor(item.rarity || 'Common');
                 battleLog.innerHTML += `<p style="display:flex;align-items:center;gap:6px">
-                    <img src="/static/Emojis/Pets/Equipment/${imgFile}" style="width:20px;height:20px;object-fit:contain" onerror="this.style.display='none'">
-                    ${_escHtml(item.name)} ×${item.count || 1}
+                    <img src="${imgSrc}" style="width:20px;height:20px;object-fit:contain;filter:drop-shadow(0 0 4px ${rarityColor})" onerror="this.style.display='none'">
+                    <span style="color:${rarityColor}">${_escHtml(item.name)}</span> ×${item.count || 1}
                 </p>`;
             });
         } else {
@@ -1091,6 +1179,57 @@ function _dungeonEquipImgFile(item) {
     return name.replace(/ /g, '') + '.png';
 }
 
+// Resolve the full static image URL for any inventory item (keys, chests, monsters, gems, etc.)
+function _dungeonItemImgSrc(item) {
+    if (!item) return '/static/Emojis/Pets/Deco/Basic.png';
+    const name = (item.name || '').trim();
+    const type = (item.type || '').toLowerCase();
+    const nameLower = name.toLowerCase();
+
+    // Keys and Chests live in Equipment root
+    if (type === 'key' || ['key1','key2','key3'].includes(nameLower)) {
+        return `/static/Emojis/Pets/Equipment/${name}.png`;
+    }
+    if (type === 'chest' || ['chest1','chest2','chest3','chest4'].includes(nameLower)) {
+        return `/static/Emojis/Pets/Equipment/${nameLower}.png`;
+    }
+    // Monsters
+    if (type === 'monster') {
+        return `/static/Emojis/Pets/Equipment/Monsters/${name.replace(/ /g,'')}.png`;
+    }
+    // Gems
+    if (type === 'gem') {
+        return `/static/Emojis/Pets/Equipment/Gems/${name.replace(/ /g,'')}.png`;
+    }
+    // Materials
+    if (type === 'material') {
+        return `/static/Emojis/Pets/Equipment/Materials/${name.replace(/ /g,'')}.png`;
+    }
+    // Potions
+    if (type === 'potion') {
+        const stem = name.toLowerCase().replace(/ /g,'_');
+        return `/static/Emojis/Pets/Equipment/Potions/${stem}.png`;
+    }
+    // Hats
+    if (type === 'hat') {
+        const stem = name.toLowerCase().replace(/ /g,'_');
+        return `/static/Emojis/Pets/Equipment/Hats/${stem}.png`;
+    }
+    // Fallback: try Equipment root with name
+    return `/static/Emojis/Pets/Equipment/${name.replace(/ /g,'')}.png`;
+}
+
+const _DUNGEON_RARITY_COLORS = {
+    Common:   '#9e9e9e',
+    Uncommon: '#4caf50',
+    Rare:     '#2196f3',
+    Epic:     '#9c27b0',
+    Mythic:   '#ff9800'
+};
+function _dungeonRarityColor(rarity) {
+    return _DUNGEON_RARITY_COLORS[rarity] || '#9e9e9e';
+}
+
 function _escHtml(s) {
     return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
@@ -1113,13 +1252,11 @@ function _showDungeonChestAnimation(chestSrc, chestColor, items, callback) {
     overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;z-index:10500;' +
         'display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.82);backdrop-filter:blur(6px)';
 
-    var RARITY_COLORS = {Common:'#9e9e9e', Uncommon:'#4caf50', Rare:'#2196f3', Epic:'#9c27b0', Mythic:'#ff9800'};
-
     var itemIconsHtml = items.map(function(item, idx) {
-        var f = _dungeonEquipImgFile(item);
-        var rc = RARITY_COLORS[item.rarity || 'Common'] || '#9e9e9e';
+        var imgSrc = _dungeonItemImgSrc(item);
+        var rc = _dungeonRarityColor(item.rarity || 'Common');
         return '<div style="text-align:center;animation:itemsReveal 0.5s ease forwards;animation-delay:' + (idx * 0.12) + 's;opacity:0">' +
-            '<img src="/static/Emojis/Pets/Equipment/' + f + '" style="width:56px;height:56px;object-fit:contain;filter:drop-shadow(0 0 10px ' + rc + ')" onerror="this.src=\'/static/Emojis/Pets/Deco/Basic.png\'">' +
+            '<img src="' + imgSrc + '" style="width:56px;height:56px;object-fit:contain;filter:drop-shadow(0 0 10px ' + rc + ')" onerror="this.src=\'/static/Emojis/Pets/Deco/Basic.png\'">' +
             '<div style="font-size:0.65rem;color:' + rc + ';margin-top:4px;max-width:64px;word-break:break-word;font-weight:600">' + _escHtml(item.name) + '</div>' +
             '<div style="font-size:0.58rem;color:rgba(255,255,255,0.45);margin-top:1px">' + (item.rarity || 'Common') + '</div>' +
             '</div>';

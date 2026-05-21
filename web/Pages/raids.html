@@ -696,9 +696,9 @@
       }
       if (n.vital_defense_system)       projs.push('<img class="raids-proj-icon" src="/static/Emojis/Military/vital.png" title="Vital Defense System" alt="🔰">');
 
-      const bellClass    = isBeige ? (hasAlert ? 'raids-bell active' : 'raids-bell') : 'raids-bell';
+      const bellClass    = isBeige ? (hasAlert ? 'raids-bell active' : 'raids-bell') : 'raids-bell raids-bell-disabled';
       const bellTitle    = !isBeige ? 'Nation is not on beige' : (hasAlert ? 'Remove beige alert' : 'Notify 15 min before beige ends');
-      const bellDisabled = !isBeige ? 'disabled style="opacity:0.2;cursor:default;"' : '';
+      const bellDisabled = !isBeige ? 'disabled' : '';
 
       // ── Est. Loot cell ──────────────────────────────────────────────────
       // Collapsed: total value
@@ -811,7 +811,7 @@
     });
 
     // Bell click handlers
-    tbody.querySelectorAll('.raids-bell:not([disabled])').forEach(btn => {
+    tbody.querySelectorAll('.raids-bell:not([disabled]):not(.raids-bell-disabled)').forEach(btn => {
       btn.addEventListener('click', e => {
         e.stopPropagation();
         toggleBeigeAlert(

@@ -114,15 +114,24 @@ function getSliderElements() {
 
 // ── Slider / range ───────────────────────────────────────────────────────────
 function updateRangeLabels(meta = {}) {
-    document.getElementById("watch-available-range").textContent =
-        meta.available_start_date && meta.available_end_date
-            ? `${formatDateLabel(meta.available_start_date)} - ${formatDateLabel(meta.available_end_date)}`
-            : "No data";
-    document.getElementById("watch-selected-start").textContent = formatDateLabel(watchRangeState.selectedStartDate);
-    document.getElementById("watch-selected-end").textContent = formatDateLabel(watchRangeState.selectedEndDate);
-    document.getElementById("watch-scale-start").textContent = formatDateLabel(meta.available_start_date);
-    document.getElementById("watch-scale-end").textContent = formatDateLabel(meta.available_end_date);
-    document.getElementById("watch-war-count").textContent = formatNumber(meta.war_count || 0);
+    const availableRangeEl = document.getElementById("watch-available-range");
+    const selectedStartEl = document.getElementById("watch-selected-start");
+    const selectedEndEl = document.getElementById("watch-selected-end");
+    const scaleStartEl = document.getElementById("watch-scale-start");
+    const scaleEndEl = document.getElementById("watch-scale-end");
+    const warCountEl = document.getElementById("watch-war-count");
+
+    if (availableRangeEl) {
+        availableRangeEl.textContent =
+            meta.available_start_date && meta.available_end_date
+                ? `${formatDateLabel(meta.available_start_date)} - ${formatDateLabel(meta.available_end_date)}`
+                : "No data";
+    }
+    if (selectedStartEl) selectedStartEl.textContent = formatDateLabel(watchRangeState.selectedStartDate);
+    if (selectedEndEl) selectedEndEl.textContent = formatDateLabel(watchRangeState.selectedEndDate);
+    if (scaleStartEl) scaleStartEl.textContent = formatDateLabel(meta.available_start_date);
+    if (scaleEndEl) scaleEndEl.textContent = formatDateLabel(meta.available_end_date);
+    if (warCountEl) warCountEl.textContent = formatNumber(meta.war_count || 0);
 }
 function syncSliderUI() {
     const { startSlider, endSlider, rangeFill } = getSliderElements();

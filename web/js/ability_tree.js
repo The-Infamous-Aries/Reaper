@@ -63,6 +63,7 @@
     var _loading      = false;
     var _selectedNode = null;
     var _openStat     = null;   // which stat section is currently expanded
+    var _inlineMountId = null;  // set when rendering inside a tab panel
 
     function el(id) { return document.getElementById(id); }
 
@@ -113,12 +114,22 @@
             var skillData = results[1];
             if (skillData) treeData.skill_state = skillData;
             _treeState = treeData;
+            window._mpAbilityTreeState = treeData;
             if (cb) cb(treeData);
+            // Refresh the stat breakdown panel now that mastery data is available
+            if (window._pet && window._mpRefreshStatBreakdown) {
+                window._mpRefreshStatBreakdown(window._pet);
+            }
         }).catch(function(e){ showToast('Failed to load: ' + e.message, false); });
     }
 
     // ── Render ────────────────────────────────────────────────────────────────
     function render(state) {
+        // If we're in inline mode, delegate to renderInline
+        if (_inlineMountId && el(_inlineMountId)) {
+            renderInline(state);
+            return;
+        }
         _treeState = state;
         var pts = state.available_points || 0;
         var badge = el('at-points-badge');
@@ -133,8 +144,6 @@
                 '<div class="at-tree-container">' + renderTree(state) + '</div>' +
                 '<div class="at-details-container" id="at-details-panel">' + renderDetails() + '</div>' +
             '</div>';
-        
-        // Expose all global handlers
         exposeGlobalHandlers();
     }
 
@@ -224,7 +233,7 @@
         var pts       = state.available_points || 0;
         var skillState = state.skill_state || null;
 
-        var statSections = STATS.map(function(stat) {
+        return STATS.map(function(stat) {
             var m    = mastery[stat] || { points:0, multiplier:1.0 };
             var meta = STAT_META[stat];
             var isUnlocked = m.points > 0;
@@ -876,16 +885,69 @@
         .catch(function(e){ _loading = false; showToast('Error: ' + e.message, false); });
     }
 
+    // ── Inline rendering (tab panel mode) ────────────────────────────────────
+    function renderInline(state) {
+        _treeState = state;
+        // Expose tree state globally so other panels (Stats tab) can read mastery multipliers
+        window._mpAbilityTreeState = state;
+        var mount = el(_inlineMountId || 'at-inline-mount');
+        if (!mount) return;
+
+        var pts = state.available_points || 0;
+        mount.innerHTML =
+            '<div class="at-inline-wrap">' +
+                '<div class="at-topbar">' +
+                    renderPurchaseBar(state) +
+                    renderAdvMasteryCards(state) +
+                '</div>' +
+                '<div class="at-content-layout">' +
+                    '<div class="at-tree-container">' + renderTree(state) + '</div>' +
+                    '<div class="at-details-container" id="at-details-panel">' + renderDetails() + '</div>' +
+                '</div>' +
+            '</div>' +
+            '<div id="at-toast"></div>';
+
+        exposeGlobalHandlers();
+    }
+
     // ── Public API ────────────────────────────────────────────────────────────
     window.AbilityTree = {
+        // Legacy modal open — kept for any other callers
         open: function() {
             var isMypet = new URLSearchParams(window.location.search).get('page') === 'mypet'
                        || !!document.getElementById('mypet-root');
             if (!isMypet) { console.warn('AbilityTree: mypet page only'); return; }
+            // Redirect to inline tab instead of opening modal
+            if (window._mpTab) { window._mpTab('abilities'); return; }
             ensureOverlay();
             var ov = el('ability-tree-overlay');
             if (ov) { ov.style.display = 'flex'; ov.classList.add('open'); }
             fetchTree(function(state){ render(state); });
+        },
+        // Primary entry point: render inline inside a tab panel
+        openInline: function(mountId) {
+            _inlineMountId = mountId || 'at-inline-mount';
+            // Load CSS if not already loaded
+            if (!document.querySelector('link[href="/css/ability_tree.css"]')) {
+                var lnk = document.createElement('link');
+                lnk.rel = 'stylesheet'; lnk.href = '/css/ability_tree.css';
+                document.head.appendChild(lnk);
+            }
+            var mount = el(_inlineMountId);
+            if (mount) mount.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text-secondary);font-size:0.82rem">Loading abilities…</div>';
+            // Only fetch if we don't have fresh data (avoids re-fetch on every tab switch)
+            if (_treeState) {
+                renderInline(_treeState);
+            } else {
+                fetchTree(function(state){ renderInline(state); });
+            }
+        },
+        // Force a fresh fetch and re-render (call after spending points etc.)
+        refresh: function() {
+            _treeState = null;
+            if (_inlineMountId) {
+                fetchTree(function(state){ renderInline(state); });
+            }
         },
         close: function() {
             var ov = el('ability-tree-overlay');
@@ -897,10 +959,10 @@
             if (ov) ov.remove();
             _selectedNode = null;
         },
-        _spendMastery:   spendMastery,
-        _unlockAbility:  unlockAbility,
+        _spendMastery:    spendMastery,
+        _unlockAbility:   unlockAbility,
         _spendAdvMastery: spendAdvMastery,
-        _purchasePoint:  purchasePoint,
+        _purchasePoint:   purchasePoint,
     };
 
 })();

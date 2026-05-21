@@ -1,120 +1,136 @@
 /**
- * what_are_pets.js
- * Accordion toggle logic for the Pet System Guide page.
- * Vanilla JS, no dependencies.
+ * what_are_pets.js — Pet System Guide toggle-card modal logic.
+ * Matches the exact IIFE + readyState boot pattern used by bazaar.js.
  */
 
 (function () {
-  'use strict';
+    'use strict';
 
-  // ── Core init ──────────────────────────────────────────────────────────────
+    var _activeModal = null;
 
-  /**
-   * Attach click handlers to every .wap2-card-header found in the document.
-   * Safe to call multiple times — uses a data attribute to avoid double-binding.
-   */
-  function initAccordion() {
-    const headers = document.querySelectorAll('.wap2-card-header:not([data-wap2-bound])');
+    // ── Helpers ───────────────────────────────────────────────────────────────
 
-    headers.forEach(function (header) {
-      header.setAttribute('data-wap2-bound', '1');
+    function el(id) { return document.getElementById(id); }
 
-      header.addEventListener('click', function () {
-        const card = header.closest('.wap2-card');
-        if (!card) return;
-        toggleCard(card);
-      });
-    });
+    // ── Hoist modals to <body> ────────────────────────────────────────────────
+    // Moves modals and backdrop out of #content so position:fixed works
+    // correctly regardless of any CSS transforms on ancestor elements.
 
-    // Expand / Collapse All buttons
-    const expandBtn   = document.getElementById('wap2ExpandAll');
-    const collapseBtn = document.getElementById('wap2CollapseAll');
-
-    if (expandBtn && !expandBtn.dataset.wap2Bound) {
-      expandBtn.dataset.wap2Bound = '1';
-      expandBtn.addEventListener('click', function () {
-        document.querySelectorAll('.wap2-card').forEach(function (card) {
-          openCard(card);
+    function hoistToBody() {
+        var backdrop = el('wap2ModalBackdrop');
+        if (backdrop && backdrop.parentNode !== document.body) {
+            document.body.appendChild(backdrop);
+        }
+        document.querySelectorAll('.wap2-modal').forEach(function (m) {
+            if (m.parentNode !== document.body) {
+                document.body.appendChild(m);
+            }
         });
-      });
     }
 
-    if (collapseBtn && !collapseBtn.dataset.wap2Bound) {
-      collapseBtn.dataset.wap2Bound = '1';
-      collapseBtn.addEventListener('click', function () {
-        document.querySelectorAll('.wap2-card').forEach(function (card) {
-          closeCard(card);
+    // ── Toggle cards ──────────────────────────────────────────────────────────
+
+    function bindCards() {
+        document.querySelectorAll('.wap2-toggle-card').forEach(function (card) {
+            card.style.cursor = 'pointer';
+            card.addEventListener('click', function () {
+                openModal(card.getAttribute('data-modal'));
+            });
+            card.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    openModal(card.getAttribute('data-modal'));
+                }
+            });
         });
-      });
     }
-  }
 
-  // ── Card state helpers ─────────────────────────────────────────────────────
+    // ── Modal open / close ────────────────────────────────────────────────────
 
-  /**
-   * Toggle a card open/closed.
-   * @param {HTMLElement} card
-   */
-  function toggleCard(card) {
-    if (card.classList.contains('wap2-card-open')) {
-      closeCard(card);
+    function openModal(modalId) {
+        if (!modalId) return;
+        var modal    = el(modalId);
+        var backdrop = el('wap2ModalBackdrop');
+        if (!modal || !backdrop) return;
+
+        if (_activeModal && _activeModal !== modal) closeModal();
+        _activeModal = modal;
+        modal.classList.add('wap2-active');
+        backdrop.classList.add('wap2-active');
+        document.body.style.overflow = 'hidden';
+
+        var btn = modal.querySelector('.wap2-modal-close');
+        if (btn) setTimeout(function () { btn.focus(); }, 40);
+    }
+
+    function closeModal() {
+        if (_activeModal) {
+            _activeModal.classList.remove('wap2-active');
+            _activeModal = null;
+        }
+        var backdrop = el('wap2ModalBackdrop');
+        if (backdrop) backdrop.classList.remove('wap2-active');
+        document.body.style.overflow = '';
+    }
+
+    function bindClose() {
+        document.querySelectorAll('.wap2-modal-close').forEach(function (btn) {
+            btn.addEventListener('click', closeModal);
+        });
+        var backdrop = el('wap2ModalBackdrop');
+        if (backdrop) backdrop.addEventListener('click', closeModal);
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') closeModal();
+        });
+    }
+
+    // ── Tabs ──────────────────────────────────────────────────────────────────
+
+    function bindTabs() {
+        document.querySelectorAll('.wap2-modal-tabs').forEach(function (bar) {
+            bar.querySelectorAll('.wap2-tab').forEach(function (tab) {
+                tab.addEventListener('click', function () {
+                    var targetId = tab.getAttribute('data-tab');
+                    if (!targetId) return;
+
+                    bar.querySelectorAll('.wap2-tab').forEach(function (t) {
+                        t.classList.remove('active');
+                    });
+                    tab.classList.add('active');
+
+                    var modal = bar.closest('.wap2-modal');
+                    if (!modal) return;
+                    var body = modal.querySelector('.wap2-modal-body');
+                    if (!body) return;
+
+                    body.querySelectorAll('.wap2-tab-panel').forEach(function (p) {
+                        p.classList.remove('active');
+                    });
+                    var panel = body.querySelector('#' + targetId);
+                    if (panel) {
+                        panel.classList.add('active');
+                        body.scrollTop = 0;
+                    }
+                });
+            });
+        });
+    }
+
+    // ── Init ──────────────────────────────────────────────────────────────────
+
+    function init() {
+        hoistToBody();
+        bindCards();
+        bindClose();
+        bindTabs();
+    }
+
+    // ── Boot — exact same pattern as bazaar.js ────────────────────────────────
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
     } else {
-      openCard(card);
+        init();
     }
-  }
-
-  /**
-   * Open a card.
-   * @param {HTMLElement} card
-   */
-  function openCard(card) {
-    card.classList.add('wap2-card-open');
-
-    const header  = card.querySelector('.wap2-card-header');
-    const chevron = card.querySelector('.wap2-chevron');
-
-    if (header)  header.setAttribute('aria-expanded', 'true');
-    if (chevron) chevron.classList.add('wap2-chevron-open');
-  }
-
-  /**
-   * Close a card.
-   * @param {HTMLElement} card
-   */
-  function closeCard(card) {
-    card.classList.remove('wap2-card-open');
-
-    const header  = card.querySelector('.wap2-card-header');
-    const chevron = card.querySelector('.wap2-chevron');
-
-    if (header)  header.setAttribute('aria-expanded', 'false');
-    if (chevron) chevron.classList.remove('wap2-chevron-open');
-  }
-
-  // ── SPA integration ────────────────────────────────────────────────────────
-
-  /**
-   * The dashboard SPA fires 'dashboardPageLoaded' with { detail: { page } }
-   * whenever a new page fragment is injected. Re-initialise if it's our page.
-   */
-  document.addEventListener('dashboardPageLoaded', function (e) {
-    const page = e && e.detail && e.detail.page;
-    if (page === 'what_are_pets') {
-      // Strip old bindings so initAccordion can re-attach cleanly
-      document.querySelectorAll('[data-wap2-bound]').forEach(function (el) {
-        el.removeAttribute('data-wap2-bound');
-      });
-      initAccordion();
-    }
-  });
-
-  // ── Boot ───────────────────────────────────────────────────────────────────
-
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initAccordion);
-  } else {
-    // Fragment was injected after DOMContentLoaded already fired
-    initAccordion();
-  }
 
 }());

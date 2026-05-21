@@ -35,7 +35,7 @@ The stat average is the mean of all six stats. HAP and ENE are your primary heal
 
 ### Specialization Stats
 
-Every species has two specialization stats — the stats it naturally excels at. These are baked into the species' base stat distribution and shown in gold on your pet card. Specializations matter for equipment: if your Hat's bonus stats both match your pet's specializations, you unlock the highest equipment multiplier tier.
+Every species has two specialization stats — the stats it naturally excels at. These are baked into the species' base stat distribution and shown in gold on your pet card.
 
 ### Types and Elements
 
@@ -98,53 +98,105 @@ The pet card sits on the left side of the page and shows your pet's full status 
 - **Name, level badge, type icon, and element icon(s)** in the center
 - **Rank badge** on the right (appears once you reach level 50)
 - **XP progress bar** showing current XP vs XP needed for next level
-- **Equipment slots** — icons for your equipped Material (×2), Gem (×2), Monster (×2), and Hat (×1). Empty slots show a placeholder icon
-- **Equipment bonus summary** — the total stat bonuses your equipment is currently providing, including the active multiplier
+- **Equipment slots** — two rows of icons showing your equipped gear. Row 1: Helmet, Armor, Boots, Ring, Shield, Weapon. Row 2 (Ring sub-slots, only active when a Ring is equipped): Monster ×2, Gem ×2, Material ×1. Empty slots show a placeholder icon
+- **Equipment bonus summary** — the active multiplier and a checklist showing which bonus conditions you've met
 - **Stats grid** — all six stats with equipment bonuses shown in green next to each. Specialization stats are highlighted in gold
 - **Combat stats row** — your computed ⚔️ ATK, 🛡️ DEF, and ❤️ HP values
 - **Inventory** — a collapsible section below the stats showing all items you're holding, grouped by type
 
 ### Equipment
 
-Equipment boosts your pet's stats while equipped. You have four slot types:
+Equipment boosts your pet's stats while equipped. There are two rows of slots:
 
-| Slot | Max Equipped | Stats Boosted |
-|------|-------------|---------------|
-| Material | 2 | <img src="/static/Emojis/Pets/Deco/ATT.png" style="height:14px;vertical-align:middle"> ATT, <img src="/static/Emojis/Pets/Deco/DEF.png" style="height:14px;vertical-align:middle"> DEF, <img src="/static/Emojis/Pets/Deco/DEX.png" style="height:14px;vertical-align:middle"> DEX |
-| Gem | 2 | <img src="/static/Emojis/Pets/Deco/INT.png" style="height:14px;vertical-align:middle"> INT, <img src="/static/Emojis/Pets/Deco/HAP.png" style="height:14px;vertical-align:middle"> HAP, <img src="/static/Emojis/Pets/Deco/ENE.png" style="height:14px;vertical-align:middle"> ENE |
-| Monster | 2 | Mixed (varies by monster) |
-| Hat | 1 | Mixed (varies by hat) |
+**Row 1 — Main Gear (1 of each):**
 
-**Materials** come in five rarities — Common (Dirt, Leaf, Sand), Uncommon (Bone, Fabric, Leather), Rare (Glass, Stone, Wood), Epic (Brick, Gold, Steel), and Mythic (Laser, Plutonium, Smart). Higher rarity means bigger stat bonuses.
+| Slot | Stats Boosted | Rarity |
+|------|--------------|--------|
+| Helmet | <img src="/static/Emojis/Pets/Deco/INT.png" style="height:14px;vertical-align:middle"> INT, <img src="/static/Emojis/Pets/Deco/HAP.png" style="height:14px;vertical-align:middle"> HAP | Rare |
+| Armor | <img src="/static/Emojis/Pets/Deco/HAP.png" style="height:14px;vertical-align:middle"> HAP, <img src="/static/Emojis/Pets/Deco/ENE.png" style="height:14px;vertical-align:middle"> ENE | Rare |
+| Boots | <img src="/static/Emojis/Pets/Deco/DEX.png" style="height:14px;vertical-align:middle"> DEX, <img src="/static/Emojis/Pets/Deco/ENE.png" style="height:14px;vertical-align:middle"> ENE | Rare |
+| Ring | Mixed (varies by ring) | Epic |
+| Shield | <img src="/static/Emojis/Pets/Deco/DEF.png" style="height:14px;vertical-align:middle"> DEF, <img src="/static/Emojis/Pets/Deco/INT.png" style="height:14px;vertical-align:middle"> INT | Rare |
+| Weapon (Dagger / Katana / Sword / Axe / Hammer / Bow) | <img src="/static/Emojis/Pets/Deco/ATT.png" style="height:14px;vertical-align:middle"> ATT + one other | Uncommon |
 
-**Gems** are named items (EmberHeart, FrostShard, etc.) that each give a different spread of INT, HAP, and ENE bonuses.
+All six main gear pieces come in **11 material variants** (Wood, Rusty Iron, Stone, Iron, Nature, Elven, Steel, Crystal, Volcanic, Advanced, SciFi). Pieces of the same variant share a **Set tag** — equipping all six from the same set unlocks a powerful set bonus.
+
+**Row 2 — Ring Sub-slots (requires a Ring to be equipped):**
+
+| Slot | Max | Stats Boosted | Rarity |
+|------|-----|--------------|--------|
+| Monster | 2 | Mixed (varies by monster) | Common |
+| Gem | 2 | <img src="/static/Emojis/Pets/Deco/INT.png" style="height:14px;vertical-align:middle"> INT, <img src="/static/Emojis/Pets/Deco/HAP.png" style="height:14px;vertical-align:middle"> HAP, <img src="/static/Emojis/Pets/Deco/ENE.png" style="height:14px;vertical-align:middle"> ENE | Epic |
+| Material | 1 | <img src="/static/Emojis/Pets/Deco/ATT.png" style="height:14px;vertical-align:middle"> ATT, <img src="/static/Emojis/Pets/Deco/DEF.png" style="height:14px;vertical-align:middle"> DEF, <img src="/static/Emojis/Pets/Deco/DEX.png" style="height:14px;vertical-align:middle"> DEX | Common–Mythic |
+
+Ring sub-slots are only available when a Ring is equipped. Unequipping your Ring automatically removes all sub-slot items back to your inventory.
+
+**Weapons** come in six types — each type has a different stat bias:
+
+| Weapon | Stats | Bias |
+|--------|-------|------|
+| Dagger | <img src="/static/Emojis/Pets/Deco/ATT.png" style="height:14px;vertical-align:middle"> ATT + <img src="/static/Emojis/Pets/Deco/DEX.png" style="height:14px;vertical-align:middle"> DEX | More DEX |
+| Katana | <img src="/static/Emojis/Pets/Deco/ATT.png" style="height:14px;vertical-align:middle"> ATT + <img src="/static/Emojis/Pets/Deco/DEX.png" style="height:14px;vertical-align:middle"> DEX | Balanced |
+| Sword | <img src="/static/Emojis/Pets/Deco/ATT.png" style="height:14px;vertical-align:middle"> ATT + <img src="/static/Emojis/Pets/Deco/DEX.png" style="height:14px;vertical-align:middle"> DEX | More ATT |
+| Axe | <img src="/static/Emojis/Pets/Deco/ATT.png" style="height:14px;vertical-align:middle"> ATT + <img src="/static/Emojis/Pets/Deco/ENE.png" style="height:14px;vertical-align:middle"> ENE | More ENE |
+| Hammer | <img src="/static/Emojis/Pets/Deco/ATT.png" style="height:14px;vertical-align:middle"> ATT + <img src="/static/Emojis/Pets/Deco/ENE.png" style="height:14px;vertical-align:middle"> ENE | More ATT |
+| Bow | <img src="/static/Emojis/Pets/Deco/ATT.png" style="height:14px;vertical-align:middle"> ATT + <img src="/static/Emojis/Pets/Deco/INT.png" style="height:14px;vertical-align:middle"> INT | Balanced |
+
+**Materials** (for the Ring sub-slot) come in five rarities — Common (Dirt, Leaf, Sand), Uncommon (Bone, Fabric, Leather), Rare (Glass, Stone, Wood), Epic (Brick, Gold, Steel), and Mythic (Laser, Plutonium, Smart). Higher rarity means bigger stat bonuses.
+
+**Gems** are named items (Ember Heart, Frost Shard, etc.) that each give a different spread of INT, HAP, and ENE bonuses.
 
 **Monsters** are named creatures (Wirm, Dodl, Drak, etc.) that each give a different spread across all six stats.
 
-**Hats** are named headwear (Fedora, Sorcerer Hat, Tricorne, etc.) that each give bonuses to two specific stats. The Sorcerer Hat gives +25 INT. The Santa Hat gives +25 HAP. Most give +15 to one stat and +10 to another.
+**Rings** are named items (Iron Band, Star Sigil, etc.) that each give 25 points split across two stats.
 
 ### Equipment Multiplier System
 
-Equipment bonuses scale based on how well you've built your loadout:
+Every equipped item's bonuses are multiplied by a single global multiplier before being added to your stats. The multiplier is built from several stacking components:
 
-| Condition | Multiplier |
-|-----------|-----------|
-| Singles only (no matching pairs) | 1× |
-| Any matching pair (e.g. 2× same Material) | 2× on that pair |
-| Full Set (Material pair + Gem pair + Monster pair + Hat) | 3× on everything |
-| Full Set + hat's bonus stats both match your pet's specializations | 4× on everything |
+**Base multiplier formula:**
+```
+multiplier = slots_filled + set_bonus + ring_sub_bonus + level_bonus
+```
 
-**Level bonus:** Every 50 levels adds +1 to the final multiplier. A level 100 pet with a full set gets 3 + 2 = **5×**. A level 150 pet with full set and matching hat specs gets 4 + 3 = **7×**.
+| Component | Value | Condition |
+|-----------|-------|-----------|
+| Slots filled | +1 per slot | Each of the 6 main slots (Helmet, Armor, Boots, Ring, Shield, Weapon) that has an item |
+| Set bonus | +3 | All 6 main slots are filled AND all share the same set tag (e.g. all "Iron" or all "Elven") |
+| Ring sub-bonus | +1 | Both Monsters in the Ring sub-slots are the same |
+| Ring sub-bonus | +1 | Both Gems in the Ring sub-slots are the same |
+| Ring sub-bonus | +1 | A Material is equipped in the Ring sub-slot |
+| Level bonus | +1 per 50 levels | Always applies regardless of equipment |
 
-The optimal setup is two of the same Material, two of the same Gem, two of the same Monster, and a Hat whose bonus stats match your pet's two specialization stats.
+**Full Set Doubling:** If ALL of the following are true simultaneously — all 6 main slots filled, all 6 share the same set tag, a Ring is equipped, both Monsters match, both Gems match, and a Material is equipped — then the entire multiplier is **doubled** after calculation.
+
+**Examples:**
+
+| Setup | Level | Multiplier |
+|-------|-------|-----------|
+| No equipment | 1 | 1× |
+| 3 main slots filled | 1 | 3× |
+| All 6 slots filled, no matching set | 1 | 6× |
+| All 6 slots filled, matching set | 1 | 9× (6 + 3) |
+| All 6 slots + matching set + all ring sub-slots filled and matching | 1 | **18×** ((6+3+3) × 2) |
+| All 6 slots filled, no matching set | 100 | 8× (6 + 2 level bonus) |
+| All 6 slots + matching set + all ring sub-slots + matching | 50 | **20×** ((6+3+3+1) × 2) |
+| All 6 slots + matching set + all ring sub-slots + matching | 100 | **24×** ((6+3+3+2) × 2) |
+| All 6 slots + matching set + all ring sub-slots + matching | 150 | **28×** ((6+3+3+3) × 2) |
+
+> **Note:** The level bonus is `level ÷ 50` (integer division). Level 50 = +1, level 100 = +2, level 150 = +3, etc.
+
+The optimal setup is: all 6 main slots from the same set, a Ring equipped, two of the same Monster, two of the same Gem, and a Material in the Ring sub-slot. This gives the full doubling bonus on top of the maximum base multiplier.
 
 ### Inventory
 
-The inventory panel on the pet card shows all items you're holding, grouped by category (Materials, Gems, Monsters, Hats, Potions, Keys, Chests). Each item shows its icon, name, count, and rarity color.
+The inventory panel on the pet card shows all items you're holding, grouped by type — each type has its own collapsible section (Helmet, Armor, Boots, Ring, Shield, Daggers, Katanas, Swords, Axes, Hammers, Bows, Potions, Materials, Gems, Monsters, Keys, Chests). Click a section header to expand or collapse it.
 
-**To equip an item** (Material, Gem, Monster, or Hat): click the item in your inventory. A confirmation prompt appears — confirm to equip it. The item moves from your inventory to the equipment slot. If the slot is already full, the oldest item is automatically returned to your inventory.
+**To equip a main gear item** (Helmet, Armor, Boots, Ring, Shield, or any Weapon): click the item in your inventory. A confirmation prompt appears — confirm to equip it. The item moves from your inventory to the equipment slot. If the slot is already full, the old item is automatically returned to your inventory.
 
-**To unequip an item**: click the equipped item icon in the equipment slots section of the pet card. It returns to your inventory.
+**To equip Ring sub-slot items** (Material, Gem, Monster): you must have a Ring equipped first. Then click the item — it goes into the Ring sub-slot. Gems and Monsters can hold 2 each; Material holds 1.
+
+**To unequip an item**: click the equipped item icon in the equipment slots section of the pet card. It returns to your inventory. Unequipping a Ring also returns all Ring sub-slot items (Material, Gems, Monsters) to your inventory.
 
 **To use a potion**: click the potion in your inventory. A confirmation prompt shows what the potion does. Confirm to consume it — the effect applies permanently to your pet's stats immediately. The potion is removed from your inventory.
 
@@ -169,7 +221,7 @@ Potions are consumable items that permanently boost your pet's stats. Use them f
 
 Items come from almost everything you do:
 
-- **Chests** — opened in the Loot Market tab using keys. The main source of Materials, Gems, Monsters, Hats, and Potions
+- **Chests** — opened in the Loot Market tab using keys. The main source of Materials, Gems, Monsters, Rings, gear, weapons, and Potions
 - **Battles** — winning NPC battles and boss battles drops items
 - **Quests** — completing quest stages and finding loot chests during quests
 - **Tasks** — daily task rewards include keys and chests
@@ -189,7 +241,7 @@ Keys are the currency for opening chests. Spend them in the **Loot Market tab** 
 | <img src="/static/Emojis/Pets/Equipment/chest3.png" style="height:15px;vertical-align:middle"> Chest 3 | 1× <img src="/static/Emojis/Pets/Equipment/Key3.png" style="height:15px;vertical-align:middle"> Key3 | 1 Epic item |
 | <img src="/static/Emojis/Pets/Equipment/chest4.png" style="height:15px;vertical-align:middle"> Chest 4 | 1× <img src="/static/Emojis/Pets/Equipment/Key1.png" style="height:15px;vertical-align:middle"> Key1 + <img src="/static/Emojis/Pets/Equipment/Key2.png" style="height:15px;vertical-align:middle"> Key2 + <img src="/static/Emojis/Pets/Equipment/Key3.png" style="height:15px;vertical-align:middle"> Key3 | 1 item of your chosen type + 1 Uncommon or better |
 
-Chest 4 asks you to pick a guaranteed item type (Material, Gem, Monster, Potion, or Hat) before opening.
+Chest 4 asks you to pick a guaranteed item type (Material, Gem, Monster, Potion, Ring, Helmet, Armor, Boots, Shield, or any Weapon type) before opening.
 
 If a task rewards you a chest directly, it lands in your inventory and does not require keys to open — just click it.
 
@@ -230,7 +282,7 @@ Go to the **Train tab** on your My Pet page. Pick Easy, Average, or Hard difficu
 | Average | 3 × equipment multiplier | 60% |
 | Hard | 5 × equipment multiplier | 45% |
 
-Your equipment multiplier scales the change — a full matching set at level 100 (5× multiplier) means a successful Hard training adds 25 to your chosen stat.
+Your equipment multiplier scales the change — a full matching set at level 50 (20× multiplier) means a successful Hard training adds 100 to your chosen stat.
 
 ### Missions
 
@@ -442,13 +494,15 @@ Each task card shows what to do, a progress bar that fills as you complete the r
 
 ## Hints
 
-**Build for your specializations.** Your pet's two specialization stats are shown in gold on the pet card. Focus your potions and equipment on boosting those stats — they're what your species is built around, and matching your Hat's bonus stats to both specializations unlocks the 4× equipment multiplier.
+**Build for your specializations.** Your pet's two specialization stats are shown in gold on the pet card. Focus your potions and equipment on boosting those stats — they're what your species is built around.
 
-**Aim for a full matching set.** Two of the same Material, two of the same Gem, two of the same Monster, and a Hat. That's the full set and gets you 3× on all equipment bonuses. Add the matching Hat specs and you're at 4×. Every 50 levels adds another +1 on top of that.
+**Aim for a full matching set.** Equip all 6 main slots (Helmet, Armor, Boots, Ring, Shield, Weapon) from the same material variant (e.g. all "Iron" or all "Elven"). That adds +3 to your base multiplier. Then fill the Ring sub-slots with two matching Monsters, two matching Gems, and a Material — and the entire multiplier doubles. A level 50 pet with a full matching set and all ring sub-slots filled gets a **20× multiplier** on all equipment bonuses.
+
+**Ring sub-slots are powerful but gated.** You need a Ring equipped before you can add Monsters, Gems, or a Material to it. Unequipping the Ring clears all sub-slots back to your inventory, so plan your loadout before swapping rings.
 
 **<img src="/static/Emojis/Pets/Deco/HAP.png" style="height:14px;vertical-align:middle"> HAP and <img src="/static/Emojis/Pets/Deco/ENE.png" style="height:14px;vertical-align:middle"> ENE are your health stats.** If you want a tankier pet that survives longer in battles and Survivor Series, prioritize HAP and ENE. They feed into both the average and the multiplicative part of the HP formula — small increases go a long way.
 
-**Training is a stat tool, not an XP tool.** Training directly changes a chosen stat — it doesn't award XP. Use it to fine-tune your build. Hard training with a high equipment multiplier can add huge amounts to a stat on a single success, but failure costs the same amount, so be careful.
+**Training is a stat tool, not an XP tool.** Training directly changes a chosen stat — it doesn't award XP. Use it to fine-tune your build. Hard training with a high equipment multiplier can add massive amounts to a stat on a single success (a full matching set at level 50 gives 20× — meaning Hard training adds 100 per success), but failure costs the same amount, so be careful.
 
 **Match your element when playing locations.** Always check which element a location favors before hitting Play. A matching element gives 2–3× XP and better key drops. Over time this makes a huge difference in how fast you level and how many chests you open.
 
@@ -456,7 +510,7 @@ Each task card shows what to do, a progress bar that fills as you complete the r
 
 **Don't sleep on the Item Board.** If you're getting duplicate Materials or Gems you don't need, post them on the Item Board instead of letting them overflow to XP. You'll earn more XP from the sale than from the overflow conversion, and another player gets something useful.
 
-**In Survivor Series, unequip everything.** Your Survive Score is `level ÷ equipment_multiplier ÷ 10`. Equipment multipliers divide your score, making you weaker. A level 500 pet with no equipment has a score of 50. The same pet with a full set has a score of ~3.8. Go in naked.
+**In Survivor Series, unequip everything.** Your Survive Score is `level ÷ equipment_multiplier ÷ 10`. Equipment multipliers divide your score, making you weaker. A level 500 pet with no equipment has a score of 50. The same pet with a full matching set at level 500 (multiplier of 28×+) has a score under 2. Go in naked.
 
 **Let charge stacks build in Survivor Series.** Every round you avoid combat, your charge multiplier grows (up to 1.5× at 5 rounds). If you can stay out of fights early, you'll hit much harder when you finally engage.
 

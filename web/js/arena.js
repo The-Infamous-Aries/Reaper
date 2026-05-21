@@ -21,6 +21,12 @@ let _battle      = null;
 // WebSocket room broadcasts from wiping the active game UI.
 let _gameEmbedActive = false;
 
+// ── Global guard: any code (colosseum.js, etc.) can check this before
+//    touching shared-panel-area.
+window._arenaIsInBattle = function() {
+    return !!(_battle || _bossBattle || _gameEmbedActive);
+};
+
 // ── DOM helpers ───────────────────────────────────────────────────────────────
 const $   = id => document.getElementById(id);
 const esc = s  => String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
@@ -454,6 +460,8 @@ window._arenaFight = window._arenaStartBattle = async function(roomId) {
 function _showBattleStage() {
     if (!_battle) return;
     _gameEmbedActive = true;
+    // Tell colosseum.js (and any other co-loaded scripts) to stop overwriting the panel
+    document.dispatchEvent(new CustomEvent('arenaBattleStarted'));
     const p = _battle.player, e = _battle.enemy;
     const labels = _battle.action_labels || {};
     const atkLabel = labels.attack || 'Attack';
@@ -509,6 +517,7 @@ function _showBattleStage() {
                 <button class="arena-action-btn chg" id="ab-charge" onclick="window._arenaTurn('charge')">
                     ⚡ Charge<span class="arena-action-sub">${esc(chgLabel)}</span>
                 </button>
+                ${_buildArenaSkillButtons(p)}
             </div>
             <div class="arena-status-text" id="arena-status">Your turn — pick an action!</div>
             <div class="arena-log" id="arena-turn-log"></div>
@@ -569,6 +578,23 @@ function _setBattleButtons(enabled) {
     ['ab-attack','ab-defend','ab-charge'].forEach(id => {
         const b = $(id); if (b) b.disabled = !enabled;
     });
+    // Skill buttons: when disabling (turn processing), disable all;
+    // when re-enabling, only re-enable slots that are off cooldown
+    if (_battle && _battle.player) {
+        const skills = _battle.player.equipped_skills || [];
+        const cds = _battle.player.skill_cooldowns || {};
+        skills.forEach((sk, idx) => {
+            const btn = $(`ab-skill-${idx}`);
+            if (!btn) return;
+            if (!sk) return; // empty slot stays disabled always
+            if (!enabled) {
+                btn.disabled = true;
+            } else {
+                const cd = cds[String(idx)] || 0;
+                btn.disabled = cd > 0;
+            }
+        });
+    }
 }
 
 function _updateHpBar(barId, textId, cur, max, isEnemy) {
@@ -733,7 +759,52 @@ function _appendTurnLog(turn, combat, pName, eName) {
     log.scrollTop = log.scrollHeight;
 }
 
-window._arenaTurn = async function(action) {
+function _buildArenaSkillButtons(player) {
+    const skills = (player && player.equipped_skills) || [];
+    if (!skills.length) return '';
+    const cds = (player && player.skill_cooldowns) || {};
+    return skills.map((sk, idx) => {
+        if (!sk) {
+            // Unlocked slot but no skill equipped — show as empty/dimmed
+            return `<button class="arena-action-btn arena-skill-empty"
+                            id="ab-skill-${idx}"
+                            style="background:rgba(100,100,100,0.1);border-color:rgba(100,100,100,0.3);color:rgba(150,150,150,0.5);font-size:0.72rem;cursor:not-allowed"
+                            disabled
+                            title="No skill equipped in slot ${idx + 1}">
+                ✨ Slot ${idx + 1}<span class="arena-action-sub">Empty</span>
+            </button>`;
+        }
+        const cd = cds[String(idx)] || 0;
+        const onCd = cd > 0;
+        return `<button class="arena-action-btn${onCd ? ' arena-skill-cd' : ''}"
+                        id="ab-skill-${idx}"
+                        style="background:rgba(155,89,182,0.15);border-color:rgba(155,89,182,0.5);color:#9b59b6;font-size:0.72rem"
+                        onclick="window._arenaTurn('skill',${idx})"
+                        ${onCd ? 'disabled' : ''}
+                        title="${esc(sk.description || '')}">
+            ✨ ${esc(sk.name)}<span class="arena-action-sub">${onCd ? `(${cd})` : 'Ready'}</span>
+        </button>`;
+    }).join('');
+}
+
+function _updateArenaSkillCooldowns(skillCooldowns) {
+    if (!skillCooldowns || !_battle || !_battle.player) return;
+    const skills = _battle.player.equipped_skills || [];
+    skills.forEach((sk, idx) => {
+        const btn = $(`ab-skill-${idx}`);
+        if (!btn) return;
+        if (!sk) return; // empty slot — stays disabled, nothing to update
+        const cd = skillCooldowns[String(idx)] || 0;
+        btn.disabled = cd > 0;
+        btn.classList.toggle('arena-skill-cd', cd > 0);
+        const sub = btn.querySelector('.arena-action-sub');
+        if (sub) sub.textContent = cd > 0 ? `(${cd})` : 'Ready';
+    });
+    // Keep player state in sync
+    _battle.player.skill_cooldowns = skillCooldowns;
+}
+
+window._arenaTurn = async function(action, slotIndex) {
     if (!_battle || _battle.over) return;
     _setBattleButtons(false);
     const status = $('arena-status');
@@ -744,6 +815,7 @@ window._arenaTurn = async function(action) {
             method: 'POST', headers: {'Content-Type':'application/json'},
             body: JSON.stringify({
                 action,
+                slot_index: slotIndex !== undefined ? slotIndex : 0,
                 player: _battle.player,
                 enemy:  _battle.enemy,
                 turn:   _battle.turn,
@@ -755,6 +827,10 @@ window._arenaTurn = async function(action) {
         if (!res.ok) { if(status) status.textContent = d.detail || 'Error'; _setBattleButtons(true); return; }
 
         if (d.combat) _animateFighters(d.combat, d.over, d.won);
+
+        // ── GPP: push battle animation events to the game loop ────────────────
+        if (window.PetGPP && d.animations) PetGPP.push(d.animations);
+        if (window.PetGPP && d.level_change) PetGPP.pushLevelChange(d.level_change);
 
         // ── Charge ring: clear immediately when charge is consumed ────────────
         // Both attack AND defend consume charge (defend parries and deals damage).
@@ -774,6 +850,11 @@ window._arenaTurn = async function(action) {
         _battle.enemy  = d.enemy;
         _battle.turn   = d.turn;
         _battle.over   = d.over;
+
+        // Update skill cooldowns from server response
+        if (d.skill_cooldowns) {
+            _updateArenaSkillCooldowns(d.skill_cooldowns);
+        }
 
         setTimeout(() => {
             _updateHpBar('af-player-hp', 'af-player-hp-text', d.player.cur_hp, d.player.max_hp, false);
@@ -817,7 +898,6 @@ function _showBattleResult(d) {
         d.messages.forEach(m => {
             let clean = String(m).replace(/<img[^>]*>/gi,'').replace(/<[^>]+>/g,'').replace(/\*\*/g,'').trim();
             if (!clean || /^\+?\d+\s*XP$/.test(clean)) return;
-            // Inject key images
             clean = clean.replace(/\b(Key[123])\b/g, (match) =>
                 `<img src="/static/Emojis/Pets/Equipment/${match}.png" style="width:13px;height:13px;object-fit:contain;vertical-align:middle;margin:0 2px" onerror="this.style.display='none'"> ${match}`
             );
@@ -831,6 +911,13 @@ function _showBattleResult(d) {
     </div></div>`;
     res.innerHTML = html;
     res.style.display = '';
+
+    // ── GPP: push level change + result particles ─────────────────────────────
+    if (window.PetGPP) {
+        if (d.level_change) PetGPP.pushLevelChange(d.level_change);
+        const playerImg = document.getElementById('af-player-img');
+        PetGPP.Particles.spawnAt(won ? 'level_burst' : 'fail_flash', playerImg, won ? '#ffd700' : '#e74c3c');
+    }
 
     if (d.level_change && typeof showLevelChangePopup === 'function') {
         showLevelChangePopup(d.level_change, d.level_change.new_level < d.level_change.old_level);
@@ -1024,6 +1111,8 @@ window._bossStart = async function(roomId) {
 function _showBossStage() {
     if (!_bossBattle) return;
     _gameEmbedActive = true;
+    // Tell colosseum.js (and any other co-loaded scripts) to stop overwriting the panel
+    document.dispatchEvent(new CustomEvent('arenaBattleStarted'));
     const boss = _bossBattle.boss;
     const players = _bossBattle.players;
     const me = players.find(p => p.user_id === _myUserId);

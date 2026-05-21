@@ -795,69 +795,68 @@ window.ssConfirmStart = function() {
     });
 };
 
-// ── Equipment multiplier (mirrors pet_brain.py StatsCalculator._calculate_equipment_bonuses) ──
+// ── Equipment multiplier (mirrors pet_brain.py StatsCalculator.get_equipment_xp_multiplier) ──
+// New slot system: Helmet, Armor, Boots, Ring, Shield, Weapon (main slots)
+// Ring sub-slots: Material (1), Monsters (2 matching), Gems (2 matching)
+// Multiplier = slots_filled + set_bonus(3) + ring_sub_bonus + level_bonus(level//50)
+// Full set (all 6 matching + all ring sub-slots): result × 2
 function calcEquipMultiplier(pet) {
-    var eq     = (pet && pet.equipment) || {};
-    var level  = parseInt((pet && pet.level) || 1, 10);
-    var specs  = ((pet && (pet.specializations || pet.Spec)) || []).map(function(s){ return s.toUpperCase(); });
+    var eq    = (pet && pet.equipment) || {};
+    var level = parseInt((pet && pet.level) || 1, 10);
     var levelBonus = Math.floor(level / 50);
 
-    // Collect typed items
-    var items = [];
-    var mat = eq.Material;
-    if (Array.isArray(mat)) {
-        mat.forEach(function(m){ if (m && m.name) items.push({t:'Material', item:m}); });
-    } else if (mat && typeof mat === 'object' && mat.name) {
-        items.push({t:'Material', item:mat});
+    // ── Helper: get single-slot item ─────────────────────────────────────────
+    function getSingle(key) {
+        var v = eq[key];
+        if (Array.isArray(v)) v = v[0] || null;
+        return (v && v.name) ? v : null;
     }
-    var gems = eq.Gems;
-    if (Array.isArray(gems)) {
-        gems.forEach(function(g){ if (g && g.name) items.push({t:'Gem', item:g}); });
-    } else if (gems && typeof gems === 'object' && gems.name) {
-        items.push({t:'Gem', item:gems});
-    }
-    var mons = eq.Monsters;
-    if (Array.isArray(mons)) {
-        mons.forEach(function(m){ if (m && m.name) items.push({t:'Monster', item:m}); });
-    } else if (mons && typeof mons === 'object' && mons.name) {
-        items.push({t:'Monster', item:mons});
-    }
-    var hat = eq.Hat;
-    if (Array.isArray(hat)) hat = hat[0] || null;
-    var hatEquipped = !!(hat && typeof hat === 'object' && hat.name);
-    if (hatEquipped) items.push({t:'Hat', item:hat});
-
-    // Count duplicates
-    var matCounts = {}, gemCounts = {}, monCounts = {};
-    items.forEach(function(e) {
-        var n = (e.item.name || '').toLowerCase();
-        if (!n) return;
-        if (e.t === 'Material') matCounts[n] = (matCounts[n] || 0) + 1;
-        else if (e.t === 'Gem')     gemCounts[n] = (gemCounts[n] || 0) + 1;
-        else if (e.t === 'Monster') monCounts[n] = (monCounts[n] || 0) + 1;
-    });
-
-    var hasMatPair = Object.keys(matCounts).some(function(k){ return matCounts[k] >= 2; });
-    var hasGemPair = Object.keys(gemCounts).some(function(k){ return gemCounts[k] >= 2; });
-    var hasMonPair = Object.keys(monCounts).some(function(k){ return monCounts[k] >= 2; });
-
-    // Hat spec matching
-    var hatSpecMatches = 0;
-    if (hatEquipped && specs.length) {
-        var hatBonusStats = Object.keys((hat.bonuses) || {}).map(function(s){ return s.toUpperCase(); });
-        hatSpecMatches = hatBonusStats.filter(function(s){ return specs.indexOf(s) !== -1; }).length;
+    function getList(key) {
+        var v = eq[key] || [];
+        if (!Array.isArray(v)) v = (v && v.name) ? [v] : [];
+        return v.filter(function(i){ return i && i.name; });
     }
 
-    // Set multiplier
-    var fullSet = hasMatPair && hasGemPair && hasMonPair && hatEquipped;
-    var setMult;
-    if (fullSet) {
-        setMult = hatSpecMatches >= 2 ? 4 : 3;
-    } else {
-        setMult = 1;
-    }
+    // ── Main slots ────────────────────────────────────────────────────────────
+    var helmet = getSingle('Helmet');
+    var armor  = getSingle('Armor');
+    var boots  = getSingle('Boots');
+    var ring   = getSingle('Ring');
+    var shield = getSingle('Shield');
+    var weapon = getSingle('Weapon');
+    var mainSlots  = [helmet, armor, boots, ring, shield, weapon];
+    var mainFilled = mainSlots.filter(function(s){ return s !== null; });
 
-    return Math.max(1, setMult + levelBonus);
+    // ── Ring sub-slots ────────────────────────────────────────────────────────
+    var material = getSingle('Material');
+    var monsters = getList('Monsters');   // up to 2
+    var gems     = getList('Gems');       // up to 2
+
+    // ── Set matching ──────────────────────────────────────────────────────────
+    function setTag(item) { return item ? (item.set || null) : null; }
+    var mainSetTags = mainFilled.map(setTag).filter(function(t){ return t; });
+    var matchingSet = (mainFilled.length === 6 && mainSetTags.length === 6 &&
+        (new Set(mainSetTags)).size === 1);
+
+    // ── Ring sub-slot matching ────────────────────────────────────────────────
+    var monNames = monsters.map(function(m){ return (m.name || '').toLowerCase(); });
+    var gemNames = gems.map(function(g){ return (g.name || '').toLowerCase(); });
+    var matchingMonsters = (monNames.length === 2 && monNames[0] === monNames[1]);
+    var matchingGems     = (gemNames.length === 2 && gemNames[0] === gemNames[1]);
+    var hasMaterial      = material !== null;
+
+    var ringSubBonus = (matchingMonsters ? 1 : 0) + (matchingGems ? 1 : 0) + (hasMaterial ? 1 : 0);
+
+    // ── Full set ──────────────────────────────────────────────────────────────
+    var fullSet = (mainFilled.length === 6 && matchingSet && ring !== null &&
+                   hasMaterial && matchingMonsters && matchingGems);
+
+    // ── Multiplier ────────────────────────────────────────────────────────────
+    var slotsFilledBonus = mainFilled.length;
+    var setBonus  = matchingSet ? 3 : 0;
+    var baseMult  = slotsFilledBonus + setBonus + ringSubBonus + levelBonus;
+    if (baseMult < 1) baseMult = 1;
+    return fullSet ? baseMult * 2 : baseMult;
 }
 
 // ── Join modal ────────────────────────────────────────────────────────────────

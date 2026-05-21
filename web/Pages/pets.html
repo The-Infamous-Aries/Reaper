@@ -3,342 +3,78 @@
 <!-- Unified Pet Database -->
 <div class="container-fluid">
 
-    <!-- Tab Content -->
-    <div class="tab-content" id="categoryTabContent">
-        <!-- Pets Tab -->
-        <div class="tab-pane fade show active" id="pets" role="tabpanel">
-            <!-- Sorting Controls -->
-            <div class="card mb-4">
-                <div class="card-header d-flex justify-content-between align-items-center" id="pets-section">
-                    <!-- Left side: Category Toggles -->
-                    <div class="btn-group category-toggle" role="group">
-                    <button type="button" class="btn btn-sm active" onclick="switchCategory('pets')">
-                        🐾 Pets
-                        <span class="emoji-glow">🐾</span>
-                    </button>
-                        <button type="button" class="btn btn-sm" onclick="switchCategory('materials')">
-                            🪨 Materials
-                            <span class="emoji-glow">🪨</span>
-                        </button>
-                        <button type="button" class="btn btn-sm" onclick="switchCategory('gems')">
-                            💎 Gems
-                            <span class="emoji-glow">💎</span>
-                        </button>
-                        <button type="button" class="btn btn-sm" onclick="switchCategory('monsters')">
-                            👹 Monsters
-                            <span class="emoji-glow">👹</span>
-                        </button>
-                        <button type="button" class="btn btn-sm" onclick="switchCategory('hats')">
-                            🎩 Hats
-                            <span class="emoji-glow">🎩</span>
-                        </button>
-                        <button type="button" class="btn btn-sm" onclick="switchCategory('potions')">
-                            🧪 Potions
-                            <span class="emoji-glow">🧪</span>
-                        </button>
-                    </div>
-                    <!-- Right side: Sort and View Toggles -->
-                    <div class="d-flex align-items-center">
-                        <!-- Sorting Buttons -->
-                        <div class="btn-group" role="group">
-                            <button class="btn btn-sm btn-primary sort-btn" data-sort-field="name" data-sort-label="Name" onclick="toggleSort('pets', 'name')">Name</button>
-                            <button class="btn btn-sm btn-primary sort-btn" data-sort-field="att" data-sort-label="ATT" onclick="toggleSort('pets', 'att')">ATT</button>
-                            <button class="btn btn-sm btn-primary sort-btn" data-sort-field="def" data-sort-label="DEF" onclick="toggleSort('pets', 'def')">DEF</button>
-                            <button class="btn btn-sm btn-primary sort-btn" data-sort-field="int" data-sort-label="INT" onclick="toggleSort('pets', 'int')">INT</button>
-                            <button class="btn btn-sm btn-primary sort-btn" data-sort-field="dex" data-sort-label="DEX" onclick="toggleSort('pets', 'dex')">DEX</button>
-                            <button class="btn btn-sm btn-primary sort-btn" data-sort-field="hap" data-sort-label="HAP" onclick="toggleSort('pets', 'hap')">HAP</button>
-                            <button class="btn btn-sm btn-primary sort-btn" data-sort-field="ene" data-sort-label="ENE" onclick="toggleSort('pets', 'ene')">ENE</button>
-                        </div>
-                        <!-- View Type Toggle -->
-                        <div class="btn-group view-toggle" role="group">
-                            <button type="button" class="btn btn-sm active" onclick="setViewType('cards')">Cards</button>
-                            <button type="button" class="btn btn-sm" onclick="setViewType('list')">List</button>
-                        </div>
-                    </div>
-                </div>
+    <!-- ── Shared Navigation Bar ─────────────────────────────────────────── -->
+    <div class="card mb-3">
+        <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
+            <!-- Category Toggles -->
+            <div class="btn-group flex-wrap category-toggle" role="group" id="main-category-toggle">
+                <button type="button" class="btn btn-sm active" onclick="switchCategory('pets')">🐾 Pets</button>
+                <button type="button" class="btn btn-sm" onclick="switchCategory('materials')">🪨 Materials</button>
+                <button type="button" class="btn btn-sm" onclick="switchCategory('gems')">💎 Gems</button>
+                <button type="button" class="btn btn-sm" onclick="switchCategory('monsters')">👹 Monsters</button>
+                <button type="button" class="btn btn-sm" onclick="switchCategory('potions')">🧪 Potions</button>
+                <button type="button" class="btn btn-sm" onclick="switchCategory('rings')">💍 Rings</button>
+                <button type="button" class="btn btn-sm" onclick="switchCategory('equipment_sets')">🛡️ Equipment Sets</button>
+                <button type="button" class="btn btn-sm" onclick="switchCategory('weapons')">⚔️ Weapons</button>
             </div>
-
-            <!-- Pet Cards Container -->
-            <div id="petContainer" class="row">
-                <div class="col-12 text-center">
-                    <div class="spinner-border text-primary" role="status">
-                        <span class="visually-hidden">Loading...</span>
-                    </div>
-                </div>
+            <!-- View Toggle -->
+            <div class="btn-group view-toggle" role="group">
+                <button type="button" class="btn btn-sm active" onclick="setViewType('cards')">Cards</button>
+                <button type="button" class="btn btn-sm" onclick="setViewType('list')">List</button>
             </div>
         </div>
-
-        <!-- Materials Tab -->
-        <div class="tab-pane fade" id="materials" role="tabpanel">
-            <div class="card mb-4">
-                <div class="card-header d-flex justify-content-between align-items-center" id="materials-section">
-                    <!-- Left side: Category Toggles -->
-                    <div class="btn-group category-toggle" role="group">
-                        <button type="button" class="btn btn-sm" onclick="switchCategory('pets')">
-                            🐾 Pets
-                            <span class="emoji-glow">🐾</span>
-                        </button>
-                        <button type="button" class="btn btn-sm active" onclick="switchCategory('materials')">
-                            🪨 Materials
-                            <span class="emoji-glow">🪨</span>
-                        </button>
-                        <button type="button" class="btn btn-sm" onclick="switchCategory('gems')">
-                            💎 Gems
-                            <span class="emoji-glow">💎</span>
-                        </button>
-                        <button type="button" class="btn btn-sm" onclick="switchCategory('monsters')">
-                            👹 Monsters
-                            <span class="emoji-glow">👹</span>
-                        </button>
-                        <button type="button" class="btn btn-sm" onclick="switchCategory('hats')">
-                            🎩 Hats
-                            <span class="emoji-glow">🎩</span>
-                        </button>
-                        <button type="button" class="btn btn-sm" onclick="switchCategory('potions')">
-                            🧪 Potions
-                            <span class="emoji-glow">🧪</span>
-                        </button>
-                    </div>
-                    <!-- Right side: Sort and View Toggles -->
-                    <div class="d-flex align-items-center">
-                        <!-- Sorting Buttons -->
-                        <div class="btn-group" role="group">
-                            <button class="btn btn-sm btn-primary sort-btn" data-sort-field="name" data-sort-label="Name" onclick="toggleSort('materials', 'name')">Name</button>
-                            <button class="btn btn-sm btn-primary sort-btn" data-sort-field="rarity" data-sort-label="Rarity" onclick="toggleSort('materials', 'rarity')">Rarity</button>
-                            <button class="btn btn-sm btn-primary sort-btn" data-sort-field="att" data-sort-label="ATT" onclick="toggleSort('materials', 'att')">ATT</button>
-                            <button class="btn btn-sm btn-primary sort-btn" data-sort-field="def" data-sort-label="DEF" onclick="toggleSort('materials', 'def')">DEF</button>
-                            <button class="btn btn-sm btn-primary sort-btn" data-sort-field="dex" data-sort-label="DEX" onclick="toggleSort('materials', 'dex')">DEX</button>
-                        </div>
-                        <!-- View Type Toggle -->
-                        <div class="btn-group view-toggle" role="group">
-                            <button type="button" class="btn btn-sm active" onclick="setViewType('cards')">Cards</button>
-                            <button type="button" class="btn btn-sm" onclick="setViewType('list')">List</button>
-                        </div>
-                    </div>
-                </div>
-                <div class="card-body">
-                    <div id="materials-container" class="row"></div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Gems Tab -->
-        <div class="tab-pane fade" id="gems" role="tabpanel">
-            <div class="card mb-4">
-                <div class="card-header d-flex justify-content-between align-items-center" id="gems-section">
-                    <!-- Left side: Category Toggles -->
-                    <div class="btn-group category-toggle" role="group">
-                        <button type="button" class="btn btn-sm" onclick="switchCategory('pets')">
-                            🐾 Pets
-                            <span class="emoji-glow">🐾</span>
-                        </button>
-                        <button type="button" class="btn btn-sm" onclick="switchCategory('materials')">
-                            🪨 Materials
-                            <span class="emoji-glow">🪨</span>
-                        </button>
-                        <button type="button" class="btn btn-sm active" onclick="switchCategory('gems')">
-                            💎 Gems
-                            <span class="emoji-glow">💎</span>
-                        </button>
-                        <button type="button" class="btn btn-sm" onclick="switchCategory('monsters')">
-                            👹 Monsters
-                            <span class="emoji-glow">👹</span>
-                        </button>
-                        <button type="button" class="btn btn-sm" onclick="switchCategory('hats')">
-                            🎩 Hats
-                            <span class="emoji-glow">🎩</span>
-                        </button>
-                        <button type="button" class="btn btn-sm" onclick="switchCategory('potions')">
-                            🧪 Potions
-                            <span class="emoji-glow">🧪</span>
-                        </button>
-                    </div>
-                    <!-- Right side: Sort and View Toggles -->
-                    <div class="d-flex align-items-center">
-                        <!-- Sorting Buttons -->
-                        <div class="btn-group" role="group">
-                            <button class="btn btn-sm btn-primary sort-btn" data-sort-field="name" data-sort-label="Name" onclick="toggleSort('gems', 'name')">Name</button>
-                            <button class="btn btn-sm btn-primary sort-btn" data-sort-field="int" data-sort-label="INT" onclick="toggleSort('gems', 'int')">INT</button>
-                            <button class="btn btn-sm btn-primary sort-btn" data-sort-field="hap" data-sort-label="HAP" onclick="toggleSort('gems', 'hap')">HAP</button>
-                            <button class="btn btn-sm btn-primary sort-btn" data-sort-field="ene" data-sort-label="ENE" onclick="toggleSort('gems', 'ene')">ENE</button>
-                        </div>
-                        <!-- View Type Toggle -->
-                        <div class="btn-group view-toggle" role="group">
-                            <button type="button" class="btn btn-sm active" onclick="setViewType('cards')">Cards</button>
-                            <button type="button" class="btn btn-sm" onclick="setViewType('list')">List</button>
-                        </div>
-                    </div>
-                </div>
-                <div class="card-body">
-                    <div id="gems-container" class="row"></div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Monsters Tab -->
-        <div class="tab-pane fade" id="monsters" role="tabpanel">
-            <div class="card mb-4">
-                <div class="card-header d-flex justify-content-between align-items-center" id="monsters-section">
-                    <!-- Left side: Category Toggles -->
-                    <div class="btn-group category-toggle" role="group">
-                        <button type="button" class="btn btn-sm" onclick="switchCategory('pets')">
-                            🐾 Pets
-                            <span class="emoji-glow">🐾</span>
-                        </button>
-                        <button type="button" class="btn btn-sm" onclick="switchCategory('materials')">
-                            🪨 Materials
-                            <span class="emoji-glow">🪨</span>
-                        </button>
-                        <button type="button" class="btn btn-sm" onclick="switchCategory('gems')">
-                            💎 Gems
-                            <span class="emoji-glow">💎</span>
-                        </button>
-                        <button type="button" class="btn btn-sm active" onclick="switchCategory('monsters')">
-                            👹 Monsters
-                            <span class="emoji-glow">👹</span>
-                        </button>
-                        <button type="button" class="btn btn-sm" onclick="switchCategory('hats')">
-                            🎩 Hats
-                            <span class="emoji-glow">🎩</span>
-                        </button>
-                        <button type="button" class="btn btn-sm" onclick="switchCategory('potions')">
-                            🧪 Potions
-                            <span class="emoji-glow">🧪</span>
-                        </button>
-                    </div>
-                    <!-- Right side: Sort and View Toggles -->
-                    <div class="d-flex align-items-center">
-                        <!-- Sorting Buttons -->
-                        <div class="btn-group" role="group">
-                            <button class="btn btn-sm btn-primary sort-btn" data-sort-field="name" data-sort-label="Name" onclick="toggleSort('monsters', 'name')">Name</button>
-                            <button class="btn btn-sm btn-primary sort-btn" data-sort-field="att" data-sort-label="ATT" onclick="toggleSort('monsters', 'att')">ATT</button>
-                            <button class="btn btn-sm btn-primary sort-btn" data-sort-field="def" data-sort-label="DEF" onclick="toggleSort('monsters', 'def')">DEF</button>
-                            <button class="btn btn-sm btn-primary sort-btn" data-sort-field="dex" data-sort-label="DEX" onclick="toggleSort('monsters', 'dex')">DEX</button>
-                            <button class="btn btn-sm btn-primary sort-btn" data-sort-field="int" data-sort-label="INT" onclick="toggleSort('monsters', 'int')">INT</button>
-                            <button class="btn btn-sm btn-primary sort-btn" data-sort-field="hap" data-sort-label="HAP" onclick="toggleSort('monsters', 'hap')">HAP</button>
-                            <button class="btn btn-sm btn-primary sort-btn" data-sort-field="ene" data-sort-label="ENE" onclick="toggleSort('monsters', 'ene')">ENE</button>
-                        </div>
-                        <!-- View Type Toggle -->
-                        <div class="btn-group view-toggle" role="group">
-                            <button type="button" class="btn btn-sm active" onclick="setViewType('cards')">Cards</button>
-                            <button type="button" class="btn btn-sm" onclick="setViewType('list')">List</button>
-                        </div>
-                    </div>
-                </div>
-                <div class="card-body">
-                    <div id="monsters-container" class="row"></div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Hats Tab -->
-        <div class="tab-pane fade" id="hats" role="tabpanel">
-            <div class="card mb-4">
-                <div class="card-header d-flex justify-content-between align-items-center" id="hats-section">
-                    <!-- Left side: Category Toggles -->
-                    <div class="btn-group category-toggle" role="group">
-                        <button type="button" class="btn btn-sm" onclick="switchCategory('pets')">
-                            🐾 Pets
-                            <span class="emoji-glow">🐾</span>
-                        </button>
-                        <button type="button" class="btn btn-sm" onclick="switchCategory('materials')">
-                            🪨 Materials
-                            <span class="emoji-glow">🪨</span>
-                        </button>
-                        <button type="button" class="btn btn-sm" onclick="switchCategory('gems')">
-                            💎 Gems
-                            <span class="emoji-glow">💎</span>
-                        </button>
-                        <button type="button" class="btn btn-sm" onclick="switchCategory('monsters')">
-                            👹 Monsters
-                            <span class="emoji-glow">👹</span>
-                        </button>
-                        <button type="button" class="btn btn-sm active" onclick="switchCategory('hats')">
-                            🎩 Hats
-                            <span class="emoji-glow">🎩</span>
-                        </button>
-                        <button type="button" class="btn btn-sm" onclick="switchCategory('potions')">
-                            🧪 Potions
-                            <span class="emoji-glow">🧪</span>
-                        </button>
-                    </div>
-                    <!-- Right side: Sort and View Toggles -->
-                    <div class="d-flex align-items-center">
-                        <!-- Sorting Buttons -->
-                        <div class="btn-group" role="group">
-                            <button class="btn btn-sm btn-primary sort-btn" data-sort-field="name" data-sort-label="Name" onclick="toggleSort('hats', 'name')">Name</button>
-                            <button class="btn btn-sm btn-primary sort-btn" data-sort-field="att" data-sort-label="ATT" onclick="toggleSort('hats', 'att')">ATT</button>
-                            <button class="btn btn-sm btn-primary sort-btn" data-sort-field="def" data-sort-label="DEF" onclick="toggleSort('hats', 'def')">DEF</button>
-                            <button class="btn btn-sm btn-primary sort-btn" data-sort-field="int" data-sort-label="INT" onclick="toggleSort('hats', 'int')">INT</button>
-                            <button class="btn btn-sm btn-primary sort-btn" data-sort-field="dex" data-sort-label="DEX" onclick="toggleSort('hats', 'dex')">DEX</button>
-                            <button class="btn btn-sm btn-primary sort-btn" data-sort-field="hap" data-sort-label="HAP" onclick="toggleSort('hats', 'hap')">HAP</button>
-                            <button class="btn btn-sm btn-primary sort-btn" data-sort-field="ene" data-sort-label="ENE" onclick="toggleSort('hats', 'ene')">ENE</button>
-                        </div>
-                        <!-- View Type Toggle -->
-                        <div class="btn-group view-toggle" role="group">
-                            <button type="button" class="btn btn-sm active" onclick="setViewType('cards')">Cards</button>
-                            <button type="button" class="btn btn-sm" onclick="setViewType('list')">List</button>
-                        </div>
-                    </div>
-                </div>
-                <div class="card-body">
-                    <div id="hats-container" class="row"></div>
-                </div>
-            </div>
-        </div>
+        <!-- Sort bar — updated per category via JS -->
+        <div class="card-footer py-1" id="sort-bar"></div>
     </div>
 
-        <!-- Potions Tab -->
-        <div class="tab-pane fade" id="potions" role="tabpanel">
-            <div class="card mb-4">
-                <div class="card-header d-flex justify-content-between align-items-center" id="potions-section">
-                    <!-- Left side: Category Toggles -->
-                    <div class="btn-group category-toggle" role="group">
-                        <button type="button" class="btn btn-sm" onclick="switchCategory('pets')">
-                            🐾 Pets
-                            <span class="emoji-glow">🐾</span>
-                        </button>
-                        <button type="button" class="btn btn-sm" onclick="switchCategory('materials')">
-                            🪨 Materials
-                            <span class="emoji-glow">🪨</span>
-                        </button>
-                        <button type="button" class="btn btn-sm" onclick="switchCategory('gems')">
-                            💎 Gems
-                            <span class="emoji-glow">💎</span>
-                        </button>
-                        <button type="button" class="btn btn-sm" onclick="switchCategory('monsters')">
-                            👹 Monsters
-                            <span class="emoji-glow">👹</span>
-                        </button>
-                        <button type="button" class="btn btn-sm" onclick="switchCategory('hats')">
-                            🎩 Hats
-                            <span class="emoji-glow">🎩</span>
-                        </button>
-                        <button type="button" class="btn btn-sm active" onclick="switchCategory('potions')">
-                            🧪 Potions
-                            <span class="emoji-glow">🧪</span>
-                        </button>
-                    </div>
-                    <!-- Right side: Sort and View Toggles -->
-                    <div class="d-flex align-items-center">
-                        <!-- Sorting Buttons -->
-                        <div class="btn-group" role="group">
-                            <button class="btn btn-sm btn-primary sort-btn" data-sort-field="name" data-sort-label="Name" onclick="toggleSort('potions', 'name')">Name</button>
-                            <button class="btn btn-sm btn-primary sort-btn" data-sort-field="rarity" data-sort-label="Rarity" onclick="toggleSort('potions', 'rarity')">Rarity</button>
-                            <button class="btn btn-sm btn-primary sort-btn" data-sort-field="boost" data-sort-label="Boost" onclick="toggleSort('potions', 'boost')">Boost</button>
-                        </div>
-                        <!-- View Type Toggle -->
-                        <div class="btn-group view-toggle" role="group">
-                            <button type="button" class="btn btn-sm active" onclick="setViewType('cards')">Cards</button>
-                            <button type="button" class="btn btn-sm" onclick="setViewType('list')">List</button>
-                        </div>
-                    </div>
-                </div>
-                <div class="card-body">
-                    <div id="potions-container" class="row"></div>
+    <!-- ── Tab Content ────────────────────────────────────────────────────── -->
+    <div class="tab-content" id="categoryTabContent">
+
+        <!-- Pets -->
+        <div class="tab-pane fade show active" id="pets" role="tabpanel">
+            <div id="petContainer" class="row">
+                <div class="col-12 text-center">
+                    <div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div>
                 </div>
             </div>
         </div>
+
+        <!-- Materials -->
+        <div class="tab-pane fade" id="materials" role="tabpanel">
+            <div id="materials-container" class="row"></div>
+        </div>
+
+        <!-- Gems -->
+        <div class="tab-pane fade" id="gems" role="tabpanel">
+            <div id="gems-container" class="row"></div>
+        </div>
+
+        <!-- Monsters -->
+        <div class="tab-pane fade" id="monsters" role="tabpanel">
+            <div id="monsters-container" class="row"></div>
+        </div>
+
+        <!-- Potions -->
+        <div class="tab-pane fade" id="potions" role="tabpanel">
+            <div id="potions-container" class="row"></div>
+        </div>
+
+        <!-- Rings -->
+        <div class="tab-pane fade" id="rings" role="tabpanel">
+            <div id="rings-container" class="row"></div>
+        </div>
+
+        <!-- Equipment Sets (Helmets, Armor, Boots, Shields) -->
+        <div class="tab-pane fade" id="equipment_sets" role="tabpanel">
+            <div id="equipment_sets-container"></div>
+        </div>
+
+        <!-- Weapons (Daggers, Katanas, Swords, Axes, Hammers, Bows) -->
+        <div class="tab-pane fade" id="weapons" role="tabpanel">
+            <div id="weapons-container"></div>
+        </div>
+
+    </div><!-- /tab-content -->
 
     <!-- Loading Spinner -->
     <div id="loading-spinner" class="text-center py-5">
@@ -347,5 +83,6 @@
         </div>
         <p class="mt-3 text-primary">Loading pet database...</p>
     </div>
-</div>
+
+</div><!-- /container-fluid -->
 <script src="/js/pets.js"></script>

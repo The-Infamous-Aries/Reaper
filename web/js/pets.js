@@ -1,139 +1,115 @@
 var petsData = [];
 var equipmentData = {};
 var currentSort = {
-    pets: { field: 'name', direction: 'asc' },
-    materials: { field: 'name', direction: 'asc' },
-    potions: { field: 'name', direction: 'asc' },
-    gems: { field: 'name', direction: 'asc' },
-    monsters: { field: 'name', direction: 'asc' },
-    hats: { field: 'name', direction: 'asc' }
+    pets:           { field: 'name', direction: 'asc' },
+    materials:      { field: 'name', direction: 'asc' },
+    potions:        { field: 'name', direction: 'asc' },
+    gems:           { field: 'name', direction: 'asc' },
+    monsters:       { field: 'name', direction: 'asc' },
+    rings:          { field: 'name', direction: 'asc' },
+    equipment_sets: { field: 'set',  direction: 'asc' },
+    weapons:        { field: 'set',  direction: 'asc' },
 };
 var currentViewType = 'cards'; // 'cards' or 'list'
 
 // Category switching function
 function switchCategory(category) {
-    // Deactivate all category toggle buttons
     document.querySelectorAll('.category-toggle .btn').forEach(btn => {
         btn.classList.remove('active');
     });
-
-    // Activate the selected category toggle buttons
     document.querySelectorAll(`.category-toggle .btn[onclick="switchCategory('${category}')"]`).forEach(btn => {
         btn.classList.add('active');
     });
-
-    // Hide all tab panes
     document.querySelectorAll('.tab-pane').forEach(pane => {
         pane.classList.remove('show', 'active');
     });
-
-    // Show the selected tab pane
     const newPane = document.getElementById(category);
-    if (newPane) {
-        newPane.classList.add('show', 'active');
-    }
+    if (newPane) newPane.classList.add('show', 'active');
 
-    // Re-render the content for the new active tab
-    switch(category) {
-        case 'pets': renderPets(); break;
-        case 'materials': renderMaterials(); break;
-        case 'potions': renderPotions(); break;
-        case 'gems': renderGems(); break;
-        case 'monsters': renderMonsters(); break;
-        case 'hats': renderHats(); break;
-    }
+    renderSortBar(category);
+
+    const renderMap = {
+        pets: renderPets, materials: renderMaterials, potions: renderPotions,
+        gems: renderGems, monsters: renderMonsters,
+        rings: renderRings, equipment_sets: renderEquipmentSets, weapons: renderWeapons,
+    };
+    if (renderMap[category]) renderMap[category]();
+}
+
+// Sort bar definitions per category
+const SORT_BARS = {
+    pets:           [['name','Name'],['att','ATT'],['def','DEF'],['int','INT'],['dex','DEX'],['hap','HAP'],['ene','ENE']],
+    materials:      [['name','Name'],['rarity','Rarity'],['att','ATT'],['def','DEF'],['dex','DEX']],
+    gems:           [['name','Name'],['rarity','Rarity'],['int','INT'],['hap','HAP'],['ene','ENE']],
+    monsters:       [['name','Name'],['rarity','Rarity'],['att','ATT'],['def','DEF'],['dex','DEX'],['int','INT'],['hap','HAP'],['ene','ENE']],
+    potions:        [['name','Name'],['rarity','Rarity'],['boost','Boost']],
+    rings:          [['name','Name'],['rarity','Rarity'],['att','ATT'],['def','DEF'],['int','INT'],['dex','DEX'],['hap','HAP'],['ene','ENE']],
+    equipment_sets: [['set','Set Type'],['name','Name'],['rarity','Rarity']],
+    weapons:        [['set','Set Type'],['name','Name'],['rarity','Rarity'],['att','ATT'],['dex','DEX'],['ene','ENE'],['int','INT']],
+};
+
+function renderSortBar(category) {
+    const bar = document.getElementById('sort-bar');
+    if (!bar) return;
+    const defs = SORT_BARS[category] || [];
+    if (!defs.length) { bar.innerHTML = ''; return; }
+    const btns = defs.map(([field, label]) =>
+        `<button class="btn btn-sm btn-primary sort-btn me-1 mb-1" data-sort-field="${field}" data-sort-label="${label}" onclick="toggleSort('${category}','${field}')">${label}</button>`
+    ).join('');
+    bar.innerHTML = `<div class="d-flex flex-wrap align-items-center gap-1">${btns}</div>`;
+    updateSortButtons(category);
 }
 
 // Initial data load
 async function init() {
     await loadPetsData();
     await loadEquipmentData();
+    renderSortBar('pets');
     renderAll();
     updateSortButtons('pets');
 }
 
 init();
 
-// View type functions
 function setViewType(type) {
     currentViewType = type;
-    
-    // Update button states in all view toggles
     document.querySelectorAll('.view-toggle .btn').forEach(btn => {
         btn.classList.remove('active');
-        if (btn.textContent.toLowerCase() === type) {
-            btn.classList.add('active');
-        }
+        if (btn.textContent.toLowerCase() === type) btn.classList.add('active');
     });
-    
-    // Re-render current active tab
-    const activeTab = document.querySelector('.tab-pane.active').id;
-    switch(activeTab) {
-        case 'pets':
-            renderPets();
-            break;
-        case 'materials':
-            renderMaterials();
-            break;
-        case 'potions':
-            renderPotions();
-            break;
-        case 'gems':
-            renderGems();
-            break;
-        case 'monsters':
-            renderMonsters();
-            break;
-        case 'hats':
-            renderHats();
-            break;
-    }
+    const activePane = document.querySelector('.tab-pane.active');
+    if (!activePane) return;
+    const renderMap = {
+        pets: renderPets, materials: renderMaterials, potions: renderPotions,
+        gems: renderGems, monsters: renderMonsters,
+        rings: renderRings, equipment_sets: renderEquipmentSets, weapons: renderWeapons,
+    };
+    const fn = renderMap[activePane.id];
+    if (fn) fn();
 }
 
-// Toggle sorting function for all categories
 function toggleSort(category, field) {
     const current = currentSort[category];
-    
-    // If we're already sorting by this field, toggle the direction
     if (current.field === field) {
         current.direction = current.direction === 'asc' ? 'desc' : 'asc';
     } else {
-        // If it's a new field, start with ascending
         current.field = field;
         current.direction = 'asc';
     }
-    
-    // Call the appropriate render function
-    switch(category) {
-        case 'pets':
-            renderPets();
-            break;
-        case 'materials':
-            renderMaterials();
-            break;
-        case 'potions':
-            renderPotions();
-            break;
-        case 'gems':
-            renderGems();
-            break;
-        case 'monsters':
-            renderMonsters();
-            break;
-        case 'hats':
-            renderHats();
-            break;
-    }
-    
-    // Update button states to show current sort
+    const renderMap = {
+        pets: renderPets, materials: renderMaterials, potions: renderPotions,
+        gems: renderGems, monsters: renderMonsters,
+        rings: renderRings, equipment_sets: renderEquipmentSets, weapons: renderWeapons,
+    };
+    if (renderMap[category]) renderMap[category]();
     updateSortButtons(category);
 }
 
 // Update button states to show current sort direction
 function updateSortButtons(category) {
     const current = currentSort[category];
-    const buttons = document.querySelectorAll(`#${category}-section .sort-btn`);
-    
+    if (!current) return;
+    const buttons = document.querySelectorAll('#sort-bar .sort-btn');
     buttons.forEach(button => {
         const field = button.dataset.sortField;
         if (field === current.field) {
@@ -160,7 +136,7 @@ async function loadPetsData() {
         }));
         
         // Only touch the DOM if we're still on the pets page (not mypet page)
-        if (!document.getElementById('pets-section')) return;
+        if (!document.getElementById('petContainer')) return;
 
         // Hide the loading spinner in petContainer after data is loaded
         const petContainer = document.getElementById('petContainer');
@@ -172,7 +148,7 @@ async function loadPetsData() {
         updateSortButtons('pets');
     } catch (error) {
         console.error('Error loading pets data:', error);
-        if (!document.getElementById('pets-section')) return;
+        if (!document.getElementById('petContainer')) return;
         document.getElementById('petContainer').innerHTML = 
             '<div class="col-12"><div class="alert alert-danger">Error loading pet data. Please try again later.</div></div>';
     }
@@ -219,22 +195,22 @@ async function loadEquipmentData() {
         `;
         
         // Show error in all containers
-        document.getElementById('materials-container').innerHTML = errorHtml;
-        document.getElementById('potions-container').innerHTML = errorHtml;
-        document.getElementById('gems-container').innerHTML = errorHtml;
-        document.getElementById('monsters-container').innerHTML = errorHtml;
-        document.getElementById('hats-container').innerHTML = errorHtml;
+        const containers = [
+            'materials-container','potions-container','gems-container','monsters-container',
+            'rings-container','helmets-container','armor-container','boots-container','shields-container',
+            'daggers-container','katanas-container','swords-container','axes-container','hammers-container','bows-container',
+        ];
+        containers.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.innerHTML = errorHtml;
+        });
     }
 }
 
 // Render all categories
 function renderAll() {
-    renderPets();
-    renderMaterials();
-    renderPotions();
-    renderGems();
-    renderMonsters();
-    renderHats();
+    renderPets(); renderMaterials(); renderPotions(); renderGems(); renderMonsters();
+    renderRings(); renderEquipmentSets(); renderWeapons();
 }
 
 // Rarity color mapping
@@ -251,7 +227,7 @@ function getRarityColor(rarity) {
 
 // Render Pets
 function renderPets() {
-    if (!document.getElementById('pets-section')) return;
+    if (!document.getElementById('petContainer')) return;
     const container = document.getElementById('petContainer');
     const sort = currentSort.pets;
     
@@ -733,8 +709,7 @@ function renderMonsters() {
                              style="width: 48px; height: 48px; object-fit: contain;"
                              onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
                         <div style="display: none; color: red; font-size: 10px;">Image not found</div>
-                        <h6 class="card-title text-warning mb-1 small">${monster.name}</h6>
-                        <h6 class="card-title text-warning">${monster.name}</h6>
+                        <h6 class="card-title text-warning mb-1">${monster.name}</h6>
                         <p class="card-text">
                             <span class="badge" style="background-color: ${getRarityColor(monster.rarity)};">${monster.rarity}</span>
                         </p>
@@ -795,89 +770,271 @@ function renderMonsters() {
     }
 }
 
-// Render Hats
-function renderHats() {
-    const container = document.getElementById('hats-container');
-    
-    const hats = [...(equipmentData.Hats || [])];
-    
-    if (hats.length === 0) {
-        container.innerHTML = '<div class="col-12"><p class="text-center text-muted">No hats found.</p></div>';
+// ── Generic gear renderer (Armor, Boots, Helmets, Shields, Rings, weapons) ──────
+function renderGearCategory(category, sectionKey, statCols) {
+    const container = document.getElementById(category + '-container');
+    if (!container) return;
+    // Ensure sort state exists for this category
+    if (!currentSort[category]) currentSort[category] = { field: 'name', direction: 'asc' };
+    const items = [...(equipmentData[sectionKey] || [])];
+    if (!items.length) {
+        container.innerHTML = '<div class="col-12"><p class="text-center text-muted">No items found.</p></div>';
         return;
     }
-    
-    hats.sort(getSortFunction('hats'));
-    
+    items.sort(getSortFunction(category));
+
+    const statColor = { ATT:'#e74c3c', DEF:'#2196f3', DEX:'#4caf50', INT:'#6f42c1', HAP:'#ffc107', ENE:'#0dcaf0' };
+
     if (currentViewType === 'cards') {
-        container.innerHTML = hats.map(hat => `
+        container.innerHTML = items.map(item => {
+            const bonusHtml = Object.entries(item.bonuses || {}).map(([k,v]) =>
+                `<div class="col-6"><span style="color:${statColor[k]||'#fff'}" class="fw-bold">${k}: +${v}</span></div>`
+            ).join('');
+            const setTag = item.set ? `<span class="badge bg-secondary ms-1" style="font-size:0.6rem">${item.set}</span>` : '';
+            return `
             <div class="col-md-3 col-lg-2 mb-2">
-                <div class="card h-100" style="border-color: ${getRarityColor(hat.rarity)};">
+                <div class="card h-100" style="border-color:${getRarityColor(item.rarity)}">
                     <div class="card-body text-center p-2">
-                        <img src="${hat.emoji_path}" 
-                             alt="${hat.name}" 
-                             class="mb-1" 
-                             style="width: 48px; height: 48px; object-fit: contain;"
-                             onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
-                        <div style="display: none; color: red; font-size: 10px;">Image not found</div>
-                        <h6 class="card-title text-warning mb-1 small">${hat.name}</h6>
-                        <h6 class="card-title text-warning">${hat.name}</h6>
-                        <p class="card-text">
-                            <span class="badge" style="background-color: ${getRarityColor(hat.rarity)};">${hat.rarity}</span>
-                        </p>
-                        <div class="row g-1">
-                            ${hat.bonuses?.ATT ? `<div class="col-6"><span class="text-danger fw-bold">ATT: +${hat.bonuses.ATT}</span></div>` : ''}
-                            ${hat.bonuses?.DEF ? `<div class="col-6"><span class="text-primary fw-bold">DEF: +${hat.bonuses.DEF}</span></div>` : ''}
-                            ${hat.bonuses?.INT ? `<div class="col-6"><span style="color: #6f42c1;" class="fw-bold">INT: +${hat.bonuses.INT}</span></div>` : ''}
-                            ${hat.bonuses?.DEX ? `<div class="col-6"><span class="text-success fw-bold">DEX: +${hat.bonuses.DEX}</span></div>` : ''}
-                            ${hat.bonuses?.HAP ? `<div class="col-6"><span style="color: #ffc107;" class="fw-bold">HAP: +${hat.bonuses.HAP}</span></div>` : ''}
-                            ${hat.bonuses?.ENE ? `<div class="col-6"><span style="color: #0dcaf0;" class="fw-bold">ENE: +${hat.bonuses.ENE}</span></div>` : ''}
-                        </div>
+                        <img src="${item.emoji_path}" alt="${item.name}" class="mb-1"
+                             style="width:48px;height:48px;object-fit:contain"
+                             onerror="this.style.display='none'">
+                        <h6 class="card-title text-warning mb-1 small">${item.name}${setTag}</h6>
+                        <p class="card-text"><span class="badge" style="background-color:${getRarityColor(item.rarity)}">${item.rarity}</span></p>
+                        <div class="row g-1">${bonusHtml}</div>
                     </div>
                 </div>
-            </div>
-        `).join('');
+            </div>`;
+        }).join('');
     } else {
-        // List view
-        container.innerHTML = `
-            <div class="col-12">
-                <div class="table-responsive">
-                    <table class="table table-dark table-striped">
-                        <thead>
-                            <tr>
-                                <th>Hat</th>
-                                <th>Rarity</th>
-                                <th>ATT</th>
-                                <th>DEF</th>
-                                <th>INT</th>
-                                <th>DEX</th>
-                                <th>HAP</th>
-                                <th>ENE</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${hats.map(hat => `
-                                <tr>
-                                    <td>
-                                        <img src="${hat.emoji_path}" 
-                                             alt="${hat.name}" 
-                                             style="width: 32px; height: 32px; object-fit: contain; margin-right: 8px;"
-                                             onerror="this.style.display='none';">
-                                        ${hat.name}
-                                    </td>
-                                    <td><span class="badge" style="background-color: ${getRarityColor(hat.rarity)};">${hat.rarity}</span></td>
-                                    <td>${hat.bonuses?.ATT || '-'}</td>
-                                    <td>${hat.bonuses?.DEF || '-'}</td>
-                                    <td>${hat.bonuses?.INT || '-'}</td>
-                                    <td>${hat.bonuses?.DEX || '-'}</td>
-                                    <td>${hat.bonuses?.HAP || '-'}</td>
-                                    <td>${hat.bonuses?.ENE || '-'}</td>
-                                </tr>
-                            `).join('')}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        `;
+        const headers = statCols.map(s => `<th>${s}</th>`).join('');
+        const rows = items.map(item => {
+            const cells = statCols.map(s => `<td>${item.bonuses?.[s] || '-'}</td>`).join('');
+            return `<tr>
+                <td><img src="${item.emoji_path}" alt="${item.name}" style="width:28px;height:28px;object-fit:contain;margin-right:6px" onerror="this.style.display='none'">${item.name}${item.set ? ` <small class="text-secondary">[${item.set}]</small>` : ''}</td>
+                <td><span class="badge" style="background-color:${getRarityColor(item.rarity)}">${item.rarity}</span></td>
+                ${cells}
+            </tr>`;
+        }).join('');
+        container.innerHTML = `<div class="col-12"><div class="table-responsive">
+            <table class="table table-dark table-striped">
+                <thead><tr><th>Item</th><th>Rarity</th>${headers}</tr></thead>
+                <tbody>${rows}</tbody>
+            </table></div></div>`;
+    }
+}
+
+function renderRings()   { renderGearCategory('rings',   'Rings',   ['ATT','DEF','INT','DEX','HAP','ENE']); }
+
+// ── Equipment Sets: Helmets + Armor + Boots + Shields grouped by set ──────────
+function renderEquipmentSets() {
+    const container = document.getElementById('equipment_sets-container');
+    if (!container) return;
+    if (!currentSort['equipment_sets']) currentSort['equipment_sets'] = { field: 'set', direction: 'asc' };
+
+    // Collect all items from the 4 gear sections, tagging each with its slot type
+    const GEAR_SECTIONS = [
+        { key: 'Helmets', label: 'Helmet', icon: '⛑️' },
+        { key: 'Armor',   label: 'Armor',  icon: '🛡️' },
+        { key: 'Boots',   label: 'Boots',  icon: '👢' },
+        { key: 'Shields', label: 'Shield', icon: '🔰' },
+    ];
+    let allItems = [];
+    GEAR_SECTIONS.forEach(({ key, label, icon }) => {
+        (equipmentData[key] || []).forEach(item => {
+            allItems.push({ ...item, _slotLabel: label, _slotIcon: icon });
+        });
+    });
+
+    if (!allItems.length) {
+        container.innerHTML = '<p class="text-center text-muted mt-3">No equipment found.</p>';
+        return;
+    }
+
+    const sort = currentSort['equipment_sets'];
+    allItems.sort((a, b) => {
+        let aVal, bVal;
+        if (sort.field === 'set') {
+            // Primary: set tag, secondary: slot type, tertiary: name
+            const aSet = a.set || 'zzz';
+            const bSet = b.set || 'zzz';
+            if (aSet !== bSet) return sort.direction === 'asc' ? aSet.localeCompare(bSet) : bSet.localeCompare(aSet);
+            if (a._slotLabel !== b._slotLabel) return a._slotLabel.localeCompare(b._slotLabel);
+            return a.name.localeCompare(b.name);
+        } else if (sort.field === 'name') {
+            aVal = a.name.toLowerCase(); bVal = b.name.toLowerCase();
+        } else if (sort.field === 'rarity') {
+            const ro = { Common:1, Uncommon:2, Rare:3, Epic:4, Mythic:5 };
+            aVal = ro[a.rarity] || 0; bVal = ro[b.rarity] || 0;
+        } else {
+            aVal = (a.bonuses || {})[sort.field.toUpperCase()] || 0;
+            bVal = (b.bonuses || {})[sort.field.toUpperCase()] || 0;
+        }
+        return sort.direction === 'asc' ? (aVal < bVal ? -1 : aVal > bVal ? 1 : 0)
+                                        : (aVal > bVal ? -1 : aVal < bVal ? 1 : 0);
+    });
+
+    const statColor = { ATT:'#e74c3c', DEF:'#2196f3', DEX:'#4caf50', INT:'#6f42c1', HAP:'#ffc107', ENE:'#0dcaf0' };
+
+    if (sort.field === 'set' && currentViewType === 'cards') {
+        // Group by set — show each set as a labelled section with 4 cards side by side
+        const groups = {};
+        allItems.forEach(item => {
+            const g = item.set || 'No Set';
+            if (!groups[g]) groups[g] = [];
+            groups[g].push(item);
+        });
+        const setOrder = Object.keys(groups).sort();
+        let html = '';
+        setOrder.forEach(setName => {
+            html += `<div class="mb-4">
+                <h6 class="text-warning mb-2" style="font-family:Orbitron,sans-serif;font-size:0.8rem;letter-spacing:1px;border-bottom:1px solid rgba(255,215,0,0.2);padding-bottom:4px">
+                    ✨ ${setName} Set
+                </h6>
+                <div class="row g-2">`;
+            groups[setName].forEach(item => {
+                const bonusHtml = Object.entries(item.bonuses || {}).map(([k,v]) =>
+                    `<span style="color:${statColor[k]||'#fff'}" class="fw-bold me-2">${k}:+${v}</span>`
+                ).join('');
+                html += `<div class="col-md-3 col-sm-6">
+                    <div class="card h-100" style="border-color:${getRarityColor(item.rarity)}">
+                        <div class="card-body text-center p-2">
+                            <div style="font-size:0.65rem;color:var(--text-secondary);margin-bottom:2px">${item._slotIcon} ${item._slotLabel}</div>
+                            <img src="${item.emoji_path}" alt="${item.name}" style="width:44px;height:44px;object-fit:contain" onerror="this.style.display='none'">
+                            <h6 class="card-title text-warning mb-1 mt-1" style="font-size:0.78rem">${item.name}</h6>
+                            <span class="badge mb-1" style="background-color:${getRarityColor(item.rarity)}">${item.rarity}</span>
+                            <div style="font-size:0.7rem">${bonusHtml}</div>
+                        </div>
+                    </div>
+                </div>`;
+            });
+            html += '</div></div>';
+        });
+        container.innerHTML = html;
+    } else {
+        // List view or non-set sort — flat table
+        const rows = allItems.map(item => {
+            const bonusHtml = Object.entries(item.bonuses || {}).map(([k,v]) =>
+                `<span style="color:${statColor[k]||'#fff'}" class="me-1">${k}:+${v}</span>`
+            ).join('');
+            return `<tr>
+                <td>${item._slotIcon} ${item._slotLabel}</td>
+                <td><img src="${item.emoji_path}" alt="${item.name}" style="width:28px;height:28px;object-fit:contain;margin-right:6px" onerror="this.style.display='none'">${item.name}</td>
+                <td><span class="badge" style="background-color:${getRarityColor(item.rarity)}">${item.rarity}</span></td>
+                <td>${item.set || '-'}</td>
+                <td style="font-size:0.8rem">${bonusHtml}</td>
+            </tr>`;
+        }).join('');
+        container.innerHTML = `<div class="table-responsive">
+            <table class="table table-dark table-striped table-sm">
+                <thead><tr><th>Slot</th><th>Item</th><th>Rarity</th><th>Set</th><th>Bonuses</th></tr></thead>
+                <tbody>${rows}</tbody>
+            </table></div>`;
+    }
+}
+
+// ── Weapons: Daggers + Katanas + Swords + Axes + Hammers + Bows grouped by set ─
+function renderWeapons() {
+    const container = document.getElementById('weapons-container');
+    if (!container) return;
+    if (!currentSort['weapons']) currentSort['weapons'] = { field: 'set', direction: 'asc' };
+
+    const WEAPON_SECTIONS = [
+        { key: 'Daggers', label: 'Dagger', icon: '🗡️' },
+        { key: 'Katanas', label: 'Katana', icon: '⚔️' },
+        { key: 'Swords',  label: 'Sword',  icon: '🗡️' },
+        { key: 'Axes',    label: 'Axe',    icon: '🪓' },
+        { key: 'Hammers', label: 'Hammer', icon: '🔨' },
+        { key: 'Bows',    label: 'Bow',    icon: '🏹' },
+    ];
+    let allItems = [];
+    WEAPON_SECTIONS.forEach(({ key, label, icon }) => {
+        (equipmentData[key] || []).forEach(item => {
+            allItems.push({ ...item, _slotLabel: label, _slotIcon: icon });
+        });
+    });
+
+    if (!allItems.length) {
+        container.innerHTML = '<p class="text-center text-muted mt-3">No weapons found.</p>';
+        return;
+    }
+
+    const sort = currentSort['weapons'];
+    allItems.sort((a, b) => {
+        let aVal, bVal;
+        if (sort.field === 'set') {
+            const aSet = a.set || 'zzz';
+            const bSet = b.set || 'zzz';
+            if (aSet !== bSet) return sort.direction === 'asc' ? aSet.localeCompare(bSet) : bSet.localeCompare(aSet);
+            if (a._slotLabel !== b._slotLabel) return a._slotLabel.localeCompare(b._slotLabel);
+            return a.name.localeCompare(b.name);
+        } else if (sort.field === 'name') {
+            aVal = a.name.toLowerCase(); bVal = b.name.toLowerCase();
+        } else if (sort.field === 'rarity') {
+            const ro = { Common:1, Uncommon:2, Rare:3, Epic:4, Mythic:5 };
+            aVal = ro[a.rarity] || 0; bVal = ro[b.rarity] || 0;
+        } else {
+            aVal = (a.bonuses || {})[sort.field.toUpperCase()] || 0;
+            bVal = (b.bonuses || {})[sort.field.toUpperCase()] || 0;
+        }
+        return sort.direction === 'asc' ? (aVal < bVal ? -1 : aVal > bVal ? 1 : 0)
+                                        : (aVal > bVal ? -1 : aVal < bVal ? 1 : 0);
+    });
+
+    const statColor = { ATT:'#e74c3c', DEF:'#2196f3', DEX:'#4caf50', INT:'#6f42c1', HAP:'#ffc107', ENE:'#0dcaf0' };
+
+    if (sort.field === 'set' && currentViewType === 'cards') {
+        // Group by set — show each set as a labelled section
+        const groups = {};
+        allItems.forEach(item => {
+            const g = item.set || 'No Set';
+            if (!groups[g]) groups[g] = [];
+            groups[g].push(item);
+        });
+        const setOrder = Object.keys(groups).sort();
+        let html = '';
+        setOrder.forEach(setName => {
+            html += `<div class="mb-4">
+                <h6 class="text-warning mb-2" style="font-family:Orbitron,sans-serif;font-size:0.8rem;letter-spacing:1px;border-bottom:1px solid rgba(255,215,0,0.2);padding-bottom:4px">
+                    ⚔️ ${setName} Weapons
+                </h6>
+                <div class="row g-2">`;
+            groups[setName].forEach(item => {
+                const bonusHtml = Object.entries(item.bonuses || {}).map(([k,v]) =>
+                    `<span style="color:${statColor[k]||'#fff'}" class="fw-bold me-2">${k}:+${v}</span>`
+                ).join('');
+                html += `<div class="col-md-2 col-sm-4 col-6">
+                    <div class="card h-100" style="border-color:${getRarityColor(item.rarity)}">
+                        <div class="card-body text-center p-2">
+                            <div style="font-size:0.65rem;color:var(--text-secondary);margin-bottom:2px">${item._slotIcon} ${item._slotLabel}</div>
+                            <img src="${item.emoji_path}" alt="${item.name}" style="width:44px;height:44px;object-fit:contain" onerror="this.style.display='none'">
+                            <h6 class="card-title text-warning mb-1 mt-1" style="font-size:0.75rem">${item.name}</h6>
+                            <span class="badge mb-1" style="background-color:${getRarityColor(item.rarity)}">${item.rarity}</span>
+                            <div style="font-size:0.7rem">${bonusHtml}</div>
+                        </div>
+                    </div>
+                </div>`;
+            });
+            html += '</div></div>';
+        });
+        container.innerHTML = html;
+    } else {
+        const rows = allItems.map(item => {
+            const bonusHtml = Object.entries(item.bonuses || {}).map(([k,v]) =>
+                `<span style="color:${statColor[k]||'#fff'}" class="me-1">${k}:+${v}</span>`
+            ).join('');
+            return `<tr>
+                <td>${item._slotIcon} ${item._slotLabel}</td>
+                <td><img src="${item.emoji_path}" alt="${item.name}" style="width:28px;height:28px;object-fit:contain;margin-right:6px" onerror="this.style.display='none'">${item.name}</td>
+                <td><span class="badge" style="background-color:${getRarityColor(item.rarity)}">${item.rarity}</span></td>
+                <td>${item.set || '-'}</td>
+                <td style="font-size:0.8rem">${bonusHtml}</td>
+            </tr>`;
+        }).join('');
+        container.innerHTML = `<div class="table-responsive">
+            <table class="table table-dark table-striped table-sm">
+                <thead><tr><th>Type</th><th>Item</th><th>Rarity</th><th>Set</th><th>Bonuses</th></tr></thead>
+                <tbody>${rows}</tbody>
+            </table></div>`;
     }
 }
 
@@ -896,6 +1053,10 @@ function getSortFunction(category) {
                 const rarityOrder = { 'Common': 1, 'Uncommon': 2, 'Rare': 3, 'Epic': 4, 'Mythic': 5 };
                 aVal = rarityOrder[a.rarity] || 0;
                 bVal = rarityOrder[b.rarity] || 0;
+                break;
+            case 'set':
+                aVal = (a.set || 'zzz').toLowerCase();
+                bVal = (b.set || 'zzz').toLowerCase();
                 break;
             case 'att':
                 aVal = a.bonuses?.ATT || 0;
@@ -963,29 +1124,15 @@ function getSortFunction(category) {
     // Listen for dashboard page loaded event to initialize the page
     document.addEventListener('dashboardPageLoaded', function(event) {
         console.log('Dashboard page loaded event received for:', event.detail.page);
-        // Ensure this script only runs for its own page
         if (event.detail.page.includes('pets.html')) {
             console.log('Initializing unified pets page...');
-            document.getElementById('loading-spinner').style.display = 'none';
-            loadPetsData();
-            loadEquipmentData();
-
-            // Add event listener for tab switching to re-render content
-            document.querySelectorAll('button[data-bs-toggle="pill"]').forEach(tab => {
-                tab.addEventListener('shown.bs.tab', event => {
-                    const category = event.target.id.replace('-tab', '');
-                    switch(category) {
-                        case 'pets': renderPets(); break;
-                        case 'materials': renderMaterials(); break;
-                        case 'potions': renderPotions(); break;
-                        case 'gems': renderGems(); break;
-                        case 'monsters': renderMonsters(); break;
-                        case 'hats': renderHats(); break;
-                    }
-                });
+            const spinner = document.getElementById('loading-spinner');
+            if (spinner) spinner.style.display = 'none';
+            loadPetsData().then(() => {
+                renderSortBar('pets');
+                updateSortButtons('pets');
             });
-
-            // Enhanced category button interactions
+            loadEquipmentData();
             initializeCategoryButtonEffects();
         }
     });

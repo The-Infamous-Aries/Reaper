@@ -1,9 +1,9 @@
-(function () {
+﻿(function () {
 'use strict';
 
 var ELEM_IMG_BASE = '/static/Emojis/Pets/Deco/';
 
-// Fo// Format large numbers: 3000→3k, 4530→4.53k, 1500000→1.5m, etc.
+// Format large numbers: 3000→3k, 4530→4.53k, 1500000→1.5m, etc.
 function fmtStat(n) {
     n = Number(n) || 0;
     var tiers = [
@@ -82,9 +82,11 @@ function loadEquipData() {
     fetch('/api/equipment-data')
         .then(function(r){ return r.json(); })
         .then(function(d) {
-            ['Materials','Gems','Monsters','Hats','Potions'].forEach(function(cat) {
+            ['Materials','Gems','Monsters','Potions',
+             'Hats','Rings','Helmets','Armor','Boots','Shields',
+             'Daggers','Katanas','Swords','Axes','Hammers','Bows'].forEach(function(cat) {
                 (d[cat]||[]).forEach(function(item) {
-                    _equipData[item.name.toLowerCase()] = item;
+                    if (item && item.name) _equipData[item.name.toLowerCase()] = item;
                 });
             });
         })
@@ -114,76 +116,53 @@ function bonusTooltip(item) {
     return parts.join(' | ') + (item.rarity ? ' · '+item.rarity : '');
 }
 
-// Client-side equipment bonus calculation (mirrors pet_brain.py _calculate_equipment_bonuses)
+// Client-side equipment bonus calculation
+// MIRRORS pet_brain.py StatsCalculator._calculate_equipment_bonuses EXACTLY.
+//   Main slots: Helmet, Armor, Boots, Ring, Shield, Weapon (1 each)
+//   Ring sub-slots: Material (1), Monsters (2), Gems (2)
+//   base_mult = slots_filled + set_bonus(3) + ring_sub_bonus + level_bonus
+//   final_mult = base_mult * 2 if full_set else base_mult
 function calcEquipBonuses(pet) {
-    var eq     = pet.equipment || {};
-    var level  = parseInt(pet.level || 1, 10);
-    var specs  = (pet.specializations || pet.Spec || []).map(function(s){ return s.toUpperCase(); });
-    var levelBonus = Math.floor(level / 50); // +1 per 50 levels
-    var bonuses = {ATT:0, DEF:0, INT:0, DEX:0, HAP:0, ENE:0};
+    var STATS = ['ATT','DEF','INT','DEX','HAP','ENE'];
+    var out = {ATT:0, DEF:0, INT:0, DEX:0, HAP:0, ENE:0};
+    var state = getEquipSetState(pet);
 
-    // ── Collect typed items ───────────────────────────────────────────────────
-    var items = []; // [{t, item}]
-    var mat = eq.Material;
-    if (mat && typeof mat === 'object' && !Array.isArray(mat) && mat.name) items.push({t:'Material', item:mat});
-    (Array.isArray(eq.Material) ? eq.Material : []).forEach(function(m){ if(m&&m.name) items.push({t:'Material', item:m}); });
-    (eq.Gems||[]).forEach(function(g){ if(g&&g.name) items.push({t:'Gem', item:g}); });
-    (eq.Monsters||[]).forEach(function(m){ if(m&&m.name) items.push({t:'Monster', item:m}); });
-    var hat = eq.Hat;
-    // Hat may be stored as a list (from backend) or a plain dict (legacy)
-    if (Array.isArray(hat)) hat = hat[0] || null;
-    var hatEquipped = hat && typeof hat === 'object' && hat.name;
-    if (hatEquipped) items.push({t:'Hat', item:hat});
-
-    // ── Count duplicates ──────────────────────────────────────────────────────
-    var matCounts = {}, gemCounts = {}, monCounts = {};
-    items.forEach(function(e2) {
-        var n = (e2.item.name||'').toLowerCase();
-        if (e2.t === 'Material') matCounts[n] = (matCounts[n]||0) + 1;
-        else if (e2.t === 'Gem')     gemCounts[n] = (gemCounts[n]||0) + 1;
-        else if (e2.t === 'Monster') monCounts[n] = (monCounts[n]||0) + 1;
-    });
-
-    var hasMatPair = Object.values(matCounts).some(function(c){ return c >= 2; });
-    var hasGemPair = Object.values(gemCounts).some(function(c){ return c >= 2; });
-    var hasMonPair = Object.values(monCounts).some(function(c){ return c >= 2; });
-
-    // ── Hat spec matching ─────────────────────────────────────────────────────
-    var hatSpecMatches = 0;
-    if (hatEquipped && specs.length) {
-        var hatData = getEquipItem(hat.name);
-        var hatBonuses = (hatData && hatData.bonuses) ? hatData.bonuses : (hat.bonuses || {});
-        Object.keys(hatBonuses).forEach(function(s){
-            if (specs.indexOf(s.toUpperCase()) !== -1) hatSpecMatches++;
-        });
+    // Collect all equipped items
+    var eq = pet.equipment || {};
+    function _getSingle(key) {
+        var v = eq[key];
+        if (Array.isArray(v)) v = v[0] || null;
+        return (v && v.name) ? v : null;
+    }
+    function _getList(key) {
+        var v = eq[key] || [];
+        if (!Array.isArray(v)) v = (v && v.name) ? [v] : [];
+        return v.filter(function(i){ return i && i.name; });
     }
 
-    // ── Determine global set multiplier ──────────────────────────────────────
-    var fullSet = hasMatPair && hasGemPair && hasMonPair && hatEquipped;
-    var setMult;
-    if (fullSet) {
-        setMult = hatSpecMatches >= 2 ? 4 : 3;
-    } else if (hasMatPair || hasGemPair || hasMonPair) {
-        setMult = 2;
-    } else {
-        setMult = 1;
-    }
-    var finalMult = setMult + levelBonus;
+    var allItems = [];
+    ['Helmet','Armor','Boots','Ring','Shield','Weapon'].forEach(function(k){
+        var item = _getSingle(k);
+        if (item) allItems.push(item);
+    });
+    var mat = _getSingle('Material');
+    if (mat) allItems.push(mat);
+    _getList('Monsters').forEach(function(m){ allItems.push(m); });
+    _getList('Gems').forEach(function(g){ allItems.push(g); });
 
-    // ── Sum raw bonuses first, then apply global multiplier ───────────────────
-    var rawBonuses = {ATT:0, DEF:0, INT:0, DEX:0, HAP:0, ENE:0};
-    items.forEach(function(e2) {
-        var data = getEquipItem(e2.item.name);
-        var b = (data && data.bonuses) ? data.bonuses : (e2.item.bonuses || {});
-        Object.keys(b).forEach(function(stat){
-            if (rawBonuses[stat] !== undefined) rawBonuses[stat] += parseInt(b[stat]||0, 10);
+    // Sum raw bonuses (prefer cached equipment data, fallback to item's own bonuses)
+    allItems.forEach(function(item) {
+        var data = getEquipItem(item.name);
+        var b = (data && data.bonuses) ? data.bonuses : (item.bonuses || {});
+        STATS.forEach(function(stat) {
+            var val = parseInt(b[stat] || 0, 10);
+            if (!isNaN(val)) out[stat] += val;
         });
     });
-    Object.keys(rawBonuses).forEach(function(stat){
-        bonuses[stat] = rawBonuses[stat] * finalMult;
-    });
 
-    return bonuses;
+    // Apply multiplier (full-set doubling already baked into state.finalMult)
+    STATS.forEach(function(stat){ out[stat] = out[stat] * state.finalMult; });
+    return out;
 }
 
 function init() {
@@ -202,6 +181,11 @@ function init() {
                 renderAllPanels(d);
                 show('mypet-display');
                 bindTabs();
+                // Pre-fetch ability tree data so Stats tab has mastery info immediately.
+                // openInline with the real mount id — the panel is hidden but the element exists.
+                if (window.AbilityTree) {
+                    window.AbilityTree.openInline('at-inline-mount');
+                }
             } else {
                 show('mypet-empty');
                 bindAdoptBtn();
@@ -219,6 +203,64 @@ function showLogin() {
     var e=el('mypet-error-msg');
     if(e) e.innerHTML='Please <a href="/api/discord/login">log in with Discord</a> to view your pet.';
     show('mypet-error');
+}
+
+// ── Lightweight pet refresh ───────────────────────────────────────────────────
+// Updates _pet, re-renders the pet card (stats/equipment/XP), and refreshes the
+// inventory panel in-place — without rebuilding all tabs or resetting the active tab.
+function _refreshPet(newPet) {
+    if (!newPet) return;
+    _pet = newPet;
+    renderPetCard(newPet);
+    // Refresh inventory panel content in-place (preserves active tab)
+    var invPanel = el('panel-inventory');
+    if (invPanel) invPanel.innerHTML = buildInventoryPanel(newPet);
+    // Refresh reforge panel content in-place
+    var rfPanel = el('panel-reforge');
+    if (rfPanel) rfPanel.innerHTML = buildReforgePanel(newPet);
+    // Refresh loot bar (keys + chests) in loot market panel in-place
+    var mktPanel = el('panel-market');
+    if (mktPanel) {
+        var keysBar = mktPanel.querySelector('.mp-inv-keys-bar');
+        var inv = newPet.inventory || [];
+        var keyItems   = inv.filter(function(i){ return i.type === 'Key'; });
+        var chestItems = inv.filter(function(i){ return i.type === 'Chest'; });
+        var CHEST_COLORS = { chest1:'#9e9e9e', chest2:'#4caf50', chest3:'#2196f3', chest4:'#ff9800' };
+        var newBar = '';
+        if (keyItems.length || chestItems.length) {
+            newBar = '<div class="mp-inv-keys-bar mb-3">';
+            newBar += '<div style="font-size:0.65rem;color:var(--text-secondary);font-weight:600;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px">🗝️ Loot</div>';
+            newBar += '<div class="d-flex flex-wrap gap-2">';
+            keyItems.forEach(function(item) {
+                var f = equipImgFile(item); var count = item.count || 1;
+                newBar += '<div class="mp-key-badge" title="' + escHtml(item.name) + ' ×' + count + '">' +
+                    '<img src="/static/Emojis/Pets/Equipment/' + f + '" onerror="this.src=\'/static/Emojis/Pets/Deco/Basic.png\'">' +
+                    '<span class="mp-key-badge-count">×' + count + '</span>' +
+                    '<span class="mp-key-badge-name">' + escHtml(item.name) + '</span></div>';
+            });
+            chestItems.forEach(function(item) {
+                var f = equipImgFile(item); var count = item.count || 1;
+                var chestKey = item.name.toLowerCase().replace(/\s/g,'');
+                var chestColor = CHEST_COLORS[chestKey] || '#ffd700';
+                newBar += '<div class="mp-key-badge mp-inv-clickable" style="border-color:' + chestColor + '40;cursor:pointer" ' +
+                    'title="' + escHtml(item.name) + ' ×' + count + ' — Click to open" ' +
+                    'onclick="window._mpInvClick(' + escArg(item.name) + ',\'Chest\',\'Open\',1,' + escArg(item.rarity||'Common') + ',' + count + ')">' +
+                    '<img src="/static/Emojis/Pets/Equipment/' + f + '" onerror="this.src=\'/static/Emojis/Pets/Deco/Basic.png\'">' +
+                    '<span class="mp-key-badge-count" style="color:' + chestColor + '">×' + count + '</span>' +
+                    '<span class="mp-key-badge-name">' + escHtml(item.name) + '</span></div>';
+            });
+            newBar += '</div></div>';
+        }
+        if (keysBar) {
+            if (newBar) { keysBar.outerHTML = newBar; }
+            else { keysBar.remove(); }
+        } else if (newBar) {
+            var descCard = mktPanel.querySelector('.mp-battle-card');
+            if (descCard) descCard.insertAdjacentHTML('afterend', newBar);
+        }
+    }
+    // Refresh stat breakdown
+    if (window._mpRefreshStatBreakdown) window._mpRefreshStatBreakdown(newPet);
 }
 
 function renderPetCard(pet) {
@@ -243,17 +285,17 @@ function renderPetCard(pet) {
 
         hdr.innerHTML =
             '<div class="d-flex align-items-center justify-content-between gap-2" style="width:100%">'+
-            '<img src="'+petImg(sp)+'" class="mp-pet-img" onerror="this.src=\'/static/Emojis/Pets/Deco/Basic.png\'">'+
+            '<img src="'+petImg(sp)+'" class="mp-pet-img" onerror="this.src=\'/static/Emojis/Pets/Basic.png\'">'+
             '<div style="flex:1;min-width:0">'+
             '<div class="fw-bold" style="font-family:Orbitron,sans-serif;color:var(--gold-primary);font-size:0.95rem;text-shadow:0 0 8px var(--gold-glow)">'+(pet.name||sp)+'</div>'+
             '<div class="d-flex align-items-center gap-1 mt-1 flex-wrap">'+
             '<span class="badge bg-warning text-dark" style="font-size:0.6rem">Lv.'+(pet.level||1)+'</span>'+
             '<img src="'+catImg(cat)+'" style="width:18px;height:18px;object-fit:contain" title="'+cap(cat)+'" onerror="this.style.display=\'none\'">'+
-            '<span class="mp-type-chip" data-type="'+cat+'" style="font-size:0.75rem;color:var(--text-secondary);cursor:pointer">'+cap(cat)+'</span>'+
+            '<span style="font-size:0.75rem;color:var(--text-secondary)">'+cap(cat)+'</span>'+
             '<span style="color:rgba(255,215,0,0.4);margin:0 2px">|</span>'+
             '<img src="'+elemImgPath(e1)+'" style="width:18px;height:18px;object-fit:contain" title="'+cap(e1)+'" onerror="this.style.display=\'none\'">'+
-            '<span class="mp-elem-chip" data-elem="'+e1+'" style="font-size:0.75rem;color:var(--gold-secondary);cursor:pointer">'+cap(e1)+'</span>'+
-            (e2 ? '<span style="color:rgba(255,215,0,0.4);margin:0 2px">/</span><img src="'+elemImgPath(e2)+'" style="width:18px;height:18px;object-fit:contain" title="'+cap(e2)+'" onerror="this.style.display=\'none\'"><span class="mp-elem-chip" data-elem="'+e2+'" style="font-size:0.75rem;color:var(--gold-secondary);cursor:pointer">'+cap(e2)+'</span>' : '')+
+            '<span style="font-size:0.75rem;color:var(--gold-secondary)">'+cap(e1)+'</span>'+
+            (e2 ? '<span style="color:rgba(255,215,0,0.4);margin:0 2px">/</span><img src="'+elemImgPath(e2)+'" style="width:18px;height:18px;object-fit:contain" title="'+cap(e2)+'" onerror="this.style.display=\'none\'"><span style="font-size:0.75rem;color:var(--gold-secondary)">'+cap(e2)+'</span>' : '')+
             '</div></div>'+
             rankHtml+
             '</div>';
@@ -266,11 +308,10 @@ function renderPetCard(pet) {
         var bonus = equipBonuses[s]||0;
         var total = cs[s]!==undefined ? cs[s] : (base + bonus);
         var isSp = specs.indexOf(s) !== -1;
-
-        var bonusStr = bonus > 0 ? ' <span style="font-size:0.65rem;color:#4caf50">(+' + bonus + ')</span>' : '';
-        statsHtml += '<div class="col-6"><div class="mp-stat-row mp-stat-hoverable" data-stat="'+s+'" style="cursor:pointer">' +
-            '<img src="/static/Emojis/Pets/Deco/' + s + '.png" onerror="this.style.display=\'none\'">' +
-            '<span class="' + (isSp ? 'stat-special' : '') + '">' + s + ': ' + total + '</span>' + bonusStr +
+        var bonusStr = bonus > 0 ? ' <span style="font-size:0.65rem;color:#4caf50">(+'+bonus+')</span>' : '';
+        statsHtml += '<div class="col-6"><div class="mp-stat-row">'+
+            '<img src="/static/Emojis/Pets/Deco/'+s+'.png" onerror="this.style.display=\'none\'">'+
+            '<span class="'+(isSp?'stat-special':'')+'">'+s+': '+total+'</span>'+bonusStr+
             '</div></div>';
     });
     statsHtml += '</div>';
@@ -297,199 +338,30 @@ function renderPetCard(pet) {
         '<div class="mp-xp-bar-wrap mb-1"><div class="mp-xp-bar" style="width:'+xpPct+'%"></div></div>'+
         '<div style="font-size:0.68rem;color:var(--text-secondary);text-align:right">'+xpCur.toLocaleString()+' / '+xpMax.toLocaleString()+' XP</div>';
     var body = el('my-pet-body');
-    if (body) body.innerHTML = xpHtml + buildEquipped(pet) + buildEquipBonus(pet) + '<hr class="mp-divider my-2">' + statsHtml + combatHtml + buildInventoryCollapsible(pet) + buildTokenStatsCard(pet) + buildFriendFoeCard() + buildBreakdownCard(pet);
-    bindStatTooltips(pet);
-}
-
-// ── Stat / Type / Element hover tooltip system ────────────────────────────────
-
-var _mpTip = null;
-var _mpTipTimer = null;
-
-function _mpGetTip() {
-    if (!_mpTip) {
-        _mpTip = document.createElement('div');
-        _mpTip.id = 'mp-hover-tip';
-        _mpTip.className = 'mp-hover-tip';
-        document.body.appendChild(_mpTip);
-        _mpTip.addEventListener('mouseenter', function() { clearTimeout(_mpTipTimer); });
-        _mpTip.addEventListener('mouseleave', _mpHideTip);
-    }
-    return _mpTip;
-}
-
-function _mpHideTip() {
-    _mpTipTimer = setTimeout(function() {
-        var t = document.getElementById('mp-hover-tip');
-        if (t) { t.classList.remove('mp-hover-tip--visible'); }
-    }, 120);
-}
-
-function _mpShowTip(anchor, html) {
-    clearTimeout(_mpTipTimer);
-    var tip = _mpGetTip();
-    tip.innerHTML = html;
-    tip.classList.remove('mp-hover-tip--visible');
-    // Position
-    var rect = anchor.getBoundingClientRect();
-    var scrollY = window.scrollY || document.documentElement.scrollTop;
-    var scrollX = window.scrollX || document.documentElement.scrollLeft;
-    tip.style.left = '0px'; tip.style.top = '0px';
-    document.body.appendChild(tip);
-    var tw = tip.offsetWidth;
-    var th = tip.offsetHeight;
-    var left = rect.left + scrollX + rect.width / 2 - tw / 2;
-    var top  = rect.top  + scrollY - th - 10;
-    // Clamp to viewport
-    left = Math.max(8, Math.min(left, window.innerWidth - tw - 8));
-    if (top < scrollY + 8) top = rect.bottom + scrollY + 10;
-    tip.style.left = left + 'px';
-    tip.style.top  = top  + 'px';
-    tip.classList.add('mp-hover-tip--visible');
-}
-
-function _mpBuildStatTip(pet, stat) {
-    var masteryRaw = pet.stat_mastery && pet.stat_mastery[stat];
-    var masteryPts = masteryRaw && typeof masteryRaw === 'object' ? (masteryRaw.points || 0) : (masteryRaw || 0);
-    var masteryMult = masteryPts > 0 ? (1.0 + masteryPts * 0.1).toFixed(1) : null;
-
-    var abilities = [];
-    if (pet.abilities) {
-        var prefix = stat.toLowerCase() + '_';
-        Object.keys(pet.abilities).forEach(function(id) {
-            var lvl = pet.abilities[id];
-            if (id.indexOf(prefix) === 0 && lvl > 0) {
-                // Pretty-print the id: "att_npc_damage" → "Npc Damage"
-                var label = id.slice(prefix.length).replace(/_/g, ' ').replace(/\b\w/g, function(c){ return c.toUpperCase(); });
-                abilities.push({ label: label, level: lvl });
-            }
-        });
-    }
-
-    var rows = '';
-
-    // Mastery row
-    rows += '<div class="mp-tip-row">' +
-        '<span class="mp-tip-label">Stat Mastery</span>' +
-        '<span class="mp-tip-val' + (masteryPts > 0 ? ' mp-tip-val--gold' : ' mp-tip-val--dim') + '">' +
-        (masteryPts > 0 ? masteryPts + ' pt' + (masteryPts !== 1 ? 's' : '') + ' &nbsp;→&nbsp; <strong>' + masteryMult + 'x</strong>' : 'None') +
-        '</span></div>';
-
-    // Abilities
-    rows += '<div class="mp-tip-divider"></div>';
-    rows += '<div class="mp-tip-label mp-tip-section-head">Abilities</div>';
-    if (abilities.length === 0) {
-        rows += '<div class="mp-tip-row"><span class="mp-tip-val--dim" style="font-size:0.7rem">None unlocked</span></div>';
-    } else {
-        abilities.forEach(function(ab) {
-            rows += '<div class="mp-tip-row">' +
-                '<span class="mp-tip-label">' + ab.label + '</span>' +
-                '<span class="mp-tip-val mp-tip-val--gold">Lv.' + ab.level + '</span>' +
-                '</div>';
-        });
-    }
-
-    return '<div class="mp-tip-header">' +
-        '<img src="/static/Emojis/Pets/Deco/' + stat + '.png" class="mp-tip-icon" onerror="this.style.display=\'none\'">' +
-        '<span>' + stat + ' Mastery</span>' +
-        '</div>' +
-        '<div class="mp-tip-body">' + rows + '</div>';
-}
-
-function _mpBuildTypeTip(pet, typeKey) {
-    var info = TYPE_INFO[typeKey] || { label: cap(typeKey), desc: '' };
-    var advMastery = pet.advantage_mastery || {};
-    var typePts = parseInt(advMastery['type'] || 0, 10);
-    var typeBonus = typePts > 0 ? (typePts * 0.1).toFixed(1) : null;
-
-    var rows = '<div class="mp-tip-row">' +
-        '<span class="mp-tip-label">Matchup</span>' +
-        '<span class="mp-tip-val" style="font-size:0.7rem;color:var(--text-secondary)">' + info.desc + '</span>' +
-        '</div>';
-
-    rows += '<div class="mp-tip-divider"></div>';
-    rows += '<div class="mp-tip-row">' +
-        '<span class="mp-tip-label">Type Adv. Mastery</span>' +
-        '<span class="mp-tip-val' + (typePts > 0 ? ' mp-tip-val--gold' : ' mp-tip-val--dim') + '">' +
-        (typePts > 0 ? typePts + ' pt' + (typePts !== 1 ? 's' : '') + ' &nbsp;→&nbsp; <strong>+' + typeBonus + '</strong> bonus' : 'None') +
-        '</span></div>';
-
-    return '<div class="mp-tip-header">' +
-        '<img src="' + catImg(typeKey) + '" class="mp-tip-icon" onerror="this.style.display=\'none\'">' +
-        '<span>' + info.label + ' Type</span>' +
-        '</div>' +
-        '<div class="mp-tip-body">' + rows + '</div>';
-}
-
-function _mpBuildElemTip(pet, elemKey) {
-    var info = ELEM_INFO[elemKey] || { label: cap(elemKey), strong: [], weak: [], desc: '' };
-    var advMastery = pet.advantage_mastery || {};
-    var elemPts = parseInt(advMastery['element'] || 0, 10);
-    var elemBonus = elemPts > 0 ? (elemPts * 0.1).toFixed(1) : null;
-
-    var strongStr = info.strong && info.strong.length ? info.strong.join(', ') : '—';
-    var weakStr   = info.weak   && info.weak.length   ? info.weak.join(', ')   : '—';
-
-    var rows = '<div class="mp-tip-row">' +
-        '<span class="mp-tip-label" style="color:#4caf50">Strong vs</span>' +
-        '<span class="mp-tip-val" style="color:#4caf50">' + strongStr + '</span>' +
-        '</div>' +
-        '<div class="mp-tip-row">' +
-        '<span class="mp-tip-label" style="color:#e74c3c">Weak to</span>' +
-        '<span class="mp-tip-val" style="color:#e74c3c">' + weakStr + '</span>' +
-        '</div>';
-
-    rows += '<div class="mp-tip-divider"></div>';
-    rows += '<div class="mp-tip-row">' +
-        '<span class="mp-tip-label">Elem Adv. Mastery</span>' +
-        '<span class="mp-tip-val' + (elemPts > 0 ? ' mp-tip-val--gold' : ' mp-tip-val--dim') + '">' +
-        (elemPts > 0 ? elemPts + ' pt' + (elemPts !== 1 ? 's' : '') + ' &nbsp;→&nbsp; <strong>+' + elemBonus + '</strong> bonus' : 'None') +
-        '</span></div>';
-
-    return '<div class="mp-tip-header">' +
-        '<img src="' + elemImgPath(elemKey) + '" class="mp-tip-icon" onerror="this.style.display=\'none\'">' +
-        '<span>' + info.label + ' Element</span>' +
-        '</div>' +
-        '<div class="mp-tip-body">' + rows + '</div>';
-}
-
-function bindStatTooltips(pet) {
-    // Stat rows
-    var rows = document.querySelectorAll('.mp-stat-hoverable[data-stat]');
-    rows.forEach(function(row) {
-        var stat = row.getAttribute('data-stat');
-        row.addEventListener('mouseenter', function() {
-            clearTimeout(_mpTipTimer);
-            _mpShowTip(row, _mpBuildStatTip(pet, stat));
-        });
-        row.addEventListener('mouseleave', _mpHideTip);
-    });
-
-    // Type chips
-    var typeChips = document.querySelectorAll('.mp-type-chip[data-type]');
-    typeChips.forEach(function(chip) {
-        var typeKey = chip.getAttribute('data-type');
-        chip.addEventListener('mouseenter', function() {
-            clearTimeout(_mpTipTimer);
-            _mpShowTip(chip, _mpBuildTypeTip(pet, typeKey));
-        });
-        chip.addEventListener('mouseleave', _mpHideTip);
-    });
-
-    // Element chips
-    var elemChips = document.querySelectorAll('.mp-elem-chip[data-elem]');
-    elemChips.forEach(function(chip) {
-        var elemKey = chip.getAttribute('data-elem');
-        chip.addEventListener('mouseenter', function() {
-            clearTimeout(_mpTipTimer);
-            _mpShowTip(chip, _mpBuildElemTip(pet, elemKey));
-        });
-        chip.addEventListener('mouseleave', _mpHideTip);
-    });
+    if (body) body.innerHTML = xpHtml + buildEquipped(pet) + '<hr class="mp-divider my-2">' + statsHtml + combatHtml + buildFriendFoeCard();
 }
 
 function bindTabs() {}
-function renderTab(tab) {}
+
+// Expose _pet globally so ability_tree.js can trigger a stat breakdown refresh
+Object.defineProperty(window, '_pet', {
+    get: function() { return _pet; },
+    set: function(v) { _pet = v; },
+    configurable: true
+});
+
+// Called by ability_tree.js after tree data loads to refresh mastery column
+window._mpRefreshStatBreakdown = function(pet) {
+    var panel = el('panel-breakdown');
+    if (!panel) return;
+    // Replace just the stat breakdown section (first child after the description card)
+    var existing = panel.querySelector('.mp-stat-breakdown-wrap');
+    if (existing) {
+        var fresh = document.createElement('div');
+        fresh.innerHTML = buildFullStatBreakdown(pet);
+        existing.parentNode.replaceChild(fresh.firstChild, existing);
+    }
+};
 
 function renderAllPanels(pet) {
     var c = el('pet-tab-content');
@@ -505,91 +377,156 @@ function buildInteractions(pet) {
 
     var LOCATIONS = ['Camp','Bonfire','Beach','Forest','Hot Air Balloon','Cruiseship','Mountain','Gym','Graveyard','Festival','Glacier','Pyramids'];
     var LOC_EMOJI = {Camp:'camping',Bonfire:'bonfire',Beach:'beach',Forest:'forest','Hot Air Balloon':'hotairballoon',Cruiseship:'cruiseship',Mountain:'mountain',Gym:'gym',Graveyard:'graveyard',Festival:'festival',Glacier:'glacier',Pyramids:'pyramids'};
-    var LOC_SPECIALS = {
-        Camp:              ['Plant','Fighting'],
-        Bonfire:           ['Fire','Necro'],
-        Beach:             ['Water','Holy'],
-        Forest:            ['Plant','Rock'],
-        'Hot Air Balloon': ['Air','Fire'],
-        Cruiseship:        ['Water','Electric'],
-        Mountain:          ['Rock','Ice'],
-        Gym:               ['Fighting','Psychic'],
-        Graveyard:         ['Holy','Necro'],
-        Festival:          ['Magic','Psychic'],
-        Glacier:           ['Ice','Air'],
-        Pyramids:          ['Magic','Electric']
-    };
-
-    // Normalise pet elements for comparison
-    var petElem1 = (pet.element  || '').toLowerCase();
-    var petElem2 = (pet.element2 || '').toLowerCase();
-
-    function _locMatchCount(loc) {
-        var specials = LOC_SPECIALS[loc] || [];
-        var count = 0;
-        specials.forEach(function(s) {
-            var sl = s.toLowerCase();
-            if (sl === petElem1 || (petElem2 && sl === petElem2)) count++;
-        });
-        return count;
-    }
 
     var tabs = [
-        {id:'train',  label:'🏋️ Train'},
-        {id:'mission',label:'🗺️ Mission'},
-        {id:'play',   label:'🎮 Play'},
-        {id:'quest',  label:'🗡️ Quest'},
-        {id:'market', label:'📦 Loot Market'},
-        {id:'absorb', label:'⚡ Absorb'},
-        {id:'abilities', label:'💎 Abilities'},
-        {id:'battle', label:'⚔️ Battle Settings'},
-        {id:'rename', label:'✏️ Rename'},
-        {id:'kill',   label:'💀 Kill Pet'}
+        {id:'breakdown', label:'Stats',       icon:'stats.png'},
+        {id:'abilities', label:'Abilities',   icon:'ability.png'},
+        {id:'inventory', label:'Inventory',   icon:'inventory.png'},
+        {id:'reforge',   label:'Reforge',     icon:'forge.png'},
+        {id:'market',    label:'Loot Market', icon:'market.png'},
+        {id:'train',     label:'Train',       icon:'train.png'},
+        {id:'mission',   label:'Mission',     icon:'mission.png'},
+        {id:'play',      label:'Play',        icon:'play.png'},
+        {id:'quest',     label:'Quest',       icon:'quest.png'},
+        {id:'rename',    label:'Rename',      icon:'rename.png'},
+        {id:'kill',      label:'Kill Pet',    icon:'kill.png'}
     ];
 
     var html = '<div class="d-flex gap-2 mb-4 flex-wrap">';
     tabs.forEach(function(t, i) {
-        html += '<button class="mp-action-tab'+(i===0?' active':'')+'" id="tab-'+t.id+'" onclick="window._mpTab(\''+t.id+'\')">'+t.label+'</button>';
+        html += '<button class="mp-action-tab-img'+(i===0?' active':'')+'" id="tab-'+t.id+'" onclick="window._mpTab(\''+t.id+'\')">' +
+            '<img src="/static/Emojis/MyPet/'+t.icon+'" class="mp-tab-icon" onerror="this.style.display=\'none\'">' +
+            '<span>'+t.label+'</span></button>';
     });
     html += '</div>';
 
-    // ── Train ──────────────────────────────────────────────────────────────
-    html += '<div id="panel-train">'+
-        '<div class="mp-section-title">Train Your Pet</div>'+
+    // ── Stats Breakdown (first — shown by default) ──────────────────────────
+    html += '<div id="panel-breakdown">'+
+        '<div class="mp-section-title">📊 Stats Breakdown</div>'+
         '<div class="mp-battle-card mb-3" style="font-size:0.82rem;color:var(--text-secondary)">'+
-        'Pick a stat to train and a difficulty. Success raises the stat; failure lowers it. '+
-        'The change is <strong>difficulty multiplier × equipment multiplier</strong>. No XP is gained or lost.'+
+        'XP earned across all activities, plus battle records, Survivor Series, casino results, and pet stocks.'+
         '</div>'+
+        buildFullStatBreakdown(pet)+
+        '<hr class="mp-divider my-2">'+
+        '<div id="breakdown-panel-body">'+buildBreakdownPanel(pet)+'</div>'+
+        buildTokenStatsPanel(pet)+
+        '</div>';
 
-        // Stat picker
-        '<div class="mp-mini-label mb-1">Choose Stat</div>'+
-        '<div class="d-flex gap-2 flex-wrap mb-3">'+
-        ['ATT','DEF','INT','DEX','HAP','ENE'].map(function(s) {
-            return '<div class="mp-mini-stat-card" style="cursor:pointer;transition:all 0.2s;min-width:70px;text-align:center" '+
-                'id="train-stat-'+s+'" onclick="window._mpSelectTrainStat(\''+s+'\')">'+
-                '<img src="/static/Emojis/Pets/Deco/'+s+'.png" style="width:28px;height:28px;object-fit:contain;margin-bottom:3px" onerror="this.style.display=\'none\'">'+
-                '<div class="mp-mini-label">'+s+'</div>'+
+    // ── Abilities (inline tab — loaded on demand) ──────────────────────────
+    html += '<div id="panel-abilities" style="display:none">'+
+        '<div id="at-inline-mount" style="min-height:200px;display:block">'+
+        '<div style="text-align:center;padding:30px;color:var(--text-secondary);font-size:0.82rem">Loading abilities…</div>'+
+        '</div>'+
+        '</div>';
+
+    // ── Inventory ─────────────────────────────────────────────────────────
+    html += '<div id="panel-inventory" style="display:none">'+
+        buildInventoryPanel(pet)+
+        '</div>';
+
+    // ── Reforge ────────────────────────────────────────────────────────────
+    html += '<div id="panel-reforge" style="display:none">'+
+        buildReforgePanel(pet)+
+        '</div>';
+
+    // ── Loot Market ────────────────────────────────────────────────────────
+    var CHEST_INFO = {
+        chest1:{label:'Chest 1',cost:'1× Key1',items:'1 Common or Uncommon item',color:'#9e9e9e'},
+        chest2:{label:'Chest 2',cost:'1× Key2',items:'1 Rare item',color:'#4caf50'},
+        chest3:{label:'Chest 3',cost:'1× Key3',items:'1 Epic item',color:'#2196f3'},
+        chest4:{label:'Chest 4',cost:'1× Key1 + Key2 + Key3',items:'1 picked type + 1 Uncommon+',color:'#ff9800'}
+    };
+    // Build keys+chests bar for loot market
+    var lmKeysBar = (function() {
+        var inv = pet.inventory || [];
+        var keyItems   = inv.filter(function(i){ return i.type === 'Key'; });
+        var chestItems = inv.filter(function(i){ return i.type === 'Chest'; });
+        if (!keyItems.length && !chestItems.length) return '';
+        var CHEST_COLORS = { chest1:'#9e9e9e', chest2:'#4caf50', chest3:'#2196f3', chest4:'#ff9800' };
+        var bar = '<div class="mp-inv-keys-bar mb-3">';
+        bar += '<div style="font-size:0.65rem;color:var(--text-secondary);font-weight:600;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px">🗝️ Loot</div>';
+        bar += '<div class="d-flex flex-wrap gap-2">';
+        keyItems.forEach(function(item) {
+            var f = equipImgFile(item);
+            var count = item.count || 1;
+            bar += '<div class="mp-key-badge" title="' + escHtml(item.name) + ' ×' + count + '">' +
+                '<img src="/static/Emojis/Pets/Equipment/' + f + '" onerror="this.src=\'/static/Emojis/Pets/Deco/Basic.png\'">' +
+                '<span class="mp-key-badge-count">×' + count + '</span>' +
+                '<span class="mp-key-badge-name">' + escHtml(item.name) + '</span>' +
                 '</div>';
+        });
+        chestItems.forEach(function(item) {
+            var f = equipImgFile(item);
+            var count = item.count || 1;
+            var chestKey = item.name.toLowerCase().replace(/\s/g,'');
+            var chestColor = CHEST_COLORS[chestKey] || '#ffd700';
+            bar += '<div class="mp-key-badge mp-inv-clickable" ' +
+                'style="border-color:' + chestColor + '40;cursor:pointer" ' +
+                'title="' + escHtml(item.name) + ' ×' + count + ' — Click to open" ' +
+                'onclick="window._mpInvClick(' + escArg(item.name) + ',\'Chest\',\'Open\',1,' + escArg(item.rarity||'Common') + ',' + count + ')">' +
+                '<img src="/static/Emojis/Pets/Equipment/' + f + '" onerror="this.src=\'/static/Emojis/Pets/Deco/Basic.png\'">' +
+                '<span class="mp-key-badge-count" style="color:' + chestColor + '">×' + count + '</span>' +
+                '<span class="mp-key-badge-name">' + escHtml(item.name) + '</span>' +
+                '</div>';
+        });
+        bar += '</div></div>';
+        return bar;
+    })();
+    html += '<div id="panel-market" style="display:none">'+
+        '<div class="mp-section-title">📦 Loot Market</div>'+
+        '<div class="mp-battle-card mb-3" style="font-size:0.82rem;color:var(--text-secondary)">'+
+        'Spend keys to open chests and earn items. Keys are earned from Play, Mission, and Quest activities.'+
+        '</div>'+
+        lmKeysBar+
+        '<div class="row g-2 mb-3">'+
+        Object.keys(CHEST_INFO).map(function(c){
+            var info=CHEST_INFO[c];
+            return '<div class="col-md-3 col-sm-6"><div class="mp-mini-stat-card" style="cursor:pointer;transition:all 0.2s;border-color:'+info.color+'40" id="lm-'+c+'" onclick="window._mpSelectLmChest(\''+c+'\')">'+
+                '<img src="/static/Emojis/Pets/Equipment/'+c+'.png" style="width:32px;height:32px;object-fit:contain;margin-bottom:4px" onerror="this.style.display=\'none\'">'+
+                '<div class="mp-mini-label" style="color:'+info.color+'">'+info.label+'</div>'+
+                '<div style="font-size:0.72rem;color:var(--text-secondary);margin-top:2px">'+
+                    info.cost.replace('Key1','<img src="/static/Emojis/Pets/Equipment/Key1.png" style="width:14px;height:14px;vertical-align:middle"> Key1')
+                             .replace('Key2','<img src="/static/Emojis/Pets/Equipment/Key2.png" style="width:14px;height:14px;vertical-align:middle"> Key2')
+                             .replace('Key3','<img src="/static/Emojis/Pets/Equipment/Key3.png" style="width:14px;height:14px;vertical-align:middle"> Key3')+
+                '</div>'+
+                '<div style="font-size:0.7rem;color:var(--gold-secondary);margin-top:2px">'+info.items+'</div>'+
+                '</div></div>';
         }).join('')+
         '</div>'+
+        '<div id="lm-type-row" style="display:none" class="mb-3">'+
+        '<label class="form-label" style="font-size:0.8rem;color:var(--text-secondary)">Select guaranteed item type (Chest 4)</label>'+
+        '<div class="d-flex gap-2 flex-wrap">'+
+        ['Material','Gem','Monster','Potion','Hat'].map(function(t){
+            return '<div class="mp-mini-stat-card" style="cursor:pointer;transition:all 0.2s;padding:5px 10px" id="lm-type-'+t+'" onclick="window._mpSelectLmType(\''+t+'\')">'+
+                '<div class="mp-mini-label">'+t+'</div></div>';
+        }).join('')+
+        '</div></div>'+
+        '<div id="lm-amt-row" class="mb-3">'+
+        '<label class="form-label" style="font-size:0.8rem;color:var(--text-secondary)">Amount to open</label>'+
+        '<input type="number" class="form-control mp-input" id="lm-amount" min="1" max="10" value="1" style="max-width:100px">'+
+        '</div>'+
+        '<button class="mp-adopt-btn" onclick="window._mpOpenChest()">📦 Open Chest</button>'+
+        '<div id="lm-result" class="mt-3"></div>'+
+        '</div>';
 
-        // Difficulty picker
-        '<div class="mp-mini-label mb-1">Choose Difficulty</div>'+
+    // ── Train ──────────────────────────────────────────────────────────────
+    html += '<div id="panel-train" style="display:none">'+
+        '<div class="mp-section-title">Train Your Pet</div>'+
+        '<div class="mp-battle-card mb-3" style="font-size:0.82rem;color:var(--text-secondary)">'+
+        'Send your pet to train and earn XP. Higher difficulty = more XP but lower success rate.'+
+        '</div>'+
         '<div class="row g-2 mb-3">'+
         ['Easy','Average','Hard'].map(function(d) {
-            var mult  = {Easy:'1×',Average:'3×',Hard:'5×'}[d];
-            var chance = {Easy:'75%',Average:'60%',Hard:'45%'}[d];
+            var xp = {Easy:'50+',Average:'100+',Hard:'200+'}[d];
+            var chance = {Easy:'90%',Average:'70%',Hard:'50%'}[d];
             return '<div class="col-md-4"><div class="mp-mini-stat-card" style="cursor:pointer;transition:all 0.2s" id="train-opt-'+d+'" onclick="window._mpSelectTrain(\''+d+'\')">'+
                 '<div class="mp-mini-label">'+d+'</div>'+
-                '<div style="font-size:0.78rem;color:var(--gold-secondary);font-weight:700">±'+mult+' equip mult</div>'+
+                '<div style="font-size:0.78rem;color:var(--gold-secondary);font-weight:700">'+xp+' XP</div>'+
                 '<div style="font-size:0.7rem;color:var(--text-secondary)">'+chance+' success</div>'+
                 '</div></div>';
         }).join('')+
         '</div>'+
-
-        '<div style="font-size:0.68rem;color:var(--text-secondary);margin-bottom:8px">'+
-        '⚡ Stat change = difficulty multiplier × equipment multiplier. 5 sec cooldown.'+
-        '</div>'+
+        '<div style="font-size:0.68rem;color:var(--text-secondary);margin-bottom:8px">⚡ XP scales with your pet\'s level (+10% per level above 1). 5 sec cooldown.</div>'+
         '<button class="mp-adopt-btn" id="train-btn" onclick="window._mpTrain()">Start Training</button>'+
         '<div id="train-result" class="mt-3"></div>'+
         '</div>';
@@ -604,11 +541,7 @@ function buildInteractions(pet) {
         ['Easy','Average','Hard'].map(function(d) {
             var xp = {Easy:'100+',Average:'250+',Hard:'500+'}[d];
             var chance = {Easy:'70%',Average:'50%',Hard:'30%'}[d];
-        var keys = {
-            Easy:    '50% per key',
-            Average: '65% per key',
-            Hard:    '75% per key'
-        }[d];
+            var keys = {Easy:'33% Key1',Average:'Key1+Key2',Hard:'Key1+Key2+Key3'}[d];
             return '<div class="col-md-4"><div class="mp-mini-stat-card" style="cursor:pointer;transition:all 0.2s" id="mission-opt-'+d+'" onclick="window._mpSelectMission(\''+d+'\')">'+
                 '<div class="mp-mini-label">'+d+'</div>'+
                 '<div style="font-size:0.78rem;color:var(--gold-secondary);font-weight:700">'+xp+' XP</div>'+
@@ -630,41 +563,14 @@ function buildInteractions(pet) {
     html += '<div id="panel-play" style="display:none">'+
         '<div class="mp-section-title">Take Your Pet to Play</div>'+
         '<div class="mp-battle-card mb-3" style="font-size:0.82rem;color:var(--text-secondary)">'+
-        'XP = 5 × Level × element bonus. Matching your pet\'s element to the location gives 2× or 3× XP and better keys. '+
-        '<span style="color:var(--gold-secondary)">★ = your element matches</span>'+
+        'XP = 5 × Level × element bonus. Matching your pet\'s element to the location gives 2x or 3x XP and better keys.'+
         '</div>'+
         '<div class="row g-2 mb-3">'+
         LOCATIONS.map(function(loc) {
-            var deco     = LOC_EMOJI[loc] || 'camping';
-            var specials = LOC_SPECIALS[loc] || [];
-            var matches  = _locMatchCount(loc);
-            // Border glow: gold for 2 matches, green for 1, default for 0
-            var borderStyle = matches === 2
-                ? 'border-color:var(--gold-primary);box-shadow:0 0 8px rgba(255,215,0,0.35)'
-                : matches === 1
-                    ? 'border-color:#4caf50;box-shadow:0 0 6px rgba(76,175,80,0.25)'
-                    : '';
-            // XP badge
-            var xpBadge = matches === 2
-                ? '<span style="font-size:0.6rem;font-weight:700;color:var(--gold-primary);background:rgba(255,215,0,0.12);border-radius:4px;padding:1px 5px;display:block;margin-top:2px">3× XP ★★</span>'
-                : matches === 1
-                    ? '<span style="font-size:0.6rem;font-weight:700;color:#4caf50;background:rgba(76,175,80,0.1);border-radius:4px;padding:1px 5px;display:block;margin-top:2px">2× XP ★</span>'
-                    : '<span style="font-size:0.6rem;color:var(--text-secondary);display:block;margin-top:2px">1× XP</span>';
-            // Element icons row
-            var elemIcons = specials.map(function(s) {
-                var isMatch = s.toLowerCase() === petElem1 || (petElem2 && s.toLowerCase() === petElem2);
-                return '<img src="/static/Emojis/Pets/Deco/'+s+'.png" '+
-                    'title="'+s+(isMatch?' — matches your element!':'')+'" '+
-                    'style="width:16px;height:16px;object-fit:contain;vertical-align:middle;'+
-                    (isMatch ? 'filter:drop-shadow(0 0 3px gold);outline:1px solid gold;border-radius:2px;' : 'opacity:0.55;')+'">';
-            }).join('');
-            return '<div class="col-md-3 col-sm-4 col-6">'+
-                '<div class="mp-mini-stat-card" style="cursor:pointer;transition:all 0.2s;'+borderStyle+'" '+
-                'id="play-opt-'+loc.replace(/ /g,'-')+'" onclick="window._mpSelectPlay(\''+loc+'\')">'+
+            var deco = LOC_EMOJI[loc] || 'camping';
+            return '<div class="col-md-3 col-sm-4 col-6"><div class="mp-mini-stat-card" style="cursor:pointer;transition:all 0.2s" id="play-opt-'+loc.replace(/ /g,'-')+'" onclick="window._mpSelectPlay(\''+loc+'\')">'+
                 '<img src="/static/Emojis/Pets/Deco/'+deco+'.png" style="width:28px;height:28px;object-fit:contain;margin-bottom:3px" onerror="this.style.display=\'none\'">'+
                 '<div class="mp-mini-label">'+loc+'</div>'+
-                '<div style="display:flex;gap:3px;justify-content:center;align-items:center;margin-top:3px">'+elemIcons+'</div>'+
-                xpBadge+
                 '</div></div>';
         }).join('')+
         '</div>'+
@@ -680,8 +586,6 @@ function buildInteractions(pet) {
         'AI-generated 5-stage quests. Each stage presents a challenge with 3 choices tied to your pet\'s stats. Earn XP and loot along the way.<br>'+
         '<span style="color:var(--gold-secondary)">Quests are generated by AI — may take a moment to start.</span>'+
         '</div>'+
-
-        // Setup (shown before quest starts)
         '<div id="quest-setup">'+
         '<div class="row g-2 mb-3">'+
         '<div class="col-md-6">'+
@@ -710,8 +614,6 @@ function buildInteractions(pet) {
         '<button class="mp-adopt-btn" id="quest-start-btn" onclick="window._mpQuestStart()">⚔️ Begin Quest</button>'+
         '<div id="quest-start-result" class="mt-2"></div>'+
         '</div>'+
-
-        // Active quest (shown during quest)
         '<div id="quest-active" style="display:none">'+
         '<div class="mp-battle-card mb-3" id="quest-stage-box">'+
         '<div id="quest-progress" style="font-size:0.7rem;color:var(--text-secondary);margin-bottom:6px"></div>'+
@@ -723,59 +625,7 @@ function buildInteractions(pet) {
         '<div id="quest-xp-track" style="font-size:0.75rem;color:var(--gold-secondary);margin-top:4px"></div>'+
         '<button class="mp-adopt-btn" onclick="window._mpQuestAbandon()" style="font-size:0.72rem;padding:5px 12px;margin-top:8px;background:rgba(231,76,60,0.15);border-color:rgba(231,76,60,0.4);color:#e74c3c">🚪 Abandon Quest</button>'+
         '</div>'+
-
-        // Quest result (shown when done)
         '<div id="quest-result" style="display:none"></div>'+
-        '</div>';
-
-    // ── Loot Market ────────────────────────────────────────────────────────
-    var CHEST_INFO = {
-        chest1:{label:'Chest 1',cost:'1× Key1',items:'1 Common or Uncommon item',color:'#9e9e9e'},
-        chest2:{label:'Chest 2',cost:'1× Key2',items:'1 Rare item',color:'#4caf50'},
-        chest3:{label:'Chest 3',cost:'1× Key3',items:'1 Epic item',color:'#2196f3'},
-        chest4:{label:'Chest 4',cost:'1× Key1 + Key2 + Key3',items:'1 picked type + 1 Uncommon+',color:'#ff9800'}
-    };
-    html += '<div id="panel-market" style="display:none">'+
-        '<div class="mp-section-title">📦 Loot Market</div>'+
-        '<div class="mp-battle-card mb-3" style="font-size:0.82rem;color:var(--text-secondary)">'+
-        'Spend keys to open chests and earn items. Keys are earned from Play, Mission, and Quest activities.'+
-        '</div>'+
-
-        // Chest selection
-        '<div class="row g-2 mb-3">'+
-        Object.keys(CHEST_INFO).map(function(c){
-            var info=CHEST_INFO[c];
-            return '<div class="col-md-3 col-sm-6"><div class="mp-mini-stat-card" style="cursor:pointer;transition:all 0.2s;border-color:'+info.color+'40" id="lm-'+c+'" onclick="window._mpSelectLmChest(\''+c+'\')">'+
-                '<img src="/static/Emojis/Pets/Equipment/'+c+'.png" style="width:32px;height:32px;object-fit:contain;margin-bottom:4px" onerror="this.style.display=\'none\'">'+
-                '<div class="mp-mini-label" style="color:'+info.color+'">'+info.label+'</div>'+
-                '<div style="font-size:0.72rem;color:var(--text-secondary);margin-top:2px">'+
-                    info.cost.replace('Key1','<img src="/static/Emojis/Pets/Equipment/Key1.png" style="width:14px;height:14px;vertical-align:middle"> Key1')
-                             .replace('Key2','<img src="/static/Emojis/Pets/Equipment/Key2.png" style="width:14px;height:14px;vertical-align:middle"> Key2')
-                             .replace('Key3','<img src="/static/Emojis/Pets/Equipment/Key3.png" style="width:14px;height:14px;vertical-align:middle"> Key3')+
-                '</div>'+
-                '<div style="font-size:0.7rem;color:var(--gold-secondary);margin-top:2px">'+info.items+'</div>'+
-                '</div></div>';
-        }).join('')+
-        '</div>'+
-
-        // Chest 4 type selector (hidden unless chest4 selected)
-        '<div id="lm-type-row" style="display:none" class="mb-3">'+
-        '<label class="form-label" style="font-size:0.8rem;color:var(--text-secondary)">Select guaranteed item type (Chest 4)</label>'+
-        '<div class="d-flex gap-2 flex-wrap">'+
-        ['Material','Gem','Monster','Potion','Hat'].map(function(t){
-            return '<div class="mp-mini-stat-card" style="cursor:pointer;transition:all 0.2s;padding:5px 10px" id="lm-type-'+t+'" onclick="window._mpSelectLmType(\''+t+'\')">'+
-                '<div class="mp-mini-label">'+t+'</div></div>';
-        }).join('')+
-        '</div></div>'+
-
-        // Amount (hidden for chest4)
-        '<div id="lm-amt-row" class="mb-3">'+
-        '<label class="form-label" style="font-size:0.8rem;color:var(--text-secondary)">Amount to open</label>'+
-        '<input type="number" class="form-control mp-input" id="lm-amount" min="1" max="10" value="1" style="max-width:100px">'+
-        '</div>'+
-
-        '<button class="mp-adopt-btn" onclick="window._mpOpenChest()">📦 Open Chest</button>'+
-        '<div id="lm-result" class="mt-3"></div>'+
         '</div>';
 
     // ── Rename ─────────────────────────────────────────────────────────────
@@ -813,87 +663,6 @@ function buildInteractions(pet) {
         '</div>'+
         '<button class="mp-adopt-btn" style="background:linear-gradient(135deg,#c0392b,#e74c3c);color:#fff" onclick="window._mpKill()">💀 Release Pet</button>'+
         '<div id="kill-result" class="mt-3"></div>'+
-        '</div>';
-
-    // ── Abilities ──────────────────────────────────────────────────────────
-    html += '<div id="panel-abilities" style="display:none">'+
-        '<div class="mp-section-title">💎 Abilities & Mastery</div>'+
-        '<div class="mp-battle-card mb-3" style="font-size:0.82rem;color:var(--text-secondary)">'+
-        'Spend ability points to unlock powerful abilities and stat mastery bonuses. Purchase points with levels (500 levels per point).'+
-        '</div>'+
-        '<div id="abilities-content">'+
-        '<div class="text-center py-4">'+
-        '<div class="spinner-border" style="color: var(--gold-primary);" role="status">'+
-        '<span class="visually-hidden">Loading...</span>'+
-        '</div>'+
-        '<p class="mt-2" style="color: var(--text-secondary);">Loading abilities...</p>'+
-        '</div>'+
-        '</div>'+
-        '</div>';
-
-    // ── Battle Settings ────────────────────────────────────────────────────
-    html += '<div id="panel-battle" style="display:none">'+
-        '<div class="mp-section-title">⚔️ Battle Settings</div>'+
-        '<div class="mp-battle-card mb-3" style="font-size:0.82rem;color:var(--text-secondary)">'+
-        'Customize your battle formulas and scaling behavior. Configure health, attack, and defense calculations.'+
-        '</div>'+
-        '<div id="battle-settings-content">'+
-        '<div class="text-center py-4">'+
-        '<div class="spinner-border" style="color: var(--gold-primary);" role="status">'+
-        '<span class="visually-hidden">Loading...</span>'+
-        '</div>'+
-        '<p class="mt-2" style="color: var(--text-secondary);">Loading battle settings...</p>'+
-        '</div>'+
-        '</div>'+
-        '</div>';
-
-    // ── Absorb ─────────────────────────────────────────────────────────────
-    html += '<div id="panel-absorb" style="display:none">'+
-        '<div class="mp-section-title">⚡ Absorb War Power</div>'+
-        '<div class="mp-battle-card mb-3" style="font-size:0.82rem;color:var(--text-secondary)">'+
-        'Your PnW nation\'s war history fuels your pet. Absorb your wins and unit kills as XP — each type absorbed once, nothing counted twice.'+
-        '</div>'+
-        '<div id="absorb-loading" class="text-center py-4">'+
-        '<div class="spinner-border" style="color:var(--gold-primary)" role="status"></div>'+
-        '<p class="mt-2" style="color:var(--text-secondary)">Loading war data...</p>'+
-        '</div>'+
-        '<div id="absorb-no-nation" style="display:none" class="mp-battle-card" style="text-align:center">'+
-        '<p style="color:var(--text-secondary);font-size:0.85rem">No PnW nation linked to your Discord account.<br>Link your nation in-game to use this feature.</p>'+
-        '</div>'+
-        '<div id="absorb-content" style="display:none">'+
-        // Nation lock banner
-        '<div id="absorb-lock-banner" class="mp-battle-card mb-3" style="border-color:rgba(255,215,0,0.25);padding:10px 14px"></div>'+
-        // Wins box
-        '<div class="mp-battle-card mb-3" id="absorb-wins-box">'+
-        '<div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">'+
-        '<div class="d-flex align-items-center gap-2">'+
-        '<img src="/static/Emojis/Military/wars.png" style="width:28px;height:28px;object-fit:contain" onerror="this.style.display=\'none\'">'+
-        '<span style="font-family:Orbitron,sans-serif;color:var(--gold-primary);font-size:0.95rem;font-weight:700">Wars Won</span>'+
-        '</div>'+
-        '<div id="absorb-wins-badge" style="font-size:0.78rem;color:var(--text-secondary)"></div>'+
-        '</div>'+
-        '<div id="absorb-wins-souls" style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:10px;min-height:32px"></div>'+
-        '<div style="font-size:0.75rem;color:var(--gold-secondary);margin-bottom:10px" id="absorb-wins-xp-preview"></div>'+
-        '<button class="mp-adopt-btn" id="absorb-wins-btn" onclick="window._mpAbsorbWins()" style="background:linear-gradient(135deg,#2d6e2d,#3a8f3a);border:1px solid rgba(76,175,80,0.8);color:#fff;opacity:1">'+
-        '⚡ Absorb Wins</button>'+
-        '<div id="absorb-wins-result" class="mt-2"></div>'+
-        '</div>'+
-        // Kills box
-        '<div class="mp-battle-card" id="absorb-kills-box">'+
-        '<div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">'+
-        '<div class="d-flex align-items-center gap-2">'+
-        '<img src="/static/Emojis/Military/soldier.png" style="width:28px;height:28px;object-fit:contain" onerror="this.style.display=\'none\'">'+
-        '<span style="font-family:Orbitron,sans-serif;color:var(--gold-primary);font-size:0.95rem;font-weight:700">Units Destroyed</span>'+
-        '</div>'+
-        '<div id="absorb-kills-badge" style="font-size:0.78rem;color:var(--text-secondary)"></div>'+
-        '</div>'+
-        '<div class="row g-2 mb-3" id="absorb-kills-stats"></div>'+
-        '<div style="font-size:0.75rem;color:var(--gold-secondary);margin-bottom:10px" id="absorb-kills-xp-preview"></div>'+
-        '<button class="mp-adopt-btn" id="absorb-kills-btn" onclick="window._mpAbsorbKills()" style="background:linear-gradient(135deg,#2d2d8f,#3a3ab0);border:1px solid rgba(120,120,255,0.8);color:#fff;opacity:1">'+
-        '⚡ Absorb Kills</button>'+
-        '<div id="absorb-kills-result" class="mt-2"></div>'+
-        '</div>'+
-        '</div>'+
         '</div>';
 
     return html;
@@ -967,7 +736,7 @@ var EMOJI_PATH_MAP = (function() {
     ].forEach(function(n){ map[n.toLowerCase()] = pet + n + '.png'; });
 
     return map;
-})();
+}());
 
 /**
  * Convert a Discord API response string into safe HTML:
@@ -1014,136 +783,25 @@ function injectItemImages(text) {
 }
 
 
-// ── Play themed result builder ────────────────────────────────────────────────
-// Builds a clean, emoji-rich result card from the play API response.
-// Avoids rendering the raw outcome string (which contains Discord emoji codes
-// and Unicode that can display as mojibake).
-var _ELEM_VERBS = {
-    fire:     ['scorched the area','breathed a jet of flame','ignited the surroundings','radiated heat'],
-    water:    ['summoned a refreshing mist','splashed through the area','called the rain','purified the water nearby'],
-    electric: ['crackled with energy','lit up the area','zapped through the space','hummed with static'],
-    ice:      ['frosted the ground','chilled the air','left icy paw prints','sculpted a tiny ice figure'],
-    plant:    ['grew a ring of flowers','rustled the leaves','coaxed vines to bloom','scattered seeds'],
-    rock:     ['skipped a stone','carved a small rune','stacked a little cairn','shook the ground'],
-    air:      ['stirred a gentle breeze','whirled the dust','carried a scent on the wind','lifted a leaf'],
-    magic:    ['conjured a sparkle','left a trail of glowing motes','enchanted the surroundings','made something shimmer'],
-    holy:     ['radiated a warm glow','blessed the area','left a golden shimmer','soothed the space'],
-    necro:    ['whispered to the shadows','found an old bone','chilled the air with spectral energy','summoned a wisp'],
-    psychic:  ['levitated a pebble','sensed the surroundings','projected a mental image','read the environment'],
-    fighting: ['shadowboxed the air','trained with fierce intensity','struck a powerful pose','cleared the path'],
-    basic:    ['explored the area','sniffed around','wandered curiously','took in the sights']
-};
-
-var _LOC_EMOJI_KEY = {
-    Camp:'camping', Bonfire:'bonfire', Beach:'beach', Forest:'forest',
-    'Hot Air Balloon':'hotairballoon', Cruiseship:'cruiseship', Mountain:'mountain',
-    Gym:'gym', Graveyard:'graveyard', Festival:'festival', Glacier:'glacier', Pyramids:'pyramids'
-};
-
-function _eImg(elem, size) {
-    size = size || 16;
-    var e = (elem||'basic').toLowerCase();
-    // Capitalise first letter for filename
-    var file = e.charAt(0).toUpperCase() + e.slice(1);
-    return '<img src="/static/Emojis/Pets/Deco/'+file+'.png" '+
-        'style="width:'+size+'px;height:'+size+'px;object-fit:contain;vertical-align:middle;margin:0 2px" '+
-        'onerror="this.style.display=\'none\'">';
-}
-
-function _kImg(key, size) {
-    size = size || 14;
-    return '<img src="/static/Emojis/Pets/Equipment/'+key+'.png" '+
-        'style="width:'+size+'px;height:'+size+'px;object-fit:contain;vertical-align:middle;margin:0 2px" '+
-        'onerror="this.style.display=\'none\'">';
-}
-
-function _randVerb(elem) {
-    var verbs = _ELEM_VERBS[(elem||'basic').toLowerCase()] || _ELEM_VERBS.basic;
-    return verbs[Math.floor(Math.random() * verbs.length)];
-}
-
-function buildPlayResult(d, loc, petBefore) {
-    // d = API response, loc = location string, petBefore = pet snapshot before play
-    var pet      = d.pet || petBefore || {};
-    var petName  = escHtml(pet.name || 'Your pet');
-    var elem1    = (pet.element  || 'basic').toLowerCase();
-    var elem2    = (pet.element2 || '').toLowerCase();
-    var xp       = d.xp || 0;
-    var locKey   = _LOC_EMOJI_KEY[loc] || 'camping';
-    var locImg   = '<img src="/static/Emojis/Pets/Deco/'+locKey+'.png" style="width:16px;height:16px;object-fit:contain;vertical-align:middle;margin:0 2px" onerror="this.style.display=\'none\'">';
-
-    // Determine keys awarded by diffing inventory (or fall back to parsing outcome)
-    // We detect keys from the outcome string since the API doesn't return them separately
-    var keysAwarded = [];
-    var raw = d.outcome || '';
-    ['Key3','Key2','Key1'].forEach(function(k) {
-        // Count occurrences of each key name in the outcome
-        var re = new RegExp(k, 'g');
-        var matches = raw.match(re);
-        if (matches) keysAwarded.push({name: k, count: matches.length});
-    });
-
-    // Build the activity description line
-    var actLine = '';
-    if (elem2 && elem2 !== 'basic' && elem2 !== elem1) {
-        actLine = petName + ' ' + _randVerb(elem1) + ' ' +
-            _eImg(elem1) + ' and ' + _randVerb(elem2) + ' ' + _eImg(elem2) +
-            ' at ' + locImg + ' <strong>' + escHtml(loc) + '</strong>';
-    } else {
-        actLine = petName + ' ' + _randVerb(elem1) + ' ' + _eImg(elem1) +
-            ' at ' + locImg + ' <strong>' + escHtml(loc) + '</strong>';
-    }
-
-    // XP line
-    var xpLine = '✨ Gained <strong style="color:var(--gold-primary)">' + xp.toLocaleString() + ' XP</strong>';
-
-    // Key lines
-    var keyLines = keysAwarded.map(function(k) {
-        return _kImg(k.name) + ' Looted <strong>' + k.name + '</strong>' + (k.count > 1 ? ' ×' + k.count : '');
-    }).join('<br>');
-
-    // Level up line
-    var lvlLine = '';
-    if (d.level_up) {
-        lvlLine = '🎉 <strong style="color:var(--gold-primary)">Level Up!</strong> Now level ' + d.level_up.new_level + '!';
-    }
-
-    var lines = [actLine, keyLines, xpLine, lvlLine].filter(Boolean).join('<br>');
-
-    return '<div class="mp-battle-card" style="border-color:rgba(39,174,96,0.4);font-size:0.82rem;line-height:1.8;color:var(--text-secondary)">'+lines+'</div>';
-}
-
 window._mpTab = function(tab) {
-    ['train','mission','play','quest','market','absorb','abilities','battle','rename','kill'].forEach(function(t) {
+    ['breakdown','abilities','inventory','reforge','market','train','mission','play','quest','rename','kill'].forEach(function(t) {
         var btn = el('tab-'+t), panel = el('panel-'+t);
         if (btn)   btn.classList.toggle('active', t===tab);
         if (panel) panel.style.display = t===tab ? '' : 'none';
     });
-    
-    // Load content for abilities and battle settings tabs when they're opened
-    if (tab === 'abilities') {
-        loadAbilitiesContent();
-    } else if (tab === 'battle') {
-        loadBattleSettingsContent();
-    } else if (tab === 'absorb') {
-        _mpLoadAbsorb();
+    // Load ability tree inline when switching to the abilities tab
+    if (tab === 'abilities' && window.AbilityTree) {
+        // Ensure the mount div is visible before rendering
+        var mount = el('at-inline-mount');
+        if (mount) mount.style.display = 'block';
+        window.AbilityTree.openInline('at-inline-mount');
     }
 };
 
 // ── selection state ───────────────────────────────────────────────────────────
 var _trainDiff   = 'Easy';
-var _trainStat   = '';
 var _missionDiff = 'Easy';
 var _playLoc     = '';
-
-window._mpSelectTrainStat = function(s) {
-    _trainStat = s;
-    ['ATT','DEF','INT','DEX','HAP','ENE'].forEach(function(x) {
-        var el2 = el('train-stat-'+x);
-        if (el2) el2.style.borderColor = x===s ? 'var(--gold-primary)' : 'rgba(255,215,0,0.15)';
-        if (el2) el2.style.boxShadow   = x===s ? '0 0 8px var(--gold-glow)' : '';
-    });
-};
 
 window._mpSelectTrain = function(d) {
     _trainDiff = d;
@@ -1193,19 +851,13 @@ function showLevelChangePopup(data, isDown) {
     var glow  = isLevelDown ? 'rgba(231,76,60,0.4)' : 'var(--gold-glow)';
     var bg    = isLevelDown ? 'rgba(231,76,60,0.15)' : 'rgba(255,215,0,0.1)';
 
-    var statHtml = '';
+    var gainsHtml = '';
     if (!isLevelDown && data.gains && Object.keys(data.gains).length) {
-        statHtml = '<div style="margin-top:8px;font-size:0.75rem;color:var(--text-secondary)">';
+        gainsHtml = '<div style="margin-top:8px;font-size:0.75rem;color:var(--text-secondary)">';
         Object.entries(data.gains).forEach(function(kv) {
-            if (kv[1] && kv[1] > 0) statHtml += '<span style="margin-right:8px;color:#2ecc71">+'+kv[1]+' '+kv[0]+'</span>';
+            if (kv[1] && kv[1] !== 0) gainsHtml += '<span style="margin-right:8px">+'+kv[1]+' '+kv[0]+'</span>';
         });
-        statHtml += '</div>';
-    } else if (isLevelDown && data.losses && Object.keys(data.losses).length) {
-        statHtml = '<div style="margin-top:8px;font-size:0.75rem;color:var(--text-secondary)">';
-        Object.entries(data.losses).forEach(function(kv) {
-            if (kv[1] && kv[1] > 0) statHtml += '<span style="margin-right:8px;color:#e74c3c">-'+kv[1]+' '+kv[0]+'</span>';
-        });
-        statHtml += '</div>';
+        gainsHtml += '</div>';
     }
 
     var popup = document.createElement('div');
@@ -1228,7 +880,7 @@ function showLevelChangePopup(data, isDown) {
             'Level <span style="color:var(--text-secondary)">'+data.old_level+'</span>'+
             ' → <span style="color:'+color+';font-weight:700">'+data.new_level+'</span>'+
         '</div>'+
-        statHtml
+        gainsHtml
     );
 
     document.body.appendChild(popup);
@@ -1346,12 +998,10 @@ function _restoreCooldowns() {
 
 
 window._mpTrain = async function() {
-    if (!_trainStat) {
-        showResult('train-result', false, 'Please select a stat to train.');
-        return;
-    }
+    if (!_trainStat) { showResult('train-result', false, 'Please select a stat to train.'); return; }
     var r = el('train-result');
     if (r) r.innerHTML = '<div class="mp-battle-card" style="font-size:0.8rem;color:var(--text-secondary)">Training...</div>';
+    if (window.PetGPP) PetGPP.StateMachine.transition('waiting_server');
     try {
         var res = await fetch('/api/pets/train', {
             method:'POST', headers:{'Content-Type':'application/json'},
@@ -1361,14 +1011,22 @@ window._mpTrain = async function() {
         if (res.status === 429) {
             showResult('train-result', false, d.error || 'On cooldown.');
             _startCooldownTimer('train-btn', 'train-result', d.error);
+            if (window.PetGPP) PetGPP.StateMachine.reset();
         } else if (res.ok) {
             showResult('train-result', d.success, d.outcome);
-            if (d.pet) { _pet = d.pet; renderPetCard(d.pet); }
+            var oldPet = _pet;
+            if (d.pet) { _refreshPet(d.pet); }
+            if (window.PetGPP) {
+                if (d.animation) PetGPP.push(d.animation);
+                if (oldPet && d.pet) PetGPP.pushXpBar(oldPet, d.pet);
+                if (d.level_change) PetGPP.pushLevelChange(d.level_change);
+            }
             _startCooldownTimer('train-btn', 'train-result', null, 5);
         } else {
             showResult('train-result', false, d.error || d.detail || 'Failed');
+            if (window.PetGPP) PetGPP.StateMachine.reset();
         }
-    } catch(e) { showResult('train-result', false, e.message); }
+    } catch(e) { showResult('train-result', false, e.message); if (window.PetGPP) PetGPP.StateMachine.reset(); }
 };
 
 window._mpMission = async function() {
@@ -1376,6 +1034,7 @@ window._mpMission = async function() {
     if (r) r.innerHTML = '<div class="mp-battle-card" style="font-size:0.8rem;color:var(--text-secondary)">Launching mission...</div>';
     var gambleEl = el('mission-gamble');
     var gamble = gambleEl ? parseInt(gambleEl.value||'0',10)||0 : 0;
+    if (window.PetGPP) PetGPP.StateMachine.transition('waiting_server');
     try {
         var res = await fetch('/api/pets/mission', {
             method:'POST', headers:{'Content-Type':'application/json'},
@@ -1385,23 +1044,32 @@ window._mpMission = async function() {
         if (res.status === 429) {
             showResult('mission-result', false, d.error || 'On cooldown.');
             _startCooldownTimer('mission-btn', 'mission-result', d.error);
+            if (window.PetGPP) PetGPP.StateMachine.reset();
         } else if (res.ok) {
             showResult('mission-result', d.success, d.outcome);
-            if (d.pet) { _pet = d.pet; renderPetCard(d.pet); }
+            var oldPet = _pet;
+            if (d.pet) { _refreshPet(d.pet); }
+            if (window.PetGPP) {
+                if (d.animation) PetGPP.push(d.animation);
+                if (oldPet && d.pet) PetGPP.pushXpBar(oldPet, d.pet);
+                if (d.level_up)   PetGPP.pushLevelChange(d.level_up);
+                if (d.level_down) PetGPP.pushLevelChange(d.level_down);
+            }
             if (d.level_up) showLevelChangePopup(d.level_up, false);
             else if (d.level_down) showLevelChangePopup(d.level_down, true);
             _startCooldownTimer('mission-btn', 'mission-result', null, 5);
         } else {
             showResult('mission-result', false, d.error || d.detail || 'Failed');
+            if (window.PetGPP) PetGPP.StateMachine.reset();
         }
-    } catch(e) { showResult('mission-result', false, e.message); }
+    } catch(e) { showResult('mission-result', false, e.message); if (window.PetGPP) PetGPP.StateMachine.reset(); }
 };
-
 window._mpPlay = async function() {
     if (!_playLoc) { showResult('play-result', false, 'Please select a location first.'); return; }
     var r = el('play-result');
     if (r) r.innerHTML = '<div class="mp-battle-card" style="font-size:0.8rem;color:var(--text-secondary)">Playing...</div>';
     var petSnapshot = _pet || {};
+    if (window.PetGPP) PetGPP.StateMachine.transition('waiting_server');
     try {
         var res = await fetch('/api/pets/play', {
             method:'POST', headers:{'Content-Type':'application/json'},
@@ -1411,16 +1079,24 @@ window._mpPlay = async function() {
         if (res.status === 429) {
             showResult('play-result', false, d.error || 'On cooldown.');
             _startCooldownTimer('play-btn', 'play-result', d.error);
+            if (window.PetGPP) PetGPP.StateMachine.reset();
         } else if (res.ok) {
             var resultEl = el('play-result');
             if (resultEl) resultEl.innerHTML = buildPlayResult(d, _playLoc, petSnapshot);
-            if (d.pet) { _pet = d.pet; renderPetCard(d.pet); }
+            var oldPet = _pet;
+            if (d.pet) { _refreshPet(d.pet); }
+            if (window.PetGPP) {
+                if (d.animation) PetGPP.push(d.animation);
+                if (oldPet && d.pet) PetGPP.pushXpBar(oldPet, d.pet);
+                if (d.level_up) PetGPP.pushLevelChange(d.level_up);
+            }
             if (d.level_up) showLevelChangePopup(d.level_up, false);
             _startCooldownTimer('play-btn', 'play-result', null, 5);
         } else {
             showResult('play-result', false, d.error || d.detail || 'Failed');
+            if (window.PetGPP) PetGPP.StateMachine.reset();
         }
-    } catch(e) { showResult('play-result', false, e.message); }
+    } catch(e) { showResult('play-result', false, e.message); if (window.PetGPP) PetGPP.StateMachine.reset(); }
 };
 
 // ── Quest state & handlers ────────────────────────────────────────────────────
@@ -1657,6 +1333,9 @@ window._mpQuestBattleTurn = async function(action) {
         _questBattleState.turn   = d.turn;
         _questBattleState.over   = d.over;
 
+        // ── GPP: push battle animation events ─────────────────────────────────
+        if (window.PetGPP && d.animations) PetGPP.push(d.animations);
+
         // Update HP bars and log
         _renderQuestBattleArena();
         var log = el('quest-battle-log');
@@ -1728,7 +1407,13 @@ function _renderQuestDone(d) {
     html += '</div>';
     html += '<button class="mp-adopt-btn" onclick="window._mpQuestReset()" style="font-size:0.8rem">⚔️ New Quest</button>';
     r.innerHTML = html;
-    if(d.pet){ _pet=d.pet; renderPetCard(d.pet); }
+    var oldPet = _pet;
+    if(d.pet){ _refreshPet(d.pet); }
+    if (window.PetGPP) {
+        if (oldPet && d.pet) PetGPP.pushXpBar(oldPet, d.pet);
+        if (d.success) PetGPP.Particles.spawnAt('xp_burst',
+            document.querySelector('#my-pet-header .mp-pet-img'), '#ffd700');
+    }
 }
 
 window._mpQuestReset = function() {
@@ -1818,7 +1503,12 @@ window._mpOpenChest = async function() {
                 }
                 html += '</div>';
                 if(r) r.innerHTML = html;
-                if(d.pet){ _pet=d.pet; renderPetCard(d.pet); }
+                var oldPet = _pet;
+                if(d.pet){ _refreshPet(d.pet); }
+                if (window.PetGPP) {
+                    if (d.animation) PetGPP.push(d.animation);
+                    if (oldPet && d.pet) PetGPP.pushXpBar(oldPet, d.pet);
+                }
             });
         } else {
             showResult('lm-result', false, d.detail||d.error||'Failed');
@@ -1935,6 +1625,8 @@ window._mpRename = async function() {
         var d = await r.json();
         if (r.ok && d.success) {
             if (result) result.innerHTML = '<div class="mp-battle-card" style="border-color:rgba(39,174,96,0.4);color:#2ecc71;font-size:0.82rem">✅ Saved! Refreshing...</div>';
+            // ── GPP: flash confirmation ───────────────────────────────────────
+            if (window.PetGPP) PetGPP.Flash.flash('rgba(39,174,96,0.12)', 20);
             setTimeout(function(){ init(); }, 1200);
         } else {
             if (result) result.innerHTML = '<div class="mp-battle-card" style="border-color:rgba(231,76,60,0.4);color:#e74c3c;font-size:0.82rem">❌ '+(d.detail||d.error||'Failed')+'</div>';
@@ -1966,7 +1658,12 @@ window._mpGift = async function() {
         if (r.ok && d.success) {
             if (resultEl) resultEl.innerHTML = '<div class="alert alert-success">🎁 Gifted <strong>' + escHtml(d.gifted) + '</strong> to <strong>' + escHtml(d.to) + '</strong>!</div>';
             if (itemEl) itemEl.value = '';
-            init(); // refresh pet to show updated inventory
+            // ── GPP: particle burst on gift ───────────────────────────────────
+            if (window.PetGPP) {
+                var petImg = document.querySelector('#my-pet-header .mp-pet-img');
+                PetGPP.Particles.spawnAt('float_up', petImg, '#ffd700');
+            }
+            if (_pet) { _refreshPet(_pet); } else { init(); }
         } else {
             if (resultEl) resultEl.innerHTML = '<div class="alert alert-danger">' + escHtml(d.error || 'Gift failed.') + '</div>';
         }
@@ -1990,6 +1687,8 @@ window._mpKill = async function() {
         var d = await r.json();
         if (r.ok && d.success) {
             if (result) result.innerHTML = '<div class="mp-battle-card" style="border-color:rgba(39,174,96,0.4);color:#2ecc71;font-size:0.82rem">✅ Pet released. Redirecting...</div>';
+            // ── GPP: stop loop, clear queue on kill ───────────────────────────
+            if (window.PetGPP) { PetGPP.EventQueue.clear(); PetGPP.StateMachine.reset(); }
             setTimeout(function(){ init(); }, 1200);
         } else {
             if (result) result.innerHTML = '<div class="mp-battle-card" style="border-color:rgba(231,76,60,0.4);color:#e74c3c;font-size:0.82rem">❌ '+(d.detail||d.error||'Failed')+'</div>';
@@ -1999,114 +1698,221 @@ window._mpKill = async function() {
     }
 };
 
-// Returns {matPair, gemPair, monPair, hatEquipped, hatSpecMatches, fullSet, setMult} for a pet's equipment
+// Returns the new-slot-system equipment state.
+// MIRRORS pet_brain.py StatsCalculator._calculate_equipment_bonuses + get_equipment_xp_multiplier.
+//   Main slots:     Helmet, Armor, Boots, Ring, Shield, Weapon  (1 each)
+//   Ring sub-slots: Material (1), Monsters (2), Gems (2)
+//   Set match:      Helmet+Armor+Boots+Shield+Weapon all share `set` tag (Ring excluded)
+//   ringSubBonus:   +1 matching monsters, +1 matching gems, +1 material equipped
+//   baseMult:       mainFilled + (set ? 3 : 0) + ringSubBonus + levelBonus  (min 1)
+//   fullSet:        matchingSet AND ring AND material AND matchingMonsters AND matchingGems
+//   finalMult:      baseMult * 2 if fullSet else baseMult
 function getEquipSetState(pet) {
     var eq    = pet.equipment || {};
-    var specs = (pet.specializations || pet.Spec || []).map(function(s){ return s.toUpperCase(); });
     var level = parseInt(pet.level || 1, 10);
     var levelBonus = Math.floor(level / 50);
 
-    var matCounts = {}, gemCounts = {}, monCounts = {};
-    (Array.isArray(eq.Material) ? eq.Material : (eq.Material && eq.Material.name ? [eq.Material] : []))
-        .forEach(function(m){ if(m&&m.name){ var n=m.name.toLowerCase(); matCounts[n]=(matCounts[n]||0)+1; } });
-    (eq.Gems||[]).forEach(function(g){ if(g&&g.name){ var n=g.name.toLowerCase(); gemCounts[n]=(gemCounts[n]||0)+1; } });
-    (eq.Monsters||[]).forEach(function(m){ if(m&&m.name){ var n=m.name.toLowerCase(); monCounts[n]=(monCounts[n]||0)+1; } });
-
-    var matPair = Object.values(matCounts).some(function(c){ return c >= 2; });
-    var gemPair = Object.values(gemCounts).some(function(c){ return c >= 2; });
-    var monPair = Object.values(monCounts).some(function(c){ return c >= 2; });
-
-    var hat = eq.Hat;
-    var hatEquipped = !!(hat && hat.name);
-
-    // Count how many of the hat's bonus stats match a pet spec
-    var hatSpecMatches = 0;
-    if (hatEquipped && specs.length) {
-        var hatData = getEquipItem(hat.name);
-        var hatBonuses = (hatData && hatData.bonuses) ? hatData.bonuses : (hat.bonuses || {});
-        Object.keys(hatBonuses).forEach(function(s){
-            if (specs.indexOf(s.toUpperCase()) !== -1) hatSpecMatches++;
-        });
+    function getSingle(key) {
+        var v = eq[key];
+        if (Array.isArray(v)) v = v[0] || null;
+        return (v && v.name) ? v : null;
+    }
+    function getList(key) {
+        var v = eq[key] || [];
+        if (!Array.isArray(v)) v = (v && v.name) ? [v] : [];
+        return v.filter(function(i){ return i && i.name; });
     }
 
-    var fullSet = matPair && gemPair && monPair && hatEquipped;
-    var setMult = fullSet ? (hatSpecMatches >= 2 ? 4 : 3) : 1;
-    var finalMult = setMult + levelBonus;
+    // ── Main slots ────────────────────────────────────────────────────────────
+    var helmet = getSingle('Helmet');
+    var armor  = getSingle('Armor');
+    var boots  = getSingle('Boots');
+    var ring   = getSingle('Ring');
+    var shield = getSingle('Shield');
+    var weapon = getSingle('Weapon');
+    var mainSlots  = [helmet, armor, boots, ring, shield, weapon];
+    var mainFilled = mainSlots.filter(function(s){ return s !== null; });
+
+    // ── Ring sub-slots ────────────────────────────────────────────────────────
+    var material = getSingle('Material');
+    var monsters = getList('Monsters');
+    var gems     = getList('Gems');
+
+    // ── Set matching (Helmet+Armor+Boots+Shield+Weapon; Ring excluded) ───────
+    var setSlots = [helmet, armor, boots, shield, weapon];
+    var setSlotsFilled = setSlots.filter(function(s){ return s !== null; });
+    var setTags = setSlotsFilled.map(function(s){ return s.set || null; }).filter(function(t){ return t; });
+    var matchingSet = (setSlotsFilled.length === 5 && setTags.length === 5 &&
+                       (new Set(setTags)).size === 1);
+
+    // ── Ring sub-slot matching ────────────────────────────────────────────────
+    var monNames = monsters.map(function(m){ return (m.name || '').toLowerCase(); });
+    var gemNames = gems.map(function(g){ return (g.name || '').toLowerCase(); });
+    var matchingMonsters = (monNames.length === 2 && monNames[0] === monNames[1]);
+    var matchingGems     = (gemNames.length === 2 && gemNames[0] === gemNames[1]);
+    var hasMaterial      = material !== null;
+    var ringSubBonus = (matchingMonsters ? 1 : 0) + (matchingGems ? 1 : 0) + (hasMaterial ? 1 : 0);
+
+    // ── Full set ──────────────────────────────────────────────────────────────
+    var fullSet = (matchingSet && ring !== null &&
+                   hasMaterial && matchingMonsters && matchingGems);
+
+    // ── Multiplier ────────────────────────────────────────────────────────────
+    var slotsFilledBonus = mainFilled.length;
+    var setBonus = matchingSet ? 3 : 0;
+    var baseMult = slotsFilledBonus + setBonus + ringSubBonus + levelBonus;
+    if (baseMult < 1) baseMult = 1;
+    var finalMult = fullSet ? baseMult * 2 : baseMult;
 
     return {
-        matPair: matPair, gemPair: gemPair, monPair: monPair,
-        hatEquipped: hatEquipped, hatSpecMatches: hatSpecMatches,
-        fullSet: fullSet, setMult: setMult, finalMult: finalMult,
-        // legacy alias used by buildEquipped glow logic
-        hatMatchesSpec: hatSpecMatches >= 1
+        // raw slot items
+        helmet: helmet, armor: armor, boots: boots, ring: ring,
+        shield: shield, weapon: weapon,
+        material: material, monsters: monsters, gems: gems,
+        // counts/flags
+        mainFilled: mainFilled.length,
+        matchingSet: matchingSet, setTag: matchingSet ? setTags[0] : null,
+        matchingMonsters: matchingMonsters, matchingGems: matchingGems,
+        hasMaterial: hasMaterial, ringSubBonus: ringSubBonus,
+        fullSet: fullSet,
+        levelBonus: levelBonus,
+        slotsFilledBonus: slotsFilledBonus, setBonus: setBonus,
+        baseMult: baseMult, finalMult: finalMult
     };
 }
 
 function buildEquipped(pet) {
-    var eq = pet.equipment||{};
+    var eq = pet.equipment || {};
     var state = getEquipSetState(pet);
 
-    var slots = [
-        {type:'Monsters',idx:0,label:'Monster 1'},{type:'Gems',idx:0,label:'Gem 1'},
-        {type:'Material',idx:0,label:'Material 1'},{type:'Hat',label:'Hat'},
-        {type:'Material',idx:1,label:'Material 2'},{type:'Gems',idx:1,label:'Gem 2'},
-        {type:'Monsters',idx:1,label:'Monster 2'}
+    // ── Row 1: main gear slots ────────────────────────────────────────────────
+    var row1 = [
+        {key:'Helmet', label:'Helmet'},
+        {key:'Armor',  label:'Armor'},
+        {key:'Boots',  label:'Boots'},
+        {key:'Ring',   label:'Ring'},
+        {key:'Shield', label:'Shield'},
+        {key:'Weapon', label:'Weapon'}
     ];
-    var html = '<div class="mp-section-title">Equipped</div><div class="d-flex flex-wrap gap-1 mb-1" style="padding-bottom:18px">';
-    slots.forEach(function(sl) {
-        var item = sl.type==='Hat' ? (eq.Hat||null) : ((eq[sl.type]||[])[sl.idx]||null);
-        var isEmpty = !item || !item.name;
-        var f = isEmpty ? 'Basic.png' : equipImgFile(item);
-        var src = isEmpty ? '/static/Emojis/Pets/Deco/Basic.png' : '/static/Emojis/Pets/Equipment/'+f;
+    // ── Row 2: ring sub-slots ─────────────────────────────────────────────────
+    var row2 = [
+        {key:'Monsters', idx:0, label:'Monster 1'},
+        {key:'Gems',     idx:0, label:'Gem 1'},
+        {key:'Material', idx:-1, label:'Material'},
+        {key:'Gems',     idx:1, label:'Gem 2'},
+        {key:'Monsters', idx:1, label:'Monster 2'}
+    ];
+
+    function getItem(sl) {
+        if (sl.idx === undefined || sl.idx === -1) {
+            var v = eq[sl.key];
+            if (Array.isArray(v)) v = v[0] || null;
+            return (v && v.name) ? v : null;
+        }
+        var arr = eq[sl.key] || [];
+        if (!Array.isArray(arr)) arr = (arr && arr.name) ? [arr] : [];
+        return (arr[sl.idx] && arr[sl.idx].name) ? arr[sl.idx] : null;
+    }
+
+    function glowClass(sl, item) {
+        if (!item) return '';
+        if (state.fullSet) return ' equip-fullset';
+        // Row 1 main slots
+        if (sl.idx === undefined || sl.idx === -1) {
+            if (sl.key !== 'Ring' && state.matchingSet &&
+                ['Helmet','Armor','Boots','Shield','Weapon'].indexOf(sl.key) !== -1) return ' equip-pair';
+            if (sl.key === 'Ring' && state.ringSubBonus > 0) return ' equip-pair';
+        }
+        // Row 2 ring sub-slots
+        if (sl.key === 'Monsters' && state.matchingMonsters) return ' equip-pair';
+        if (sl.key === 'Gems'     && state.matchingGems)     return ' equip-pair';
+        if (sl.key === 'Material' && state.hasMaterial)      return ' equip-pair';
+        return '';
+    }
+
+    function renderSlot(sl, isRingSub) {
+        var item    = getItem(sl);
+        var isEmpty = !item;
+        var f       = isEmpty ? 'Basic.png' : equipImgFile(item);
+        var src     = isEmpty ? '/static/Emojis/Pets/Deco/Basic.png' : '/static/Emojis/Pets/Equipment/' + f;
+        var ringRequired = isRingSub;
+        var ringMissing  = ringRequired && !state.ring;
+        var subCls = isRingSub ? ' equip-ring-sub' : '';
 
         if (isEmpty) {
-            html += '<div class="mp-equip-slot empty" title="'+sl.label+' (empty)">'+
-                '<img src="'+src+'">'+
-                '<span class="mp-slot-label">'+sl.label+'</span></div>';
-        } else {
-            var data = getEquipItem(item.name);
-            var tip = item.name+' — '+bonusTooltip(data||item)+' (click to unequip)';
-            var unequipSlot = sl.type === 'Material' ? 'Material' : sl.type;
-
-            // Determine glow tier for this slot
-            var glowClass = '';
-            if (state.fullSet) {
-                glowClass = ' equip-fullset';
-            } else {
-                var isPair = (sl.type === 'Monsters' && state.monPair) ||
-                             (sl.type === 'Gems'     && state.gemPair) ||
-                             (sl.type === 'Material' && state.matPair) ||
-                             (sl.type === 'Hat'      && state.hatMatchesSpec);
-                if (isPair) glowClass = ' equip-pair';
-            }
-
-            html += '<div class="mp-equip-slot mp-equip-filled'+glowClass+'" title="'+escHtml(tip)+'" '+
-                'onclick="window._mpUnequipSlot('+escArg(unequipSlot)+')" style="cursor:pointer"'+
-                ' data-hover-item="'+escHtml(item.name)+'">'+
-                '<img src="'+src+'" onerror="this.src=\'/static/Emojis/Pets/Deco/Basic.png\'">'+
-                '<span class="mp-slot-label">'+escHtml(item.name)+'</span></div>';
+            var emptyLabel = ringMissing ? sl.label + ' (need Ring)' : sl.label + ' (empty)';
+            return '<div class="mp-equip-slot empty' + subCls + '" title="' + escHtml(emptyLabel) + '">' +
+                '<img src="' + src + '">' +
+                '</div>';
         }
-    });
-    return html + '</div>';
+
+        var data        = getEquipItem(item.name);
+        var tip         = item.name + ' — ' + bonusTooltip(data || item) + ' (click to unequip)';
+        var gc          = glowClass(sl, item);
+        var unequipSlot = sl.key;  // server accepts Helmet/Armor/Boots/Ring/Shield/Weapon/Material/Gems/Monsters/Hat
+
+        return '<div class="mp-equip-slot mp-equip-filled' + gc + subCls + '" title="' + escHtml(tip) + '" ' +
+            'onclick="window._mpUnequipSlot(' + escArg(unequipSlot) + ')" style="cursor:pointer"' +
+            ' data-hover-item="' + escHtml(item.name) + '">' +
+            '<img src="' + src + '" onerror="this.src=\'/static/Emojis/Pets/Deco/Basic.png\'">' +
+            '</div>';
+    }
+
+    // ── Render ────────────────────────────────────────────────────────────────
+    var html = '<div class="mp-section-title">Equipped</div>';
+
+    // Row 1 — main gear
+    html += '<div class="d-flex flex-wrap gap-1 mb-1">';
+    row1.forEach(function(sl){ html += renderSlot(sl, false); });
+    html += '</div>';
+
+    // Row 2 — ring sub-slots (always shown so user can see what they're missing)
+    var ringLabel = state.ring
+        ? '<span style="font-size:0.58rem;color:var(--gold-secondary);opacity:0.75">💍 Ring sub-slots</span>'
+        : '<span style="font-size:0.58rem;color:var(--text-secondary);opacity:0.55">💍 Ring sub-slots (equip a Ring first)</span>';
+    html += '<div style="margin-top:2px">' + ringLabel +
+        '<div class="d-flex flex-wrap gap-1 mt-1">';
+    row2.forEach(function(sl){ html += renderSlot(sl, true); });
+    html += '</div></div>';
+
+    return html;
 }
 
 function buildInventoryCollapsible(pet) {
     var inv = pet.inventory||[];
     var eq  = pet.equipment||{};
 
-    // Build a set of equipped item names for glow + label
+    // ── Build a set of equipped item names for glow + label ───────────────────
+    // Covers both the new slot system and legacy slots.
     var equippedNames = {};
+    function _mark(name) {
+        if (!name) return;
+        var k = name.toLowerCase();
+        equippedNames[k] = (equippedNames[k]||0) + 1;
+    }
+    // New main slots (single-item each)
+    ['Helmet','Armor','Boots','Ring','Shield','Weapon'].forEach(function(k){
+        var v = eq[k];
+        if (Array.isArray(v)) v = v[0] || null;
+        if (v && v.name) _mark(v.name);
+    });
+    // Ring sub-slots + legacy
     var mat = eq.Material;
-    if (mat && mat.name) equippedNames[mat.name.toLowerCase()] = (equippedNames[mat.name.toLowerCase()]||0)+1;
-    (Array.isArray(eq.Material) ? eq.Material : []).forEach(function(m){ if(m&&m.name) equippedNames[m.name.toLowerCase()]=(equippedNames[m.name.toLowerCase()]||0)+1; });
-    if (eq.Hat && eq.Hat.name) equippedNames[eq.Hat.name.toLowerCase()] = (equippedNames[eq.Hat.name.toLowerCase()]||0)+1;
-    (eq.Gems||[]).forEach(function(g){ if(g&&g.name) equippedNames[g.name.toLowerCase()]=(equippedNames[g.name.toLowerCase()]||0)+1; });
-    (eq.Monsters||[]).forEach(function(m){ if(m&&m.name) equippedNames[m.name.toLowerCase()]=(equippedNames[m.name.toLowerCase()]||0)+1; });
+    if (mat && !Array.isArray(mat) && mat.name) _mark(mat.name);
+    (Array.isArray(eq.Material) ? eq.Material : []).forEach(function(m){ if(m&&m.name) _mark(m.name); });
+    if (eq.Hat && eq.Hat.name) _mark(eq.Hat.name);
+    (eq.Gems||[]).forEach(function(g){ if(g&&g.name) _mark(g.name); });
+    (eq.Monsters||[]).forEach(function(m){ if(m&&m.name) _mark(m.name); });
+
+    // Item types that can be equipped via /api/pets/equip
+    var EQUIPPABLE_TYPES = ['Hat','Material','Gem','Monster',
+                            'Helmet','Armor','Boots','Ring','Shield',
+                            'Dagger','Katana','Sword','Axe','Hammer','Bow'];
 
     // Count how many of each equippable item the user has in inventory
     var invCounts = {};
     inv.forEach(function(item){
-        if (['Hat','Material','Gem','Monster'].indexOf(item.type||'') !== -1) {
+        if (EQUIPPABLE_TYPES.indexOf(item.type||'') !== -1) {
             var k = item.name.toLowerCase();
             invCounts[k] = (invCounts[k]||0) + (item.count||1);
         }
@@ -2130,14 +1936,24 @@ function buildInventoryCollapsible(pet) {
     inv.forEach(function(item){ var t=item.type||'Other'; if(!grouped[t])grouped[t]=[]; grouped[t].push(item); });
 
     var content = '<div id="' + uid + '" class="mp-collapse-body" style="display:' + (isOpen ? '' : 'none') + '">';
-    ['Hat','Potion','Material','Gem','Monster','Key','Chest','Other'].forEach(function(t) {
+    // Display order: main gear first, then ring sub-slots, then consumables/loot
+    var CATEGORY_ORDER = ['Helmet','Armor','Boots','Ring','Shield',
+                          'Dagger','Katana','Sword','Axe','Hammer','Bow',
+                          'Hat','Material','Gem','Monster',
+                          'Potion','Key','Chest','Other'];
+    // Types that are stored in single-slot equipment slots (Material is single in new system,
+    // Hat is single, but Gem/Monster allow up to 2 on the ring)
+    var SINGLE_SLOT = ['Hat','Helmet','Armor','Boots','Ring','Shield',
+                       'Dagger','Katana','Sword','Axe','Hammer','Bow','Material'];
+
+    CATEGORY_ORDER.forEach(function(t) {
         if (!grouped[t]) return;
         content += '<div style="font-size:0.68rem;color:var(--gold-secondary);font-weight:700;margin:5px 0 3px">'+t+'s</div>';
         content += '<div class="d-flex flex-wrap gap-1 mb-1">';
         grouped[t].forEach(function(item) {
             var f = equipImgFile(item);
             var rcClass = 'rc-'+(item.rarity||'Common').toLowerCase();
-            var isEquippable = ['Hat','Material','Gem','Monster'].indexOf(t) !== -1;
+            var isEquippable = EQUIPPABLE_TYPES.indexOf(t) !== -1;
             var isPotion     = t === 'Potion';
             var isChest      = t === 'Chest';
             var clickable    = isEquippable || isPotion || isChest;
@@ -2148,9 +1964,10 @@ function buildInventoryCollapsible(pet) {
 
             // Determine action label and equip count to send
             var action = isPotion ? 'Use' : (isChest ? 'Open' : (isEquipped ? 'Equipped' : 'Equip'));
-            // For equippable multi-slot types: if user has ≥2 in inventory and 0 equipped, equip both
+            // Multi-slot types (Gems/Monsters): if 0 equipped and ≥2 in inventory, equip both
             var equipCount = 1;
-            if (!isPotion && isEquippable && t !== 'Hat' && invCount >= 2 && eqCount === 0) {
+            if (!isPotion && isEquippable && SINGLE_SLOT.indexOf(t) === -1 &&
+                invCount >= 2 && eqCount === 0) {
                 equipCount = 2;
                 action = 'Equip Both';
             }
@@ -2183,6 +2000,491 @@ function buildInventoryCollapsible(pet) {
     return header + content + '</div>';
 }
 
+function buildInventoryPanel(pet) {
+    var inv = pet.inventory||[];
+    var eq  = pet.equipment||{};
+
+    // ── Build a set of equipped item names for glow + label ───────────────────
+    var equippedNames = {};
+    function _mark(name) {
+        if (!name) return;
+        var k = name.toLowerCase();
+        equippedNames[k] = (equippedNames[k]||0) + 1;
+    }
+    ['Helmet','Armor','Boots','Ring','Shield','Weapon'].forEach(function(k){
+        var v = eq[k];
+        if (Array.isArray(v)) v = v[0] || null;
+        if (v && v.name) _mark(v.name);
+    });
+    var mat = eq.Material;
+    if (mat && !Array.isArray(mat) && mat.name) _mark(mat.name);
+    (Array.isArray(eq.Material) ? eq.Material : []).forEach(function(m){ if(m&&m.name) _mark(m.name); });
+    if (eq.Hat && eq.Hat.name) _mark(eq.Hat.name);
+    (eq.Gems||[]).forEach(function(g){ if(g&&g.name) _mark(g.name); });
+    (eq.Monsters||[]).forEach(function(m){ if(m&&m.name) _mark(m.name); });
+
+    var EQUIPPABLE_TYPES = ['Hat','Material','Gem','Monster',
+                            'Helmet','Armor','Boots','Ring','Shield',
+                            'Dagger','Katana','Sword','Axe','Hammer','Bow'];
+    var SINGLE_SLOT = ['Hat','Helmet','Armor','Boots','Ring','Shield',
+                       'Dagger','Katana','Sword','Axe','Hammer','Bow','Material'];
+
+    var CATEGORY_ORDER = ['Helmet','Armor','Boots','Ring','Shield',
+                          'Dagger','Katana','Sword','Axe','Hammer','Bow',
+                          'Hat','Material','Gem','Monster',
+                          'Potion','Key','Chest','Other'];
+
+    var CATEGORY_LABELS = {
+        Helmet:'Helmets', Armor:'Armor', Boots:'Boots', Ring:'Rings', Shield:'Shields',
+        Dagger:'Daggers', Katana:'Katanas', Sword:'Swords', Axe:'Axes', Hammer:'Hammers', Bow:'Bows',
+        Hat:'Hats', Material:'Materials', Gem:'Gems', Monster:'Monsters',
+        Potion:'Potions', Key:'Keys', Chest:'Chests', Other:'Other'
+    };
+
+    var html = '<div class="mp-section-title">🎒 Inventory <span style="font-size:0.65rem;color:var(--text-secondary)">(' + inv.length + ' items)</span></div>';
+    if (!inv.length) return html + '<div class="mp-empty-state" style="padding:8px">Inventory is empty.</div>';
+
+    // Group items by type
+    var grouped = {};
+    inv.forEach(function(item){
+        var t = item.type||'Other';
+        if (!grouped[t]) grouped[t] = [];
+        grouped[t].push(item);
+    });
+
+    // ── Loot bar — Keys + Chests always visible at top, no collapse ──────────
+    var keyItems   = grouped['Key']   || [];
+    var chestItems = grouped['Chest'] || [];
+    if (keyItems.length || chestItems.length) {
+        var totalLoot = keyItems.reduce(function(s,i){ return s+(i.count||1); }, 0) +
+                        chestItems.reduce(function(s,i){ return s+(i.count||1); }, 0);
+        html += '<div class="mp-inv-keys-bar mb-2">';
+        html += '<div style="font-size:0.65rem;color:var(--text-secondary);font-weight:600;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px">🗝️ Loot <span style="color:rgba(255,215,0,0.4);font-weight:400">' + totalLoot + ' items</span></div>';
+        html += '<div class="d-flex flex-wrap gap-2">';
+
+        // Keys first
+        keyItems.forEach(function(item) {
+            var f     = equipImgFile(item);
+            var count = item.count || 1;
+            html += '<div class="mp-key-badge" title="' + escHtml(item.name) + ' ×' + count + '">' +
+                '<img src="/static/Emojis/Pets/Equipment/' + f + '" onerror="this.src=\'/static/Emojis/Pets/Deco/Basic.png\'">' +
+                '<span class="mp-key-badge-count">×' + count + '</span>' +
+                '<span class="mp-key-badge-name">' + escHtml(item.name) + '</span>' +
+                '</div>';
+        });
+
+        // Chests — clickable to open
+        var CHEST_COLORS = { chest1:'#9e9e9e', chest2:'#4caf50', chest3:'#2196f3', chest4:'#ff9800' };
+        chestItems.forEach(function(item) {
+            var f     = equipImgFile(item);
+            var count = item.count || 1;
+            var chestKey = item.name.toLowerCase().replace(/\s/g,'');
+            var chestColor = CHEST_COLORS[chestKey] || '#ffd700';
+            html += '<div class="mp-key-badge mp-inv-clickable" ' +
+                'style="border-color:' + chestColor + '40;cursor:pointer" ' +
+                'title="' + escHtml(item.name) + ' ×' + count + ' — Click to open" ' +
+                'onclick="window._mpInvClick(' + escArg(item.name) + ',\'Chest\',\'Open\',1,' + escArg(item.rarity||'Common') + ',' + count + ')">' +
+                '<img src="/static/Emojis/Pets/Equipment/' + f + '" onerror="this.src=\'/static/Emojis/Pets/Deco/Basic.png\'">' +
+                '<span class="mp-key-badge-count" style="color:' + chestColor + '">×' + count + '</span>' +
+                '<span class="mp-key-badge-name">' + escHtml(item.name) + '</span>' +
+                '</div>';
+        });
+
+        html += '</div></div>';
+    }
+
+    CATEGORY_ORDER.forEach(function(t) {
+        if (!grouped[t]) return;
+        // Keys and Chests are shown in the Loot bar above — skip them here
+        if (t === 'Key' || t === 'Chest') return;
+        var items = grouped[t];
+        var bodyId = 'inv-body-' + t.toLowerCase();
+        var chevId = 'inv-chev-' + t.toLowerCase();
+        var label  = CATEGORY_LABELS[t] || (t + 's');
+        var count  = items.reduce(function(s, i){ return s + (i.count||1); }, 0);
+
+        // ALL sections start collapsed
+        var startOpen = false;
+
+        html += '<div class="mp-inv-section">';
+        html += '<div class="mp-inv-section-header" onclick="mpToggleCollapse(\''+bodyId+'\',\''+chevId+'\')">' +
+            '<span style="font-size:0.72rem;color:var(--gold-secondary);font-weight:700">'+label+'</span>' +
+            '<div style="display:flex;align-items:center;gap:6px">' +
+            '<span class="mp-inv-count-badge">'+count+'</span>' +
+            '<span class="mp-chev '+(startOpen?'mp-chev-open':'mp-chev-collapsed')+'" id="'+chevId+'">▼</span>' +
+            '</div></div>';
+
+        html += '<div id="'+bodyId+'" class="mp-inv-grid" style="'+(startOpen?'':'display:none')+'">';
+
+        items.forEach(function(item) {
+            var f = equipImgFile(item);
+            var rcClass = 'rc-'+(item.rarity||'Common').toLowerCase();
+            var isEquippable = EQUIPPABLE_TYPES.indexOf(t) !== -1;
+            var isPotion     = t === 'Potion';
+            var isChest      = t === 'Chest';
+            var clickable    = isEquippable || isPotion || isChest;
+
+            var eqCount  = equippedNames[item.name.toLowerCase()]||0;
+            var invCount = item.count||1;
+            var isEquipped = eqCount > 0;
+
+            // Reforge info
+            var isReforged   = !!(item.reforged);
+            var reforgeLevel = isReforged ? (parseInt(item.reforge_level||0,10)) : 0;
+
+            var action = isPotion ? 'Use' : (isChest ? 'Open' : (isEquipped ? 'Equipped' : 'Equip'));
+            var equipCount = 1;
+            if (!isPotion && isEquippable && SINGLE_SLOT.indexOf(t) === -1 &&
+                invCount >= 2 && eqCount === 0) {
+                equipCount = 2;
+                action = 'Equip Both';
+            }
+
+            // Resolve bonuses — reforged items carry their own bonuses; plain items use catalog
+            var bonuses = {};
+            if (isReforged && item.bonuses && Object.keys(item.bonuses).length) {
+                bonuses = item.bonuses;
+            } else {
+                var catalogData = getEquipItem(item.name);
+                if (catalogData && catalogData.bonuses) bonuses = catalogData.bonuses;
+            }
+
+            var onclick = clickable ? ' onclick="window._mpInvClick('+escArg(item.name)+','+escArg(t)+','+escArg(action)+','+equipCount+','+escArg(item.rarity||'Common')+','+invCount+')"' : '';
+            var glowStyle = isEquipped ? 'border-color:rgba(255,215,0,0.6);box-shadow:0 0 8px rgba(255,215,0,0.25);' : '';
+            var reforgeGlow = isReforged ? 'border-color:rgba(168,85,247,0.5);box-shadow:0 0 8px rgba(168,85,247,0.2);' : '';
+
+            html += '<div class="mp-inv-panel-item'+(clickable?' mp-inv-clickable':'')+'" style="'+glowStyle+reforgeGlow+'"'+onclick+
+                ' data-hover-item="'+escHtml(item.name)+'">';
+
+            // Image + equipped badge
+            html += '<div class="mp-inv-panel-img-wrap">';
+            html += '<img class="mp-inv-panel-img" src="/static/Emojis/Pets/Equipment/'+f+'" onerror="this.src=\'/static/Emojis/Pets/Deco/Basic.png\'">';
+            if (isEquipped) {
+                html += '<div class="mp-inv-equipped-badge" title="Equipped">E</div>';
+            }
+            if (isReforged) {
+                html += '<div style="position:absolute;bottom:-4px;left:-4px;background:rgba(168,85,247,0.9);color:#fff;font-size:0.5rem;font-weight:900;border-radius:4px;padding:1px 4px;white-space:nowrap">Lv.'+reforgeLevel+'</div>';
+            }
+            html += '</div>';
+
+            // Name + rarity
+            html += '<div class="mp-inv-panel-info">';
+            html += '<div class="mp-inv-panel-name '+rcClass+'" title="'+escHtml(item.name)+'">'+escHtml(item.name)+'</div>';
+
+            // Reforge badge
+            if (isReforged) {
+                html += '<div style="font-size:0.6rem;color:#a855f7;font-weight:700;margin-top:1px">⚗️ Reforged Lv.'+reforgeLevel+'</div>';
+            }
+
+            // Rarity dot + label
+            html += '<div class="mp-inv-panel-meta">';
+            html += '<div class="mp-inv-rarity-dot" style="background:'+rc(item.rarity||'Common')+'"></div>';
+            html += '<span style="font-size:0.62rem;color:var(--text-secondary)">'+(item.rarity||'Common')+'</span>';
+            html += '</div>';
+
+            // Bonus chips
+            if (Object.keys(bonuses).length) {
+                html += '<div class="mp-inv-panel-bonuses">';
+                Object.keys(bonuses).forEach(function(stat) {
+                    var val = bonuses[stat];
+                    if (!val) return;
+                    var col = BONUS_COLORS[stat] || '#4caf50';
+                    html += '<span class="mp-inv-bonus-chip" style="color:'+col+';background:'+col+'1a;border-color:'+col+'40">'+stat+': +'+val+'</span>';
+                });
+                html += '</div>';
+            }
+            html += '</div>';
+
+            // Qty + action row
+            html += '<div class="mp-inv-panel-right">';
+            html += '<span class="mp-inv-qty">×'+invCount+'</span>';
+            if (clickable) {
+                var actionColor = isEquipped ? 'var(--gold-secondary)' : (isPotion ? '#ce93d8' : (isChest ? '#ff9800' : '#4caf50'));
+                html += '<span class="mp-inv-action" style="color:'+actionColor+'">'+action+'</span>';
+            }
+            html += '</div>';
+
+            html += '</div>'; // mp-inv-panel-item
+        });
+
+        html += '</div>'; // mp-inv-grid
+        html += '</div>'; // mp-inv-section
+    });
+
+    return html;
+}
+
+// ── Reforge Panel ─────────────────────────────────────────────────────────────
+// State for the reforge UI
+var _rfCandidates   = null;  // { reforge_candidates, sacrifice_candidates }
+var _rfItem         = null;  // selected item to reforge
+var _rfSacrifices   = [];    // up to 3 selected sacrifice items
+var _rfStats        = [];    // up to 6 selected stats
+
+function buildReforgePanel(pet) {
+    return '<div class="mp-section-title">⚗️ Reforge</div>' +
+        '<div class="mp-battle-card mb-3" style="font-size:0.82rem;color:var(--text-secondary)">' +
+        'Combine 5 copies of an item to create a more powerful reforged version. ' +
+        'Choose 3 sacrifice items and up to 6 stats to boost. ' +
+        '<span style="color:var(--gold-secondary)">Reforged items have 5× the original stat points distributed across your chosen stats.</span>' +
+        '</div>' +
+        '<button class="mp-adopt-btn" style="font-size:0.78rem;padding:6px 16px;margin-bottom:12px" onclick="window._mpLoadReforge()">🔄 Load Reforge Candidates</button>' +
+        '<div id="reforge-candidates" style="display:none">' +
+            '<div class="mp-breakdown-sub" style="margin-bottom:6px">Step 1 — Select item to reforge (need ≥5 copies)</div>' +
+            '<div id="rf-item-list" class="d-flex flex-wrap gap-2 mb-3"></div>' +
+            '<div class="mp-breakdown-sub" style="margin-bottom:6px">Step 2 — Select 3 sacrifice items</div>' +
+            '<div id="rf-sac-list" class="d-flex flex-wrap gap-2 mb-3"></div>' +
+            '<div class="mp-breakdown-sub" style="margin-bottom:6px">Step 3 — Select stats to boost (1–6)</div>' +
+            '<div class="d-flex gap-2 flex-wrap mb-3" id="rf-stat-list">' +
+            ['ATT','DEF','DEX','INT','HAP','ENE'].map(function(s) {
+                return '<div class="mp-mini-stat-card" style="cursor:pointer;min-width:52px;transition:all 0.2s" id="rf-stat-'+s+'" onclick="window._mpRfToggleStat(\''+s+'\')">' +
+                    '<img src="/static/Emojis/Pets/Deco/'+s+'.png" style="width:20px;height:20px;object-fit:contain;margin-bottom:2px" onerror="this.style.display=\'none\'">' +
+                    '<div class="mp-mini-label">'+s+'</div>' +
+                    '</div>';
+            }).join('') +
+            '</div>' +
+            '<div id="rf-preview" class="mb-3" style="display:none">' +
+                '<div class="mp-breakdown-sub">Preview</div>' +
+                '<div id="rf-preview-body" class="mp-battle-card" style="font-size:0.82rem"></div>' +
+            '</div>' +
+            '<button class="mp-adopt-btn" id="rf-submit-btn" onclick="window._mpDoReforge()" style="display:none">⚗️ Reforge Item</button>' +
+        '</div>' +
+        '<div id="reforge-result" class="mt-3"></div>';
+}
+
+window._mpLoadReforge = function() {
+    var r = el('reforge-result');
+    if (r) r.innerHTML = '<div class="mp-battle-card" style="font-size:0.8rem;color:var(--text-secondary)">Loading candidates...</div>';
+    fetch('/api/pets/forge/eligible-items', { credentials:'include' })
+        .then(function(res){ return res.json(); })
+        .then(function(d) {
+            if (d.error) { if (r) r.innerHTML = '<div class="mp-battle-card" style="color:#e74c3c;font-size:0.82rem">'+escHtml(d.error)+'</div>'; return; }
+            _rfCandidates = d;
+            _rfItem = null; _rfSacrifices = []; _rfStats = [];
+            if (r) r.innerHTML = '';
+            _renderRfCandidates();
+            var panel = el('reforge-candidates');
+            if (panel) panel.style.display = '';
+        })
+        .catch(function(e){ if (r) r.innerHTML = '<div class="mp-battle-card" style="color:#e74c3c;font-size:0.82rem">'+escHtml(e.message)+'</div>'; });
+};
+
+function _renderRfCandidates() {
+    if (!_rfCandidates) return;
+    var itemList = el('rf-item-list');
+    var sacList  = el('rf-sac-list');
+    if (!itemList || !sacList) return;
+
+    // Reforge candidates
+    itemList.innerHTML = '';
+    (_rfCandidates.reforge_candidates||[]).forEach(function(item) {
+        var isReforged   = !!(item.reforged);
+        var reforgeLevel = isReforged ? (parseInt(item.reforge_level||0,10)) : 0;
+        var isSelected   = _rfItem && _rfItem.name === item.name && _rfItem.reforge_level === reforgeLevel && !!_rfItem.reforged === isReforged;
+        var f = equipImgFile(item);
+        var bonuses = (isReforged && item.bonuses) ? item.bonuses : ((getEquipItem(item.name)||{}).bonuses||{});
+        var bonusParts = Object.keys(bonuses).map(function(k){ return k+':+'+bonuses[k]; }).join(' ');
+        var totalPts = Object.values(bonuses).reduce(function(s,v){ return s+parseInt(v||0,10); }, 0);
+
+        var div = document.createElement('div');
+        div.className = 'mp-inv-panel-item' + (isSelected ? '' : ' mp-inv-clickable');
+        div.style.cssText = 'min-width:130px;max-width:160px;cursor:pointer;' +
+            (isSelected ? 'border-color:var(--gold-primary);box-shadow:0 0 10px var(--gold-glow);' :
+             isReforged ? 'border-color:rgba(168,85,247,0.4);' : '');
+        div.innerHTML =
+            '<div class="mp-inv-panel-img-wrap">' +
+            '<img class="mp-inv-panel-img" src="/static/Emojis/Pets/Equipment/'+f+'" onerror="this.src=\'/static/Emojis/Pets/Deco/Basic.png\'">' +
+            (isReforged ? '<div style="position:absolute;bottom:-4px;left:-4px;background:rgba(168,85,247,0.9);color:#fff;font-size:0.5rem;font-weight:900;border-radius:4px;padding:1px 4px">Lv.'+reforgeLevel+'</div>' : '') +
+            '</div>' +
+            '<div class="mp-inv-panel-info">' +
+            '<div class="mp-inv-panel-name rc-'+(item.rarity||'Common').toLowerCase()+'" style="font-size:0.72rem">'+escHtml(item.name)+'</div>' +
+            (isReforged ? '<div style="font-size:0.58rem;color:#a855f7;font-weight:700">⚗️ Reforged Lv.'+reforgeLevel+'</div>' : '') +
+            (bonusParts ? '<div style="font-size:0.6rem;color:var(--text-secondary);margin-top:2px">'+escHtml(bonusParts)+'</div>' : '') +
+            '<div style="font-size:0.6rem;color:var(--gold-secondary);margin-top:1px">'+totalPts+' pts → '+(totalPts*5)+' pts</div>' +
+            '</div>' +
+            '<div class="mp-inv-panel-right">' +
+            '<span class="mp-inv-qty">×'+(item.count||1)+'</span>' +
+            '<span class="mp-inv-action" style="color:'+(isSelected?'var(--gold-primary)':'#4caf50')+'">'+(isSelected?'✓ Selected':'Select')+'</span>' +
+            '</div>';
+        div.addEventListener('click', function() {
+            _rfItem = item;
+            _rfItem.reforge_level = reforgeLevel;
+            _renderRfCandidates();
+            _updateRfPreview();
+        });
+        itemList.appendChild(div);
+    });
+    if (!(_rfCandidates.reforge_candidates||[]).length) {
+        itemList.innerHTML = '<div style="font-size:0.78rem;color:var(--text-secondary)">No items with ≥5 copies available.</div>';
+    }
+
+    // Sacrifice candidates
+    sacList.innerHTML = '';
+    (_rfCandidates.sacrifice_candidates||[]).forEach(function(item) {
+        var isSelected = _rfSacrifices.some(function(s){ return s.name === item.name && !!s.reforged === !!item.reforged && (s.reforge_level||0) === (item.reforge_level||0); });
+        var isReforged = !!(item.reforged);
+        var reforgeLevel = isReforged ? (parseInt(item.reforge_level||0,10)) : 0;
+        var f = equipImgFile(item);
+
+        var div = document.createElement('div');
+        div.className = 'mp-inv-panel-item mp-inv-clickable';
+        div.style.cssText = 'min-width:110px;max-width:140px;cursor:pointer;' +
+            (isSelected ? 'border-color:rgba(231,76,60,0.6);box-shadow:0 0 8px rgba(231,76,60,0.2);' :
+             isReforged ? 'border-color:rgba(168,85,247,0.3);' : '');
+        div.innerHTML =
+            '<div class="mp-inv-panel-img-wrap">' +
+            '<img class="mp-inv-panel-img" style="width:36px;height:36px" src="/static/Emojis/Pets/Equipment/'+f+'" onerror="this.src=\'/static/Emojis/Pets/Deco/Basic.png\'">' +
+            (isReforged ? '<div style="position:absolute;bottom:-4px;left:-4px;background:rgba(168,85,247,0.9);color:#fff;font-size:0.5rem;font-weight:900;border-radius:4px;padding:1px 4px">Lv.'+reforgeLevel+'</div>' : '') +
+            '</div>' +
+            '<div class="mp-inv-panel-info">' +
+            '<div class="mp-inv-panel-name rc-'+(item.rarity||'Common').toLowerCase()+'" style="font-size:0.68rem">'+escHtml(item.name)+'</div>' +
+            (isReforged ? '<div style="font-size:0.55rem;color:#a855f7">⚗️ Lv.'+reforgeLevel+'</div>' : '') +
+            '</div>' +
+            '<div class="mp-inv-panel-right">' +
+            '<span class="mp-inv-qty" style="font-size:0.68rem">×'+(item.count||1)+'</span>' +
+            '<span class="mp-inv-action" style="color:'+(isSelected?'#e74c3c':'var(--text-secondary)')+'">'+(isSelected?'✗ Remove':'+ Add')+'</span>' +
+            '</div>';
+        div.addEventListener('click', function() {
+            var idx = _rfSacrifices.findIndex(function(s){ return s.name === item.name && !!s.reforged === !!item.reforged && (s.reforge_level||0) === (item.reforge_level||0); });
+            if (idx !== -1) {
+                _rfSacrifices.splice(idx, 1);
+            } else if (_rfSacrifices.length < 3) {
+                _rfSacrifices.push(item);
+            } else {
+                _showToast('❌ Max 3 sacrifice items', false);
+                return;
+            }
+            _renderRfCandidates();
+            _updateRfPreview();
+        });
+        sacList.appendChild(div);
+    });
+    if (!(_rfCandidates.sacrifice_candidates||[]).length) {
+        sacList.innerHTML = '<div style="font-size:0.78rem;color:var(--text-secondary)">No sacrifice items available.</div>';
+    }
+
+    // Stat buttons
+    ['ATT','DEF','DEX','INT','HAP','ENE'].forEach(function(s) {
+        var btn = el('rf-stat-'+s);
+        if (!btn) return;
+        var sel = _rfStats.indexOf(s) !== -1;
+        btn.style.borderColor = sel ? 'var(--gold-primary)' : 'rgba(255,215,0,0.15)';
+        btn.style.boxShadow   = sel ? '0 0 8px var(--gold-glow)' : '';
+        btn.style.background  = sel ? 'rgba(255,215,0,0.12)' : '';
+    });
+}
+
+window._mpRfToggleStat = function(stat) {
+    var idx = _rfStats.indexOf(stat);
+    if (idx !== -1) {
+        _rfStats.splice(idx, 1);
+    } else if (_rfStats.length < 6) {
+        _rfStats.push(stat);
+    }
+    _renderRfCandidates();
+    _updateRfPreview();
+};
+
+function _updateRfPreview() {
+    var previewDiv = el('rf-preview');
+    var previewBody = el('rf-preview-body');
+    var submitBtn = el('rf-submit-btn');
+    if (!previewDiv || !previewBody) return;
+
+    var ready = _rfItem && _rfSacrifices.length === 3 && _rfStats.length >= 1;
+    if (!ready) {
+        previewDiv.style.display = 'none';
+        if (submitBtn) submitBtn.style.display = 'none';
+        return;
+    }
+
+    // Calculate preview
+    var isReforged = !!_rfItem.reforged;
+    var reforgeLevel = isReforged ? (parseInt(_rfItem.reforge_level||0,10)) : 0;
+    var bonuses = (isReforged && _rfItem.bonuses) ? _rfItem.bonuses : ((getEquipItem(_rfItem.name)||{}).bonuses||{});
+    var totalPts = Object.values(bonuses).reduce(function(s,v){ return s+parseInt(v||0,10); }, 0);
+    var newTotal = totalPts * 5;
+    var perStat  = Math.floor(newTotal / _rfStats.length);
+    var remainder = newTotal % _rfStats.length;
+
+    var newBonuses = {};
+    _rfStats.forEach(function(s, i) { newBonuses[s] = perStat + (i === 0 ? remainder : 0); });
+
+    var newLevel = reforgeLevel + 1;
+    var html = '<div style="font-size:0.78rem;color:var(--text-primary);margin-bottom:6px">' +
+        '<strong style="color:var(--gold-secondary)">'+escHtml(_rfItem.name)+'</strong>' +
+        (isReforged ? ' Lv.'+reforgeLevel : ' (plain)') + ' → ' +
+        '<strong style="color:#a855f7">⚗️ Reforged Lv.'+newLevel+'</strong>' +
+        '</div>' +
+        '<div style="font-size:0.72rem;color:var(--text-secondary);margin-bottom:4px">'+totalPts+' pts × 5 = '+newTotal+' pts across '+_rfStats.length+' stat'+ (_rfStats.length>1?'s':'')+'</div>' +
+        '<div class="d-flex flex-wrap gap-2 mb-2">';
+    Object.keys(newBonuses).forEach(function(s) {
+        var col = BONUS_COLORS[s] || '#4caf50';
+        html += '<span class="mp-inv-bonus-chip" style="color:'+col+';background:'+col+'1a;border-color:'+col+'40;font-size:0.72rem">'+s+': +'+newBonuses[s]+'</span>';
+    });
+    html += '</div>';
+    html += '<div style="font-size:0.7rem;color:var(--text-secondary)">Consumes: 5× '+escHtml(_rfItem.name)+
+        (isReforged?' Lv.'+reforgeLevel:'')+' + '+
+        _rfSacrifices.map(function(s){ return escHtml(s.name)+(s.reforged?' Lv.'+(s.reforge_level||0):''); }).join(', ')+'</div>';
+
+    previewBody.innerHTML = html;
+    previewDiv.style.display = '';
+    if (submitBtn) submitBtn.style.display = '';
+}
+
+window._mpDoReforge = async function() {
+    if (!_rfItem || _rfSacrifices.length !== 3 || _rfStats.length < 1) {
+        showResult('reforge-result', false, 'Please complete all steps first.');
+        return;
+    }
+    var r = el('reforge-result');
+    if (r) r.innerHTML = '<div class="mp-battle-card" style="font-size:0.8rem;color:var(--text-secondary)">Reforging...</div>';
+    var btn = el('rf-submit-btn');
+    if (btn) btn.disabled = true;
+
+    try {
+        var res = await fetch('/api/pets/reforge', {
+            method: 'POST',
+            headers: {'Content-Type':'application/json'},
+            credentials: 'include',
+            body: JSON.stringify({
+                reforge_item: {
+                    name:          _rfItem.name,
+                    type:          _rfItem.type,
+                    reforged:      !!_rfItem.reforged,
+                    reforge_level: parseInt(_rfItem.reforge_level||0,10)
+                },
+                sacrifice_items: _rfSacrifices.map(function(s){ return {name:s.name, type:s.type, reforged:!!s.reforged, reforge_level:parseInt(s.reforge_level||0,10)}; }),
+                target_stats: _rfStats
+            })
+        });
+        var d = await res.json();
+        if (res.ok && d.success) {
+            var bonusParts = Object.keys(d.new_bonuses||{}).map(function(s){ return s+': +'+d.new_bonuses[s]; }).join(', ');
+            var msg = '⚗️ Reforge successful! ' + escHtml(_rfItem.name) + ' → Lv.' + d.reforge_level +
+                (bonusParts ? ' (' + bonusParts + ')' : '');
+            showResult('reforge-result', true, msg);
+            if (d.pet) { _refreshPet(d.pet); }
+            if (window.PetGPP) {
+                if (d.animation) PetGPP.push(d.animation);
+                var petImg = document.querySelector('#my-pet-header .mp-pet-img');
+                PetGPP.Particles.spawnAt('chest_open', petImg, '#a855f7');
+                PetGPP.Flash.flash('rgba(168,85,247,0.2)', 25);
+            }
+            // Reset and reload candidates
+            _rfItem = null; _rfSacrifices = []; _rfStats = [];
+            var panel = el('reforge-candidates');
+            if (panel) panel.style.display = 'none';
+        } else {
+            showResult('reforge-result', false, d.error || d.detail || 'Reforge failed.');
+        }
+    } catch(e) {
+        showResult('reforge-result', false, e.message);
+    } finally {
+        if (btn) btn.disabled = false;
+    }
+};
+
 function fmtXp(n) {
     var abs = Math.abs(n);
     var sign = n < 0 ? '-' : '+';
@@ -2195,48 +2497,239 @@ function fmtXp(n) {
 
 function buildEquipBonus(pet) {
     var state = getEquipSetState(pet);
-    if (!state.matPair && !state.gemPair && !state.monPair && !state.hatEquipped) return '';
+    // Hide if literally nothing is equipped
+    if (state.mainFilled === 0 && !state.hasMaterial &&
+        state.monsters.length === 0 && state.gems.length === 0) return '';
 
-    var multColor = state.fullSet
-        ? (state.hatSpecMatches >= 2 ? '#f59e0b' : '#a855f7')
-        : '#57d9a3';
+    var multColor = state.fullSet ? '#f59e0b'
+                  : state.matchingSet ? '#a855f7'
+                  : '#57d9a3';
 
-    var cardStyle = 'style="flex:0 0 auto;min-width:0;width:52px;padding:4px 6px"';
-    var html = '<div class="d-flex gap-1 mb-2" style="padding:4px 0;flex-wrap:nowrap">';
-    html += '<div class="mp-mini-stat-card" ' + cardStyle + '>' +
-        '<div class="mp-mini-label" style="font-size:0.58rem">Multi</div>' +
-        '<div style="font-size:0.82rem;font-weight:700;color:' + multColor + '">x' + state.finalMult + '</div>' +
+    var cardStyle = 'style="flex:0 0 auto;min-width:0;width:46px;padding:3px 5px"';
+    var html = '<div class="d-flex gap-1 mb-2" style="padding:4px 0;flex-wrap:nowrap;align-items:center">';
+
+    // Multiplier card — shows base × 2 when full-set
+    var multLabel = state.fullSet
+        ? ('x' + state.baseMult + '×2')
+        : ('x' + state.finalMult);
+    html += '<div class="mp-mini-stat-card" ' + cardStyle +
+        ' title="slots(' + state.slotsFilledBonus + ') + set(' + state.setBonus +
+        ') + ringSub(' + state.ringSubBonus + ') + level(' + state.levelBonus + ')' +
+        (state.fullSet ? ' — DOUBLED (full set)' : '') + '">' +
+        '<div class="mp-mini-label" style="font-size:0.55rem">Multi</div>' +
+        '<div style="font-size:0.78rem;font-weight:700;color:' + multColor + '">' + multLabel + (state.fullSet ? '🔥' : '') + '</div>' +
         '</div>';
 
     var checks = [
-        {label:'🧵', ok: state.matPair},
-        {label:'💎', ok: state.gemPair},
-        {label:'👹', ok: state.monPair},
-        {label:'👤', ok: state.hatEquipped},
-        {label:'👥', ok: state.hatSpecMatches >= 2},
+        {label:'⚔️', ok: state.mainFilled >= 1,   tip: state.mainFilled + '/6 main slots filled'},
+        {label:'🎯', ok: state.matchingSet,        tip: state.matchingSet ? 'Set: ' + state.setTag : 'Helmet+Armor+Boots+Shield+Weapon need to match'},
+        {label:'💍', ok: state.ring !== null,      tip: state.ring ? state.ring.name : 'No ring equipped (required for sub-slots)'},
+        {label:'👹', ok: state.matchingMonsters,   tip: 'Two matching monsters on ring'},
+        {label:'💎', ok: state.matchingGems,       tip: 'Two matching gems on ring'},
+        {label:'🧵', ok: state.hasMaterial,        tip: 'Material attached to ring'}
     ];
     checks.forEach(function(c) {
-        html += '<div class="mp-mini-stat-card" ' + cardStyle + '>' +
-            '<div style="font-size:1rem;line-height:1">' + c.label + '</div>' +
-            '<div style="font-size:0.9rem">' + (c.ok ? '✅' : '❌') + '</div>' +
+        html += '<div class="mp-mini-stat-card" ' + cardStyle + ' title="' + escHtml(c.tip || '') + '">' +
+            '<div style="font-size:0.9rem;line-height:1.1">' + c.label + '</div>' +
+            '<div style="font-size:0.85rem;line-height:1.1">' + (c.ok ? '✅' : '❌') + '</div>' +
             '</div>';
     });
     return html + '</div>';
 }
 
-function buildBreakdownCard(pet) {
+// ── Full stat breakdown for the Stats tab ─────────────────────────────────────
+// Shows base stats, mastery multipliers, ability bonuses, equipment bonuses,
+// computed totals, combat stats, and the equipment multiplier breakdown.
+function buildFullStatBreakdown(pet) {
+    var STAT_KEYS  = ['ATT','DEF','INT','DEX','HAP','ENE'];
+    var STAT_COLORS = { ATT:'#e74c3c', DEF:'#3498db', INT:'#9b59b6', DEX:'#2ecc71', HAP:'#f1c40f', ENE:'#1abc9c' };
+    var cs    = pet.computed_stats || {};
+    var specs = pet.specializations || pet.Spec || [];
+    var state = getEquipSetState(pet);
+    var equipBonuses = calcEquipBonuses(pet);
+
+    // ── Multiplier breakdown ──────────────────────────────────────────────────
+    var multColor = state.fullSet ? '#f59e0b' : state.matchingSet ? '#a855f7' : '#57d9a3';
+    var multLabel = state.fullSet ? ('x' + state.baseMult + ' × 2') : ('x' + state.finalMult);
+
+    var multHtml = '<div class="mp-breakdown-sub">⚙️ Equipment Multiplier</div>' +
+        '<div class="mp-battle-card mb-3" style="padding:10px 14px">' +
+        '<div class="d-flex align-items-center gap-3 flex-wrap mb-2">' +
+        '<div style="font-size:1.4rem;font-weight:900;color:' + multColor + ';font-family:Orbitron,sans-serif">' +
+            multLabel + (state.fullSet ? ' 🔥' : '') +
+        '</div>' +
+        '<div style="font-size:0.72rem;color:var(--text-secondary)">' +
+            (state.fullSet ? '<span style="color:#f59e0b;font-weight:700">Full Set — all bonuses doubled</span>' :
+             state.matchingSet ? '<span style="color:#a855f7">Matching set equipped</span>' : 'Partial set') +
+        '</div>' +
+        '</div>' +
+        '<div class="d-flex flex-wrap gap-2">';
+
+    // Component rows — exactly mirrors server formula:
+    // base_mult = slots_filled + set_bonus(3) + ring_sub_bonus + level_bonus
+    // ring_sub_bonus = matching_monsters(1) + matching_gems(1) + material(1)  max 3
+    // full_set doubles the result
+    var components = [
+        {
+            label: 'Slots Filled',
+            val:   state.slotsFilledBonus,
+            tip:   state.mainFilled + '/6 main slots (Helmet, Armor, Boots, Ring, Shield, Weapon)',
+            ok:    state.mainFilled > 0
+        },
+        {
+            label: 'Matching Set',
+            val:   state.setBonus,
+            tip:   state.matchingSet ? 'Set: ' + state.setTag + ' — Helmet+Armor+Boots+Shield+Weapon all match' : 'Need Helmet+Armor+Boots+Shield+Weapon to share the same set tag',
+            ok:    state.matchingSet
+        },
+        {
+            label: 'Ring Sub-slots',
+            val:   state.ringSubBonus,
+            tip:   'Ring sub-slot bonuses: ' +
+                   (state.matchingMonsters ? '✅' : '❌') + ' Matching Monsters (+1)  ' +
+                   (state.matchingGems     ? '✅' : '❌') + ' Matching Gems (+1)  ' +
+                   (state.hasMaterial      ? '✅' : '❌') + ' Material (+1)  ' +
+                   (state.ring             ? '(Ring equipped ✅)' : '(No ring — sub-slots locked)'),
+            ok:    state.ringSubBonus > 0
+        },
+        {
+            label: 'Level Bonus',
+            val:   state.levelBonus,
+            tip:   'Level ' + (pet.level||1) + ' ÷ 50 = ' + state.levelBonus + ' (rounds down)',
+            ok:    state.levelBonus > 0
+        },
+    ];
+    components.forEach(function(c) {
+        multHtml += '<div class="mp-mini-stat-card" style="min-width:90px;padding:5px 8px" title="' + escHtml(c.tip) + '">' +
+            '<div style="font-size:0.58rem;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.4px">' + c.label + '</div>' +
+            '<div style="font-size:0.88rem;font-weight:700;color:' + (c.ok ? '#57d9a3' : 'rgba(255,255,255,0.25)') + '">' +
+                (c.ok ? '+' + c.val : '—') +
+            '</div>' +
+            '</div>';
+    });
+
+    // Ring sub-slot detail chips (shown inline under the main cards)
+    var ringSubDetails = [
+        { label: 'Monsters ×2', ok: state.matchingMonsters, tip: 'Two matching monsters on ring' },
+        { label: 'Gems ×2',     ok: state.matchingGems,     tip: 'Two matching gems on ring'     },
+        { label: 'Material',    ok: state.hasMaterial,      tip: 'Material attached to ring'     },
+        { label: 'Ring',        ok: state.ring !== null,    tip: state.ring ? state.ring.name + ' (required for sub-slots)' : 'No ring equipped — sub-slots locked' },
+    ];
+    multHtml += '</div><div class="d-flex flex-wrap gap-1 mt-1">';
+    ringSubDetails.forEach(function(r) {
+        multHtml += '<div style="font-size:0.62rem;padding:2px 7px;border-radius:10px;border:1px solid ' +
+            (r.ok ? 'rgba(87,217,163,0.4)' : 'rgba(255,255,255,0.1)') + ';color:' +
+            (r.ok ? '#57d9a3' : 'rgba(255,255,255,0.3)') + '" title="' + escHtml(r.tip) + '">' +
+            (r.ok ? '✅' : '❌') + ' ' + r.label +
+            '</div>';
+    });
+
+    multHtml += '</div>' +
+        '<div style="font-size:0.68rem;color:var(--text-secondary);margin-top:8px;border-top:1px solid rgba(255,215,0,0.1);padding-top:6px">' +
+        '<strong style="color:var(--text-primary)">Formula:</strong> ' +
+        state.slotsFilledBonus + ' (slots) + ' + state.setBonus + ' (set) + ' + state.ringSubBonus + ' (ring subs) + ' + state.levelBonus + ' (level) = ' +
+        '<strong style="color:' + multColor + '">' + state.baseMult + '</strong>' +
+        (state.fullSet ? ' × 2 (full set) = <strong style="color:#f59e0b">' + state.finalMult + '</strong> 🔥' : '') +
+        '</div>' +
+        '</div>';
+
+    // ── Per-stat breakdown ────────────────────────────────────────────────────
+    var statHtml = '<div class="mp-breakdown-sub">📊 Stat Breakdown</div>' +
+        '<div class="mp-battle-card mb-3" style="padding:10px 14px">';
+
+    // Header row
+    statHtml += '<div style="display:grid;grid-template-columns:60px repeat(5,1fr);gap:4px;margin-bottom:6px;font-size:0.6rem;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.4px;border-bottom:1px solid rgba(255,215,0,0.1);padding-bottom:4px">' +
+        '<div>Stat</div><div>Base</div><div>Mastery</div><div>Abilities</div><div>Equipment</div><div>Total</div>' +
+        '</div>';
+
+    STAT_KEYS.forEach(function(s) {
+        var base  = pet[s] || 0;
+        var total = cs[s] !== undefined ? cs[s] : (base + (equipBonuses[s] || 0));
+        var col   = STAT_COLORS[s] || '#fff';
+        var isSp  = specs.indexOf(s) !== -1;
+
+        // Mastery multiplier from ability tree (server provides computed_stats which already includes it,
+        // so we back-calculate: mastery_contribution = total_before_equip - base)
+        // We show what we know: base, equip bonus, and the total from server.
+        // Ability bonuses are baked into computed_stats by the server.
+        var equipBonus = equipBonuses[s] || 0;
+        // The server's computed_stats already includes mastery + ability + equipment.
+        // We can show: base | (total - base - equipBonus) as "mastery+abilities" | equipBonus | total
+        var masteryAbilityBonus = total - base - equipBonus;
+        if (masteryAbilityBonus < 0) masteryAbilityBonus = 0;
+
+        // Try to get mastery multiplier from tree state if available
+        var masteryMult = 1.0;
+        if (window._mpAbilityTreeState && window._mpAbilityTreeState.stat_mastery) {
+            var m = window._mpAbilityTreeState.stat_mastery[s];
+            if (m) masteryMult = m.multiplier || 1.0;
+        }
+        var masteryBonus = Math.round(base * (masteryMult - 1));
+        var abilityBonus = masteryAbilityBonus - masteryBonus;
+        if (abilityBonus < 0) { masteryBonus = masteryAbilityBonus; abilityBonus = 0; }
+
+        statHtml += '<div style="display:grid;grid-template-columns:60px repeat(5,1fr);gap:4px;align-items:center;padding:3px 0;border-bottom:1px solid rgba(255,255,255,0.04)">' +
+            '<div style="display:flex;align-items:center;gap:4px">' +
+                '<img src="/static/Emojis/Pets/Deco/' + s + '.png" style="width:14px;height:14px;object-fit:contain" onerror="this.style.display=\'none\'">' +
+                '<span style="font-size:0.72rem;font-weight:700;color:' + col + (isSp ? ';text-shadow:0 0 6px ' + col : '') + '">' + s + '</span>' +
+            '</div>' +
+            '<div style="font-size:0.72rem;color:var(--text-primary)">' + base.toLocaleString() + '</div>' +
+            '<div style="font-size:0.72rem;color:' + (masteryBonus > 0 ? '#a855f7' : 'rgba(255,255,255,0.25)') + '">' +
+                (masteryBonus > 0 ? '+' + masteryBonus.toLocaleString() : '—') +
+            '</div>' +
+            '<div style="font-size:0.72rem;color:' + (abilityBonus > 0 ? '#f59e0b' : 'rgba(255,255,255,0.25)') + '">' +
+                (abilityBonus > 0 ? '+' + abilityBonus.toLocaleString() : '—') +
+            '</div>' +
+            '<div style="font-size:0.72rem;color:' + (equipBonus > 0 ? '#57d9a3' : 'rgba(255,255,255,0.25)') + '">' +
+                (equipBonus > 0 ? '+' + equipBonus.toLocaleString() : '—') +
+            '</div>' +
+            '<div style="font-size:0.78rem;font-weight:700;color:' + col + '">' + total.toLocaleString() + '</div>' +
+            '</div>';
+    });
+
+    // Combat stats row
+    var att  = cs.ATT !== undefined ? cs.ATT : (pet.ATT || 0);
+    var def  = cs.DEF !== undefined ? cs.DEF : (pet.DEF || 0);
+    var int_ = cs.INT !== undefined ? cs.INT : (pet.INT || 0);
+    var dex  = cs.DEX !== undefined ? cs.DEX : (pet.DEX || 0);
+    var hap  = cs.HAP !== undefined ? cs.HAP : (pet.HAP || 0);
+    var ene  = cs.ENE !== undefined ? cs.ENE : (pet.ENE || 0);
+    var atk  = cs.attack     !== undefined ? cs.attack     : (att + dex);
+    var dfn  = cs.defense    !== undefined ? cs.defense    : (def + int_);
+    var hp   = cs.max_health !== undefined ? cs.max_health : Math.floor(((att+def+int_+dex+hap+ene)/6 + hap*ene)*10);
+
+    statHtml += '<div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:8px;padding-top:6px;border-top:1px solid rgba(255,215,0,0.1)">' +
+        '<div style="font-size:0.7rem"><span style="color:var(--text-secondary)">⚔️ ATK = ATT+DEX = </span><strong style="color:#e74c3c">' + fmtStat(atk) + '</strong></div>' +
+        '<div style="font-size:0.7rem"><span style="color:var(--text-secondary)">🛡️ DEF = DEF+INT = </span><strong style="color:#3498db">' + fmtStat(dfn) + '</strong></div>' +
+        '<div style="font-size:0.7rem"><span style="color:var(--text-secondary)">❤️ HP = f(all stats) = </span><strong style="color:#e74c3c">' + fmtStat(hp) + '</strong></div>' +
+        '</div>';
+
+    statHtml += '<div style="font-size:0.62rem;color:var(--text-secondary);margin-top:6px">' +
+        '<span style="color:#a855f7">■</span> Mastery &nbsp;' +
+        '<span style="color:#f59e0b">■</span> Abilities &nbsp;' +
+        '<span style="color:#57d9a3">■</span> Equipment' +
+        (specs.length ? ' &nbsp;· <span style="color:var(--gold-secondary)">★ Specialization stat</span>' : '') +
+        '</div>';
+
+    statHtml += '</div>';
+
+    return '<div class="mp-stat-breakdown-wrap">' + multHtml + statHtml + '</div>';
+}
+
+// Returns just the inner breakdown HTML (XP + Battle + SS + Casino) — used by the
+// "Stats Breakdown" tab panel. No collapse wrapper, no divider.
+function buildBreakdownPanel(pet) {
     var xs = pet.xp_sources || {};
     var bs = pet.battle_stats || {};
     var gs = pet.gambling_stats || {};
 
     // ── XP Sources ──────────────────────────────────────────────
     var activities = [
-        { label: 'Play',      emoji: '🎮', keys: ['play'] },
-        { label: 'Train',     emoji: '🏋️', keys: ['training'] },
-        { label: 'Mission',   emoji: '🎯', keys: ['mission', 'mission_fail'] },
-        { label: 'Quest',     emoji: '📜', keys: ['quest'] },
-        { label: 'Battle',    emoji: '⚔️', keys: ['battle', 'npc_battle', 'pvp_battle'] },
-        { label: 'Colosseum', emoji: '🏛️', keys: ['colosseum'] },
+        { label: 'Play',    emoji: '🎮', keys: ['play'] },
+        { label: 'Train',   emoji: '🏋️', keys: ['training'] },
+        { label: 'Mission', emoji: '🎯', keys: ['mission', 'mission_fail'] },
+        { label: 'Quest',   emoji: '📜', keys: ['quest'] },
+        { label: 'Battle',  emoji: '⚔️', keys: ['battle', 'npc_battle', 'pvp_battle'] },
     ];
     var xpRows = activities.map(function(a) {
         var net = a.keys.reduce(function(sum, k) { return sum + (xs[k] || 0); }, 0);
@@ -2258,17 +2751,28 @@ function buildBreakdownCard(pet) {
     }
 
     // ── Battle Records ───────────────────────────────────────────
-    var battleTypes = [{key:'pvp',name:'PvP'},{key:'npc',name:'NPC'},{key:'wild_encounter',name:'Wild'},{key:'boss',name:'Boss'},{key:'colosseum',name:'Colosseum'}];
+    var battleTypes = [
+        {key:'pvp',           name:'PvP'},
+        {key:'npc',           name:'NPC'},
+        {key:'wild_encounter',name:'Wild'},
+        {key:'boss',          name:'Boss'},
+        {key:'colosseum',     name:'Colosseum'}
+    ];
     var battleHtml = '<div class="mp-breakdown-sub">Battle Records</div><div class="d-flex gap-2 flex-wrap mb-2">';
     battleTypes.forEach(function(bt) {
         var s = bs[bt.key] || {wins:0, losses:0};
-        var wr = (s.wins + s.losses) > 0 ? ((s.wins / (s.wins + s.losses)) * 100).toFixed(0) : 0;
+        var wins   = s.wins   || 0;
+        var losses = s.losses || 0;
+        var rounds = s.rounds || 0;  // colosseum uses rounds
+        var total  = bt.key === 'colosseum' ? rounds : (wins + losses);
+        var wr = total > 0 ? ((wins / total) * 100).toFixed(0) : 0;
         battleHtml += '<div class="mp-mini-stat-card">' +
             '<div class="mp-mini-label">' + bt.name + '</div>' +
-            '<div><span class="text-success" style="font-size:0.78rem;font-weight:700">' + s.wins + 'W</span>' +
+            '<div><span class="text-success" style="font-size:0.78rem;font-weight:700">' + wins + 'W</span>' +
             '<span style="color:var(--text-secondary);font-size:0.7rem"> / </span>' +
-            '<span class="text-danger" style="font-size:0.78rem;font-weight:700">' + s.losses + 'L</span></div>' +
+            '<span class="text-danger" style="font-size:0.78rem;font-weight:700">' + losses + 'L</span></div>' +
             '<div style="font-size:0.62rem;color:var(--text-secondary)">' + wr + '% WR</div>' +
+            (bt.key === 'colosseum' && rounds > 0 ? '<div style="font-size:0.58rem;color:var(--text-secondary)">' + rounds + ' rounds</div>' : '') +
             '</div>';
     });
     battleHtml += '</div>';
@@ -2336,22 +2840,18 @@ function buildBreakdownCard(pet) {
         casinoHtml += '</div>';
     }
 
-    // ── Collapsible wrapper ──────────────────────────────────────
-    var bodyId = 'mp-breakdown-body';
-    var chevId = 'mp-breakdown-chev';
-    // Default: collapsed
-    var html =
-        '<hr class="mp-divider my-2">' +
-        '<div class="mp-collapse-header" onclick="mpToggleCollapse(\'' + bodyId + '\',\'' + chevId + '\')">' +
-            '<span class="mp-section-title" style="margin:0">Breakdown</span>' +
-            '<span id="' + chevId + '" class="mp-chev mp-chev-collapsed">▼</span>' +
-        '</div>' +
-        '<div id="' + bodyId + '" class="mp-collapse-body" style="display:none">' +
-            xpHtml + battleHtml + ssHtml + casinoHtml +
-        '</div>';
-
-    return html;
+    // ── Empty state ──────────────────────────────────────────────
+    if (!xpRows.length && !casinoHtml &&
+        battleTypes.every(function(bt){ var s = bs[bt.key]||{}; return !(s.wins||s.losses); })) {
+        return '<div style="font-size:0.78rem;color:var(--text-secondary);padding:8px 0">No activity data yet. Play, Train, Mission, or Battle to populate this view.</div>'
+             + ssHtml;
+    }
+    return xpHtml + battleHtml + ssHtml + casinoHtml;
 }
+
+// Legacy stub — kept so older callers don't break. Returns the new panel content,
+// minus any wrapper, since the Stats Breakdown tab now serves as the container.
+function buildBreakdownCard(pet) { return buildBreakdownPanel(pet); }
 function buildXpSourcesCard(pet)    { return ''; }
 function buildBattleRecordCard(pet) { return ''; }
 function buildCasinoCard(pet)       { return ''; }
@@ -2536,6 +3036,17 @@ function _loadSsStats(containerId) {
             var c = document.getElementById(containerId);
             if (c) c.innerHTML = '<div style="font-size:0.72rem;color:var(--text-secondary)">Could not load SS stats.</div>';
         });
+}
+
+function buildTokenStatsPanel(pet) {
+    // Returns non-collapsible panel content; loads async into the body div
+    var bodyId = 'mp-token-stats-panel-body';
+    var summaryId = 'mp-token-stats-panel-summary';
+    setTimeout(function() { _loadTokenStats(summaryId, bodyId); }, 0);
+    return '<hr class="mp-divider my-2">' +
+        '<div class="mp-section-title">📈 Pet Stocks</div>' +
+        '<div id="' + summaryId + '" class="mp-ff-summary" style="font-size:0.75rem;color:var(--text-secondary);padding:4px 0">Loading token stats…</div>' +
+        '<div id="' + bodyId + '"></div>';
 }
 
 function buildTokenStatsCard(pet) {
@@ -3013,110 +3524,23 @@ function submitAdopt() {
     var actDef = defEl ? defEl.value.trim() : '';
     var actChg = chgEl ? chgEl.value.trim() : '';
 
-    // Show skill selection step before finalizing adoption
-    if(body) body.innerHTML='<div class="text-center py-4"><div class="spinner-border text-primary" role="status"></div><p class="mt-2">Drawing skill choices...</p></div>';
-
-    fetch('/api/pets/skills/adopt-draw', {
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({ element1: elem1, element2: elem2 || null })
-    })
-    .then(function(r){ return r.json(); })
-    .then(function(d){
-        var choices = d.choices || [];
-        showSkillPickStep(body, choices, {
-            category: cat, species: _adoptSel.name,
-            element1: elem1, element2: elem2,
-            customName: name,
-            actions: { Attack: actAtk, Defense: actDef, Charge: actChg }
-        });
-    })
-    .catch(function(e){
-        // If skill draw fails, proceed without a skill
-        doFinalAdopt(body, {
-            category: cat, species: _adoptSel.name,
-            element1: elem1, element2: elem2,
-            customName: name, battleSkillId: '',
-            actions: { Attack: actAtk, Defense: actDef, Charge: actChg }
-        });
-    });
-}
-
-function showSkillPickStep(body, choices, adoptPayload) {
-    if(!body) return;
-    var elem1 = adoptPayload.element1 || 'basic';
-    var elem2 = adoptPayload.element2 || '';
-    var elemLabel = cap(elem1) + (elem2 ? ' / ' + cap(elem2) : '');
-
-    var ELEM_COLORS_LOCAL = {
-        basic:'#aaa', fire:'#e74c3c', water:'#3498db', electric:'#f1c40f',
-        ice:'#a8d8ea', plant:'#2ecc71', rock:'#95a5a6', air:'#bdc3c7',
-        magic:'#9b59b6', holy:'#f39c12', necro:'#8e44ad', psychic:'#e91e63', fighting:'#e67e22',
-    };
-    var EFFECT_LABELS = {
-        instant_damage:'Instant Damage', dot:'Damage Over Time', shield:'Shield',
-        damage_reduction:'Damage Reduction', elemental_damage:'Elemental Damage',
-        heal:'Heal', charge_boost:'Charge Boost', stat_debuff:'Stat Debuff',
-        stat_buff:'Stat Buff', lifesteal:'Lifesteal', stun:'Stun',
-        cleanse:'Cleanse', reflect:'Reflect',
-    };
-
-    var cardsHtml = choices.map(function(sk) {
-        var col = ELEM_COLORS_LOCAL[sk.element] || '#aaa';
-        var eff = EFFECT_LABELS[sk.effect && sk.effect.type] || (sk.effect && sk.effect.type) || '';
-        return '<div class="adopt-skill-card" data-skill-id="'+escHtml(sk.id)+'" onclick="window._mpPickSkill(this,'+JSON.stringify(sk.id).replace(/"/g,'&quot;')+')" style="border:2px solid '+col+';border-radius:10px;padding:12px;cursor:pointer;transition:background 0.15s;background:rgba(0,0,0,0.3)">' +
-            '<div style="font-weight:700;color:'+col+';margin-bottom:4px">'+escHtml(sk.name)+'</div>' +
-            '<div style="font-size:0.72rem;color:var(--text-secondary);margin-bottom:6px">'+cap(sk.element)+' · '+eff+'</div>' +
-            '<div style="font-size:0.8rem;color:var(--text-primary)">'+escHtml(sk.description)+'</div>' +
-        '</div>';
-    }).join('');
-
-    body.innerHTML =
-        '<div class="text-center mb-3">' +
-        '<h5 style="color:var(--gold-primary)">⚔️ Choose Your Starting Battle Skill</h5>' +
-        '<p style="font-size:0.85rem;color:var(--text-secondary)">Pick 1 skill from your <strong>'+escHtml(elemLabel)+'</strong> element pool. You can reroll later with ability points.</p>' +
-        '</div>' +
-        '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin-bottom:16px" id="adopt-skill-grid">' +
-        cardsHtml +
-        '</div>' +
-        '<div id="adopt-skill-selected" style="display:none;margin-bottom:12px;padding:10px;border-radius:8px;background:rgba(255,215,0,0.08);border:1px solid rgba(255,215,0,0.3);font-size:0.85rem;color:var(--gold-primary)"></div>' +
-        '<div class="d-flex gap-2 justify-content-end">' +
-        '<button class="btn btn-secondary btn-sm" onclick="window._mpForm()">← Back</button>' +
-        '<button class="btn btn-primary" id="adopt-skill-confirm-btn" disabled onclick="window._mpConfirmSkill()">🐾 Adopt with this Skill</button>' +
-        '</div>';
-
-    // Store payload for confirm step
-    window._adoptSkillPayload = adoptPayload;
-    window._adoptChosenSkillId = '';
-
-    window._mpPickSkill = function(cardEl, skillId) {
-        document.querySelectorAll('.adopt-skill-card').forEach(function(c){
-            c.style.background = 'rgba(0,0,0,0.3)';
-            c.style.boxShadow = '';
-        });
-        cardEl.style.background = 'rgba(255,215,0,0.12)';
-        cardEl.style.boxShadow = '0 0 0 2px rgba(255,215,0,0.5)';
-        window._adoptChosenSkillId = skillId;
-        var confirmBtn = el('adopt-skill-confirm-btn');
-        if(confirmBtn) confirmBtn.disabled = false;
-        var selDiv = el('adopt-skill-selected');
-        if(selDiv){ selDiv.style.display='block'; selDiv.textContent='✅ Selected: ' + skillId.replace(/_/g,' ').replace(/\b\w/g,function(c){return c.toUpperCase();}); }
-    };
-
-    window._mpConfirmSkill = function() {
-        if(!window._adoptChosenSkillId) return;
-        var payload = Object.assign({}, window._adoptSkillPayload, { battleSkillId: window._adoptChosenSkillId });
-        doFinalAdopt(body, payload);
-    };
-}
-
-function doFinalAdopt(body, payload) {
     if(body) body.innerHTML='<div class="text-center py-5"><div class="spinner-border text-primary" role="status"></div><p class="mt-3">Creating your pet...</p></div>';
 
     fetch('/api/pets/adopt',{
         method:'POST',
         headers:{'Content-Type':'application/json'},
-        body:JSON.stringify(payload)
+        body:JSON.stringify({
+            category:   cat,
+            species:    _adoptSel.name,
+            element1:   elem1,
+            element2:   elem2,
+            customName: name,
+            actions: {
+                Attack:  actAtk,
+                Defense: actDef,
+                Charge:  actChg
+            }
+        })
     })
     .then(function(r){return r.json().then(function(d){return {ok:r.ok,d:d};});})
     .then(function(res){
@@ -3292,7 +3716,12 @@ function _mpOpenInventoryChest(chestType, selectedType) {
         if (d.success) {
             var items = d.items || [];
             _showChestAnimation(chestImgSrc, chestColor, items, function() {
-                if (d.pet) { _pet = d.pet; renderPetCard(d.pet); renderAllPanels(d.pet); }
+                var oldPet = _pet;
+                if (d.pet) { _refreshPet(d.pet); }
+                if (window.PetGPP) {
+                    if (d.animation) PetGPP.push(d.animation);
+                    if (oldPet && d.pet) PetGPP.pushXpBar(oldPet, d.pet);
+                }
             });
         } else {
             showResult('lm-result', false, d.error || d.detail || 'Failed to open chest.');
@@ -3342,14 +3771,16 @@ function _mpEquipItem(name, type, callback) {
     .then(function(r){ return r.json(); })
     .then(function(d) {
         if (d.success && d.pet) {
-            _pet = d.pet;
             if (callback) {
-                // Chain second equip, then refresh
+                _pet = d.pet;
                 callback();
             } else {
-                renderPetCard(d.pet);
-                renderAllPanels(d.pet);
+                _refreshPet(d.pet);
                 _showToast('✅ ' + name + ' equipped!', true);
+                if (window.PetGPP) {
+                    var petImg = document.querySelector('#my-pet-header .mp-pet-img');
+                    PetGPP.Particles.spawnAt('sparkle_up', petImg, '#ffd700');
+                }
             }
         } else {
             _showToast('❌ ' + cleanDiscordText(d.detail || d.message || 'Equip failed').replace(/\*\*/g,'').trim(), false);
@@ -3367,10 +3798,12 @@ window._mpUnequipSlot = function(slotType) {
     .then(function(r){ return r.json(); })
     .then(function(d) {
         if (d.success && d.pet) {
-            _pet = d.pet;
-            renderPetCard(d.pet);
-            renderAllPanels(d.pet);
+            _refreshPet(d.pet);
             _showToast('📦 ' + cleanDiscordText(d.message || 'Unequipped').replace(/\*\*/g,'').trim(), true);
+            if (window.PetGPP) {
+                var petImg = document.querySelector('#my-pet-header .mp-pet-img');
+                PetGPP.Particles.spawnAt('sparkle_up', petImg, '#9e9e9e');
+            }
         } else {
             _showToast('❌ '+cleanDiscordText(d.detail||d.message||'Unequip failed'), false);
         }
@@ -3394,10 +3827,15 @@ function _mpDoConsume(name, rarity, qty, imgSrc) {
         .then(function(r){ return r.json(); })
         .then(function(d) {
             if (d.success && d.pet) {
-                _pet = d.pet;
-                renderPetCard(d.pet);
-                renderAllPanels(d.pet);
+                var oldPet = _pet;
+                _refreshPet(d.pet);
                 _showToast('🔥 ' + (d.message || 'Consumed!'), true);
+                if (window.PetGPP) {
+                    if (oldPet && d.pet) PetGPP.pushXpBar(oldPet, d.pet);
+                    if (d.level_up) PetGPP.pushLevelChange(d.level_up);
+                    var petImg = document.querySelector('#my-pet-header .mp-pet-img');
+                    PetGPP.Particles.spawnAt('xp_burst', petImg, '#e74c3c');
+                }
             } else {
                 _showToast('❌ ' + (d.detail || d.message || 'Consume failed'), false);
             }
@@ -3483,20 +3921,23 @@ function _mpUsePotion(name, data, qty) {
         .then(function(r){ return r.json(); })
         .then(function(d) {
             if (d.success && d.pet) {
-                _pet = d.pet;
-                renderPetCard(d.pet);
-                renderAllPanels(d.pet);
+                var oldPet = _pet;
+                _refreshPet(d.pet);
                 var msg = name + (qty > 1 ? ' x'+qty : '') + ' used!';
                 if (d.message) {
                     var clean = String(d.message)
-                        .replace(/<img[^>]*>/gi, '')
-                        .replace(/<[^>]+>/g, '')
+                        .replace(/<img[^>]*>/gi, '').replace(/<[^>]+>/g, '')
                         .replace(/\*\*/g, '')
                         .replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>')
                         .trim();
                     if (clean) msg = name + (qty > 1 ? ' x'+qty : '') + ' — ' + clean;
                 }
                 _showToast('🧪 ' + msg, true);
+                if (window.PetGPP) {
+                    if (oldPet && d.pet) PetGPP.pushXpBar(oldPet, d.pet);
+                    var petImg = document.querySelector('#my-pet-header .mp-pet-img');
+                    PetGPP.Particles.spawnAt('xp_burst', petImg, '#ce93d8');
+                }
             } else {
                 _showToast('❌ ' + (d.detail || d.message || 'Potion failed'), false);
             }
@@ -3642,1919 +4083,5 @@ document.addEventListener('mouseout', function(e) {
     if (t && !t.contains(e.relatedTarget)) { _hoverEl = null; _hideItemHover(); }
 });
 
-// ── Load abilities content inline ─────────────────────────────────────────────
-function loadAbilitiesContent() {
-    var container = el('abilities-content');
-    if (!container) return;
-    
-    // Show loading state
-    container.innerHTML = '<div class="text-center py-4">'+
-        '<div class="spinner-border" style="color: var(--gold-primary);" role="status">'+
-        '<span class="visually-hidden">Loading...</span>'+
-        '</div>'+
-        '<p class="mt-2" style="color: var(--text-secondary);">Loading abilities...</p>'+
-        '</div>';
-    
-    // Load ability tree CSS if not already loaded
-    if (!document.querySelector('link[href="/css/ability_tree.css"]')) {
-        var lnk = document.createElement('link');
-        lnk.rel = 'stylesheet'; lnk.href = '/css/ability_tree.css';
-        document.head.appendChild(lnk);
-    }
-    
-    // Load ability tree data + skill state in parallel
-    Promise.all([
-        fetch('/api/pets/ability-tree').then(function(r){ return r.json(); }),
-        fetch('/api/pets/skills').then(function(r){ return r.json(); }).catch(function(){ return null; }),
-    ]).then(function(results) {
-        var data = results[0];
-        var skillData = results[1];
-        if (data && data.available_points !== undefined) {
-            if (skillData) data.skill_state = skillData;
-            renderFullAbilityTreeInline(data, container);
-        } else {
-            container.innerHTML = '<div class="mp-battle-card" style="color:#e74c3c">Failed to load abilities data</div>';
-        }
-    }).catch(function(e) {
-        container.innerHTML = '<div class="mp-battle-card" style="color:#e74c3c">Error loading abilities: ' + e.message + '</div>';
-    });
-}
-window.loadAbilitiesContent = loadAbilitiesContent;
-function renderFullAbilityTreeInline(state, container) {
-    // Set up the ability tree state for inline rendering
-    window._abilityTreeState = state;
-    window._abilityTreeSelectedNode = null;
-    window._abilityTreeOpenStat = null;
-    
-    var pts = state.available_points || 0;
-    var skillState = state.skill_state || null;
-    var needsMigration = skillState && skillState.slots && skillState.slots.length > 0 && !skillState.slots[0].filled;
-    
-    // Create the full ability tree interface inline
-    var html = '<div class="at-inline-container" style="background:linear-gradient(135deg,rgba(8,8,8,0.85),rgba(14,14,14,0.85));border-radius:8px;padding:12px">';
-    
-    // Migration banner for existing pets with no battle skill
-    if (needsMigration) {
-        html += '<div id="skill-migration-banner" style="background:rgba(231,76,60,0.12);border:1px solid rgba(231,76,60,0.4);border-radius:8px;padding:10px 14px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">' +
-            '<div style="font-size:0.82rem;color:#e74c3c"><strong>⚔️ No Battle Skill!</strong> Your pet doesn\'t have a starting battle skill yet.</div>' +
-            '<button class="mp-adopt-btn" style="font-size:0.75rem;padding:5px 14px;background:rgba(231,76,60,0.2);border-color:rgba(231,76,60,0.5);color:#e74c3c" onclick="window.migrateSkill()">Get Free Skill + 1 Point</button>' +
-        '</div>';
-    }
-    
-    // Header with points badge
-    html += '<div class="at-inline-header" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">';
-    html += '<div class="at-inline-title" style="font-family:Orbitron,sans-serif;font-size:1rem;color:var(--gold-primary);text-shadow:0 0 10px rgba(255,215,0,0.4);font-weight:700">💎 Abilities & Mastery</div>';
-    html += '<div class="at-points-badge" style="background:rgba(255,215,0,0.12);border:1px solid rgba(255,215,0,0.35);border-radius:20px;padding:4px 12px;font-size:0.75rem;color:var(--gold-primary);font-weight:700">✨ ' + pts + ' pt' + (pts !== 1 ? 's' : '') + '</div>';
-    html += '</div>';
-    
-    // Top bar with purchase and advantage mastery
-    html += '<div class="at-topbar" style="display:flex;align-items:stretch;gap:8px;margin-bottom:10px;flex-wrap:wrap">';
-    html += renderPurchaseBarInline(state);
-    html += renderAdvMasteryCardsInline(state);
-    html += '</div>';
-    
-    // Main content layout
-    html += '<div class="at-content-layout" style="display:flex;gap:12px;align-items:flex-start">';
-    html += '<div class="at-tree-container" style="flex:2;min-width:0;padding-right:4px">' + renderTreeInline(state) + '</div>';
-    html += '<div class="at-details-container" style="flex:1;min-width:220px;position:sticky;top:0" id="at-details-panel-inline">' + renderDetailsInline() + '</div>';
-    html += '</div>';
-    
-    html += '</div>';
-    
-    // Add toast container for notifications
-    html += '<div id="at-toast-inline" style="display:none"></div>';
-    
-    container.innerHTML = html;
-    
-    // Expose global handlers for inline version
-    exposeInlineAbilityHandlers();
+}());
 
-    // Migration handler
-    window.migrateSkill = function() {
-        var banner = el('skill-migration-banner');
-        if (banner) banner.innerHTML = '<div style="font-size:0.82rem;color:var(--text-secondary)">Assigning skill...</div>';
-        fetch('/api/pets/skills/migrate', { method:'POST', headers:{'Content-Type':'application/json'} })
-            .then(function(r){ return r.json(); })
-            .then(function(d){
-                if (d.ok) {
-                    showToastInline(d.message || 'Skill assigned!', true);
-                    loadAbilitiesContent();
-                } else {
-                    showToastInline(d.message || 'Failed', false);
-                }
-            })
-            .catch(function(e){ showToastInline('Error: ' + e.message, false); });
-    };
-}
-
-// ── Purchase bar for inline version ───────────────────────────────────────────
-function renderPurchaseBarInline(state) {
-    var pts = state.available_points || 0;
-    var level = state.current_level || 1;
-    var canBuy = state.can_purchase_point || false;
-    var cost = state.point_cost || 500;
-    return '<div class="at-purchase-compact" style="background:linear-gradient(135deg,rgba(255,215,0,0.08),rgba(255,140,0,0.04));border:1px solid rgba(255,215,0,0.25);border-radius:6px;padding:6px 12px;display:flex;align-items:center;gap:10px;flex:1;min-width:0">' +
-        '<div class="at-purchase-info" style="display:flex;align-items:center;gap:10px;flex:1;flex-wrap:wrap">' +
-            '<span class="at-purchase-label" style="font-size:0.75rem;color:var(--gold-primary);font-weight:700;white-space:nowrap">💎 ' + pts + ' pt' + (pts !== 1 ? 's' : '') + '</span>' +
-            '<span class="at-purchase-cost" style="font-size:0.72rem;color:var(--text-secondary);white-space:nowrap">Cost: ' + cost + ' Lvls</span>' +
-            '<span class="at-purchase-level" style="font-size:0.72rem;color:var(--text-secondary);white-space:nowrap">Lv.' + level + '</span>' +
-        '</div>' +
-        '<button class="at-purchase-btn-compact" style="background:' + (canBuy ? 'linear-gradient(135deg,var(--gold-primary),#ffb300)' : 'rgba(80,80,80,0.4)') + ';border:none;border-radius:5px;color:' + (canBuy ? '#000' : 'rgba(255,255,255,0.4)') + ';font-size:0.72rem;font-weight:700;padding:5px 10px;cursor:' + (canBuy ? 'pointer' : 'not-allowed') + ';transition:all 0.2s;white-space:nowrap;flex-shrink:0"' + (canBuy ? '' : ' disabled') +
-            ' onclick="purchaseAbilityPointInline()">' +
-            (canBuy ? '🛒 Buy Point' : '❌ Need ' + (cost - level) + ' Lvls') +
-        '</button>' +
-    '</div>';
-}
-
-// ── Advantage mastery cards for inline version ────────────────────────────────
-function renderAdvMasteryCardsInline(state) {
-    var adv = state.advantage_mastery || {};
-    var pts = state.available_points || 0;
-    var canSpend = pts >= 1;
-    var cards = [
-        { key:'type',    icon:'⚔️', label:'Type Adv.' },
-        { key:'element', icon:'✨', label:'Elem Adv.' },
-    ];
-    var html = '<div class="at-adv-mastery-group" style="display:flex;gap:6px">';
-    cards.forEach(function(c) {
-        var m = adv[c.key] || { points:0, bonus:0 };
-        var mpts = m.points || 0;
-        var bonus = m.bonus !== undefined ? m.bonus : (mpts * 0.1);
-        var isSelected = window._abilityTreeSelectedNode && window._abilityTreeSelectedNode.type === 'adv' && window._abilityTreeSelectedNode.key === c.key;
-        html += '<div class="at-adv-card' + (isSelected ? ' at-selected' : '') +
-            '" data-adv-key="' + c.key + '" style="background:linear-gradient(135deg,rgba(255,215,0,0.07),rgba(255,140,0,0.03));border:1px solid rgba(255,215,0,0.22);border-radius:6px;padding:5px 10px;display:flex;align-items:center;gap:6px;cursor:pointer;transition:all 0.2s;min-width:110px" onclick="selectAdvNodeInline(\'' + c.key + '\')">' +
-            '<div class="at-adv-card-icon" style="font-size:1rem;flex-shrink:0">' + c.icon + '</div>' +
-            '<div class="at-adv-card-info" style="flex:1;min-width:0">' +
-                '<div class="at-adv-card-label" style="font-family:Orbitron,sans-serif;font-size:0.62rem;color:var(--gold-primary);font-weight:700;line-height:1.1">' + c.label + '</div>' +
-                '<div class="at-adv-card-val" style="font-size:0.68rem;color:#4caf50;font-weight:700;line-height:1">+' + bonus.toFixed(1) + '</div>' +
-                '<div class="at-adv-card-pts" style="font-size:0.58rem;color:var(--text-secondary);line-height:1">' + mpts + ' pts</div>' +
-            '</div>' +
-            '<button class="at-adv-upgrade-btn" style="background:' + (canSpend ? 'linear-gradient(135deg,#4caf50,#45a049)' : 'rgba(80,80,80,0.4)') + ';border:none;border-radius:3px;color:#fff;font-size:0.6rem;font-weight:700;cursor:' + (canSpend ? 'pointer' : 'not-allowed') + ';padding:2px 6px;transition:all 0.2s"' + (canSpend ? '' : ' disabled') +
-                ' onclick="event.stopPropagation(); upgradeAdvMasteryInline(\'' + c.key + '\')">+</button>' +
-        '</div>';
-    });
-    return html + '</div>';
-}
-
-// ── Load battle settings content inline ───────────────────────────────────────
-function loadBattleSettingsContent() {
-    var container = el('battle-settings-content');
-    if (!container) return;
-    
-    // Show loading state
-    container.innerHTML = '<div class="text-center py-4">'+
-        '<div class="spinner-border" style="color: var(--gold-primary);" role="status">'+
-        '<span class="visually-hidden">Loading...</span>'+
-        '</div>'+
-        '<p class="mt-2" style="color: var(--text-secondary);">Loading battle settings...</p>'+
-        '</div>';
-    
-    // Load battle settings and render inline
-    fetch('/api/battle/settings/my')
-        .then(function(r){ 
-            if (r.status === 401 || r.status === 403) {
-                // User not authenticated - show default settings
-                renderBattleSettingsInline(getDefaultBattleSettings(), container);
-                return;
-            }
-            return r.json(); 
-        })
-        .then(function(data) {
-            if (data && data.settings) {
-                renderBattleSettingsInline(data.settings, container);
-            } else if (data) {
-                // Already handled above for auth errors
-                return;
-            } else {
-                renderBattleSettingsInline(getDefaultBattleSettings(), container);
-            }
-        })
-        .catch(function(e) {
-            console.log('Battle settings error:', e);
-            renderBattleSettingsInline(getDefaultBattleSettings(), container);
-        });
-}
-
-// ── Render battle settings content inline ─────────────────────────────────────
-function renderBattleSettingsInline(settings, container) {
-    var formula = settings.formula || getDefaultBattleSettings().formula;
-    
-    var html = '<div class="row g-3">';
-    
-    // Left column - Health formula
-    html += '<div class="col-md-4">';
-    html += '<div class="mp-battle-card">';
-    html += '<div class="mp-mini-label mb-2">Health Formula</div>';
-    html += '<div class="mb-2">';
-    html += '<label style="font-size:0.75rem;color:var(--text-secondary)">Stats to include:</label>';
-    html += '<div class="d-flex flex-wrap gap-1 mt-1">';
-    ['ATT', 'DEF', 'INT', 'DEX', 'HAP', 'ENE'].forEach(function(stat) {
-        var checked = formula.health_stats.indexOf(stat) !== -1;
-        html += '<label class="d-flex align-items-center gap-1" style="font-size:0.7rem;cursor:pointer">';
-        html += '<input type="checkbox" ' + (checked ? 'checked' : '') + ' onchange="updateHealthStats(\'' + stat + '\')">';
-        html += '<span>' + stat + '</span>';
-        html += '</label>';
-    });
-    html += '</div>';
-    html += '</div>';
-    html += '<div class="mb-2">';
-    html += '<label class="d-flex align-items-center gap-2" style="font-size:0.75rem;cursor:pointer">';
-    html += '<input type="checkbox" ' + (formula.health_use_average ? 'checked' : '') + ' onchange="toggleHealthAverage()">';
-    html += '<span>Use average instead of sum</span>';
-    html += '</label>';
-    html += '</div>';
-    html += '<div class="mb-2">';
-    html += '<label style="font-size:0.75rem;color:var(--text-secondary)">Multiplier:</label>';
-    html += '<input type="number" class="form-control mp-input" style="font-size:0.75rem;padding:0.25rem 0.5rem" value="' + formula.health_multiplier + '" onchange="updateHealthMultiplier(this.value)">';
-    html += '</div>';
-    html += '</div>';
-    html += '</div>';
-    
-    // Middle column - Attack formula
-    html += '<div class="col-md-4">';
-    html += '<div class="mp-battle-card">';
-    html += '<div class="mp-mini-label mb-2">Attack Formula</div>';
-    html += '<div class="mb-2">';
-    html += '<label style="font-size:0.75rem;color:var(--text-secondary)">Stats to include:</label>';
-    html += '<div class="d-flex flex-wrap gap-1 mt-1">';
-    ['ATT', 'DEF', 'INT', 'DEX', 'HAP', 'ENE'].forEach(function(stat) {
-        var checked = formula.attack_stats.indexOf(stat) !== -1;
-        html += '<label class="d-flex align-items-center gap-1" style="font-size:0.7rem;cursor:pointer">';
-        html += '<input type="checkbox" ' + (checked ? 'checked' : '') + ' onchange="updateAttackStats(\'' + stat + '\')">';
-        html += '<span>' + stat + '</span>';
-        html += '</label>';
-    });
-    html += '</div>';
-    html += '</div>';
-    html += '<div class="mb-2">';
-    html += '<label class="d-flex align-items-center gap-2" style="font-size:0.75rem;cursor:pointer">';
-    html += '<input type="checkbox" ' + (formula.attack_use_average ? 'checked' : '') + ' onchange="toggleAttackAverage()">';
-    html += '<span>Use average instead of sum</span>';
-    html += '</label>';
-    html += '</div>';
-    html += '<div class="mb-2">';
-    html += '<label style="font-size:0.75rem;color:var(--text-secondary)">Multiplier:</label>';
-    html += '<input type="number" class="form-control mp-input" style="font-size:0.75rem;padding:0.25rem 0.5rem" value="' + formula.attack_multiplier + '" onchange="updateAttackMultiplier(this.value)">';
-    html += '</div>';
-    html += '</div>';
-    html += '</div>';
-    
-    // Right column - Defense formula
-    html += '<div class="col-md-4">';
-    html += '<div class="mp-battle-card">';
-    html += '<div class="mp-mini-label mb-2">Defense Formula</div>';
-    html += '<div class="mb-2">';
-    html += '<label style="font-size:0.75rem;color:var(--text-secondary)">Stats to include:</label>';
-    html += '<div class="d-flex flex-wrap gap-1 mt-1">';
-    ['ATT', 'DEF', 'INT', 'DEX', 'HAP', 'ENE'].forEach(function(stat) {
-        var checked = formula.defense_stats.indexOf(stat) !== -1;
-        html += '<label class="d-flex align-items-center gap-1" style="font-size:0.7rem;cursor:pointer">';
-        html += '<input type="checkbox" ' + (checked ? 'checked' : '') + ' onchange="updateDefenseStats(\'' + stat + '\')">';
-        html += '<span>' + stat + '</span>';
-        html += '</label>';
-    });
-    html += '</div>';
-    html += '</div>';
-    html += '<div class="mb-2">';
-    html += '<label class="d-flex align-items-center gap-2" style="font-size:0.75rem;cursor:pointer">';
-    html += '<input type="checkbox" ' + (formula.defense_use_average ? 'checked' : '') + ' onchange="toggleDefenseAverage()">';
-    html += '<span>Use average instead of sum</span>';
-    html += '</label>';
-    html += '</div>';
-    html += '<div class="mb-2">';
-    html += '<label style="font-size:0.75rem;color:var(--text-secondary)">Multiplier:</label>';
-    html += '<input type="number" class="form-control mp-input" style="font-size:0.75rem;padding:0.25rem 0.5rem" value="' + formula.defense_multiplier + '" onchange="updateDefenseMultiplier(this.value)">';
-    html += '</div>';
-    html += '</div>';
-    html += '</div>';
-    
-    html += '</div>';
-    
-    // Save button
-    html += '<div class="text-center mt-3">';
-    html += '<button class="mp-adopt-btn" onclick="saveBattleSettings()">Save Battle Settings</button>';
-    html += '</div>';
-    
-    container.innerHTML = html;
-}
-
-// ── Default battle settings ───────────────────────────────────────────────────
-function getDefaultBattleSettings() {
-    return {
-        formula: {
-            health_stats: ['HAP', 'ENE'],
-            health_use_average: true,
-            health_multiplier: 10.0,
-            health_level_factor: true,
-            health_equipment_factor: true,
-            health_custom_multiplier: 1.0,
-            health_custom_divider: 1.0,
-            
-            attack_stats: ['ATT', 'DEX'],
-            attack_use_average: false,
-            attack_multiplier: 1.0,
-            attack_level_factor: true,
-            attack_equipment_factor: true,
-            attack_custom_multiplier: 1.0,
-            attack_custom_divider: 1.0,
-            
-            defense_stats: ['DEF', 'INT'],
-            defense_use_average: false,
-            defense_multiplier: 1.0,
-            defense_level_factor: true,
-            defense_equipment_factor: true,
-            defense_custom_multiplier: 1.0,
-            defense_custom_divider: 1.0,
-            
-            use_original_scaling: false,
-            formula_name: "Default Formula"
-        }
-    };
-}
-
-// ── Ability and battle settings interaction functions ─────────────────────────
-window.purchaseAbilityPoint = function() {
-    fetch('/api/pets/ability-tree/purchase-point', {method: 'POST'})
-        .then(function(r){ return r.json(); })
-        .then(function(d) {
-            if (d.success) {
-                loadAbilitiesContent(); // Reload to show updated points
-                if (_pet) { _pet = d.pet; renderPetCard(_pet); } // Update pet display
-            } else {
-                alert('Failed to purchase point: ' + (d.error || 'Unknown error'));
-            }
-        })
-        .catch(function(e) { alert('Error: ' + e.message); });
-};
-
-window.spendStatMastery = function(stat) {
-    fetch('/api/pets/ability-tree/spend-stat-mastery', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({stat: stat})
-    })
-        .then(function(r){ return r.json(); })
-        .then(function(d) {
-            if (d.success) {
-                loadAbilitiesContent(); // Reload to show updated mastery
-            } else {
-                alert('Failed to spend mastery point: ' + (d.error || 'Unknown error'));
-            }
-        })
-        .catch(function(e) { alert('Error: ' + e.message); });
-};
-
-window.upgradeAbility = function(abilityId) {
-    fetch('/api/pets/ability-tree/unlock-ability', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ability_id: abilityId})
-    })
-        .then(function(r){ return r.json(); })
-        .then(function(d) {
-            if (d.success) {
-                loadAbilitiesContent(); // Reload to show updated abilities
-            } else {
-                alert('Failed to upgrade ability: ' + (d.error || 'Unknown error'));
-            }
-        })
-        .catch(function(e) { alert('Error: ' + e.message); });
-};
-
-// Battle settings update functions (simplified for inline display)
-var _currentBattleSettings = null;
-
-window.updateHealthStats = function(stat) {
-    if (!_currentBattleSettings) _currentBattleSettings = getDefaultBattleSettings();
-    var stats = _currentBattleSettings.formula.health_stats;
-    var index = stats.indexOf(stat);
-    if (index !== -1) {
-        stats.splice(index, 1);
-    } else {
-        stats.push(stat);
-    }
-};
-
-window.toggleHealthAverage = function() {
-    if (!_currentBattleSettings) _currentBattleSettings = getDefaultBattleSettings();
-    _currentBattleSettings.formula.health_use_average = !_currentBattleSettings.formula.health_use_average;
-};
-
-window.updateHealthMultiplier = function(value) {
-    if (!_currentBattleSettings) _currentBattleSettings = getDefaultBattleSettings();
-    _currentBattleSettings.formula.health_multiplier = parseFloat(value) || 1.0;
-};
-
-window.updateAttackStats = function(stat) {
-    if (!_currentBattleSettings) _currentBattleSettings = getDefaultBattleSettings();
-    var stats = _currentBattleSettings.formula.attack_stats;
-    var index = stats.indexOf(stat);
-    if (index !== -1) {
-        stats.splice(index, 1);
-    } else {
-        stats.push(stat);
-    }
-};
-
-window.toggleAttackAverage = function() {
-    if (!_currentBattleSettings) _currentBattleSettings = getDefaultBattleSettings();
-    _currentBattleSettings.formula.attack_use_average = !_currentBattleSettings.formula.attack_use_average;
-};
-
-window.updateAttackMultiplier = function(value) {
-    if (!_currentBattleSettings) _currentBattleSettings = getDefaultBattleSettings();
-    _currentBattleSettings.formula.attack_multiplier = parseFloat(value) || 1.0;
-};
-
-window.updateDefenseStats = function(stat) {
-    if (!_currentBattleSettings) _currentBattleSettings = getDefaultBattleSettings();
-    var stats = _currentBattleSettings.formula.defense_stats;
-    var index = stats.indexOf(stat);
-    if (index !== -1) {
-        stats.splice(index, 1);
-    } else {
-        stats.push(stat);
-    }
-};
-
-window.toggleDefenseAverage = function() {
-    if (!_currentBattleSettings) _currentBattleSettings = getDefaultBattleSettings();
-    _currentBattleSettings.formula.defense_use_average = !_currentBattleSettings.formula.defense_use_average;
-};
-
-window.updateDefenseMultiplier = function(value) {
-    if (!_currentBattleSettings) _currentBattleSettings = getDefaultBattleSettings();
-    _currentBattleSettings.formula.defense_multiplier = parseFloat(value) || 1.0;
-};
-
-window.saveBattleSettings = function() {
-    if (!_currentBattleSettings) {
-        alert('No settings to save');
-        return;
-    }
-    
-    fetch('/api/battle/settings/save', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify(_currentBattleSettings)
-    })
-        .then(function(r){ return r.json(); })
-        .then(function(d) {
-            if (d.success) {
-                alert('Battle settings saved successfully!');
-            } else {
-                alert('Failed to save settings: ' + (d.error || 'Unknown error'));
-            }
-        })
-        .catch(function(e) { 
-            console.log('Save error:', e);
-            alert('Settings saved locally (server unavailable)');
-        });
-};
-
-})();
-
-// ── Tree rendering for inline version ─────────────────────────────────────────
-function renderTreeInline(state) {
-    var STATS = ['ATT','DEF','INT','DEX','HAP','ENE'];
-    var STAT_META = {
-        ATT: { label:'ATT', icon:'/static/Emojis/Pets/Deco/ATT.png', color:'#e74c3c' },
-        DEF: { label:'DEF', icon:'/static/Emojis/Pets/Deco/DEF.png', color:'#3498db' },
-        INT: { label:'INT', icon:'/static/Emojis/Pets/Deco/INT.png', color:'#9b59b6' },
-        DEX: { label:'DEX', icon:'/static/Emojis/Pets/Deco/DEX.png', color:'#1abc9c' },
-        HAP: { label:'HAP', icon:'/static/Emojis/Pets/Deco/HAP.png', color:'#f39c12' },
-        ENE: { label:'ENE', icon:'/static/Emojis/Pets/Deco/ENE.png', color:'#2ecc71' },
-    };
-    var ABILITY_ICONS = {
-        'att_npc_damage':'🤖','att_pvp_damage':'⚔️','att_boss_damage':'🐉',
-        'att_survive_aggression':'🔥','att_critical_chance':'🎯','att_critical_multiplier':'💥',
-        'def_npc_defense':'🛡️','def_pvp_defense':'🏰','def_boss_defense':'⛰️',
-        'def_survive_endurance':'🧱','def_charge_protection':'🔋','def_last_stand':'💀',
-        'int_train_xp':'🧠','int_mission_xp':'🎯','int_play_xp':'🎮','int_quest_xp':'📜',
-        'int_survive_xp':'🧠','int_npc_battle_xp':'🤖','int_pvp_battle_xp':'⚔️','int_boss_battle_xp':'🐉',
-        'dex_speed_boost':'💨','dex_slots_loss_reduction':'🎰','dex_blackjack_loss_reduction':'🃏',
-        'dex_holdem_loss_reduction':'♠️','dex_craps_loss_reduction':'🎲','dex_wheel_loss_reduction':'🎡',
-        'dex_keno_loss_reduction':'🔢','dex_scratch_loss_reduction':'🎫','dex_powerball_loss_reduction':'🎱',
-        'dex_races_loss_reduction':'🏇','dex_coinflip_loss_reduction':'🪙','dex_rps_loss_reduction':'✂️',
-        'hap_battle_health':'❤️','hap_slots_win_bonus':'🎰','hap_blackjack_win_bonus':'🃏',
-        'hap_holdem_win_bonus':'♠️','hap_craps_win_bonus':'🎲','hap_wheel_win_bonus':'🎡',
-        'hap_keno_win_bonus':'🔢','hap_scratch_win_bonus':'🎫','hap_powerball_win_bonus':'🎱',
-        'hap_races_win_bonus':'🏇','hap_coinflip_win_bonus':'🪙','hap_rps_win_bonus':'✂️',
-        'ene_battle_stamina':'💪','ene_charge_mastery':'⚡','ene_speed_burst':'🚀',
-        'ene_charged_start':'🔋','ene_overcharged':'⚡',
-    };
-    
-    var mastery   = state.stat_mastery || {};
-    var abilities = state.abilities    || {};
-    var pts       = state.available_points || 0;
-
-    return STATS.map(function(stat) {
-        var m    = mastery[stat] || { points:0, multiplier:1.0 };
-        var meta = STAT_META[stat];
-        var isUnlocked = m.points > 0;
-        var canUnlock  = pts >= 1 && !isUnlocked;
-        var mClass = isUnlocked ? 'at-stat-unlocked' : canUnlock ? 'at-stat-available' : 'at-stat-locked';
-        var isSelMastery = window._abilityTreeSelectedNode && window._abilityTreeSelectedNode.type === 'mastery' && window._abilityTreeSelectedNode.stat === stat;
-        var isOpen = window._abilityTreeOpenStat === stat;
-
-        // Count abilities with progress for the collapsed summary
-        var statAbs = Object.keys(abilities)
-            .map(function(id){ return abilities[id]; })
-            .filter(function(a){ return a.stat === stat; });
-        var ownedCount = statAbs.filter(function(a){ return (a.current_level || 0) > 0; }).length;
-        var totalCount = statAbs.length;
-
-        // Summary chips shown when collapsed
-        var summaryHtml = '';
-        if (!isOpen) {
-            if (isUnlocked) {
-                summaryHtml = '<span class="at-section-summary" style="display:flex;gap:4px;margin-left:auto">' +
-                    '<span class="at-summary-mult" style="background:rgba(76,175,80,0.15);color:#4caf50;padding:2px 6px;border-radius:10px;font-size:0.6rem;font-weight:700">x' + m.multiplier.toFixed(1) + '</span>' +
-                    (totalCount > 0 ? '<span class="at-summary-ab" style="background:rgba(255,215,0,0.15);color:var(--gold-primary);padding:2px 6px;border-radius:10px;font-size:0.6rem;font-weight:700">' + ownedCount + '/' + totalCount + ' ab</span>' : '') +
-                '</span>';
-            } else {
-                summaryHtml = '<span class="at-section-summary" style="margin-left:auto"><span class="at-summary-locked" style="background:rgba(128,128,128,0.15);color:#888;padding:2px 6px;border-radius:10px;font-size:0.6rem;font-weight:700">🔒 ' + totalCount + ' ab</span></span>';
-            }
-        }
-
-        var chevron = '<span class="at-chevron' + (isOpen ? ' at-chevron-open' : '') + '" style="margin-left:8px;transition:transform 0.2s;transform:rotate(' + (isOpen ? '90deg' : '0deg') + ');color:var(--gold-primary);font-weight:700">›</span>';
-
-        var masteryRow =
-            '<div class="at-stat-mastery ' + mClass + (isSelMastery ? ' at-selected' : '') + '" data-stat="' + stat + '" style="display:flex;align-items:center;gap:8px;padding:8px;border-radius:6px;cursor:pointer;transition:all 0.2s;background:' + (isSelMastery ? 'rgba(255,215,0,0.1)' : 'rgba(0,0,0,0.2)') + ';border:1px solid ' + (isSelMastery ? 'var(--gold-primary)' : 'rgba(255,215,0,0.2)') + '" onclick="selectMasteryNodeInline(\'' + stat + '\')">' +
-                '<div class="at-stat-icon" style="width:32px;height:32px;flex-shrink:0"><img src="' + meta.icon + '" alt="' + stat + '" style="width:100%;height:100%;object-fit:contain" onerror="this.style.display=\'none\'"></div>' +
-                '<div class="at-stat-info" style="flex:1;min-width:0">' +
-                    '<div class="at-stat-name" style="font-size:0.8rem;font-weight:700;color:var(--gold-primary)">' + stat + ' Mastery</div>' +
-                    '<div style="display:flex;gap:8px;font-size:0.7rem;color:var(--text-secondary)">' +
-                        '<span class="at-stat-multiplier">x' + m.multiplier.toFixed(1) + '</span>' +
-                        '<span class="at-stat-points">' + m.points + ' pts</span>' +
-                    '</div>' +
-                '</div>' +
-                summaryHtml +
-                '<div class="at-stat-action" style="flex-shrink:0" onclick="event.stopPropagation()">' +
-                    (isUnlocked
-                        ? '<button class="at-upgrade-btn" style="background:linear-gradient(135deg,#4caf50,#45a049);border:none;border-radius:4px;color:#fff;font-size:0.7rem;font-weight:700;padding:4px 8px;cursor:pointer;transition:all 0.2s" onclick="event.stopPropagation(); upgradeMasteryInline(\'' + stat + '\')">+</button>'
-                        : canUnlock
-                            ? '<button class="at-unlock-btn" style="background:linear-gradient(135deg,var(--gold-primary),#ffb300);border:none;border-radius:4px;color:#000;font-size:0.7rem;font-weight:700;padding:4px 8px;cursor:pointer;transition:all 0.2s" onclick="event.stopPropagation(); unlockMasteryInline(\'' + stat + '\')">Unlock</button>'
-                            : '<span class="at-locked-indicator" style="color:#888;font-size:0.8rem">🔒</span>') +
-                '</div>' +
-                chevron +
-            '</div>';
-
-        var abilitiesHtml = '';
-        if (isOpen) {
-            if (isUnlocked) {
-                abilitiesHtml = '<div class="at-abilities-list" style="margin-top:8px;padding-left:16px">' +
-                    statAbs.map(function(ab) {
-                        var lvl     = ab.current_level || 0;
-                        var maxLvl  = ab.effective_max_level || ab.max_level || 5;
-                        var canUp   = ab.can_upgrade || false;
-                        var isMaxed = lvl >= maxLvl;
-                        var icon    = ABILITY_ICONS[ab.id] || '✨';
-                        var isSelAb = window._abilityTreeSelectedNode && window._abilityTreeSelectedNode.type === 'ability' && window._abilityTreeSelectedNode.abilityId === ab.id;
-
-                        var rowClass = 'at-ability-row ' +
-                            (isMaxed ? 'at-ability-maxed' :
-                             lvl > 0  ? 'at-ability-owned' :
-                             canUp    ? 'at-ability-available' : 'at-ability-locked');
-
-                        var pips = '';
-                        for (var i = 1; i <= maxLvl; i++) {
-                            var pc = i <= lvl ? (isMaxed ? 'maxed' : 'filled') :
-                                     (i === lvl + 1 && canUp ? 'next' : '');
-                            var pipColor = pc === 'maxed' ? '#ff9800' : pc === 'filled' ? '#4caf50' : pc === 'next' ? 'var(--gold-primary)' : 'rgba(255,255,255,0.2)';
-                            pips += '<div class="at-pip" style="width:8px;height:8px;border-radius:50%;background:' + pipColor + ';border:1px solid rgba(255,255,255,0.3)"></div>';
-                        }
-
-                        var badge = isMaxed
-                            ? '<span class="at-row-badge at-badge-max" style="background:#ff9800;color:#fff;padding:2px 6px;border-radius:10px;font-size:0.6rem;font-weight:700">MAX</span>'
-                            : canUp
-                                ? '<span class="at-row-badge at-badge-up" style="background:var(--gold-primary);color:#000;padding:2px 6px;border-radius:10px;font-size:0.6rem;font-weight:700">' + (lvl === 0 ? 'UNLOCK' : 'UP') + '</span>'
-                                : lvl > 0
-                                    ? '<span class="at-row-badge at-badge-lv" style="background:#4caf50;color:#fff;padding:2px 6px;border-radius:10px;font-size:0.6rem;font-weight:700">Lv.' + lvl + '</span>'
-                                    : '<span class="at-row-badge at-badge-lock" style="background:#888;color:#fff;padding:2px 6px;border-radius:10px;font-size:0.6rem;font-weight:700">🔒</span>';
-
-                        // Show the current value at the current level (or level-1 preview if locked)
-                        var valueChip = '';
-                        if (ab.formatted_value) {
-                            var chipColor = lvl > 0 ? (isMaxed ? '#ff9800' : '#4caf50') : 'rgba(255,255,255,0.3)';
-                            valueChip = '<span style="font-size:0.6rem;color:' + chipColor + ';font-weight:700;min-width:28px;text-align:right;flex-shrink:0">' + ab.formatted_value + '</span>';
-                        }
-
-                        return '<div class="' + rowClass + '" data-ability-id="' + ab.id + '" style="display:flex;align-items:center;gap:8px;padding:6px 8px;margin-bottom:4px;border-radius:4px;cursor:pointer;transition:all 0.2s;background:' + (isSelAb ? 'rgba(255,215,0,0.1)' : 'rgba(0,0,0,0.3)') + ';border:1px solid ' + (isSelAb ? 'var(--gold-primary)' : 'rgba(255,215,0,0.1)') + '" onclick="selectAbilityNodeInline(\'' + ab.id + '\')">' +
-                            '<span class="at-row-icon" style="font-size:1rem;flex-shrink:0">' + icon + '</span>' +
-                            '<span class="at-row-name" style="flex:1;font-size:0.75rem;color:var(--text-primary);font-weight:600">' + ab.name + '</span>' +
-                            '<div class="at-row-pips" style="display:flex;gap:2px;flex-shrink:0">' + pips + '</div>' +
-                            valueChip +
-                            badge +
-                            (canUp ? '<button class="at-ability-upgrade-btn" style="background:linear-gradient(135deg,var(--gold-primary),#ffb300);border:none;border-radius:3px;color:#000;font-size:0.6rem;font-weight:700;padding:2px 6px;margin-left:4px;cursor:pointer;transition:all 0.2s" onclick="event.stopPropagation(); upgradeAbilityInline(\'' + ab.id + '\')">+</button>' : '') +
-                        '</div>';
-                    }).join('') +
-                '</div>';
-            } else {
-                abilitiesHtml = '<div class="at-abilities-locked" style="margin-top:8px;padding:12px;text-align:center;color:#888;font-size:0.8rem;background:rgba(0,0,0,0.2);border-radius:4px">🔒 Unlock ' + stat + ' Mastery to access ' + totalCount + ' abilities</div>';
-            }
-        }
-
-        return '<div class="at-stat-section' + (isOpen ? ' at-section-open' : '') + '" data-stat="' + stat + '" style="margin-bottom:8px">' +
-            '<div class="at-section-header" style="border-left:3px solid ' + meta.color + ';padding-left:8px" onclick="toggleStatSectionInline(\'' + stat + '\');">' +
-                masteryRow +
-            '</div>' +
-            (isOpen ? '<div class="at-section-content">' + abilitiesHtml + '</div>' : '') +
-        '</div>';
-    }).join('') + renderSkillBranchInline(state);
-}
-
-// ── SKILL branch for inline version ───────────────────────────────────────────
-function renderSkillBranchInline(state) {
-    var ABILITY_ICONS_SKILL = {
-        'skill_slot_2':'🎴','skill_slot_3':'🎴','skill_slot_4':'🎴',
-        'skill_reroll_all':'🔄','skill_cross_element':'🌀',
-    };
-    var ELEM_COLORS_INLINE = {
-        basic:'#aaa', fire:'#e74c3c', water:'#3498db', electric:'#f1c40f',
-        ice:'#a8d8ea', plant:'#2ecc71', rock:'#95a5a6', air:'#bdc3c7',
-        magic:'#9b59b6', holy:'#f39c12', necro:'#8e44ad', psychic:'#e91e63', fighting:'#e67e22',
-    };
-    var EFFECT_LABELS_INLINE = {
-        instant_damage:'Instant Damage', dot:'Damage Over Time', shield:'Shield',
-        damage_reduction:'Damage Reduction', elemental_damage:'Elemental Damage',
-        heal:'Heal', charge_boost:'Charge Boost', stat_debuff:'Stat Debuff',
-        stat_buff:'Stat Buff', lifesteal:'Lifesteal', stun:'Stun',
-        cleanse:'Cleanse', reflect:'Reflect',
-    };
-
-    var abilities  = state.abilities || {};
-    var pts        = state.available_points || 0;
-    var skillState = state.skill_state || null;
-    var isOpen     = window._abilityTreeOpenStat === 'SKILL';
-
-    var skillAbs = Object.keys(abilities)
-        .map(function(id){ return abilities[id]; })
-        .filter(function(a){ return a.stat === 'SKILL'; });
-    var ownedCount = skillAbs.filter(function(a){ return (a.current_level || 0) > 0; }).length;
-    var totalCount = skillAbs.length;
-
-    var equippedCount = skillState ? skillState.slots.filter(function(s){ return s.filled; }).length : 0;
-    var isSelSkill = window._abilityTreeSelectedNode && window._abilityTreeSelectedNode.type === 'skill_branch';
-
-    var summaryHtml = '';
-    if (!isOpen) {
-        summaryHtml = '<span class="at-section-summary" style="display:flex;gap:4px;margin-left:auto">' +
-            '<span style="background:rgba(230,126,34,0.15);color:#e67e22;padding:2px 6px;border-radius:10px;font-size:0.6rem;font-weight:700">' + equippedCount + ' skill' + (equippedCount !== 1 ? 's' : '') + '</span>' +
-            (ownedCount > 0 ? '<span style="background:rgba(255,215,0,0.15);color:var(--gold-primary);padding:2px 6px;border-radius:10px;font-size:0.6rem;font-weight:700">' + ownedCount + '/' + totalCount + ' ab</span>' : '') +
-        '</span>';
-    }
-
-    var chevron = '<span class="at-chevron' + (isOpen ? ' at-chevron-open' : '') + '" style="margin-left:8px;transition:transform 0.2s;transform:rotate(' + (isOpen ? '90deg' : '0deg') + ');color:var(--gold-primary);font-weight:700">›</span>';
-
-    var headerRow =
-        '<div class="at-stat-mastery at-stat-unlocked' + (isSelSkill ? ' at-selected' : '') + '" style="display:flex;align-items:center;gap:8px;padding:8px;border-radius:6px;cursor:pointer;transition:all 0.2s;background:' + (isSelSkill ? 'rgba(255,215,0,0.1)' : 'rgba(0,0,0,0.2)') + ';border:1px solid ' + (isSelSkill ? 'var(--gold-primary)' : 'rgba(255,215,0,0.2)') + '" onclick="selectSkillBranchInline()">' +
-            '<div style="width:32px;height:32px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:1.2rem">⚔️</div>' +
-            '<div style="flex:1;min-width:0">' +
-                '<div style="font-size:0.8rem;font-weight:700;color:var(--gold-primary)">Battle Skills</div>' +
-                '<div style="display:flex;gap:8px;font-size:0.7rem;color:var(--text-secondary)">' +
-                    '<span>Free Branch</span>' +
-                    '<span>' + (skillState ? skillState.max_slots : 1) + ' slot' + ((skillState ? skillState.max_slots : 1) !== 1 ? 's' : '') + '</span>' +
-                '</div>' +
-            '</div>' +
-            summaryHtml +
-            '<div style="flex-shrink:0"></div>' +
-            chevron +
-        '</div>';
-
-    var contentHtml = '';
-    if (isOpen) {
-        // Equipped skill slots
-        var slotsHtml = '<div style="margin-top:8px;padding-left:16px">';
-        if (skillState && skillState.slots) {
-            skillState.slots.forEach(function(slot) {
-                var sk = slot.skill;
-                var elemColor = sk ? (ELEM_COLORS_INLINE[sk.element] || '#aaa') : '#555';
-                var effType = sk ? (EFFECT_LABELS_INLINE[sk.effect && sk.effect.type] || (sk.effect && sk.effect.type) || '') : '';
-                var isSelSlot = window._abilityTreeSelectedNode && window._abilityTreeSelectedNode.type === 'skill_slot' && window._abilityTreeSelectedNode.slot === slot.slot;
-                var canDraw = pts >= 1;
-                slotsHtml +=
-                    '<div style="display:flex;align-items:center;gap:8px;padding:8px;margin-bottom:6px;border-radius:6px;cursor:pointer;background:' + (isSelSlot ? 'rgba(255,215,0,0.08)' : 'rgba(0,0,0,0.3)') + ';border:1px solid ' + elemColor + ';transition:all 0.2s" onclick="selectSkillSlotInline(' + slot.slot + ')">' +
-                        '<div style="font-size:0.7rem;color:var(--text-secondary);flex-shrink:0;min-width:40px">Slot ' + (slot.slot + 1) + '</div>' +
-                        (sk
-                            ? '<div style="flex:1;min-width:0">' +
-                                '<div style="font-size:0.78rem;font-weight:700;color:' + elemColor + '">' + sk.name + '</div>' +
-                                '<div style="font-size:0.68rem;color:var(--text-secondary)">' + (sk.element.charAt(0).toUpperCase() + sk.element.slice(1)) + ' · ' + effType + '</div>' +
-                              '</div>'
-                            : '<div style="flex:1;font-size:0.75rem;color:#666;font-style:italic">Empty — draw to fill</div>') +
-                        (canDraw
-                            ? '<button style="background:rgba(255,215,0,0.12);border:1px solid rgba(255,215,0,0.3);border-radius:4px;color:var(--gold-primary);font-size:0.65rem;padding:3px 8px;cursor:pointer" onclick="event.stopPropagation(); drawSkillForSlotInline(' + slot.slot + ')">🎲 1pt</button>'
-                            : '<button style="background:rgba(128,128,128,0.1);border:1px solid rgba(128,128,128,0.2);border-radius:4px;color:#888;font-size:0.65rem;padding:3px 8px;cursor:not-allowed" disabled title="Need 1 ability point">🔒</button>') +
-                    '</div>';
-            });
-        }
-        slotsHtml += '</div>';
-
-        // Skill branch abilities
-        var skillAbHtml = '<div style="margin-top:8px;padding-left:16px">' +
-            skillAbs.map(function(ab) {
-                var lvl    = ab.current_level || 0;
-                var maxLvl = ab.effective_max_level || ab.max_level || 1;
-                var canUp  = ab.can_upgrade || false;
-                var isMaxed = lvl >= maxLvl;
-                var icon   = ABILITY_ICONS_SKILL[ab.id] || '⚔️';
-                var isSelAb = window._abilityTreeSelectedNode && window._abilityTreeSelectedNode.type === 'ability' && window._abilityTreeSelectedNode.abilityId === ab.id;
-
-                var pips = '';
-                for (var i = 1; i <= maxLvl; i++) {
-                    var pc = i <= lvl ? (isMaxed ? 'maxed' : 'filled') : (i === lvl + 1 && canUp ? 'next' : '');
-                    var pipColor = pc === 'maxed' ? '#ff9800' : pc === 'filled' ? '#4caf50' : pc === 'next' ? 'var(--gold-primary)' : 'rgba(255,255,255,0.2)';
-                    pips += '<div style="width:8px;height:8px;border-radius:50%;background:' + pipColor + ';border:1px solid rgba(255,255,255,0.3)"></div>';
-                }
-
-                var badge = isMaxed
-                    ? '<span style="background:#ff9800;color:#fff;padding:2px 6px;border-radius:10px;font-size:0.6rem;font-weight:700">MAX</span>'
-                    : canUp
-                        ? '<span style="background:var(--gold-primary);color:#000;padding:2px 6px;border-radius:10px;font-size:0.6rem;font-weight:700">' + (lvl === 0 ? 'UNLOCK' : 'UP') + '</span>'
-                        : lvl > 0
-                            ? '<span style="background:#4caf50;color:#fff;padding:2px 6px;border-radius:10px;font-size:0.6rem;font-weight:700">Lv.' + lvl + '</span>'
-                            : '<span style="background:#888;color:#fff;padding:2px 6px;border-radius:10px;font-size:0.6rem;font-weight:700">🔒</span>';
-
-                return '<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;margin-bottom:4px;border-radius:4px;cursor:pointer;transition:all 0.2s;background:' + (isSelAb ? 'rgba(255,215,0,0.1)' : 'rgba(0,0,0,0.3)') + ';border:1px solid ' + (isSelAb ? 'var(--gold-primary)' : 'rgba(255,215,0,0.1)') + '" onclick="selectAbilityNodeInline(\'' + ab.id + '\')">' +
-                    '<span style="font-size:1rem;flex-shrink:0">' + icon + '</span>' +
-                    '<span style="flex:1;font-size:0.75rem;color:var(--text-primary);font-weight:600">' + ab.name + '</span>' +
-                    '<div style="display:flex;gap:2px;flex-shrink:0">' + pips + '</div>' +
-                    badge +
-                    (canUp ? '<button style="background:linear-gradient(135deg,var(--gold-primary),#ffb300);border:none;border-radius:3px;color:#000;font-size:0.6rem;font-weight:700;padding:2px 6px;margin-left:4px;cursor:pointer" onclick="event.stopPropagation(); upgradeAbilityInline(\'' + ab.id + '\')">+</button>' : '') +
-                '</div>';
-            }).join('') +
-        '</div>';
-
-        contentHtml = slotsHtml + skillAbHtml;
-    }
-
-    return '<div class="at-stat-section' + (isOpen ? ' at-section-open' : '') + '" data-stat="SKILL" style="margin-bottom:8px">' +
-        '<div class="at-section-header" style="border-left:3px solid #e67e22;padding-left:8px" onclick="toggleStatSectionInline(\'SKILL\')">' +
-            headerRow +
-        '</div>' +
-        (isOpen ? '<div class="at-section-content">' + contentHtml + '</div>' : '') +
-    '</div>';
-}
-
-// ── Details panel for inline version ──────────────────────────────────────────
-function renderDetailsInline() {
-    if (!window._abilityTreeSelectedNode) {
-        return '<div class="at-details-empty" style="text-align:center;padding:20px;color:var(--text-secondary);background:rgba(0,0,0,0.2);border-radius:6px">' +
-            '<div class="at-details-empty-icon" style="font-size:2rem;margin-bottom:8px">👆</div>' +
-            '<div style="font-size:0.8rem">Click any mastery, ability, or advantage card to see details & actions.</div>' +
-        '</div>';
-    }
-    
-    var node = window._abilityTreeSelectedNode;
-    var state = window._abilityTreeState;
-
-    // ── Skill branch header ───────────────────────────────────────────────────
-    if (node.type === 'skill_branch') {
-        return '<div style="padding:12px;background:rgba(0,0,0,0.2);border-radius:6px">' +
-            '<div style="font-size:1.5rem;text-align:center;margin-bottom:8px">⚔️</div>' +
-            '<div style="font-size:0.85rem;font-weight:700;color:var(--gold-primary);text-align:center;margin-bottom:4px">Battle Skills</div>' +
-            '<div style="font-size:0.72rem;color:var(--text-secondary);text-align:center;margin-bottom:10px">Free Branch — No mastery required</div>' +
-            '<div style="font-size:0.78rem;color:var(--text-primary)">Battle skills are active abilities used in combat — one per slot, usable every 3 turns. ' +
-                'Your first slot is free. Unlock more slots and utilities with ability points. ' +
-                'Click a skill slot to draw new choices or see details.</div>' +
-        '</div>';
-    }
-
-    // ── Skill slot detail ─────────────────────────────────────────────────────
-    if (node.type === 'skill_slot') {
-        var slotIdx = node.slot;
-        var skillState = state && state.skill_state;
-        var slotData = skillState && skillState.slots && skillState.slots[slotIdx];
-        var sk = slotData && slotData.skill;
-        var ELEM_COLORS_D = {
-            basic:'#aaa', fire:'#e74c3c', water:'#3498db', electric:'#f1c40f',
-            ice:'#a8d8ea', plant:'#2ecc71', rock:'#95a5a6', air:'#bdc3c7',
-            magic:'#9b59b6', holy:'#f39c12', necro:'#8e44ad', psychic:'#e91e63', fighting:'#e67e22',
-        };
-        var EFFECT_LABELS_D = {
-            instant_damage:'Instant Damage', dot:'Damage Over Time', shield:'Shield',
-            damage_reduction:'Damage Reduction', elemental_damage:'Elemental Damage',
-            heal:'Heal', charge_boost:'Charge Boost', stat_debuff:'Stat Debuff',
-            stat_buff:'Stat Buff', lifesteal:'Lifesteal', stun:'Stun',
-            cleanse:'Cleanse', reflect:'Reflect',
-        };
-        var elemColor = sk ? (ELEM_COLORS_D[sk.element] || '#aaa') : '#888';
-        var effType = sk ? (EFFECT_LABELS_D[sk.effect && sk.effect.type] || (sk.effect && sk.effect.type) || '') : '';
-        var pts = (state && state.available_points) || 0;
-        var canDraw = pts >= 1;
-
-        var skillInfo = sk
-            ? '<div style="border-left:3px solid ' + elemColor + ';padding-left:10px;margin:10px 0">' +
-                '<div style="font-weight:700;color:' + elemColor + ';margin-bottom:2px">' + sk.name + '</div>' +
-                '<div style="font-size:0.72rem;color:var(--text-secondary);margin-bottom:6px">' + (sk.element.charAt(0).toUpperCase() + sk.element.slice(1)) + ' · ' + effType + '</div>' +
-                '<div style="font-size:0.78rem;color:var(--text-primary)">' + sk.description + '</div>' +
-              '</div>'
-            : '<div style="color:var(--text-secondary);font-size:0.78rem;margin:10px 0">No skill equipped. Draw 5 choices from your element pool to pick one.</div>';
-
-        return '<div style="padding:12px;background:rgba(0,0,0,0.2);border-radius:6px">' +
-            '<div style="font-size:0.85rem;font-weight:700;color:var(--gold-primary);margin-bottom:4px">🎴 Skill Slot ' + (slotIdx + 1) + '</div>' +
-            '<div style="font-size:0.72rem;color:var(--text-secondary);margin-bottom:8px">' + (sk ? 'Equipped' : 'Empty') + '</div>' +
-            skillInfo +
-            '<div style="display:flex;justify-content:space-between;font-size:0.72rem;color:var(--text-secondary);margin:8px 0 4px">' +
-                '<span>Draw cost: <strong style="color:var(--gold-primary)">1 ability point</strong></span>' +
-                '<span>You have: <strong style="color:' + (canDraw ? '#4caf50' : '#e74c3c') + '">' + pts + ' pt' + (pts !== 1 ? 's' : '') + '</strong></span>' +
-            '</div>' +
-            (canDraw
-                ? '<button style="width:100%;background:linear-gradient(135deg,rgba(255,215,0,0.15),rgba(255,140,0,0.1));border:1px solid rgba(255,215,0,0.4);border-radius:6px;color:var(--gold-primary);font-size:0.78rem;font-weight:700;padding:8px;cursor:pointer;margin-top:4px" onclick="drawSkillForSlotInline(' + slotIdx + ')">🎲 Draw 5 Choices (1 pt)</button>'
-                : '<button style="width:100%;background:rgba(128,128,128,0.1);border:1px solid rgba(128,128,128,0.3);border-radius:6px;color:#888;font-size:0.78rem;font-weight:700;padding:8px;cursor:not-allowed;margin-top:4px" disabled>❌ Need 1 ability point to draw</button>') +
-            '<div id="at-skill-draw-result-inline" style="margin-top:10px"></div>' +
-        '</div>';
-    }
-
-    // ── Skill draw choices ────────────────────────────────────────────────────
-    if (node.type === 'skill_choices') {
-        var choices = node.choices || [];
-        var slotIdx2 = node.slot;
-        var ELEM_COLORS_C = {
-            basic:'#aaa', fire:'#e74c3c', water:'#3498db', electric:'#f1c40f',
-            ice:'#a8d8ea', plant:'#2ecc71', rock:'#95a5a6', air:'#bdc3c7',
-            magic:'#9b59b6', holy:'#f39c12', necro:'#8e44ad', psychic:'#e91e63', fighting:'#e67e22',
-        };
-        var EFFECT_LABELS_C = {
-            instant_damage:'Instant Damage', dot:'Damage Over Time', shield:'Shield',
-            damage_reduction:'Damage Reduction', elemental_damage:'Elemental Damage',
-            heal:'Heal', charge_boost:'Charge Boost', stat_debuff:'Stat Debuff',
-            stat_buff:'Stat Buff', lifesteal:'Lifesteal', stun:'Stun',
-            cleanse:'Cleanse', reflect:'Reflect',
-        };
-        var html = '<div style="padding:12px;background:rgba(0,0,0,0.2);border-radius:6px">' +
-            '<div style="font-size:0.85rem;font-weight:700;color:var(--gold-primary);margin-bottom:4px">🎲 Choose a Skill</div>' +
-            '<div style="font-size:0.72rem;color:var(--text-secondary);margin-bottom:10px">Slot ' + (slotIdx2 + 1) + ' — Pick one</div>';
-        choices.forEach(function(sk) {
-            var elemColor = ELEM_COLORS_C[sk.element] || '#aaa';
-            var effType = EFFECT_LABELS_C[sk.effect && sk.effect.type] || (sk.effect && sk.effect.type) || '';
-            html += '<div style="border:1px solid ' + elemColor + ';border-radius:6px;padding:8px;margin-bottom:8px;cursor:pointer;transition:background 0.15s;background:rgba(0,0,0,0.3)" onclick="equipSkillChoiceInline(\'' + sk.id + '\',' + slotIdx2 + ')" onmouseover="this.style.background=\'rgba(255,215,0,0.08)\'" onmouseout="this.style.background=\'rgba(0,0,0,0.3)\'">' +
-                '<div style="font-weight:700;color:' + elemColor + ';font-size:0.8rem;margin-bottom:2px">' + sk.name + '</div>' +
-                '<div style="font-size:0.68rem;color:var(--text-secondary);margin-bottom:4px">' + (sk.element.charAt(0).toUpperCase() + sk.element.slice(1)) + ' · ' + effType + '</div>' +
-                '<div style="font-size:0.75rem;color:var(--text-primary)">' + sk.description + '</div>' +
-            '</div>';
-        });
-        html += '</div>';
-        return html;
-    }
-    
-    if (node.type === 'mastery') {
-        var stat = node.stat;
-        var m = (state.stat_mastery || {})[stat] || { points:0, multiplier:1.0 };
-        var canUp = (state.available_points || 0) >= 1;
-        return '<div class="at-details-panel" style="background:rgba(0,0,0,0.2);border-radius:6px;padding:12px">' +
-            '<div class="at-details-header" style="display:flex;align-items:center;gap:8px;margin-bottom:12px">' +
-                '<img src="/static/Emojis/Pets/Deco/' + stat + '.png" style="width:32px;height:32px" onerror="this.style.display=\'none\'">' +
-                '<div>' +
-                    '<div class="at-details-title" style="font-size:0.9rem;font-weight:700;color:var(--gold-primary)">' + stat + ' Mastery</div>' +
-                    '<div class="at-details-subtitle" style="font-size:0.7rem;color:var(--text-secondary)">Stat Multiplier</div>' +
-                '</div>' +
-            '</div>' +
-            '<div class="at-details-description" style="font-size:0.75rem;color:var(--text-secondary);margin-bottom:12px">Each point multiplies your ' + stat + ' stat by an additional 0.1x. At least 1 point is required to unlock abilities in this branch.</div>' +
-            '<div class="at-details-stats" style="margin-bottom:12px">' +
-                '<div class="at-detail-row" style="display:flex;justify-content:space-between;margin-bottom:4px;font-size:0.75rem"><span>Points Invested</span><span style="color:var(--gold-secondary);font-weight:700">' + m.points + '</span></div>' +
-                '<div class="at-detail-row" style="display:flex;justify-content:space-between;margin-bottom:4px;font-size:0.75rem"><span>Current Multiplier</span><span style="color:#4caf50;font-weight:700">x' + m.multiplier.toFixed(1) + '</span></div>' +
-                '<div class="at-detail-row" style="display:flex;justify-content:space-between;font-size:0.75rem"><span>Next Point</span><span style="color:var(--gold-primary);font-weight:700">x' + (m.multiplier + 0.1).toFixed(1) + '</span></div>' +
-            '</div>' +
-            '<div class="at-details-action">' +
-                (canUp
-                    ? '<button class="at-action-btn" style="width:100%;background:linear-gradient(135deg,#4caf50,#45a049);border:none;border-radius:4px;color:#fff;font-size:0.8rem;font-weight:700;padding:8px;cursor:pointer;transition:all 0.2s" onclick="upgradeMasteryInline(\'' + stat + '\')">⬆️ Spend 1 Point (+0.1x)</button>'
-                    : '<button class="at-action-btn" style="width:100%;background:rgba(80,80,80,0.4);border:none;border-radius:4px;color:rgba(255,255,255,0.4);font-size:0.8rem;font-weight:700;padding:8px;cursor:not-allowed" disabled>❌ Need more ability points</button>') +
-            '</div>' +
-        '</div>';
-    }
-
-    if (node.type === 'ability') {
-        var abilityId = node.abilityId;
-        var abilities = state.abilities || {};
-        var ab = abilities[abilityId];
-        if (!ab) return '<div class="at-details-empty" style="text-align:center;padding:20px;color:var(--text-secondary);background:rgba(0,0,0,0.2);border-radius:6px">Ability not found.</div>';
-        var lvl    = ab.current_level || 0;
-        var maxLvl = ab.effective_max_level || ab.max_level || 5;
-        var canUp  = ab.can_upgrade || false;
-        var isMaxed = lvl >= maxLvl;
-        var ABILITY_ICONS = {
-            'att_npc_damage':'🤖','att_pvp_damage':'⚔️','att_boss_damage':'🐉',
-            'att_survive_aggression':'🔥','att_critical_chance':'🎯','att_critical_multiplier':'💥',
-            'def_npc_defense':'🛡️','def_pvp_defense':'🏰','def_boss_defense':'⛰️',
-            'def_survive_endurance':'🧱','def_charge_protection':'🔋','def_last_stand':'💀',
-            'int_train_xp':'🧠','int_mission_xp':'🎯','int_play_xp':'🎮','int_quest_xp':'📜',
-            'int_survive_xp':'🧠','int_npc_battle_xp':'🤖','int_pvp_battle_xp':'⚔️','int_boss_battle_xp':'🐉',
-            'dex_speed_boost':'💨','dex_slots_loss_reduction':'🎰','dex_blackjack_loss_reduction':'🃏',
-            'dex_holdem_loss_reduction':'♠️','dex_craps_loss_reduction':'🎲','dex_wheel_loss_reduction':'🎡',
-            'dex_keno_loss_reduction':'🔢','dex_scratch_loss_reduction':'🎫','dex_powerball_loss_reduction':'🎱',
-            'dex_races_loss_reduction':'🏇','dex_coinflip_loss_reduction':'🪙','dex_rps_loss_reduction':'✂️',
-            'hap_battle_health':'❤️','hap_slots_win_bonus':'🎰','hap_blackjack_win_bonus':'🃏',
-            'hap_holdem_win_bonus':'♠️','hap_craps_win_bonus':'🎲','hap_wheel_win_bonus':'🎡',
-            'hap_keno_win_bonus':'🔢','hap_scratch_win_bonus':'🎫','hap_powerball_win_bonus':'🎱',
-            'hap_races_win_bonus':'🏇','hap_coinflip_win_bonus':'🪙','hap_rps_win_bonus':'✂️',
-            'ene_battle_stamina':'💪','ene_charge_mastery':'⚡','ene_speed_burst':'🚀',
-            'ene_charged_start':'🔋','ene_overcharged':'⚡'
-        };
-        var icon = ABILITY_ICONS[abilityId] || '✨';
-        var pips = '';
-        for (var i = 1; i <= maxLvl; i++) {
-            var pc = i <= lvl ? (isMaxed ? '#ff9800' : '#4caf50') : (i === lvl + 1 && canUp ? 'var(--gold-primary)' : 'rgba(255,255,255,0.15)');
-            pips += '<div style="width:12px;height:12px;border-radius:50%;background:' + pc + ';border:1px solid rgba(255,255,255,0.3)"></div>';
-        }
-        var statusLabel = isMaxed
-            ? '<span style="background:#ff9800;color:#fff;padding:2px 8px;border-radius:10px;font-size:0.65rem;font-weight:700">MAX</span>'
-            : lvl > 0
-                ? '<span style="background:#4caf50;color:#fff;padding:2px 8px;border-radius:10px;font-size:0.65rem;font-weight:700">Lv.' + lvl + ' / ' + maxLvl + '</span>'
-                : '<span style="background:#888;color:#fff;padding:2px 8px;border-radius:10px;font-size:0.65rem;font-weight:700">Locked</span>';
-        return '<div class="at-details-panel" style="background:rgba(0,0,0,0.2);border-radius:6px;padding:12px">' +
-            '<div class="at-details-header" style="display:flex;align-items:center;gap:8px;margin-bottom:12px">' +
-                '<span style="font-size:1.8rem;flex-shrink:0">' + icon + '</span>' +
-                '<div style="flex:1;min-width:0">' +
-                    '<div class="at-details-title" style="font-size:0.9rem;font-weight:700;color:var(--gold-primary)">' + (ab.name || abilityId) + '</div>' +
-                    '<div style="margin-top:4px">' + statusLabel + '</div>' +
-                '</div>' +
-            '</div>' +
-            (ab.description ? (function() {
-                // Replace {value} placeholder with the actual formatted value at current level
-                var displayVal = ab.formatted_value || '';
-                var desc = ab.description.replace(/\{value\}/g, '<strong style="color:var(--gold-primary)">' + displayVal + '</strong>');
-                return '<div class="at-details-description" style="font-size:0.75rem;color:var(--text-secondary);margin-bottom:12px">' + desc + '</div>';
-            })() : '') +
-            '<div class="at-details-stats" style="margin-bottom:12px">' +
-                '<div class="at-detail-row" style="display:flex;justify-content:space-between;margin-bottom:4px;font-size:0.75rem"><span>Level</span><span style="color:var(--gold-secondary);font-weight:700">' + lvl + ' / ' + maxLvl + '</span></div>' +
-                (lvl > 0 && ab.formatted_value ? '<div class="at-detail-row" style="display:flex;justify-content:space-between;margin-bottom:4px;font-size:0.75rem"><span>Current Value</span><span style="color:#4caf50;font-weight:700">' + ab.formatted_value + '</span></div>' : '') +
-                (ab.effect && ab.effect.per_level ? (function() {
-                    // Calculate next level value for preview
-                    var nextLvl = Math.min(lvl + 1, maxLvl);
-                    var base = ab.effect.base || 0;
-                    var perLvl = ab.effect.per_level || 0;
-                    var nextVal = base + perLvl * (nextLvl - 1);
-                    // Format next value same way as formatted_value
-                    var fmtNext = '';
-                    var effType = (ab.effect && ab.effect.type) || '';
-                    if (effType.endsWith('_mult') || effType.endsWith('_multiplier')) {
-                        if (effType === 'battle_defense_mult' || effType === 'battle_damage_mult' || effType === 'xp_multiplier' || effType === 'casino_xp_gain_mult') {
-                            fmtNext = Math.round((nextVal - 1.0) * 100) + '%';
-                        } else {
-                            fmtNext = nextVal.toFixed(1);
-                        }
-                    } else if (effType === 'casino_xp_loss_reduction' || effType === 'battle_health_bonus' || effType === 'low_health_damage_reduction' || effType === 'charge_vulnerability_reduction' || effType === 'critical_hit_chance') {
-                        fmtNext = Math.round(nextVal * 100) + '%';
-                    } else if (effType === 'charge_limit_bonus' || effType === 'starting_charge_bonus' || effType === 'overcharged_bonus') {
-                        fmtNext = String(Math.round(nextVal));
-                    } else {
-                        fmtNext = nextVal.toFixed(1);
-                    }
-                    return (lvl < maxLvl ? '<div class="at-detail-row" style="display:flex;justify-content:space-between;font-size:0.75rem"><span>Next Level (' + nextLvl + ')</span><span style="color:var(--gold-primary);font-weight:700">' + fmtNext + '</span></div>' : '');
-                })() : '') +
-            '</div>' +
-            '<div style="display:flex;gap:4px;margin-bottom:12px">' + pips + '</div>' +
-            '<div class="at-details-action">' +
-                (isMaxed
-                    ? '<button style="width:100%;background:rgba(255,152,0,0.2);border:1px solid #ff9800;border-radius:4px;color:#ff9800;font-size:0.8rem;font-weight:700;padding:8px;cursor:default">✅ Maxed Out</button>'
-                    : canUp
-                        ? '<button class="at-action-btn" style="width:100%;background:linear-gradient(135deg,var(--gold-primary),#ffb300);border:none;border-radius:4px;color:#000;font-size:0.8rem;font-weight:700;padding:8px;cursor:pointer;transition:all 0.2s" onclick="upgradeAbilityInline(\'' + abilityId + '\')">' + (lvl === 0 ? '🔓 Unlock Ability' : '⬆️ Upgrade Ability') + '</button>'
-                        : '<button style="width:100%;background:rgba(80,80,80,0.4);border:none;border-radius:4px;color:rgba(255,255,255,0.4);font-size:0.8rem;font-weight:700;padding:8px;cursor:not-allowed" disabled>❌ Need more ability points</button>') +
-            '</div>' +
-        '</div>';
-    }
-    
-    if (node.type === 'adv') {
-        var advKey = node.key;
-        var advLabels = { type: 'Type Advantage', element: 'Element Advantage' };
-        var advIcons  = { type: '⚔️', element: '✨' };
-        var advDescs  = {
-            type:    'Each point adds +0.1 flat bonus to your type advantage multiplier when you have a type matchup advantage.',
-            element: 'Each point adds +0.1 flat bonus to your element advantage multiplier when you have an element matchup advantage.'
-        };
-        var advM   = (state.advantage_mastery || {})[advKey] || { points: 0, bonus: 0 };
-        var advPts = advM.points || 0;
-        var advBonus = advM.bonus !== undefined ? advM.bonus : (advPts * 0.1);
-        var canUpAdv = (state.available_points || 0) >= 1;
-        return '<div class="at-details-panel" style="background:rgba(0,0,0,0.2);border-radius:6px;padding:12px">' +
-            '<div class="at-details-header" style="display:flex;align-items:center;gap:8px;margin-bottom:12px">' +
-                '<span style="font-size:1.8rem;flex-shrink:0">' + (advIcons[advKey] || '✨') + '</span>' +
-                '<div>' +
-                    '<div class="at-details-title" style="font-size:0.9rem;font-weight:700;color:var(--gold-primary)">' + (advLabels[advKey] || advKey) + '</div>' +
-                    '<div class="at-details-subtitle" style="font-size:0.7rem;color:var(--text-secondary)">Advantage Mastery</div>' +
-                '</div>' +
-            '</div>' +
-            '<div class="at-details-description" style="font-size:0.75rem;color:var(--text-secondary);margin-bottom:12px">' + (advDescs[advKey] || '') + '</div>' +
-            '<div class="at-details-stats" style="margin-bottom:12px">' +
-                '<div class="at-detail-row" style="display:flex;justify-content:space-between;margin-bottom:4px;font-size:0.75rem"><span>Points Invested</span><span style="color:var(--gold-secondary);font-weight:700">' + advPts + '</span></div>' +
-                '<div class="at-detail-row" style="display:flex;justify-content:space-between;margin-bottom:4px;font-size:0.75rem"><span>Current Bonus</span><span style="color:#4caf50;font-weight:700">+' + advBonus.toFixed(1) + '</span></div>' +
-                '<div class="at-detail-row" style="display:flex;justify-content:space-between;font-size:0.75rem"><span>Next Point</span><span style="color:var(--gold-primary);font-weight:700">+' + (advBonus + 0.1).toFixed(1) + '</span></div>' +
-            '</div>' +
-            '<div class="at-details-action">' +
-                (canUpAdv
-                    ? '<button class="at-action-btn" style="width:100%;background:linear-gradient(135deg,#4caf50,#45a049);border:none;border-radius:4px;color:#fff;font-size:0.8rem;font-weight:700;padding:8px;cursor:pointer;transition:all 0.2s" onclick="upgradeAdvMasteryInline(\'' + advKey + '\')">⬆️ Spend 1 Point (+0.1 bonus)</button>'
-                    : '<button style="width:100%;background:rgba(80,80,80,0.4);border:none;border-radius:4px;color:rgba(255,255,255,0.4);font-size:0.8rem;font-weight:700;padding:8px;cursor:not-allowed" disabled>❌ Need more ability points</button>') +
-            '</div>' +
-        '</div>';
-    }
-
-    return '<div class="at-details-empty" style="text-align:center;padding:20px;color:var(--text-secondary);background:rgba(0,0,0,0.2);border-radius:6px">Select an item to see details</div>';
-}
-
-// ── Inline ability tree handlers ──────────────────────────────────────────────
-function exposeInlineAbilityHandlers() {
-    window.toggleStatSectionInline = function(stat) {
-        console.log('[mypet.js] toggleStatSectionInline called with stat:', stat);
-        window._abilityTreeOpenStat = (window._abilityTreeOpenStat === stat) ? null : stat;
-        // Re-render just the tree container
-        var tc = document.querySelector('.at-tree-container');
-        if (tc && window._abilityTreeState) {
-            tc.innerHTML = renderTreeInline(window._abilityTreeState);
-        }
-    };
-    
-    window.selectMasteryNodeInline = function(stat) {
-        console.log('[mypet.js] selectMasteryNodeInline called with stat:', stat);
-        try {
-            window._abilityTreeSelectedNode = { type: 'mastery', stat: stat };
-            
-            // Clear previous selections
-            document.querySelectorAll('.at-selected').forEach(function(node_el) {
-                node_el.classList.remove('at-selected');
-            });
-            
-            // Add selection to current node
-            var masteryNode = document.querySelector('.at-stat-section[data-stat="' + stat + '"] .at-stat-mastery');
-            if (masteryNode) {
-                masteryNode.classList.add('at-selected');
-            }
-            
-            var dp = document.getElementById('at-details-panel-inline');
-            if (dp) dp.innerHTML = renderDetailsInline();
-        } catch (e) {
-            console.error('[mypet.js] Error in selectMasteryNodeInline:', e);
-        }
-    };
-    
-    window.selectAbilityNodeInline = function(abilityId) {
-        console.log('[mypet.js] selectAbilityNodeInline called with abilityId:', abilityId);
-        try {
-            window._abilityTreeSelectedNode = { type: 'ability', abilityId: abilityId };
-            
-            // Clear previous selections
-            document.querySelectorAll('.at-selected').forEach(function(node_el) {
-                node_el.classList.remove('at-selected');
-            });
-            
-            // Add selection to current node
-            var abilityNode = document.querySelector('.at-ability-row[data-ability-id="' + abilityId + '"]');
-            if (abilityNode) {
-                abilityNode.classList.add('at-selected');
-            }
-            
-            var dp = document.getElementById('at-details-panel-inline');
-            if (dp) dp.innerHTML = renderDetailsInline();
-        } catch (e) {
-            console.error('[mypet.js] Error in selectAbilityNodeInline:', e);
-        }
-    };
-    
-    window.selectAdvNodeInline = function(key) {
-        console.log('[mypet.js] selectAdvNodeInline called with key:', key);
-        try {
-            window._abilityTreeSelectedNode = { type: 'adv', key: key };
-            
-            // Clear previous selections
-            document.querySelectorAll('.at-selected').forEach(function(node_el) {
-                node_el.classList.remove('at-selected');
-            });
-            
-            // Add selection to current node
-            var advNode = document.querySelector('.at-adv-card[data-adv-key="' + key + '"]');
-            if (advNode) {
-                advNode.classList.add('at-selected');
-            }
-            
-            var dp = document.getElementById('at-details-panel-inline');
-            if (dp) dp.innerHTML = renderDetailsInline();
-        } catch (e) {
-            console.error('[mypet.js] Error in selectAdvNodeInline:', e);
-        }
-    };
-    
-    window.purchaseAbilityPointInline = function() {
-        console.log('[mypet.js] purchaseAbilityPointInline called');
-        var state = window._abilityTreeState || {};
-        var currentLevel = state.current_level || 0;
-        var cost = state.point_cost || 500;
-        var newLevel = currentLevel - cost;
-        showAbilityPurchaseConfirmModal(currentLevel, cost, newLevel);
-    };
-
-    window._confirmAbilityPointPurchase = function() {
-        var modal = document.getElementById('at-purchase-modal');
-        if (modal) modal.style.display = 'none';
-        var btn = document.getElementById('at-purchase-confirm-btn');
-        if (btn) { btn.disabled = true; btn.textContent = 'Purchasing...'; }
-
-        fetch('/api/pets/ability-tree/purchase', {method: 'POST'})
-            .then(function(r){ return r.json(); })
-            .then(function(d) {
-                if (d.ok) {
-                    showAbilityPurchaseResultModal(true, d.message || 'Ability point purchased!', d.tree);
-                    loadAbilitiesContent();
-                } else {
-                    showAbilityPurchaseResultModal(false, d.message || 'Purchase failed.');
-                }
-            })
-            .catch(function(e) {
-                console.error('[mypet.js] Error in _confirmAbilityPointPurchase:', e);
-                showAbilityPurchaseResultModal(false, 'Error: ' + e.message);
-            });
-    };
-    
-    window.upgradeMasteryInline = function(stat) {
-        console.log('[mypet.js] upgradeMasteryInline called with stat:', stat);
-        fetch('/api/pets/ability-tree/mastery', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({stat: stat, points: 1})
-        })
-            .then(function(r){ return r.json(); })
-            .then(function(d) {
-                if (d.ok) {
-                    showToastInline(d.message || 'Mastery upgraded!', true);
-                    loadAbilitiesContent(); // Reload to show updated mastery
-                } else {
-                    showToastInline('Failed to upgrade mastery: ' + (d.message || 'Unknown error'), false);
-                }
-            })
-            .catch(function(e) { 
-                console.error('[mypet.js] Error in upgradeMasteryInline:', e);
-                showToastInline('Error: ' + e.message, false); 
-            });
-    };
-    
-    window.unlockMasteryInline = window.upgradeMasteryInline;
-    
-    window.upgradeAbilityInline = function(abilityId) {
-        console.log('[mypet.js] upgradeAbilityInline called with abilityId:', abilityId);
-        fetch('/api/pets/ability-tree/unlock', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ability_id: abilityId})
-        })
-            .then(function(r){ return r.json(); })
-            .then(function(d) {
-                if (d.ok) {
-                    showToastInline(d.message || 'Ability upgraded!', true);
-                    loadAbilitiesContent(); // Reload to show updated abilities
-                } else {
-                    showToastInline('Failed to upgrade ability: ' + (d.message || 'Unknown error'), false);
-                }
-            })
-            .catch(function(e) { 
-                console.error('[mypet.js] Error in upgradeAbilityInline:', e);
-                showToastInline('Error: ' + e.message, false); 
-            });
-    };
-    
-    window.upgradeAdvMasteryInline = function(key) {
-        console.log('[mypet.js] upgradeAdvMasteryInline called with key:', key);
-        fetch('/api/pets/ability-tree/advantage-mastery', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({key: key})
-        })
-            .then(function(r){ return r.json(); })
-            .then(function(d) {
-                if (d.ok) {
-                    showToastInline(d.message || 'Advantage mastery upgraded!', true);
-                    loadAbilitiesContent(); // Reload to show updated mastery
-                } else {
-                    showToastInline('Failed to upgrade advantage mastery: ' + (d.message || 'Unknown error'), false);
-                }
-            })
-            .catch(function(e) { 
-                console.error('[mypet.js] Error in upgradeAdvMasteryInline:', e);
-                showToastInline('Error: ' + e.message, false); 
-            });
-    };
-
-    // ── Skill branch handlers ─────────────────────────────────────────────────
-    window.selectSkillBranchInline = function() {
-        window._abilityTreeSelectedNode = { type: 'skill_branch' };
-        document.querySelectorAll('.at-selected').forEach(function(n){ n.classList.remove('at-selected'); });
-        var dp = document.getElementById('at-details-panel-inline');
-        if (dp) dp.innerHTML = renderDetailsInline();
-    };
-
-    window.selectSkillSlotInline = function(slotIdx) {
-        window._abilityTreeSelectedNode = { type: 'skill_slot', slot: slotIdx };
-        document.querySelectorAll('.at-selected').forEach(function(n){ n.classList.remove('at-selected'); });
-        var dp = document.getElementById('at-details-panel-inline');
-        if (dp) dp.innerHTML = renderDetailsInline();
-    };
-
-    window.drawSkillForSlotInline = function(slotIdx) {
-        var pts = (window._abilityTreeState && window._abilityTreeState.available_points) || 0;
-        if (pts < 1) {
-            showToastInline('Not enough ability points — drawing costs 1 point.', false);
-            return;
-        }
-        if (!confirm('Draw 5 new skill choices for slot ' + (slotIdx + 1) + '? This costs 1 ability point.')) return;
-
-        fetch('/api/pets/skills/draw', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ slot: slotIdx, cross_element: false }),
-        })
-            .then(function(r){ return r.json(); })
-            .then(function(d){
-                if (!d.ok) {
-                    showToastInline(d.message || 'Draw failed.', false);
-                    return;
-                }
-                // Update local points count
-                if (window._abilityTreeState && d.ability_points !== undefined) {
-                    window._abilityTreeState.available_points = d.ability_points;
-                }
-                if (d.choices && d.choices.length) {
-                    window._abilityTreeSelectedNode = { type: 'skill_choices', slot: slotIdx, choices: d.choices };
-                    var dp = document.getElementById('at-details-panel-inline');
-                    if (dp) dp.innerHTML = renderDetailsInline();
-                } else {
-                    showToastInline('No skills available to draw.', false);
-                }
-            })
-            .catch(function(e){ showToastInline('Error: ' + e.message, false); });
-    };
-
-    window.equipSkillChoiceInline = function(skillId, slotIdx) {
-        fetch('/api/pets/skills/equip', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ skill_id: skillId, slot: slotIdx }),
-        })
-        .then(function(r){ return r.json(); })
-        .then(function(d){
-            if (d.ok) {
-                showToastInline(d.message, true);
-                // Update skill state and re-render
-                if (window._abilityTreeState) window._abilityTreeState.skill_state = d.skills;
-                var tc = document.querySelector('.at-tree-container');
-                if (tc && window._abilityTreeState) tc.innerHTML = renderTreeInline(window._abilityTreeState);
-                window._abilityTreeSelectedNode = { type: 'skill_slot', slot: slotIdx };
-                var dp = document.getElementById('at-details-panel-inline');
-                if (dp) dp.innerHTML = renderDetailsInline();
-            } else {
-                showToastInline(d.message || 'Failed', false);
-            }
-        })
-        .catch(function(e){ showToastInline('Error: ' + e.message, false); });
-    };
-}
-
-// ── Toast notifications for inline version ────────────────────────────────────
-function showToastInline(msg, ok) {
-    var t = document.getElementById('at-toast-inline');
-    if (!t) {
-        // Toast container was removed (e.g. after DOM reload) — create a floating one
-        t = document.createElement('div');
-        t.id = 'at-toast-inline';
-        document.body.appendChild(t);
-    }
-    t.textContent = msg;
-    t.style.cssText = 'position:fixed;top:20px;right:20px;z-index:10000;padding:8px 16px;border-radius:6px;font-size:0.8rem;font-weight:700;' +
-        (ok ? 'background:#2ecc71;color:#fff;' : 'background:#e74c3c;color:#fff;') +
-        'box-shadow:0 4px 12px rgba(0,0,0,0.3);transition:all 0.3s ease;display:block;';
-    setTimeout(function(){ if (t) t.style.cssText = 'display:none;'; }, 3000);
-}
-
-// ── Ability point purchase modals ─────────────────────────────────────────────
-function _getOrCreateModal(id) {
-    var m = document.getElementById(id);
-    if (!m) {
-        m = document.createElement('div');
-        m.id = id;
-        document.body.appendChild(m);
-    }
-    return m;
-}
-
-function showAbilityPurchaseConfirmModal(currentLevel, cost, newLevel) {
-    var modal = _getOrCreateModal('at-purchase-modal');
-    modal.innerHTML =
-        '<div style="position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:9998;display:flex;align-items:center;justify-content:center;padding:16px">' +
-            '<div style="background:linear-gradient(135deg,#111,#1a1a1a);border:1px solid rgba(255,215,0,0.35);border-radius:10px;padding:24px;max-width:380px;width:100%;box-shadow:0 8px 32px rgba(0,0,0,0.6)">' +
-                '<div style="font-family:Orbitron,sans-serif;font-size:1rem;color:var(--gold-primary);font-weight:700;margin-bottom:16px;text-align:center">💎 Buy Ability Point</div>' +
-                '<div style="background:rgba(255,215,0,0.07);border:1px solid rgba(255,215,0,0.2);border-radius:6px;padding:12px;margin-bottom:14px">' +
-                    '<div style="display:flex;justify-content:space-between;font-size:0.8rem;margin-bottom:6px"><span style="color:var(--text-secondary)">Cost</span><span style="color:#e74c3c;font-weight:700">−' + cost + ' Levels</span></div>' +
-                    '<div style="display:flex;justify-content:space-between;font-size:0.8rem;margin-bottom:6px"><span style="color:var(--text-secondary)">Level</span><span style="font-weight:700"><span style="color:var(--text-secondary)">' + currentLevel + '</span> → <span style="color:var(--gold-primary)">' + newLevel + '</span></span></div>' +
-                    '<div style="display:flex;justify-content:space-between;font-size:0.8rem"><span style="color:var(--text-secondary)">Reward</span><span style="color:#4caf50;font-weight:700">+1 Ability Point</span></div>' +
-                '</div>' +
-                '<div style="background:rgba(231,76,60,0.1);border:1px solid rgba(231,76,60,0.3);border-radius:6px;padding:10px;margin-bottom:18px;font-size:0.75rem;color:#e74c3c">' +
-                    '⚠️ Spending levels will reduce your stats proportionally. This cannot be undone.' +
-                '</div>' +
-                '<div style="display:flex;gap:10px">' +
-                    '<button onclick="document.getElementById(\'at-purchase-modal\').style.display=\'none\'" style="flex:1;background:rgba(80,80,80,0.4);border:1px solid rgba(255,255,255,0.15);border-radius:6px;color:rgba(255,255,255,0.7);font-size:0.8rem;font-weight:700;padding:10px;cursor:pointer">Cancel</button>' +
-                    '<button id="at-purchase-confirm-btn" onclick="window._confirmAbilityPointPurchase()" style="flex:1;background:linear-gradient(135deg,var(--gold-primary),#ffb300);border:none;border-radius:6px;color:#000;font-size:0.8rem;font-weight:700;padding:10px;cursor:pointer;transition:all 0.2s">✅ Confirm Purchase</button>' +
-                '</div>' +
-            '</div>' +
-        '</div>';
-    modal.style.display = 'block';
-}
-
-function showAbilityPurchaseResultModal(ok, message, tree) {
-    var modal = _getOrCreateModal('at-purchase-modal');
-    // Parse stat losses out of the message for nicer display
-    var statMatch = message.match(/Stats reduced: ([^)]+)/);
-    var statLines = '';
-    if (statMatch) {
-        statMatch[1].split(',').forEach(function(s) {
-            var parts = s.trim().split(':');
-            if (parts.length === 2) {
-                statLines += '<div style="display:flex;justify-content:space-between;font-size:0.78rem;margin-bottom:4px">' +
-                    '<span style="color:var(--text-secondary)">' + parts[0].trim() + '</span>' +
-                    '<span style="color:#e74c3c;font-weight:700">' + parts[1].trim() + '</span>' +
-                '</div>';
-            }
-        });
-    }
-    var newLevel = tree ? (tree.current_level || '') : '';
-    var newPts   = tree ? (tree.available_points || '') : '';
-    modal.innerHTML =
-        '<div style="position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:9998;display:flex;align-items:center;justify-content:center;padding:16px">' +
-            '<div style="background:linear-gradient(135deg,#111,#1a1a1a);border:1px solid ' + (ok ? 'rgba(46,204,113,0.4)' : 'rgba(231,76,60,0.4)') + ';border-radius:10px;padding:24px;max-width:380px;width:100%;box-shadow:0 8px 32px rgba(0,0,0,0.6)">' +
-                '<div style="font-size:2rem;text-align:center;margin-bottom:10px">' + (ok ? '✅' : '❌') + '</div>' +
-                '<div style="font-family:Orbitron,sans-serif;font-size:0.95rem;color:' + (ok ? '#2ecc71' : '#e74c3c') + ';font-weight:700;margin-bottom:14px;text-align:center">' + (ok ? 'Point Purchased!' : 'Purchase Failed') + '</div>' +
-                (ok && (newLevel || newPts) ?
-                    '<div style="background:rgba(46,204,113,0.07);border:1px solid rgba(46,204,113,0.2);border-radius:6px;padding:12px;margin-bottom:12px">' +
-                        (newLevel ? '<div style="display:flex;justify-content:space-between;font-size:0.8rem;margin-bottom:6px"><span style="color:var(--text-secondary)">New Level</span><span style="color:var(--gold-primary);font-weight:700">' + newLevel + '</span></div>' : '') +
-                        (newPts   ? '<div style="display:flex;justify-content:space-between;font-size:0.8rem"><span style="color:var(--text-secondary)">Ability Points</span><span style="color:#4caf50;font-weight:700">' + newPts + '</span></div>' : '') +
-                    '</div>'
-                : '') +
-                (statLines ?
-                    '<div style="background:rgba(231,76,60,0.07);border:1px solid rgba(231,76,60,0.2);border-radius:6px;padding:12px;margin-bottom:14px">' +
-                        '<div style="font-size:0.72rem;color:var(--text-secondary);margin-bottom:8px;font-weight:700">STAT CHANGES</div>' +
-                        statLines +
-                    '</div>'
-                : (!ok ? '<div style="font-size:0.8rem;color:var(--text-secondary);margin-bottom:14px;text-align:center">' + message + '</div>' : '')) +
-                '<button onclick="document.getElementById(\'at-purchase-modal\').style.display=\'none\'" style="width:100%;background:linear-gradient(135deg,rgba(255,215,0,0.15),rgba(255,140,0,0.1));border:1px solid rgba(255,215,0,0.3);border-radius:6px;color:var(--gold-primary);font-size:0.8rem;font-weight:700;padding:10px;cursor:pointer">Close</button>' +
-            '</div>' +
-        '</div>';
-    modal.style.display = 'block';
-}
-
-
-// ══════════════════════════════════════════════════════════════════════════════
-// ── Absorb Tab ────────────────────────────────────────────────────────────────
-// ══════════════════════════════════════════════════════════════════════════════
-
-// Use document.getElementById directly — this code lives outside the IIFE
-// that defines el() and _absEsc(), so we can't use them here.
-function _absEl(id) { return document.getElementById(id); }
-function _absEsc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-
-// Military emoji paths — /static/Emojis/Military/
-var _ABSORB_EMOJI = {
-    soldier:  { img: '/static/Emojis/Military/soldier.png'  },
-    tank:     { img: '/static/Emojis/Military/tank.png'     },
-    jet:      { img: '/static/Emojis/Military/jet.png'      },
-    ship:     { img: '/static/Emojis/Military/ship.png'     },
-    missile:  { img: '/static/Emojis/Military/missile.png'  },
-    bomb:     { img: '/static/Emojis/Military/bomb.png'     },
-    wars:     { img: '/static/Emojis/Military/wars.png'     },
-};
-
-var _absorbData = null;  // cached status response
-
-function _mpLoadAbsorb() {
-    var loading  = _absEl('absorb-loading');
-    var noNation = _absEl('absorb-no-nation');
-    var content  = _absEl('absorb-content');
-    if (!loading || !content) return;
-
-    loading.style.display  = '';
-    if (noNation) noNation.style.display = 'none';
-    content.style.display  = 'none';
-
-    fetch('/api/pets/absorb/status')
-        .then(function(r) { return r.json(); })
-        .then(function(d) {
-            loading.style.display = 'none';
-            if (!d.linked) {
-                if (noNation) noNation.style.display = '';
-                return;
-            }
-            _absorbData = d;
-            content.style.display = '';
-            _renderAbsorbContent(d);
-        })
-        .catch(function(err) {
-            loading.style.display = 'none';
-            if (content) {
-                content.style.display = '';
-                content.innerHTML = '<div class="mp-battle-card" style="color:#e74c3c;font-size:0.85rem">Failed to load war data: ' + _absEsc(err.message) + '</div>';
-            }
-        });
-}
-
-function _renderAbsorbContent(d) {
-    var avail    = d.available   || {};
-    var absorbed = d.absorbed    || {};
-    var total    = d.total       || {};
-    var preview  = d.xp_preview  || {};
-    var isLocked = d.locked      || false;
-    var nationId = d.nation_id   || null;
-
-    // ── Nation lock banner ────────────────────────────────────────────────────
-    var lockBanner = _absEl('absorb-lock-banner');
-    if (lockBanner) {
-        if (isLocked) {
-            lockBanner.style.display = '';
-            lockBanner.innerHTML =
-                '<div style="display:flex;align-items:center;gap:8px;font-size:0.78rem;color:rgba(255,215,0,0.85)">' +
-                '<span style="font-size:1rem">🔒</span>' +
-                '<span>Nation <strong style="color:var(--gold-primary)">#' + nationId + '</strong> is permanently bound to this pet. ' +
-                'Wins and kills from this nation only.</span>' +
-                '</div>';
-        } else {
-            lockBanner.style.display = '';
-            lockBanner.innerHTML =
-                '<div style="display:flex;align-items:center;gap:8px;font-size:0.78rem;color:rgba(255,200,50,0.75)">' +
-                '<span style="font-size:1rem">⚠️</span>' +
-                '<span>Nation <strong style="color:var(--gold-primary)">#' + nationId + '</strong> is currently linked. ' +
-                'Once you absorb, this nation is <strong>permanently locked</strong> to your pet.</span>' +
-                '</div>';
-        }
-    }
-
-    // ── Wins box ──────────────────────────────────────────────────────────────
-    var winsBadge = _absEl('absorb-wins-badge');
-    if (winsBadge) {
-        winsBadge.textContent = absorbed.wins + ' already absorbed';
-    }
-
-    var winsAvail = avail.wins || 0;
-    var winsTotal = total.wins || 0;
-
-    // Build soul/spirit emoji grid — one icon per available win, randomly soul or spirit
-    var soulsContainer = _absEl('absorb-wins-souls');
-    if (soulsContainer) {
-        if (winsAvail <= 0) {
-            soulsContainer.innerHTML = '<span style="font-size:0.75rem;color:var(--text-secondary)">No new wins to absorb</span>';
-        } else {
-            var soulsHtml = '';
-            for (var wi = 0; wi < winsAvail; wi++) {
-                var sImg = Math.random() < 0.5 ? '/static/Emojis/Floaters/soul.png' : '/static/Emojis/Floaters/spirit.png';
-                soulsHtml += '<img src="' + sImg + '" class="absorb-soul-icon" data-idx="' + wi + '" ' +
-                    'style="width:24px;height:24px;object-fit:contain;flex-shrink:0;' +
-                    'filter:drop-shadow(0 0 4px rgba(255,215,0,0.6))" ' +
-                    'onerror="this.src=\'/static/Emojis/Pets/Deco/XP.png\'">';
-            }
-            soulsContainer.innerHTML = soulsHtml;
-        }
-    }
-
-    var winsXp = _absEl('absorb-wins-xp-preview');
-    if (winsXp) {
-        var xpW = preview.wins || 0;
-        winsXp.innerHTML = xpW > 0
-            ? '⚡ <strong style="color:var(--gold-primary)">' + xpW.toLocaleString() + ' XP</strong> ready to absorb'
-            : '<span style="color:var(--text-secondary)">No new wins to absorb</span>';
-    }
-
-    var winsBtn = _absEl('absorb-wins-btn');
-    if (winsBtn) {
-        winsBtn.disabled = winsAvail <= 0;
-        winsBtn.style.opacity = winsAvail <= 0 ? '0.45' : '1';
-    }
-
-    // ── Kills box ─────────────────────────────────────────────────────────────
-    var killsBadge = _absEl('absorb-kills-badge');
-    if (killsBadge) {
-        var totalAbsorbed = (absorbed.soldiers||0) + (absorbed.tanks||0) + (absorbed.aircraft||0) +
-                            (absorbed.ships||0) + (absorbed.missiles||0) + (absorbed.nukes||0);
-        killsBadge.textContent = totalAbsorbed.toLocaleString() + ' already absorbed';
-    }
-
-    var killsStats = _absEl('absorb-kills-stats');
-    if (killsStats) {
-        var unitDefs = [
-            { key:'soldiers', label:'Soldiers', emojiImg:'/static/Emojis/Military/soldier.png', xpKey:'soldiers' },
-            { key:'tanks',    label:'Tanks',    emojiImg:'/static/Emojis/Military/tank.png',    xpKey:'tanks'    },
-            { key:'aircraft', label:'Aircraft', emojiImg:'/static/Emojis/Military/jet.png',     xpKey:'aircraft' },
-            { key:'ships',    label:'Ships',    emojiImg:'/static/Emojis/Military/ship.png',    xpKey:'ships'    },
-            { key:'missiles', label:'Missiles', emojiImg:'/static/Emojis/Military/missile.png', xpKey:'missiles' },
-            { key:'nukes',    label:'Nukes',    emojiImg:'/static/Emojis/Military/bomb.png',    xpKey:'nukes'    },
-        ];
-        var killsHtml = '';
-        unitDefs.forEach(function(u) {
-            var cnt   = avail[u.key] || 0;
-            var tot   = total[u.key] || 0;
-            var xpAmt = preview[u.xpKey] || 0;
-            var hasUnits = cnt > 0;
-            // Each card is toggleable — selected by default if it has units
-            killsHtml +=
-                '<div class="col-6 col-md-4">' +
-                '<div class="mp-mini-stat-card absorb-unit-card' + (hasUnits ? ' absorb-unit-selected' : '') + '" ' +
-                'id="absorb-unit-' + u.key + '" ' +
-                'data-unit="' + u.key + '" ' +
-                'onclick="window._mpToggleUnit(\'' + u.key + '\')" ' +
-                'style="text-align:center;padding:8px 6px;cursor:' + (hasUnits ? 'pointer' : 'default') + ';' +
-                'transition:all 0.15s;' +
-                (hasUnits ? 'border-color:rgba(120,120,255,0.7);box-shadow:0 0 8px rgba(100,100,255,0.3);' : 'opacity:0.45;') + '">' +
-                '<img src="' + u.emojiImg + '" style="width:28px;height:28px;object-fit:contain;margin-bottom:3px" onerror="this.style.display=\'none\'">' +
-                '<div style="font-size:0.65rem;color:var(--text-secondary);margin-bottom:2px">' + u.label + '</div>' +
-                '<div style="font-size:1.1rem;font-weight:800;color:' + (hasUnits ? 'var(--gold-primary)' : 'rgba(255,255,255,0.3)') + ';font-family:Orbitron,sans-serif">' + cnt.toLocaleString() + '</div>' +
-                '<div style="font-size:0.58rem;color:rgba(255,255,255,0.3)">' + tot.toLocaleString() + ' total</div>' +
-                (xpAmt > 0 ? '<div style="font-size:0.6rem;color:#4caf50;margin-top:2px">+' + xpAmt.toLocaleString() + ' XP</div>' : '') +
-                '<div style="font-size:0.55rem;margin-top:4px;font-weight:700;' + (hasUnits ? 'color:rgba(120,120,255,0.9)' : 'color:rgba(255,255,255,0.2)') + '">' +
-                (hasUnits ? '&#10003; Selected' : 'None') + '</div>' +
-                '</div></div>';
-        });
-        killsStats.innerHTML = killsHtml;
-    }
-
-    var killsXp = _absEl('absorb-kills-xp-preview');
-    if (killsXp) {
-        var totalKillXp = (preview.soldiers||0) + (preview.tanks||0) + (preview.aircraft||0) +
-                          (preview.ships||0) + (preview.missiles||0) + (preview.nukes||0);
-        killsXp.innerHTML = totalKillXp > 0
-            ? '&#9889; <strong style="color:var(--gold-primary)">' + totalKillXp.toLocaleString() + ' XP</strong> ready to absorb &mdash; click units to select/deselect'
-            : '<span style="color:var(--text-secondary)">No new kills to absorb</span>';
-    }
-
-    var killsBtn = _absEl('absorb-kills-btn');
-    if (killsBtn) {
-        var anyKills = ['soldiers','tanks','aircraft','ships','missiles','nukes'].some(function(k){ return (avail[k]||0) > 0; });
-        killsBtn.disabled = !anyKills;
-        killsBtn.style.opacity = anyKills ? '1' : '0.45';
-    }
-}
-
-// ── Win absorb animation: feed soul/spirit icons from the grid to the pet ─────
-function _mpAbsorbWinsAnimation(onComplete) {
-    var petImgEl = document.querySelector('#my-pet-header .mp-pet-img');
-    var icons    = document.querySelectorAll('#absorb-wins-souls .absorb-soul-icon');
-
-    if (!petImgEl || icons.length === 0) { onComplete(); return; }
-
-    var petRect  = petImgEl.getBoundingClientRect();
-    var targetX  = petRect.left + petRect.width  / 2;
-    var targetY  = petRect.top  + petRect.height / 2;
-
-    var total    = icons.length;
-    var completed = 0;
-
-    // Inject keyframe once
-    if (!document.getElementById('absorb-soul-style')) {
-        var s = document.createElement('style');
-        s.id = 'absorb-soul-style';
-        s.textContent = '@keyframes absorbSoulPulse{0%,100%{filter:drop-shadow(0 0 5px gold) brightness(1.3)}50%{filter:drop-shadow(0 0 16px gold) brightness(2)}}';
-        document.head.appendChild(s);
-    }
-
-    icons.forEach(function(icon, idx) {
-        setTimeout(function() {
-            // Get the icon's current position in the grid
-            var rect   = icon.getBoundingClientRect();
-            var startX = rect.left + rect.width  / 2;
-            var startY = rect.top  + rect.height / 2;
-
-            // Hide the grid icon immediately so it looks like it left the row
-            icon.style.visibility = 'hidden';
-
-            // Create a flying clone
-            var node = document.createElement('img');
-            node.src = icon.src;
-            node.style.cssText = 'position:fixed;width:24px;height:24px;object-fit:contain;pointer-events:none;z-index:9999;animation:absorbSoulPulse 0.5s ease infinite;';
-            node.style.left = (startX - 12) + 'px';
-            node.style.top  = (startY - 12) + 'px';
-            document.body.appendChild(node);
-
-            var startTime = null;
-            var dur  = 420 + Math.random() * 160;
-            var arcH = 60 + Math.random() * 80;
-
-            function step(ts) {
-                if (!startTime) startTime = ts;
-                var p  = Math.min((ts - startTime) / dur, 1);
-                var ep = p * p;
-                var cx = startX + (targetX - startX) * ep;
-                var cy = startY + (targetY - startY) * ep - Math.sin(p * Math.PI) * arcH;
-                var sc = 1.1 - p * 0.65;
-                node.style.left      = (cx - 12) + 'px';
-                node.style.top       = (cy - 12) + 'px';
-                node.style.opacity   = p < 0.75 ? '1' : String(1 - (p - 0.75) / 0.25);
-                node.style.transform = 'scale(' + sc + ')';
-                if (p < 1) {
-                    requestAnimationFrame(step);
-                } else {
-                    node.remove();
-                    petImgEl.style.transition = 'transform 0.07s ease-out';
-                    petImgEl.style.transform  = 'scale(1.3)';
-                    setTimeout(function() { petImgEl.style.transform = 'scale(1)'; }, 110);
-                    completed++;
-                    if (completed === total) {
-                        setTimeout(function() {
-                            petImgEl.style.transition = 'transform 0.12s ease-out';
-                            petImgEl.style.transform  = 'scale(1.5)';
-                            setTimeout(function() {
-                                petImgEl.style.transform  = 'scale(1)';
-                                petImgEl.style.transition = '';
-                                onComplete();
-                            }, 200);
-                        }, 60);
-                    }
-                }
-            }
-            requestAnimationFrame(step);
-        }, idx * 70);
-    });
-}
-
-// ── Kill absorb animation: military unit emojis ───────────────────────────────
-
-// ── Kill absorb animation: steady stream of one unit type to the pet ──────────
-// count = total units, imgSrc = emoji path for that unit type
-function _mpAbsorbKillsAnimation(count, imgSrc, onComplete) {
-    var petImgEl = document.querySelector('#my-pet-header .mp-pet-img');
-    if (!petImgEl || count <= 0) { onComplete(); return; }
-
-    var petRect = petImgEl.getBoundingClientRect();
-    var targetX = petRect.left + petRect.width  / 2;
-    var targetY = petRect.top  + petRect.height / 2;
-
-    // Cap at 120 visible emojis — each represents (count/120) units
-    var visible  = Math.min(count, 120);
-    var interval = 18; // ms between launches — fast but visible
-    var completed = 0;
-
-    function launchOne() {
-        var node = document.createElement('img');
-        node.src = imgSrc;
-        node.onerror = function() { this.src = '/static/Emojis/Military/soldier.png'; };
-        node.style.cssText = 'position:fixed;width:22px;height:22px;object-fit:contain;pointer-events:none;z-index:9999;filter:drop-shadow(0 0 6px rgba(100,180,255,0.9));';
-        var startX = window.innerWidth * 0.1 + Math.random() * window.innerWidth * 0.8;
-        var startY = window.innerHeight * 0.75 + Math.random() * (window.innerHeight * 0.2);
-        node.style.left = startX + 'px';
-        node.style.top  = startY + 'px';
-        document.body.appendChild(node);
-
-        var startTime = null;
-        var dur  = 350 + Math.random() * 120;
-        var arcH = 50 + Math.random() * 60;
-
-        function step(ts) {
-            if (!startTime) startTime = ts;
-            var p  = Math.min((ts - startTime) / dur, 1);
-            var ep = p * p;
-            var cx = startX + (targetX - startX) * ep;
-            var cy = startY + (targetY - startY) * ep - Math.sin(p * Math.PI) * arcH;
-            var sc = 1 - p * 0.55;
-            node.style.left      = (cx - 11) + 'px';
-            node.style.top       = (cy - 11) + 'px';
-            node.style.opacity   = p < 0.8 ? '1' : String(1 - (p - 0.8) / 0.2);
-            node.style.transform = 'scale(' + sc + ')';
-            if (p < 1) {
-                requestAnimationFrame(step);
-            } else {
-                node.remove();
-                petImgEl.style.transition = 'transform 0.05s ease-out';
-                petImgEl.style.transform  = 'scale(1.18)';
-                setTimeout(function() { petImgEl.style.transform = 'scale(1)'; }, 80);
-                completed++;
-                if (completed === visible) {
-                    setTimeout(function() {
-                        petImgEl.style.transition = 'transform 0.12s ease-out';
-                        petImgEl.style.transform  = 'scale(1.5)';
-                        setTimeout(function() {
-                            petImgEl.style.transform  = 'scale(1)';
-                            petImgEl.style.transition = '';
-                            onComplete();
-                        }, 200);
-                    }, 60);
-                }
-            }
-        }
-        requestAnimationFrame(step);
-    }
-
-    for (var i = 0; i < visible; i++) {
-        setTimeout(launchOne, i * interval);
-    }
-}
-
-// ── Level-up result HTML ───────────────────────────────────────────────────────
-function _absorbLevelUpHtml(d) {
-    if (!d || !d.leveled_up || !d.level_data) return '';
-    var ld     = d.level_data || {};
-    var oldLvl = ld.old_level || '?';
-    var newLvl = ld.new_level || '?';
-    var gains  = ld.gains     || {};
-
-    // Build stat gains rows
-    var statImgs = { ATT:'/static/Emojis/Pets/Deco/ATT.png', DEF:'/static/Emojis/Pets/Deco/DEF.png',
-                     INT:'/static/Emojis/Pets/Deco/INT.png', DEX:'/static/Emojis/Pets/Deco/DEX.png',
-                     HAP:'/static/Emojis/Pets/Deco/HAP.png', ENE:'/static/Emojis/Pets/Deco/ENE.png' };
-    var gainRows = '';
-    Object.keys(gains).forEach(function(stat) {
-        var val = gains[stat];
-        if (!val) return;
-        gainRows +=
-            '<div style="display:flex;align-items:center;gap:6px;font-size:0.75rem;margin-bottom:2px">' +
-            '<img src="' + (statImgs[stat] || '') + '" style="width:16px;height:16px;object-fit:contain" onerror="this.style.display=\'none\'">' +
-            '<span style="color:var(--text-secondary)">' + stat + '</span>' +
-            '<span style="color:#4caf50;font-weight:700">+' + val + '</span>' +
-            '</div>';
-    });
-
-    var levelsGained = (typeof newLvl === 'number' && typeof oldLvl === 'number') ? (newLvl - oldLvl) : '';
-
-    return '<div style="background:linear-gradient(135deg,rgba(255,215,0,0.15),rgba(255,140,0,0.08));' +
-           'border:1px solid rgba(255,215,0,0.6);border-radius:8px;padding:12px 14px;margin-top:8px">' +
-           '<div style="font-family:Orbitron,sans-serif;color:var(--gold-primary);font-size:1rem;font-weight:800;margin-bottom:6px">' +
-           '&#127881; LEVEL UP' + (levelsGained > 1 ? ' x' + levelsGained : '') + '!</div>' +
-           '<div style="font-size:0.85rem;color:rgba(255,255,255,0.85);margin-bottom:8px">' +
-           'Level <span style="color:var(--gold-primary);font-weight:700">' + oldLvl + '</span>' +
-           ' &rarr; <span style="color:var(--gold-primary);font-weight:700;font-size:1rem">' + newLvl + '</span>' +
-           '</div>' +
-           (gainRows ? '<div style="border-top:1px solid rgba(255,215,0,0.2);padding-top:8px;margin-top:4px">' +
-           '<div style="font-size:0.65rem;color:var(--text-secondary);margin-bottom:4px;font-weight:700;letter-spacing:0.05em">STAT INCREASES</div>' +
-           gainRows + '</div>' : '') +
-           '</div>';
-}
-
-// ── Toggle unit card selection ────────────────────────────────────────────────
-window._mpToggleUnit = function(unitKey) {
-    var card = _absEl('absorb-unit-' + unitKey);
-    if (!card || card.style.cursor === 'default') return;
-    var isSelected = card.classList.contains('absorb-unit-selected');
-    var lbl = card.querySelector('.absorb-unit-sel-label');
-    if (isSelected) {
-        card.classList.remove('absorb-unit-selected');
-        card.style.borderColor = 'rgba(255,255,255,0.1)';
-        card.style.boxShadow   = 'none';
-        if (lbl) lbl.textContent = 'Click to select';
-    } else {
-        card.classList.add('absorb-unit-selected');
-        card.style.borderColor = 'rgba(120,120,255,0.7)';
-        card.style.boxShadow   = '0 0 8px rgba(100,100,255,0.3)';
-        if (lbl) lbl.textContent = '\u2713 Selected';
-    }
-    _absorbUpdateKillsPreview();
-};
-
-function _absorbGetSelectedUnits() {
-    var selected = [];
-    ['soldiers','tanks','aircraft','ships','missiles','nukes'].forEach(function(k) {
-        var card = _absEl('absorb-unit-' + k);
-        if (card && card.classList.contains('absorb-unit-selected')) selected.push(k);
-    });
-    return selected;
-}
-
-function _absorbUpdateKillsPreview() {
-    if (!_absorbData) return;
-    var preview  = _absorbData.xp_preview || {};
-    var selected = _absorbGetSelectedUnits();
-    var totalXp  = 0;
-    selected.forEach(function(k) { totalXp += (preview[k] || 0); });
-    var killsXp = _absEl('absorb-kills-xp-preview');
-    if (killsXp) {
-        killsXp.innerHTML = totalXp > 0
-            ? '&#9889; <strong style="color:var(--gold-primary)">' + totalXp.toLocaleString() + ' XP</strong> from ' + selected.length + ' selected type' + (selected.length !== 1 ? 's' : '')
-            : '<span style="color:var(--text-secondary)">Select units to absorb</span>';
-    }
-    var killsBtn = _absEl('absorb-kills-btn');
-    if (killsBtn) {
-        killsBtn.disabled      = selected.length === 0;
-        killsBtn.style.opacity = selected.length > 0 ? '1' : '0.45';
-    }
-}
-
-// ── Absorb Wins ───────────────────────────────────────────────────────────────
-window._mpAbsorbWins = async function() {
-    var btn    = _absEl('absorb-wins-btn');
-    var result = _absEl('absorb-wins-result');
-    if (btn) btn.disabled = true;
-    if (result) result.innerHTML = '<span style="color:var(--text-secondary);font-size:0.8rem">Absorbing...</span>';
-
-    try {
-        var resp = await fetch('/api/pets/absorb/wins', { method: 'POST' });
-        var d    = await resp.json();
-
-        if (!resp.ok || d.error) {
-            if (result) result.innerHTML = '<span style="color:#e74c3c;font-size:0.82rem">&#10060; ' + _absEsc(d.error || 'Failed') + '</span>';
-            if (btn) { btn.disabled = false; btn.style.opacity = '1'; }
-            return;
-        }
-
-        if ((d.wins_absorbed || 0) <= 0) {
-            if (result) result.innerHTML = '<span style="color:var(--text-secondary);font-size:0.82rem">No new wins to absorb.</span>';
-            if (btn) btn.disabled = true;
-            return;
-        }
-
-        _mpAbsorbWinsAnimation(function() {
-            if (result) {
-                result.innerHTML =
-                    '<div class="mp-battle-card" style="border-color:rgba(76,175,80,0.4);margin-top:8px">' +
-                    '<div style="color:#4caf50;font-weight:700;font-size:0.9rem;margin-bottom:4px">&#9989; ' + _absEsc(d.message) + '</div>' +
-                    '<div style="font-size:0.78rem;color:var(--text-secondary)">+' + (d.xp_gained||0).toLocaleString() + ' XP absorbed</div>' +
-                    _absorbLevelUpHtml(d) +
-                    '</div>';
-            }
-            if (d.pet) { _pet = d.pet; renderPetCard(d.pet); }
-            _mpLoadAbsorb();
-        });
-
-    } catch(err) {
-        if (result) result.innerHTML = '<span style="color:#e74c3c;font-size:0.82rem">&#10060; ' + _absEsc(err.message) + '</span>';
-        if (btn) { btn.disabled = false; btn.style.opacity = '1'; }
-    }
-};
-
-// ── Absorb Kills (per selected unit type) ────────────────────────────────────
-window._mpAbsorbKills = async function() {
-    var btn    = _absEl('absorb-kills-btn');
-    var result = _absEl('absorb-kills-result');
-
-    var selected = _absorbGetSelectedUnits();
-    if (selected.length === 0) {
-        if (result) result.innerHTML = '<span style="color:var(--text-secondary);font-size:0.82rem">Select at least one unit type first.</span>';
-        return;
-    }
-
-    if (btn) btn.disabled = true;
-    if (result) result.innerHTML = '<span style="color:var(--text-secondary);font-size:0.8rem">Absorbing...</span>';
-
-    // Unit emoji map for animation
-    var unitImgMap = {
-        soldiers: '/static/Emojis/Military/soldier.png',
-        tanks:    '/static/Emojis/Military/tank.png',
-        aircraft: '/static/Emojis/Military/jet.png',
-        ships:    '/static/Emojis/Military/ship.png',
-        missiles: '/static/Emojis/Military/missile.png',
-        nukes:    '/static/Emojis/Military/bomb.png',
-    };
-
-    // Absorb each selected unit type sequentially
-    var allBreakdown = {};
-    var allAbsorbed  = {};
-    var totalXpGained = 0;
-    var anyLevelUp   = false;
-    var lastLevelData = null;
-    var lastPet       = null;
-    var errors        = [];
-
-    async function absorbOne(unitKey) {
-        try {
-            var resp = await fetch('/api/pets/absorb/kills', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ unit_type: unitKey })
-            });
-            var d = await resp.json();
-            if (!resp.ok || d.error) { errors.push(unitKey + ': ' + (d.error || 'failed')); return; }
-            var cnt = (d.kills_absorbed || {})[unitKey] || 0;
-            if (cnt <= 0) return;
-
-            allAbsorbed[unitKey]  = cnt;
-            allBreakdown[unitKey] = (d.xp_breakdown || {})[unitKey] || 0;
-            totalXpGained += (d.xp_gained || 0);
-            if (d.leveled_up) { anyLevelUp = true; lastLevelData = d.level_data; }
-            if (d.pet) lastPet = d.pet;
-
-            // Run streaming animation for this unit type
-            await new Promise(function(resolve) {
-                _mpAbsorbKillsAnimation(cnt, unitImgMap[unitKey] || unitImgMap.soldiers, resolve);
-            });
-        } catch(e) {
-            errors.push(unitKey + ': ' + e.message);
-        }
-    }
-
-    for (var i = 0; i < selected.length; i++) {
-        await absorbOne(selected[i]);
-    }
-
-    // Build result card
-    var unitLabels = { soldiers:'Soldiers', tanks:'Tanks', aircraft:'Aircraft', ships:'Ships', missiles:'Missiles', nukes:'Nukes' };
-    var bkHtml = Object.keys(allAbsorbed).map(function(k) {
-        return '<div style="display:flex;justify-content:space-between;font-size:0.75rem;color:var(--text-secondary);margin-bottom:2px">' +
-            '<span>' + (unitLabels[k]||k) + ': ' + (allAbsorbed[k]||0).toLocaleString() + '</span>' +
-            '<span style="color:#4caf50">+' + (allBreakdown[k]||0).toLocaleString() + ' XP</span>' +
-            '</div>';
-    }).join('');
-
-    // Build a synthetic level_data that spans the full range if multiple unit types leveled up
-    var fakeD = { leveled_up: anyLevelUp, level_data: lastLevelData };
-
-    if (result) {
-        result.innerHTML =
-            '<div class="mp-battle-card" style="border-color:rgba(100,100,255,0.4);margin-top:8px">' +
-            '<div style="color:#7986cb;font-weight:700;font-size:0.9rem;margin-bottom:6px">&#9989; Absorbed!</div>' +
-            bkHtml +
-            '<div style="font-size:0.82rem;color:var(--gold-primary);font-weight:700;margin-top:6px;border-top:1px solid rgba(255,255,255,0.1);padding-top:6px">Total: +' + totalXpGained.toLocaleString() + ' XP</div>' +
-            _absorbLevelUpHtml(fakeD) +
-            (errors.length ? '<div style="font-size:0.7rem;color:#e74c3c;margin-top:4px">Errors: ' + errors.join(', ') + '</div>' : '') +
-            '</div>';
-    }
-
-    if (lastPet) { _pet = lastPet; renderPetCard(lastPet); }
-    _mpLoadAbsorb();
-};

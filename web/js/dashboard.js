@@ -138,6 +138,8 @@ function loadPage(page, scriptPath, scriptType, cssPath) {
             }
 
             runInlineScripts(() => {
+                console.log(`[loadPage] scriptPath: ${scriptPath}`);
+                console.log(`[loadPage] scriptManager defined: ${typeof scriptManager !== 'undefined'}`);
                 if (scriptPath && typeof scriptManager !== 'undefined') {
                     console.log(`[loadPage] Loading script: ${scriptPath}`);
                     scriptManager.loadScript(scriptPath, scriptType, dispatch);
@@ -155,6 +157,7 @@ function loadPage(page, scriptPath, scriptType, cssPath) {
 }
 
 function navigateTo(page, params = {}, pushState = true) {
+    console.log(`[navigateTo] Navigating to page: ${page}`);
     if (pushState) {
         const url = new URL(window.location);
         url.searchParams.set('page', page);
@@ -164,12 +167,17 @@ function navigateTo(page, params = {}, pushState = true) {
     }
     navLinks.forEach(l => l.classList.remove('active'));
     const active = document.querySelector(`.nav-link[data-page='${page}']`);
+    console.log(`[navigateTo] Active link found:`, !!active);
     let scriptPath = null, scriptType = 'script', cssPath = null;
     if (active) {
         active.classList.add('active');
         scriptPath = active.getAttribute('data-script');
         scriptType = active.getAttribute('data-script-type') || 'script';
         cssPath    = active.dataset.css || null;
+        console.log(`[navigateTo] scriptPath: ${scriptPath}`);
+        console.log(`[navigateTo] cssPath: ${cssPath}`);
+    } else {
+        console.warn(`[navigateTo] No active link found for page: ${page}`);
     }
     loadPage(page, scriptPath, scriptType, cssPath);
 }
@@ -478,32 +486,43 @@ async function loadUserPet() {
         document.getElementById('uc-pet-level').textContent = `Lv.${level}`;
         
         // Survive score — mirrors survive_score() from ss_brain.py
-        // Factors: equipment multiplier, ss_ability_mult, stat_mastery_mult
+        // Factors: equipment multiplier (new slot system), ss_ability_mult, stat_mastery_mult
         const ssEl = document.getElementById('uc-pet-ss');
         const eq = data.equipment || {};
         const levelBonus = Math.floor(level / 50);
 
-        const matCounts = {}, gemCounts = {}, monCounts = {};
-        const mat = eq.Material;
-        (Array.isArray(mat) ? mat : (mat ? [mat] : [])).forEach(m => { if (m?.name) { const n = m.name.toLowerCase(); matCounts[n] = (matCounts[n]||0)+1; } });
-        (eq.Gems||[]).forEach(g => { if (g?.name) { const n = g.name.toLowerCase(); gemCounts[n] = (gemCounts[n]||0)+1; } });
-        (eq.Monsters||[]).forEach(m => { if (m?.name) { const n = m.name.toLowerCase(); monCounts[n] = (monCounts[n]||0)+1; } });
-
-        const matPairSS = Object.values(matCounts).some(c => c >= 2);
-        const gemPairSS = Object.values(gemCounts).some(c => c >= 2);
-        const monPairSS = Object.values(monCounts).some(c => c >= 2);
-        const hatEquippedSS = !!(eq.Hat?.name);
-        const fullSetSS = matPairSS && gemPairSS && monPairSS && hatEquippedSS;
-        // Mirror _compute_pet_multiplier: full set + hat spec match → 4, full set → 3, else 1
-        let setMult = 1;
-        if (fullSetSS) {
-            const rawSpecs = data.specializations || data.specs || [];
-            const specs = rawSpecs.map(s => s.toUpperCase());
-            const hatBonusStats = Object.keys(eq.Hat?.bonuses || {}).map(s => s.toUpperCase());
-            const hatSpecMatches = hatBonusStats.filter(s => specs.includes(s)).length;
-            setMult = hatSpecMatches >= 2 ? 4 : 3;
+        // ── New slot system multiplier (mirrors StatsCalculator.get_equipment_xp_multiplier) ──
+        function _getSingle(key) {
+            var v = eq[key];
+            if (Array.isArray(v)) v = v[0] || null;
+            return (v && v.name) ? v : null;
         }
-        const multiplier = Math.max(1, setMult + levelBonus);
+        function _getList(key) {
+            var v = eq[key] || [];
+            if (!Array.isArray(v)) v = (v && v.name) ? [v] : [];
+            return v.filter(function(i){ return i && i.name; });
+        }
+        const mainSlotsDash = [_getSingle('Helmet'), _getSingle('Armor'), _getSingle('Boots'),
+                               _getSingle('Ring'), _getSingle('Shield'), _getSingle('Weapon')];
+        const mainFilledDash = mainSlotsDash.filter(s => s !== null);
+        const materialDash   = _getSingle('Material');
+        const monstersDash   = _getList('Monsters');
+        const gemsDash       = _getList('Gems');
+
+        const mainSetTagsDash = mainFilledDash.map(i => i.set || null).filter(t => t);
+        const matchingSetDash = (mainFilledDash.length === 6 && mainSetTagsDash.length === 6 &&
+            new Set(mainSetTagsDash).size === 1);
+        const monNamesDash = monstersDash.map(m => (m.name || '').toLowerCase());
+        const gemNamesDash = gemsDash.map(g => (g.name || '').toLowerCase());
+        const matchingMonsDash  = (monNamesDash.length === 2 && monNamesDash[0] === monNamesDash[1]);
+        const matchingGemsDash  = (gemNamesDash.length === 2 && gemNamesDash[0] === gemNamesDash[1]);
+        const hasMatDash        = materialDash !== null;
+        const ringSubBonusDash  = (matchingMonsDash ? 1 : 0) + (matchingGemsDash ? 1 : 0) + (hasMatDash ? 1 : 0);
+        const fullSetDash = (mainFilledDash.length === 6 && matchingSetDash &&
+                             _getSingle('Ring') !== null && hasMatDash && matchingMonsDash && matchingGemsDash);
+        let baseMult = mainFilledDash.length + (matchingSetDash ? 3 : 0) + ringSubBonusDash + levelBonus;
+        if (baseMult < 1) baseMult = 1;
+        const multiplier = fullSetDash ? baseMult * 2 : baseMult;
 
         // ss_ability_mult: att_survive_aggression + def_survive_endurance (multiplicative)
         const abilities = data.abilities || {};
@@ -541,8 +560,6 @@ async function loadUserPet() {
         const xpPct = xpMax > 0 ? Math.min((xpCur / xpMax) * 100, 100) : 0;
         document.getElementById('uc-xp-bar').style.width = xpPct + '%';
         
-        // Equipment bar
-        renderEquipmentBar(data.equipment || {});
         
     } catch (e) {
         console.warn('Failed to load pet data:', e);
@@ -602,6 +619,7 @@ function renderEquipmentBar(eq) {
 
 function equipImgFile(item) {
     if (!item || !item.name) return 'Basic.png';
+    if (item.emoji_file) return item.emoji_file;
     return item.name.replace(/ /g, '') + '.png';
 }
 

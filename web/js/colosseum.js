@@ -68,6 +68,8 @@ function potionLabel(p) {
     return (p || '').replace(/_/g, ' ').replace(/\b\w/g, function(c) { return c.toUpperCase(); });
 }
 window._colosseumOpen = function() {
+    // Don't open the Colosseum panel while a battle is active
+    if (typeof window._arenaIsInBattle === 'function' && window._arenaIsInBattle()) return;
     _panelOpen = true;
     var panel = document.getElementById('shared-panel-area');
     if (!panel) return;
@@ -87,11 +89,14 @@ function _fetchState() {
         .then(function(r) { return r.json(); })
         .then(function(d) {
             _state = d;
-            if (_panelOpen) _renderPanel(d);
+            // Never overwrite the panel while a battle or game is active
+            if (_panelOpen && !(typeof window._arenaIsInBattle === 'function' && window._arenaIsInBattle())) {
+                _renderPanel(d);
+            }
             _updateHeaderCard(d);
         })
         .catch(function(e) {
-            if (_panelOpen) {
+            if (_panelOpen && !(typeof window._arenaIsInBattle === 'function' && window._arenaIsInBattle())) {
                 var panel = document.getElementById('shared-panel-area');
                 if (panel) panel.innerHTML = '<div class="arena-panel col-panel"><p style="color:#e74c3c;text-align:center;padding:20px">Failed to load Colosseum.</p></div>';
             }
@@ -459,6 +464,11 @@ document.addEventListener('dashboardPageLoaded', function(e) {
         if (_pollTimer) { clearInterval(_pollTimer); _pollTimer = null; }
         if (_cdTimer)   { clearInterval(_cdTimer);   _cdTimer   = null; }
     }
+});
+
+// ── Close panel when a battle starts so the poll never overwrites battle UI ──
+document.addEventListener('arenaBattleStarted', function() {
+    _panelOpen = false;
 });
 
 init();
