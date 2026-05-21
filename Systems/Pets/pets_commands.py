@@ -397,19 +397,18 @@ class PetCommandsCog(commands.Cog):
             level_down_embed = await LootCalculator.create_level_down_embed(pet_data, old_pet_level, new_pet_level, "play", abs(xp_gained), losses)
             await interaction.followup.send(embed=level_down_embed)
 
-    @commands.hybrid_command(name='equip', description='Equip items to your pet (Material, Gems, Monsters, Hat)')
+    @commands.hybrid_command(name='equip', description='Equip items to your pet (Helmet, Armor, Boots, Ring, Shield, Weapon, Material, Gems, Monsters)')
     @app_commands.describe(
-        material="Select material(s) to equip (up to 2, separated by comma)",
+        material="Select a material to equip",
         gems="Select gems to equip (up to 2, separated by comma)",
-        monsters="Select monsters to equip (up to 2, separated by comma)",
-        hat="Select a hat to equip"
+        monsters="Select monsters to equip (up to 2, separated by comma)"
     )
-    async def equip(self, ctx: commands.Context, material: Optional[str] = None, gems: Optional[str] = None, monsters: Optional[str] = None, hat: Optional[str] = None):
-        if not material and not gems and not monsters and not hat:
+    async def equip(self, ctx: commands.Context, material: Optional[str] = None, gems: Optional[str] = None, monsters: Optional[str] = None):
+        if not material and not gems and not monsters:
             await ctx.send("⚠️ You must provide at least one item to equip!", ephemeral=True)
             return
 
-        success, msg = await LootCalculator.equip_items(str(ctx.author.id), ctx.author.name, material, gems, monsters, hat)
+        success, msg = await LootCalculator.equip_items(str(ctx.author.id), ctx.author.name, material, gems, monsters)
         
         embed = discord.Embed(
             title="🎒 Equipment Updated",

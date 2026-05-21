@@ -56,14 +56,20 @@ def _load_equipment_data():
     return _EQUIPMENT_DATA
 
 # ---------------------------------------------------------------------------
-# Emoji mention helpers (static IDs from EMOJI_IDS — no bot needed at import)
+# Emoji helpers — returns a static web path for use in the dungeon webpage.
+# Element/type keys map to /static/Emojis/Pets/Deco/{Key}.png
 # ---------------------------------------------------------------------------
+_ELEMENT_TYPE_KEYS = {
+    "Fire", "Water", "Electric", "Ice", "Plant", "Rock", "Air",
+    "Magic", "Holy", "Necro", "Psychic", "Fighting", "Basic",
+    "Flying", "Land", "Swimming",
+}
+
 def _e(key: str) -> str:
-    """Return a Discord custom-emoji mention string for the given EMOJI_IDS key."""
-    from Systems.Functions.emoji import EMOJI_IDS
-    eid = EMOJI_IDS.get(key)
-    if eid:
-        return f"<:{key}:{eid}>"
+    """Return a static image path for the given element/type key.
+    Used as the 'emoji' field on traps and shrines sent to the web UI."""
+    if key in _ELEMENT_TYPE_KEYS:
+        return f"/static/Emojis/Pets/Deco/{key}.png"
     return key  # fallback: just the key name
 
 # ---------------------------------------------------------------------------
@@ -844,7 +850,7 @@ class DungeonCrawl:
             # Regular monsters use monster equipment items
             monsters = equipment_data.get('Monsters', [])
             if not monsters:
-                monsters = [{"name": "Wirm", "emoji_file": "Wirm.png", "category": "Land", "element": "Basic"}]
+                monsters = [{"name": "Wirm", "emoji_file": "Monsters/Wirm.png", "category": "Land", "element": "Basic"}]
             monster_template = random.choice(monsters)
             monster_name = monster_template['name']
             monster_template['species'] = None  # monsters don't have a pet species
@@ -860,10 +866,10 @@ class DungeonCrawl:
         monster_type    = monster_template.get('category', random.choice(types))
         monster_element = monster_template.get('element',  random.choice(elements))
         
-        # emoji_file: monsters use Equipment folder, bosses use Pets folder
+        # emoji_file: monsters use Equipment/Monsters/ folder, bosses use Pets folder
         emoji_file = monster_template.get('emoji_file')
         if not emoji_file and not is_boss:
-            emoji_file = monster_template['name'].replace(' ', '') + '.png'
+            emoji_file = 'Monsters/' + monster_template['name'].replace(' ', '') + '.png'
         
         return {
             "name":           monster_name,
@@ -888,9 +894,9 @@ class DungeonCrawl:
         rarity_pool = chest_type["rarity_pool"]
         count = chest_type["count"]
         
-        # Collect all items matching rarity
+        # Collect all items matching rarity (Hats excluded from dungeon loot)
         available_items = []
-        for category in ["Materials", "Gems", "Monsters", "Hats", "Potions"]:
+        for category in ["Materials", "Gems", "Monsters", "Potions"]:
             items = equipment_data.get(category, [])
             for item in items:
                 if item.get("rarity") in rarity_pool:
@@ -1301,44 +1307,40 @@ def apply_dungeon_buffs_to_pet(pet_data: Dict, buffs: List[Dict]) -> Dict:
         value = buff["value"]
         
         if effect_type == "att_reduction":
-            current_att = modified_pet.get("attack", 10)
-            modified_pet["attack"] = int(current_att * (1 - value))
+            current_att = modified_pet.get("ATT", modified_pet.get("attack", 10))
+            modified_pet["ATT"] = max(1, int(current_att * (1 - value)))
             
         elif effect_type == "att_boost":
-            current_att = modified_pet.get("attack", 10)
-            modified_pet["attack"] = int(current_att * (1 + value))
+            current_att = modified_pet.get("ATT", modified_pet.get("attack", 10))
+            modified_pet["ATT"] = int(current_att * (1 + value))
             
         elif effect_type == "def_reduction":
-            current_def = modified_pet.get("defense", 5)
-            modified_pet["defense"] = int(current_def * (1 - value))
+            current_def = modified_pet.get("DEF", modified_pet.get("defense", 5))
+            modified_pet["DEF"] = max(1, int(current_def * (1 - value)))
             
         elif effect_type == "def_boost":
-            current_def = modified_pet.get("defense", 5)
-            modified_pet["defense"] = int(current_def * (1 + value))
+            current_def = modified_pet.get("DEF", modified_pet.get("defense", 5))
+            modified_pet["DEF"] = int(current_def * (1 + value))
             
         elif effect_type == "dex_reduction":
-            # DEX affects computed attack
-            if "equipment" in modified_pet:
-                # Reduce DEX bonus from equipment
-                pass  # Handled by StatsCalculator
+            current_dex = modified_pet.get("DEX", 5)
+            modified_pet["DEX"] = max(1, int(current_dex * (1 - value)))
                 
         elif effect_type == "dex_boost":
-            # DEX affects computed attack
-            if "equipment" in modified_pet:
-                # Increase DEX bonus from equipment
-                pass  # Handled by StatsCalculator
+            current_dex = modified_pet.get("DEX", 5)
+            modified_pet["DEX"] = int(current_dex * (1 + value))
                 
         elif effect_type == "int_reduction":
-            # INT affects computed defense
-            pass  # Handled by StatsCalculator
+            current_int = modified_pet.get("INT", 5)
+            modified_pet["INT"] = max(1, int(current_int * (1 - value)))
             
         elif effect_type == "int_boost":
-            # INT affects computed defense
-            pass  # Handled by StatsCalculator
+            current_int = modified_pet.get("INT", 5)
+            modified_pet["INT"] = int(current_int * (1 + value))
             
         elif effect_type == "health_half":
             current_health = modified_pet.get("health", 100)
-            modified_pet["health"] = int(current_health * value)
+            modified_pet["health"] = max(1, int(current_health * (1 - value)))
             
         elif effect_type == "health_boost":
             current_health = modified_pet.get("health", 100)

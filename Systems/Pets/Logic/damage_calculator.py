@@ -506,7 +506,7 @@ class DamageCalculator:
         """Return action labels. Prefers custom saved labels, then species-specific actions from info.json, falls back to type/element defaults.
         
         The returned dict always uses 'defend' as the key (matching the action string used in battle logic).
-        custom_labels may use either 'defend' or 'defense' as the key â€” both are handled.
+        custom_labels may use either 'defend' or 'defense' as the key — both are handled.
         """
         DamageCalculator._load_action_labels() # Ensure labels are loaded
         if not DamageCalculator._ACTION_LABELS_DATA: # Fallback if loading failed
@@ -537,7 +537,7 @@ class DamageCalculator:
             entry = type_map.get(e, type_map["basic"])
             result = {"attack": entry["attack"], "defend": entry["defend"], "charge": entry["charge"]}
 
-        # Overlay custom labels â€” stored under "defense" (or legacy "defend"), returned under "defend"
+        # Overlay custom labels — stored under "defense" (or legacy "defend"), returned under "defend"
         if custom_labels:
             if custom_labels.get("attack"):
                 result["attack"] = custom_labels["attack"]

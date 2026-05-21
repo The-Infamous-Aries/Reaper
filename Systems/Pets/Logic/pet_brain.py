@@ -34,135 +34,161 @@ class StatsCalculator:
         return int(deff + intel)
 
     @staticmethod
+    def _get_equipment_state(pet_data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Extract equipment state (filled slots, set match, ring sub-bonuses, full set).
+        Shared by _calculate_equipment_bonuses and get_equipment_xp_multiplier.
+
+        Returns:
+            {
+                "main_filled": int,
+                "matching_set": bool,
+                "ring_sub_bonus": int,
+                "full_set": bool,
+                "level_bonus": int,
+                "all_items": List[Dict]  # All equipment items for bonus accumulation
+            }
+        """
+        equipment = pet_data.get('equipment') or {}
+        level = int(pet_data.get('level', 1))
+        level_bonus = level // 50  # +1 per 50 levels
+
+        # ── Helper: get item from slot (handles list or dict) ─────────────────
+        def _get_single(slot_key: str) -> Optional[Dict]:
+            v = equipment.get(slot_key)
+            if isinstance(v, list): v = v[0] if v else None
+            return v if isinstance(v, dict) and v.get('name') else None
+
+        def _get_list(slot_key: str) -> List[Dict]:
+            v = equipment.get(slot_key, [])
+            if isinstance(v, dict): v = [v] if v.get('name') else []
+            return [i for i in v if isinstance(i, dict) and i.get('name')]
+
+        # ── Collect main slots ────────────────────────────────────────────────
+        helmet  = _get_single('Helmet')
+        armor   = _get_single('Armor')
+        boots   = _get_single('Boots')
+        ring    = _get_single('Ring')
+        shield  = _get_single('Shield')
+        weapon  = _get_single('Weapon')
+
+        main_slots = [helmet, armor, boots, ring, shield, weapon]
+        main_filled = [s for s in main_slots if s is not None]
+
+        # ── Collect ring sub-slots ────────────────────────────────────────────
+        material = _get_single('Material')
+        monsters = _get_list('Monsters')   # up to 2
+        gems     = _get_list('Gems')       # up to 2
+
+        # ── Determine set match ───────────────────────────────────────────────
+        def _set_tag(item: Optional[Dict]) -> Optional[str]:
+            if not item: return None
+            return item.get('set') or None
+
+        # Set bonus: Helmet + Armor + Boots + Shield + Weapon only (Ring excluded)
+        set_slots = [helmet, armor, boots, shield, weapon]
+        set_slots_filled = [s for s in set_slots if s is not None]
+        main_set_tags = [_set_tag(s) for s in set_slots_filled if _set_tag(s)]
+        matching_set = (
+            len(set_slots_filled) == 5 and
+            len(main_set_tags) == 5 and
+            len(set(main_set_tags)) == 1
+        )
+
+        # ── Ring sub-slot bonuses ─────────────────────────────────────────────
+        mon_names = [(m.get('name') or '').lower() for m in monsters]
+        gem_names = [(g.get('name') or '').lower() for g in gems]
+        matching_monsters = len(mon_names) == 2 and mon_names[0] == mon_names[1]
+        matching_gems     = len(gem_names) == 2 and gem_names[0] == gem_names[1]
+        has_material      = material is not None
+
+        ring_sub_bonus = (1 if matching_monsters else 0) + \
+                         (1 if matching_gems else 0) + \
+                         (1 if has_material else 0)
+
+        # ── Full set check ────────────────────────────────────────────────────
+        full_set = (
+            matching_set and
+            ring is not None and
+            has_material and
+            matching_monsters and
+            matching_gems
+        )
+
+        # Collect all items for bonus accumulation
+        all_items = main_filled + ([material] if material else []) + monsters + gems
+
+        return {
+            "main_filled": len(main_filled),
+            "matching_set": matching_set,
+            "ring_sub_bonus": ring_sub_bonus,
+            "full_set": full_set,
+            "level_bonus": level_bonus,
+            "all_items": all_items,
+        }
+
+    @staticmethod
     def _calculate_equipment_bonuses(pet_data: Dict[str, Any]) -> Dict[str, int]:
         """
-        Calculate raw equipment bonuses with set/pair/hat-spec multipliers.
+        New equipment system:
+          Main slots: Helmet, Armor, Boots, Ring, Shield, Weapon (1 each)
+          Ring sub-slots: Material (1), Monsters (2), Gems (2)
 
-        Multiplier rules — the global multiplier is determined first, then
-        applied to the TOTAL sum of all equipped item bonuses:
-          - No pairs, no full set          → 1×  (+ level bonus)
-          - Any duplicate pair             → 2×  (+ level bonus) on entire pool
-          - Full set (mat pair + gem pair
-            + mon pair + hat equipped)     → 3×  (+ level bonus) on entire pool
-          - Full set + both hat bonus stats
-            match pet specs                → 4×  (+ level bonus) on entire pool
-          - Every 50 levels                → +1 added to the final multiplier
-            (so level 100 full-set+both = 6×, etc.)
+        Multiplier rules (per slot):
+          - Each main slot filled:          +1 to level_mult
+          - Matching set (all 6 share set): +3 bonus
+          - Ring sub-slots:
+              +1 if matching monsters (both same name)
+              +1 if matching gems (both same name)
+              +1 if material equipped
+          - Every 50 levels:                +1 to level_mult
+          - Full set (all 6 main + all ring sub-slots filled + matching ring items):
+              ALL bonuses DOUBLED after level multiplier
 
-        All item bonuses are summed raw first, then the single final_mult is
-        applied to the whole pool — so a 6× multiplier hits every point from
-        every equipped item equally.
+        Each item's bonuses are multiplied by its own per-item multiplier
+        (level_mult), then the full-set doubling is applied on top.
         """
         equipment = pet_data.get('equipment') or {}
         if not equipment:
             return {k: 0 for k in ['ATT', 'DEF', 'INT', 'DEX', 'HAP', 'ENE']}
 
-        level = int(pet_data.get('level', 1))
-        try:
-            specs = [s.upper() for s in LootCalculator._get_pet_specs(pet_data)]
-        except Exception:
-            specs = []
-        level_bonus = level // 50  # +1 per 50 levels
+        # ── Use shared equipment state calculation ────────────────────────────
+        state = StatsCalculator._get_equipment_state(pet_data)
 
-        # ── Collect typed items ───────────────────────────────────────────────
-        items = []  # list of (type_key, item_dict)
-        mat = equipment.get('Material')
-        if isinstance(mat, list):
-            for m in mat:
-                if isinstance(m, dict) and m.get('name'): items.append(('Material', m))
-        elif isinstance(mat, dict) and mat.get('name'):
-            items.append(('Material', mat))
-        gems = equipment.get('Gems', [])
-        if isinstance(gems, list):
-            for g in gems:
-                if isinstance(g, dict) and g.get('name'): items.append(('Gem', g))
-        elif isinstance(gems, dict) and gems.get('name'):
-            items.append(('Gem', gems))
-        mons = equipment.get('Monsters', [])
-        if isinstance(mons, list):
-            for m in mons:
-                if isinstance(m, dict) and m.get('name'): items.append(('Monster', m))
-        elif isinstance(mons, dict) and mons.get('name'):
-            items.append(('Monster', mons))
-        hat = equipment.get('Hat')
-        # Hat may be stored as a list (from _manage_equipment_slot) or a plain dict (legacy)
-        if isinstance(hat, list):
-            hat = hat[0] if hat else None
-        hat_equipped = hat and isinstance(hat, dict) and hat.get('name')
-        if hat_equipped:
-            items.append(('Hat', hat))
+        STATS = ['ATT', 'DEF', 'INT', 'DEX', 'HAP', 'ENE']
+        raw_bonuses = {k: 0 for k in STATS}
 
-        # ── Count duplicates ──────────────────────────────────────────────────
-        mat_counts: Dict[str, int] = {}
-        gem_counts: Dict[str, int] = {}
-        mon_counts: Dict[str, int] = {}
-        for type_key, item in items:
-            name = (item.get('name') or '').lower()
-            if not name: continue
-            if type_key == 'Material':
-                mat_counts[name] = mat_counts.get(name, 0) + 1
-            elif type_key == 'Gem':
-                gem_counts[name] = gem_counts.get(name, 0) + 1
-            elif type_key == 'Monster':
-                mon_counts[name] = mon_counts.get(name, 0) + 1
+        # ── Accumulate raw bonuses from all items ───────────────────────────────
+        for item in state['all_items']:
+            for stat, val in (item.get('bonuses') or {}).items():
+                if stat in raw_bonuses:
+                    try: raw_bonuses[stat] += int(val)
+                    except (TypeError, ValueError): pass
 
-        has_mat_pair = any(v >= 2 for v in mat_counts.values())
-        has_gem_pair = any(v >= 2 for v in gem_counts.values())
-        has_mon_pair = any(v >= 2 for v in mon_counts.values())
+        # ── Per-item level multiplier ─────────────────────────────────────────
+        # Base = slots filled + set bonus + ring sub bonus + level bonus
+        slots_filled_bonus = state['main_filled']  # +1 per filled main slot
+        set_bonus = 3 if state['matching_set'] else 0
+        base_mult = slots_filled_bonus + set_bonus + state['ring_sub_bonus'] + state['level_bonus']
+        if base_mult < 1:
+            base_mult = 1
 
-        # ── Hat spec matching ─────────────────────────────────────────────────
-        hat_spec_matches = 0
-        if hat_equipped and specs:
-            hat_bonus_stats = [s.upper() for s in (hat.get('bonuses') or {}).keys()]
-            hat_spec_matches = sum(1 for s in hat_bonus_stats if s in specs)
+        # ── Apply multiplier ──────────────────────────────────────────────────
+        result = {stat: raw_bonuses[stat] * base_mult for stat in STATS}
 
-        # ── Determine global set multiplier ───────────────────────────────────
-        full_set = has_mat_pair and has_gem_pair and has_mon_pair and hat_equipped
+        # ── Full set doubling (applied after level multiplier) ────────────────
+        if state['full_set']:
+            result = {stat: result[stat] * 2 for stat in STATS}
 
-        if full_set:
-            if hat_spec_matches >= 2:
-                set_mult = 4
-            else:
-                set_mult = 3
-        elif has_mat_pair or has_gem_pair or has_mon_pair:
-            set_mult = 2
-        else:
-            set_mult = 1
-
-        # Add level bonus on top of the set multiplier
-        final_mult = set_mult + level_bonus
-
-        # ── Accumulate raw bonuses (sum all equipped item values first) ──────
-        raw_bonuses = {k: 0 for k in ['ATT', 'DEF', 'INT', 'DEX', 'HAP', 'ENE']}
-        for type_key, item in items:
-            bonuses = item.get('bonuses', {})
-            for stat, val in bonuses.items():
-                if stat not in raw_bonuses: continue
-                try:
-                    raw_bonuses[stat] += int(val)
-                except (TypeError, ValueError):
-                    continue
-
-        # ── Apply the global multiplier to the total equipment bonus pool ────
-        equipment_bonuses = {
-            stat: raw_bonuses[stat] * final_mult
-            for stat in raw_bonuses
-        }
-
-        return equipment_bonuses
+        return result
 
     @staticmethod
     def get_equipment_xp_multiplier(pet_data: Dict[str, Any]) -> float:
         """
-        Return the XP multiplier derived from the pet's equipment and level.
+        XP multiplier from equipment — mirrors _calculate_equipment_bonuses rules.
 
-        Uses the same rules as _calculate_equipment_bonuses:
-          - No equipment                          → 1.0×
-          - Any pair (no full set)                → 2.0× + level_bonus
-          - Full set (mat pair + gem pair
-            + mon pair + hat)                     → 3.0× + level_bonus
-          - Full set + both hat stats match specs → 4.0× + level_bonus
-          - Level bonus: +1 per 50 levels
+        Base = slots_filled + set_bonus(3) + ring_sub_bonus + level_bonus
+        Full set (all 6 matching + all ring sub-slots): doubled.
         """
         equipment = pet_data.get('equipment') or {}
         level = int(pet_data.get('level', 1))
@@ -171,55 +197,16 @@ class StatsCalculator:
         if not equipment:
             return 1.0 + level_bonus
 
-        try:
-            specs = [s.upper() for s in LootCalculator._get_pet_specs(pet_data)]
-        except Exception:
-            specs = []
+        # ── Use shared equipment state calculation ────────────────────────────
+        state = StatsCalculator._get_equipment_state(pet_data)
 
-        mat = equipment.get('Material')
-        mat_names: list = []
-        if isinstance(mat, list):
-            mat_names = [(m.get('name') or '').lower() for m in mat if isinstance(m, dict) and m.get('name')]
-        elif isinstance(mat, dict) and mat.get('name'):
-            mat_names = [(mat.get('name') or '').lower()]
+        slots_filled_bonus = state['main_filled']
+        set_bonus = 3 if state['matching_set'] else 0
+        base_mult = float(slots_filled_bonus + set_bonus + state['ring_sub_bonus'] + state['level_bonus'])
+        if base_mult < 1.0:
+            base_mult = 1.0
 
-        gems = equipment.get('Gems', [])
-        gem_names: list = []
-        if isinstance(gems, list):
-            gem_names = [(g.get('name') or '').lower() for g in gems if isinstance(g, dict) and g.get('name')]
-        elif isinstance(gems, dict) and gems.get('name'):
-            gem_names = [(gems.get('name') or '').lower()]
-
-        mons = equipment.get('Monsters', [])
-        mon_names: list = []
-        if isinstance(mons, list):
-            mon_names = [(m.get('name') or '').lower() for m in mons if isinstance(m, dict) and m.get('name')]
-        elif isinstance(mons, dict) and mons.get('name'):
-            mon_names = [(mons.get('name') or '').lower()]
-
-        hat = equipment.get('Hat')
-        if isinstance(hat, list):
-            hat = hat[0] if hat else None
-        hat_equipped = hat and isinstance(hat, dict) and hat.get('name')
-
-        has_mat_pair = len(mat_names) >= 2 and len(set(mat_names)) == 1
-        has_gem_pair = len(gem_names) >= 2 and len(set(gem_names)) == 1
-        has_mon_pair = len(mon_names) >= 2 and len(set(mon_names)) == 1
-
-        full_set = has_mat_pair and has_gem_pair and has_mon_pair and hat_equipped
-
-        if full_set:
-            hat_spec_matches = 0
-            if specs and hat_equipped:
-                hat_bonus_stats = [s.upper() for s in (hat.get('bonuses') or {}).keys()]
-                hat_spec_matches = sum(1 for s in hat_bonus_stats if s in specs)
-            set_mult = 4 if hat_spec_matches >= 2 else 3
-        elif has_mat_pair or has_gem_pair or has_mon_pair:
-            set_mult = 2
-        else:
-            set_mult = 1
-
-        return float(set_mult + level_bonus)
+        return base_mult * 2.0 if state['full_set'] else base_mult
 
     @staticmethod
     def _build_effective_stats(pet_data: Dict[str, Any]) -> Dict[str, int]:

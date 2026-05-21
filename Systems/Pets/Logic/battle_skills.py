@@ -1982,10 +1982,47 @@ def tick_battle_effects(player_data: Dict[str, Any], attacker_atk: int) -> Tuple
     return net_delta, log_lines
 
 
-def can_use_skill(player_data: Dict[str, Any], slot_index: int = 0) -> bool:
+def tick_monster_effects(monster: Dict[str, Any]) -> Tuple[int, List[str]]:
+    """
+    Tick active effects on the monster (DoT, stat_debuff, stun) at the start of each round.
+    monster must have an 'active_effects' list.
+
+    Returns:
+        net_hp_delta  int         — negative = damage to monster
+        log_lines     List[str]   — human-readable descriptions
+    """
+    net_delta = 0
+    log_lines: List[str] = []
+    remaining: List[Dict[str, Any]] = []
+
+    for eff in monster.get("active_effects", []):
+        eff_type = eff.get("type")
+        turns_left = eff.get("turns_left", 0)
+
+        if eff_type == "dot":
+            val = eff.get("value", 0.0)
+            effective_atk = eff.get("atk_at_cast", 10)
+            dmg = int(effective_atk * abs(val))
+            net_delta -= dmg
+            elem = eff.get("element", "")
+            elem_tag = f" ({elem})" if elem else ""
+            log_lines.append(f"🔥 {eff.get('name', 'DoT')}{elem_tag} deals {dmg} damage to {monster.get('name', 'enemy')}")
+
+        # Decrement turns
+        new_turns = turns_left - 1
+        if new_turns > 0:
+            eff = dict(eff)
+            eff["turns_left"] = new_turns
+            remaining.append(eff)
+
+    monster["active_effects"] = remaining
+    return net_delta, log_lines
+
+
+def can_use_skill(player_data: Dict[str, Any], slot_index: int) -> bool:
     """
     Return True if the given skill slot is off cooldown and ready to use.
-    Each slot has its own independent 3-turn cooldown.
+    Each slot has its own independent cooldown tracked in skill_cooldowns.
     """
     cooldowns = player_data.get("skill_cooldowns", {})
     return cooldowns.get(slot_index, 0) == 0
@@ -2194,6 +2231,7 @@ def apply_skill(
                     })
                     effects_applied.append(f"DoT ({turns}t)")
                     elem_tag = f" ({elem})" if elem else ""
+                    message_parts.append(f"🔥 {skill_name}{elem_tag}: {int(user_atk * val)}/turn for {turns} turns")
 
 
         elif etype == "shield":
@@ -2220,11 +2258,15 @@ def apply_skill(
 
         elif etype == "charge_boost":
             boost = int(val)
-            current = float(user_data.get("charge_multiplier", 1.0))
-            max_charge = float(user_data.get("max_charge_limit", 5.0))
+            # charge is stored in party_charges[uid] in dungeon, and charge_multiplier/charge in arena.
+            # Read whichever key is present; callers must sync the returned new_charge value.
+            current = float(user_data.get("charge", user_data.get("charge_multiplier", 1.0)))
+            max_charge = float(user_data.get("max_charge_limit", user_data.get("charge_limit", 8.0)))
             new_charge = min(max_charge, current + boost)
             user_data["charge_multiplier"] = new_charge
             user_data["charge"] = new_charge
+            # Store on user_data so callers can read it back
+            user_data["_charge_boost_result"] = new_charge
             message_parts.append(f"⚡ {skill_name}: charge → x{new_charge:.0f}")
 
         elif etype == "stat_buff":

@@ -1,135 +1,3104 @@
 {
   "Materials": [
-    {"name": "Dirt", "emoji_id": 1450441245183967262, "emoji_file": "Dirt.png", "bonuses": {"DEX": 1}, "rarity": "Common", "type": "Material"},
-    {"name": "Leaf", "emoji_id": 1450441244118356099, "emoji_file": "Leaf.png", "bonuses": {"ATT": 1, "DEF": 1, "DEX": 1}, "rarity": "Common", "type": "Material"},
-    {"name": "Sand", "emoji_id": 1450799283157729322, "emoji_file": "Sand.png", "bonuses": {"ATT": 1, "DEX": 1}, "rarity": "Common", "type": "Material"},
-    {"name": "Bone", "emoji_id": 1450441242755469322, "emoji_file": "Bone.png", "bonuses": {"ATT": 2, "DEF": 2, "DEX": 2}, "rarity": "Uncommon", "type": "Material"},
-    {"name": "Fabric", "emoji_id": 1450441239475519548, "emoji_file": "Fabric.png", "bonuses": {"ATT": 1, "DEF": 1, "DEX": 2}, "rarity": "Uncommon", "type": "Material"},
-    {"name": "Leather", "emoji_id": 1450441234064736297, "emoji_file": "Leather.png", "bonuses": {"ATT": 1, "DEF": 2, "DEX": 2}, "rarity": "Uncommon", "type": "Material"},
-    {"name": "Glass", "emoji_id": 1450441235172032532, "emoji_file": "Glass.png", "bonuses": {"ATT": 3, "DEF": 2, "DEX": 2}, "rarity": "Rare", "type": "Material"},
-    {"name": "Stone", "emoji_id": 1450441240729616434, "emoji_file": "Stone.png", "bonuses": {"ATT": 3, "DEF": 3, "DEX": 3}, "rarity": "Rare", "type": "Material"},
-    {"name": "Wood", "emoji_id": 1450441236144984206, "emoji_file": "Wood.png", "bonuses": {"ATT": 3, "DEF": 2, "DEX": 3}, "rarity": "Rare", "type": "Material"},
-    {"name": "Brick", "emoji_id": 1450441237084635176, "emoji_file": "Brick.png", "bonuses": {"ATT": 3, "DEF": 4, "DEX": 3}, "rarity": "Epic", "type": "Material"},
-    {"name": "Gold", "emoji_id": 1450441232848261191, "emoji_file": "Gold.png", "bonuses": {"ATT": 3, "DEF": 4, "DEX": 4}, "rarity": "Epic", "type": "Material"},
-    {"name": "Steel", "emoji_id": 1450441238187868180, "emoji_file": "Steel.png", "bonuses": {"ATT": 4, "DEF": 4, "DEX": 4}, "rarity": "Epic", "type": "Material"},
-    {"name": "Laser", "emoji_id": 1450441231770456156, "emoji_file": "Laser.png", "bonuses": {"ATT": 5, "DEF": 4, "DEX": 5}, "rarity": "Mythic", "type": "Material"},
-    {"name": "Plutonium", "emoji_id": 1450443096830640271, "emoji_file": "plutonium.png", "bonuses": {"ATT": 4, "DEF": 4, "DEX": 5}, "rarity": "Mythic", "type": "Material"},
-    {"name": "Smart", "emoji_id": 1450441230663155833, "emoji_file": "Smart.png", "bonuses": {"ATT": 5, "DEF": 5, "DEX": 5}, "rarity": "Mythic", "type": "Material"}
+    {
+      "name": "Dirt",
+      "emoji_id": 1450441245183967262,
+      "emoji_file": "Materials/Dirt.png",
+      "bonuses": {
+        "DEX": 1
+      },
+      "rarity": "Common",
+      "type": "Material"
+    },
+    {
+      "name": "Leaf",
+      "emoji_id": 1450441244118356099,
+      "emoji_file": "Materials/Leaf.png",
+      "bonuses": {
+        "ATT": 1,
+        "DEF": 1,
+        "DEX": 1
+      },
+      "rarity": "Common",
+      "type": "Material"
+    },
+    {
+      "name": "Sand",
+      "emoji_id": 1450799283157729322,
+      "emoji_file": "Materials/Sand.png",
+      "bonuses": {
+        "ATT": 1,
+        "DEX": 1
+      },
+      "rarity": "Common",
+      "type": "Material"
+    },
+    {
+      "name": "Bone",
+      "emoji_id": 1450441242755469322,
+      "emoji_file": "Materials/Bone.png",
+      "bonuses": {
+        "ATT": 2,
+        "DEF": 2,
+        "DEX": 2
+      },
+      "rarity": "Uncommon",
+      "type": "Material"
+    },
+    {
+      "name": "Fabric",
+      "emoji_id": 1450441239475519548,
+      "emoji_file": "Materials/Fabric.png",
+      "bonuses": {
+        "ATT": 1,
+        "DEF": 1,
+        "DEX": 2
+      },
+      "rarity": "Uncommon",
+      "type": "Material"
+    },
+    {
+      "name": "Leather",
+      "emoji_id": 1450441234064736297,
+      "emoji_file": "Materials/Leather.png",
+      "bonuses": {
+        "ATT": 1,
+        "DEF": 2,
+        "DEX": 2
+      },
+      "rarity": "Uncommon",
+      "type": "Material"
+    },
+    {
+      "name": "Glass",
+      "emoji_id": 1450441235172032532,
+      "emoji_file": "Materials/Glass.png",
+      "bonuses": {
+        "ATT": 3,
+        "DEF": 2,
+        "DEX": 2
+      },
+      "rarity": "Rare",
+      "type": "Material"
+    },
+    {
+      "name": "Stone",
+      "emoji_id": 1450441240729616434,
+      "emoji_file": "Materials/Stone.png",
+      "bonuses": {
+        "ATT": 3,
+        "DEF": 3,
+        "DEX": 3
+      },
+      "rarity": "Rare",
+      "type": "Material"
+    },
+    {
+      "name": "Wood",
+      "emoji_id": 1450441236144984206,
+      "emoji_file": "Materials/Wood.png",
+      "bonuses": {
+        "ATT": 3,
+        "DEF": 2,
+        "DEX": 3
+      },
+      "rarity": "Rare",
+      "type": "Material"
+    },
+    {
+      "name": "Brick",
+      "emoji_id": 1450441237084635176,
+      "emoji_file": "Materials/Brick.png",
+      "bonuses": {
+        "ATT": 3,
+        "DEF": 4,
+        "DEX": 3
+      },
+      "rarity": "Epic",
+      "type": "Material"
+    },
+    {
+      "name": "Gold",
+      "emoji_id": 1450441232848261191,
+      "emoji_file": "Materials/Gold.png",
+      "bonuses": {
+        "ATT": 3,
+        "DEF": 4,
+        "DEX": 4
+      },
+      "rarity": "Epic",
+      "type": "Material"
+    },
+    {
+      "name": "Steel",
+      "emoji_id": 1450441238187868180,
+      "emoji_file": "Materials/Steel.png",
+      "bonuses": {
+        "ATT": 4,
+        "DEF": 4,
+        "DEX": 4
+      },
+      "rarity": "Epic",
+      "type": "Material"
+    },
+    {
+      "name": "Laser",
+      "emoji_id": 1450441231770456156,
+      "emoji_file": "Materials/Laser.png",
+      "bonuses": {
+        "ATT": 5,
+        "DEF": 4,
+        "DEX": 5
+      },
+      "rarity": "Mythic",
+      "type": "Material"
+    },
+    {
+      "name": "Plutonium",
+      "emoji_id": 1450443096830640271,
+      "emoji_file": "Materials/plutonium.png",
+      "bonuses": {
+        "ATT": 4,
+        "DEF": 4,
+        "DEX": 5
+      },
+      "rarity": "Mythic",
+      "type": "Material"
+    },
+    {
+      "name": "Smart",
+      "emoji_id": 1450441230663155833,
+      "emoji_file": "Materials/Smart.png",
+      "bonuses": {
+        "ATT": 5,
+        "DEF": 5,
+        "DEX": 5
+      },
+      "rarity": "Mythic",
+      "type": "Material"
+    }
   ],
   "Potions": [
-    {"name": "ATT Potion", "emoji_id": 1452305582630502502, "emoji_file": "att_potion.png", "type": "Potion", "rarity": "Common", "use_effect": {"type": "attribute_boost", "attribute": "ATT", "value": 3}},
-    {"name": "DEF Potion", "emoji_id": 1452305588372504667, "emoji_file": "def_potion.png", "type": "Potion", "rarity": "Common", "use_effect": {"type": "attribute_boost", "attribute": "DEF", "value": 3}},
-    {"name": "DEX Potion", "emoji_id": 1452305590763389100, "emoji_file": "dex_potion.png", "type": "Potion", "rarity": "Common", "use_effect": {"type": "attribute_boost", "attribute": "DEX", "value": 3}},
-    {"name": "ENE Potion", "emoji_id": 1452305587009491076, "emoji_file": "ene_potion.png", "type": "Potion", "rarity": "Common", "use_effect": {"type": "attribute_boost", "attribute": "ENE", "value": 3}},
-    {"name": "HAP Potion", "emoji_id": 1452305585125982461, "emoji_file": "hap_potion.png", "type": "Potion", "rarity": "Common", "use_effect": {"type": "attribute_boost", "attribute": "HAP", "value": 3}},
-    {"name": "INT Potion", "emoji_id": 1452305583804780586, "emoji_file": "int_potion.png", "type": "Potion", "rarity": "Common", "use_effect": {"type": "attribute_boost", "attribute": "INT", "value": 3}},
-    {"name": "Air Potion", "emoji_id": 1452297300188598430, "emoji_file": "air_potion.png", "type": "Potion", "rarity": "Uncommon", "use_effect": {"type": "elemental_boost", "element": "Air", "value_single": 5, "value_dual": 3}},
-    {"name": "Basic Potion", "emoji_id": 1452297304399675513, "emoji_file": "basic_potion.png", "type": "Potion", "rarity": "Uncommon", "use_effect": {"type": "elemental_boost", "element": "Basic", "value_single": 5, "value_dual": 3}},
-    {"name": "Electric Potion", "emoji_id": 1452297316684791889, "emoji_file": "electric_potion.png", "type": "Potion", "rarity": "Uncommon", "use_effect": {"type": "elemental_boost", "element": "Electric", "value_single": 5, "value_dual": 3}},
-    {"name": "Fighting Potion", "emoji_id": 1452297314839560386, "emoji_file": "fighting_potion.png", "type": "Potion", "rarity": "Uncommon", "use_effect": {"type": "elemental_boost", "element": "Fighting", "value_single": 5, "value_dual": 3}},
-    {"name": "Fire Potion", "emoji_id": 1452297306417135798, "emoji_file": "fire_potion.png", "type": "Potion", "rarity": "Uncommon", "use_effect": {"type": "elemental_boost", "element": "Fire", "value_single": 5, "value_dual": 3}},
-    {"name": "Holy Potion", "emoji_id": 1452297311941038100, "emoji_file": "holy_potion.png", "type": "Potion", "rarity": "Uncommon", "use_effect": {"type": "elemental_boost", "element": "Holy", "value_single": 5, "value_dual": 3}},
-    {"name": "Ice Potion", "emoji_id": 1452297309692887061, "emoji_file": "ice_potion.png", "type": "Potion", "rarity": "Uncommon", "use_effect": {"type": "elemental_boost", "element": "Ice", "value_single": 5, "value_dual": 3}},
-    {"name": "Magic Potion", "emoji_id": 1452297314101104812, "emoji_file": "magic_potion.png", "type": "Potion", "rarity": "Uncommon", "use_effect": {"type": "elemental_boost", "element": "Magic", "value_single": 5, "value_dual": 3}},
-    {"name": "Necro Potion", "emoji_id": 1452297302654980188, "emoji_file": "necro_potion.png", "type": "Potion", "rarity": "Uncommon", "use_effect": {"type": "elemental_boost", "element": "Necro", "value_single": 5, "value_dual": 3}},
-    {"name": "Plant Potion", "emoji_id": 1452297301870645330, "emoji_file": "plant_potion.png", "type": "Potion", "rarity": "Uncommon", "use_effect": {"type": "elemental_boost", "element": "Plant", "value_single": 5, "value_dual": 3}},
-    {"name": "Psychic Potion", "emoji_id": 1452297299048009922, "emoji_file": "psychic_potion.png", "type": "Potion", "rarity": "Uncommon", "use_effect": {"type": "elemental_boost", "element": "Psychic", "value_single": 5, "value_dual": 3}},
-    {"name": "Rock Potion", "emoji_id": 1452297305397919907, "emoji_file": "rock_potion.png", "type": "Potion", "rarity": "Uncommon", "use_effect": {"type": "elemental_boost", "element": "Rock", "value_single": 5, "value_dual": 3}},
-    {"name": "Water Potion", "emoji_id": 1452297296992800940, "emoji_file": "water_potion.png", "type": "Potion", "rarity": "Uncommon", "use_effect": {"type": "elemental_boost", "element": "Water", "value_single": 5, "value_dual": 3}},
-    {"name": "S1 Potion", "emoji_id": 1452306288150188266, "emoji_file": "s1_potion.png", "type": "Potion", "rarity": "Common", "use_effect": {"type": "random_boost", "count": 2, "value": 1}},
-    {"name": "S2 Potion", "emoji_id": 1452306144339955762, "emoji_file": "s2_potion.png", "type": "Potion", "rarity": "Uncommon", "use_effect": {"type": "random_boost", "count": 2, "value": 2}},
-    {"name": "S3 Potion", "emoji_id": 1452306004237750496, "emoji_file": "s3_potion.png", "type": "Potion", "rarity": "Rare", "use_effect": {"type": "random_boost", "count": 2, "value": 3}},
-    {"name": "Luck Potion", "emoji_id": 1452328126171582565, "emoji_file": "luck_potion.png", "type": "Potion", "rarity": "Epic", "use_effect": {"type": "luck_boost", "min": 1, "max": 5}},
-    {"name": "Mega Potion", "emoji_id": 1452330336213008445, "emoji_file": "mega_potion.png", "type": "Potion", "rarity": "Mythic", "use_effect": {"type": "mega_boost", "value": 10}},
-    {"name": "Greater Health Potion", "emoji_id": 1452328127358566400, "emoji_file": "greater_health_potion.png", "type": "Potion", "rarity": "Mythic", "use_effect": {"type": "health_boost", "attributes": ["HAP", "ENE"], "value": 15}},
-    {"name": "Health Potion", "emoji_id": 1452297307918958734, "emoji_file": "health_potion.png", "type": "Potion", "rarity": "Epic", "use_effect": {"type": "health_boost", "attributes": ["HAP", "ENE"], "value": 10}},
-    {"name": "Lesser Health Potion", "emoji_id": 1452300961878904975, "emoji_file": "lesser_health_potion.png", "type": "Potion", "rarity": "Rare", "use_effect": {"type": "health_boost", "attributes": ["HAP", "ENE"], "value": 5}},
-    {"name": "XP Potion", "emoji_id": 1452301680732537025, "emoji_file": "xp_potion.png", "type": "Potion", "rarity": "Mythic", "use_effect": {"type": "xp_boost", "multiplier": 100}},
-    {"name": "Lesser XP Potion", "emoji_id": 1452301674994602118, "emoji_file": "lesser_xp_potion.png", "type": "Potion", "rarity": "Epic", "use_effect": {"type": "xp_boost", "multiplier": 50}}
+    {
+      "name": "ATT Potion",
+      "emoji_id": 1452305582630502502,
+      "emoji_file": "Potions/att_potion.png",
+      "type": "Potion",
+      "rarity": "Common",
+      "use_effect": {
+        "type": "attribute_boost",
+        "attribute": "ATT",
+        "value": 3
+      }
+    },
+    {
+      "name": "DEF Potion",
+      "emoji_id": 1452305588372504667,
+      "emoji_file": "Potions/def_potion.png",
+      "type": "Potion",
+      "rarity": "Common",
+      "use_effect": {
+        "type": "attribute_boost",
+        "attribute": "DEF",
+        "value": 3
+      }
+    },
+    {
+      "name": "DEX Potion",
+      "emoji_id": 1452305590763389100,
+      "emoji_file": "Potions/dex_potion.png",
+      "type": "Potion",
+      "rarity": "Common",
+      "use_effect": {
+        "type": "attribute_boost",
+        "attribute": "DEX",
+        "value": 3
+      }
+    },
+    {
+      "name": "ENE Potion",
+      "emoji_id": 1452305587009491076,
+      "emoji_file": "Potions/ene_potion.png",
+      "type": "Potion",
+      "rarity": "Common",
+      "use_effect": {
+        "type": "attribute_boost",
+        "attribute": "ENE",
+        "value": 3
+      }
+    },
+    {
+      "name": "HAP Potion",
+      "emoji_id": 1452305585125982461,
+      "emoji_file": "Potions/hap_potion.png",
+      "type": "Potion",
+      "rarity": "Common",
+      "use_effect": {
+        "type": "attribute_boost",
+        "attribute": "HAP",
+        "value": 3
+      }
+    },
+    {
+      "name": "INT Potion",
+      "emoji_id": 1452305583804780586,
+      "emoji_file": "Potions/int_potion.png",
+      "type": "Potion",
+      "rarity": "Common",
+      "use_effect": {
+        "type": "attribute_boost",
+        "attribute": "INT",
+        "value": 3
+      }
+    },
+    {
+      "name": "Air Potion",
+      "emoji_id": 1452297300188598430,
+      "emoji_file": "Potions/air_potion.png",
+      "type": "Potion",
+      "rarity": "Uncommon",
+      "use_effect": {
+        "type": "elemental_boost",
+        "element": "Air",
+        "value_single": 5,
+        "value_dual": 3
+      }
+    },
+    {
+      "name": "Basic Potion",
+      "emoji_id": 1452297304399675513,
+      "emoji_file": "Potions/basic_potion.png",
+      "type": "Potion",
+      "rarity": "Uncommon",
+      "use_effect": {
+        "type": "elemental_boost",
+        "element": "Basic",
+        "value_single": 5,
+        "value_dual": 3
+      }
+    },
+    {
+      "name": "Electric Potion",
+      "emoji_id": 1452297316684791889,
+      "emoji_file": "Potions/electric_potion.png",
+      "type": "Potion",
+      "rarity": "Uncommon",
+      "use_effect": {
+        "type": "elemental_boost",
+        "element": "Electric",
+        "value_single": 5,
+        "value_dual": 3
+      }
+    },
+    {
+      "name": "Fighting Potion",
+      "emoji_id": 1452297314839560386,
+      "emoji_file": "Potions/fighting_potion.png",
+      "type": "Potion",
+      "rarity": "Uncommon",
+      "use_effect": {
+        "type": "elemental_boost",
+        "element": "Fighting",
+        "value_single": 5,
+        "value_dual": 3
+      }
+    },
+    {
+      "name": "Fire Potion",
+      "emoji_id": 1452297306417135798,
+      "emoji_file": "Potions/fire_potion.png",
+      "type": "Potion",
+      "rarity": "Uncommon",
+      "use_effect": {
+        "type": "elemental_boost",
+        "element": "Fire",
+        "value_single": 5,
+        "value_dual": 3
+      }
+    },
+    {
+      "name": "Holy Potion",
+      "emoji_id": 1452297311941038100,
+      "emoji_file": "Potions/holy_potion.png",
+      "type": "Potion",
+      "rarity": "Uncommon",
+      "use_effect": {
+        "type": "elemental_boost",
+        "element": "Holy",
+        "value_single": 5,
+        "value_dual": 3
+      }
+    },
+    {
+      "name": "Ice Potion",
+      "emoji_id": 1452297309692887061,
+      "emoji_file": "Potions/ice_potion.png",
+      "type": "Potion",
+      "rarity": "Uncommon",
+      "use_effect": {
+        "type": "elemental_boost",
+        "element": "Ice",
+        "value_single": 5,
+        "value_dual": 3
+      }
+    },
+    {
+      "name": "Magic Potion",
+      "emoji_id": 1452297314101104812,
+      "emoji_file": "Potions/magic_potion.png",
+      "type": "Potion",
+      "rarity": "Uncommon",
+      "use_effect": {
+        "type": "elemental_boost",
+        "element": "Magic",
+        "value_single": 5,
+        "value_dual": 3
+      }
+    },
+    {
+      "name": "Necro Potion",
+      "emoji_id": 1452297302654980188,
+      "emoji_file": "Potions/necro_potion.png",
+      "type": "Potion",
+      "rarity": "Uncommon",
+      "use_effect": {
+        "type": "elemental_boost",
+        "element": "Necro",
+        "value_single": 5,
+        "value_dual": 3
+      }
+    },
+    {
+      "name": "Plant Potion",
+      "emoji_id": 1452297301870645330,
+      "emoji_file": "Potions/plant_potion.png",
+      "type": "Potion",
+      "rarity": "Uncommon",
+      "use_effect": {
+        "type": "elemental_boost",
+        "element": "Plant",
+        "value_single": 5,
+        "value_dual": 3
+      }
+    },
+    {
+      "name": "Psychic Potion",
+      "emoji_id": 1452297299048009922,
+      "emoji_file": "Potions/psychic_potion.png",
+      "type": "Potion",
+      "rarity": "Uncommon",
+      "use_effect": {
+        "type": "elemental_boost",
+        "element": "Psychic",
+        "value_single": 5,
+        "value_dual": 3
+      }
+    },
+    {
+      "name": "Rock Potion",
+      "emoji_id": 1452297305397919907,
+      "emoji_file": "Potions/rock_potion.png",
+      "type": "Potion",
+      "rarity": "Uncommon",
+      "use_effect": {
+        "type": "elemental_boost",
+        "element": "Rock",
+        "value_single": 5,
+        "value_dual": 3
+      }
+    },
+    {
+      "name": "Water Potion",
+      "emoji_id": 1452297296992800940,
+      "emoji_file": "Potions/water_potion.png",
+      "type": "Potion",
+      "rarity": "Uncommon",
+      "use_effect": {
+        "type": "elemental_boost",
+        "element": "Water",
+        "value_single": 5,
+        "value_dual": 3
+      }
+    },
+    {
+      "name": "S1 Potion",
+      "emoji_id": 1452306288150188266,
+      "emoji_file": "Potions/s1_potion.png",
+      "type": "Potion",
+      "rarity": "Common",
+      "use_effect": {
+        "type": "random_boost",
+        "count": 2,
+        "value": 1
+      }
+    },
+    {
+      "name": "S2 Potion",
+      "emoji_id": 1452306144339955762,
+      "emoji_file": "Potions/s2_potion.png",
+      "type": "Potion",
+      "rarity": "Uncommon",
+      "use_effect": {
+        "type": "random_boost",
+        "count": 2,
+        "value": 2
+      }
+    },
+    {
+      "name": "S3 Potion",
+      "emoji_id": 1452306004237750496,
+      "emoji_file": "Potions/s3_potion.png",
+      "type": "Potion",
+      "rarity": "Rare",
+      "use_effect": {
+        "type": "random_boost",
+        "count": 2,
+        "value": 3
+      }
+    },
+    {
+      "name": "Luck Potion",
+      "emoji_id": 1452328126171582565,
+      "emoji_file": "Potions/luck_potion.png",
+      "type": "Potion",
+      "rarity": "Epic",
+      "use_effect": {
+        "type": "luck_boost",
+        "min": 1,
+        "max": 5
+      }
+    },
+    {
+      "name": "Mega Potion",
+      "emoji_id": 1452330336213008445,
+      "emoji_file": "Potions/mega_potion.png",
+      "type": "Potion",
+      "rarity": "Mythic",
+      "use_effect": {
+        "type": "mega_boost",
+        "value": 10
+      }
+    },
+    {
+      "name": "Greater Health Potion",
+      "emoji_id": 1452328127358566400,
+      "emoji_file": "Potions/greater_health_potion.png",
+      "type": "Potion",
+      "rarity": "Mythic",
+      "use_effect": {
+        "type": "health_boost",
+        "attributes": [
+          "HAP",
+          "ENE"
+        ],
+        "value": 15
+      }
+    },
+    {
+      "name": "Health Potion",
+      "emoji_id": 1452297307918958734,
+      "emoji_file": "Potions/health_potion.png",
+      "type": "Potion",
+      "rarity": "Epic",
+      "use_effect": {
+        "type": "health_boost",
+        "attributes": [
+          "HAP",
+          "ENE"
+        ],
+        "value": 10
+      }
+    },
+    {
+      "name": "Lesser Health Potion",
+      "emoji_id": 1452300961878904975,
+      "emoji_file": "Potions/lesser_health_potion.png",
+      "type": "Potion",
+      "rarity": "Rare",
+      "use_effect": {
+        "type": "health_boost",
+        "attributes": [
+          "HAP",
+          "ENE"
+        ],
+        "value": 5
+      }
+    },
+    {
+      "name": "XP Potion",
+      "emoji_id": 1452301680732537025,
+      "emoji_file": "Potions/xp_potion.png",
+      "type": "Potion",
+      "rarity": "Mythic",
+      "use_effect": {
+        "type": "xp_boost",
+        "multiplier": 100
+      }
+    },
+    {
+      "name": "Lesser XP Potion",
+      "emoji_id": 1452301674994602118,
+      "emoji_file": "Potions/lesser_xp_potion.png",
+      "type": "Potion",
+      "rarity": "Epic",
+      "use_effect": {
+        "type": "xp_boost",
+        "multiplier": 50
+      }
+    }
   ],
   "Gems": [
-    {"name": "EmberHeart", "emoji_id": 1450850377695105165, "emoji_file": "EmberHeart.png", "bonuses": {"INT": 2, "HAP": 5, "ENE": 8}, "rarity": "Uncommon", "type": "Gem"},
-    {"name": "MintGaze", "emoji_id": 1450850376407453716, "emoji_file": "MintGaze.png", "bonuses": {"INT": 8, "HAP": 5, "ENE": 2}, "rarity": "Uncommon", "type": "Gem"},
-    {"name": "EmeraldSoul", "emoji_id": 1450850375149162596, "emoji_file": "EmeraldSoul.png", "bonuses": {"INT": 6, "HAP": 7, "ENE": 2}, "rarity": "Uncommon", "type": "Gem"},
-    {"name": "ForestEye", "emoji_id": 1450850373823631443, "emoji_file": "ForestEye.png", "bonuses": {"INT": 7, "HAP": 3, "ENE": 5}, "rarity": "Uncommon", "type": "Gem"},
-    {"name": "SolarSphere", "emoji_id": 1450850372062285907, "emoji_file": "SolarSphere.png", "bonuses": {"INT": 3, "HAP": 2, "ENE": 10}, "rarity": "Uncommon", "type": "Gem"},
-    {"name": "SkySpire", "emoji_id": 1450850371160379432, "emoji_file": "SkySpire.png", "bonuses": {"INT": 7, "HAP": 2, "ENE": 6}, "rarity": "Uncommon", "type": "Gem"},
-    {"name": "ZephyrShard", "emoji_id": 1450850368094474300, "emoji_file": "ZephyrShard.png", "bonuses": {"INT": 5, "HAP": 2, "ENE": 8}, "rarity": "Uncommon", "type": "Gem"},
-    {"name": "AzureApex", "emoji_id": 1450850366525804677, "emoji_file": "AzureApex.png", "bonuses": {"INT": 10, "HAP": 2, "ENE": 3}, "rarity": "Uncommon", "type": "Gem"},
-    {"name": "MagmaDiamond", "emoji_id": 1450850365028171846, "emoji_file": "MagmaDiamond.png", "bonuses": {"INT": 4, "HAP": 2, "ENE": 9}, "rarity": "Uncommon", "type": "Gem"},
-    {"name": "PrismaticFlux", "emoji_id": 1450850363514159334, "emoji_file": "PrismaticFlux.png", "bonuses": {"INT": 5, "HAP": 5, "ENE": 5}, "rarity": "Uncommon", "type": "Gem"},
-    {"name": "FrostShard", "emoji_id": 1450849487907196969, "emoji_file": "FrostShard.png", "bonuses": {"INT": 9, "HAP": 2, "ENE": 4}, "rarity": "Uncommon", "type": "Gem"},
-    {"name": "EmberCube", "emoji_id": 1450849486430535762, "emoji_file": "EmberCube.png", "bonuses": {"INT": 4, "HAP": 3, "ENE": 8}, "rarity": "Uncommon", "type": "Gem"},
-    {"name": "JadeSlab", "emoji_id": 1450849484882968646, "emoji_file": "JadeSlab.png", "bonuses": {"INT": 3, "HAP": 9, "ENE": 3}, "rarity": "Uncommon", "type": "Gem"},
-    {"name": "FluxDiamond", "emoji_id": 1450849483511562354, "emoji_file": "FluxDiamond.png", "bonuses": {"INT": 3, "HAP": 4, "ENE": 8}, "rarity": "Uncommon", "type": "Gem"},
-    {"name": "MoonQuartz", "emoji_id": 1450849482156671082, "emoji_file": "MoonQuartz.png", "bonuses": {"INT": 7, "HAP": 6, "ENE": 2}, "rarity": "Uncommon", "type": "Gem"},
-    {"name": "FuryRose", "emoji_id": 1450849480793395262, "emoji_file": "FuryRose.png", "bonuses": {"INT": 1, "HAP": 7, "ENE": 7}, "rarity": "Uncommon", "type": "Gem"},
-    {"name": "SolarCore", "emoji_id": 1450849479602343968, "emoji_file": "SolarCore.png", "bonuses": {"INT": 2, "HAP": 3, "ENE": 10}, "rarity": "Uncommon", "type": "Gem"},
-    {"name": "VoidSpark", "emoji_id": 1450849478469750936, "emoji_file": "VoidSpark.png", "bonuses": {"INT": 6, "HAP": 1, "ENE": 8}, "rarity": "Uncommon", "type": "Gem"},
-    {"name": "GildedPrism", "emoji_id": 1450849477152866486, "emoji_file": "GildedPrism.png", "bonuses": {"INT": 5, "HAP": 9, "ENE": 1}, "rarity": "Uncommon", "type": "Gem"},
-    {"name": "OceanTear", "emoji_id": 1450849476041248859, "emoji_file": "OceanTear.png", "bonuses": {"INT": 5, "HAP": 8, "ENE": 2}, "rarity": "Uncommon", "type": "Gem"}
+    {
+      "name": "Ember Heart",
+      "emoji_id": 1450850377695105165,
+      "emoji_file": "Gems/EmberHeart.png",
+      "bonuses": {
+        "INT": 2,
+        "HAP": 5,
+        "ENE": 8
+      },
+      "rarity": "Epic",
+      "type": "Gem"
+    },
+    {
+      "name": "Mint Gaze",
+      "emoji_id": 1450850376407453716,
+      "emoji_file": "Gems/MintGaze.png",
+      "bonuses": {
+        "INT": 8,
+        "HAP": 5,
+        "ENE": 2
+      },
+      "rarity": "Epic",
+      "type": "Gem"
+    },
+    {
+      "name": "Emerald Soul",
+      "emoji_id": 1450850375149162596,
+      "emoji_file": "Gems/EmeraldSoul.png",
+      "bonuses": {
+        "INT": 6,
+        "HAP": 7,
+        "ENE": 2
+      },
+      "rarity": "Epic",
+      "type": "Gem"
+    },
+    {
+      "name": "Forest Eye",
+      "emoji_id": 1450850373823631443,
+      "emoji_file": "Gems/ForestEye.png",
+      "bonuses": {
+        "INT": 7,
+        "HAP": 3,
+        "ENE": 5
+      },
+      "rarity": "Epic",
+      "type": "Gem"
+    },
+    {
+      "name": "Solar Sphere",
+      "emoji_id": 1450850372062285907,
+      "emoji_file": "Gems/SolarSphere.png",
+      "bonuses": {
+        "INT": 3,
+        "HAP": 2,
+        "ENE": 10
+      },
+      "rarity": "Epic",
+      "type": "Gem"
+    },
+    {
+      "name": "Sky Spire",
+      "emoji_id": 1450850371160379432,
+      "emoji_file": "Gems/SkySpire.png",
+      "bonuses": {
+        "INT": 7,
+        "HAP": 2,
+        "ENE": 6
+      },
+      "rarity": "Epic",
+      "type": "Gem"
+    },
+    {
+      "name": "Zephyr Shard",
+      "emoji_id": 1450850368094474300,
+      "emoji_file": "Gems/ZephyrShard.png",
+      "bonuses": {
+        "INT": 5,
+        "HAP": 2,
+        "ENE": 8
+      },
+      "rarity": "Epic",
+      "type": "Gem"
+    },
+    {
+      "name": "Azure Apex",
+      "emoji_id": 1450850366525804677,
+      "emoji_file": "Gems/AzureApex.png",
+      "bonuses": {
+        "INT": 10,
+        "HAP": 2,
+        "ENE": 3
+      },
+      "rarity": "Epic",
+      "type": "Gem"
+    },
+    {
+      "name": "Magma Diamond",
+      "emoji_id": 1450850365028171846,
+      "emoji_file": "Gems/MagmaDiamond.png",
+      "bonuses": {
+        "INT": 4,
+        "HAP": 2,
+        "ENE": 9
+      },
+      "rarity": "Epic",
+      "type": "Gem"
+    },
+    {
+      "name": "Prismatic Flux",
+      "emoji_id": 1450850363514159334,
+      "emoji_file": "Gems/PrismaticFlux.png",
+      "bonuses": {
+        "INT": 5,
+        "HAP": 5,
+        "ENE": 5
+      },
+      "rarity": "Epic",
+      "type": "Gem"
+    },
+    {
+      "name": "Frost Shard",
+      "emoji_id": 1450849487907196969,
+      "emoji_file": "Gems/FrostShard.png",
+      "bonuses": {
+        "INT": 9,
+        "HAP": 2,
+        "ENE": 4
+      },
+      "rarity": "Epic",
+      "type": "Gem"
+    },
+    {
+      "name": "Ember Cube",
+      "emoji_id": 1450849486430535762,
+      "emoji_file": "Gems/EmberCube.png",
+      "bonuses": {
+        "INT": 4,
+        "HAP": 3,
+        "ENE": 8
+      },
+      "rarity": "Epic",
+      "type": "Gem"
+    },
+    {
+      "name": "Jade Slab",
+      "emoji_id": 1450849484882968646,
+      "emoji_file": "Gems/JadeSlab.png",
+      "bonuses": {
+        "INT": 3,
+        "HAP": 9,
+        "ENE": 3
+      },
+      "rarity": "Epic",
+      "type": "Gem"
+    },
+    {
+      "name": "Flux Diamond",
+      "emoji_id": 1450849483511562354,
+      "emoji_file": "Gems/FluxDiamond.png",
+      "bonuses": {
+        "INT": 3,
+        "HAP": 4,
+        "ENE": 8
+      },
+      "rarity": "Epic",
+      "type": "Gem"
+    },
+    {
+      "name": "Moon Quartz",
+      "emoji_id": 1450849482156671082,
+      "emoji_file": "Gems/MoonQuartz.png",
+      "bonuses": {
+        "INT": 7,
+        "HAP": 6,
+        "ENE": 2
+      },
+      "rarity": "Epic",
+      "type": "Gem"
+    },
+    {
+      "name": "Fury Rose",
+      "emoji_id": 1450849480793395262,
+      "emoji_file": "Gems/FuryRose.png",
+      "bonuses": {
+        "INT": 1,
+        "HAP": 7,
+        "ENE": 7
+      },
+      "rarity": "Epic",
+      "type": "Gem"
+    },
+    {
+      "name": "Solar Core",
+      "emoji_id": 1450849479602343968,
+      "emoji_file": "Gems/SolarCore.png",
+      "bonuses": {
+        "INT": 2,
+        "HAP": 3,
+        "ENE": 10
+      },
+      "rarity": "Epic",
+      "type": "Gem"
+    },
+    {
+      "name": "Void Spark",
+      "emoji_id": 1450849478469750936,
+      "emoji_file": "Gems/VoidSpark.png",
+      "bonuses": {
+        "INT": 6,
+        "HAP": 1,
+        "ENE": 8
+      },
+      "rarity": "Epic",
+      "type": "Gem"
+    },
+    {
+      "name": "Gilded Prism",
+      "emoji_id": 1450849477152866486,
+      "emoji_file": "Gems/GildedPrism.png",
+      "bonuses": {
+        "INT": 5,
+        "HAP": 9,
+        "ENE": 1
+      },
+      "rarity": "Epic",
+      "type": "Gem"
+    },
+    {
+      "name": "Ocean Tear",
+      "emoji_id": 1450849476041248859,
+      "emoji_file": "Gems/OceanTear.png",
+      "bonuses": {
+        "INT": 5,
+        "HAP": 8,
+        "ENE": 2
+      },
+      "rarity": "Epic",
+      "type": "Gem"
+    }
   ],
   "Monsters": [
-    {"name": "Wirm", "emoji_id": 1450820278270558339, "emoji_file": "Wirm.png", "bonuses": {"ENE": 6, "ATT": 9, "DEX": 5}, "rarity": "Rare", "type": "Monster"},
-    {"name": "Dodl", "emoji_id": 1450820279692558347, "emoji_file": "Dodl.png", "bonuses": {"DEX": 6, "HAP": 9, "ATT": 5}, "rarity": "Rare", "type": "Monster"},
-    {"name": "Dwim", "emoji_id": 1450820281387188416, "emoji_file": "Dwim.png", "bonuses": {"DEF": 6, "HAP": 4, "ATT": 10}, "rarity": "Rare", "type": "Monster"},
-    {"name": "Zhy", "emoji_id": 1450820283119177869, "emoji_file": "Zhy.png", "bonuses": {"DEF": 1, "ATT": 12, "INT": 7}, "rarity": "Rare", "type": "Monster"},
-    {"name": "Felr", "emoji_id": 1450820285078179862, "emoji_file": "Felr.png", "bonuses": {"INT": 4, "DEF": 12, "DEX": 4}, "rarity": "Rare", "type": "Monster"},
-    {"name": "Drak", "emoji_id": 1450820286986322050, "emoji_file": "Drak.png", "bonuses": {"HAP": 11, "INT": 1, "DEF": 8}, "rarity": "Rare", "type": "Monster"},
-    {"name": "Bliz", "emoji_id": 1450820289087934576, "emoji_file": "Bliz.png", "bonuses": {"DEF": 4, "ENE": 9, "INT": 7}, "rarity": "Rare", "type": "Monster"},
-    {"name": "Smuj", "emoji_id": 1450820292736974858, "emoji_file": "Smuj.png", "bonuses": {"INT": 7, "HAP": 5, "ATT": 8}, "rarity": "Rare", "type": "Monster"},
-    {"name": "Dvod", "emoji_id": 1450820296318779495, "emoji_file": "Dvod.png", "bonuses": {"DEF": 11, "ATT": 1, "INT": 8}, "rarity": "Rare", "type": "Monster"},
-    {"name": "Neri", "emoji_id": 1450820298852270306, "emoji_file": "Neri.png", "bonuses": {"DEF": 11, "ENE": 7, "ATT": 2}, "rarity": "Rare", "type": "Monster"},
-    {"name": "Fwit", "emoji_id": 1450820307085426748, "emoji_file": "Fwit.png", "bonuses": {"INT": 5, "DEX": 9, "DEF": 6}, "rarity": "Rare", "type": "Monster"},
-    {"name": "Plat", "emoji_id": 1450820308431802589, "emoji_file": "Plat.png", "bonuses": {"INT": 2, "ATT": 7, "ENE": 11}, "rarity": "Rare", "type": "Monster"},
-    {"name": "Mok", "emoji_id": 1450820309518385162, "emoji_file": "Mok.png", "bonuses": {"DEF": 8, "INT": 2, "HAP": 10}, "rarity": "Rare", "type": "Monster"},
-    {"name": "Jlum", "emoji_id": 1450820312500273203, "emoji_file": "Jlum.png", "bonuses": {"DEF": 2, "HAP": 12, "DEX": 6}, "rarity": "Rare", "type": "Monster"},
-    {"name": "Itle", "emoji_id": 1450820316715552768, "emoji_file": "Itle.png", "bonuses": {"INT": 5, "ENE": 10, "DEX": 5}, "rarity": "Rare", "type": "Monster"},
-    {"name": "Dwep", "emoji_id": 1450448095665193086, "emoji_file": "Dwep.png", "bonuses": {"ATT": 11, "DEF": 7, "ENE": 2}, "rarity": "Rare", "type": "Monster"},
-    {"name": "Krep", "emoji_id": 1450448096831213721, "emoji_file": "Krep.png", "bonuses": {"DEX": 6, "HAP": 5, "INT": 9}, "rarity": "Rare", "type": "Monster"},
-    {"name": "Bood", "emoji_id": 1450448098303152149, "emoji_file": "Bood.png", "bonuses": {"ENE": 5, "ATT": 5, "DEX": 10}, "rarity": "Rare", "type": "Monster"},
-    {"name": "Lozd", "emoji_id": 1450448099615969301, "emoji_file": "Lozd.png", "bonuses": {"DEX": 7, "ENE": 7, "HAP": 6}, "rarity": "Rare", "type": "Monster"},
-    {"name": "Yoa", "emoji_id": 1450448100677124319, "emoji_file": "Yoa.png", "bonuses": {"INT": 1, "DEF": 10, "ENE": 9}, "rarity": "Rare", "type": "Monster"},
-    {"name": "Nad", "emoji_id": 1450448101755326464, "emoji_file": "Nad.png", "bonuses": {"HAP": 7, "DEX": 6, "ATT": 7}, "rarity": "Rare", "type": "Monster"},
-    {"name": "Ztuk", "emoji_id": 1450448103080722584, "emoji_file": "Ztuk.png", "bonuses": {"DEX": 7, "INT": 2, "HAP": 11}, "rarity": "Rare", "type": "Monster"},
-    {"name": "Gufi", "emoji_id": 1450448104267714570, "emoji_file": "Gufi.png", "bonuses": {"INT": 4, "DEX": 8, "ENE": 8}, "rarity": "Rare", "type": "Monster"},
-    {"name": "Rowr", "emoji_id": 1450448599447109645, "emoji_file": "Rowr.png", "bonuses": {"DEF": 10, "INT": 3, "ENE": 7}, "rarity": "Rare", "type": "Monster"},
-    {"name": "Jle", "emoji_id": 1450448601225629798, "emoji_file": "Jle.png", "bonuses": {"DEX": 12, "DEF": 1, "HAP": 7}, "rarity": "Rare", "type": "Monster"},
-    {"name": "Zlik", "emoji_id": 1450448608951402668, "emoji_file": "Zlik.png", "bonuses": {"DEF": 11, "ENE": 1, "INT": 8}, "rarity": "Rare", "type": "Monster"},
-    {"name": "Sili", "emoji_id": 1450448610708951103, "emoji_file": "Sili.png", "bonuses": {"INT": 9, "ENE": 2, "HAP": 9}, "rarity": "Rare", "type": "Monster"},
-    {"name": "Pir", "emoji_id": 1450448902665797673, "emoji_file": "Pir.png", "bonuses": {"DEX": 2, "ENE": 7, "HAP": 11}, "rarity": "Rare", "type": "Monster"},
-    {"name": "Qizi", "emoji_id": 1450449021310206032, "emoji_file": "Qizi.png", "bonuses": {"DEF": 8, "ATT": 5, "ENE": 7}, "rarity": "Rare", "type": "Monster"}
+    {
+      "name": "Wirm",
+      "emoji_id": 1450820278270558339,
+      "emoji_file": "Monsters/Wirm.png",
+      "bonuses": {
+        "ENE": 6,
+        "ATT": 9,
+        "DEX": 5
+      },
+      "rarity": "Common",
+      "type": "Monster"
+    },
+    {
+      "name": "Dodl",
+      "emoji_id": 1450820279692558347,
+      "emoji_file": "Monsters/Dodl.png",
+      "bonuses": {
+        "DEX": 6,
+        "HAP": 9,
+        "ATT": 5
+      },
+      "rarity": "Common",
+      "type": "Monster"
+    },
+    {
+      "name": "Dwim",
+      "emoji_id": 1450820281387188416,
+      "emoji_file": "Monsters/Dwim.png",
+      "bonuses": {
+        "DEF": 6,
+        "HAP": 4,
+        "ATT": 10
+      },
+      "rarity": "Common",
+      "type": "Monster"
+    },
+    {
+      "name": "Zhy",
+      "emoji_id": 1450820283119177869,
+      "emoji_file": "Monsters/Zhy.png",
+      "bonuses": {
+        "DEF": 1,
+        "ATT": 12,
+        "INT": 7
+      },
+      "rarity": "Common",
+      "type": "Monster"
+    },
+    {
+      "name": "Felr",
+      "emoji_id": 1450820285078179862,
+      "emoji_file": "Monsters/Felr.png",
+      "bonuses": {
+        "INT": 4,
+        "DEF": 12,
+        "DEX": 4
+      },
+      "rarity": "Common",
+      "type": "Monster"
+    },
+    {
+      "name": "Drak",
+      "emoji_id": 1450820286986322050,
+      "emoji_file": "Monsters/Drak.png",
+      "bonuses": {
+        "HAP": 11,
+        "INT": 1,
+        "DEF": 8
+      },
+      "rarity": "Common",
+      "type": "Monster"
+    },
+    {
+      "name": "Bliz",
+      "emoji_id": 1450820289087934576,
+      "emoji_file": "Monsters/Bliz.png",
+      "bonuses": {
+        "DEF": 4,
+        "ENE": 9,
+        "INT": 7
+      },
+      "rarity": "Common",
+      "type": "Monster"
+    },
+    {
+      "name": "Smuj",
+      "emoji_id": 1450820292736974858,
+      "emoji_file": "Monsters/Smuj.png",
+      "bonuses": {
+        "INT": 7,
+        "HAP": 5,
+        "ATT": 8
+      },
+      "rarity": "Common",
+      "type": "Monster"
+    },
+    {
+      "name": "Dvod",
+      "emoji_id": 1450820296318779495,
+      "emoji_file": "Monsters/Dvod.png",
+      "bonuses": {
+        "DEF": 11,
+        "ATT": 1,
+        "INT": 8
+      },
+      "rarity": "Common",
+      "type": "Monster"
+    },
+    {
+      "name": "Neri",
+      "emoji_id": 1450820298852270306,
+      "emoji_file": "Monsters/Neri.png",
+      "bonuses": {
+        "DEF": 11,
+        "ENE": 7,
+        "ATT": 2
+      },
+      "rarity": "Common",
+      "type": "Monster"
+    },
+    {
+      "name": "Fwit",
+      "emoji_id": 1450820307085426748,
+      "emoji_file": "Monsters/Fwit.png",
+      "bonuses": {
+        "INT": 5,
+        "DEX": 9,
+        "DEF": 6
+      },
+      "rarity": "Common",
+      "type": "Monster"
+    },
+    {
+      "name": "Plat",
+      "emoji_id": 1450820308431802589,
+      "emoji_file": "Monsters/Plat.png",
+      "bonuses": {
+        "INT": 2,
+        "ATT": 7,
+        "ENE": 11
+      },
+      "rarity": "Common",
+      "type": "Monster"
+    },
+    {
+      "name": "Mok",
+      "emoji_id": 1450820309518385162,
+      "emoji_file": "Monsters/Mok.png",
+      "bonuses": {
+        "DEF": 8,
+        "INT": 2,
+        "HAP": 10
+      },
+      "rarity": "Common",
+      "type": "Monster"
+    },
+    {
+      "name": "Jlum",
+      "emoji_id": 1450820312500273203,
+      "emoji_file": "Monsters/Jlum.png",
+      "bonuses": {
+        "DEF": 2,
+        "HAP": 12,
+        "DEX": 6
+      },
+      "rarity": "Common",
+      "type": "Monster"
+    },
+    {
+      "name": "Itle",
+      "emoji_id": 1450820316715552768,
+      "emoji_file": "Monsters/Itle.png",
+      "bonuses": {
+        "INT": 5,
+        "ENE": 10,
+        "DEX": 5
+      },
+      "rarity": "Common",
+      "type": "Monster"
+    },
+    {
+      "name": "Dwep",
+      "emoji_id": 1450448095665193086,
+      "emoji_file": "Monsters/Dwep.png",
+      "bonuses": {
+        "ATT": 11,
+        "DEF": 7,
+        "ENE": 2
+      },
+      "rarity": "Common",
+      "type": "Monster"
+    },
+    {
+      "name": "Krep",
+      "emoji_id": 1450448096831213721,
+      "emoji_file": "Monsters/Krep.png",
+      "bonuses": {
+        "DEX": 6,
+        "HAP": 5,
+        "INT": 9
+      },
+      "rarity": "Common",
+      "type": "Monster"
+    },
+    {
+      "name": "Bood",
+      "emoji_id": 1450448098303152149,
+      "emoji_file": "Monsters/Bood.png",
+      "bonuses": {
+        "ENE": 5,
+        "ATT": 5,
+        "DEX": 10
+      },
+      "rarity": "Common",
+      "type": "Monster"
+    },
+    {
+      "name": "Lozd",
+      "emoji_id": 1450448099615969301,
+      "emoji_file": "Monsters/Lozd.png",
+      "bonuses": {
+        "DEX": 7,
+        "ENE": 7,
+        "HAP": 6
+      },
+      "rarity": "Common",
+      "type": "Monster"
+    },
+    {
+      "name": "Yoa",
+      "emoji_id": 1450448100677124319,
+      "emoji_file": "Monsters/Yoa.png",
+      "bonuses": {
+        "INT": 1,
+        "DEF": 10,
+        "ENE": 9
+      },
+      "rarity": "Common",
+      "type": "Monster"
+    },
+    {
+      "name": "Nad",
+      "emoji_id": 1450448101755326464,
+      "emoji_file": "Monsters/Nad.png",
+      "bonuses": {
+        "HAP": 7,
+        "DEX": 6,
+        "ATT": 7
+      },
+      "rarity": "Common",
+      "type": "Monster"
+    },
+    {
+      "name": "Ztuk",
+      "emoji_id": 1450448103080722584,
+      "emoji_file": "Monsters/Ztuk.png",
+      "bonuses": {
+        "DEX": 7,
+        "INT": 2,
+        "HAP": 11
+      },
+      "rarity": "Common",
+      "type": "Monster"
+    },
+    {
+      "name": "Gufi",
+      "emoji_id": 1450448104267714570,
+      "emoji_file": "Monsters/Gufi.png",
+      "bonuses": {
+        "INT": 4,
+        "DEX": 8,
+        "ENE": 8
+      },
+      "rarity": "Common",
+      "type": "Monster"
+    },
+    {
+      "name": "Rowr",
+      "emoji_id": 1450448599447109645,
+      "emoji_file": "Monsters/Rowr.png",
+      "bonuses": {
+        "DEF": 10,
+        "INT": 3,
+        "ENE": 7
+      },
+      "rarity": "Common",
+      "type": "Monster"
+    },
+    {
+      "name": "Jle",
+      "emoji_id": 1450448601225629798,
+      "emoji_file": "Monsters/Jle.png",
+      "bonuses": {
+        "DEX": 12,
+        "DEF": 1,
+        "HAP": 7
+      },
+      "rarity": "Common",
+      "type": "Monster"
+    },
+    {
+      "name": "Zlik",
+      "emoji_id": 1450448608951402668,
+      "emoji_file": "Monsters/Zlik.png",
+      "bonuses": {
+        "DEF": 11,
+        "ENE": 1,
+        "INT": 8
+      },
+      "rarity": "Common",
+      "type": "Monster"
+    },
+    {
+      "name": "Sili",
+      "emoji_id": 1450448610708951103,
+      "emoji_file": "Monsters/Sili.png",
+      "bonuses": {
+        "INT": 9,
+        "ENE": 2,
+        "HAP": 9
+      },
+      "rarity": "Common",
+      "type": "Monster"
+    },
+    {
+      "name": "Pir",
+      "emoji_id": 1450448902665797673,
+      "emoji_file": "Monsters/Pir.png",
+      "bonuses": {
+        "DEX": 2,
+        "ENE": 7,
+        "HAP": 11
+      },
+      "rarity": "Common",
+      "type": "Monster"
+    },
+    {
+      "name": "Qizi",
+      "emoji_id": 1450449021310206032,
+      "emoji_file": "Monsters/Qizi.png",
+      "bonuses": {
+        "DEF": 8,
+        "ATT": 5,
+        "ENE": 7
+      },
+      "rarity": "Common",
+      "type": "Monster"
+    }
   ],
   "Hats": [
-    {"name": "Boater", "emoji_id": 1452765178272940134, "emoji_file": "boater.png", "bonuses": {"HAP": 10, "ENE": 15}, "type": "Hat", "rarity": "Epic"},
-    {"name": "Aviator", "emoji_id": 1452764530336858265, "emoji_file": "aviator.png", "bonuses": {"DEX": 15, "INT": 10}, "type": "Hat", "rarity": "Epic"},
-    {"name": "Ushanka", "emoji_id": 1452764472832688188, "emoji_file": "ushanka.png", "bonuses": {"DEF": 15, "HAP": 10}, "type": "Hat", "rarity": "Epic"},
-    {"name": "Bearskin", "emoji_id": 1452764236429398221, "emoji_file": "bearskin.png", "bonuses": {"DEF": 10, "ATT": 15}, "type": "Hat", "rarity": "Epic"},
-    {"name": "Turban", "emoji_id": 1452764234546151486, "emoji_file": "turban.png", "bonuses": {"INT": 15, "HAP": 10}, "type": "Hat", "rarity": "Epic"},
-    {"name": "Bowler", "emoji_id": 1452764233035943966, "emoji_file": "bowler.png", "bonuses": {"INT": 10, "DEX": 15}, "type": "Hat", "rarity": "Epic"},
-    {"name": "Beret", "emoji_id": 1452764230750048433, "emoji_file": "beret.png", "bonuses": {"INT": 15, "DEX": 10}, "type": "Hat", "rarity": "Epic"},
-    {"name": "Nursing Cap", "emoji_id": 1452740881718181889, "emoji_file": "nursing.png", "bonuses": {"HAP": 15, "INT": 10}, "type": "Hat", "rarity": "Epic"},
-    {"name": "Gat", "emoji_id": 1452740869865078988, "emoji_file": "gat.png", "bonuses": {"ATT": 15, "DEX": 10}, "type": "Hat", "rarity": "Epic"},
-    {"name": "Peaked Cap", "emoji_id": 1452740868162195621, "emoji_file": "peaked.png", "bonuses": {"ATT": 10, "DEF": 15}, "type": "Hat", "rarity": "Epic"},
-    {"name": "Stovepipe", "emoji_id": 1452740867046641784, "emoji_file": "stovepipe.png", "bonuses": {"INT": 15, "HAP": 10}, "type": "Hat", "rarity": "Epic"},
-    {"name": "Capotain", "emoji_id": 1452740865650069757, "emoji_file": "capotain.png", "bonuses": {"INT": 15, "DEF": 10}, "type": "Hat", "rarity": "Epic"},
-    {"name": "Keffiyeh", "emoji_id": 1452740864425201776, "emoji_file": "keffiyeh.png", "bonuses": {"DEF": 15, "ENE": 10}, "type": "Hat", "rarity": "Epic"},
-    {"name": "Mortarboard", "emoji_id": 1452740862269460542, "emoji_file": "mortarboard.png", "bonuses": {"INT": 20, "DEX": 5}, "type": "Hat", "rarity": "Epic"},
-    {"name": "Fool's Cap", "emoji_id": 1452740860138623047, "emoji_file": "fool.png", "bonuses": {"HAP": 20, "INT": 5}, "type": "Hat", "rarity": "Epic"},
-    {"name": "Safety Helmet", "emoji_id": 1452740858343456881, "emoji_file": "safety.png", "bonuses": {"DEF": 20, "ENE": 5}, "type": "Hat", "rarity": "Epic"},
-    {"name": "Pith Helmet", "emoji_id": 1452740854719578336, "emoji_file": "pith.png", "bonuses": {"DEF": 10, "ENE": 15}, "type": "Hat", "rarity": "Epic"},
-    {"name": "Toque", "emoji_id": 1452740852597391513, "emoji_file": "toque.png", "bonuses": {"DEX": 15, "HAP": 10}, "type": "Hat", "rarity": "Epic"},
-    {"name": "Rice Hat", "emoji_id": 1452740848856072335, "emoji_file": "rice.png", "bonuses": {"ENE": 15, "DEF": 10}, "type": "Hat", "rarity": "Epic"},
-    {"name": "Beanie", "emoji_id": 1452740846515388446, "emoji_file": "beanie.png", "bonuses": {"HAP": 15, "DEF": 10}, "type": "Hat", "rarity": "Epic"},
-    {"name": "Santa Hat", "emoji_id": 1452740845164957777, "emoji_file": "santa.png", "bonuses": {"HAP": 25}, "type": "Hat", "rarity": "Epic"},
-    {"name": "Ballcap", "emoji_id": 1452740843550281778, "emoji_file": "ballcap.png", "bonuses": {"DEX": 15, "ENE": 10}, "type": "Hat", "rarity": "Epic"},
-    {"name": "Fez", "emoji_id": 1452740842191065139, "emoji_file": "fez.png", "bonuses": {"INT": 15, "HAP": 10}, "type": "Hat", "rarity": "Epic"},
-    {"name": "Service Cap", "emoji_id": 1452740840333115462, "emoji_file": "service.png", "bonuses": {"ATT": 10, "DEX": 15}, "type": "Hat", "rarity": "Epic"},
-    {"name": "Tricorne", "emoji_id": 1452740839129223248, "emoji_file": "tricorne.png", "bonuses": {"ATT": 15, "DEX": 10}, "type": "Hat", "rarity": "Epic"},
-    {"name": "Mitre", "emoji_id": 1452740837506027811, "emoji_file": "mitre.png", "bonuses": {"INT": 20, "HAP": 5}, "type": "Hat", "rarity": "Epic"},
-    {"name": "Sombrero", "emoji_id": 1452740835161673881, "emoji_file": "sombrero.png", "bonuses": {"HAP": 15, "ENE": 10}, "type": "Hat", "rarity": "Epic"},
-    {"name": "Fedora", "emoji_id": 1452740833303461979, "emoji_file": "fedora.png", "bonuses": {"INT": 10, "DEX": 15}, "type": "Hat", "rarity": "Epic"},
-    {"name": "Sorcerer Hat", "emoji_id": 1452740832234049777, "emoji_file": "sorcerer.png", "bonuses": {"INT": 25}, "type": "Hat", "rarity": "Epic"},
-    {"name": "Cattleman", "emoji_id": 1452740830165995757, "emoji_file": "cattleman.png", "bonuses": {"ENE": 15, "ATT": 10}, "type": "Hat", "rarity": "Epic"}
+    {
+      "name": "Boater",
+      "emoji_id": 1452765178272940134,
+      "emoji_file": "Hats/boater.png",
+      "bonuses": {
+        "HAP": 10,
+        "ENE": 15
+      },
+      "type": "Hat",
+      "rarity": "Epic"
+    },
+    {
+      "name": "Aviator",
+      "emoji_id": 1452764530336858265,
+      "emoji_file": "Hats/aviator.png",
+      "bonuses": {
+        "DEX": 15,
+        "INT": 10
+      },
+      "type": "Hat",
+      "rarity": "Epic"
+    },
+    {
+      "name": "Ushanka",
+      "emoji_id": 1452764472832688188,
+      "emoji_file": "Hats/ushanka.png",
+      "bonuses": {
+        "DEF": 15,
+        "HAP": 10
+      },
+      "type": "Hat",
+      "rarity": "Epic"
+    },
+    {
+      "name": "Bearskin",
+      "emoji_id": 1452764236429398221,
+      "emoji_file": "Hats/bearskin.png",
+      "bonuses": {
+        "DEF": 10,
+        "ATT": 15
+      },
+      "type": "Hat",
+      "rarity": "Epic"
+    },
+    {
+      "name": "Turban",
+      "emoji_id": 1452764234546151486,
+      "emoji_file": "Hats/turban.png",
+      "bonuses": {
+        "INT": 15,
+        "HAP": 10
+      },
+      "type": "Hat",
+      "rarity": "Epic"
+    },
+    {
+      "name": "Bowler",
+      "emoji_id": 1452764233035943966,
+      "emoji_file": "Hats/bowler.png",
+      "bonuses": {
+        "INT": 10,
+        "DEX": 15
+      },
+      "type": "Hat",
+      "rarity": "Epic"
+    },
+    {
+      "name": "Beret",
+      "emoji_id": 1452764230750048433,
+      "emoji_file": "Hats/beret.png",
+      "bonuses": {
+        "INT": 15,
+        "DEX": 10
+      },
+      "type": "Hat",
+      "rarity": "Epic"
+    },
+    {
+      "name": "Nursing Cap",
+      "emoji_id": 1452740881718181889,
+      "emoji_file": "Hats/nursing.png",
+      "bonuses": {
+        "HAP": 15,
+        "INT": 10
+      },
+      "type": "Hat",
+      "rarity": "Epic"
+    },
+    {
+      "name": "Gat",
+      "emoji_id": 1452740869865078988,
+      "emoji_file": "Hats/gat.png",
+      "bonuses": {
+        "ATT": 15,
+        "DEX": 10
+      },
+      "type": "Hat",
+      "rarity": "Epic"
+    },
+    {
+      "name": "Peaked Cap",
+      "emoji_id": 1452740868162195621,
+      "emoji_file": "Hats/peaked.png",
+      "bonuses": {
+        "ATT": 10,
+        "DEF": 15
+      },
+      "type": "Hat",
+      "rarity": "Epic"
+    },
+    {
+      "name": "Stovepipe",
+      "emoji_id": 1452740867046641784,
+      "emoji_file": "Hats/stovepipe.png",
+      "bonuses": {
+        "INT": 15,
+        "HAP": 10
+      },
+      "type": "Hat",
+      "rarity": "Epic"
+    },
+    {
+      "name": "Capotain",
+      "emoji_id": 1452740865650069757,
+      "emoji_file": "Hats/capotain.png",
+      "bonuses": {
+        "INT": 15,
+        "DEF": 10
+      },
+      "type": "Hat",
+      "rarity": "Epic"
+    },
+    {
+      "name": "Keffiyeh",
+      "emoji_id": 1452740864425201776,
+      "emoji_file": "Hats/keffiyeh.png",
+      "bonuses": {
+        "DEF": 15,
+        "ENE": 10
+      },
+      "type": "Hat",
+      "rarity": "Epic"
+    },
+    {
+      "name": "Mortarboard",
+      "emoji_id": 1452740862269460542,
+      "emoji_file": "Hats/mortarboard.png",
+      "bonuses": {
+        "INT": 20,
+        "DEX": 5
+      },
+      "type": "Hat",
+      "rarity": "Epic"
+    },
+    {
+      "name": "Fool's Cap",
+      "emoji_id": 1452740860138623047,
+      "emoji_file": "Hats/fool.png",
+      "bonuses": {
+        "HAP": 20,
+        "INT": 5
+      },
+      "type": "Hat",
+      "rarity": "Epic"
+    },
+    {
+      "name": "Safety Helmet",
+      "emoji_id": 1452740858343456881,
+      "emoji_file": "Hats/safety.png",
+      "bonuses": {
+        "DEF": 20,
+        "ENE": 5
+      },
+      "type": "Hat",
+      "rarity": "Epic"
+    },
+    {
+      "name": "Pith Helmet",
+      "emoji_id": 1452740854719578336,
+      "emoji_file": "Hats/pith.png",
+      "bonuses": {
+        "DEF": 10,
+        "ENE": 15
+      },
+      "type": "Hat",
+      "rarity": "Epic"
+    },
+    {
+      "name": "Toque",
+      "emoji_id": 1452740852597391513,
+      "emoji_file": "Hats/toque.png",
+      "bonuses": {
+        "DEX": 15,
+        "HAP": 10
+      },
+      "type": "Hat",
+      "rarity": "Epic"
+    },
+    {
+      "name": "Rice Hat",
+      "emoji_id": 1452740848856072335,
+      "emoji_file": "Hats/rice.png",
+      "bonuses": {
+        "ENE": 15,
+        "DEF": 10
+      },
+      "type": "Hat",
+      "rarity": "Epic"
+    },
+    {
+      "name": "Beanie",
+      "emoji_id": 1452740846515388446,
+      "emoji_file": "Hats/beanie.png",
+      "bonuses": {
+        "HAP": 15,
+        "DEF": 10
+      },
+      "type": "Hat",
+      "rarity": "Epic"
+    },
+    {
+      "name": "Santa Hat",
+      "emoji_id": 1452740845164957777,
+      "emoji_file": "Hats/santa.png",
+      "bonuses": {
+        "HAP": 25
+      },
+      "type": "Hat",
+      "rarity": "Epic"
+    },
+    {
+      "name": "Ballcap",
+      "emoji_id": 1452740843550281778,
+      "emoji_file": "Hats/ballcap.png",
+      "bonuses": {
+        "DEX": 15,
+        "ENE": 10
+      },
+      "type": "Hat",
+      "rarity": "Epic"
+    },
+    {
+      "name": "Fez",
+      "emoji_id": 1452740842191065139,
+      "emoji_file": "Hats/fez.png",
+      "bonuses": {
+        "INT": 15,
+        "HAP": 10
+      },
+      "type": "Hat",
+      "rarity": "Epic"
+    },
+    {
+      "name": "Service Cap",
+      "emoji_id": 1452740840333115462,
+      "emoji_file": "Hats/service.png",
+      "bonuses": {
+        "ATT": 10,
+        "DEX": 15
+      },
+      "type": "Hat",
+      "rarity": "Epic"
+    },
+    {
+      "name": "Tricorne",
+      "emoji_id": 1452740839129223248,
+      "emoji_file": "Hats/tricorne.png",
+      "bonuses": {
+        "ATT": 15,
+        "DEX": 10
+      },
+      "type": "Hat",
+      "rarity": "Epic"
+    },
+    {
+      "name": "Mitre",
+      "emoji_id": 1452740837506027811,
+      "emoji_file": "Hats/mitre.png",
+      "bonuses": {
+        "INT": 20,
+        "HAP": 5
+      },
+      "type": "Hat",
+      "rarity": "Epic"
+    },
+    {
+      "name": "Sombrero",
+      "emoji_id": 1452740835161673881,
+      "emoji_file": "Hats/sombrero.png",
+      "bonuses": {
+        "HAP": 15,
+        "ENE": 10
+      },
+      "type": "Hat",
+      "rarity": "Epic"
+    },
+    {
+      "name": "Fedora",
+      "emoji_id": 1452740833303461979,
+      "emoji_file": "Hats/fedora.png",
+      "bonuses": {
+        "INT": 10,
+        "DEX": 15
+      },
+      "type": "Hat",
+      "rarity": "Epic"
+    },
+    {
+      "name": "Sorcerer Hat",
+      "emoji_id": 1452740832234049777,
+      "emoji_file": "Hats/sorcerer.png",
+      "bonuses": {
+        "INT": 25
+      },
+      "type": "Hat",
+      "rarity": "Epic"
+    },
+    {
+      "name": "Cattleman",
+      "emoji_id": 1452740830165995757,
+      "emoji_file": "Hats/cattleman.png",
+      "bonuses": {
+        "ENE": 15,
+        "ATT": 10
+      },
+      "type": "Hat",
+      "rarity": "Epic"
+    }
+  ],
+  "Rings": [
+    {
+      "name": "Skull Claw",
+      "emoji_file": "Rings/SkullClaw.png",
+      "bonuses": {
+        "ATT": 15,
+        "DEF": 10
+      },
+      "rarity": "Epic",
+      "type": "Ring"
+    },
+    {
+      "name": "Bleed Heart",
+      "emoji_file": "Rings/BleedHeart.png",
+      "bonuses": {
+        "ATT": 18,
+        "HAP": 7
+      },
+      "rarity": "Epic",
+      "type": "Ring"
+    },
+    {
+      "name": "Crimson Crown",
+      "emoji_file": "Rings/CrimsonCrown.png",
+      "bonuses": {
+        "ATT": 16,
+        "ENE": 9
+      },
+      "rarity": "Epic",
+      "type": "Ring"
+    },
+    {
+      "name": "Star Sigil",
+      "emoji_file": "Rings/StarSigil.png",
+      "bonuses": {
+        "INT": 17,
+        "DEX": 8
+      },
+      "rarity": "Epic",
+      "type": "Ring"
+    },
+    {
+      "name": "Scorch Plate",
+      "emoji_file": "Rings/ScorchPlate.png",
+      "bonuses": {
+        "ATT": 13,
+        "DEF": 12
+      },
+      "rarity": "Epic",
+      "type": "Ring"
+    },
+    {
+      "name": "Rune Copper",
+      "emoji_file": "Rings/RuneCopper.png",
+      "bonuses": {
+        "INT": 14,
+        "DEX": 11
+      },
+      "rarity": "Epic",
+      "type": "Ring"
+    },
+    {
+      "name": "Iron Band",
+      "emoji_file": "Rings/IronBand.png",
+      "bonuses": {
+        "DEF": 16,
+        "ATT": 9
+      },
+      "rarity": "Epic",
+      "type": "Ring"
+    },
+    {
+      "name": "Frost Compass",
+      "emoji_file": "Rings/FrostCompass.png",
+      "bonuses": {
+        "INT": 18,
+        "ENE": 7
+      },
+      "rarity": "Epic",
+      "type": "Ring"
+    },
+    {
+      "name": "Deathwood Band",
+      "emoji_file": "Rings/DeathwoodBand.png",
+      "bonuses": {
+        "DEF": 14,
+        "HAP": 11
+      },
+      "rarity": "Epic",
+      "type": "Ring"
+    },
+    {
+      "name": "Blood Cross",
+      "emoji_file": "Rings/BloodCross.png",
+      "bonuses": {
+        "ATT": 17,
+        "DEF": 8
+      },
+      "rarity": "Epic",
+      "type": "Ring"
+    },
+    {
+      "name": "Venom Drop",
+      "emoji_file": "Rings/VenomDrop.png",
+      "bonuses": {
+        "DEX": 16,
+        "ENE": 9
+      },
+      "rarity": "Epic",
+      "type": "Ring"
+    },
+    {
+      "name": "Amber Fang",
+      "emoji_file": "Rings/AmberFang.png",
+      "bonuses": {
+        "ATT": 15,
+        "DEX": 10
+      },
+      "rarity": "Epic",
+      "type": "Ring"
+    },
+    {
+      "name": "Thorn Shield",
+      "emoji_file": "Rings/ThornShield.png",
+      "bonuses": {
+        "DEF": 17,
+        "HAP": 8
+      },
+      "rarity": "Epic",
+      "type": "Ring"
+    },
+    {
+      "name": "Thorne Amethyst",
+      "emoji_file": "Rings/ThorneAmethyst.png",
+      "bonuses": {
+        "INT": 15,
+        "HAP": 10
+      },
+      "rarity": "Epic",
+      "type": "Ring"
+    },
+    {
+      "name": "War Mark",
+      "emoji_file": "Rings/WarMark.png",
+      "bonuses": {
+        "ATT": 19,
+        "DEF": 6
+      },
+      "rarity": "Epic",
+      "type": "Ring"
+    },
+    {
+      "name": "Verdant Band",
+      "emoji_file": "Rings/VerdantBand.png",
+      "bonuses": {
+        "DEF": 13,
+        "HAP": 12
+      },
+      "rarity": "Epic",
+      "type": "Ring"
+    },
+    {
+      "name": "Spike Band",
+      "emoji_file": "Rings/SpikeBand.png",
+      "bonuses": {
+        "ATT": 14,
+        "DEF": 11
+      },
+      "rarity": "Epic",
+      "type": "Ring"
+    },
+    {
+      "name": "Magma Band",
+      "emoji_file": "Rings/MagmaBand.png",
+      "bonuses": {
+        "ATT": 16,
+        "ENE": 9
+      },
+      "rarity": "Epic",
+      "type": "Ring"
+    },
+    {
+      "name": "Crimson Lacquer",
+      "emoji_file": "Rings/CrimsonLacquer.png",
+      "bonuses": {
+        "ATT": 17,
+        "HAP": 8
+      },
+      "rarity": "Epic",
+      "type": "Ring"
+    },
+    {
+      "name": "Crusader Band",
+      "emoji_file": "Rings/CrusaderBand.png",
+      "bonuses": {
+        "DEF": 15,
+        "HAP": 10
+      },
+      "rarity": "Epic",
+      "type": "Ring"
+    },
+    {
+      "name": "Venom Orb",
+      "emoji_file": "Rings/VenomOrb.png",
+      "bonuses": {
+        "DEX": 14,
+        "ENE": 11
+      },
+      "rarity": "Epic",
+      "type": "Ring"
+    },
+    {
+      "name": "Molten Core",
+      "emoji_file": "Rings/MoltenCore.png",
+      "bonuses": {
+        "ATT": 18,
+        "ENE": 7
+      },
+      "rarity": "Epic",
+      "type": "Ring"
+    },
+    {
+      "name": "Silver Talon",
+      "emoji_file": "Rings/SilverTalon.png",
+      "bonuses": {
+        "ATT": 13,
+        "DEX": 12
+      },
+      "rarity": "Epic",
+      "type": "Ring"
+    },
+    {
+      "name": "Iron Sigil",
+      "emoji_file": "Rings/IronSigil.png",
+      "bonuses": {
+        "DEF": 16,
+        "INT": 9
+      },
+      "rarity": "Epic",
+      "type": "Ring"
+    },
+    {
+      "name": "Rust Band",
+      "emoji_file": "Rings/RustBand.png",
+      "bonuses": {
+        "DEF": 19,
+        "ATT": 6
+      },
+      "rarity": "Epic",
+      "type": "Ring"
+    },
+    {
+      "name": "Rune Blade",
+      "emoji_file": "Rings/RuneBlade.png",
+      "bonuses": {
+        "ATT": 16,
+        "INT": 9
+      },
+      "rarity": "Epic",
+      "type": "Ring"
+    },
+    {
+      "name": "Ancient Script",
+      "emoji_file": "Rings/AncientScript.png",
+      "bonuses": {
+        "INT": 16,
+        "DEX": 9
+      },
+      "rarity": "Epic",
+      "type": "Ring"
+    },
+    {
+      "name": "Ember Rune",
+      "emoji_file": "Rings/EmberRune.png",
+      "bonuses": {
+        "INT": 15,
+        "ENE": 10
+      },
+      "rarity": "Epic",
+      "type": "Ring"
+    },
+    {
+      "name": "Void Socket",
+      "emoji_file": "Rings/VoidSocket.png",
+      "bonuses": {
+        "INT": 19,
+        "DEF": 6
+      },
+      "rarity": "Epic",
+      "type": "Ring"
+    },
+    {
+      "name": "Lava Eye",
+      "emoji_file": "Rings/LavaEye.png",
+      "bonuses": {
+        "ATT": 17,
+        "ENE": 8
+      },
+      "rarity": "Epic",
+      "type": "Ring"
+    },
+    {
+      "name": "Rune Arrow",
+      "emoji_file": "Rings/RuneArrow.png",
+      "bonuses": {
+        "DEX": 17,
+        "INT": 8
+      },
+      "rarity": "Epic",
+      "type": "Ring"
+    },
+    {
+      "name": "Ruby Inferno",
+      "emoji_file": "Rings/RubyInferno.png",
+      "bonuses": {
+        "ATT": 15,
+        "ENE": 10
+      },
+      "rarity": "Epic",
+      "type": "Ring"
+    },
+    {
+      "name": "Volcanic Gem",
+      "emoji_file": "Rings/VolcanicGem.png",
+      "bonuses": {
+        "ATT": 14,
+        "ENE": 11
+      },
+      "rarity": "Epic",
+      "type": "Ring"
+    },
+    {
+      "name": "Toxic Plate",
+      "emoji_file": "Rings/ToxicPlate.png",
+      "bonuses": {
+        "DEX": 15,
+        "ENE": 10
+      },
+      "rarity": "Epic",
+      "type": "Ring"
+    },
+    {
+      "name": "Ember Inlay",
+      "emoji_file": "Rings/EmberInlay.png",
+      "bonuses": {
+        "ATT": 13,
+        "ENE": 12
+      },
+      "rarity": "Epic",
+      "type": "Ring"
+    },
+    {
+      "name": "Demon Skull",
+      "emoji_file": "Rings/DemonSkull.png",
+      "bonuses": {
+        "ATT": 16,
+        "DEF": 9
+      },
+      "rarity": "Epic",
+      "type": "Ring"
+    },
+    {
+      "name": "Wood Emerald",
+      "emoji_file": "Rings/WoodEmerald.png",
+      "bonuses": {
+        "DEF": 12,
+        "HAP": 13
+      },
+      "rarity": "Epic",
+      "type": "Ring"
+    },
+    {
+      "name": "Lazuli Sun",
+      "emoji_file": "Rings/LazuliSun.png",
+      "bonuses": {
+        "INT": 13,
+        "HAP": 12
+      },
+      "rarity": "Epic",
+      "type": "Ring"
+    },
+    {
+      "name": "Sapphire Fang",
+      "emoji_file": "Rings/SapphireFang.png",
+      "bonuses": {
+        "DEX": 16,
+        "INT": 9
+      },
+      "rarity": "Epic",
+      "type": "Ring"
+    },
+    {
+      "name": "Frost Star",
+      "emoji_file": "Rings/FrostStar.png",
+      "bonuses": {
+        "INT": 17,
+        "ENE": 8
+      },
+      "rarity": "Epic",
+      "type": "Ring"
+    }
+  ],
+  "Armor": [
+    {
+      "name": "Wood Armor",
+      "emoji_file": "Armor/Armor_Wood.png",
+      "bonuses": {
+        "HAP": 28,
+        "ENE": 22
+      },
+      "rarity": "Rare",
+      "type": "Armor",
+      "set": "Wood"
+    },
+    {
+      "name": "Rusty Iron Armor",
+      "emoji_file": "Armor/Armor_RustyIron.png",
+      "bonuses": {
+        "HAP": 24,
+        "ENE": 26
+      },
+      "rarity": "Rare",
+      "type": "Armor",
+      "set": "RustyIron"
+    },
+    {
+      "name": "Stone Armor",
+      "emoji_file": "Armor/Armor_Stone.png",
+      "bonuses": {
+        "HAP": 20,
+        "ENE": 30
+      },
+      "rarity": "Rare",
+      "type": "Armor",
+      "set": "Stone"
+    },
+    {
+      "name": "Iron Armor",
+      "emoji_file": "Armor/Armor_Iron.png",
+      "bonuses": {
+        "HAP": 32,
+        "ENE": 18
+      },
+      "rarity": "Rare",
+      "type": "Armor",
+      "set": "Iron"
+    },
+    {
+      "name": "Nature Armor",
+      "emoji_file": "Armor/Armor_Nature.png",
+      "bonuses": {
+        "HAP": 35,
+        "ENE": 15
+      },
+      "rarity": "Rare",
+      "type": "Armor",
+      "set": "Nature"
+    },
+    {
+      "name": "Elven Armor",
+      "emoji_file": "Armor/Armor_Elven.png",
+      "bonuses": {
+        "HAP": 27,
+        "ENE": 23
+      },
+      "rarity": "Rare",
+      "type": "Armor",
+      "set": "Elven"
+    },
+    {
+      "name": "Steel Armor",
+      "emoji_file": "Armor/Armor_Steel.png",
+      "bonuses": {
+        "HAP": 22,
+        "ENE": 28
+      },
+      "rarity": "Rare",
+      "type": "Armor",
+      "set": "Steel"
+    },
+    {
+      "name": "Crystal Armor",
+      "emoji_file": "Armor/Armor_Crystal.png",
+      "bonuses": {
+        "HAP": 30,
+        "ENE": 20
+      },
+      "rarity": "Rare",
+      "type": "Armor",
+      "set": "Crystal"
+    },
+    {
+      "name": "Volcanic Armor",
+      "emoji_file": "Armor/Armor_Volcanic.png",
+      "bonuses": {
+        "HAP": 18,
+        "ENE": 32
+      },
+      "rarity": "Rare",
+      "type": "Armor",
+      "set": "Volcanic"
+    },
+    {
+      "name": "Advanced Armor",
+      "emoji_file": "Armor/Armor_Advanced.png",
+      "bonuses": {
+        "HAP": 25,
+        "ENE": 25
+      },
+      "rarity": "Rare",
+      "type": "Armor",
+      "set": "Advanced"
+    },
+    {
+      "name": "SciFi Armor",
+      "emoji_file": "Armor/Armor_SciFi.png",
+      "bonuses": {
+        "HAP": 15,
+        "ENE": 35
+      },
+      "rarity": "Rare",
+      "type": "Armor",
+      "set": "SciFi"
+    }
+  ],
+  "Boots": [
+    {
+      "name": "Wood Boots",
+      "emoji_file": "Boots/Boots_Wood.png",
+      "bonuses": {
+        "DEX": 18,
+        "ENE": 12
+      },
+      "rarity": "Rare",
+      "type": "Boots",
+      "set": "Wood"
+    },
+    {
+      "name": "Rusty Iron Boots",
+      "emoji_file": "Boots/Boots_RustyIron.png",
+      "bonuses": {
+        "DEX": 14,
+        "ENE": 16
+      },
+      "rarity": "Rare",
+      "type": "Boots",
+      "set": "RustyIron"
+    },
+    {
+      "name": "Stone Boots",
+      "emoji_file": "Boots/Boots_Stone.png",
+      "bonuses": {
+        "DEX": 12,
+        "ENE": 18
+      },
+      "rarity": "Rare",
+      "type": "Boots",
+      "set": "Stone"
+    },
+    {
+      "name": "Iron Boots",
+      "emoji_file": "Boots/Boots_Iron.png",
+      "bonuses": {
+        "DEX": 20,
+        "ENE": 10
+      },
+      "rarity": "Rare",
+      "type": "Boots",
+      "set": "Iron"
+    },
+    {
+      "name": "Nature Boots",
+      "emoji_file": "Boots/Boots_Nature.png",
+      "bonuses": {
+        "DEX": 22,
+        "ENE": 8
+      },
+      "rarity": "Rare",
+      "type": "Boots",
+      "set": "Nature"
+    },
+    {
+      "name": "Elven Boots",
+      "emoji_file": "Boots/Boots_Elven.png",
+      "bonuses": {
+        "DEX": 17,
+        "ENE": 13
+      },
+      "rarity": "Rare",
+      "type": "Boots",
+      "set": "Elven"
+    },
+    {
+      "name": "Steel Boots",
+      "emoji_file": "Boots/Boots_Steel.png",
+      "bonuses": {
+        "DEX": 13,
+        "ENE": 17
+      },
+      "rarity": "Rare",
+      "type": "Boots",
+      "set": "Steel"
+    },
+    {
+      "name": "Crystal Boots",
+      "emoji_file": "Boots/Boots_Crystal.png",
+      "bonuses": {
+        "DEX": 19,
+        "ENE": 11
+      },
+      "rarity": "Rare",
+      "type": "Boots",
+      "set": "Crystal"
+    },
+    {
+      "name": "Volcanic Boots",
+      "emoji_file": "Boots/Boots_Volcanic.png",
+      "bonuses": {
+        "DEX": 11,
+        "ENE": 19
+      },
+      "rarity": "Rare",
+      "type": "Boots",
+      "set": "Volcanic"
+    },
+    {
+      "name": "Advanced Boots",
+      "emoji_file": "Boots/Boots_Advanced.png",
+      "bonuses": {
+        "DEX": 15,
+        "ENE": 15
+      },
+      "rarity": "Rare",
+      "type": "Boots",
+      "set": "Advanced"
+    },
+    {
+      "name": "SciFi Boots",
+      "emoji_file": "Boots/Boots_SciFi.png",
+      "bonuses": {
+        "DEX": 9,
+        "ENE": 21
+      },
+      "rarity": "Rare",
+      "type": "Boots",
+      "set": "SciFi"
+    }
+  ],
+  "Helmets": [
+    {
+      "name": "Wood Helmet",
+      "emoji_file": "Helmets/Helmet_Wood.png",
+      "bonuses": {
+        "INT": 18,
+        "HAP": 12
+      },
+      "rarity": "Rare",
+      "type": "Helmet",
+      "set": "Wood"
+    },
+    {
+      "name": "Rusty Iron Helmet",
+      "emoji_file": "Helmets/Helmet_RustyIron.png",
+      "bonuses": {
+        "INT": 14,
+        "HAP": 16
+      },
+      "rarity": "Rare",
+      "type": "Helmet",
+      "set": "RustyIron"
+    },
+    {
+      "name": "Stone Helmet",
+      "emoji_file": "Helmets/Helmet_Stone.png",
+      "bonuses": {
+        "INT": 12,
+        "HAP": 18
+      },
+      "rarity": "Rare",
+      "type": "Helmet",
+      "set": "Stone"
+    },
+    {
+      "name": "Iron Helmet",
+      "emoji_file": "Helmets/Helmet_Iron.png",
+      "bonuses": {
+        "INT": 20,
+        "HAP": 10
+      },
+      "rarity": "Rare",
+      "type": "Helmet",
+      "set": "Iron"
+    },
+    {
+      "name": "Nature Helmet",
+      "emoji_file": "Helmets/Helmet_Nature.png",
+      "bonuses": {
+        "INT": 22,
+        "HAP": 8
+      },
+      "rarity": "Rare",
+      "type": "Helmet",
+      "set": "Nature"
+    },
+    {
+      "name": "Elven Helmet",
+      "emoji_file": "Helmets/Helmet_Elven.png",
+      "bonuses": {
+        "INT": 17,
+        "HAP": 13
+      },
+      "rarity": "Rare",
+      "type": "Helmet",
+      "set": "Elven"
+    },
+    {
+      "name": "Steel Helmet",
+      "emoji_file": "Helmets/Helmet_Steel.png",
+      "bonuses": {
+        "INT": 13,
+        "HAP": 17
+      },
+      "rarity": "Rare",
+      "type": "Helmet",
+      "set": "Steel"
+    },
+    {
+      "name": "Crystal Helmet",
+      "emoji_file": "Helmets/Helmet_Crystal.png",
+      "bonuses": {
+        "INT": 19,
+        "HAP": 11
+      },
+      "rarity": "Rare",
+      "type": "Helmet",
+      "set": "Crystal"
+    },
+    {
+      "name": "Volcanic Helmet",
+      "emoji_file": "Helmets/Helmet_Volcanic.png",
+      "bonuses": {
+        "INT": 11,
+        "HAP": 19
+      },
+      "rarity": "Rare",
+      "type": "Helmet",
+      "set": "Volcanic"
+    },
+    {
+      "name": "Advanced Helmet",
+      "emoji_file": "Helmets/Helmet_Advanced.png",
+      "bonuses": {
+        "INT": 15,
+        "HAP": 15
+      },
+      "rarity": "Rare",
+      "type": "Helmet",
+      "set": "Advanced"
+    },
+    {
+      "name": "SciFi Helmet",
+      "emoji_file": "Helmets/Helmet_SciFi.png",
+      "bonuses": {
+        "INT": 9,
+        "HAP": 21
+      },
+      "rarity": "Rare",
+      "type": "Helmet",
+      "set": "SciFi"
+    }
+  ],
+  "Shields": [
+    {
+      "name": "Wood Shield",
+      "emoji_file": "Shield/Shield_Wood.png",
+      "bonuses": {
+        "DEF": 28,
+        "INT": 22
+      },
+      "rarity": "Rare",
+      "type": "Shield",
+      "set": "Wood"
+    },
+    {
+      "name": "Rusty Iron Shield",
+      "emoji_file": "Shield/Shield_RustyIron.png",
+      "bonuses": {
+        "DEF": 32,
+        "INT": 18
+      },
+      "rarity": "Rare",
+      "type": "Shield",
+      "set": "RustyIron"
+    },
+    {
+      "name": "Stone Shield",
+      "emoji_file": "Shield/Shield_Stone.png",
+      "bonuses": {
+        "DEF": 35,
+        "INT": 15
+      },
+      "rarity": "Rare",
+      "type": "Shield",
+      "set": "Stone"
+    },
+    {
+      "name": "Iron Shield",
+      "emoji_file": "Shield/Shield_Iron.png",
+      "bonuses": {
+        "DEF": 30,
+        "INT": 20
+      },
+      "rarity": "Rare",
+      "type": "Shield",
+      "set": "Iron"
+    },
+    {
+      "name": "Nature Shield",
+      "emoji_file": "Shield/Shield_Nature.png",
+      "bonuses": {
+        "DEF": 24,
+        "INT": 26
+      },
+      "rarity": "Rare",
+      "type": "Shield",
+      "set": "Nature"
+    },
+    {
+      "name": "Elven Shield",
+      "emoji_file": "Shield/Shield_Elven.png",
+      "bonuses": {
+        "DEF": 22,
+        "INT": 28
+      },
+      "rarity": "Rare",
+      "type": "Shield",
+      "set": "Elven"
+    },
+    {
+      "name": "Steel Shield",
+      "emoji_file": "Shield/Shield_Steel.png",
+      "bonuses": {
+        "DEF": 33,
+        "INT": 17
+      },
+      "rarity": "Rare",
+      "type": "Shield",
+      "set": "Steel"
+    },
+    {
+      "name": "Crystal Shield",
+      "emoji_file": "Shield/Shield_Crystal.png",
+      "bonuses": {
+        "DEF": 20,
+        "INT": 30
+      },
+      "rarity": "Rare",
+      "type": "Shield",
+      "set": "Crystal"
+    },
+    {
+      "name": "Volcanic Shield",
+      "emoji_file": "Shield/Shield_Volcanic.png",
+      "bonuses": {
+        "DEF": 27,
+        "INT": 23
+      },
+      "rarity": "Rare",
+      "type": "Shield",
+      "set": "Volcanic"
+    },
+    {
+      "name": "Advanced Shield",
+      "emoji_file": "Shield/Shield_Advanced.png",
+      "bonuses": {
+        "DEF": 25,
+        "INT": 25
+      },
+      "rarity": "Rare",
+      "type": "Shield",
+      "set": "Advanced"
+    },
+    {
+      "name": "SciFi Shield",
+      "emoji_file": "Shield/Shield_SciFi.png",
+      "bonuses": {
+        "DEF": 18,
+        "INT": 32
+      },
+      "rarity": "Rare",
+      "type": "Shield",
+      "set": "SciFi"
+    }
+  ],
+  "Daggers": [
+    {
+      "name": "Wood Dagger",
+      "emoji_file": "Dagger/Dagger_Wood.png",
+      "bonuses": {
+        "ATT": 8,
+        "DEX": 17
+      },
+      "rarity": "Uncommon",
+      "type": "Dagger",
+      "set": "Wood"
+    },
+    {
+      "name": "Rusty Iron Dagger",
+      "emoji_file": "Dagger/Dagger_RustyIron.png",
+      "bonuses": {
+        "ATT": 7,
+        "DEX": 18
+      },
+      "rarity": "Uncommon",
+      "type": "Dagger",
+      "set": "RustyIron"
+    },
+    {
+      "name": "Stone Dagger",
+      "emoji_file": "Dagger/Dagger_Stone.png",
+      "bonuses": {
+        "ATT": 9,
+        "DEX": 16
+      },
+      "rarity": "Uncommon",
+      "type": "Dagger",
+      "set": "Stone"
+    },
+    {
+      "name": "Iron Dagger",
+      "emoji_file": "Dagger/Dagger_Iron.png",
+      "bonuses": {
+        "ATT": 10,
+        "DEX": 15
+      },
+      "rarity": "Uncommon",
+      "type": "Dagger",
+      "set": "Iron"
+    },
+    {
+      "name": "Natural Dagger",
+      "emoji_file": "Dagger/Dagger_Natural.png",
+      "bonuses": {
+        "ATT": 6,
+        "DEX": 19
+      },
+      "rarity": "Uncommon",
+      "type": "Dagger",
+      "set": "Nature"
+    },
+    {
+      "name": "Elven Dagger",
+      "emoji_file": "Dagger/Dagger_Elven.png",
+      "bonuses": {
+        "ATT": 5,
+        "DEX": 20
+      },
+      "rarity": "Uncommon",
+      "type": "Dagger",
+      "set": "Elven"
+    },
+    {
+      "name": "Steel Dagger",
+      "emoji_file": "Dagger/Dagger_Steel.png",
+      "bonuses": {
+        "ATT": 11,
+        "DEX": 14
+      },
+      "rarity": "Uncommon",
+      "type": "Dagger",
+      "set": "Steel"
+    },
+    {
+      "name": "Crystal Dagger",
+      "emoji_file": "Dagger/Dagger_Crystal.png",
+      "bonuses": {
+        "ATT": 4,
+        "DEX": 21
+      },
+      "rarity": "Uncommon",
+      "type": "Dagger",
+      "set": "Crystal"
+    },
+    {
+      "name": "Volcanic Dagger",
+      "emoji_file": "Dagger/Dagger_Volcanic.png",
+      "bonuses": {
+        "ATT": 12,
+        "DEX": 13
+      },
+      "rarity": "Uncommon",
+      "type": "Dagger",
+      "set": "Volcanic"
+    },
+    {
+      "name": "Advanced Dagger",
+      "emoji_file": "Dagger/Dagger_Advanced.png",
+      "bonuses": {
+        "ATT": 3,
+        "DEX": 22
+      },
+      "rarity": "Uncommon",
+      "type": "Dagger",
+      "set": "Advanced"
+    },
+    {
+      "name": "SciFi Dagger",
+      "emoji_file": "Dagger/Dagger_SciFi.png",
+      "bonuses": {
+        "ATT": 2,
+        "DEX": 23
+      },
+      "rarity": "Uncommon",
+      "type": "Dagger",
+      "set": "SciFi"
+    }
+  ],
+  "Katanas": [
+    {
+      "name": "Wood Katana",
+      "emoji_file": "Katana/Katana_Wood.png",
+      "bonuses": {
+        "ATT": 13,
+        "DEX": 12
+      },
+      "rarity": "Uncommon",
+      "type": "Katana",
+      "set": "Wood"
+    },
+    {
+      "name": "Rusty Iron Katana",
+      "emoji_file": "Katana/Katana_RustyIron.png",
+      "bonuses": {
+        "ATT": 12,
+        "DEX": 13
+      },
+      "rarity": "Uncommon",
+      "type": "Katana",
+      "set": "RustyIron"
+    },
+    {
+      "name": "Stone Katana",
+      "emoji_file": "Katana/Katana_Stone.png",
+      "bonuses": {
+        "ATT": 14,
+        "DEX": 11
+      },
+      "rarity": "Uncommon",
+      "type": "Katana",
+      "set": "Stone"
+    },
+    {
+      "name": "Iron Katana",
+      "emoji_file": "Katana/Katana_Iron.png",
+      "bonuses": {
+        "ATT": 11,
+        "DEX": 14
+      },
+      "rarity": "Uncommon",
+      "type": "Katana",
+      "set": "Iron"
+    },
+    {
+      "name": "Nature Katana",
+      "emoji_file": "Katana/Katana_Nature.png",
+      "bonuses": {
+        "ATT": 15,
+        "DEX": 10
+      },
+      "rarity": "Uncommon",
+      "type": "Katana",
+      "set": "Nature"
+    },
+    {
+      "name": "Elven Katana",
+      "emoji_file": "Katana/Elven_Katana.png",
+      "bonuses": {
+        "ATT": 10,
+        "DEX": 15
+      },
+      "rarity": "Uncommon",
+      "type": "Katana",
+      "set": "Elven"
+    },
+    {
+      "name": "Steel Katana",
+      "emoji_file": "Katana/Katana_Steel.png",
+      "bonuses": {
+        "ATT": 16,
+        "DEX": 9
+      },
+      "rarity": "Uncommon",
+      "type": "Katana",
+      "set": "Steel"
+    },
+    {
+      "name": "Crystal Katana",
+      "emoji_file": "Katana/Katana_Crystal.png",
+      "bonuses": {
+        "ATT": 9,
+        "DEX": 16
+      },
+      "rarity": "Uncommon",
+      "type": "Katana",
+      "set": "Crystal"
+    },
+    {
+      "name": "Volcanic Katana",
+      "emoji_file": "Katana/Katana_Volcanic.png",
+      "bonuses": {
+        "ATT": 17,
+        "DEX": 8
+      },
+      "rarity": "Uncommon",
+      "type": "Katana",
+      "set": "Volcanic"
+    },
+    {
+      "name": "Advanced Katana",
+      "emoji_file": "Katana/Katana_Advanced.png",
+      "bonuses": {
+        "ATT": 8,
+        "DEX": 17
+      },
+      "rarity": "Uncommon",
+      "type": "Katana",
+      "set": "Advanced"
+    },
+    {
+      "name": "SciFi Katana",
+      "emoji_file": "Katana/Katana_SciFi.png",
+      "bonuses": {
+        "ATT": 18,
+        "DEX": 7
+      },
+      "rarity": "Uncommon",
+      "type": "Katana",
+      "set": "SciFi"
+    }
+  ],
+  "Swords": [
+    {
+      "name": "Wood Sword",
+      "emoji_file": "Sword/Sword_Wood.png",
+      "bonuses": {
+        "ATT": 17,
+        "DEX": 8
+      },
+      "rarity": "Uncommon",
+      "type": "Sword",
+      "set": "Wood"
+    },
+    {
+      "name": "Rusty Iron Sword",
+      "emoji_file": "Sword/Sword_RustyIron.png",
+      "bonuses": {
+        "ATT": 18,
+        "DEX": 7
+      },
+      "rarity": "Uncommon",
+      "type": "Sword",
+      "set": "RustyIron"
+    },
+    {
+      "name": "Stone Sword",
+      "emoji_file": "Sword/Sword_Stone.png",
+      "bonuses": {
+        "ATT": 19,
+        "DEX": 6
+      },
+      "rarity": "Uncommon",
+      "type": "Sword",
+      "set": "Stone"
+    },
+    {
+      "name": "Iron Sword",
+      "emoji_file": "Sword/Sword_Iron.png",
+      "bonuses": {
+        "ATT": 16,
+        "DEX": 9
+      },
+      "rarity": "Uncommon",
+      "type": "Sword",
+      "set": "Iron"
+    },
+    {
+      "name": "Nature Sword",
+      "emoji_file": "Sword/Sword_Nature.png",
+      "bonuses": {
+        "ATT": 15,
+        "DEX": 10
+      },
+      "rarity": "Uncommon",
+      "type": "Sword",
+      "set": "Nature"
+    },
+    {
+      "name": "Elven Sword",
+      "emoji_file": "Sword/Sword_Elven.png",
+      "bonuses": {
+        "ATT": 14,
+        "DEX": 11
+      },
+      "rarity": "Uncommon",
+      "type": "Sword",
+      "set": "Elven"
+    },
+    {
+      "name": "Steel Sword",
+      "emoji_file": "Sword/Sword_Steel.png",
+      "bonuses": {
+        "ATT": 20,
+        "DEX": 5
+      },
+      "rarity": "Uncommon",
+      "type": "Sword",
+      "set": "Steel"
+    },
+    {
+      "name": "Crystal Sword",
+      "emoji_file": "Sword/Sword_Crystal.png",
+      "bonuses": {
+        "ATT": 13,
+        "DEX": 12
+      },
+      "rarity": "Uncommon",
+      "type": "Sword",
+      "set": "Crystal"
+    },
+    {
+      "name": "Volcanic Sword",
+      "emoji_file": "Sword/Sword_Volcanic.png",
+      "bonuses": {
+        "ATT": 21,
+        "DEX": 4
+      },
+      "rarity": "Uncommon",
+      "type": "Sword",
+      "set": "Volcanic"
+    },
+    {
+      "name": "Advanced Sword",
+      "emoji_file": "Sword/Sword_Advanced.png",
+      "bonuses": {
+        "ATT": 22,
+        "DEX": 3
+      },
+      "rarity": "Uncommon",
+      "type": "Sword",
+      "set": "Advanced"
+    },
+    {
+      "name": "SciFi Sword",
+      "emoji_file": "Sword/Sword_SciFi.png",
+      "bonuses": {
+        "ATT": 23,
+        "DEX": 2
+      },
+      "rarity": "Uncommon",
+      "type": "Sword",
+      "set": "SciFi"
+    }
+  ],
+  "Axes": [
+    {
+      "name": "Wood Axe",
+      "emoji_file": "Axe/Axe_Wood.png",
+      "bonuses": {
+        "ATT": 8,
+        "ENE": 17
+      },
+      "rarity": "Uncommon",
+      "type": "Axe",
+      "set": "Wood"
+    },
+    {
+      "name": "Rusty Iron Axe",
+      "emoji_file": "Axe/Axe_RustyIron.png",
+      "bonuses": {
+        "ATT": 7,
+        "ENE": 18
+      },
+      "rarity": "Uncommon",
+      "type": "Axe",
+      "set": "RustyIron"
+    },
+    {
+      "name": "Stone Axe",
+      "emoji_file": "Axe/Axe_Stone.png",
+      "bonuses": {
+        "ATT": 9,
+        "ENE": 16
+      },
+      "rarity": "Uncommon",
+      "type": "Axe",
+      "set": "Stone"
+    },
+    {
+      "name": "Iron Axe",
+      "emoji_file": "Axe/Axe_Iron.png",
+      "bonuses": {
+        "ATT": 10,
+        "ENE": 15
+      },
+      "rarity": "Uncommon",
+      "type": "Axe",
+      "set": "Iron"
+    },
+    {
+      "name": "Nature Axe",
+      "emoji_file": "Axe/Axe_Nature.png",
+      "bonuses": {
+        "ATT": 6,
+        "ENE": 19
+      },
+      "rarity": "Uncommon",
+      "type": "Axe",
+      "set": "Nature"
+    },
+    {
+      "name": "Elven Axe",
+      "emoji_file": "Axe/Axe_Elven.png",
+      "bonuses": {
+        "ATT": 5,
+        "ENE": 20
+      },
+      "rarity": "Uncommon",
+      "type": "Axe",
+      "set": "Elven"
+    },
+    {
+      "name": "Steel Axe",
+      "emoji_file": "Axe/Axe_Steel.png",
+      "bonuses": {
+        "ATT": 11,
+        "ENE": 14
+      },
+      "rarity": "Uncommon",
+      "type": "Axe",
+      "set": "Steel"
+    },
+    {
+      "name": "Crystal Axe",
+      "emoji_file": "Axe/Axe_Crystal.png",
+      "bonuses": {
+        "ATT": 4,
+        "ENE": 21
+      },
+      "rarity": "Uncommon",
+      "type": "Axe",
+      "set": "Crystal"
+    },
+    {
+      "name": "Volcanic Axe",
+      "emoji_file": "Axe/Axe_Volcanic.png",
+      "bonuses": {
+        "ATT": 12,
+        "ENE": 13
+      },
+      "rarity": "Uncommon",
+      "type": "Axe",
+      "set": "Volcanic"
+    },
+    {
+      "name": "Advanced Axe",
+      "emoji_file": "Axe/Axe_Advanced.png",
+      "bonuses": {
+        "ATT": 3,
+        "ENE": 22
+      },
+      "rarity": "Uncommon",
+      "type": "Axe",
+      "set": "Advanced"
+    },
+    {
+      "name": "SciFi Axe",
+      "emoji_file": "Axe/Axe_SciFi.png",
+      "bonuses": {
+        "ATT": 2,
+        "ENE": 23
+      },
+      "rarity": "Uncommon",
+      "type": "Axe",
+      "set": "SciFi"
+    }
+  ],
+  "Hammers": [
+    {
+      "name": "Wood Hammer",
+      "emoji_file": "Hammers/Hammer_Wood.png",
+      "bonuses": {
+        "ATT": 17,
+        "ENE": 8
+      },
+      "rarity": "Uncommon",
+      "type": "Hammer",
+      "set": "Wood"
+    },
+    {
+      "name": "Rusty Iron Hammer",
+      "emoji_file": "Hammers/Hammer_RustyIron.png",
+      "bonuses": {
+        "ATT": 18,
+        "ENE": 7
+      },
+      "rarity": "Uncommon",
+      "type": "Hammer",
+      "set": "RustyIron"
+    },
+    {
+      "name": "Stone Hammer",
+      "emoji_file": "Hammers/Hammer_Stone.png",
+      "bonuses": {
+        "ATT": 19,
+        "ENE": 6
+      },
+      "rarity": "Uncommon",
+      "type": "Hammer",
+      "set": "Stone"
+    },
+    {
+      "name": "Iron Hammer",
+      "emoji_file": "Hammers/Hammer_Iron.png",
+      "bonuses": {
+        "ATT": 16,
+        "ENE": 9
+      },
+      "rarity": "Uncommon",
+      "type": "Hammer",
+      "set": "Iron"
+    },
+    {
+      "name": "Nature Hammer",
+      "emoji_file": "Hammers/Hammer_Nature.png",
+      "bonuses": {
+        "ATT": 15,
+        "ENE": 10
+      },
+      "rarity": "Uncommon",
+      "type": "Hammer",
+      "set": "Nature"
+    },
+    {
+      "name": "Elven Hammer",
+      "emoji_file": "Hammers/Hammer_Elven.png",
+      "bonuses": {
+        "ATT": 14,
+        "ENE": 11
+      },
+      "rarity": "Uncommon",
+      "type": "Hammer",
+      "set": "Elven"
+    },
+    {
+      "name": "Steel Hammer",
+      "emoji_file": "Hammers/Hammer_Steel.png",
+      "bonuses": {
+        "ATT": 20,
+        "ENE": 5
+      },
+      "rarity": "Uncommon",
+      "type": "Hammer",
+      "set": "Steel"
+    },
+    {
+      "name": "Crystal Hammer",
+      "emoji_file": "Hammers/Hammer_Crystal.png",
+      "bonuses": {
+        "ATT": 13,
+        "ENE": 12
+      },
+      "rarity": "Uncommon",
+      "type": "Hammer",
+      "set": "Crystal"
+    },
+    {
+      "name": "Volcanic Hammer",
+      "emoji_file": "Hammers/Hammer_Volcanic.png",
+      "bonuses": {
+        "ATT": 21,
+        "ENE": 4
+      },
+      "rarity": "Uncommon",
+      "type": "Hammer",
+      "set": "Volcanic"
+    },
+    {
+      "name": "Advanced Hammer",
+      "emoji_file": "Hammers/Hammer_Advanced.png",
+      "bonuses": {
+        "ATT": 22,
+        "ENE": 3
+      },
+      "rarity": "Uncommon",
+      "type": "Hammer",
+      "set": "Advanced"
+    },
+    {
+      "name": "SciFi Hammer",
+      "emoji_file": "Hammers/Hammer_SciFi.png",
+      "bonuses": {
+        "ATT": 23,
+        "ENE": 2
+      },
+      "rarity": "Uncommon",
+      "type": "Hammer",
+      "set": "SciFi"
+    }
+  ],
+  "Bows": [
+    {
+      "name": "Wood Bow",
+      "emoji_file": "Bows/Bow_Wood.png",
+      "bonuses": {
+        "ATT": 13,
+        "INT": 12
+      },
+      "rarity": "Uncommon",
+      "type": "Bow",
+      "set": "Wood"
+    },
+    {
+      "name": "Rusty Iron Bow",
+      "emoji_file": "Bows/Bow_RustyIron.png",
+      "bonuses": {
+        "ATT": 12,
+        "INT": 13
+      },
+      "rarity": "Uncommon",
+      "type": "Bow",
+      "set": "RustyIron"
+    },
+    {
+      "name": "Stone Bow",
+      "emoji_file": "Bows/Bow_Stone.png",
+      "bonuses": {
+        "ATT": 14,
+        "INT": 11
+      },
+      "rarity": "Uncommon",
+      "type": "Bow",
+      "set": "Stone"
+    },
+    {
+      "name": "Iron Bow",
+      "emoji_file": "Bows/Bow_Iron.png",
+      "bonuses": {
+        "ATT": 11,
+        "INT": 14
+      },
+      "rarity": "Uncommon",
+      "type": "Bow",
+      "set": "Iron"
+    },
+    {
+      "name": "Natural Bow",
+      "emoji_file": "Bows/Bow_Natural.png",
+      "bonuses": {
+        "ATT": 15,
+        "INT": 10
+      },
+      "rarity": "Uncommon",
+      "type": "Bow",
+      "set": "Nature"
+    },
+    {
+      "name": "Elven Bow",
+      "emoji_file": "Bows/Bow_Elven.png",
+      "bonuses": {
+        "ATT": 10,
+        "INT": 15
+      },
+      "rarity": "Uncommon",
+      "type": "Bow",
+      "set": "Elven"
+    },
+    {
+      "name": "Steel Bow",
+      "emoji_file": "Bows/Bow_Steel.png",
+      "bonuses": {
+        "ATT": 16,
+        "INT": 9
+      },
+      "rarity": "Uncommon",
+      "type": "Bow",
+      "set": "Steel"
+    },
+    {
+      "name": "Crystal Bow",
+      "emoji_file": "Bows/Bow_Crystal.png",
+      "bonuses": {
+        "ATT": 9,
+        "INT": 16
+      },
+      "rarity": "Uncommon",
+      "type": "Bow",
+      "set": "Crystal"
+    },
+    {
+      "name": "Volcanic Bow",
+      "emoji_file": "Bows/Bow_Volcanic.png",
+      "bonuses": {
+        "ATT": 17,
+        "INT": 8
+      },
+      "rarity": "Uncommon",
+      "type": "Bow",
+      "set": "Volcanic"
+    },
+    {
+      "name": "Advanced Bow",
+      "emoji_file": "Bows/Bow_Advanced.png",
+      "bonuses": {
+        "ATT": 8,
+        "INT": 17
+      },
+      "rarity": "Uncommon",
+      "type": "Bow",
+      "set": "Advanced"
+    },
+    {
+      "name": "SciFi Bow",
+      "emoji_file": "Bows/Bow_SciFi.png",
+      "bonuses": {
+        "ATT": 18,
+        "INT": 7
+      },
+      "rarity": "Uncommon",
+      "type": "Bow",
+      "set": "SciFi"
+    }
   ]
 }

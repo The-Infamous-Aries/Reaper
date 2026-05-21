@@ -15,28 +15,16 @@ from Systems.Functions.optimal_file_manager import OptimalFileManager
 from Systems.Pets.Logic.pet_brain import LootCalculator, StatsCalculator
 # Import the battle system to initiate battles
 from Systems.Pets.PetGames.battle_system import UnifiedBattleView
-from Systems.Functions.config import GROQ_API_KEY
+from Systems.Functions.local_ai import chat_complete_json_sync
 
 file_manager = OptimalFileManager()
 
 difficulties = ["Apprentice", "Journeyman", "Senior"]
 locations = ["Camp", "Bonfire", "Beach", "Forest", "Hot Air Balloon", "Cruiseship", "Mountain", "Gym", "Graveyard", "Festival", "Glacier", "Pyramids"]
 
-import groq
-
-# --- Groq Quest Generation ---
-def _get_groq_client():
-    """Initializes and returns a Groq client if the API key is available."""
-    if not GROQ_API_KEY:
-        print("GROQ_API_KEY not found in config.py.")
-        return None
-    return groq.Groq(api_key=GROQ_API_KEY)
-
+# --- Local AI Quest Generation ---
 def _generate_quest_from_groq(location, difficulty):
-    """Generates a quest using the Groq API."""
-    client = _get_groq_client()
-    if not client:
-        return None
+    """Generates a quest using local AI (Ollama → Groq fallback)."""
 
     # Location-specific theming hints
     location_themes = {
@@ -166,32 +154,21 @@ def _generate_quest_from_groq(location, difficulty):
     """
 
     try:
-        chat_completion = client.chat.completions.create(
-            messages=[
-                {
-                    "role": "user",
-                    "content": prompt,
-                }
-            ],
-            model="llama-3.1-8b-instant",
-            response_format={"type": "json_object"},
+        result = chat_complete_json_sync(
+            messages=[{"role": "user", "content": prompt}],
+            system="You are a creative quest designer for a pet adventure game. Return only valid JSON.",
+            temperature=0.8,
+            max_tokens=1500,
         )
-        response_text = chat_completion.choices[0].message.content
-        # Strip JS-style // comments that LLMs sometimes emit even in JSON mode
-        import re as _re
-        cleaned = _re.sub(r'//[^\n]*', '', response_text)
-        return json.loads(cleaned)
-    except groq.APIError as e:
-        print(f"Groq API Error generating quest: {e}")
-        return None
+        return result
     except Exception as e:
-        print(f"An unexpected error occurred while generating quest from Groq: {e}")
+        print(f"An unexpected error occurred while generating quest from local AI: {e}")
         return None
 
 def generate_or_load_quest(location, difficulty):
     """
-    Tries to generate a fresh quest via Groq. Falls back to a pre-generated
-    file if Groq is unavailable. Only saves a new file when generation succeeds
+    Tries to generate a fresh quest via local AI. Falls back to a pre-generated
+    file if local AI is unavailable. Only saves a new file when generation succeeds
     AND fewer than 5 files already exist for this location+difficulty combo
     (prevents unbounded disk growth).
     """
@@ -199,7 +176,7 @@ def generate_or_load_quest(location, difficulty):
     quest_dir  = os.path.join(script_dir, '..', 'Logic', 'Quests')
     os.makedirs(quest_dir, exist_ok=True)
 
-    # Try Groq first
+    # Try local AI first
     quest_data = _generate_quest_from_groq(location, difficulty)
     if quest_data and quest_data.get("stages"):
         # Only cache if we have fewer than 5 files for this combo
@@ -524,8 +501,6 @@ class QuestView(discord.ui.View):
                 item = LootCalculator.get_monster_loot_item(self.difficulty, bypass_chance=True)
             elif loot_type == "Potion":
                 item = LootCalculator.get_potion_loot(self.difficulty, bypass_chance=True)
-            elif loot_type == "Hat":
-                item = LootCalculator.get_hat_loot_item(self.difficulty, bypass_chance=True)
             
             if item:
                 # Check if this item (by name and type) is already in loot_items

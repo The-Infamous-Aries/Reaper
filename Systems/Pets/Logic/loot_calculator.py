@@ -83,15 +83,26 @@ class LootCalculator:
         """
         Removes an item (or a specified count of it) from the pet's inventory.
         Updates the pet's inventory in place.
+
+        Matching uses the same identity key as _consolidate_inventory:
+            (name, type, rarity, reforged, reforge_level)
+        so that plain and reforged stacks are never confused.
         """
         inventory = pet.get("inventory", [])
-        item_name = item.get("name")
-        item_type = item.get("type")
+        item_name    = item.get("name")
+        item_type    = item.get("type")
+        item_rarity  = item.get("rarity", "Common")
+        item_reforged = bool(item.get("reforged", False))
+        item_rl      = int(item.get("reforge_level", 0)) if item_reforged else 0
 
-        # Find the item in the inventory
+        # Find the exact stack using the full identity key
         found_item = None
-        for i, inv_item in enumerate(inventory):
-            if inv_item.get("name") == item_name and inv_item.get("type") == item_type:
+        for inv_item in inventory:
+            if (inv_item.get("name") == item_name
+                    and inv_item.get("type") == item_type
+                    and inv_item.get("rarity", "Common") == item_rarity
+                    and bool(inv_item.get("reforged", False)) == item_reforged
+                    and (int(inv_item.get("reforge_level", 0)) if item_reforged else 0) == item_rl):
                 found_item = inv_item
                 break
 
@@ -145,7 +156,7 @@ class LootCalculator:
                 target_key = "P26"  # P26 is the "beyond" emoji, used for all levels above 500
             else:
                 bucket = ((max(1, lvl) - 1) // 20) + 1
-                bucket = min(bucket, 25)  # P1â€“P25 cover levels 1â€“500; P26 is beyond
+                bucket = min(bucket, 25)  # P1–P25 cover levels 1–500; P26 is beyond
                 target_key = f"P{bucket}"
 
         target_lower = target_key.lower()
@@ -223,7 +234,7 @@ class LootCalculator:
     def recompute_level_from_total_xp(pet_data: dict, total_xp: int) -> Tuple[int, int, int]:
         """
         Compute level from total XP using optimized O(log n) algorithm.
-        No level cap â€” levels grow forever. At extreme XP values where the
+        No level cap — levels grow forever. At extreme XP values where the
         geometric formula overflows, the level is estimated from the overflow
         sentinel (10^18) so progression never hard-stops.
         """
@@ -240,7 +251,7 @@ class LootCalculator:
             n = math.log(inner) / math.log(1.03)
             level = max(1, int(n) + 1)
         except (ValueError, OverflowError):
-            # Fallback for extreme XP values â€” estimate level from sentinel
+            # Fallback for extreme XP values — estimate level from sentinel
             level = 1
 
         # Fine-tune: walk down if we overshot
@@ -344,7 +355,7 @@ class LootCalculator:
     def calculate_play_loot(pet_element: str, pet_element2: str, place_specials: Dict[str, Any], level: int = 1) -> Tuple[int, List[str]]:
         import random as _random
         keys_to_award_names = []
-        base_xp = max(1, level) * 5  # XP = 5 Ã— level, as shown in UI
+        base_xp = max(1, level) * 5  # XP = 5 × level, as shown in UI
         all_keys = ["Key1", "Key2", "Key3"]
 
         def _bonus_keys(extra_chance: float) -> List[str]:
@@ -368,19 +379,19 @@ class LootCalculator:
                 matched_elements_in_specials.append(pet_element2)
 
             if len(matched_elements_in_specials) == 2:
-                # Both elements match â€” 3x XP, guaranteed 1 key + 50% chance for 1-2 more
+                # Both elements match — 3x XP, guaranteed 1 key + 50% chance for 1-2 more
                 xp_gained = _random.randint(base_xp * 3, base_xp * 3 + 5)
                 base_key = [_random.choice(all_keys)]
                 bonus = _bonus_keys(0.50)
                 keys_to_award_names = list(dict.fromkeys(base_key + bonus))  # deduplicate, preserve order
             elif len(matched_elements_in_specials) == 1:
-                # One element matches â€” 2x XP, guaranteed 1 key + 25% chance for 1-2 more
+                # One element matches — 2x XP, guaranteed 1 key + 25% chance for 1-2 more
                 xp_gained = _random.randint(base_xp * 2, base_xp * 2 + 5)
                 base_key = [_random.choice(all_keys)]
                 bonus = _bonus_keys(0.25)
                 keys_to_award_names = list(dict.fromkeys(base_key + bonus))
             else:
-                # No match â€” 1x XP, 75% chance for 1 random key
+                # No match — 1x XP, 75% chance for 1 random key
                 xp_gained = _random.randint(base_xp, base_xp + 5)
                 if _random.random() < 0.75:
                     keys_to_award_names = [_random.choice(all_keys)]
@@ -486,9 +497,9 @@ class LootCalculator:
         levels_gained = new_level - old_level
         if levels_gained > 1:
             embed.description = f"**{name}** has gained {levels_gained} levels, reaching **Level {new_level}**!"
-            embed.add_field(name="Level Progress", value=f"Level {old_level} âž¡ï¸ Level {new_level} (x{levels_gained})", inline=False)
+            embed.add_field(name="Level Progress", value=f"Level {old_level} ➡️ Level {new_level} (x{levels_gained})", inline=False)
         else:
-            embed.add_field(name="Level Progress", value=f"Level {old_level} âž¡ï¸ Level {new_level}", inline=False)
+            embed.add_field(name="Level Progress", value=f"Level {old_level} ➡️ Level {new_level}", inline=False)
         
         stats = LootCalculator._format_stat_block(pet_data)
         embed.add_field(name="Current Stats", value=stats, inline=False)
@@ -515,7 +526,7 @@ class LootCalculator:
                 color=0xFF0000
             )
         
-        embed.add_field(name="Level Change", value=f"Level {old_level} âž¡ï¸ Level {new_level}", inline=False)
+        embed.add_field(name="Level Change", value=f"Level {old_level} ➡️ Level {new_level}", inline=False)
 
         if lost_xp > 0:
             embed.add_field(name="XP Lost", value=f"-{lost_xp:,} XP", inline=False)
@@ -626,8 +637,16 @@ class LootCalculator:
             
             item_type = item.get("type", "Unknown")
             item_name = item.get("name", "Unknown")
+
+            # Always enforce canonical rarity from equipment.json so the stored
+            # rarity can never diverge from the source-of-truth definition.
+            # Keys and Chests are not in equipment.json so we skip them.
+            if item_type not in ("Key", "Chest"):
+                canonical = user_data_manager.file_manager.get_equipment_item(item_name)
+                if canonical and canonical.get("rarity"):
+                    item = {**item, "rarity": canonical["rarity"]}
             
-            # Determine limit based on type â€” all items stack to 99
+            # Determine limit based on type — all items stack to 99
             limit = 99
                 
             # Find existing item
@@ -682,9 +701,9 @@ class LootCalculator:
             
             msg = ""
             if amount_added > 0:
-                msg += f"\nðŸŽ Looted {emoji} **{item_name}** x{amount_added}{stats_str}!"
+                msg += f"\n🎁 Looted {emoji} **{item_name}** x{amount_added}{stats_str}!"
             if excess > 0:
-                msg += f"\nâš ï¸ Max capacity ({limit}) reached! {excess} converted to {xp_gain} XP."
+                msg += f"\n⚠️ Max capacity ({limit}) reached! {excess} converted to {xp_gain} XP."
                 
             return True, msg
             
@@ -725,7 +744,8 @@ class LootCalculator:
             _stem_to_potion: Dict[str, Dict[str, Any]] = {}
             for _p in all_potions:
                 _ef = _p.get("emoji_file", "")
-                _stem = _ef.replace(".png", "").replace(".jpg", "").lower() if _ef else ""
+                # Strip subfolder prefix and extension to get bare stem (e.g. "Potions/mega_potion.png" → "mega_potion")
+                _stem = _ef.split("/")[-1].replace(".png", "").replace(".jpg", "").lower() if _ef else ""
                 if _stem:
                     _stem_to_potion[_stem] = _p
 
@@ -886,7 +906,7 @@ class LootCalculator:
             else:
                 return False, "Unknown potion effect."
 
-            # Remove potion (decrement count) â€” skipped for xp_boost (already handled above)
+            # Remove potion (decrement count) — skipped for xp_boost (already handled above)
             if potion_idx != -1 and potion_item is not None:
                 count = potion_item.get("count", 1)
                 if count > 1:
@@ -897,7 +917,7 @@ class LootCalculator:
                 pet["inventory"] = inventory
                 await user_data_manager.save_pet_data(str(user_id), pet.get("name", "Pet"), pet)
             
-            potion_emoji = emoji_mod.mention(potion_name) or "ðŸ§ª"
+            potion_emoji = emoji_mod.mention(potion_name) or "🧪"
             return True, f"{potion_emoji} Used **{potion_name}**! Gains: {', '.join(changes)}"
             
         except Exception as e:
@@ -1038,7 +1058,7 @@ class LootCalculator:
             elif win_streak == 6:
                 items_to_add.extend([{"name": "Key3", "type": "Key", "rarity": "Rare"}] * 2)
             elif win_streak >= 7:
-                messages.append("ðŸ”¥ **7+ WIN STREAK! JACKPOT!** ðŸ”¥")
+                messages.append("🔥 **7+ WIN STREAK! JACKPOT!** 🔥")
                 items_to_add.extend([{"name": "Key1", "type": "Key", "rarity": "Common"}] * 3)
                 items_to_add.extend([{"name": "Key2", "type": "Key", "rarity": "Uncommon"}] * 3)
                 items_to_add.extend([{"name": "Key3", "type": "Key", "rarity": "Rare"}] * 3)
@@ -1055,17 +1075,28 @@ class LootCalculator:
     def _return_item_to_inventory(inventory: List[Dict[str, Any]], item: Dict[str, Any], pet_data: Dict[str, Any], user_id: int) -> Tuple[bool, str]:
         """
         Helper to return an item to inventory, handling stacking, limits, and XP conversion.
+
+        Matching uses the same identity key as _consolidate_inventory so that reforged
+        items and plain items are never merged into the wrong stack:
+            (name, type, rarity, reforged, reforge_level)
         """
         if not item: return False, ""
         
-        item_type = item.get("type", "Material")
-        item_name = item.get("name", "Unknown")
+        item_type    = item.get("type", "Material")
+        item_name    = item.get("name", "Unknown")
+        item_rarity  = item.get("rarity", "Common")
+        item_reforged = bool(item.get("reforged", False))
+        item_rl      = int(item.get("reforge_level", 0)) if item_reforged else 0
         limit = 99  # all items stack to 99
         
-        # Find existing item
+        # Find existing stack using the same key as _consolidate_inventory
         existing_item = None
         for inv_item in inventory:
-            if inv_item.get("name") == item_name and inv_item.get("type") == item_type:
+            if (inv_item.get("name") == item_name
+                    and inv_item.get("type") == item_type
+                    and inv_item.get("rarity", "Common") == item_rarity
+                    and bool(inv_item.get("reforged", False)) == item_reforged
+                    and (int(inv_item.get("reforge_level", 0)) if item_reforged else 0) == item_rl):
                 existing_item = inv_item
                 break
         
@@ -1087,10 +1118,10 @@ class LootCalculator:
             pet_data["level"] = new_level
             pet_data["experience"] = new_xp
             
-            return True, f"âš ï¸ Limit reached for {item_name}! Converted to {xp_gain} XP."
+            return True, f"⚠️ Limit reached for {item_name}! Converted to {xp_gain} XP."
             
         else:
-            # Add to inventory
+            # Add to inventory — always return exactly 1 unit (equipment slots hold 1)
             if existing_item:
                 existing_item["count"] = current_count + 1
             else:
@@ -1120,132 +1151,173 @@ class LootCalculator:
         return unequipped_item
 
     @staticmethod
-    async def equip_items(user_id: str, username: str, material_names: Optional[str] = None, gem_names: Optional[str] = None, monster_names: Optional[str] = None, hat_name: Optional[str] = None) -> Tuple[bool, str]:
-        """Equip items to the user's pet, handling inventory moves and limits."""
+    async def equip_items(user_id: str, username: str,
+                          material_names: Optional[str] = None,
+                          gem_names: Optional[str] = None,
+                          monster_names: Optional[str] = None,
+                          helmet_name: Optional[str] = None,
+                          armor_name: Optional[str] = None,
+                          boots_name: Optional[str] = None,
+                          ring_name: Optional[str] = None,
+                          shield_name: Optional[str] = None,
+                          weapon_name: Optional[str] = None) -> Tuple[bool, str]:
+        """Equip items to the user's pet.
+
+        Single slots (1 each): Helmet, Armor, Boots, Ring, Shield, Weapon
+        Multi slots (up to 2 each): Gems, Monsters
+        Single sub-slot: Material
+
+        For ALL slots the invariant is:
+          1. Snapshot the incoming item.
+          2. Remove it from inventory FIRST.
+          3. Swap it into the equipment slot (returning any displaced item to inventory).
+        This prevents double-counting when the old and new items share the same name/type.
+        """
         try:
             pet = await user_data_manager.get_pet_data_async(str(user_id))
             if not pet:
                 return False, "You don't have a pet!"
-            
-            inventory = pet.get('inventory', [])
-            # Consolidate inventory
-            inventory = user_data_manager._consolidate_inventory(inventory)
-            
+
+            inventory = user_data_manager._consolidate_inventory(pet.get('inventory', []))
+            # Keep pet['inventory'] pointing at the same list so that
+            # _remove_item_from_inventory (which reads pet['inventory']) and
+            # _return_item_to_inventory (which receives `inventory`) both
+            # operate on the exact same object — preventing phantom duplicates.
+            pet['inventory'] = inventory
+
             equipment = pet.setdefault('equipment', {})
-            # Ensure multi-slot equipment types are initialized as lists
-            equipment.setdefault("Material", [])
             equipment.setdefault("Gems", [])
             equipment.setdefault("Monsters", [])
-            
+
             msg_parts = []
-            
-            if material_names:
-                names = [n.strip() for n in material_names.split(',') if n.strip()][:2] # Limit to 2
-                missing_materials = []
-                for material_name in names:
-                    item_obj = LootCalculator._get_item_from_inventory(pet, material_name, "Material")
-                    if not item_obj:
-                        missing_materials.append(material_name)
-                    else:
-                        unequipped_material = LootCalculator._manage_equipment_slot(pet, "Material", item_obj, max_slots=2)
-                        if unequipped_material:
-                            success, msg = LootCalculator._return_item_to_inventory(inventory, unequipped_material, pet, int(user_id))
-                            if not success:
-                                return False, f"Failed to return material {unequipped_material.get('name')} to inventory: {msg}"
-                            msg_parts.append(f"ðŸ“¦ Unequipped old Material: **{unequipped_material['name']}**")
-                        success, msg = LootCalculator._remove_item_from_inventory(pet, item_obj)
-                        if not success:
-                            return False, f"Failed to remove material {item_obj.get('name')} from inventory: {msg}"
-                
-                equipped_materials = pet["equipment"].get("Material", [])
-                if equipped_materials:
-                    material_names_list = [m['name'] for m in equipped_materials]
-                    emoji = emoji_mod.mention('material') or "ðŸ§µ"
-                    msg_parts.append(f"{emoji} Equipped Material(s): **{', '.join(material_names_list)}**")
-                if missing_materials:
-                    msg_parts.append(f"âŒ Missing Material(s): {', '.join(missing_materials)}")
 
-            # 2. Hat
-            if hat_name:
-                item_obj = LootCalculator._get_item_from_inventory(pet, hat_name, "Hat")
+            # ── Helper: equip a single-slot item ─────────────────────────────
+            def _equip_single(slot_key: str, item_type: str, name: str) -> None:
+                item_obj = LootCalculator._get_item_from_inventory(pet, name, item_type)
                 if not item_obj:
-                    msg_parts.append(f"âŒ Hat **{hat_name}** not found in inventory.")
+                    msg_parts.append(f"❌ **{name}** not found in inventory.")
+                    return
+
+                # Snapshot BEFORE touching inventory to avoid reference mutation.
+                # Force count=1: equipment slots hold exactly one unit of an item.
+                item_snapshot = {k: v for k, v in item_obj.items()}
+                item_snapshot["count"] = 1
+
+                # Remove new item from inventory FIRST — prevents double-counting when
+                # old and new items share the same name/type
+                ok, rmsg = LootCalculator._remove_item_from_inventory(pet, item_obj)
+                if not ok:
+                    msg_parts.append(f"❌ Could not remove **{name}** from inventory: {rmsg}")
+                    return
+
+                # Return old equipped item to inventory (safe — new item already removed)
+                old = equipment.get(slot_key)
+                if isinstance(old, list):
+                    old = old[0] if old else None
+                if isinstance(old, dict) and old.get('name'):
+                    _, xmsg = LootCalculator._return_item_to_inventory(inventory, old, pet, int(user_id))
+                    if xmsg:
+                        msg_parts.append(xmsg)
+                    msg_parts.append(f"📦 Unequipped old {slot_key}: **{old['name']}**")
+
+                equipment[slot_key] = item_snapshot
+                msg_parts.append(f"✅ Equipped **{name}** → {slot_key}")
+
+            # ── Helper: equip a multi-slot item (Gems / Monsters) ────────────
+            def _equip_multi(slot_key: str, item_type: str, name: str, max_slots: int) -> None:
+                item_obj = LootCalculator._get_item_from_inventory(pet, name, item_type)
+                if not item_obj:
+                    msg_parts.append(f"❌ **{name}** not found in inventory.")
+                    return
+
+                item_snapshot = {k: v for k, v in item_obj.items()}
+                item_snapshot["count"] = 1  # equipment slots hold exactly one unit
+
+                # Remove new item from inventory FIRST
+                ok, rmsg = LootCalculator._remove_item_from_inventory(pet, item_obj)
+                if not ok:
+                    msg_parts.append(f"❌ Could not remove **{name}** from inventory: {rmsg}")
+                    return
+
+                # Add to slot, displacing oldest if full
+                displaced = LootCalculator._manage_equipment_slot(pet, slot_key, item_snapshot, max_slots=max_slots)
+                if displaced and isinstance(displaced, dict) and displaced.get('name'):
+                    _, xmsg = LootCalculator._return_item_to_inventory(inventory, displaced, pet, int(user_id))
+                    if xmsg:
+                        msg_parts.append(xmsg)
+                    msg_parts.append(f"📦 Unequipped old {slot_key[:-1] if slot_key.endswith('s') else slot_key}: **{displaced['name']}**")
+
+            # ── Single-slot main gear ─────────────────────────────────────────
+            if helmet_name:
+                _equip_single('Helmet', 'Helmet', helmet_name)
+            if armor_name:
+                _equip_single('Armor', 'Armor', armor_name)
+            if boots_name:
+                _equip_single('Boots', 'Boots', boots_name)
+            if ring_name:
+                _equip_single('Ring', 'Ring', ring_name)
+            if shield_name:
+                _equip_single('Shield', 'Shield', shield_name)
+
+            # ── Weapon (any weapon sub-type) ──────────────────────────────────
+            if weapon_name:
+                weapon_types = ['Dagger', 'Katana', 'Sword', 'Axe', 'Hammer', 'Bow']
+                item_obj = None
+                for wtype in weapon_types:
+                    item_obj = LootCalculator._get_item_from_inventory(pet, weapon_name, wtype)
+                    if item_obj:
+                        break
+                if not item_obj:
+                    msg_parts.append(f"❌ Weapon **{weapon_name}** not found in inventory.")
                 else:
-                    unequipped_hat = LootCalculator._manage_equipment_slot(pet, "Hat", item_obj, max_slots=1)
-                    if unequipped_hat:
-                        success, msg = LootCalculator._return_item_to_inventory(inventory, unequipped_hat, pet, int(user_id))
-                        if not success:
-                            return False, f"Failed to return hat {unequipped_hat.get('name')} to inventory: {msg}"
-                        msg_parts.append(f"ðŸ“¦ Unequipped old Hat: **{unequipped_hat['name']}**")
-                    success, msg = LootCalculator._remove_item_from_inventory(pet, item_obj)
-                    if not success:
-                        return False, f"Failed to remove hat {item_obj.get('name')} from inventory: {msg}"
-                    emoji = LootCalculator.get_pet_emoji("Hats", hat_name) or "ðŸ§¢"
-                    msg_parts.append(f"{emoji} Equipped **{hat_name}**")
+                    weapon_snapshot = {k: v for k, v in item_obj.items()}
+                    weapon_snapshot["count"] = 1  # equipment slots hold exactly one unit
+                    ok, rmsg = LootCalculator._remove_item_from_inventory(pet, item_obj)
+                    if not ok:
+                        msg_parts.append(f"❌ Could not remove **{weapon_name}**: {rmsg}")
+                    else:
+                        old = equipment.get('Weapon')
+                        if isinstance(old, list):
+                            old = old[0] if old else None
+                        if isinstance(old, dict) and old.get('name'):
+                            _, xmsg = LootCalculator._return_item_to_inventory(inventory, old, pet, int(user_id))
+                            if xmsg:
+                                msg_parts.append(xmsg)
+                            msg_parts.append(f"📦 Unequipped old Weapon: **{old['name']}**")
+                        equipment['Weapon'] = weapon_snapshot
+                        msg_parts.append(f"✅ Equipped **{weapon_name}** → Weapon")
 
-            # 3. Gems
+            # ── Material (single slot) ────────────────────────────────────────
+            if material_names:
+                name = material_names.strip().split(',')[0].strip()
+                _equip_single('Material', 'Material', name)
+
+            # ── Gems (up to 2) ────────────────────────────────────────────────
             if gem_names:
-                names = [n.strip() for n in gem_names.split(',') if n.strip()][:2] # Limit to 2
-                missing_gems = []
+                names = [n.strip() for n in gem_names.split(',') if n.strip()][:2]
                 for gem_name in names:
-                    item_obj = LootCalculator._get_item_from_inventory(pet, gem_name, "Gem")
-                    if not item_obj:
-                        missing_gems.append(gem_name)
-                    else:
-                        unequipped_gem = LootCalculator._manage_equipment_slot(pet, "Gems", item_obj, max_slots=2)
-                        if unequipped_gem:
-                            success, msg = LootCalculator._return_item_to_inventory(inventory, unequipped_gem, pet, int(user_id))
-                            if not success:
-                                return False, f"Failed to return gem {unequipped_gem.get('name')} to inventory: {msg}"
-                            msg_parts.append(f"ðŸ“¦ Unequipped old Gem: **{unequipped_gem['name']}**")
-                        success, msg = LootCalculator._remove_item_from_inventory(pet, item_obj)
-                        if not success:
-                            return False, f"Failed to remove gem {item_obj.get('name')} from inventory: {msg}"
-                
-                equipped_gems = pet["equipment"].get("Gems", [])
+                    _equip_multi('Gems', 'Gem', gem_name, max_slots=2)
+                equipped_gems = [g['name'] for g in equipment.get('Gems', []) if isinstance(g, dict)]
                 if equipped_gems:
-                    gem_names_list = [g['name'] for g in equipped_gems]
-                    emoji = emoji_mod.mention('gem') or "ðŸ’Ž"
-                    msg_parts.append(f"{emoji} Equipped Gem(s): **{', '.join(gem_names_list)}**")
-                if missing_gems:
-                    msg_parts.append(f"âŒ Missing Gem(s): {', '.join(missing_gems)}")
+                    msg_parts.append(f"✅ Equipped Gem(s): **{', '.join(equipped_gems)}**")
 
-            # 4. Monsters
+            # ── Monsters (up to 2) ────────────────────────────────────────────
             if monster_names:
-                names = [n.strip() for n in monster_names.split(',') if n.strip()][:2] # Limit to 2
-                missing_monsters = []
-                for monster_name in names:
-                    item_obj = LootCalculator._get_item_from_inventory(pet, monster_name, "Monster")
-                    if not item_obj:
-                        missing_monsters.append(monster_name)
-                    else:
-                        unequipped_monster = LootCalculator._manage_equipment_slot(pet, "Monsters", item_obj, max_slots=2)
-                        if unequipped_monster:
-                            success, msg = LootCalculator._return_item_to_inventory(inventory, unequipped_monster, pet, int(user_id))
-                            if not success:
-                                return False, f"Failed to return monster {unequipped_monster.get('name')} to inventory: {msg}"
-                            msg_parts.append(f"ðŸ“¦ Unequipped old Monster: **{unequipped_monster['name']}**")
-                        success, msg = LootCalculator._remove_item_from_inventory(pet, item_obj)
-                        if not success:
-                            return False, f"Failed to remove monster {item_obj.get('name')} from inventory: {msg}"
-                
-                equipped_monsters = pet["equipment"].get("Monsters", [])
-                if equipped_monsters:
-                    monster_names_list = [m['name'] for m in equipped_monsters]
-                    emoji = emoji_mod.mention('monster') or "ðŸ‘¹"
-                    msg_parts.append(f"{emoji} Equipped Monster(s): **{', '.join(monster_names_list)}**")
-                if missing_monsters:
-                    msg_parts.append(f"âŒ Missing Monster(s): {', '.join(missing_monsters)}")
-            
+                names = [n.strip() for n in monster_names.split(',') if n.strip()][:2]
+                for mon_name in names:
+                    _equip_multi('Monsters', 'Monster', mon_name, max_slots=2)
+                equipped_mons = [m['name'] for m in equipment.get('Monsters', []) if isinstance(m, dict)]
+                if equipped_mons:
+                    msg_parts.append(f"✅ Equipped Monster(s): **{', '.join(equipped_mons)}**")
+
             if not msg_parts:
                 return False, "No changes made."
 
             pet['inventory'] = inventory
             pet['equipment'] = equipment
-            
             await user_data_manager.save_pet_data(str(user_id), pet.get("name", "Pet"), pet)
-            
             return True, "\n".join(msg_parts)
+
         except Exception as e:
             logger.error(f"Error in equip_items: {e}")
             return False, f"An error occurred: {e}"
@@ -1253,90 +1325,81 @@ class LootCalculator:
     @staticmethod
     async def unequip_items(user_id: str, slot_type: str) -> Tuple[bool, str]:
         """
-        Unequip items from a specific slot (Material, Gems, Monsters).
-        Moves them back to inventory.
+        Unequip items from a slot. Valid slots:
+          Main: Helmet, Armor, Boots, Ring, Shield, Weapon
+          Ring sub: Material, Gems, Monsters
+          Legacy: Hat
+        Unequipping Ring also clears Material, Gems, Monsters.
         """
         try:
             pet = await user_data_manager.get_pet_data_async(str(user_id))
             if not pet:
                 return False, "You don't have a pet!"
-            
+
             inventory = pet.get('inventory', [])
-            # Consolidate inventory
             inventory = user_data_manager._consolidate_inventory(inventory)
-            
             equipment = pet.get('equipment', {})
-            # Ensure multi-slot equipment types are initialized as lists
-            equipment.setdefault("Material", [])
             equipment.setdefault("Gems", [])
             equipment.setdefault("Monsters", [])
-            
-            slot = slot_type.capitalize()
-            if slot not in ["Material", "Gems", "Monsters", "Hat"]:
-                return False, "Invalid slot type. Choose Material, Gems, Monsters, or Hat."
-            
+
+            SINGLE_SLOTS = {'Helmet', 'Armor', 'Boots', 'Ring', 'Shield', 'Weapon', 'Hat', 'Material'}
+            LIST_SLOTS   = {'Gems', 'Monsters'}
+            valid = SINGLE_SLOTS | LIST_SLOTS
+            slot = slot_type.strip()
+            # Normalise capitalisation
+            slot_map = {s.lower(): s for s in valid}
+            slot = slot_map.get(slot.lower(), slot)
+
+            if slot not in valid:
+                return False, f"Invalid slot '{slot}'. Valid: {', '.join(sorted(valid))}"
+
             items_removed = []
             xp_msgs = []
 
-            if slot == "Material":
-                items = equipment.get("Material")
-                if items:
-                    items_list = items if isinstance(items, list) else [items]
-                    for item_obj in items_list:
-                        if not isinstance(item_obj, dict):
-                            continue
-                        _, msg = LootCalculator._return_item_to_inventory(inventory, item_obj, pet, int(user_id))
-                        if msg: xp_msgs.append(msg)
-                        items_removed.append(item_obj.get("name", "Unknown Material"))
-                    equipment["Material"] = []
-
-            elif slot == "Hat":
-                item = equipment.get("Hat")
-                if item:
+            def _unequip_single(key: str) -> None:
+                item = equipment.get(key)
+                if isinstance(item, list): item = item[0] if item else None
+                if isinstance(item, dict) and item.get('name'):
                     _, msg = LootCalculator._return_item_to_inventory(inventory, item, pet, int(user_id))
                     if msg: xp_msgs.append(msg)
-                    del equipment["Hat"]
-                    items_removed.append(item.get("name", "Unknown Hat"))
-            
-            elif slot == "Gems":
-                items = equipment.get("Gems", [])
-                if items:
-                    # Ensure it's a list for iteration, even if it was a single dict (legacy)
-                    items_list = items if isinstance(items, list) else [items]
-                    for item_obj in items_list:
-                        _, msg = LootCalculator._return_item_to_inventory(inventory, item_obj, pet, int(user_id))
-                        if msg: xp_msgs.append(msg)
-                        items_removed.append(item_obj.get("name", "Unknown Gem"))
-                    equipment["Gems"] = [] # Clear the slot
+                    items_removed.append(item.get('name', key))
+                    equipment.pop(key, None)
 
-            elif slot == "Monsters":
-                items = equipment.get("Monsters", [])
-                if items:
-                    # Ensure it's a list for iteration, even if it was a single dict (legacy)
-                    items_list = items if isinstance(items, list) else [items]
-                    for item_obj in items_list:
-                        _, msg = LootCalculator._return_item_to_inventory(inventory, item_obj, pet, int(user_id))
+            def _unequip_list(key: str) -> None:
+                items = equipment.get(key, [])
+                if isinstance(items, dict): items = [items] if items.get('name') else []
+                for item in items:
+                    if isinstance(item, dict) and item.get('name'):
+                        _, msg = LootCalculator._return_item_to_inventory(inventory, item, pet, int(user_id))
                         if msg: xp_msgs.append(msg)
-                        items_removed.append(item_obj.get("name", "Unknown Monster"))
-                    equipment["Monsters"] = [] # Clear the slot
-            
+                        items_removed.append(item.get('name', key))
+                equipment[key] = []
+
+            if slot in SINGLE_SLOTS:
+                _unequip_single(slot)
+                # Unequipping Ring also clears sub-slots
+                if slot == 'Ring':
+                    _unequip_single('Material')
+                    _unequip_list('Gems')
+                    _unequip_list('Monsters')
+            else:
+                _unequip_list(slot)
+
             if not items_removed:
                 return False, f"No items found in {slot} slot."
-            
+
             pet['inventory'] = inventory
             pet['equipment'] = equipment
-            
             await user_data_manager.save_pet_data(str(user_id), pet.get("name", "Pet"), pet)
-            
+
             result_msg = f"Unequipped: **{', '.join(items_removed)}**"
             if xp_msgs:
                 result_msg += "\n" + "\n".join(xp_msgs)
             return True, result_msg
-            
+
         except Exception as e:
             logger.error(f"Error in unequip_items: {e}")
             return False, f"An error occurred: {e}"
-
 
     @staticmethod
     def get_monster_loot_item(difficulty: str = "medium", bypass_chance: bool = False) -> Optional[Dict[str, Any]]:
@@ -1449,34 +1512,48 @@ class LootCalculator:
     def get_item_by_rarity(allowed_rarities: list, item_type: Optional[str] = None) -> Optional[Dict[str, Any]]:
         """
         Returns a random item filtered to the given rarity list.
-        item_type: "Material", "Gem", "Monster", "Potion", "Hat", or None for any type.
+        item_type: singular item type string (e.g. "Material", "Gem", "Ring", "Helmet", "Sword") or None for any.
         """
         data = LootCalculator._get_equipment_data()
+        # Map singular type → JSON section key
         type_map = {
             "Material": "Materials",
             "Gem": "Gems",
             "Monster": "Monsters",
             "Potion": "Potions",
             "Hat": "Hats",
+            "Ring": "Rings",
+            "Helmet": "Helmets",
+            "Armor": "Armor",
+            "Boots": "Boots",
+            "Shield": "Shields",
+            "Dagger": "Daggers",
+            "Katana": "Katanas",
+            "Sword": "Swords",
+            "Axe": "Axes",
+            "Hammer": "Hammers",
+            "Bow": "Bows",
         }
         if item_type:
             section = type_map.get(item_type, item_type + "s")
             pool = data.get(section, [])
         else:
             pool = []
-            for section in ["Materials", "Gems", "Monsters", "Potions", "Hats"]:
+            for section in ["Materials", "Gems", "Monsters", "Potions",
+                            "Rings", "Helmets", "Armor", "Boots", "Shields",
+                            "Daggers", "Katanas", "Swords", "Axes", "Hammers", "Bows"]:
                 pool.extend(data.get(section, []))
 
         filtered = [i for i in pool if i.get("rarity") in allowed_rarities]
-        if not filtered:
-            filtered = pool  # fallback: return anything if rarity not found
+        # No silent fallback — if nothing matches the requested rarity, return None
+        # so callers can handle it properly rather than getting wrong-rarity items.
         return random.choice(filtered) if filtered else None
 
     @staticmethod
     def get_key_loot(difficulty: str = "normal", bypass_chance: bool = False) -> List[Dict[str, Any]]:
         """
         Calculates key loot based on difficulty.
-        All keys are equal â€” each has a ~75% independent chance to drop.
+        All keys are equal — each has a ~75% independent chance to drop.
         Difficulty scales the base roll chance:
           Easy:   50% per key
           Normal: 65% per key
@@ -1530,7 +1607,16 @@ class LootCalculator:
         Opens a chest, deducts keys, and awards loot.
         chest_type: "chest1", "chest2", "chest3", "chest4"
         amount: Number of chests to open
-        selected_type: For Chest 4 (Material, Gem, Monster, Potion, Hat)
+        selected_type: For Chest 4 (Material, Gem, Monster, Potion,
+                       Ring, Helmet, Armor, Boots, Shield,
+                       Dagger, Katana, Sword, Axe, Hammer, Bow)
+                       Hats are NOT available via the Loot Market.
+
+        Chest loot tiers:
+          chest1 → 1 Common or Uncommon item (no Hats)
+          chest2 → 1 Rare item (no Hats)
+          chest3 → 1 Epic item (no Hats)
+          chest4 → 1 selected-type item (Common–Mythic) + 1 random item (Common–Mythic, no Hats)
 
         Returns (messages: List[str], awarded_items: List[Dict])
         """
@@ -1595,12 +1681,14 @@ class LootCalculator:
                     if item: items_to_add.append(item)
 
                 elif chest_type == "chest4":
+                    # Guaranteed selected-type item: any rarity Common–Mythic
                     sel_item = LootCalculator.get_item_by_rarity(
                         ["Common", "Uncommon", "Rare", "Epic", "Mythic"],
                         item_type=selected_type
                     )
                     if sel_item: items_to_add.append(sel_item)
-                    bonus = LootCalculator.get_item_by_rarity(["Uncommon", "Rare", "Epic", "Mythic"])
+                    # Bonus random item: any rarity Common–Mythic, no Hats
+                    bonus = LootCalculator.get_item_by_rarity(["Common", "Uncommon", "Rare", "Epic", "Mythic"])
                     if bonus: items_to_add.append(bonus)
             
             # Add items to inventory
@@ -1635,7 +1723,7 @@ class LootCalculator:
                          awarded_items.append(awarded_item)
                          emoji = LootCalculator.get_pet_emoji(i_type, i_name)
                          stats = LootCalculator._format_item_stats(item)
-                         final_messages.append(f"ðŸŽ {emoji} **{i_name}** x{available}{stats}")
+                         final_messages.append(f"🎁 {emoji} **{i_name}** x{available}{stats}")
 
                      if excess > 0:
                          lvl = int(pet_data.get("level", 1))
@@ -1646,7 +1734,7 @@ class LootCalculator:
                          _, new_lvl, new_xp = LootCalculator.recompute_level_from_total_xp(pet_data, new_total)
                          pet_data["level"] = new_lvl
                          pet_data["experience"] = new_xp
-                         final_messages.append(f"âš ï¸ Limit reached for {i_name}! {excess} items converted to {xp_gain} XP.")
+                         final_messages.append(f"⚠️ Limit reached for {i_name}! {excess} items converted to {xp_gain} XP.")
                 else:
                     if existing:
                         existing["count"] = curr_count + add_count
@@ -1661,7 +1749,7 @@ class LootCalculator:
                     awarded_items.append(awarded_item)
                     emoji = LootCalculator.get_pet_emoji(i_type, i_name)
                     stats = LootCalculator._format_item_stats(item)
-                    final_messages.append(f"ðŸŽ {emoji} **{i_name}** x{add_count}{stats}")
+                    final_messages.append(f"🎁 {emoji} **{i_name}** x{add_count}{stats}")
 
             pet_data["inventory"] = inventory
             await user_data_manager.save_pet_data(str(user_id), pet_data.get("name", "Pet"), pet_data)
@@ -1677,7 +1765,7 @@ class LootCalculator:
         """
         Calculates and applies stat gains for level up.
 
-        Formula: 3 Ã— (1 + (level-1)//10) points per level gained.
+        Formula: 3 × (1 + (level-1)//10) points per level gained.
           - Level   1-10:  3 pts/level
           - Level  11-20:  6 pts/level
           - Level  51-60: 18 pts/level
@@ -1728,7 +1816,7 @@ class LootCalculator:
         """
         Removes stat points when a pet levels down.
 
-        Mirrors calculate_level_up_stats exactly: removes 3 Ã— (1+(level-1)//10)
+        Mirrors calculate_level_up_stats exactly: removes 3 × (1+(level-1)//10)
         per level lost so the total stat budget stays honest.
         Stats are floored at 1.
         Returns {stat: points_removed}.
@@ -1959,7 +2047,7 @@ class LootCalculator:
 
             if has_changed:
                 if new_level > old_level:
-                    # Level Up â€” apply stat gains (fast-path for large jumps)
+                    # Level Up — apply stat gains (fast-path for large jumps)
                     gains = LootCalculator.calculate_level_up_stats(pet_data, old_level, new_level)
                     change_data["gains"] = gains
                     
@@ -1967,7 +2055,7 @@ class LootCalculator:
                     change_data["ability_points_gained"] = 0
                     
                 elif new_level < old_level:
-                    # Level Down â€” remove the stat points that were earned from
+                    # Level Down — remove the stat points that were earned from
                     # those levels (5 pts/level, randomly redistributed so the
                     # total removed matches exactly but the per-stat split varies).
                     losses = LootCalculator.calculate_level_down_stats(pet_data, old_level, new_level)
@@ -2054,7 +2142,7 @@ class LootCalculator:
                     "new_level": new_lvl,
                     "gains": change_data.get("gains", {}),
                 }
-                result["messages"].append(f"ðŸ“ˆ Gained **{xp_amount} XP** and Leveled Up to **{new_lvl}**!")
+                result["messages"].append(f"📈 Gained **{xp_amount} XP** and Leveled Up to **{new_lvl}**!")
                 result["level_up_embed"] = await LootCalculator.create_level_up_embed(pet_data, old_lvl, new_lvl, source)
             else:
                 result["leveled_down"] = True
@@ -2063,10 +2151,10 @@ class LootCalculator:
                     "new_level": new_lvl,
                     "losses": change_data.get("losses", {}),
                 }
-                result["messages"].append(f"ðŸ“‰ Lost XP... dropped to Level **{new_lvl}**.")
+                result["messages"].append(f"📉 Lost XP... dropped to Level **{new_lvl}**.")
                 result["level_down_embed"] = await LootCalculator.create_level_down_embed(pet_data, old_lvl, new_lvl, source, change_data.get("lost_xp", 0), change_data.get("losses"))
         else:
-            result["messages"].append(f"ðŸ“ˆ Gained **{xp_amount} XP**")
+            result["messages"].append(f"📈 Gained **{xp_amount} XP**")
 
         # 3. Loot Items (Only if winner)
         if is_winner:
