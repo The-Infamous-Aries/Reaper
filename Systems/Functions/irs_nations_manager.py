@@ -1,5 +1,5 @@
 ﻿"""
-NW Nations Manager — manages Nights Watch nation data.
+Darkstar Nations Manager — manages Darkstar nation data.
 
 Public API (imported by reaper.py):
     sync_nations()          — full alliance member snapshot (run on startup)
@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 from Systems.Functions.db_paths import IRS_NATIONS_DB
 DATABASE_DIR  = IRS_NATIONS_DB.parent
 DATABASE_FILE = IRS_NATIONS_DB
-ALLIANCE_ID   = 14225
+ALLIANCE_ID   = 10259
 
 # ── Safe nation fields (no baseball_team — causes PnW API internal server error) ──
 _NATION_FIELDS = (
@@ -69,7 +69,7 @@ def _ensure_database_directory():
 
 async def _fetch_alliance_nations(query_instance) -> list:
     """
-    Fetch all Nights Watch member nations directly via GraphQL using safe field set.
+    Fetch all Darkstar member nations directly via GraphQL using safe field set.
     Bypasses query.get_alliance_nations() to avoid the baseball_team field that
     causes PnW API internal server errors.
     """
@@ -104,7 +104,7 @@ async def _fetch_alliance_nations(query_instance) -> list:
 
 async def sync_nations(force: bool = False) -> dict:
     """
-    Pull all current Nights Watch member nations from the PnW API and upsert
+    Pull all current Darkstar member nations from the PnW API and upsert
     them (with cities) into the local DB.
 
     Args:
@@ -120,7 +120,7 @@ async def sync_nations(force: bool = False) -> dict:
 
         if force:
             logger.info("sync_nations(force=True): wiping nations and cities tables...")
-            async with db._lock:
+            async with db._get_lock():
                 import sqlite3 as _sqlite3
                 with _sqlite3.connect(str(DATABASE_FILE)) as conn:
                     conn.execute("DELETE FROM cities")
@@ -142,7 +142,7 @@ async def sync_nations(force: bool = False) -> dict:
                     "total_cities":  stats["cities"],
                 }
 
-        logger.info(f"Syncing Nights Watch nations (alliance {ALLIANCE_ID})...")
+        logger.info(f"Syncing Darkstar nations (alliance {ALLIANCE_ID})...")
 
         # Clean up any skeleton rows from previous patch-only subscription events
         await db.purge_skeleton_rows()

@@ -104,7 +104,7 @@ async def nation_autocomplete(current: str, nw_only: bool = False, limit: int = 
 
     Args:
         current: Current input text
-        nw_only: If True, only show Nights Watch (alliance 14225) nations
+        nw_only: If True, only show Darkstar (alliance 10259) nations
         limit: Maximum number of choices to return
     """
     current_lower = current.lower().strip() if current else ""
@@ -166,18 +166,18 @@ async def alliance_autocomplete(current: str, include_nw: bool = True, limit: in
 
     Args:
         current: Current input text
-        include_nw: If True, include Nights Watch in results
+        include_nw: If True, include Darkstar in results
         limit: Maximum number of choices to return
     """
     choices = []
 
     try:
-        # Always add NW first if it matches the current input
-        if include_nw and (not current or current.lower() in "nights watch"):
-            nw_emoji = get_alliance_emoji("Nights Watch")
+        # Always add Darkstar first if it matches the current input
+        if include_nw and (not current or current.lower() in "darkstar"):
+            nw_emoji = get_alliance_emoji("Darkstar")
             choices.append(app_commands.Choice(
-                name=f"{nw_emoji} Nights Watch",
-                value="Nights Watch"
+                name=f"{nw_emoji} Darkstar",
+                value="Darkstar"
             ))
 
         if not current or len(current.strip()) < 2:
@@ -194,8 +194,8 @@ async def alliance_autocomplete(current: str, include_nw: bool = True, limit: in
             alliance_id = alliance.get('alliance_id')
             member_count = alliance.get('member_count', 0)
 
-            # Skip NW — already added above
-            if str(alliance_id) == '14225':
+            # Skip Darkstar — already added above
+            if str(alliance_id) == '10259':
                 continue
 
             if alliance_name and current_lower in alliance_name.lower():

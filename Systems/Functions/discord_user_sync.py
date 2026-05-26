@@ -167,31 +167,29 @@ async def update_user_in_database(user_data: Dict[str, Any]) -> bool:
 
 async def sync_multiple_users(user_ids: list, bot_instance=None) -> Dict[str, Optional[Dict[str, Any]]]:
     """
-    Sync multiple users from Discord bot in parallel.
-    
+    Sync multiple users from Discord bot sequentially with a small delay between
+    each fetch to avoid hammering Discord's rate limits.
+
     Args:
         user_ids: List of Discord user IDs as strings
         bot_instance: Discord bot instance
-    
+
     Returns:
         Dict mapping user_id to user_data (or None if failed)
     """
-    tasks = []
+    # Process users one at a time with a small delay — firing 50 parallel
+    # fetch_user calls at once is the primary cause of 429s on this token.
+    synced_users: Dict[str, Optional[Dict[str, Any]]] = {}
     for user_id in user_ids:
-        task = sync_user_from_bot(user_id, bot_instance)
-        tasks.append(task)
-    
-    results = await asyncio.gather(*tasks, return_exceptions=True)
-    
-    synced_users = {}
-    for i, result in enumerate(results):
-        user_id = user_ids[i]
-        if isinstance(result, Exception):
-            logger.warning(f"Failed to sync user {user_id}: {result}")
-            synced_users[user_id] = None
-        else:
+        try:
+            result = await sync_user_from_bot(user_id, bot_instance)
             synced_users[user_id] = result
-    
+        except Exception as e:
+            logger.warning(f"Failed to sync user {user_id}: {e}")
+            synced_users[user_id] = None
+        # Small delay between fetches to stay well within Discord's rate limits
+        await asyncio.sleep(0.5)
+
     return synced_users
 
 

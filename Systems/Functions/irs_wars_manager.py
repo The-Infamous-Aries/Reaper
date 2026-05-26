@@ -33,7 +33,7 @@ from Systems.Functions.db_paths import IRS_WARS_DB
 DATABASE_DIR  = IRS_WARS_DB.parent
 DATABASE_FILE = IRS_WARS_DB
 CACHE_WARS_DIR = Path("c:/Users/codyr/DiscordBots/Reaper/Systems/.cache/wars")
-ALLIANCE_ID = 14225  # Nights Watch alliance ID
+ALLIANCE_ID = 10259  # Darkstar alliance ID
 
 
 def _chunked(values: list[int], size: int) -> list[list[int]]:

@@ -21,6 +21,7 @@ _PETS_DIR    = _DB_ROOT / "Pets"
 
 # ── PnW DBs (Databases/PnW/) ──────────────────────────────────────────────────
 GLOBAL_NATIONS_DB = _PNW_DIR / "GlobalNations.db"   # single nations DB — all nations
+GLOBAL_WARS_DB    = _PNW_DIR / "GlobalWars.db"      # game-wide wars DB
 IRS_WARS_DB       = _PNW_DIR / "IRSWars.db"
 BANKRECS_DB       = _PNW_DIR / "bankrecs.db"
 HOLDINGS_DB       = _PNW_DIR / "holdings.db"
@@ -34,6 +35,7 @@ EP_WARS_DB = IRS_WARS_DB
 NW_WARS_DB = IRS_WARS_DB
 
 GLOBAL_NATIONS_DB_STR = str(GLOBAL_NATIONS_DB)
+GLOBAL_WARS_DB_STR    = str(GLOBAL_WARS_DB)
 IRS_NATIONS_DB_STR    = GLOBAL_NATIONS_DB_STR   # alias → same file
 IRS_WARS_DB_STR       = str(IRS_WARS_DB)
 BANKRECS_DB_STR       = str(BANKRECS_DB)
@@ -80,4 +82,4 @@ _PNW_DIR.mkdir(parents=True, exist_ok=True)
 _PETS_DIR.mkdir(parents=True, exist_ok=True)
 
 # Alliance ID constant (used by DB helpers)
-NW_ALLIANCE_ID = 14225
+NW_ALLIANCE_ID = 10259

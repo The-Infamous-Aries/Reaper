@@ -4,7 +4,8 @@ import aiohttp
 import random
 import logging
 import io
-from Systems.Functions.config import GROQ_API_KEY, GIPHY_KEY, PIXABAY_KEY
+from Systems.Functions.config import GIPHY_KEY, PIXABAY_KEY
+from Systems.Functions.local_ai import chat_complete
 from Systems.Functions import emoji as emoji_mod
 
 THEME_CHOICES = [
@@ -14,7 +15,7 @@ THEME_CHOICES = [
     discord.app_commands.Choice(name="Spicy", value="Spicy"),
     discord.app_commands.Choice(name="Wild", value="Wild"),
     discord.app_commands.Choice(name="NSFW", value="NSFW"),
-    discord.app_commands.Choice(name="Explicit", value="Explicit"),
+    discord.app_commands.Choice(name="Custom", value="Custom"),
 ]
 
 THEME_PROMPTS = {
@@ -42,20 +43,20 @@ THEME_PROMPTS = {
         "roast": "Use sexual vulgarity and explicit adult content. Include graphic sexual references, innuendo, and erotic metaphors. Be sexually suggestive and use bedroom-related insults. Focus on sexual performance, body parts, and intimate activities.",
         "compliment": "Use sexual vulgarity and explicit adult praise. Include graphic sexual references and erotic metaphors. Be sexually suggestive with bedroom-related compliments. Focus on sexual appeal, body parts, and intimate desirability."
     },
-    "Explicit": {
-        "roast": "Use extreme profanity and harsh cursing. Include frequent f-bombs, shit, damn, and other explicit language. Be brutally direct with aggressive insults. Focus on general incompetence, stupidity, and worthlessness without sexual references.",
-        "compliment": "Use extreme profanity and intense language. Include frequent f-bombs and explicit expressions. Be brutally direct with passionate praise. Focus on general awesomeness, badassery, and excellence without sexual references."
+    "Custom": {
+        "roast": "",   # filled at runtime from user-supplied custom_theme text
+        "compliment": ""
     }
 }
 
 THEME_EMOJIS = {
     "Mild": "mild",
-    "Simple": "med",  # Using med as closest to Simple
-    "Standard": "straight",  # Using med as closest to Standard
+    "Simple": "med",
+    "Standard": "straight",
     "Spicy": "hot",
     "Wild": "wild",
     "NSFW": "nsfw",
-    "Explicit": "explicit"
+    "Custom": "med"
 }
 
 logger = logging.getLogger(__name__)
@@ -144,15 +145,21 @@ class GoodEvilSystem(commands.Cog):
     @commands.hybrid_command(name='roast', description='Get roasted with different intensity levels! (Use at your own risk)')
     @discord.app_commands.describe(
         target="The user to roast (optional - defaults to yourself)",
-        theme="Choose the intensity level for the roast"
+        theme="Choose the intensity level for the roast",
+        custom_theme="Describe your own theme style (only used when theme is set to Custom)"
     )
     @discord.app_commands.choices(theme=THEME_CHOICES)
-    async def roast(self, ctx: commands.Context, target: discord.Member = None, theme: str = "Standard"):
+    async def roast(self, ctx: commands.Context, target: discord.Member = None, theme: str = "Standard", custom_theme: str = None):
         """Get roasted by the bot with different intensity levels"""
         
         try:
             # Defer the interaction to prevent timeout
             await ctx.defer()
+
+            # Validate Custom theme usage
+            if theme == "Custom" and not custom_theme:
+                await ctx.send("❌ You must provide a `custom_theme` description when using the Custom theme.", ephemeral=True)
+                return
             
             # Determine target
             if target is None:
@@ -164,14 +171,12 @@ class GoodEvilSystem(commands.Cog):
             # Get user bio for personalization
             user_bio = await self._get_user_bio(target)
             
-            # Helper: Generate roast via GROQ Chat Completions
-            async def generate_groq_roast(theme: str, subject_name: str, bio: str):
-                api_key = GROQ_API_KEY
-                if not api_key:
-                    print("GROQ_API_KEY missing; skipping Groq roast generation.")
-                    return None
-                    
-                theme_instructions = THEME_PROMPTS.get(theme, {}).get("roast", "Use moderate humor with some edge.")
+            # Helper: Generate roast via local AI (Ollama → Groq fallback)
+            async def generate_local_roast(theme: str, subject_name: str, bio: str):
+                if theme == "Custom":
+                    theme_instructions = custom_theme
+                else:
+                    theme_instructions = THEME_PROMPTS.get(theme, {}).get("roast", "Use moderate humor with some edge.")
                 
                 system_prompt = (
                     f"You are a roast bot using {theme} intensity level. "
@@ -190,36 +195,14 @@ class GoodEvilSystem(commands.Cog):
                     "Keep it concise (under 500 characters). Return only the roast text."
                 )
                 
-                try:
-                    timeout = aiohttp.ClientTimeout(total=45)
-                    async with aiohttp.ClientSession(timeout=timeout) as session:
-                        url = "https://api.groq.com/openai/v1/chat/completions"
-                        headers = {
-                            "Authorization": f"Bearer {api_key}",
-                            "Content-Type": "application/json",
-                        }
-                        payload = {
-                            "model": "llama-3.1-8b-instant",
-                            "messages": [
-                                {"role": "system", "content": system_prompt},
-                                {"role": "user", "content": user_prompt},
-                            ],
-                            "temperature": 0.9,
-                            "max_tokens": 150,
-                            "top_p": 0.9,
-                        }
-                        async with session.post(url, headers=headers, json=payload) as resp:
-                            if resp.status == 200:
-                                data = await resp.json()
-                                try:
-                                    text = data["choices"][0]["message"]["content"].strip()
-                                    return {"roast": text, "source": "Groq"}
-                                except Exception:
-                                    return None
-                            else:
-                                print(f"Groq roast request failed: HTTP {resp.status}")
-                except Exception as e:
-                    print(f"Groq roast request error: {e}")
+                text = await chat_complete(
+                    messages=[{"role": "user", "content": user_prompt}],
+                    system=system_prompt,
+                    temperature=0.9,
+                    max_tokens=150,
+                )
+                if text:
+                    return {"roast": text, "source": "LocalAI"}
                 return None
 
             fallback_roasts = {
@@ -229,11 +212,11 @@ class GoodEvilSystem(commands.Cog):
                 "Spicy": f"{target_name}, you're like expired milk - you leave a bad taste.",
                 "Wild": f"{target_name}, you're a whole circus act, and not the main attraction!",
                 "NSFW": f"{target_name}, you're like a limp noodle - completely useless in the bedroom and disappointing in every way.",
-                "Explicit": f"{target_name}, you're a fucking waste of space and everyone knows you're completely full of shit."
+                "Custom": f"{target_name}, you're uniquely disappointing in ways that defy all known categories."
             }
             
-            # Try the API
-            roast_data = await generate_groq_roast(theme, target_name, user_bio)
+            # Try local AI
+            roast_data = await generate_local_roast(theme, target_name, user_bio)
             
             if not roast_data:
                 roast_data = {
@@ -245,9 +228,10 @@ class GoodEvilSystem(commands.Cog):
             
             # Create the roast message text
             theme_emoji = self._get_theme_emoji(theme)
+            display_theme = custom_theme if theme == "Custom" else theme
             
             roast_message = f"**{target_mention}**\n\n{styled_text}\n\n"
-            roast_message += f"*{theme_emoji} {theme} Roast*\n"
+            roast_message += f"*{theme_emoji} {display_theme} Roast*\n"
             roast_message += f"_Requested by {ctx.author.display_name}_"
             
             message = await self._send_with_overflow(ctx, roast_message)
@@ -258,15 +242,21 @@ class GoodEvilSystem(commands.Cog):
     @commands.hybrid_command(name='compliment', description='Get compliments with different intensity levels!')
     @discord.app_commands.describe(
         target="The user to compliment (optional - defaults to yourself)",
-        theme="Choose the intensity level for the compliment"
+        theme="Choose the intensity level for the compliment",
+        custom_theme="Describe your own theme style (only used when theme is set to Custom)"
     )
     @discord.app_commands.choices(theme=THEME_CHOICES)
-    async def compliment(self, ctx: commands.Context, target: discord.Member = None, theme: str = "Standard"):
+    async def compliment(self, ctx: commands.Context, target: discord.Member = None, theme: str = "Standard", custom_theme: str = None):
         """Get a tailored compliment with different intensity levels"""
         
         try:
             # Defer the interaction to prevent timeout
             await ctx.defer()
+
+            # Validate Custom theme usage
+            if theme == "Custom" and not custom_theme:
+                await ctx.send("❌ You must provide a `custom_theme` description when using the Custom theme.", ephemeral=True)
+                return
             
             # Determine target
             if target is None:
@@ -278,14 +268,12 @@ class GoodEvilSystem(commands.Cog):
             # Get user bio for personalization
             user_bio = await self._get_user_bio(target)
             
-            # Helper: Generate compliment via GROQ Chat Completions
-            async def generate_groq_compliment(theme: str, subject_name: str, bio: str):
-                api_key = GROQ_API_KEY
-                if not api_key:
-                    print("GROQ_API_KEY missing; skipping Groq compliment generation.")
-                    return None
-                    
-                theme_instructions = THEME_PROMPTS.get(theme, {}).get("compliment", "Use creative and thoughtful praise.")
+            # Helper: Generate compliment via local AI (Ollama → Groq fallback)
+            async def generate_local_compliment(theme: str, subject_name: str, bio: str):
+                if theme == "Custom":
+                    theme_instructions = custom_theme
+                else:
+                    theme_instructions = THEME_PROMPTS.get(theme, {}).get("compliment", "Use creative and thoughtful praise.")
                 
                 system_prompt = (
                     f"You are a compliment bot using {theme} intensity level. "
@@ -304,36 +292,14 @@ class GoodEvilSystem(commands.Cog):
                     "Keep it concise (under 500 characters). Return only the compliment text."
                 )
                 
-                try:
-                    timeout = aiohttp.ClientTimeout(total=45)
-                    async with aiohttp.ClientSession(timeout=timeout) as session:
-                        url = "https://api.groq.com/openai/v1/chat/completions"
-                        headers = {
-                            "Authorization": f"Bearer {api_key}",
-                            "Content-Type": "application/json",
-                        }
-                        payload = {
-                            "model": "llama-3.1-8b-instant",
-                            "messages": [
-                                {"role": "system", "content": system_prompt},
-                                {"role": "user", "content": user_prompt},
-                            ],
-                            "temperature": 0.9,
-                            "max_tokens": 150,
-                            "top_p": 0.9,
-                        }
-                        async with session.post(url, headers=headers, json=payload) as resp:
-                            if resp.status == 200:
-                                data = await resp.json()
-                                try:
-                                    text = data["choices"][0]["message"]["content"].strip()
-                                    return {"compliment": text, "source": "Groq"}
-                                except Exception:
-                                    return None
-                            else:
-                                print(f"Groq compliment request failed: HTTP {resp.status}")
-                except Exception as e:
-                    print(f"Groq compliment request error: {e}")
+                text = await chat_complete(
+                    messages=[{"role": "user", "content": user_prompt}],
+                    system=system_prompt,
+                    temperature=0.9,
+                    max_tokens=150,
+                )
+                if text:
+                    return {"compliment": text, "source": "LocalAI"}
                 return None
 
             fallback_compliments = {
@@ -343,11 +309,11 @@ class GoodEvilSystem(commands.Cog):
                 "Spicy": f"{target_name}, you've got that irresistible spark that draws people to you.",
                 "Wild": f"{target_name}, you're an absolute legend and your energy is contagious!",
                 "NSFW": f"{target_name}, you've got that irresistible sexual magnetism that makes everyone fantasize about you.",
-                "Explicit": f"{target_name}, you're fucking incredible and everyone knows you're the shit!"
+                "Custom": f"{target_name}, you're one of a kind in the most wonderful way imaginable."
             }
 
-            # Try the API
-            compliment_data = await generate_groq_compliment(theme, target_name, user_bio)
+            # Try local AI
+            compliment_data = await generate_local_compliment(theme, target_name, user_bio)
             
             if not compliment_data:
                 compliment_data = {
@@ -359,9 +325,10 @@ class GoodEvilSystem(commands.Cog):
             
             # Create the message text
             theme_emoji = self._get_theme_emoji(theme)
+            display_theme = custom_theme if theme == "Custom" else theme
             
             comp_message = f"**{target_mention}**\n\n{styled_text}\n\n"
-            comp_message += f"*{theme_emoji} {theme} Compliment*\n"
+            comp_message += f"*{theme_emoji} {display_theme} Compliment*\n"
             comp_message += f"_Requested by {ctx.author.display_name}_"
             
             message = await self._send_with_overflow(ctx, comp_message)

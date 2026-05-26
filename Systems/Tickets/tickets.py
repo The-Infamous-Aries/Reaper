@@ -1,5 +1,5 @@
 """
-Ticket System — Nights Watch
+Ticket System — Darkstar
 Guild: 1445703450263420938
 
 Commands:
@@ -321,11 +321,13 @@ async def _send_alliance_in_channel(
             calc_instance  = AllianceCalculator(query_instance)
 
         # Fetch nations for the alliance
-        IRS_ALLIANCE_ID = "14225"
-        if str(alliance_id) == IRS_ALLIANCE_ID:
+        NW_ALLIANCE_ID_STR = "10259"
+        if str(alliance_id) == NW_ALLIANCE_ID_STR:
             try:
-                db = IRSNationsDB(str(IRS_NATIONS_DB))
-                nations = await db.get_all_nations()
+                from PnWHarvester.db.global_nations_db import GlobalNationsDB
+                from Systems.Functions.db_paths import GLOBAL_NATIONS_DB as _GNDB, NW_ALLIANCE_ID
+                db = GlobalNationsDB(str(_GNDB))
+                nations = await db.get_nations_by_alliance(NW_ALLIANCE_ID)
                 for n in nations:
                     n["cities"] = await db.get_cities_for_nation(int(n["id"]))
             except Exception:
@@ -594,19 +596,19 @@ class TicketsCog(commands.Cog):
             return
 
         embed = discord.Embed(
-            title="🌙 Welcome to Nights Watch",
+            title="⭐ Welcome to Darkstar",
             description=(
-                "**Nights Watch** is the official Discord server for our "
+                "**Darkstar** is the official Discord server for our "
                 "Politics & War alliance.\n\n"
                 "To receive your roles you must open a ticket below:\n\n"
-                "📋 **Membership** — for nations wishing to join Nights Watch\n"
+                "📋 **Membership** — for nations wishing to join Darkstar\n"
                 "🏛️ **Embassy** — for alliances wishing to establish diplomatic relations\n\n"
                 "Click the appropriate button below to get started. "
                 "A staff member will review your application shortly."
             ),
             color=discord.Color.dark_red(),
         )
-        embed.set_footer(text="Nights Watch")
+        embed.set_footer(text="Darkstar")
 
         await channel.send(embed=embed, view=TicketTypeView(self))
         await interaction.followup.send(f"✅ Info embed posted in {channel.mention}.", ephemeral=True)
@@ -1138,16 +1140,16 @@ class TicketsCog(commands.Cog):
         botspam_link = "<#1498353294127534141>"
 
         embed = discord.Embed(
-            title=f"🌙  Welcome to Nights Watch, {member.display_name}.",
+            title=f"⭐  Welcome to Darkstar, {member.display_name}.",
             description=(
-                f"Congratulations {member.mention} — you've found your way to **Nights Watch**.\n"
+                f"Congratulations {member.mention} — you've found your way to **Darkstar**.\n"
                 "Whether you wandered in by accident or actually meant to be here, you're stuck with us now.\n\n"
 
                 "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
 
                 f"📋 **Tickets & Membership**\n"
                 f"Head over to {ticket_link} to open an **Embassy** or **Membership** ticket.\n"
-                "Want to join Nights Watch? Membership ticket. Representing another alliance? Embassy ticket.\n"
+                "Want to join Darkstar? Membership ticket. Representing another alliance? Embassy ticket.\n"
                 "Don't know what you want? Open both and figure it out.\n\n"
 
                 f"🤖 **Bot Spam**\n"
@@ -1171,7 +1173,7 @@ class TicketsCog(commands.Cog):
             ),
             color=discord.Color.dark_red(),
         )
-        embed.set_footer(text="Nights Watch  •  You've been warned.")
+        embed.set_footer(text="Darkstar  •  You've been warned.")
         if member.guild.icon:
             embed.set_thumbnail(url=member.guild.icon.url)
 

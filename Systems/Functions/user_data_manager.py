@@ -566,9 +566,12 @@ class UserDataManager:
             name = item_dict.get("name", "Unknown")
             itype = item_dict.get("type", "Material")
             rarity = item_dict.get("rarity", "Common")
+            # Include reforge identity so reforged items don't merge with base items
+            reforged = item_dict.get("reforged", False)
+            reforge_level = item_dict.get("reforge_level", 0)
             
             # Simple key based on identity
-            key = f"{name}|{itype}|{rarity}"
+            key = f"{name}|{itype}|{rarity}|{reforged}|{reforge_level}"
             
             # 3. Merge or Add
             if key in seen:

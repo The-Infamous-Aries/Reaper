@@ -48,6 +48,7 @@ from Systems.PnW.Util.query import (create_v3_query_instance,
 from Systems.PnW.Util.war_calc import calculate_war_costs, get_resource_prices
 from web.api.astrology_api import router as astrology_api
 from web.api.bot_info import router as bot_info_api
+from web.api.stats_api import router as stats_api
 from web.api.docs import router as docs_api
 from web.api.casino_api import casino_api
 from web.api.blackjack_api import router as blackjack_api
@@ -73,19 +74,21 @@ from web.api.tasks_api import router as tasks_api
 from web.api.powerball_api import router as powerball_api
 from web.api.scratch_api import router as scratch_api
 from web.api.cache_api import router as cache_api
-from web.api.battle_config_api import router as battle_config_api
-from web.api.user_battle_settings_api import router as user_battle_settings_api
 from web.api.rev_optimizer_api import router as rev_optimizer_api
 from web.api.raids_api import router as raids_api
 from web.api.image_proxy import router as image_proxy_api
 from web.api.news_api import router as news_api
 from web.api.colosseum_api import router as colosseum_api
 from web.api.dungeon_api import router as dungeon_api
+from web.api.forge_api import router as forge_api
 
 from Systems.Functions.database_manager import get_resource_prices_comparison, get_colors_comparison, get_resource_supply_comparison
 
 # Global variable to hold the bot instance
 _bot_instance: Optional[commands.Bot] = None
+
+# Development mode toggle for caching
+DEV_MODE = os.getenv("DEV_MODE", "false").lower() == "true"
 
 def set_bot_instance(bot: commands.Bot):
     """Sets the global bot instance for the web server to use."""
@@ -138,6 +141,7 @@ app.include_router(races_api, prefix="/api", tags=["races"])
 app.include_router(minigames_api, prefix="/api", tags=["minigames"])
 app.include_router(casino_lobby_api, prefix="/api", tags=["casino-lobby"])
 app.include_router(bot_info_api, prefix="/api", tags=["bot-info"])
+app.include_router(stats_api, prefix="/api", tags=["stats"])
 app.include_router(docs_api, prefix="/api", tags=["docs"])
 app.include_router(library_api, prefix="/api", tags=["library"])
 app.include_router(pets_api, prefix="/api", tags=["pets"])
@@ -156,14 +160,13 @@ app.include_router(tasks_api, prefix="/api", tags=["tasks"])
 app.include_router(powerball_api, prefix="/api", tags=["powerball"])
 app.include_router(scratch_api, prefix="/api", tags=["scratch"])
 app.include_router(cache_api, prefix="/api", tags=["cache"])
-app.include_router(battle_config_api, prefix="/api", tags=["battle-config"])
-app.include_router(user_battle_settings_api, prefix="/api", tags=["user-battle-settings"])
 app.include_router(rev_optimizer_api, prefix="/api", tags=["rev-optimizer"])
 app.include_router(raids_api, prefix="/api", tags=["raids"])
 app.include_router(image_proxy_api, prefix="/api", tags=["image-proxy"])
 app.include_router(news_api, prefix="/api", tags=["news"])
 app.include_router(colosseum_api, prefix="/api", tags=["colosseum"])
 app.include_router(dungeon_api, prefix="/api", tags=["dungeon"])
+app.include_router(forge_api, prefix="/api", tags=["forge"])
 
 
 @app.on_event("startup")
@@ -189,9 +192,9 @@ async def startup_event():
     # Start Colosseum hourly battle loop
     from web.api.colosseum_api import start_colosseum_loop
     asyncio.create_task(start_colosseum_loop())
-    # Pre-warm the revenue cache in the background so the first user request
-    # after a turn boundary never hits a cold 15k-nation calculation.
-    asyncio.create_task(_revenue_prewarm_loop())
+    # NOTE: Revenue pre-warm disabled - turn revenue is now handled by harvester's RevenueComponent
+    # which runs independently and applies revenue directly to GlobalNations.db holdings.
+    # The watch API will use the pre-calculated holdings values from the database.
 
 app.include_router(astrology_api, prefix="/api", tags=["astrology"])
 
@@ -460,109 +463,6 @@ async def broadcast_updates():
             logger.error(f"Error in broadcast_updates: {e}", exc_info=True)
 
 
-async def _revenue_prewarm_loop():
-    """Background task that pre-warms the revenue cache at each PnW turn boundary.
-
-    PnW turns happen every 2 hours on even UTC hours.  This loop wakes up
-    ~30 seconds after each boundary and runs the full revenue calculation so
-    the cache is hot before any user requests it.  A 524 timeout is impossible
-    on a cache-hit response.
-
-    Waits until GlobalNations.db has at least one nation before attempting
-    any pre-warm — avoids the misleading "0 alliances" log on cold startup.
-    """
-    import datetime as _dt
-    # Small initial delay so the server finishes starting up first
-    await asyncio.sleep(60)
-
-    # ── Wait for GlobalNations.db to be populated ─────────────────────────────
-    # The harvester populates the DB asynchronously after startup.  Poll until
-    # at least one nation exists before attempting any revenue pre-warm.
-    _db_ready = False
-    for _attempt in range(30):  # up to 5 minutes (30 × 10s)
-        try:
-            from web.api.watch_api import _get_global_nations_db
-            _db = _get_global_nations_db()
-            _alliances = await _db.get_distinct_alliances()
-            if _alliances:
-                _db_ready = True
-                logger.info(
-                    f"Revenue pre-warm: GlobalNations.db ready "
-                    f"({len(_alliances)} alliances) — starting turn-boundary loop"
-                )
-                break
-        except Exception:
-            pass
-        await asyncio.sleep(10)
-
-    if not _db_ready:
-        logger.warning(
-            "Revenue pre-warm: GlobalNations.db still empty after 5 min — "
-            "pre-warm loop will continue but may log 0 alliances until data arrives"
-        )
-
-    while True:
-        try:
-            now = _dt.datetime.now(_dt.timezone.utc)
-            # Next even-hour boundary
-            next_hour = ((now.hour // 2) + 1) * 2
-            if next_hour >= 24:
-                next_boundary = now.replace(hour=0, minute=0, second=30, microsecond=0) + _dt.timedelta(days=1)
-            else:
-                next_boundary = now.replace(hour=next_hour, minute=0, second=30, microsecond=0)
-            wait_secs = (next_boundary - now).total_seconds()
-            logger.info(
-                f"Revenue pre-warm: next turn at "
-                f"{next_boundary.strftime('%Y-%m-%d %H:%M UTC')} "
-                f"(sleeping {wait_secs:.0f}s)"
-            )
-            await asyncio.sleep(max(wait_secs, 1))
-
-            # Trigger the revenue endpoint logic directly by calling the API handler
-            # with a fake request that passes the access check.
-            logger.info("Revenue pre-warm: starting background calculation")
-            from web.api.watch_api import get_watch_revenue, _get_revenue_cache, _get_global_nations_db
-
-            # Build a minimal fake request with an empty session so the handler
-            # can be called directly for cache pre-warming.
-            class _FakeSession(dict):
-                pass
-            class _FakeRequest:
-                session = _FakeSession()
-
-            # Warm revenue for every tracked alliance in GlobalNations.db
-            try:
-                _db = _get_global_nations_db()
-                _alliances = await _db.get_distinct_alliances()
-                _alliance_ids = [int(a["id"]) for a in _alliances if a.get("id")]
-            except Exception as _e:
-                logger.warning(f"Revenue pre-warm: could not fetch alliance list: {_e}")
-                _alliance_ids = []
-
-            if not _alliance_ids:
-                logger.warning(
-                    "Revenue pre-warm: no alliances in GlobalNations.db — "
-                    "harvester may not have synced yet; skipping this turn"
-                )
-                continue
-
-            _warmed = 0
-            _skipped = 0
-            for _aid in _alliance_ids:
-                if _get_revenue_cache(_aid) is not None:
-                    _skipped += 1
-                    continue
-                try:
-                    await get_watch_revenue(_FakeRequest(), alliance_id=_aid)
-                    _warmed += 1
-                except Exception as _e:
-                    logger.warning(f"Revenue pre-warm: handler call failed for alliance {_aid}: {_e}")
-
-            logger.info(f"Revenue pre-warm: cache populated for {_warmed} alliances ({_skipped} already cached)")
-        except Exception as e:
-            logger.error(f"Revenue pre-warm loop error: {e}", exc_info=True)
-            await asyncio.sleep(300)  # back off 5 min on unexpected error
-
 import hashlib as _hashlib
 
 # Pre-compute ETag cache — recomputed once per hour, not per request
@@ -608,34 +508,43 @@ async def add_headers_and_log_requests(request, call_next):
     if path.endswith(".wasm"):
         h["Content-Type"] = "application/wasm"
 
-    # Cache-control
+    # Cache-control with DEV_MODE support
     pl = path.lower()
-    if pl.startswith(("/static/images/", "/static/fonts/", "/static/icons/")):
-        h["Cache-Control"] = "public, max-age=3600, must-revalidate"
-        h["CF-Cache-Tag"] = "static-assets"
-    elif pl.startswith(("/css/", "/js/")) or pl.endswith((".css", ".js")):
-        h["Cache-Control"] = "public, max-age=3600, must-revalidate"
-        h["CF-Cache-Tag"] = "stylesheets-scripts"
-        h["ETag"] = f'"{_get_etag(pl)}"'
-    elif pl.startswith("/pages/") or pl.endswith(".html"):
+    
+    # Development mode: bypass all caching
+    if DEV_MODE:
         h["Cache-Control"] = "no-cache, no-store, must-revalidate"
         h["Pragma"] = "no-cache"
         h["Expires"] = "0"
-        h["CF-Cache-Tag"] = "html-pages"
-    elif pl.startswith("/api/"):
-        h["Cache-Control"] = "no-cache, no-store, must-revalidate"
-        h["Pragma"] = "no-cache"
-        h["Expires"] = "0"
-    elif pl in ("/", "/dashboard", "/dashboard.html"):
-        h["Cache-Control"] = "no-cache, no-store, must-revalidate"
-        h["Pragma"] = "no-cache"
-        h["Expires"] = "0"
-    elif is_static:
-        h["Cache-Control"] = "public, max-age=300, must-revalidate"
-        h["CF-Cache-Tag"] = "misc-static"
-
-    if pl.startswith(("/api/", "/dashboard")) or pl.endswith(".html"):
         h["CF-Cache-Status"] = "BYPASS"
+    else:
+        # Production mode: optimal caching
+        if pl.startswith(("/static/images/", "/static/fonts/", "/static/icons/")):
+            h["Cache-Control"] = "public, max-age=3600, must-revalidate"
+            h["CF-Cache-Tag"] = "static-assets"
+        elif pl.startswith(("/css/", "/js/")) or pl.endswith((".css", ".js")):
+            h["Cache-Control"] = "public, max-age=3600, must-revalidate"
+            h["CF-Cache-Tag"] = "stylesheets-scripts"
+            h["ETag"] = f'"{_get_etag(pl)}"'
+        elif pl.startswith("/pages/") or pl.endswith(".html"):
+            h["Cache-Control"] = "no-cache, no-store, must-revalidate"
+            h["Pragma"] = "no-cache"
+            h["Expires"] = "0"
+            h["CF-Cache-Tag"] = "html-pages"
+        elif pl.startswith("/api/"):
+            h["Cache-Control"] = "no-cache, no-store, must-revalidate"
+            h["Pragma"] = "no-cache"
+            h["Expires"] = "0"
+        elif pl in ("/", "/dashboard", "/dashboard.html"):
+            h["Cache-Control"] = "no-cache, no-store, must-revalidate"
+            h["Pragma"] = "no-cache"
+            h["Expires"] = "0"
+        elif is_static:
+            h["Cache-Control"] = "public, max-age=300, must-revalidate"
+            h["CF-Cache-Tag"] = "misc-static"
+
+        if pl.startswith(("/api/", "/dashboard")) or pl.endswith(".html"):
+            h["CF-Cache-Status"] = "BYPASS"
 
     return response
 
@@ -772,11 +681,15 @@ def _read_page_file(path: str) -> str:
 @app.get("/{page_name}.html", response_class=HTMLResponse)
 async def read_page(page_name: str):
     """Serve individual HTML pages from the web directory."""
+    # Check web directory first
     file_path = os.path.join("web", f"{page_name}.html")
+    if not os.path.exists(file_path):
+        # Check Pages directory
+        file_path = os.path.join("web", "Pages", f"{page_name}.html")
     if not os.path.exists(file_path):
         raise HTTPException(status_code=404, detail=f"Page {page_name}.html not found")
     if file_path not in _page_cache:
-        _page_cache[file_path] = await asyncio.to_thread(_read_page_file, file_path)
+        _page_cache[file_path] = _read_page_file(file_path)
     public_url = get_web_public_url()
     return HTMLResponse(content=_page_cache[file_path].replace("{{PUBLIC_URL}}", public_url))
 
@@ -838,12 +751,12 @@ async def get_emoji_data():
             "Stats": "/static/Emojis/Pets/Deco/",
             "Elements": "/static/Emojis/Pets/Deco/",
             "Military": "/static/Emojis/Military/",
-            "Hats": "/static/Emojis/Pets/Equipment/",
-            "Gems": "/static/Emojis/Pets/Equipment/",
-            "Materials": "/static/Emojis/Pets/Equipment/",
-            "Monsters": "/static/Emojis/Pets/Equipment/",
+            "Hats": "/static/Emojis/Pets/Equipment/Hats/",
+            "Gems": "/static/Emojis/Pets/Equipment/Gems/",
+            "Materials": "/static/Emojis/Pets/Equipment/Materials/",
+            "Monsters": "/static/Emojis/Pets/Equipment/Monsters/",
             "Loot": "/static/Emojis/Pets/Equipment/",
-            "Potions": "/static/Emojis/Pets/Equipment/"
+            "Potions": "/static/Emojis/Pets/Equipment/Potions/"
         }
 
         for category, path in slot_categories.items():
@@ -1019,6 +932,14 @@ async def get_commands():
         logger.error("Command API called before bot instance was ready.")
         raise HTTPException(status_code=503, detail="Bot is not ready.")
 
+    # Cache the command list — fetch_commands() hits Discord's API once per
+    # global scope + once per guild. With no cache this fires N+1 API calls
+    # on every single page load, which is a major source of rate limiting.
+    import time as _time
+    _cache = get_commands._cache  # type: ignore[attr-defined]
+    if _cache["data"] is not None and (_time.monotonic() - _cache["fetched_at"]) < 300:
+        return _cache["data"]
+
     try:
         commands_list = []
         seen_commands = set() # To avoid duplicates
@@ -1086,10 +1007,8 @@ async def get_commands():
             commands_list.append(command_info)
 
         # 1. Get Global Commands
-        global_commands = await _bot_instance.tree.fetch_commands() # fetch_commands is more reliable
+        global_commands = await _bot_instance.tree.fetch_commands()
         for command in global_commands:
-            # Use the command data directly instead of fetching full details
-            # This is much faster and provides the essential information
             process_command(command)
 
         # 2. Get Guild-specific Commands
@@ -1097,7 +1016,6 @@ async def get_commands():
             try:
                 guild_commands = await _bot_instance.tree.fetch_commands(guild=guild)
                 for command in guild_commands:
-                    # Use the command data directly for better performance
                     process_command(command, guild.name)
             except discord.errors.Forbidden:
                 logger.warning(f"Missing permissions to fetch commands for guild: {guild.name} (ID: {guild.id})")
@@ -1105,11 +1023,16 @@ async def get_commands():
                 logger.error(f"Error fetching commands for guild {guild.name} (ID: {guild.id}): {e}")
 
         logger.info(f"Successfully fetched {len(commands_list)} commands via API.")
+        _cache["data"] = commands_list
+        _cache["fetched_at"] = _time.monotonic()
         return commands_list
 
     except Exception as e:
         logger.error(f"Error fetching commands for API: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
+
+# Attach cache state directly to the function object so it persists across calls
+get_commands._cache = {"data": None, "fetched_at": 0.0}  # type: ignore[attr-defined]
 
 @app.get("/api/pnw/resource-prices")
 async def get_pnw_resource_prices():
@@ -1293,15 +1216,29 @@ async def run_web_server(bot: commands.Bot):
     from web.api.bot_info import set_bot_instance as set_bot_info_instance
     set_bot_info_instance(bot)
 
+    # Set bot instance in stats_api module
+    from web.api.stats_api import set_bot_instance as set_stats_instance
+    set_stats_instance(bot)
+
     port = get_service_port(SERVICE_WEB_SERVER)
     
     # Ensure the port is free before starting the server
     kill_process_on_port(port)
 
-    config = uvicorn.Config(app, host="0.0.0.0", port=port, log_level="info")
+    # Multi-worker configuration for production (single worker in DEV_MODE)
+    workers = 1 if DEV_MODE else 4
+    config = uvicorn.Config(
+        app, 
+        host="0.0.0.0", 
+        port=port, 
+        log_level="info",
+        workers=workers,
+        limit_concurrency=1000,
+        timeout_keep_alive=30
+    )
     _server_instance = uvicorn.Server(config)
     
-    logger.info(f"Starting web server on port {port}")
+    logger.info(f"Starting web server on port {port} with {workers} worker(s)")
 
     # Start the server directly without creating additional tasks
     await _server_instance.serve()

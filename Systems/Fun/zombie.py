@@ -8,7 +8,7 @@ from datetime import datetime
 from typing import Dict, List, Optional
 from Systems.Functions.config import GROQ_API_KEY
 import logging
-import groq
+from Systems.Functions.local_ai import chat_complete_json
 from Systems.Fun.zombie_db import ZombieDB
 
 # ── Constants ─────────────────────────────────────────────────────────────────
@@ -119,16 +119,10 @@ class ZombieSurvival(commands.Cog):
         except Exception as e:
             log.error(f"save_with_history failed: {e}")
 
-    # ── Groq ──────────────────────────────────────────────────────────────────
-
-    def _groq_client(self) -> Optional[groq.Groq]:
-        if not GROQ_API_KEY:
-            log.error("GROQ_API_KEY is missing.")
-            return None
-        return groq.Groq(api_key=GROQ_API_KEY)
+    # ── Local AI (Ollama → Groq fallback) ────────────────────────────────────
 
     async def generate_content(self, context_prompt: str) -> Optional[Dict]:
-        """Call Groq and return parsed JSON for the next round.
+        """Call local AI and return parsed JSON for the next round.
 
         Each choice now carries a base_odds integer (0-100) that reflects how
         risky/safe that option is narratively.  The bot uses this as the
@@ -160,27 +154,23 @@ class ZombieSurvival(commands.Cog):
 
         for attempt in range(3):
             try:
-                client = self._groq_client()
-                if not client:
-                    return None
+                parsed = await chat_complete_json(
+                    messages=[{"role": "user", "content": context_prompt}],
+                    system=system_msg,
+                    temperature=0.8,
+                    max_tokens=600,
+                )
 
-                def _call():
-                    return client.chat.completions.create(
-                        messages=[
-                            {"role": "system", "content": system_msg},
-                            {"role": "user",   "content": context_prompt},
-                        ],
-                        model="llama-3.1-8b-instant",
-                        response_format={"type": "json_object"},
-                    )
-
-                completion = await asyncio.to_thread(_call)
-                raw = completion.choices[0].message.content
-                cleaned = re.sub(r'//[^\n]*', '', raw)
-                parsed = json.loads(cleaned)
+                if parsed is None:
+                    log.error(f"LocalAI returned None (attempt {attempt+1})")
+                    if attempt < 2:
+                        await asyncio.sleep(3)
+                    continue
 
                 if "event_text" not in parsed or "choices" not in parsed:
-                    log.error(f"Groq missing keys (attempt {attempt+1}): {list(parsed.keys())}")
+                    log.error(f"LocalAI missing keys (attempt {attempt+1}): {list(parsed.keys())}")
+                    if attempt < 2:
+                        await asyncio.sleep(3)
                     continue
 
                 # Normalise choice_odds — default to 50 per slot if missing/wrong length
@@ -199,15 +189,10 @@ class ZombieSurvival(commands.Cog):
                 parsed["choices"] = parsed["choices"][:4]
                 return parsed
 
-            except groq.APIError as e:
-                log.error(f"Groq API error (attempt {attempt+1}): {e}")
-            except (json.JSONDecodeError, KeyError, IndexError) as e:
-                log.error(f"Groq parse error (attempt {attempt+1}): {e}")
             except Exception as e:
-                log.error(f"Groq error (attempt {attempt+1}): {e}")
-
-            if attempt < 2:
-                await asyncio.sleep(3)
+                log.error(f"LocalAI error (attempt {attempt+1}): {e}")
+                if attempt < 2:
+                    await asyncio.sleep(3)
 
         return None
 

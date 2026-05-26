@@ -48,6 +48,36 @@ class Admin(commands.Cog):
         except Exception as e:
             await ctx.send(f"Error loading usage view: {e}", ephemeral=True)
 
+    @commands.hybrid_command(name="servers", description="Lists all servers the bot is in.")
+    @commands.is_owner()
+    async def servers(self, ctx: commands.Context):
+        """Lists all servers the bot is currently in."""
+        if ctx.author.id != ADMIN_USER_ID:
+            await ctx.send("You do not have permission to use this command.", ephemeral=True)
+            return
+
+        guilds = self.bot.guilds
+        guild_count = len(guilds)
+
+        if guild_count == 0:
+            await ctx.send("The bot is not in any servers.", ephemeral=True)
+            return
+
+        embed = discord.Embed(
+            title=f"Bot Server List ({guild_count} servers)",
+            color=discord.Color.blue()
+        )
+
+        for guild in guilds:
+            member_count = guild.member_count
+            embed.add_field(
+                name=guild.name,
+                value=f"ID: {guild.id}\nMembers: {member_count:,}",
+                inline=False
+            )
+
+        await ctx.send(embed=embed, ephemeral=True)
+
 
 async def setup(bot: commands.Bot):
     """Add the Admin cog to the bot."""
