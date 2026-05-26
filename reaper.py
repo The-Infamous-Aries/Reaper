@@ -8,15 +8,28 @@ from __future__ import annotations
 
 import os
 import sys
+
+# ── venv self-relaunch guard ──────────────────────────────────────────────────
+# If we're not already running inside the project venv, re-exec using the venv
+# Python so all packages (including ROCm/PyTorch) are available.
+_SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+_VENV_PYTHON = os.path.join(_SCRIPT_DIR, ".venv", "Scripts", "python.exe")
+if os.name != "nt":
+    _VENV_PYTHON = os.path.join(_SCRIPT_DIR, ".venv", "bin", "python")
+
+if os.path.exists(_VENV_PYTHON) and os.path.abspath(sys.executable) != os.path.abspath(_VENV_PYTHON):
+    import subprocess
+    result = subprocess.run([_VENV_PYTHON] + sys.argv)
+    sys.exit(result.returncode)
+# ─────────────────────────────────────────────────────────────────────────────
+
 import subprocess
 import logging
 import asyncio
 import importlib
 from datetime import datetime
 from pathlib import Path
-from Systems.Functions.irs_wars_manager import sync_wars
-from Systems.Functions.irs_nations_manager import sync_nations
-from Systems.Functions.last_seen import save_last_seen, get_last_seen
+from Systems.Functions.last_seen import save_last_seen
 
 # Global bot instance reference for other modules
 bot_instance = None
@@ -69,6 +82,7 @@ def check_python_venv() -> bool:
             PYTHON_EXECUTABLE, "-c", 
             "import sys; print(sys.version); import discord; print('discord.py:', discord.__version__)"
         ], capture_output=True, text=True)
+        
         
         if result.returncode == 0:
             logger.info("✅ Python virtual environment is valid")
@@ -256,9 +270,10 @@ class ReaperBot:
             ],
             "Fun": [
                 "Systems.Fun.zombie",
-                "Systems.Fun.goodevil", 
+                "Systems.Fun.goodevil",
                 "Systems.Fun.fun_system",
-                "Systems.Fun.compete"
+                "Systems.Fun.compete",
+                "Systems.Fun.troll",
             ],
             "Pets": [
                 # "Systems.Pets.pets_commands"  # Disabled: pet commands moved to web-only
@@ -420,27 +435,7 @@ class ReaperBot:
         # Sync command tree — only once, here, after all cogs are loaded
         await self.sync_commands()
 
-        # ── Phase 2: Background data sync (non-blocking) ─────────────────────
-        # Run war sync and nations sync concurrently in the background so they
-        # don't delay the web server or subscriptions.
-        last_seen = get_last_seen()
-
-        async def _background_sync():
-            tasks = []
-            if last_seen:
-                logger.info(f"Bot was last seen at {last_seen}. Syncing missed data in background...")
-                tasks.append(sync_wars(since=last_seen))
-            tasks.append(sync_nations())
-            results = await asyncio.gather(*tasks, return_exceptions=True)
-            for r in results:
-                if isinstance(r, Exception):
-                    logger.error(f"Background sync error: {r}")
-                elif isinstance(r, dict):
-                    logger.info(f"Nations sync complete: {r}")
-
-        asyncio.create_task(_background_sync())
-
-        # ── Phase 3: Start web server ─────────────────────────────────────────
+        # ── Phase 2: Start web server ─────────────────────────────────────────
         # Subscriptions are now handled by PnWHarvester (separate process).
         # Reaper is read-only against GlobalNations.db and GlobalWars.db.
         await self.start_web_server()
@@ -498,17 +493,22 @@ class ReaperBot:
                 if not self.bot or not self.bot.is_ready():
                     continue
 
-                from web.api.raids_api import (
-                    _get_all_beige_alerts,
-                    _delete_beige_alert_by_id,
-                    _mark_beige_alert_warned,
-                    _update_beige_alert_turns,
-                    _compute_beige_expiry_utc,
+                from Systems.Functions.beige_alerts_db import (
+                    get_all_beige_alerts   as _get_all_beige_alerts,
+                    delete_beige_alert_by_id as _delete_beige_alert_by_id,
+                    mark_beige_alert_warned  as _mark_beige_alert_warned,
+                    update_beige_alert_turns as _update_beige_alert_turns,
+                    compute_beige_expiry_utc as _compute_beige_expiry_utc_raw,
+                    drain_early_exit_queue,
+                    LOOT_MULTIPLIERS as _LM_OUTER,
+                    RESOURCES        as _RES_OUTER,
                 )
                 from datetime import datetime, timezone, timedelta
                 from PnWHarvester.db.holdings_db import HoldingsDB
                 from Systems.Functions.db_paths  import HOLDINGS_DB_STR
-                from Systems.Functions.beige_alerts_db import drain_early_exit_queue
+
+                def _compute_beige_expiry_utc(beige_turns: int, created_at: str = "") -> datetime:
+                    return _compute_beige_expiry_utc_raw(beige_turns)
 
                 # ── Drain early-exit queue (harvester → reaper DM bridge) ─────
                 # The harvester writes here when it detects a nation left beige
@@ -609,8 +609,9 @@ class ReaperBot:
                     _alert_nation_ids = [int(a["nation_id"]) for a in relevant]
                     _holdings_map = await _hdb.get_holdings_bulk(_alert_nation_ids)
 
-                    from web.api.raids_api import LOOT_MULTIPLIERS as _LM, RESOURCES as _RES
                     from Systems.Functions.database_manager import get_latest_resource_prices as _get_prices_raw
+                    _LM  = _LM_OUTER
+                    _RES = _RES_OUTER
 
                     _prices: dict = {}
                     try:
@@ -779,7 +780,7 @@ class ReaperBot:
                         SELECT DISTINCT user_id FROM users 
                         WHERE last_updated IS NULL 
                            OR last_updated < datetime('now', '-1 day')
-                        LIMIT 50
+                        LIMIT 10
                     """) as cursor:
                         rows = await cursor.fetchall()
                         user_ids = [row[0] for row in rows]
@@ -842,81 +843,41 @@ async def main():
         bot.setup_hook = reaper.setup_hook
         bot.on_ready = reaper.on_ready
         
-        # Step 3: Start the bot with reconnect logic
+        # Step 3: Start the bot — no retry logic, if it goes offline just exit
         logger.info("Connecting to Discord...")
-        max_retries = 5
-        base_delay = 5  # seconds
-        for attempt in range(1, max_retries + 1):
+        try:
+            await bot.start(DISCORD_TOKEN)
+        except asyncio.TimeoutError:
+            logger.error("❌ Login timed out. Exiting.")
             try:
-                await bot.start(DISCORD_TOKEN)
-                break  # clean exit (e.g. KeyboardInterrupt propagated as SystemExit)
-            except discord.HTTPException as e:
-                if e.status == 429:
-                    # IP-level rate limit — discord.py already waited internally,
-                    # but our IP is still hot. Back off much longer before retrying.
-                    rate_limit_delay = 60 * attempt  # 60s, 120s, 180s, ...
-                    logger.warning(
-                        f"⚠️  IP rate limited by Discord (attempt {attempt}/{max_retries}). "
-                        f"Waiting {rate_limit_delay}s before retrying..."
-                    )
-                    try:
-                        await bot.close()
-                    except Exception:
-                        pass
-                    if attempt >= max_retries:
-                        logger.error("❌ Max retries reached. Could not connect to Discord.")
-                        break
-                    await asyncio.sleep(rate_limit_delay)
-                else:
-                    logger.warning(f"⚠️  HTTP error (attempt {attempt}/{max_retries}): {e}")
-                    if attempt >= max_retries:
-                        logger.error("❌ Max retries reached. Could not connect to Discord.")
-                        break
-                    delay = base_delay * (2 ** (attempt - 1))
-                    logger.info(f"Retrying in {delay}s...")
-                    try:
-                        await bot.close()
-                    except Exception:
-                        pass
-                    await asyncio.sleep(delay)
-            except (discord.ConnectionClosed, discord.GatewayNotFound) as e:
-                logger.warning(f"⚠️  Discord gateway error (attempt {attempt}/{max_retries}): {e}")
-                if attempt >= max_retries:
-                    logger.error("❌ Max retries reached. Could not connect to Discord.")
-                    break
-                delay = base_delay * (2 ** (attempt - 1))
-                logger.info(f"Retrying in {delay}s...")
-                try:
-                    await bot.close()
-                except Exception:
-                    pass
-                await asyncio.sleep(delay)
-            except Exception as e:
-                # Covers ClientConnectorError (DNS/network failures) and anything else
-                logger.warning(f"⚠️  Connection failed (attempt {attempt}/{max_retries}): {e}")
-                if attempt >= max_retries:
-                    logger.error("❌ Max retries reached. Could not connect to Discord.")
-                    break
-                delay = base_delay * (2 ** (attempt - 1))
-                logger.info(f"Retrying in {delay}s...")
-                try:
-                    await bot.close()
-                except Exception:
-                    pass
-                await asyncio.sleep(delay)
+                await bot.close()
+            except Exception:
+                pass
+        except discord.HTTPException as e:
+            if getattr(e, 'code', None) == 40062:
+                logger.error(
+                    "❌ DUPLICATE SESSION DETECTED (error 40062, scope=shared).\n"
+                    "   Another instance of this bot is already running with this token.\n"
+                    "   Find and stop the other instance, then restart."
+                )
             else:
-                # bot.start() returned cleanly — no retry needed
-                break
-
-            # Close the old bot instance cleanly before creating a fresh one.
-            # Reusing the same bot after a failed start() leaves aiohttp
-            # ClientSessions open and the internal connector in a broken state.
-            reaper = ReaperBot()
-            bot_instance = reaper
-            sys.modules[__name__].bot_instance = reaper
-            bot = await reaper.create_bot_instance()
-            bot.setup_hook = reaper.setup_hook
-            bot.on_ready = reaper.on_ready
+                logger.error(f"❌ HTTP error during login: {e}")
+            try:
+                await bot.close()
+            except Exception:
+                pass
+        except (discord.ConnectionClosed, discord.GatewayNotFound) as e:
+            logger.error(f"❌ Discord gateway error: {e}")
+            try:
+                await bot.close()
+            except Exception:
+                pass
+        except Exception as e:
+            logger.error(f"❌ Connection failed: {e}")
+            try:
+                await bot.close()
+            except Exception:
+                pass
 
     except Exception as e:
         logger.error(f"❌ Failed to start bot: {e}")

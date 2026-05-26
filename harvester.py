@@ -1,15 +1,25 @@
 ﻿"""
 PnWHarvester — standalone asyncio service (no Discord).
 
-Starts three WebSocket subscriptions and keeps them running forever:
-  1. GlobalNationsSubscription — all nations → GlobalNations.db; NW → IRSNations.db
-  2. GlobalWarsSubscription    — NW wars → IRSWars.db; win attacks → holdings.db
-  3. BankrecsSubscription      — all bank records → bankrecs.db + holdings.db
+Now uses GPP (Good Parallel Programming) component architecture for:
+  - Unified locking via LockManager (per-DB file locks)
+  - Connection pooling via DatabasePool
+  - Write buffering via WriteQueue
+  - Component orchestration via GPPManager
+  - Health monitoring for all components
+
+Starts four WebSocket subscriptions and keeps them running forever:
+  1. NationComponent — all nations → GlobalNations.db
+  2. WarComponent    — Darkstar wars → IRSWars.db; win attacks → holdings.db
+  3. BankrecComponent — all bank records → bankrecs.db + holdings.db
+  4. TradeComponent  — completed trades → holdings.db + news
+  5. RevenueComponent — turn revenue processing (background)
+  6. BeigeAlertComponent — beige alert management
 
 One-time population of GlobalNations.db and bankrecs.db is done separately via:
     python scripts/populate_dbs.py --all
 
-NW wars backfill (IRSWars.db) is still available here:
+Darkstar wars backfill (IRSWars.db) is still available here:
     python harvester.py --sync-nw-wars [--nw-wars-days N]
 """
 
@@ -20,6 +30,22 @@ import sys
 from pathlib import Path
 from datetime import datetime, timezone, timedelta
 from typing import Optional
+
+# ── venv self-relaunch guard ──────────────────────────────────────────────────
+# If we're not already running inside the project venv, re-exec using the venv
+# Python so all packages (including ROCm/PyTorch) are available.
+import os as _os
+_HARVESTER_SCRIPT = _os.path.abspath(__file__)
+_HARVESTER_ROOT   = _os.path.dirname(_HARVESTER_SCRIPT)
+_VENV_PYTHON = _os.path.join(_HARVESTER_ROOT, ".venv", "Scripts", "python.exe")
+if _os.name != "nt":
+    _VENV_PYTHON = _os.path.join(_HARVESTER_ROOT, ".venv", "bin", "python")
+
+if _os.path.exists(_VENV_PYTHON) and _os.path.abspath(sys.executable) != _os.path.abspath(_VENV_PYTHON):
+    import subprocess as _sp
+    _result = _sp.run([_VENV_PYTHON] + sys.argv)
+    sys.exit(_result.returncode)
+# ─────────────────────────────────────────────────────────────────────────────
 
 # ── Path setup ────────────────────────────────────────────────────────────────
 # Harvester now lives in DiscordBots/Reaper/ (root directory)
@@ -52,10 +78,12 @@ DB_DIR.mkdir(parents=True, exist_ok=True)
 EP_NATIONS_DB    = str(DB_DIR / "PnW" / "GlobalNations.db")  # merged into GlobalNations.db
 EP_WARS_DB       = str(DB_DIR / "PnW" / "IRSWars.db")
 GLOBAL_NATIONS_DB = str(DB_DIR / "PnW" / "GlobalNations.db")
+GLOBAL_WARS_DB   = str(DB_DIR / "PnW" / "GlobalWars.db")
 BANKRECS_DB      = str(DB_DIR / "PnW" / "bankrecs.db")
 HOLDINGS_DB      = str(DB_DIR / "PnW" / "holdings.db")
+ALERTS_DB        = str(DB_DIR / "alerts.db")
 
-NW_ALLIANCE_ID  = 14225
+NW_ALLIANCE_ID  = 10259
 IRS_ALLIANCE_ID = NW_ALLIANCE_ID   # backward-compat alias
 EP_ALLIANCE_ID  = NW_ALLIANCE_ID   # backward-compat alias
 
@@ -71,7 +99,7 @@ _WAR_FIELDS = (
     "att_aircraft_lost def_aircraft_lost att_ships_lost def_ships_lost "
     "att_missiles_used def_missiles_used att_nukes_used def_nukes_used "
     "attacker { id nation_name leader_name war_policy advanced_pirate_economy alliance { name } } "
-    "defender { id nation_name leader_name war_policy alliance { name } }"
+    "defender { id nation_name leader_name war_policy advanced_pirate_economy alliance { name } }"
 )
 _ATTACK_FIELDS = (
     "id date att_id def_id type war_id "
@@ -123,14 +151,14 @@ async def _sync_nw_wars(
     until: "datetime",
 ) -> dict:
     """
-    Fetch Nights Watch wars for [since, until] and upsert into IRSWars.db.
+    Fetch Darkstar wars for [since, until] and upsert into IRSWars.db.
     Returns {"wars_saved": int, "attacks_saved": int}.
     All saves are upserts — existing rows are updated only where the incoming
     value is non-null, so no data is ever overwritten with NULL.
     """
     after_str  = since.astimezone(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
     before_str = until.astimezone(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
-    logger.info(f"NW wars sync: {after_str} → {before_str}")
+    logger.info(f"Darkstar wars sync: {after_str} → {before_str}")
 
     unique_wars: dict[int, dict] = {}
 
@@ -171,13 +199,13 @@ async def _sync_nw_wars(
                     break
                 except Exception as e:
                     retries += 1
-                    logger.error(f"NW wars [{label}] page {page} attempt {retries}/3: {e}")
+                    logger.error(f"Darkstar wars [{label}] page {page} attempt {retries}/3: {e}")
                     if retries >= 3:
                         break
                     await asyncio.sleep(2 ** retries)
 
             if wars_data is None:
-                logger.error(f"NW wars sync [{label}]: aborting at page {page} after retries")
+                logger.error(f"Darkstar wars sync [{label}]: aborting at page {page} after retries")
                 break
             if not wars_data:
                 break
@@ -188,7 +216,7 @@ async def _sync_nw_wars(
                     unique_wars[int(wid)] = war
 
             logger.info(
-                f"NW wars [{label}] page {page}/{paginator.get('lastPage', '?')} — "
+                f"Darkstar wars [{label}] page {page}/{paginator.get('lastPage', '?')} — "
                 f"{len(wars_data)} wars, {len(unique_wars)} unique so far"
             )
             if not paginator.get("hasMorePages"):
@@ -217,7 +245,7 @@ async def _sync_nw_wars(
             if await nw_wars_db.save_war_attack(attack):
                 attacks_saved += 1
 
-    logger.info(f"NW wars sync complete: {wars_saved} wars, {attacks_saved} attacks upserted")
+    logger.info(f"Darkstar wars sync complete: {wars_saved} wars, {attacks_saved} attacks upserted")
     return {"wars_saved": wars_saved, "attacks_saved": attacks_saved}
 
 
@@ -441,11 +469,6 @@ async def main(
     asyncio.get_event_loop().set_exception_handler(_pnwkit_exception_handler)
 
     # ── Imports ───────────────────────────────────────────────────────────────
-    from PnWHarvester.subscriptions.nations_subscription  import GlobalNationsSubscription
-    from PnWHarvester.subscriptions.wars_subscription     import GlobalWarsSubscription
-    from PnWHarvester.subscriptions.bankrecs_subscription import BankrecsSubscription
-    from PnWHarvester.subscriptions.turn_revenue_loop     import TurnRevenueLoop
-
     from Systems.Functions.irs_wars_db         import IRSWarsDB
     from Systems.Functions.irs_nations_manager import sync_nations
     from Systems.PnW.Util.query                import create_v3_query_instance
@@ -461,29 +484,35 @@ async def main(
     # ── Init DBs ──────────────────────────────────────────────────────────────
     logger.info("Initialising databases...")
     from PnWHarvester.db.global_nations_db import GlobalNationsDB
+    from PnWHarvester.db.global_wars_db     import GlobalWarsDB
     from PnWHarvester.db.holdings_db       import HoldingsDB
     from PnWHarvester.db.bankrecs_db       import BankrecsDB
+    from Systems.Functions.beige_alerts_db import BeigeAlertDB
+    from PnWHarvester.db.news_db           import NewsDB
 
     # Single nations DB — GlobalNations.db holds ALL nations (NW and non-NW).
     # IRSNationsDB is an alias for GlobalNationsDB; no separate file is needed.
     global_nations_db = GlobalNationsDB(GLOBAL_NATIONS_DB)
+    global_wars_db    = GlobalWarsDB(GLOBAL_WARS_DB)
     ep_wars_db        = IRSWarsDB(EP_WARS_DB)
     holdings_db       = HoldingsDB(HOLDINGS_DB)
     bankrecs_db       = BankrecsDB(BANKRECS_DB)
+    beige_alerts_db   = BeigeAlertDB(ALERTS_DB)
+    news_db           = NewsDB()
 
     query_instance = create_v3_query_instance(api_key=api_key, logger=logger)
 
     # ── Optional: NW nations sync on startup ──────────────────────────────────
     if not skip_ep_nations_sync:
         if force_ep_nations_sync:
-            logger.info("Starting NW nations sync (FORCE)...")
+            logger.info("Starting Darkstar nations sync (FORCE)...")
             nations_result = await sync_nations(force=True)
         else:
-            logger.info("Starting NW nations sync...")
+            logger.info("Starting Darkstar nations sync...")
             nations_result = await sync_nations(force=False)
-        logger.info(f"NW nations sync: {nations_result}")
+        logger.info(f"Darkstar nations sync: {nations_result}")
     else:
-        logger.info("NW nations sync skipped")
+        logger.info("Darkstar nations sync skipped")
 
     # ── Optional: NW wars backfill on startup ─────────────────────────────────
     if sync_ep_wars_backfill:
@@ -497,56 +526,53 @@ async def main(
             until_dt = datetime.now(timezone.utc)
             since_dt = until_dt - timedelta(days=ep_wars_days)
 
-        logger.info("Starting NW wars backfill...")
+        logger.info("Starting Darkstar wars backfill...")
         wars_result = await _sync_nw_wars(query_instance, ep_wars_db, since_dt, until_dt)
-        logger.info(f"NW wars backfill: {wars_result}")
+        logger.info(f"Darkstar wars backfill: {wars_result}")
     else:
-        logger.info("NW wars backfill skipped (pass --sync-nw-wars to enable)")
+        logger.info("Darkstar wars backfill skipped (pass --sync-nw-wars to enable)")
 
-    # ── Start subscriptions ───────────────────────────────────────────────────
-    query_instance = create_v3_query_instance(api_key=api_key, logger=logger)
+    # ── Start GPP Manager ───────────────────────────────────────────────────────
+    from PnWHarvester.core.gpp_manager import get_gpp_manager
 
-    nations_sub = GlobalNationsSubscription(
-        global_db=global_nations_db,
-        api_key=api_key,
-        holdings_db=holdings_db,
-    )
-    
-    # Verify alliance data integrity on startup
-    logger.info("Verifying alliance data integrity...")
-    try:
-        integrity_stats = await nations_sub.verify_alliance_data_integrity()
-        logger.info(f"Alliance data integrity check complete: {integrity_stats}")
-    except Exception as e:
-        logger.error(f"Alliance data integrity check failed: {e}")
-    
-    wars_sub = GlobalWarsSubscription(
-        global_db=None,
-        nw_db=ep_wars_db,
-        query_instance=query_instance,
-        api_key=api_key,
-        holdings_db=holdings_db,
-        nw_nations_db=None,
+    logger.info("Initializing GPP Manager with unified locking and connection pooling...")
+    gpp_manager = get_gpp_manager(
         global_nations_db=global_nations_db,
-    )
-    bankrecs_sub = BankrecsSubscription(
-        api_key=api_key,
-        holdings_db=holdings_db,
+        global_wars_db=global_wars_db,
+        irs_wars_db=ep_wars_db,
         bankrecs_db=bankrecs_db,
-    )
-
-    turn_revenue_loop = TurnRevenueLoop(
         holdings_db=holdings_db,
-        global_db=global_nations_db,
+        beige_alerts_db=beige_alerts_db,
+        news_db=news_db,
+        api_key=api_key,
         query_instance=query_instance,
     )
-
-    logger.info("Starting subscriptions (nations, wars, bankrecs) + turn revenue loop...")
+    
+    await gpp_manager.initialize()
+    await gpp_manager.start()
+    
+    logger.info(f"GPP Manager started: {gpp_manager}")
+    
+    # Get components from GPPManager for subscriptions
+    beige_component = gpp_manager._components.get("beige")
+    
+    # Verify subscriptions are running
+    nation_component = gpp_manager._components.get("nation")
+    war_component = gpp_manager._components.get("war")
+    bankrec_component = gpp_manager._components.get("bankrec")
+    trade_component = gpp_manager._components.get("trade")
+    
+    if nation_component:
+        logger.info(f"NationComponent running: {nation_component.running}")
+    if war_component:
+        logger.info(f"WarComponent running: {war_component.running}")
+    if bankrec_component:
+        logger.info(f"BankrecComponent running: {bankrec_component.running}")
+    if trade_component:
+        logger.info(f"TradeComponent running: {trade_component.running}")
 
     # ── Shutdown coordination ─────────────────────────────────────────────────
     # A single Event that any signal handler sets to request a clean shutdown.
-    # All _run_* wrappers watch it so they can exit their restart loops gracefully
-    # instead of being hard-cancelled mid-write.
     _shutdown = asyncio.Event()
 
     def _request_shutdown(signame: str):
@@ -564,67 +590,6 @@ async def main(
             except (NotImplementedError, RuntimeError):
                 # Windows doesn't support add_signal_handler for all signals
                 pass
-
-    async def _run_nations():
-        while not _shutdown.is_set():
-            try:
-                await nations_sub.run_forever()
-            except asyncio.CancelledError:
-                break
-            except Exception as e:
-                if _shutdown.is_set():
-                    break
-                logger.error(f"Nations subscription crashed: {e} — restarting in 30s", exc_info=True)
-                try:
-                    await asyncio.wait_for(_shutdown.wait(), timeout=30)
-                except asyncio.TimeoutError:
-                    pass
-        await nations_sub.stop()
-        logger.info("Nations subscription shut down cleanly")
-
-    async def _run_wars():
-        while not _shutdown.is_set():
-            try:
-                await wars_sub.run_forever()
-            except asyncio.CancelledError:
-                break
-            except Exception as e:
-                if _shutdown.is_set():
-                    break
-                logger.error(f"Wars subscription crashed: {e} — restarting in 30s", exc_info=True)
-                try:
-                    await asyncio.wait_for(_shutdown.wait(), timeout=30)
-                except asyncio.TimeoutError:
-                    pass
-        await wars_sub.stop()
-        logger.info("Wars subscription shut down cleanly")
-
-    async def _run_bankrecs():
-        while not _shutdown.is_set():
-            try:
-                await bankrecs_sub.run_forever()
-            except asyncio.CancelledError:
-                break
-            except Exception as e:
-                if _shutdown.is_set():
-                    break
-                logger.error(f"Bankrecs subscription crashed: {e} — restarting in 30s", exc_info=True)
-                try:
-                    await asyncio.wait_for(_shutdown.wait(), timeout=30)
-                except asyncio.TimeoutError:
-                    pass
-        await bankrecs_sub.stop()
-        logger.info("Bankrecs subscription shut down cleanly")
-
-    async def _run_turn_revenue():
-        await turn_revenue_loop.start()
-        try:
-            await _shutdown.wait()
-        except asyncio.CancelledError:
-            pass
-        finally:
-            await turn_revenue_loop.stop()
-            logger.info("Turn revenue loop shut down cleanly")
 
     async def _run_checkpoint():
         """Checkpoint all WAL files every 5 minutes to keep them small."""
@@ -647,28 +612,14 @@ async def main(
         logger.info("Checkpoint loop shut down cleanly")
 
     async def _shutdown_watcher():
-        """Wait for shutdown signal, then cancel all subscription tasks."""
+        """Wait for shutdown signal, then stop GPP Manager."""
         await _shutdown.wait()
-        logger.info("Shutdown signal received — stopping all subscriptions…")
-        # Signal all subscriptions to stop their restart loops
-        nations_sub.running  = False
-        wars_sub.running     = False
-        bankrecs_sub.running = False
-        # Give in-flight asyncio.create_task() DB writes a moment to complete
-        # before the event loop is torn down. 3 seconds is enough for any
-        # pending SQLite write (they're all sub-100ms).
-        await asyncio.sleep(3)
-        # Cancel all top-level tasks so gather() returns
-        for t in asyncio.all_tasks():
-            if t is not asyncio.current_task():
-                t.cancel()
+        logger.info("Shutdown signal received — stopping GPP Manager…")
+        if gpp_manager:
+            await gpp_manager.stop()
 
-    # Run everything concurrently. _shutdown_watcher cancels the others on signal.
+    # Run GPP Manager with checkpoint and shutdown watcher
     await asyncio.gather(
-        asyncio.create_task(_run_nations(),      name="nations"),
-        asyncio.create_task(_run_wars(),         name="wars"),
-        asyncio.create_task(_run_bankrecs(),     name="bankrecs"),
-        asyncio.create_task(_run_turn_revenue(), name="turn_revenue"),
         asyncio.create_task(_run_checkpoint(),   name="checkpoint"),
         asyncio.create_task(_shutdown_watcher(), name="shutdown_watcher"),
         return_exceptions=True,
@@ -691,11 +642,17 @@ async def main(
         logger.info("  ✓ news DBs checkpointed")
     except Exception as e:
         logger.warning(f"  ✗ news DB checkpoint failed: {e}")
+    
+    # Log GPP Manager stats before shutdown
+    if gpp_manager:
+        stats = await gpp_manager.get_stats()
+        logger.info(f"GPP Manager final stats: {stats.to_dict()}")
+    
     logger.info("Harvester shut down cleanly.")
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="PnW Harvester — Nights Watch subscription service")
+    parser = argparse.ArgumentParser(description="PnW Harvester — Darkstar subscription service")
 
     # ── NW wars backfill ──────────────────────────────────────────────────────
     parser.add_argument("--sync-nw-wars", action="store_true",
