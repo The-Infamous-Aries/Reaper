@@ -875,7 +875,6 @@ class TreatiesManager(commands.Cog):
             # Create enhanced background
             canvas = Image.new("RGBA", (CANVAS_SIZE, CANVAS_SIZE), (0, 0, 0, 0))  # Transparent background
             draw = ImageDraw.Draw(canvas)
-            cy_center = (CENTER_X, CENTER_Y)
             
             # --- Draw emoji legend (true north of center) ---
             legend_positions = {}
@@ -950,105 +949,49 @@ class TreatiesManager(commands.Cog):
                 canvas.paste(processed_emoji, (legend_x, legend_y), processed_emoji)
                 self.logger.info(f"Drew emoji ON TOP of ring at ({legend_x}, {legend_y})")
 
-            # --- Draw all lines (inter-alliance first, then center lines) ---
+            # Debug logging
             all_placed_items = immediate_final + m_final + o_final + peace_final
-            partner_positions = {int(p['id']): p['pos'] for p in all_placed_items if 'id' in p and 'pos' in p}
-            partner_ids_set = set(partner_positions.keys())
-            inter_alliance_lines_drawn = set()
-            
-            # Draw inter-alliance lines first (lowest priority)
-            for treaty in all_treaties:
-                a1_id_raw = treaty.get('alliance1_id')
-                a2_id_raw = treaty.get('alliance2_id')
-                
-                if not a1_id_raw or not a2_id_raw:
-                    continue
-                
-                try:
-                    a1_id = int(a1_id_raw)
-                    a2_id = int(a2_id_raw)
-                except (ValueError, TypeError):
-                    continue
-                    
-                if a1_id == center_id or a2_id == center_id:
-                    continue
-                
-                treaty_key = tuple(sorted((a1_id, a2_id)))
-                if treaty_key in inter_alliance_lines_drawn:
-                    continue
-                
-                if a1_id in partner_ids_set and a2_id in partner_ids_set and a1_id != a2_id:
-                    pos1 = partner_positions[a1_id]
-                    pos2 = partner_positions[a2_id]
 
-                    sample_img_obj = next((item.get('img') for item in all_placed_items if item.get('id') == a1_id), None)
-                    img_width1 = sample_img_obj.width if sample_img_obj else 48
-                    img_height1 = sample_img_obj.height if sample_img_obj else 48
-                    
-                    sample_img_obj = next((item.get('img') for item in all_placed_items if item.get('id') == a2_id), None)
-                    img_width2 = sample_img_obj.width if sample_img_obj else 48
-                    img_height2 = sample_img_obj.height if sample_img_obj else 48
-                    
-                    center1 = (pos1[0] + img_width1 // 2, pos1[1] + img_height1 // 2)
-                    center2 = (pos2[0] + img_width2 // 2, pos2[1] + img_height2 // 2)
-                    
-                    # Create list of flags to avoid (all flags except the two we're connecting)
-                    flags_to_avoid = []
-                    for other_item in all_placed_items:
-                        if other_item.get('id') not in [a1_id, a2_id]:
-                            other_img = other_item.get('img')
-                            other_pos = other_item.get('pos')
-                            if other_img and other_pos:
-                                flags_to_avoid.append((other_pos, (other_img.width, other_img.height)))
-                    
-                    # Also avoid the legend emojis
-                    for leg_x, leg_y, leg_w, leg_h in legend_positions.values():
-                        flags_to_avoid.append(((leg_x, leg_y), (leg_w, leg_h)))
-                    
-                    line_color = self.TREATY_COLORS.get(self._normalize_treaty_type(treaty.get('treaty_type')), (200, 200, 220, 180))
-                    self._draw_treaty_line(draw, center1, center2, line_color, flags_to_avoid=flags_to_avoid)
-                    inter_alliance_lines_drawn.add(treaty_key)
-
-            # Draw center alliance lines to all layers (highest priority)
-            if cy_img is not None:
-                for layer_items, default_line_color_key in [
-                    (peace_final, 'PIAT'),
-                    (o_final, 'ODP'),
-                    (m_final, 'MDP'),
-                    (immediate_final, 'Protectorate')
-                ]:
-                    for it in layer_items:
-                        img_obj = it.get('img')
-                        if img_obj:
-                            pos = it.get('pos')
-                            partner_center_x = pos[0] + img_obj.width // 2
-                            partner_center_y = pos[1] + img_obj.height // 2
-                            
-                            line_type = it.get('line_type', default_line_color_key)
-                            line_color = self.TREATY_COLORS.get(line_type, (200, 200, 220, 180))
-                            
-                            # Create list of flags to avoid (all flags except the center and current partner)
-                            flags_to_avoid = []
-                            current_partner_id = it.get('id')
-                            for other_item in all_placed_items:
-                                if other_item.get('id') != current_partner_id:
-                                    other_img = other_item.get('img')
-                                    other_pos = other_item.get('pos')
-                                    if other_img and other_pos:
-                                        flags_to_avoid.append((other_pos, (other_img.width, other_img.height)))
-                            
-                            # Also avoid the legend emojis
-                            for leg_x, leg_y, leg_w, leg_h in legend_positions.values():
-                                flags_to_avoid.append(((leg_x, leg_y), (leg_w, leg_h)))
-                            
-                            self._draw_treaty_line(
-                                draw, cy_center, (partner_center_x, partner_center_y),
-                                line_color, flags_to_avoid=flags_to_avoid
-                            )
+            # Draw center alliance lines to all layers (highest priority) - DISABLED
+            # if cy_img is not None:
+            #     for layer_items, default_line_color_key in [
+            #         (peace_final, 'PIAT'),
+            #         (o_final, 'ODP'),
+            #         (m_final, 'MDP'),
+            #         (immediate_final, 'Protectorate')
+            #     ]:
+            #         for it in layer_items:
+            #             img_obj = it.get('img')
+            #             if img_obj:
+            #                 pos = it.get('pos')
+            #                 partner_center_x = pos[0] + img_obj.width // 2
+            #                 partner_center_y = pos[1] + img_obj.height // 2
+            #                 
+            #                 line_type = it.get('line_type', default_line_color_key)
+            #                 line_color = self.TREATY_COLORS.get(line_type, (200, 200, 220, 180))
+            #                 
+            #                 # Create list of flags to avoid (all flags except the center and current partner)
+            #                 flags_to_avoid = []
+            #                 current_partner_id = it.get('id')
+            #                 for other_item in all_placed_items:
+            #                     if other_item.get('id') != current_partner_id:
+            #                         other_img = other_item.get('img')
+            #                         other_pos = other_item.get('pos')
+            #                         if other_img and other_pos:
+            #                             flags_to_avoid.append((other_pos, (other_img.width, other_img.height)))
+            #                 
+            #                 # Also avoid the legend emojis
+            #                 for leg_x, leg_y, leg_w, leg_h in legend_positions.values():
+            #                     flags_to_avoid.append(((leg_x, leg_y), (leg_w, leg_h)))
+            #                 
+            #                 self._draw_treaty_line(
+            #                     draw, cy_center, (partner_center_x, partner_center_y),
+            #                     line_color, flags_to_avoid=flags_to_avoid
+            #                 )
 
             # Debug logging
             if all_treaties:
-                self.logger.info(f"Drawing treaty web: {len(all_treaties)} total treaties, {len(inter_alliance_lines_drawn)} inter-alliance lines drawn, {len(partner_ids_set)} partner alliances")
+                self.logger.info(f"Drawing treaty web: {len(all_treaties)} total treaties, {len(all_placed_items)} partner alliances")
 
             # --- Draw all flags in proper layer order (center first, then closest to furthest) ---
             # Draw center alliance flag first (largest, should be behind others)
@@ -1207,35 +1150,7 @@ class TreatiesManager(commands.Cog):
         
         self.logger.info(f"Fetched {len([img for img in emoji_images.values() if img])} emoji images for legend.")
 
-        # Fetch treaties for all partners to find inter-bloc treaties
-        partner_ids = [str(p['id']) for p in partners if p.get('id')]
-        if partner_ids:
-            try:
-                all_treaties = await self.query_instance.get_alliances_treaties(partner_ids, force_refresh=True)
-                # Also include the center alliance ID to get treaties between center and partners
-                all_center_treaties = await self.query_instance.get_alliances_treaties([str(center_id)], force_refresh=True)
-                # Combine both sets of treaties, avoiding duplicates
-                seen_treaty_keys = set()
-                combined_treaties = []
-                
-                def make_treaty_key(treaty):
-                    a1 = treaty.get('alliance1_id') or treaty.get('alliance1', {}).get('id', 0)
-                    a2 = treaty.get('alliance2_id') or treaty.get('alliance2', {}).get('id', 0)
-                    return tuple(sorted((a1, a2)))
-
-                for t in (all_treaties or []) + (all_center_treaties or []):
-                    key = make_treaty_key(t)
-                    if key not in seen_treaty_keys:
-                        combined_treaties.append(t)
-                        seen_treaty_keys.add(key)
-                
-                all_treaties = combined_treaties
-
-            except Exception as e:
-                self.logger.error(f"Failed to fetch inter-bloc treaties: {e}")
-                all_treaties = treaties
-        else:
-            all_treaties = treaties
+        all_treaties = treaties
 
         try:
             return await asyncio.to_thread(

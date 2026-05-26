@@ -55,7 +55,7 @@ class GroundBattleCalculator:
         
         war_type_mod = WAR_TYPES_MODIFIERS.get(war_type, {}).get('loot', 0.5)
         policy_mod = 1.0
-        if attacker_policy == 'pirate': policy_mod *= 1.4
+        if attacker_policy == 'piracy': policy_mod *= 1.4
         if defender_policy == 'moneybags': policy_mod *= 0.6
         if defender_policy == 'turtle': policy_mod *= 1.2
 
@@ -137,7 +137,9 @@ class GroundBattleCalculator:
         gains_gc = victory_type == VICTORY_TYPES['immense_triumph']
         breaks_gc = victory_type > VICTORY_TYPES['utter_failure'] and params['defender_has_gc']
 
-        resistance_loss = (attacker_val / defender_val) * 2.5 if defender_val > 0 else 5.0
+        # Use victory multiplier for resistance damage
+        victory_multiplier = victory_type / 3.0
+        resistance_loss = 2.5 * victory_multiplier
 
         return {
             'loot': loot,
@@ -209,8 +211,9 @@ class AirstrikeCalculator:
         gains_as = victory_type == VICTORY_TYPES['immense_triumph']
         breaks_as = victory_type > VICTORY_TYPES['utter_failure'] and params['defender_has_as']
 
-        ratio = (params['attacking_aircraft'] / params['defending_aircraft']) if params['defending_aircraft'] > 0 else 2.0
-        resistance_loss = ratio * 3
+        # Use victory multiplier for resistance damage
+        victory_multiplier = victory_type / 3.0
+        resistance_loss = 3.0 * victory_multiplier
 
         return {
             'aircraft_casualties': cas,
@@ -281,8 +284,9 @@ class NavalBattleCalculator:
         establishes_blockade = victory_type == VICTORY_TYPES['immense_triumph']
         breaks_blockade = victory_type > VICTORY_TYPES['utter_failure'] and params['defender_has_blockade']
 
-        ratio = (params['attacking_ships'] / params['defending_ships']) if params['defending_ships'] > 0 else 2.0
-        resistance_loss = ratio * 3.5
+        # Use victory multiplier for resistance damage
+        victory_multiplier = victory_type / 3.0
+        resistance_loss = 3.5 * victory_multiplier
 
         return {
             'ship_casualties': cas,
@@ -311,11 +315,25 @@ class MissileStrikeCalculator:
         infra_destroyed = get_weapon_damage(infra_to_damage, 'missile', pop_density)
         if defender_fortified: infra_destroyed *= 0.75
 
+        # Determine victory type based on damage done
+        if infra_destroyed > infra_to_damage * 0.5:
+            victory_type = VICTORY_TYPES['immense_triumph']
+        elif infra_destroyed > infra_to_damage * 0.25:
+            victory_type = VICTORY_TYPES['moderate_success']
+        elif infra_destroyed > 0:
+            victory_type = VICTORY_TYPES['pyrrhic_victory']
+        else:
+            victory_type = VICTORY_TYPES['utter_failure']
+
+        # Use victory multiplier for resistance damage
+        victory_multiplier = victory_type / 3.0
+        resistance_loss = 18.0 * victory_multiplier
+
         return {
             'infrastructure_damage': infra_destroyed,
-            'casualties': { 'defender_soldier_casualties': (defender_nation.get('population', 0) / (len(cities) or 1)) * 0.05 },
-            'resistance_loss': 18,
-            'victory_type': 3,
+            'casualties': { 'defender_soldier_casualties': (defender_nation.get('population', 0) / len(cities)) * 0.05 if cities else 0 },
+            'resistance_loss': resistance_loss,
+            'victory_type': victory_type,
             'blocked': False
         }
 
@@ -344,11 +362,25 @@ class NukeStrikeCalculator:
         infra_destroyed = get_weapon_damage(infra_to_damage, 'nuke', pop_density)
         if defender_fortified: infra_destroyed *= 0.75
 
+        # Determine victory type based on damage done
+        if infra_destroyed > infra_to_damage * 0.5:
+            victory_type = VICTORY_TYPES['immense_triumph']
+        elif infra_destroyed > infra_to_damage * 0.25:
+            victory_type = VICTORY_TYPES['moderate_success']
+        elif infra_destroyed > 0:
+            victory_type = VICTORY_TYPES['pyrrhic_victory']
+        else:
+            victory_type = VICTORY_TYPES['utter_failure']
+
+        # Use victory multiplier for resistance damage
+        victory_multiplier = victory_type / 3.0
+        resistance_loss = 25.0 * victory_multiplier
+
         return {
             'infrastructure_damage': infra_destroyed,
-            'casualties': { 'defender_soldier_casualties': (defender_nation.get('population', 0) / (len(cities) or 1)) * 0.20 },
-            'resistance_loss': 25,
-            'victory_type': 3,
+            'casualties': { 'defender_soldier_casualties': (defender_nation.get('population', 0) / len(cities)) * 0.20 if cities else 0 },
+            'resistance_loss': resistance_loss,
+            'victory_type': victory_type,
             'blocked': False
         }
 
@@ -362,32 +394,6 @@ class WarManager:
             'nuke': NukeStrikeCalculator(),
             'fortify': FortifyCalculator()
         }
-
-    def _get_nation_params(self, nation, additional_params):
-        params = {
-            'attacking_soldiers': nation.get('soldiers', 0),
-            'attacking_tanks': nation.get('tanks', 0),
-            'attacking_aircraft': nation.get('aircraft', 0),
-            'attacking_ships': nation.get('ships', 0),
-            'defending_soldiers': nation.get('soldiers', 0),
-            'defending_tanks': nation.get('tanks', 0),
-            'defending_aircraft': nation.get('aircraft', 0),
-            'defending_ships': nation.get('ships', 0),
-            'defending_munitions': nation.get('munitions', 0),
-            'defender_population': nation.get('population', 0),
-            'defender_cash': nation.get('money', 0),
-            'attacker_policy': nation.get('war_policy', 'none'),
-            'defender_policy': nation.get('war_policy', 'none'),
-            'soldier_type': additional_params.get('soldier_type', 'armed'),
-            'attacker_has_gc': additional_params.get('attacker_has_gc', False),
-            'defender_has_gc': additional_params.get('defender_has_gc', False),
-            'defender_has_as': additional_params.get('defender_has_as', False),
-            'defender_has_blockade': additional_params.get('defender_has_blockade', False),
-            'defender_fortified': additional_params.get('defender_fortified', False),
-        }
-        cities = nation.get('cities', {})
-        params['city_infrastructure'] = max(c.get('infrastructure', 0) for c in cities.values()) if cities else 0
-        return params
 
     def simulate_battle(self, battle_type, attacker_nation, defender_nation, war_type, additional_params=None):
         if battle_type not in self.calculators:

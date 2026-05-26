@@ -59,7 +59,7 @@ PNW_COGS = {
         ("Systems.PnW.Other.baseball", "BaseballCog"),
         ("Systems.PnW.Other.loot", "Loot"),
         ("Systems.PnW.Other.activity", "Activity"),
-        ("Systems.PnW.timed_queries", "TimedQueries"),
+        # ("Systems.PnW.timed_queries", "TimedQueries"),  # Moved to harvester's TimedQueriesComponent
         ("Systems.PnW.Other.theme", "ThemeCog")
     ]
 }
@@ -174,13 +174,11 @@ async def setup(bot: commands.Bot):
                         instance = cog_class(bot)
 
                 elif category == "Other":
+                    # TimedQueries moved to harvester's TimedQueriesComponent
+                    # Skip loading here
                     if class_name == "TimedQueries":
-                        alliance_cog = bot.get_cog("AllianceManager")
-                        if alliance_cog:
-                            instance = cog_class(bot, alliance_cog.query_system)
-                        else:
-                            logger.warning(f"AllianceManager not found, loading {class_name} without dependencies")
-                            instance = cog_class(bot)
+                        logger.info(f"Skipping {class_name} - moved to harvester's TimedQueriesComponent")
+                        continue
                     else:
                         instance = cog_class(bot)
 

@@ -12,7 +12,7 @@ from Systems.Functions.nation_emoji_store import get_nation_emoji, strip_emoji_p
 from Systems.PnW.Util.war_calc import get_resource_prices, calculate_unit_cost
 from Systems.Functions.emoji import resource_emoji
 
-NW_ALLIANCE_ID = 14225
+NW_ALLIANCE_ID = 10259
 
 TIME_CHOICES = [
     app_commands.Choice(name="1 Day",    value="1d"),

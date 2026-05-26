@@ -672,13 +672,13 @@ class WarsNetBD(commands.Cog):
 
             time_label = time if time else "all time"
 
-            # Check for Nights Watch
-            if alliance.lower() in ["nights watch", "nw", "14225"]:
+            # Check for Darkstar
+            if alliance.lower() in ["darkstar", "ds", "10259"]:
                 all_wars = await self.db.get_all_wars_for_alliance_in_range(
-                    14225,
+                    10259,
                     start_date=after_datetime.date() if after_datetime else None,
                 )
-                alliance_id = 14225
+                alliance_id = 10259
             else:
                 resolved_alliance_ids = await self.query_instance.resolve_entities([alliance], 'alliance')
                 if not resolved_alliance_ids:
@@ -693,7 +693,7 @@ class WarsNetBD(commands.Cog):
                 return
 
             # Attach attacks to each war so calculate_war_costs has loot + missile data
-            if alliance.lower() in ["nights watch", "nw", "14225"]:
+            if alliance.lower() in ["darkstar", "ds", "10259"]:
                 war_ids = [int(w['id']) for w in all_wars if w.get('id')]
                 attacks_by_war = await self.db.get_attacks_for_wars(war_ids)
                 for war in all_wars:

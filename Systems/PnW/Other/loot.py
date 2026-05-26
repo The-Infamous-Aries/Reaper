@@ -323,34 +323,12 @@ class Loot(commands.Cog):
         """Create a rich embed showing projected loot calculations."""
         try:
             embed = discord.Embed(
-                title="🔮 Projected Loot Summary",
-                description="Potential loot based on different policy combinations (using cached prices)",
+                title="🔮 Projected Loot",
+                description="Based on Pirate policy (w/ & w/o APE)",
                 color=discord.Color.purple()
             )
 
-            # --- Current Resources Section ---
-            current_resources = []
             emoji_map = emoji_mod.resource_codes()
-            for resource_name, amount in intel_data.items():
-                if resource_name == 'money':
-                    continue
-                emoji = emoji_map.get(resource_name.upper()) or ''
-                current_resources.append(f"{emoji} {amount:,.0f} {resource_name.title()}")
-            
-            money_emoji = '💲'
-            current_info = f"{money_emoji} Money: ${intel_data.get('money', 0):,.2f}"
-            if current_resources:
-                current_info += f"\n" + ' '.join(current_resources)
-            
-            embed.add_field(
-                name="Current Target Resources",
-                value=current_info,
-                inline=False
-            )
-
-            # --- Projected Resource Amounts Section ---
-            embed.add_field(name="--- Projected Lootable Resources ---", value="\u200b", inline=False)
-
             no_ape_scenario_name = 'Total Possible w/Pirate but not APE or Moneybags'
             with_ape_scenario_name = 'Total Possible w/Pirate & APE but not Moneybags'
 
@@ -358,33 +336,29 @@ class Loot(commands.Cog):
             with_ape_data = scenarios.get(with_ape_scenario_name)
 
             if not no_ape_data or not with_ape_data:
-                embed.add_field(name="Error", value="Could not calculate all required scenarios.", inline=False)
+                embed.add_field(name="Error", value="Could not calculate scenarios.", inline=False)
             else:
+                # Build compact resource lines
+                resource_lines = []
                 if no_ape_data['projected_resources']:
                     for resource_name, _ in no_ape_data['projected_resources'].items():
                         emoji = emoji_map.get(resource_name.upper()) or '📦'
                         no_ape_amount = no_ape_data['projected_resources'][resource_name]['projected_amount']
                         with_ape_amount = with_ape_data['projected_resources'][resource_name]['projected_amount']
-
-                        embed.add_field(
-                            name=f"{emoji} {resource_name.title()}",
-                            value=f"Without APE: {no_ape_amount:,.2f}\nWith APE: {with_ape_amount:,.2f}",
-                            inline=False
-                        )
-                else:
-                    embed.add_field(name="No Resources", value="Target has no resources to loot.", inline=False)
-            
-            # --- Total Value Section ---
-            if no_ape_data and with_ape_data:
-                embed.add_field(name='--- Projected Total Values ---', value='\u200b', inline=False)
+                        resource_lines.append(f"{emoji} {resource_name[:4].title()}: {no_ape_amount:,.0f} → {with_ape_amount:,.0f}")
+                
+                # Combine resources into one field
+                if resource_lines:
+                    embed.add_field(
+                        name="Resources (no APE → w/ APE)",
+                        value="\n".join(resource_lines),
+                        inline=False
+                    )
+                
+                # Combine totals into one field
                 embed.add_field(
-                    name="Max Loot Value (w/out APE)",
-                    value=f"**${no_ape_data['grand_total']:,.2f}**",
-                    inline=False
-                )
-                embed.add_field(
-                    name="Max Loot Value (w/ APE)",
-                    value=f"**${with_ape_data['grand_total']:,.2f}**",
+                    name="Total Value",
+                    value=f"**No APE:** ${no_ape_data['grand_total']:,.2f}\n**With APE:** ${with_ape_data['grand_total']:,.2f}",
                     inline=False
                 )
 
@@ -399,7 +373,7 @@ class Loot(commands.Cog):
         except Exception as e:
             print(f"Error creating projected embed: {e}")
             return discord.Embed(
-                title="🔮 Projected Loot Summary",
+                title="🔮 Projected Loot",
                 description="Error calculating projections",
                 color=discord.Color.red()
             )

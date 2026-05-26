@@ -136,7 +136,7 @@ class ShowCog(commands.Cog):
         """
         Look up a nation from GlobalNations.db by name, leader name, or ID.
         GlobalNations.db is the single source of truth — it contains all nations
-        including Nights Watch members.
+        including Darkstar members.
         """
         try:
             from PnWHarvester.db.global_nations_db import GlobalNationsDB
@@ -584,16 +584,16 @@ class ShowCog(commands.Cog):
         )
         if not _raw_alliance_name:
             _aid = nation.get('alliance_id') or (alliance_obj.get('id') if isinstance(alliance_obj, dict) else None)
-            if str(_aid or '') == '14225':
-                _raw_alliance_name = 'Nights Watch'
+            if str(_aid or '') == '10259':
+                _raw_alliance_name = 'Darkstar'
         alliance_name = _raw_alliance_name or 'None'
 
         # Strip enum prefix from alliance_position (e.g. "AlliancePositionEnum.MEMBER" → "Member")
         raw_pos = stats.get('alliance_position', 'Unknown') or 'Unknown'
         alliance_position_fmt = _fmt_enum(raw_pos)
 
-        # Nights Watch emoji for NW members
-        _ep_prefix = '🌙 ' if alliance_name == 'Nights Watch' else ''
+        # Darkstar emoji for Darkstar members
+        _ep_prefix = '⭐ ' if alliance_name == 'Darkstar' else ''
 
         basic_stats_list = [
             f"**Alliance:** {_ep_prefix}{alliance_name}",

@@ -12,8 +12,8 @@ from Systems.Functions.db_paths import NW_WARS_DB_STR as NW_DB_PATH
 from Systems.PnW.Util.war_calc import get_resource_prices, calculate_unit_cost
 
 # ── Constants ─────────────────────────────────────────────────────────────────
-NW_ALLIANCE_ID = 14225
-NW_ALLIANCE_NAME = "Nights Watch"
+NW_ALLIANCE_ID = 10259
+NW_ALLIANCE_NAME = "Darkstar"
 
 RANKING_TYPES = [
     app_commands.Choice(name="War Cost", value="war_cost"),
@@ -43,7 +43,8 @@ TIME_CHOICES = [
     app_commands.Choice(name="3 Months", value="3m"),
     app_commands.Choice(name="6 Months", value="6m"),
     app_commands.Choice(name="1 Year", value="1y"),
-    app_commands.Choice(name="All Time", value="all")
+    app_commands.Choice(name="All Time", value="all"),
+    app_commands.Choice(name="Custom (e.g., 2d, 1w)", value="custom")
 ]
 
 class Rankings(commands.Cog):
@@ -54,89 +55,40 @@ class Rankings(commands.Cog):
         self.logger = logging.getLogger(__name__)
 
     def _parse_time_to_datetime(self, time_str: str) -> Optional[datetime]:
-        """Parse time string to datetime object."""
+        """Parse time string to datetime object.
+        
+        Supports formats like:
+        - 'all' or None for all time
+        - 'Nd' for N days (e.g., '2d', '7d')
+        - 'Nw' for N weeks (e.g., '1w', '2w')
+        - 'Nm' for N months (e.g., '1m', '6m')
+        - 'Ny' for N years (e.g., '1y', '2y')
+        """
         if not time_str or time_str == "all":
             return None
         
         now = datetime.now(timezone.utc)
+        time_str = time_str.strip().lower()
         
-        if time_str == "1d":
-            return now - timedelta(days=1)
-        elif time_str == "3d":
-            return now - timedelta(days=3)
-        elif time_str == "1w":
-            return now - timedelta(weeks=1)
-        elif time_str == "2w":
-            return now - timedelta(weeks=2)
-        elif time_str == "1m":
-            return now - timedelta(days=30)
-        elif time_str == "3m":
-            return now - timedelta(days=90)
-        elif time_str == "6m":
-            return now - timedelta(days=180)
-        elif time_str == "1y":
-            return now - timedelta(days=365)
+        # Parse the time string (e.g., "2d", "1w", "6m", "1y")
+        import re
+        match = re.match(r'^(\d+)([dwmy])$', time_str)
+        if not match:
+            return None
+        
+        value = int(match.group(1))
+        unit = match.group(2)
+        
+        if unit == 'd':
+            return now - timedelta(days=value)
+        elif unit == 'w':
+            return now - timedelta(weeks=value)
+        elif unit == 'm':
+            return now - timedelta(days=value * 30)
+        elif unit == 'y':
+            return now - timedelta(days=value * 365)
         
         return None
-
-    def _parse_enemy_alliances(self, enemy_str: str) -> List[int]:
-        """Parse comma-separated enemy alliance string to list of IDs."""
-        if not enemy_str or enemy_str.lower() == "all":
-            return []
-        
-        alliance_ids = []
-        for item in enemy_str.split(','):
-            item = item.strip()
-            # Strip emoji prefix if present (e.g., "🌙 Alliance Name")
-            if ' ' in item and not item.isdigit():
-                parts = item.split(' ', 1)
-                if len(parts) > 1:
-                    item = parts[1]
-            
-            if item.isdigit():
-                alliance_ids.append(int(item))
-        
-        return alliance_ids
-
-    async def _get_nw_nations_for_autocomplete(self) -> List[Dict[str, Any]]:
-        """Load NW member nations from GlobalNations.db for autocomplete."""
-        try:
-            from PnWHarvester.db.global_nations_db import GlobalNationsDB
-            from Systems.Functions.db_paths import GLOBAL_NATIONS_DB as _GNDB, NW_ALLIANCE_ID
-            db = GlobalNationsDB(str(_GNDB))
-            return await db.get_nations_by_alliance(NW_ALLIANCE_ID)
-        except Exception as e:
-            self.logger.warning(f"rankings autocomplete: could not load NW nations: {e}")
-            return []
-
-    async def enemy_autocomplete(self, interaction: discord.Interaction, current: str) -> List[app_commands.Choice[str]]:
-        """Autocomplete for enemy alliances."""
-        try:
-            # Handle comma-separated input
-            parts = current.split(',')
-            current_part = parts[-1].strip()
-            prefix = ','.join(parts[:-1])
-            if prefix:
-                prefix += ','
-            
-            db = IRSWarsDB(NW_DB_PATH)
-            alliances = await db.get_opponent_alliance_ids(NW_ALLIANCE_ID, current_part)
-            
-            choices = []
-            if not current_part:  # Show "ALL" option when empty
-                choices.append(app_commands.Choice(name="🌍 ALL", value="ALL"))
-            
-            for alliance in alliances[:20]:  # Limit to 20 results
-                alliance_id = alliance['alliance_id']
-                alliance_name = alliance['alliance_name'] or f"Alliance #{alliance_id}"
-                display_name = f"🏛️ {alliance_name}"
-                value = f"{prefix}{alliance_id}" if prefix else str(alliance_id)
-                choices.append(app_commands.Choice(name=display_name, value=value))
-            
-            return choices[:25]  # Discord limit
-        except Exception as e:
-            self.logger.warning(f"enemy_autocomplete error: {e}")
-            return [app_commands.Choice(name="🌍 ALL", value="ALL")]
 
     async def _calculate_nation_stats(self, wars: List[Dict[str, Any]], resource_prices: Dict[str, Any], 
                                     ranking_type: str, enemy_alliance_ids: List[int]) -> Dict[int, Dict[str, Any]]:
@@ -184,6 +136,11 @@ class Rankings(commands.Cog):
                 }
             
             stats = nation_stats[nw_nation_id]
+            # Keep the first non-None name we encounter
+            if not stats['nation_name']:
+                stats['nation_name'] = (
+                    war.get('att_nation_name') if att_id == nw_nation_id else war.get('def_nation_name')
+                )
             stats['wars_count'] += 1
             war_attacks = attacks_by_war.get(war['id'], [])
 
@@ -229,6 +186,21 @@ class Rankings(commands.Cog):
                     stats['wins'] += 1
                 else:
                     stats['losses'] += 1
+
+        # ── Backfill missing nation names from GlobalNations.db ───────────────
+        missing_ids = [nid for nid, s in nation_stats.items() if not s['nation_name']]
+        if missing_ids:
+            try:
+                from PnWHarvester.db.global_nations_db import GlobalNationsDB
+                from Systems.Functions.db_paths import GLOBAL_NATIONS_DB as _GNDB
+                gdb = GlobalNationsDB(str(_GNDB))
+                nw_nations = await gdb.get_nations_by_alliance(NW_ALLIANCE_ID)
+                name_map = {n['nation_id']: n['nation_name'] for n in nw_nations if n.get('nation_id') and n.get('nation_name')}
+                for nid in missing_ids:
+                    if nid in name_map:
+                        nation_stats[nid]['nation_name'] = name_map[nid]
+            except Exception as e:
+                self.logger.warning(f"Could not backfill nation names: {e}")
         
         return nation_stats
 
@@ -408,7 +380,7 @@ class Rankings(commands.Cog):
         return loot_value
 
     def _create_rankings_embed(self, nation_stats: Dict[int, Dict[str, Any]], ranking_type: str, 
-                             time_str: str, enemy_str: str) -> discord.Embed:
+                             time_str: str) -> discord.Embed:
         """Create the rankings embed."""
         # Sort nations by the selected ranking type
         sorted_nations = sorted(
@@ -463,7 +435,6 @@ class Rankings(commands.Cog):
         emoji = type_emojis.get(ranking_type, '📈')
         
         time_display = "All Time" if time_str == "all" else time_str.upper()
-        enemy_display = "ALL" if enemy_str.lower() == "all" or not enemy_str else enemy_str
         
         embed = discord.Embed(
             title=f"{emoji} Top 25 Nations by {ranking_name}",
@@ -472,7 +443,7 @@ class Rankings(commands.Cog):
         )
         
         if not sorted_nations:
-            embed.description = f"**Time Range:** {time_display}\n**Enemy Filter:** {enemy_display}"
+            embed.description = f"**Time Range:** {time_display}"
             embed.add_field(
                 name="No Data",
                 value="No war data found for the specified criteria.",
@@ -510,7 +481,7 @@ class Rankings(commands.Cog):
         # (description supports up to 4096 chars, plenty for 25 entries)
         rankings_text = "\n".join(ranking_lines)
         embed.description = (
-            f"**Time Range:** {time_display}\n**Enemy Filter:** {enemy_display}\n\n"
+            f"**Time Range:** {time_display}\n\n"
             + rankings_text
         )
         
@@ -519,17 +490,14 @@ class Rankings(commands.Cog):
     @app_commands.command(name="rankings", description="Show top 25 nations ranked by war statistics")
     @app_commands.describe(
         ranking_type="What to rank nations by (War Cost, War Net, Damages, Bomb Cost, or Loot)",
-        time="How far back to look (1d, 3d, 1w, 2w, 1m, 3m, 6m, 1y, or all - defaults to All Time)",
-        enemy="Enemy alliances to filter by (comma-separated alliance IDs, defaults to ALL enemies)"
+        time="How far back to look (e.g., 2d, 1w, 1m, 1y, or all - defaults to All Time)",
     )
-    @app_commands.choices(ranking_type=RANKING_TYPES, time=TIME_CHOICES)
-    @app_commands.autocomplete(enemy=enemy_autocomplete)
+    @app_commands.choices(ranking_type=RANKING_TYPES)
     async def rankings(
         self,
         interaction: discord.Interaction,
         ranking_type: str,
         time: Optional[str] = "all",
-        enemy: Optional[str] = "ALL"
     ):
         """Show top 25 nations ranked by war statistics."""
         await interaction.response.defer()
@@ -537,7 +505,7 @@ class Rankings(commands.Cog):
         try:
             # Parse parameters
             after_datetime = self._parse_time_to_datetime(time or "all")
-            enemy_alliance_ids = self._parse_enemy_alliances(enemy or "ALL")
+            enemy_alliance_ids: List[int] = []
             
             # Get resource prices
             resource_prices = await get_resource_prices()
@@ -571,7 +539,7 @@ class Rankings(commands.Cog):
             )
             
             # Create and send embed
-            embed = self._create_rankings_embed(nation_stats, ranking_type, time or "all", enemy or "ALL")
+            embed = self._create_rankings_embed(nation_stats, ranking_type, time or "all")
             await interaction.followup.send(embed=embed)
             
         except Exception as e:

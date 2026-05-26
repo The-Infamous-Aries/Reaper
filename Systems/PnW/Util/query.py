@@ -219,7 +219,7 @@ class V3GraphQuery:
         # Rate limiting
         self._last_request_ts = 0.0
         # Async lock — serialises all _make_graphql_request calls so concurrent
-        # coroutines (e.g. TurnRevenueLoop batches, war-stats updates) cannot
+        # coroutines (e.g. RevenueComponent batches, war-stats updates) cannot
         # race past the rate-limit check and flood the API simultaneously.
         self._request_lock: asyncio.Lock = asyncio.Lock()
         

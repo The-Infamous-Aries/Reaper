@@ -147,7 +147,7 @@ class Raids(commands.Cog):
             from PnWHarvester.db.global_nations_db import GlobalNationsDB
             db = GlobalNationsDB(GLOBAL_NATIONS_DB_STR)
 
-            async with db._lock:
+            async with db._get_lock():
                 with sqlite3.connect(db.db_path) as conn:
                     conn.row_factory = sqlite3.Row
 

@@ -12,8 +12,8 @@ from Systems.Functions import emoji as emoji_mod
 from Systems.Functions.nation_emoji_store import get_nation_emoji, strip_emoji_prefix
 from pathlib import Path
 
-NIGHTS_WATCH_ALLIANCE_ID = 14225
-NIGHTS_WATCH_ALLIANCE_NAME = "Nights Watch"
+NIGHTS_WATCH_ALLIANCE_ID = 10259
+NIGHTS_WATCH_ALLIANCE_NAME = "Darkstar"
 
 def _nation_link(n: Dict[str, Any]) -> str:
     """Return markdown link to a nation's PnW page."""
@@ -508,8 +508,8 @@ class AuditManager(commands.Cog):
                     arg = (alliance or "").strip()
                     if arg:
                         # IRS shortcut — no API call needed
-                        nw_arg = arg.lower().replace("🌙 ", "").strip()
-                        if nw_arg in ("Nights Watch", "nights watch", "nw"):
+                        nw_arg = arg.lower().replace("⭐ ", "").strip()
+                        if nw_arg in ("Darkstar", "darkstar", "ds"):
                             center_id = NIGHTS_WATCH_ALLIANCE_ID
                             center_name = NIGHTS_WATCH_ALLIANCE_NAME
                         else:

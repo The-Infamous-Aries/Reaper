@@ -2,8 +2,7 @@
 import os
 
 # Add project root to the Python path
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..\..\..')))
-
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..')))
 import discord
 from discord.ext import commands
 from discord import app_commands
@@ -13,13 +12,13 @@ import io
 import matplotlib.pyplot as plt
 import math
 import random
-from datetime import datetime
 from typing import Optional
 
 from Systems.PnW.Util.war_calc import UNIT_COSTS, get_resource_prices, calculate_unit_cost
 from Systems.Functions.emoji import get_partial, mention
 from Systems.Functions.db_paths import GLOBAL_NATIONS_DB
 from Systems.PnW.Util.query import create_v3_query_instance, V3GraphQuery
+from Systems.PnW.Util.rev_correct import calculate_population_effects, get_city_age_from_game_data
 
 # --- 1. INFRASTRUCTURE COST FORMULA (from costs.py) ---
 
@@ -56,32 +55,31 @@ def calc_infra_value(starting_amount: float, ending_amount: float) -> float:
 # --- 2. WEAPON DAMAGE FORMULAS (Updated) ---
 
 def get_weapon_damage(infra: float, weapon_type: str, pop_density: float = 60.0, damage_type: str = 'average') -> float:
-    """Calculates weapon damage based on 2026 formulas with population density and damage type."""
+    """Calculates weapon damage using actual PnW formulas.
+    
+    Missile: min(RANDOMBETWEEN(300, max(350, pop_density*3)), (0.3*infra)+100, infra)
+    Nuke:    min(RANDOMBETWEEN(1700, max(2000, pop_density*13.5)), (0.8*infra)+150, infra)
+    
+    pop_density scales the upper bound of the random roll range.
+    damage_type selects min/max/average of the actual roll range.
+    """
     if weapon_type == "missile":
-        base_min = 300
-        base_max = max(350, pop_density * 3)
+        roll_min = 300
+        roll_max = max(350, pop_density * 3)
         city_infra_limit = (infra * 0.3) + 100
-        
-        if damage_type == 'min':
-            damage = base_min
-        elif damage_type == 'max':
-            damage = base_max
-        else: # average
-            damage = (base_min + base_max) / 2
-            
     else:  # nuke
-        base_min = 1700
-        base_max = max(2000, pop_density * 13.5)
+        roll_min = 1700
+        roll_max = max(2000, pop_density * 13.5)
         city_infra_limit = (infra * 0.8) + 150
-        
-        if damage_type == 'min':
-            damage = base_min
-        elif damage_type == 'max':
-            damage = base_max
-        else: # average
-            damage = (base_min + base_max) / 2
-            
-    return min(damage, city_infra_limit, infra)
+
+    if damage_type == 'min':
+        roll = roll_min
+    elif damage_type == 'max':
+        roll = roll_max
+    else:  # average
+        roll = (roll_min + roll_max) / 2
+
+    return min(roll, city_infra_limit, infra)
 
 # --- 3. THE SEARCH LOGIC (SOLVER) ---
 
@@ -125,16 +123,19 @@ class WeaponEfficiency(commands.Cog):
                                        nuke_marker: Optional[dict] = None):
         """Generate weapon efficiency chart for the Discord command."""
         multipliers = range(1, 21)
-        pop_densities = {'min': 10.0, 'max': 150.0}
+        # min band = low pop density (hardest to deal damage), max band = high pop density (easiest)
+        scenarios = {
+            'min': {'pop_density': 10.0,  'damage_type': 'min'},
+            'max': {'pop_density': 150.0, 'damage_type': 'max'},
+        }
         
-        data = {wt: {dt: [] for dt in pop_densities} for wt in ['nuke', 'missile']}
+        data = {wt: {key: [] for key in scenarios} for wt in ['nuke', 'missile']}
 
         for m in multipliers:
             for wt, cost in [('nuke', nuke_cost), ('missile', missile_cost)]:
                 target_value = m * cost
-                for key, pop_density in pop_densities.items():
-                    damage_type = key  # Use 'min' or 'max' from the pop_densities keys
-                    infra = find_required_infra(target_value, wt, pop_density, damage_type)
+                for key, sc in scenarios.items():
+                    infra = find_required_infra(target_value, wt, sc['pop_density'], sc['damage_type'])
                     data[wt][key].append(infra)
 
         plt.figure(figsize=(14, 8))
@@ -146,10 +147,10 @@ class WeaponEfficiency(commands.Cog):
         linestyles = {'min': ':', 'max': '--'}
 
         for wt in ['nuke', 'missile']:
-            for key in pop_densities:
+            for key, sc in scenarios.items():
+                label = f"{wt.title()} {'Low Density' if key == 'min' else 'High Density'}"
                 plt.plot(multipliers, data[wt][key], marker=markers[wt], color=colors[wt][key],
-                         label=f"{wt.title()} {key.title()} Damage", 
-                         linewidth=2, linestyle=linestyles[key])
+                         label=label, linewidth=2, linestyle=linestyles[key])
 
         plt.title("Weapon Economic Efficiency: Target Infrastructure Required\n(Damage Range Analysis)", 
                  fontsize=16, fontweight='bold')
@@ -182,7 +183,7 @@ class WeaponEfficiency(commands.Cog):
         for i in key_indices:
             # --- Nuke Annotations ---
             nuke_max_infra = data['nuke']['max'][i]
-            nuke_max_damage = get_weapon_damage(nuke_max_infra, 'nuke', 150, 'max')
+            nuke_max_damage = get_weapon_damage(nuke_max_infra, 'nuke', scenarios['max']['pop_density'], 'max')
             nuke_max_value = calc_infra_value(nuke_max_infra - nuke_max_damage, nuke_max_infra)
             angle_n_max = get_angle(multipliers, data['nuke']['max'], i, ax)
             plt.annotate(f"{int(nuke_max_infra)} infra - ${nuke_max_value:,.0f}", (multipliers[i], nuke_max_infra), 
@@ -190,7 +191,7 @@ class WeaponEfficiency(commands.Cog):
                          rotation=angle_n_max, color='#aa0000', fontsize=8, fontweight='bold')
 
             nuke_min_infra = data['nuke']['min'][i]
-            nuke_min_damage = get_weapon_damage(nuke_min_infra, 'nuke', 10, 'min')
+            nuke_min_damage = get_weapon_damage(nuke_min_infra, 'nuke', scenarios['min']['pop_density'], 'min')
             nuke_min_value = calc_infra_value(nuke_min_infra - nuke_min_damage, nuke_min_infra)
             angle_n_min = get_angle(multipliers, data['nuke']['min'], i, ax)
             plt.annotate(f"{int(nuke_min_infra)} infra - ${nuke_min_value:,.0f}", (multipliers[i], nuke_min_infra), 
@@ -199,7 +200,7 @@ class WeaponEfficiency(commands.Cog):
 
             # --- Missile Annotations ---
             missile_max_infra = data['missile']['max'][i]
-            missile_max_damage = get_weapon_damage(missile_max_infra, 'missile', 150, 'max')
+            missile_max_damage = get_weapon_damage(missile_max_infra, 'missile', scenarios['max']['pop_density'], 'max')
             missile_max_value = calc_infra_value(missile_max_infra - missile_max_damage, missile_max_infra)
             angle_m_max = get_angle(multipliers, data['missile']['max'], i, ax)
             plt.annotate(f"{int(missile_max_infra)} infra - ${missile_max_value:,.0f}", (multipliers[i], missile_max_infra), 
@@ -207,20 +208,21 @@ class WeaponEfficiency(commands.Cog):
                          rotation=angle_m_max, color='#0033aa', fontsize=8, fontweight='bold')
 
             missile_min_infra = data['missile']['min'][i]
-            missile_min_damage = get_weapon_damage(missile_min_infra, 'missile', 10, 'min')
+            missile_min_damage = get_weapon_damage(missile_min_infra, 'missile', scenarios['min']['pop_density'], 'min')
             missile_min_value = calc_infra_value(missile_min_infra - missile_min_damage, missile_min_infra)
             angle_m_min = get_angle(multipliers, data['missile']['min'], i, ax)
             plt.annotate(f"{int(missile_min_infra)} infra - ${missile_min_value:,.0f}", (multipliers[i], missile_min_infra), 
                          textcoords="offset points", xytext=(0, 5), ha='center', va='bottom',
                          rotation=angle_m_min, color='#4488ff', fontsize=8, fontweight='bold')
 
-        if user_infra and user_pop_density:
-            # Theory mode — single city, green markers
-            user_nuke_max_dmg = get_weapon_damage(user_infra, 'nuke', user_pop_density, 'max')
+        if user_infra:
+            # Theory mode — single city, green markers (use max roll for best-case placement)
+            _theory_pd = user_pop_density if user_pop_density is not None else scenarios['max']['pop_density']
+            user_nuke_max_dmg = get_weapon_damage(user_infra, 'nuke', _theory_pd, 'max')
             user_nuke_max_val = calc_infra_value(user_infra - user_nuke_max_dmg, user_infra)
             user_nuke_mult = user_nuke_max_val / nuke_cost
 
-            user_missile_max_dmg = get_weapon_damage(user_infra, 'missile', user_pop_density, 'max')
+            user_missile_max_dmg = get_weapon_damage(user_infra, 'missile', _theory_pd, 'max')
             user_missile_max_val = calc_infra_value(user_infra - user_missile_max_dmg, user_infra)
             user_missile_mult = user_missile_max_val / missile_cost
 
@@ -230,7 +232,7 @@ class WeaponEfficiency(commands.Cog):
         # Targeted mode — separate missile (bright orange) and nuke (bright green) markers
         if missile_marker:
             m_infra = missile_marker['infra']
-            m_pd    = missile_marker['pop_density']
+            m_pd    = missile_marker.get('pop_density', scenarios['max']['pop_density'])
             m_dmg   = get_weapon_damage(m_infra, 'missile', m_pd, 'max')
             m_val   = calc_infra_value(m_infra - m_dmg, m_infra)
             m_mult  = m_val / missile_cost if missile_cost else 0
@@ -245,7 +247,7 @@ class WeaponEfficiency(commands.Cog):
 
         if nuke_marker:
             n_infra = nuke_marker['infra']
-            n_pd    = nuke_marker['pop_density']
+            n_pd    = nuke_marker.get('pop_density', scenarios['max']['pop_density'])
             n_dmg   = get_weapon_damage(n_infra, 'nuke', n_pd, 'max')
             n_val   = calc_infra_value(n_infra - n_dmg, n_infra)
             n_mult  = n_val / nuke_cost if nuke_cost else 0
@@ -270,8 +272,8 @@ class WeaponEfficiency(commands.Cog):
         mode="Theory: manual infra/pop inputs. Targeted: find best city to strike on a nation or alliance.",
         target_type="(Targeted only) Nation or Alliance",
         target="(Targeted only) Nation/Alliance name or ID",
-        infra_level="(Theory only) Infra level of the target city",
-        pop_density="(Theory only) Population density of the target city",
+        infra_level="(Theory only) Total infrastructure of the target city",
+        land="(Theory only) Total land of the target city",
     )
     @app_commands.choices(
         mode=[
@@ -290,7 +292,7 @@ class WeaponEfficiency(commands.Cog):
         target_type: Optional[str] = None,
         target: Optional[str] = None,
         infra_level: Optional[float] = None,
-        pop_density: Optional[float] = None,
+        land: Optional[float] = None,
     ):
         """Weapon efficiency — Theory or Targeted mode."""
         try:
@@ -309,22 +311,28 @@ class WeaponEfficiency(commands.Cog):
 
             # ── THEORY MODE ──────────────────────────────────────────────────────────
             if mode == "theory":
-                if (infra_level is not None and pop_density is None) or \
-                   (infra_level is None and pop_density is not None):
+                if (infra_level is not None and land is None) or \
+                   (infra_level is None and land is not None):
                     await interaction.followup.send(
-                        "❌ Provide both `infra_level` and `pop_density`, or neither.", ephemeral=True)
+                        "❌ Provide both `infra_level` and `land`, or neither.", ephemeral=True)
                     return
 
-                chart_buffer = self.generate_efficiency_chart_cog(nuke_cost, missile_cost, infra_level, pop_density)
+                # Derive pop density from infra + land using the wiki formula
+                theory_pop_density: Optional[float] = None
+                if infra_level is not None and land is not None:
+                    theory_city = {'infrastructure': infra_level, 'land': land}
+                    _, theory_pop_density = self._city_population_and_density(theory_city)
+
+                chart_buffer = self.generate_efficiency_chart_cog(nuke_cost, missile_cost, infra_level, theory_pop_density)
                 file = discord.File(chart_buffer, filename="weapon_efficiency_chart.png")
 
-                if infra_level is not None and pop_density is not None:
+                if infra_level is not None and theory_pop_density is not None:
                     embed = discord.Embed(
                         title=f"{mention('war') or '⚔️'} Theory — Specific City",
-                        description=f"**{infra_level:,.0f} infra** / **{pop_density:,.1f} pop density**",
+                        description=f"**{infra_level:,.0f} infra** / **{land:,.0f} land** → **{theory_pop_density:,.1f} pop density**",
                         color=discord.Color.blue()
                     )
-                    embed = self._add_city_weapon_fields(embed, infra_level, pop_density, missile_cost, nuke_cost)
+                    embed = self._add_city_weapon_fields(embed, infra_level, theory_pop_density, missile_cost, nuke_cost)
                     embed.set_footer(text="🟢 Your city is marked on the chart! Circle (Nuke) and X (Missile).")
                 else:
                     embed = discord.Embed(
@@ -467,75 +475,63 @@ class WeaponEfficiency(commands.Cog):
 
     def _city_population_and_density(self, city: dict) -> tuple[float, float]:
         """Calculate actual population and displayed population density per wiki formulas.
-        
-        Disease uses Base Pop Density (base_pop / land) to avoid feedback loops.
+
+        Delegates to the canonical calculate_population_effects from rev_correct.
+        Disease uses Base Pop Density (base_pop / land) per wiki.
         Displayed density = actual_pop / land.
-        
+
         Returns:
             (actual_population, displayed_pop_density)
         """
         infra = city.get('infrastructure', 0) or 0
-        land = city.get('land', 0) or 0
-        if land <= 0:
-            land = 1  # avoid div/0
-
+        land  = max(city.get('land', 0) or 0, 1)  # avoid div/0
         base_pop = infra * 100
 
-        # --- Commerce (needed for crime rate) ---
+        # --- Commerce (capped) ---
+        powered = city.get('powered', True)
         commerce = 0.0
-        if city.get('powered', True):
+        if powered:
             commerce += city.get('subway', 0) * 8
             commerce += city.get('supermarket', 0) * 4
             commerce += city.get('bank', 0) * 6
             commerce += city.get('shopping_mall', 0) * 8
             commerce += city.get('stadium', 0) * 10
-        commerce = min(commerce, 100)  # base max_commerce without projects
+        commerce = min(commerce, 100)
 
-        # --- Pollution (needed for disease rate) ---
+        # --- Pollution ---
         pollution = 0.0
-        if city.get('powered', True):
+        if powered:
             pollution += city.get('police_station', 0)
             pollution += city.get('hospital', 0) * 4
-            pollution -= city.get('recycling_center', 0) * 70   # default rec_poll
-            pollution -= city.get('subway', 0) * 45             # default subw_poll_red
+            pollution -= city.get('recycling_center', 0) * 70
+            pollution -= city.get('subway', 0) * 45
             pollution += city.get('shopping_mall', 0) * 2
             pollution += city.get('stadium', 0) * 5
         pollution = max(pollution, 0)
 
-        police_stations = city.get('police_station', 0) if city.get('powered', True) else 0
-        hospitals = city.get('hospital', 0) if city.get('powered', True) else 0
+        police_stations = city.get('police_station', 0) if powered else 0
+        hospitals       = city.get('hospital', 0)       if powered else 0
 
-        # --- Crime rate ---
-        crime_rate_raw = (math.pow(103 - commerce, 2) + base_pop) / 111111 - police_stations * 2.5
-        crime_rate = max(crime_rate_raw, 0)
-        crime_deaths = max((crime_rate / 10) * base_pop - 25, 0)
+        # --- Default modifiers (no national projects assumed for bare city) ---
+        modifiers = {'pol_cri_red': 2.5, 'hos_dis_red': 2.5}
+        if city.get('clinical_research_center'):
+            modifiers['hos_dis_red'] = 3.5
+        if city.get('specialized_police_training_program'):
+            modifiers['pol_cri_red'] = 3.5
 
-        # --- Disease rate — uses BASE pop density (not actual) per wiki ---
-        base_pop_density = base_pop / land
-        disease_rate_raw = (
-            ((base_pop_density ** 2) * 0.01 - 25) / 100
-            + (base_pop / 100000)
-            + pollution * 0.05
-            - hospitals * 2.5   # default hos_dis_red
+        # Ensure city has 'infrastructure' and 'land' keys for calculate_population_effects
+        city_for_calc = dict(city)
+        city_for_calc['infrastructure'] = infra
+        city_for_calc['land'] = land
+
+        # --- Canonical population calculation from rev_correct ---
+        pop_result = calculate_population_effects(
+            city_for_calc, modifiers, base_pop, commerce, police_stations, hospitals, pollution
         )
-        disease_rate = max(0.0, min(disease_rate_raw, 100.0))
-        disease_deaths = max(base_pop * (disease_rate / 100), 0)
-
-        # --- Age bonus ---
-        date_str = city.get('date', '')
-        try:
-            city_age = (datetime.utcnow() - datetime.strptime(date_str.split(" ")[0].split("T")[0], "%Y-%m-%d")).days
-        except Exception:
-            city_age = 365  # fallback: 1 year
-        city_age = max(city_age, 1)
-        age_bonus = 1 + math.log(city_age) / 15
-
-        # --- Actual population ---
-        actual_pop = (base_pop - disease_deaths - crime_deaths) * age_bonus
+        actual_pop = float(pop_result['population'])
 
         # --- Displayed density = actual pop / land ---
         displayed_density = actual_pop / land
-
         return actual_pop, max(displayed_density, 1.0)
 
     def _pop_density(self, city: dict) -> float:
@@ -601,12 +597,24 @@ class WeaponEfficiency(commands.Cog):
             min_val = calc_infra_value(infra - min_dmg, infra)
             max_val = calc_infra_value(infra - max_dmg, infra)
             chance_str = f"{chance*100:.0f}% hit chance" if chance < 1.0 else "100% hit chance"
+            # Show whether pop density is boosting the roll ceiling above the base cap
+            if weapon == "missile":
+                pd_threshold = 350 / 3  # ~116.7 — above this pd*3 > 350
+                roll_ceil = max(350, pd * 3)
+            else:
+                pd_threshold = 2000 / 13.5  # ~148.1 — above this pd*13.5 > 2000
+                roll_ceil = max(2000, pd * 13.5)
+            if pd > pd_threshold:
+                density_note = f"🔴 Density boosting roll ceil to `{roll_ceil:,.0f}`"
+            else:
+                density_note = f"⚪ Density below threshold (need `>{pd_threshold:,.0f}` to boost)"
             embed.add_field(
                 name=f"{label} — ${cost:,.0f} ({chance_str})",
                 value=(
                     f"**Min:** `{min_dmg:,.0f}` infra → `${min_val:,.0f}` ({min_val/cost:.1f}×)\n"
                     f"**Max:** `{max_dmg:,.0f}` infra → `${max_val:,.0f}` ({max_val/cost:.1f}×)\n"
-                    f"**Expected:** `${min_val*chance:,.0f}` – `${max_val*chance:,.0f}`"
+                    f"**Expected:** `${min_val*chance:,.0f}` – `${max_val*chance:,.0f}`\n"
+                    f"{density_note}"
                 ),
                 inline=False
             )

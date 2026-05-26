@@ -72,8 +72,8 @@ BlocAllianceManager = None
 # Define constants for default alliance (can be configured)
 DEFAULT_ALLIANCE_ID = os.getenv("DEFAULT_ALLIANCE_ID", "14635")
 DEFAULT_ALLIANCE_NAME = os.getenv("DEFAULT_ALLIANCE_NAME", "Death Before Dishonor")
-NIGHTS_WATCH_ALLIANCE_ID = "14225"
-NIGHTS_WATCH_ALLIANCE_NAME = "Nights Watch"
+NIGHTS_WATCH_ALLIANCE_ID = "10259"
+NIGHTS_WATCH_ALLIANCE_NAME = "Darkstar"
 
 
 def _get_global_nations_db():
@@ -1318,7 +1318,7 @@ class AllianceManager(commands.Cog):
                     target_id = arg
             else:
                 # IRS shortcut — no API call needed
-                if arg.lower() in ("Nights Watch", "nights watch", "nw"):
+                if arg.lower() in ("Darkstar", "darkstar", "ds"):
                     target_id = NIGHTS_WATCH_ALLIANCE_ID
                     target_name = NIGHTS_WATCH_ALLIANCE_NAME
                 else:

@@ -4,6 +4,7 @@ from discord import app_commands
 import asyncio
 import logging
 import re
+import sqlite3
 from typing import Optional, Dict, Any, List
 
 from ..Util.query import V3GraphQuery
@@ -12,52 +13,111 @@ from ..Util.war_calc import UNIT_COSTS
 from Systems.Functions.emoji import mention, SOLDIER_EMOJI, TANK_EMOJI, JET_EMOJI, SHIP_EMOJI, MISSILE_EMOJI, BOMB_EMOJI, resource_emoji
 from Systems.PnW.Other.loot import Loot
 
-class SpyOpModal(discord.ui.Modal, title='Spy Operation Report'):
-    report = discord.ui.TextInput(
-        label='Paste your spy report here',
-        style=discord.TextStyle.paragraph,
-        placeholder='Your spies discovered that USER has the following resources available for looting: ...',
-        required=True
-    )
+# Database path
+DB_PATH = "Databases/PnW/GlobalNations.db"
 
-    def __init__(self, cog: 'WarSimCog', attacker_id: str, defender_id: str, war_type: str):
-        super().__init__(timeout=300)
-        self.cog = cog
-        self.attacker_id = attacker_id
-        self.defender_id = defender_id
-        self.war_type = war_type
-
-    async def on_submit(self, interaction: discord.Interaction):
-        await interaction.response.defer(thinking=True, ephemeral=True)
+def get_nation_from_db(identifier: str) -> Optional[Dict[str, Any]]:
+    """Fetch nation data from GlobalNations.db by name, leader, or ID."""
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
         
-        try:
-            your_nation_data, target_nation_data, trade_prices_data = await asyncio.gather(
-                self.cog._get_nation(self.attacker_id),
-                self.cog._get_nation(self.defender_id),
-                self.cog.api.get_trade_resource_values()
-            )
-            self.cog.logger.info(f"Full API response for attacker \"{self.attacker_id}\": {your_nation_data}")
+        # Try by ID first
+        if identifier.isdigit():
+            cursor.execute("""
+                SELECT id, nation_name, leader_name, score, soldiers, tanks, aircraft, ships, missiles, nukes,
+                       money, food, coal, oil, uranium, lead, iron, bauxite, gasoline, munitions, steel, aluminum
+                FROM nations WHERE id = ?
+            """, (identifier,))
+        else:
+            # Try by name or leader
+            cursor.execute("""
+                SELECT id, nation_name, leader_name, score, soldiers, tanks, aircraft, ships, missiles, nukes,
+                       money, food, coal, oil, uranium, lead, iron, bauxite, gasoline, munitions, steel, aluminum
+                FROM nations WHERE nation_name LIKE ? OR leader_name LIKE ?
+            """, (f"%{identifier}%", f"%{identifier}%"))
+        
+        row = cursor.fetchone()
+        conn.close()
+        
+        if not row:
+            return None
+        
+        # Fetch cities for this nation
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT name, infrastructure, land
+            FROM cities WHERE nation_id = ?
+        """, (row[0],))
+        cities_rows = cursor.fetchall()
+        conn.close()
+        
+        # Structure the nation data
+        cities = {}
+        for city_row in cities_rows:
+            cities[city_row[0]] = {
+                'infrastructure': city_row[1],
+                'land': city_row[2],
+                'population': 0  # Not available in DB
+            }
+        
+        return {
+            'nation_id': row[0],
+            'name': row[1],
+            'leader_name': row[2],
+            'score': row[3],
+            'soldiers': row[4],
+            'tanks': row[5],
+            'aircraft': row[6],
+            'ships': row[7],
+            'missiles': row[8],
+            'nukes': row[9],
+            'money': row[10],
+            'food': row[11],
+            'coal': row[12],
+            'oil': row[13],
+            'uranium': row[14],
+            'lead': row[15],
+            'iron': row[16],
+            'bauxite': row[17],
+            'gasoline': row[18],
+            'munitions': row[19],
+            'steel': row[20],
+            'aluminum': row[21],
+            'cities': cities,
+            'infrastructure': sum(c['infrastructure'] for c in cities.values())
+        }
+    except Exception as e:
+        logging.error(f"Error fetching nation from DB: {e}")
+        return None
 
-            if not your_nation_data or not target_nation_data:
-                await interaction.followup.send("Could not find one or both nations. Please check the names/IDs.", ephemeral=True)
-                return
+def get_all_nation_names() -> List[str]:
+    """Get all nation names from GlobalNations.db for autocomplete."""
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute("SELECT nation_name, leader_name FROM nations")
+        rows = cursor.fetchall()
+        conn.close()
+        
+        # Return both nation names and leader names
+        names = []
+        for row in rows:
+            if row[0]:
+                names.append(row[0])
+            if row[1]:
+                names.append(row[1])
+        return names
+    except Exception as e:
+        logging.error(f"Error fetching nation names from DB: {e}")
+        return []
 
-            market_prices = {price['resource'].lower(): float(price['best_sell_offer']['price']) 
-                             for price in trade_prices_data if price.get('best_sell_offer')}
-
-            your_nation = self.cog._structure_nation_data(your_nation_data)
-            target_nation = self.cog._structure_nation_data(target_nation_data)
-            
-            spy_data = self.cog._extract_intelligence_data(self.report.value)
-            if not spy_data:
-                await interaction.followup.send("Could not parse spy report. Please make sure it's in the correct format.", ephemeral=True)
-                return
-
-            await self.cog._run_and_present_simulation(interaction, your_nation, target_nation, market_prices, self.war_type, spy_data)
-
-        except Exception as e:
-            self.cog.logger.error(f"Error in modal submission: {e}", exc_info=True)
-            await interaction.followup.send("An unexpected error occurred while processing your request.", ephemeral=True)
+async def nation_autocomplete(interaction: discord.Interaction, current: str) -> List[app_commands.Choice[str]]:
+    """Autocomplete for nation names from GlobalNations.db."""
+    all_names = get_all_nation_names()
+    filtered = [name for name in all_names if current.lower() in name.lower()]
+    return [app_commands.Choice(name=name, value=name) for name in filtered[:25]]
 
 class WarSimPaginator(discord.ui.View):
     def __init__(self, embeds: List[discord.Embed]):
@@ -98,31 +158,23 @@ class WarSimCog(commands.Cog):
         self.loot_cog = None
 
     async def _get_nation(self, identifier: str) -> Optional[dict]:
+        """Fetch nation data from GlobalNations.db."""
         if not identifier: return None
-        if identifier.isdigit(): return await self.api.get_nation_by_id(identifier)
-        
-        nation = await self.api.get_nation_by_name(identifier)
-        if nation: return nation
-        return await self.api.get_nation_by_leader(identifier)
+        return get_nation_from_db(identifier)
 
     @app_commands.command(name="war", description="Simulates a full war between two nations.")
     @app_commands.describe(
         attacker="Your nation name, leader, or ID",
         defender="The target nation name, leader, or ID",
-        war_type="The type of war to simulate",
-        include_spy_op="Whether to include a spy report for more accurate loot calculation"
+        war_type="The type of war to simulate"
     )
     @app_commands.choices(war_type=[
         app_commands.Choice(name="Ordinary", value="ordinary"),
         app_commands.Choice(name="Attrition", value="attrition"),
         app_commands.Choice(name="Raid", value="raid"),
     ])
-    async def war(self, interaction: discord.Interaction, attacker: str, defender: str, war_type: app_commands.Choice[str], include_spy_op: bool):
-        if include_spy_op:
-            modal = SpyOpModal(self, attacker, defender, war_type.value)
-            await interaction.response.send_modal(modal)
-            return
-
+    @app_commands.autocomplete(attacker=nation_autocomplete, defender=nation_autocomplete)
+    async def war(self, interaction: discord.Interaction, attacker: str, defender: str, war_type: app_commands.Choice[str]):
         await interaction.response.defer(thinking=True, ephemeral=False)
 
         try:
@@ -133,7 +185,7 @@ class WarSimCog(commands.Cog):
             )
 
             if not your_nation_data or not target_nation_data:
-                await interaction.followup.send("Could not find one or both nations. Please check the names/IDs.", ephemeral=False)
+                await interaction.followup.send("Could not find one or both nations in the database. Please check the names/IDs.", ephemeral=False)
                 return
 
             market_prices = {price['resource'].lower(): float(price['best_sell_offer']['price']) 
@@ -144,60 +196,12 @@ class WarSimCog(commands.Cog):
             await interaction.followup.send("An error occurred while fetching nation data. Please try again.", ephemeral=False)
             return
         
-        your_nation = self._structure_nation_data(your_nation_data)
-        target_nation = self._structure_nation_data(target_nation_data)
+        # Nation data from DB is already structured correctly
+        await self._run_and_present_simulation(interaction, your_nation_data, target_nation_data, market_prices, war_type.value)
 
-        await self._run_and_present_simulation(interaction, your_nation, target_nation, market_prices, war_type.value)
-
-    def _extract_intelligence_data(self, content: str) -> Optional[Dict[str, float]]:
-        """Extract intelligence data using the Loot cog's implementation."""
-        # Get Loot cog reference on-demand if not already cached
-        if self.loot_cog is None:
-            self.loot_cog = self.bot.get_cog('Loot')
-            if self.loot_cog:
-                self.logger.info("Loot cog found and cached for intelligence extraction")
-        
-        if not self.loot_cog:
-            self.logger.warning("Loot cog not available, falling back to basic extraction")
-            return self._basic_extract_intelligence_data(content)
-        
+    async def _run_and_present_simulation(self, interaction: discord.Interaction, attacker: dict, defender: dict, market_prices: dict, war_type: str):
         try:
-            # Use the Loot cog's extraction method
-            return self.loot_cog._extract_intelligence_data(content)
-        except Exception as e:
-            self.logger.error(f"Error using Loot cog extraction: {e}, falling back to basic")
-            return self._basic_extract_intelligence_data(content)
-    
-    def _basic_extract_intelligence_data(self, content: str) -> Optional[Dict[str, float]]:
-        """Basic fallback implementation for intelligence data extraction."""
-        try:
-            intel_data = {}
-            content_lower = content.lower()
-            # Manually find and parse money
-            money_match = re.search(r'has\s\$([0-9,]+(?:\.[0-9]{2})?)', content_lower)
-            if money_match:
-                intel_data['money'] = float(money_match.group(1).replace(',', ''))
-
-            # Manually find and parse resources
-            for res in ['food', 'coal', 'oil', 'uranium', 'lead', 'iron', 'bauxite', 'gasoline', 'munitions', 'steel', 'aluminum']:
-                match = re.search(r'([\d,]+\.?\d*)\s+' + re.escape(res) + r'\b', content_lower)
-                if match:
-                    intel_data[res] = float(match.group(1).replace(',', ''))
-            return intel_data if intel_data else None
-        except Exception as e:
-            self.logger.error(f"Error extracting intelligence data: {e}", exc_info=True)
-            return None
-    
-    def _structure_nation_data(self, nation_data: dict) -> dict:
-        if not nation_data: return {}
-        cities_data = {city.get('name', 'Unknown'): city for city in nation_data.get('cities', [])}
-        nation_data['cities'] = cities_data
-        nation_data['infrastructure'] = sum(c.get('infrastructure', 0) for c in cities_data.values())
-        return nation_data
-
-    async def _run_and_present_simulation(self, interaction: discord.Interaction, attacker: dict, defender: dict, market_prices: dict, war_type: str, spy_data: Optional[dict] = None):
-        try:
-            simulation = self.war_brain.simulate_full_war(attacker, defender, market_prices, war_type, spy_data)
+            simulation = self.war_brain.simulate_full_war(attacker, defender, market_prices, war_type)
         except Exception as e:
             self.logger.error(f"Error during full war simulation: {e}", exc_info=True)
             await interaction.followup.send(f"An unexpected error occurred during simulation: {e}", ephemeral=False)
@@ -252,6 +256,16 @@ class WarSimCog(commands.Cog):
             total_infra_cost = sum(turn.infra_damage_cost for turn in sim.turn_results)
             embed.add_field(name="Total Infra Destroyed", value=f"{sim.total_infra_destroyed:,.0f} (${total_infra_cost:,.0f})", inline=True)
 
+        # Add total consumption to summary
+        if sim.total_consumption:
+            cons_str_parts = []
+            for k, v in sim.total_consumption.items():
+                if v > 0:
+                    emoji = resource_emoji(k) or ''
+                    cons_str_parts.append(f"{emoji} {v:.2f} {k.title()}")
+            if cons_str_parts:
+                embed.add_field(name="Total Consumption", value='\n'.join(cons_str_parts), inline=True)
+        
         if sim.winner == 'attacker':
             if sim.total_consumption:
                 cons_str_parts = []
@@ -291,14 +305,24 @@ class WarSimCog(commands.Cog):
 
     def _create_turn_embeds(self, sim: WarSimulation) -> List[discord.Embed]:
         embeds = []
+        attacker_turns_active = []
+        defender_turns_active = []
+        
         for i, turn in enumerate(sim.turn_results):
+            # Track which turns each side was active
+            if turn.attacker_side == 'attacker' and turn.attack_type != 'pass':
+                attacker_turns_active.append(turn.turn)
+            elif turn.attacker_side == 'defender' and turn.attack_type != 'pass':
+                defender_turns_active.append(turn.turn)
+            
             # Get nation names safely, handling both 'name' and 'nation_name' keys
             attacker_name = sim.attacker_nation.get('name') or sim.attacker_nation.get('nation_name', 'Unknown')
             defender_name = sim.defender_nation.get('name') or sim.defender_nation.get('nation_name', 'Unknown')
             actor_name = attacker_name if turn.attacker_side == 'attacker' else defender_name
-            embed = discord.Embed(title=f"Turn {turn.turn}: {actor_name} attacks!", color=discord.Color.dark_grey())
             
-            embed.add_field(name="Attack Type", value=turn.attack_type.title(), inline=True)
+            embed = discord.Embed(title=f"Turn {turn.turn}: {actor_name} attacks!" if turn.attack_type != 'pass' else f"Turn {turn.turn}: {actor_name} does nothing", color=discord.Color.dark_grey())
+            
+            embed.add_field(name="Attack Type", value=turn.attack_type.title() if turn.attack_type != 'pass' else 'None', inline=True)
             embed.add_field(name="Attacker Resistance", value=f"`{turn.attacker_resistance:.2f}`", inline=True)
             embed.add_field(name="Defender Resistance", value=f"`{turn.defender_resistance:.2f}`", inline=True)
             embed.add_field(name="Attacker MAPs", value=f"`{turn.attacker_maps}`", inline=True)
@@ -307,9 +331,18 @@ class WarSimCog(commands.Cog):
             if turn.infra_damage > 0:
                 embed.add_field(name="Infra Damage", value=f"{turn.infra_damage:,.0f} (${turn.infra_damage_cost:,.0f})", inline=True)
 
-            if turn.consumption:
-                cons_str = "\n".join([f"{resource_emoji(k)} {int(v):,} {k.title()}" for k, v in turn.consumption.items() if v > 0])
-                if cons_str: embed.add_field(name="Consumption", value=cons_str, inline=True)
+            # Always show consumption, even if zero
+            consumption_fields = []
+            for resource in ['munitions', 'gasoline']:
+                amount = turn.consumption.get(resource, 0)
+                if amount > 0:
+                    emoji = resource_emoji(resource) or ''
+                    consumption_fields.append(f"{emoji} {amount:.2f} {resource.title()}")
+            
+            if consumption_fields:
+                embed.add_field(name="Consumption Used", value='\n'.join(consumption_fields), inline=True)
+            else:
+                embed.add_field(name="Consumption Used", value="None", inline=True)
             
             if turn.attacker_casualties:
                 cas_str = "\n".join([f"{self._get_unit_emoji(k)} {int(v):,} {k.title()}" for k, v in turn.attacker_casualties.items() if v > 0])
@@ -335,8 +368,20 @@ class WarSimCog(commands.Cog):
                 f"Defender: GC: {mention(turn.defender_ground_control)}, AS: {mention(turn.defender_air_superiority)}, Blockade: {mention(turn.defender_blockade)}"
             )
             embed.add_field(name="War Statuses", value=status_text, inline=False)
-            embed.set_footer(text=f"Page {i + 2} of {len(sim.turn_results) + 1} | Turn {turn.turn}")
+            
+            # Add inactive turns information
+            inactive_turns = []
+            if turn.turn not in attacker_turns_active:
+                inactive_turns.append(f"{attacker_name} was inactive")
+            if turn.turn not in defender_turns_active:
+                inactive_turns.append(f"{defender_name} was inactive")
+            
+            if inactive_turns:
+                embed.add_field(name="Inactive Nations", value="\n".join(inactive_turns), inline=False)
+            
+            embed.set_footer(text=f"Page {i + 2} of {len(sim.turn_results) + 1} | Turn {turn.turn} of {sim.total_turns}")
             embeds.append(embed)
+            
         return embeds
 
 async def setup(bot):

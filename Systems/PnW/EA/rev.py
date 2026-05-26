@@ -21,7 +21,7 @@ from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
-NIGHTS_WATCH_ALLIANCE_ID = 14225
+NIGHTS_WATCH_ALLIANCE_ID = 10259
 
 def _get_global_nations_db():
     """Lazy-import GlobalNationsDB so harvester module isn't required at Reaper startup."""
@@ -71,7 +71,7 @@ class RevenueCommand(commands.Cog):
         """
         Look up a nation from GlobalNations.db by name or ID.
         GlobalNations.db is the single source of truth — it contains all nations
-        including Nights Watch members.
+        including Darkstar members.
         """
         try:
             from PnWHarvester.db.global_nations_db import GlobalNationsDB
@@ -109,8 +109,8 @@ class RevenueCommand(commands.Cog):
         """Autocomplete for alliance names — pulls from GlobalNations.db, emojis from alliance emoji store."""
         choices = []
 
-        # Always include Nights Watch first if it matches
-        ep_label = "Nights Watch"
+        # Always include Darkstar first if it matches
+        ep_label = "Darkstar"
         if not current or current.lower() in ep_label.lower():
             nw_emoji = get_alliance_emoji(ep_label)
             choices.append(app_commands.Choice(name=f"{nw_emoji} {ep_label}", value=ep_label))
@@ -241,13 +241,13 @@ class RevenueCommand(commands.Cog):
             clean_query = strip_emoji_prefix(alliance_query)
 
             # Check if this is NW
-            if clean_query.lower() in ["nights watch", "nightswatch", "nw"]:
-                await loading_msg.edit(content="🌙 Using Nights Watch database...")
+            if clean_query.lower() in ["darkstar", "ds"]:
+                await loading_msg.edit(content="⭐ Using Darkstar database...")
 
                 # Get all NW nations from GlobalNations.db
                 nations = await self._get_nights_watch_nations()
                 if not nations:
-                    await loading_msg.edit(content="❌ No Nights Watch nations found in database.")
+                    await loading_msg.edit(content="❌ No Darkstar nations found in database.")
                     return
 
                 # Attach cities (get_nations_by_alliance doesn't include cities)
@@ -264,7 +264,7 @@ class RevenueCommand(commands.Cog):
                 # Create fake alliance data for IRS
                 alliance_data = {
                     'id': NIGHTS_WATCH_ALLIANCE_ID,
-                    'name': "Nights Watch",
+                    'name': "Darkstar",
                     'flag': None
                 }
                 

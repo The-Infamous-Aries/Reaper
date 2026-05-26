@@ -674,7 +674,7 @@ class AllianceCalculator:
                 'alliance_name': (
                     (nation.get('alliance') or {}).get('name')
                     or self._safe_get(nation, 'alliance_name', None)
-                    or ('Nights Watch' if str(self._safe_get(nation, 'alliance_id', '') or '') == '14225' else None)
+                    or ('Darkstar' if str(self._safe_get(nation, 'alliance_id', '') or '') == '10259' else None)
                 ),
                 'alliance_position': self._safe_get(nation, 'alliance_position', 'Unknown').title(),
                 'flag_url': self._safe_get(nation, 'flag'),

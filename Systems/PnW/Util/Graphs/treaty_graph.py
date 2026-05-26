@@ -441,6 +441,7 @@ class TreatyGraph:
         all_node_ids = {center_id} | layer1 | layer2
 
         # Build adjacency from treaties (only between nodes we're showing)
+        # Skip edges that connect to the center alliance
         edges: Dict[tuple, Dict] = {}  # (a, b) -> {type, color, width}
         for t in treaties:
             tt = t.get('treaty_type')
@@ -452,6 +453,9 @@ class TreatyGraph:
                 continue
             a1, a2 = int(a1), int(a2)
             if a1 not in all_node_ids or a2 not in all_node_ids:
+                continue
+            # Skip edges involving the center alliance
+            if a1 == center_id or a2 == center_id:
                 continue
             key = (min(a1, a2), max(a1, a2))
             w = TREATY_WIDTHS.get(tt, 1)

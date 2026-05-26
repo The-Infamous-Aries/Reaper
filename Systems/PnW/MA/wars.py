@@ -27,15 +27,15 @@ from Systems.PnW.Util.war_calc import (
 import uuid
 
 # ── NW local DB constants ──────────────────────────────────────────
-NW_ALLIANCE_ID = 14225
-NW_ALLIANCE_NAME = "Nights Watch"
-NIGHTS_WATCH_ALIASES = {"nights watch", "nightswatch", "nw", str(NW_ALLIANCE_ID)}
+NW_ALLIANCE_ID = 10259
+NW_ALLIANCE_NAME = "Darkstar"
+NIGHTS_WATCH_ALIASES = {"darkstar", "ds", str(NW_ALLIANCE_ID)}
 
 
 def _is_nights_watch_alliance(identifier: Union[int, str]) -> bool:
-    """Return True if the identifier refers to the Nights Watch alliance."""
+    """Return True if the identifier refers to the Darkstar alliance."""
     s = str(identifier).strip().lower()
-    # Strip leading emoji + space (e.g. '🌙 ' prepended by autocomplete)
+    # Strip leading emoji + space (e.g. '⭐ ' prepended by autocomplete)
     if ' ' in s:
         parts = s.split(' ', 1)
         if len(parts[0]) <= 2:  # emoji is 1-2 chars
@@ -76,7 +76,7 @@ class Wars(commands.Cog):
         identifiers = []
         for item in identifiers_str.split(','):
             item = item.strip()
-            # Strip leading emoji + space added by autocomplete (e.g. '🌙 Flim Flam Fugazies')
+            # Strip leading emoji + space added by autocomplete (e.g. '⭐ Flim Flam Fugazies')
             if ' ' in item and not item.isdigit():
                 parts = item.split(' ', 1)
                 if len(parts[0]) <= 2:  # emoji is 1-2 chars
@@ -505,7 +505,7 @@ class Wars(commands.Cog):
                     return
             else:
                 # Alliance type but not NW — not in our DB
-                await interaction.followup.send("❌ Only Nights Watch alliance data is available. Please use Nights Watch or a Nights Watch member nation.")
+                await interaction.followup.send("❌ Only Darkstar alliance data is available. Please use Darkstar or a Darkstar member nation.")
                 return
 
             if nw_wars_from_db is None:
