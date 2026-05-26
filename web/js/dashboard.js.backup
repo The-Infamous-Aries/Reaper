@@ -53,9 +53,6 @@ function initializeSidebar() {
     const overlay       = document.getElementById('sidebar-overlay');
     if (!sidebar) return;
 
-    // Only initialize mobile sidebar (hidden on desktop via d-md-none)
-    if (!isMobile()) return;
-
     // Mobile open/close toggle
     toggleBtn?.addEventListener('click', () => {
         sidebar.classList.contains('mobile-open') ? closeMobileSidebar() : openMobileSidebar();
@@ -387,13 +384,6 @@ function updateUserDisplay(user) {
     // Update display name
     const displayName = user.global_name || user.username || 'Unknown User';
     document.getElementById('uc-username').textContent = displayName;
-    
-    // Also update nav user name
-    const navUserName = document.getElementById('nav-user-name');
-    if (navUserName) {
-        navUserName.textContent = displayName;
-    }
-    
     console.log(`Display name updated to: ${displayName}`);
     
     // Update avatar with cache busting
@@ -408,17 +398,6 @@ function updateUserDisplay(user) {
         avatarElement.onerror = null; 
         avatarElement.src = 'https://cdn.discordapp.com/embed/avatars/0.png'; 
     };
-    
-    // Also update nav avatar in top menu
-    const navAvatarElement = document.getElementById('nav-avatar');
-    if (navAvatarElement) {
-        navAvatarElement.onerror = null;
-        navAvatarElement.src = avatarUrl;
-        navAvatarElement.onerror = () => {
-            navAvatarElement.onerror = null;
-            navAvatarElement.src = 'https://cdn.discordapp.com/embed/avatars/0.png';
-        };
-    }
     
     // Calculate Discord account age from snowflake ID
     const sinceEl = document.getElementById('uc-since');
@@ -460,17 +439,11 @@ async function loadUserPet() {
         const res = await fetch('/api/user/pet');
         if (!res.ok) {
             document.getElementById('uc-pet-section').style.display = 'none';
-            // Hide nav pet info
-            const navPetInfo = document.getElementById('nav-pet-info');
-            if (navPetInfo) navPetInfo.style.display = 'none';
             return;
         }
         const data = await res.json();
         if (!data.has_pet) {
             document.getElementById('uc-pet-section').style.display = 'none';
-            // Hide nav pet info
-            const navPetInfo = document.getElementById('nav-pet-info');
-            if (navPetInfo) navPetInfo.style.display = 'none';
             return;
         }
         
@@ -483,16 +456,6 @@ async function loadUserPet() {
         
         // Pet name
         document.getElementById('uc-pet-name').textContent = data.name || species;
-        
-        // Update nav pet info
-        const navPetInfo = document.getElementById('nav-pet-info');
-        const navPetImg = document.getElementById('nav-pet-img');
-        const navPetName = document.getElementById('nav-pet-name');
-        if (navPetInfo && navPetImg && navPetName) {
-            navPetInfo.style.display = 'flex';
-            navPetImg.src = `/static/Emojis/Pets/${species}.png`;
-            navPetName.textContent = data.name || species;
-        }
         
         // Type + element emojis
         const cap = s => s ? s.charAt(0).toUpperCase() + s.slice(1) : '';
@@ -977,33 +940,12 @@ function showLinkedNation(nation) {
     }
     else flag.style.display = 'none';
     loadNationRanks(nation.nation_name || '');
-    
-    // Also update nav nation info
-    const navNationInfo = document.getElementById('nav-nation-info');
-    const navNationFlag = document.getElementById('nav-nation-flag');
-    const navNationName = document.getElementById('nav-nation-name');
-    if (navNationInfo && navNationFlag && navNationName) {
-        navNationInfo.style.display = 'flex';
-        navNationName.textContent = nation.nation_name || `Nation #${nation.nation_id}`;
-        if (nation.flag) {
-            navNationFlag.src = window.ImageUtils ? window.ImageUtils.proxyImageUrl(nation.flag) : nation.flag;
-            navNationFlag.style.display = 'inline-block';
-        } else {
-            navNationFlag.style.display = 'none';
-        }
-    }
 }
 
 function showNationInput() {
     document.getElementById('uc-nation-linked').style.display = 'none';
     document.getElementById('uc-nation-input').style.display = 'block';
     document.getElementById('nation-link-error').style.display = 'none';
-    
-    // Hide nav nation info
-    const navNationInfo = document.getElementById('nav-nation-info');
-    if (navNationInfo) {
-        navNationInfo.style.display = 'none';
-    }
 }
 
 function setNationLinkError(msg) {

@@ -24,7 +24,7 @@
    STAGE 1 — Config, state, utilities
    --------------------------------------------------------------------------- */
 
-const NW_ALLIANCE_ID = 14225;
+const NW_ALLIANCE_ID = 10259;
 const FEED_PAGE_SIZE = 50;
 const AUTO_REFRESH_MS = 60_000;
 
@@ -228,6 +228,7 @@ const EVENT_META = {
   bank_deposit:      { img: E.calculator,  label: 'Deposit'       },
   bank_withdrawal:   { img: E.loot,        label: 'Withdrawal'    },
   bank_transfer:     { img: E.calculator,  label: 'Transfer'      },
+  trade_completed:   { img: E.calculator,  label: 'Trade'         },
 };
 
 function eventMeta(type) {
@@ -665,7 +666,7 @@ function renderEventItem(ev, nameMap) {
   // -- Value display ------------------------------------------------------
   let valueHtml = '';
   const rawVal = Number(ev.value) || 0;
-  const moneyTypes = new Set(['city_purchase','project_purchase','city_upgrade','military_purchase','loot_attack','bank_deposit','bank_withdrawal','bank_transfer']);
+  const moneyTypes = new Set(['city_purchase','project_purchase','city_upgrade','military_purchase','loot_attack','bank_deposit','bank_withdrawal','bank_transfer','trade_completed']);
   const noValueTypes = new Set(['war_ended', 'war_declared']);
   if (ev.event_type === 'wmd_attack') {
     // Show total destruction (infra + improvements cash + improvements resources)
@@ -685,7 +686,10 @@ function renderEventItem(ev, nameMap) {
     'resources',  // legacy bank field — now stored as resource_costs
     'improvements_built', 'improvements_destroyed', 'missed', 'detail',
     // WMD fields rendered in the custom damage breakdown panel instead
-    'infra_destroyed_value', 'improvements_cash_cost', 'resource_value', 'total_destruction_value',
+    'infra_destroyed_value', 'improvements_cash_cost', 'impr_resource_value', 'total_destruction_value',
+    // Trade fields rendered in custom breakdown
+    'buyer_id', 'buyer_name', 'buyer_alliance_id', 'buyer_alliance_name',
+    'seller_id', 'seller_name', 'seller_alliance_id', 'seller_alliance_name',
   ]);
 
   // Human-readable labels for detail keys
@@ -710,7 +714,7 @@ function renderEventItem(ev, nameMap) {
     'total_loot_value':    'Total Loot Value',
     'infra_destroyed_value':   'Infra Destroyed',
     'improvements_cash_cost':  'Impr Cost (Cash)',
-    'resource_value':          'Impr Cost (Resources)',
+    'impr_resource_value':     'Impr Cost (Resources)',
     'total_destruction_value': 'Total Destruction',
     'resistance_lost':     'Resistance Lost',
     'attack_type':         'Weapon Type',
@@ -724,8 +728,6 @@ function renderEventItem(ev, nameMap) {
     'receiver_type':       'Receiver Type',
     'banker_id':           'Banker ID',
     'money':               'Cash',
-    'resource_value':      'Resource Value',
-    'total_value':         'Total Value',
     'note':                'Note',
   };
 
@@ -892,6 +894,43 @@ function renderEventItem(ev, nameMap) {
       </div>`).join('');
   }
 
+  // -- Trade resources breakdown -------------------------------------------
+  let tradeResourceItems = '';
+  if (ev.event_type === 'trade_completed' && detail.resources_traded && typeof detail.resources_traded === 'object') {
+    const tradeRows = [];
+    for (const res of RESOURCE_ORDER) {
+      if (res === 'money') continue;
+      const amt = Number((detail.resources_traded)[res] || 0);
+      if (amt < 0.01) continue;
+      const imgTag = resEmoji(res);
+      const price = _resourcePrices[res] || RESOURCE_PRICE_FALLBACK[res] || 0;
+      const value = amt * price;
+      tradeRows.push('<div class="news-resource-row">'
+        + '<span class="news-resource-emoji">' + imgTag + '</span>'
+        + '<span class="news-resource-name">' + esc(res.charAt(0).toUpperCase() + res.slice(1)) + '</span>'
+        + '<span class="news-resource-amt">' + fmtResAmt(amt) + '</span>'
+        + (price > 0
+          ? '<span class="news-resource-price">@ ' + fmtResPrice(price) + '/unit</span>'
+            + '<span class="news-resource-value">= ' + fmtMoney(value) + '</span>'
+          : '<span class="news-resource-price"></span><span class="news-resource-value"></span>')
+        + '</div>');
+    }
+
+    if (tradeRows.length > 0) {
+      var priceNote = _resourcePricesTimestamp
+        ? '<span class="news-price-note">Prices as of ' + fmtDate(_resourcePricesTimestamp) + ' (best sell)</span>'
+        : '<span class="news-price-note">Prices: current best sell</span>';
+      tradeResourceItems = '<div class="news-resource-section">'
+        + '<div class="news-resource-section-title"><img src="/static/Emojis/Watcher/improvement.png" alt="" class="news-res-img"> Resources Traded</div>'
+        + '<div class="news-resource-grid">'
+        + '<div class="news-resource-grid-header"><span></span><span>Resource</span><span>Amount</span><span>Sell Price</span><span>Value</span></div>'
+        + tradeRows.join('')
+        + '</div>'
+        + priceNote
+        + '</div>';
+    }
+  }
+
   // -- Alliance meta row --------------------------------------------------
   // Use stored alliance_name from the event (reflects alliance at time of event),
   // falling back to live nameMap only when the stored name is missing/blank.
@@ -919,7 +958,7 @@ function renderEventItem(ev, nameMap) {
     ? `<span class="news-missed-badge">💨 MISSED</span>`
     : '';
 
-  const hasExpandContent = !!(detailItems || resourceCostItems || improvementsItems || projectListItems)
+  const hasExpandContent = !!(detailItems || resourceCostItems || improvementsItems || projectListItems || tradeResourceItems)
     || (ev.event_type === 'wmd_attack' && !detail.missed);
 
   // Build the expand panel with a two-column layout:
@@ -997,8 +1036,8 @@ function renderEventItem(ev, nameMap) {
     const leftHtml  = leftItems
       ? `<div class="news-expand-left"><div class="news-detail-grid">${leftItems}</div></div>`
       : '';
-    const rightHtml = resourceCostItems
-      ? `<div class="news-expand-right">${resourceCostItems}</div>`
+    const rightHtml = resourceCostItems || tradeResourceItems
+      ? `<div class="news-expand-right">${resourceCostItems || tradeResourceItems}</div>`
       : '';
     expandHtml = `<div class="news-event-detail"><div class="news-expand-layout">${leftHtml}${rightHtml}</div></div>`;
   }
@@ -1973,15 +2012,15 @@ function initNewsPage() {
   // Initial data load
   loadCurrentView();
 
-  // Start auto-refresh
-  startAutoRefresh();
+  // Auto-refresh disabled - users must manually refresh to see new events
+  // startAutoRefresh();
 
   // Stop refresh when page is hidden (tab switch), resume when visible
-  _visibilityHandler = () => {
-    if (document.hidden) stopAutoRefresh();
-    else startAutoRefresh();
-  };
-  document.addEventListener('visibilitychange', _visibilityHandler);
+  // _visibilityHandler = () => {
+  //   if (document.hidden) stopAutoRefresh();
+  //   else startAutoRefresh();
+  // };
+  // document.addEventListener('visibilitychange', _visibilityHandler);
 }
 
 /* -- Bootstrap -------------------------------------------------------------- */

@@ -18,7 +18,8 @@
             '/css/bootstrap.min.css',
             '/css/main.css',
             '/css/fonts.css',
-            '/css/dashboard.css'
+            '/css/dashboard.css',
+            '/css/mega-menu.css'
         ];
         
         cssFiles.forEach(cssFile => {
@@ -58,6 +59,182 @@
 </head>
 <body>
 
+<!-- Top Navigation Bar (Desktop) -->
+<nav class="top-nav d-none d-md-flex">
+    <a href="#" class="nav-brand" data-page="homepage">
+        <img src="/static/Images/reaper.png" alt="Reaper" class="nav-logo">
+        <span class="nav-title">Reaper</span>
+    </a>
+    
+    <div class="nav-menu">
+        <div class="nav-item dropdown">
+            <button class="nav-link dropdown-toggle" data-dropdown="pnw">
+                <img src="/static/Emojis/Menu/pnw.png" alt="PnW">
+                Politics & War
+                <i class="fas fa-chevron-down"></i>
+            </button>
+            <div class="mega-menu" id="pnw-dropdown">
+                <div class="mega-menu-grid">
+                    <a class="mega-menu-item" href="#" data-page="game_info">
+                        <img src="/static/Emojis/Menu/game_info.png" alt="Game Info">
+                        <span>Game Info</span>
+                    </a>
+                    <a class="mega-menu-item" href="#" data-page="news" data-css="/css/news.css">
+                        <img src="/static/Emojis/Menu/news.png" alt="News">
+                        <span>Scythe News</span>
+                    </a>
+                    <a class="mega-menu-item" href="#" data-page="nations">
+                        <img src="/static/Emojis/Menu/darkstar.png" alt="Nations">
+                        <span>The Void</span>
+                    </a>
+                    <a class="mega-menu-item" href="#" data-page="watch" data-css="/css/watch.css">
+                        <img src="/static/Emojis/Menu/wars.png" alt="War Stats">
+                        <span>War Stats</span>
+                    </a>
+                    <a class="mega-menu-item" href="#" data-page="leaderboard" data-css="/css/leaderboard.css">
+                        <img src="/static/Emojis/Menu/leaderboard.png" alt="Leaderboards">
+                        <span>Leaderboards</span>
+                    </a>
+                    <a class="mega-menu-item" href="#" data-page="raids" data-css="/css/raids.css">
+                        <img src="/static/Emojis/Menu/pirate.png" alt="Raids">
+                        <span>Raid Finder</span>
+                    </a>
+                    <a class="mega-menu-item" href="#" data-page="cost_calc">
+                        <img src="/static/Emojis/Menu/calculator.png" alt="Calculators">
+                        <span>Calculators</span>
+                    </a>
+                    <a class="mega-menu-item" href="#" data-page="comparison">
+                        <img src="/static/Emojis/Menu/comparison.png" alt="Comparison">
+                        <span>Comparison</span>
+                    </a>
+                    <a class="mega-menu-item" href="#" data-page="weapons" data-css="/css/weapons.css">
+                        <img src="/static/Emojis/Menu/snipe.png" alt="Weapons">
+                        <span>Weapon Eff</span>
+                    </a>
+                    <a class="mega-menu-item" href="#" data-page="rev_optimizer" data-css="/css/rev_optimizer.css" data-script="/js/rev_optimizer.js">
+                        <img src="/static/Emojis/Menu/revenue.png" alt="Rev Optimizer">
+                        <span>Rev Optimizer</span>
+                    </a>
+                    <a class="mega-menu-item" href="#" data-page="library">
+                        <img src="/static/Emojis/Menu/script.png" alt="Scriptorium">
+                        <span>Scriptorium</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="nav-item dropdown">
+            <button class="nav-link dropdown-toggle" data-dropdown="pets">
+                <img src="/static/Emojis/Menu/pet.png" alt="Pets">
+                Pets
+                <i class="fas fa-chevron-down"></i>
+            </button>
+            <div class="mega-menu" id="pets-dropdown">
+                <div class="mega-menu-grid">
+                    <a class="mega-menu-item" href="#" data-page="mypet" data-css="/css/mypet.css" data-script="/js/mypet.js">
+                        <img src="/static/Emojis/Menu/pets.png" alt="My Pet">
+                        <span>My Pet</span>
+                    </a>
+                    <a class="mega-menu-item" href="#" data-page="tasks" data-css="/css/tasks.css">
+                        <img src="/static/Emojis/Menu/tasks.png" alt="Tasks">
+                        <span>Tasks</span>
+                    </a>
+                    <a class="mega-menu-item" href="#" data-page="petconnector" data-css="/css/petconnector.css" data-script="/js/petconnector.js">
+                        <img src="/static/Emojis/Menu/world.png" alt="Pet Connector">
+                        <span>Pet Connector</span>
+                    </a>
+                    <a class="mega-menu-item" href="#" data-page="bazaar" data-css="/css/bazaar.css" data-script="/js/bazaar.js">
+                        <img src="/static/Emojis/Menu/bazaar.png" alt="Bazaar">
+                        <span>Item Board</span>
+                    </a>
+                    <a class="mega-menu-item" href="#" data-page="arena" data-css="/css/arena.css /css/casino_lobby.css" data-script="/js/arena.js">
+                        <img src="/static/Emojis/Menu/arena.png" alt="Arena">
+                        <span>Arena</span>
+                    </a>
+                    <a class="mega-menu-item" href="#" data-page="survive" data-css="/css/survive.css?v=20260425-fix" data-script="/js/survive.js">
+                        <img src="/static/Emojis/Menu/survive.png" alt="Survive">
+                        <span>Survive</span>
+                    </a>
+                    <a class="mega-menu-item" href="#" data-page="dungeon" data-css="/css/dungeon.css">
+                        <img src="/static/Emojis/Menu/crawl.png" alt="Dungeon">
+                        <span>Dungeon Crawler</span>
+                    </a>
+                    <a class="mega-menu-item" href="#" data-page="pet_stock" data-css="/css/pet_stock.css" data-script="/js/pet_stock.js">
+                        <img src="/static/Emojis/Menu/pet_stock.png" alt="Pet Stocks">
+                        <span>Pet Stocks</span>
+                    </a>
+                    <a class="mega-menu-item" href="#" data-page="casino" data-css="/css/casino.css">
+                        <img src="/static/Emojis/Menu/casino.png" alt="Casino">
+                        <span>Casino</span>
+                    </a>
+                    <a class="mega-menu-item" href="#" data-page="what_are_pets" data-css="/css/what_are_pets.css" data-script="/js/what_are_pets.js">
+                        <img src="/static/Emojis/Menu/what_pets.png" alt="Breakdown">
+                        <span>Breakdown</span>
+                    </a>
+                    <a class="mega-menu-item" href="#" data-page="pets">
+                        <img src="/static/Emojis/Menu/pets.png" alt="Types & Items">
+                        <span>Types & Items</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="nav-item dropdown">
+            <button class="nav-link dropdown-toggle" data-dropdown="tools">
+                <img src="/static/Emojis/Menu/script.png" alt="Tools">
+                Tools
+                <i class="fas fa-chevron-down"></i>
+            </button>
+            <div class="mega-menu" id="tools-dropdown">
+                <div class="mega-menu-grid">
+                    <a class="mega-menu-item" href="#" data-page="commands" data-css="/css/commands.css?v=20250327">
+                        <img src="/static/Emojis/Menu/discord.png" alt="Commands">
+                        <span>Commands</span>
+                    </a>
+                    <a class="mega-menu-item" href="#" data-page="contact">
+                        <img src="/static/Emojis/Menu/contact.png" alt="Contact">
+                        <span>Contact</span>
+                    </a>
+                    <a class="mega-menu-item" href="#" data-page="astrology">
+                        <img src="/static/Emojis/Menu/astrology.png" alt="Astrology">
+                        <span>Astrology</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="nav-user-info">
+        <div class="nav-user-avatar">
+            <img id="nav-avatar" src="" alt="User" class="nav-avatar">
+        </div>
+        <div class="nav-user-details">
+            <div class="nav-user-name" id="nav-user-name">—</div>
+            <div class="nav-user-actions">
+                <button class="nav-refresh-btn" id="nav-refresh-btn" title="Refresh profile" onclick="window.refreshUserProfile()">↻</button>
+                <a class="nav-logout-btn" href="/api/discord/logout" title="Sign out">
+                    <i class="fas fa-sign-out-alt"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="nav-nation-info" id="nav-nation-info" style="display:none">
+        <img id="nav-nation-flag" class="nav-nation-flag" src="" alt="">
+        <span id="nav-nation-name" class="nav-nation-name"></span>
+    </div>
+    
+    <div class="nav-pet-info" id="nav-pet-info" style="display:none">
+        <img id="nav-pet-img" class="nav-pet-img" src="" alt="">
+        <span id="nav-pet-name" class="nav-pet-name"></span>
+    </div>
+    
+    <div class="nav-search">
+        <input type="text" placeholder="Search pages..." id="nav-search">
+        <i class="fas fa-search"></i>
+    </div>
+</nav>
+
 <!-- Mobile top bar -->
 <div class="mobile-topbar d-md-none">
     <div class="topbar-rank-ticker" id="topbar-rank-ticker" style="display:none"></div>
@@ -70,19 +247,19 @@
     <div class="row">
 
         <!-- ── Main content ──────────────────────────────────────────────── -->
-        <main role="main" class="main-content col-12 px-3 px-md-4 order-first">
+        <main role="main" class="main-content col-12 px-3 px-md-4 order-first mega-menu-layout">
             <div class="content-wrapper">
                 <div id="content"></div>
             </div>
         </main>
 
-        <!-- ── Sidebar nav ───────────────────────────────────────────────── -->
-        <nav class="sidebar order-last" id="main-sidebar">
+        <!-- ── Sidebar nav (Mobile Only) ───────────────────────────────────────────────── -->
+        <nav class="sidebar order-last d-md-none" id="main-sidebar">
 
             <div class="sidebar-nav-content">
             <ul class="nav flex-column nav-pills mt-2 px-1">
 
-                <!-- ── User Card ────────────────────────────────────────── -->
+                <!-- ── User Card (Mobile Only) ────────────────────────────────────────── -->
                 <li class="nav-item uc-wrapper" id="uc-wrapper">
 
                     <!-- Signed-out state -->
@@ -212,8 +389,8 @@
                         </li>
                         <li class="nav-item">
                             <a class="nav-link" href="#" data-page="nations">
-                                <img src="/static/Emojis/Menu/crow.png" alt="Nations" style="width:20px;height:20px;margin-right:8px;">
-                                The Watch
+                                <img src="/static/Emojis/Menu/darkstar.png" alt="Nations" style="width:20px;height:20px;margin-right:8px;">
+                                The Void
                             </a>
                         </li>
                         <li class="nav-item">
@@ -436,6 +613,7 @@
     </div>
 </div>
 
+
 <!-- Mobile sidebar overlay -->
 <div class="sidebar-overlay" id="sidebar-overlay"></div>
 
@@ -448,6 +626,7 @@
 <script src="/js/page_loader.js?v=20260418"></script>
 <script src="/js/modal_utils.js"></script>
 <script src="/js/image-utils.js"></script>
+<script src="/js/mega-menu.js"></script>
 <script src="/js/dashboard.js"></script>
 <script>
 /**

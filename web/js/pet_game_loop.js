@@ -124,15 +124,32 @@ var XpBarRenderer = (function () {
     var _oldXp    = 0;
     var _newXp    = 0;
     var _maxXp    = 1;
+    var _oldLevel = 1;
+    var _newLevel = 1;
     var _active   = false;
+    var _levelQueue = []; // Queue of level-up events to process
 
-    function start(oldPct, newPct, oldXp, newXp, maxXp) {
+    function start(oldPct, newPct, oldXp, newXp, maxXp, oldLevel, newLevel) {
         _current = oldPct;
         _target  = newPct;
         _oldXp   = oldXp;
         _newXp   = newXp;
         _maxXp   = maxXp;
+        _oldLevel = oldLevel || 1;
+        _newLevel = newLevel || 1;
         _active  = true;
+        _levelQueue = [];
+
+        // Build level-up queue if crossing multiple levels
+        if (_newLevel > _oldLevel) {
+            for (var i = _oldLevel + 1; i <= _newLevel; i++) {
+                _levelQueue.push(i);
+            }
+        } else if (_newLevel < _oldLevel) {
+            for (var i = _oldLevel - 1; i >= _newLevel; i--) {
+                _levelQueue.push(i);
+            }
+        }
     }
 
     /**
@@ -147,7 +164,20 @@ var XpBarRenderer = (function () {
         // Snap when close enough
         if (Math.abs(_target - _current) < 0.05) {
             _current = _target;
-            _active  = false;
+
+            // If we reached 100% and have more levels to cross, reset to 0 for next level
+            if (_current >= 99.95 && _levelQueue.length > 0) {
+                var nextLevel = _levelQueue.shift();
+                _current = 0;
+                _target = 100; // Fill to 100% for this level
+                _oldLevel = nextLevel - 1;
+                _newLevel = nextLevel;
+                // Update level badge immediately
+                var levelBadge = document.querySelector('.mp-level-badge');
+                if (levelBadge) levelBadge.textContent = 'Lv.' + _newLevel;
+            } else {
+                _active = false;
+            }
         }
 
         _render();
@@ -585,7 +615,7 @@ var PetGameLoop = (function () {
             }
 
             case 'xp_bar': {
-                XpBarRenderer.start(d.old_pct, d.new_pct, d.old_xp, d.new_xp, d.max_xp);
+                XpBarRenderer.start(d.old_pct, d.new_pct, d.old_xp, d.new_xp, d.max_xp, d.old_level, d.new_level);
                 break;
             }
 
@@ -765,8 +795,10 @@ window.PetGPP = {
         var newXp  = parseInt(newPet.experience || 0);
         var oldPct = Math.min(oldXp / maxXp, 1) * 100;
         var newPct = Math.min(newXp / maxXp, 1) * 100;
+        var oldLevel = parseInt(oldPet.level || 1);
+        var newLevel = parseInt(newPet.level || 1);
         PetEventQueue.push({ type: 'xp_bar', duration_ms: 700,
-            data: { old_pct: oldPct, new_pct: newPct, old_xp: oldXp, new_xp: newXp, max_xp: maxXp } });
+            data: { old_pct: oldPct, new_pct: newPct, old_xp: oldXp, new_xp: newXp, max_xp: maxXp, old_level: oldLevel, new_level: newLevel } });
     },
 
     // Push a level-up event from level_change data

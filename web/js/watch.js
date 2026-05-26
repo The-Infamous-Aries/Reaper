@@ -622,7 +622,7 @@ function buildAllianceTotalsBreakdown(t) {
     panel.innerHTML = `
         <div class="wa-panel">
             <div class="wa-header">
-                <span class="wa-title">🌙 Nights Watch — Alliance War Summary</span>
+                <span class="wa-title">⭐ Darkstar — Alliance War Summary</span>
                 <span class="wa-subtitle">${formatDateLabel(watchRangeState.selectedStartDate)} – ${formatDateLabel(watchRangeState.selectedEndDate)}</span>
             </div>
             <div class="wa-grid">
@@ -658,7 +658,7 @@ function buildTotalsRow(totals) {
 
     row.innerHTML = [
         `<td data-key="name" data-sort-value="__totals__" class="watch-totals-label">
-            <span class="watch-totals-badge">🌙 Nights Watch</span>
+            <span class="watch-totals-badge">⭐ Darkstar</span>
             <span class="watch-totals-sub">${nationCount} nation${nationCount !== 1 ? "s" : ""}</span>
         </td>`,
         `<td data-key="cost_metric" data-sort-value="${totals.gross_cost || 0}">${buildCostDisplay(totals.gross_cost, totals.net_damage)}</td>`,
@@ -966,7 +966,7 @@ async function fetchData() {
 
         if (nationIds.length === 0) {
             hideAlliancePanel();
-            setStatus(data.error || (watchViewMode === "nations" ? "No wars were found in the selected date range." : "No Nights Watch wars were found in the selected date range."));
+            setStatus(data.error || (watchViewMode === "nations" ? "No wars were found in the selected date range." : "No Darkstar wars were found in the selected date range."));
             updateSortUI(currentSortKey, currentSortDirection);
             return;
         }
@@ -998,7 +998,7 @@ async function fetchData() {
         }
     } catch (error) {
         console.error("Error fetching war data:", error);
-        setStatus("Nights Watch war data could not be loaded right now.", true);
+        setStatus("Darkstar war data could not be loaded right now.", true);
     }
 }
 

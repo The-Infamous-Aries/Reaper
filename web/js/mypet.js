@@ -289,7 +289,7 @@ function renderPetCard(pet) {
             '<div style="flex:1;min-width:0">'+
             '<div class="fw-bold" style="font-family:Orbitron,sans-serif;color:var(--gold-primary);font-size:0.95rem;text-shadow:0 0 8px var(--gold-glow)">'+(pet.name||sp)+'</div>'+
             '<div class="d-flex align-items-center gap-1 mt-1 flex-wrap">'+
-            '<span class="badge bg-warning text-dark" style="font-size:0.6rem">Lv.'+(pet.level||1)+'</span>'+
+            '<span class="badge bg-warning text-dark mp-level-badge" style="font-size:0.6rem">Lv.'+(pet.level||1)+'</span>'+
             '<img src="'+catImg(cat)+'" style="width:18px;height:18px;object-fit:contain" title="'+cap(cat)+'" onerror="this.style.display=\'none\'">'+
             '<span style="font-size:0.75rem;color:var(--text-secondary)">'+cap(cat)+'</span>'+
             '<span style="color:rgba(255,215,0,0.4);margin:0 2px">|</span>'+
@@ -336,7 +336,7 @@ function renderPetCard(pet) {
         '</div>';
     var xpHtml =
         '<div class="mp-xp-bar-wrap mb-1"><div class="mp-xp-bar" style="width:'+xpPct+'%"></div></div>'+
-        '<div style="font-size:0.68rem;color:var(--text-secondary);text-align:right">'+xpCur.toLocaleString()+' / '+xpMax.toLocaleString()+' XP</div>';
+        '<div class="mp-xp-label" style="font-size:0.68rem;color:var(--text-secondary);text-align:right">'+xpCur.toLocaleString()+' / '+xpMax.toLocaleString()+' XP</div>';
     var body = el('my-pet-body');
     if (body) body.innerHTML = xpHtml + buildEquipped(pet) + '<hr class="mp-divider my-2">' + statsHtml + combatHtml + buildFriendFoeCard();
 }
@@ -384,6 +384,7 @@ function buildInteractions(pet) {
         {id:'inventory', label:'Inventory',   icon:'inventory.png'},
         {id:'reforge',   label:'Reforge',     icon:'forge.png'},
         {id:'market',    label:'Loot Market', icon:'market.png'},
+        {id:'absorb',    label:'Absorb',      icon:'absorb.png'},
         {id:'train',     label:'Train',       icon:'train.png'},
         {id:'mission',   label:'Mission',     icon:'mission.png'},
         {id:'play',      label:'Play',        icon:'play.png'},
@@ -507,6 +508,71 @@ function buildInteractions(pet) {
         '</div>'+
         '<button class="mp-adopt-btn" onclick="window._mpOpenChest()">📦 Open Chest</button>'+
         '<div id="lm-result" class="mt-3"></div>'+
+        '</div>';
+
+    // ── Absorb ───────────────────────────────────────────────────────────────
+    html += '<div id="panel-absorb" style="display:none">'+
+        '<div class="mp-section-title">🔮 Absorb War Stats</div>'+
+        '<div class="mp-battle-card mb-3" style="font-size:0.82rem;color:var(--text-secondary)">'+
+        'Convert your PnW war wins and unit kills into pet XP. Link your Discord account in PnW to unlock this feature.'+
+        '</div>'+
+        '<div id="absorb-status" class="mb-3">'+
+        '<div style="text-align:center;padding:20px;color:var(--text-secondary);font-size:0.82rem">Loading absorb status...</div>'+
+        '</div>'+
+        '<div id="absorb-content" style="display:none">'+
+        '<div class="mp-battle-card mb-3">'+
+        '<div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center">'+
+        '<div style="text-align:center">'+
+        '<img src="/static/Emojis/Military/soldier.png" style="width:48px;height:48px;object-fit:contain" onerror="this.style.display=\'none\'">'+
+        '<div id="absorb-soldiers-count" style="font-size:0.8rem;font-weight:600;color:var(--text-primary)">0</div>'+
+        '<div style="font-size:0.65rem;color:var(--text-secondary)">Soldiers</div>'+
+        '<button class="mp-adopt-btn" id="absorb-soldiers-btn" onclick="window._mpAbsorbUnit(\'soldiers\')" style="font-size:0.7rem;padding:4px 8px;margin-top:4px">Absorb</button>'+
+        '</div>'+
+        '<div style="text-align:center">'+
+        '<img src="/static/Emojis/Military/tank.png" style="width:48px;height:48px;object-fit:contain" onerror="this.style.display=\'none\'">'+
+        '<div id="absorb-tanks-count" style="font-size:0.8rem;font-weight:600;color:var(--text-primary)">0</div>'+
+        '<div style="font-size:0.65rem;color:var(--text-secondary)">Tanks</div>'+
+        '<button class="mp-adopt-btn" id="absorb-tanks-btn" onclick="window._mpAbsorbUnit(\'tanks\')" style="font-size:0.7rem;padding:4px 8px;margin-top:4px">Absorb</button>'+
+        '</div>'+
+        '<div style="text-align:center">'+
+        '<img src="/static/Emojis/Military/jet.png" style="width:48px;height:48px;object-fit:contain" onerror="this.style.display=\'none\'">'+
+        '<div id="absorb-aircraft-count" style="font-size:0.8rem;font-weight:600;color:var(--text-primary)">0</div>'+
+        '<div style="font-size:0.65rem;color:var(--text-secondary)">Aircraft</div>'+
+        '<button class="mp-adopt-btn" id="absorb-aircraft-btn" onclick="window._mpAbsorbUnit(\'aircraft\')" style="font-size:0.7rem;padding:4px 8px;margin-top:4px">Absorb</button>'+
+        '</div>'+
+        '<div style="text-align:center">'+
+        '<img src="/static/Emojis/Military/ship.png" style="width:48px;height:48px;object-fit:contain" onerror="this.style.display=\'none\'">'+
+        '<div id="absorb-ships-count" style="font-size:0.8rem;font-weight:600;color:var(--text-primary)">0</div>'+
+        '<div style="font-size:0.65rem;color:var(--text-secondary)">Ships</div>'+
+        '<button class="mp-adopt-btn" id="absorb-ships-btn" onclick="window._mpAbsorbUnit(\'ships\')" style="font-size:0.7rem;padding:4px 8px;margin-top:4px">Absorb</button>'+
+        '</div>'+
+        '<div style="text-align:center">'+
+        '<img src="/static/Emojis/Military/missile.png" style="width:48px;height:48px;object-fit:contain" onerror="this.style.display=\'none\'">'+
+        '<div id="absorb-missiles-count" style="font-size:0.8rem;font-weight:600;color:var(--text-primary)">0</div>'+
+        '<div style="font-size:0.65rem;color:var(--text-secondary)">Missiles</div>'+
+        '<button class="mp-adopt-btn" id="absorb-missiles-btn" onclick="window._mpAbsorbUnit(\'missiles\')" style="font-size:0.7rem;padding:4px 8px;margin-top:4px">Absorb</button>'+
+        '</div>'+
+        '<div style="text-align:center">'+
+        '<img src="/static/Emojis/Military/bomb.png" style="width:48px;height:48px;object-fit:contain" onerror="this.style.display=\'none\'">'+
+        '<div id="absorb-nukes-count" style="font-size:0.8rem;font-weight:600;color:var(--text-primary)">0</div>'+
+        '<div style="font-size:0.65rem;color:var(--text-secondary)">Nukes</div>'+
+        '<button class="mp-adopt-btn" id="absorb-nukes-btn" onclick="window._mpAbsorbUnit(\'nukes\')" style="font-size:0.7rem;padding:4px 8px;margin-top:4px">Absorb</button>'+
+        '</div>'+
+        '<div style="text-align:center">'+
+        '<img src="/static/Emojis/Military/spy.png" style="width:48px;height:48px;object-fit:contain" onerror="this.style.display=\'none\'">'+
+        '<div id="absorb-spies-count" style="font-size:0.8rem;font-weight:600;color:var(--text-primary)">0</div>'+
+        '<div style="font-size:0.65rem;color:var(--text-secondary)">Spies</div>'+
+        '<button class="mp-adopt-btn" id="absorb-spies-btn" onclick="window._mpAbsorbUnit(\'spies\')" style="font-size:0.7rem;padding:4px 8px;margin-top:4px">Absorb</button>'+
+        '</div>'+
+        '</div>'+
+        '</div>'+
+        '<div class="row g-2 mb-3">'+
+        '<div class="col-md-6">'+
+        '<button class="mp-adopt-btn" id="absorb-wins-btn" onclick="window._mpAbsorbWins()">⚔️ Absorb War Wins (<span id="absorb-wins-count">0</span>)</button>'+
+        '</div>'+
+        '</div>'+
+        '<div id="absorb-result" class="mt-3"></div>'+
+        '</div>'+
         '</div>';
 
     // ── Train ──────────────────────────────────────────────────────────────
@@ -784,7 +850,7 @@ function injectItemImages(text) {
 
 
 window._mpTab = function(tab) {
-    ['breakdown','abilities','inventory','reforge','market','train','mission','play','quest','rename','kill'].forEach(function(t) {
+    ['breakdown','abilities','inventory','reforge','market','absorb','train','mission','play','quest','rename','kill'].forEach(function(t) {
         var btn = el('tab-'+t), panel = el('panel-'+t);
         if (btn)   btn.classList.toggle('active', t===tab);
         if (panel) panel.style.display = t===tab ? '' : 'none';
@@ -795,6 +861,10 @@ window._mpTab = function(tab) {
         var mount = el('at-inline-mount');
         if (mount) mount.style.display = 'block';
         window.AbilityTree.openInline('at-inline-mount');
+    }
+    // Load absorb status when absorb tab is opened
+    if (tab === 'absorb' && window._mpLoadAbsorbStatus) {
+        window._mpLoadAbsorbStatus();
     }
 };
 
@@ -4082,6 +4152,240 @@ document.addEventListener('mouseout', function(e) {
     var t = e.target.closest('[data-hover-item]');
     if (t && !t.contains(e.relatedTarget)) { _hoverEl = null; _hideItemHover(); }
 });
+
+// ── Absorb functions ───────────────────────────────────────────────────────────
+window._mpLoadAbsorbStatus = async function() {
+    var statusDiv = el('absorb-status');
+    var contentDiv = el('absorb-content');
+    
+    if (!statusDiv) return;
+    
+    try {
+        var res = await fetch('/api/pets/absorb/status');
+        var data = await res.json();
+        
+        if (!res.ok) {
+            statusDiv.innerHTML = '<div class="mp-battle-card" style="border-color:rgba(231,76,60,0.4);color:#e74c3c;font-size:0.82rem">❌ ' + (data.error || 'Failed to load absorb status') + '</div>';
+            if (contentDiv) contentDiv.style.display = 'none';
+            return;
+        }
+        
+        if (!data.linked) {
+            statusDiv.innerHTML = '<div class="mp-battle-card" style="font-size:0.82rem;color:var(--text-secondary)">' +
+                '🔗 <strong>No PnW nation linked</strong><br>' +
+                'Link your Discord account in Politics & War to unlock the absorb feature.<br>' +
+                '<small style="color:var(--text-secondary)">Settings → Account → Link Discord</small>' +
+                '</div>';
+            if (contentDiv) contentDiv.style.display = 'none';
+            return;
+        }
+        
+        var html = '<div class="mp-battle-card" style="font-size:0.82rem">';
+        html += '<div style="color:var(--gold-secondary);font-weight:600;margin-bottom:8px">🏛️ Nation ID: ' + data.nation_id + (data.locked ? ' (🔒 locked)' : '') + '</div>';
+        
+        // War wins
+        html += '<div style="margin-bottom:12px">';
+        html += '<div style="color:var(--text-primary);font-weight:600">⚔️ War Wins</div>';
+        html += '<div style="font-size:0.75rem;color:var(--text-secondary)">Total: ' + fmtStat(data.total.wins) + ' | Absorbed: ' + fmtStat(data.absorbed.wins) + ' | Available: ' + fmtStat(data.available.wins) + '</div>';
+        if (data.available.wins > 0) {
+            html += '<div style="font-size:0.75rem;color:var(--gold-secondary)">XP: ' + fmtStat(data.xp_preview.wins) + '</div>';
+        }
+        html += '</div>';
+        html += '</div>';
+        
+        statusDiv.innerHTML = html;
+        
+        // Update individual unit counts and buttons
+        var unitTypes = ['soldiers', 'tanks', 'aircraft', 'ships', 'missiles', 'nukes', 'spies'];
+        unitTypes.forEach(function(unit) {
+            var countDiv = el('absorb-' + unit + '-count');
+            var btn = el('absorb-' + unit + '-btn');
+            
+            if (countDiv && btn) {
+                var available = data.available[unit] || 0;
+                countDiv.innerHTML = fmtStat(available);
+                btn.disabled = available <= 0;
+                btn.style.opacity = available > 0 ? '1' : '0.5';
+            }
+        });
+        
+        // Update war wins button
+        var winsBtn = el('absorb-wins-btn');
+        var winsCount = el('absorb-wins-count');
+        if (winsBtn) {
+            winsBtn.disabled = data.available.wins <= 0;
+            winsBtn.style.opacity = data.available.wins > 0 ? '1' : '0.5';
+        }
+        if (winsCount) {
+            winsCount.innerHTML = fmtStat(data.available.wins);
+        }
+        
+        if (contentDiv) contentDiv.style.display = 'block';
+        
+    } catch(e) {
+        statusDiv.innerHTML = '<div class="mp-battle-card" style="border-color:rgba(231,76,60,0.4);color:#e74c3c;font-size:0.82rem">❌ Error: ' + e.message + '</div>';
+        if (contentDiv) contentDiv.style.display = 'none';
+    }
+};
+
+window._mpAbsorbUnit = async function(unitType) {
+    var resultDiv = el('absorb-result');
+    if (!resultDiv) return;
+    
+    var unitMeta = {
+        soldiers: { label: 'Soldiers',  img: '/static/Emojis/Military/soldier.png' },
+        tanks:    { label: 'Tanks',     img: '/static/Emojis/Military/tank.png'    },
+        aircraft: { label: 'Aircraft',  img: '/static/Emojis/Military/jet.png'     },
+        ships:    { label: 'Ships',     img: '/static/Emojis/Military/ship.png'    },
+        missiles: { label: 'Missiles',  img: '/static/Emojis/Military/missile.png' },
+        nukes:    { label: 'Nukes',     img: '/static/Emojis/Military/bomb.png'    },
+        spies:    { label: 'Spies',     img: '/static/Emojis/Military/spy.png'     },
+    };
+    
+    var unit = unitMeta[unitType];
+    resultDiv.innerHTML = '<div class="mp-battle-card" style="font-size:0.8rem;color:var(--text-secondary)"><img src="' + unit.img + '" style="width:20px;height:20px;object-fit:contain;vertical-align:middle" onerror="this.style.display=\'none\'"> Absorbing ' + unit.label + '...</div>';
+    
+    // Show feeding animation
+    _showFeedingAnimation(unit.img);
+    
+    try {
+        var res = await fetch('/api/pets/absorb/' + unitType, {method: 'POST'});
+        var data = await res.json();
+        
+        if (!res.ok) {
+            resultDiv.innerHTML = '<div class="mp-battle-card" style="border-color:rgba(231,76,60,0.4);color:#e74c3c;font-size:0.82rem">❌ ' + (data.error || 'Failed to absorb ' + unit.label) + '</div>';
+            return;
+        }
+        
+        resultDiv.innerHTML = '<div class="mp-battle-card" style="border-color:rgba(39,174,96,0.4);color:#2ecc71;font-size:0.82rem">' +
+            '✅ <img src="' + unit.img + '" style="width:20px;height:20px;object-fit:contain;vertical-align:middle" onerror="this.style.display=\'none\'"> Absorbed ' + fmtStat(data.amount) + ' ' + unit.label + '<br>' +
+            '<span style="color:var(--gold-secondary)">+ ' + fmtStat(data.xp_gained) + ' XP</span>' +
+            (data.leveled_up ? '<br><span style="color:var(--gold-primary)">🎉 LEVEL UP!</span>' : '') +
+            '</div>';
+
+        // Refresh pet data and status
+        var oldPet = _pet;
+        if (data.pet) {
+            _refreshPet(data.pet);
+        }
+        if (window.PetGPP) {
+            if (data.animation) PetGPP.push(data.animation);
+            if (oldPet && data.pet) PetGPP.pushXpBar(oldPet, data.pet);
+            if (data.level_data) PetGPP.pushLevelChange(data.level_data);
+        }
+        window._mpLoadAbsorbStatus();
+        
+        // Show success animation
+        _showSuccessAnimation();
+        
+    } catch(e) {
+        resultDiv.innerHTML = '<div class="mp-battle-card" style="border-color:rgba(231,76,60,0.4);color:#e74c3c;font-size:0.82rem">❌ Error: ' + e.message + '</div>';
+    }
+};
+
+window._mpAbsorbWins = async function() {
+    var resultDiv = el('absorb-result');
+    if (!resultDiv) return;
+    
+    resultDiv.innerHTML = '<div class="mp-battle-card" style="font-size:0.8rem;color:var(--text-secondary)">Absorbing war wins...</div>';
+    
+    try {
+        var res = await fetch('/api/pets/absorb/wins', {method: 'POST'});
+        var data = await res.json();
+        
+        if (!res.ok) {
+            resultDiv.innerHTML = '<div class="mp-battle-card" style="border-color:rgba(231,76,60,0.4);color:#e74c3c;font-size:0.82rem">❌ ' + (data.error || 'Failed to absorb wins') + '</div>';
+            return;
+        }
+        
+        resultDiv.innerHTML = '<div class="mp-battle-card" style="border-color:rgba(39,174,96,0.4);color:#2ecc71;font-size:0.82rem">' +
+            '✅ ' + data.message + '<br>' +
+            '<span style="color:var(--gold-secondary)">+ ' + fmtStat(data.xp_gained) + ' XP</span>' +
+            (data.leveled_up ? '<br><span style="color:var(--gold-primary)">🎉 LEVEL UP!</span>' : '') +
+            '</div>';
+
+        // Refresh pet data and status
+        var oldPet = _pet;
+        if (data.pet) {
+            _refreshPet(data.pet);
+        }
+        if (window.PetGPP) {
+            if (data.animation) PetGPP.push(data.animation);
+            if (oldPet && data.pet) PetGPP.pushXpBar(oldPet, data.pet);
+            if (data.level_data) PetGPP.pushLevelChange(data.level_data);
+        }
+        window._mpLoadAbsorbStatus();
+        
+        // Show success animation
+        _showSuccessAnimation();
+        
+    } catch(e) {
+        resultDiv.innerHTML = '<div class="mp-battle-card" style="border-color:rgba(231,76,60,0.4);color:#e74c3c;font-size:0.82rem">❌ Error: ' + e.message + '</div>';
+    }
+};
+
+function _showFeedingAnimation(unitImg) {
+    var petImg = document.querySelector('#my-pet-header .mp-pet-img');
+    if (!petImg) return;
+    
+    // Create floating unit emoji
+    var floatingUnit = document.createElement('div');
+    floatingUnit.innerHTML = '<img src="' + unitImg + '" style="width:30px;height:30px;object-fit:contain" onerror="this.style.display=\'none\'">';
+    floatingUnit.style.cssText = 'position:fixed;z-index:9999;pointer-events:none;transition:all 1s ease-in-out;';
+    
+    // Position at the button that was clicked
+    var btn = event.target.closest('button');
+    if (btn) {
+        var rect = btn.getBoundingClientRect();
+        floatingUnit.style.left = rect.left + rect.width/2 - 15 + 'px';
+        floatingUnit.style.top = rect.top + rect.height/2 - 15 + 'px';
+        document.body.appendChild(floatingUnit);
+        
+        // Animate to pet
+        setTimeout(function() {
+            var petRect = petImg.getBoundingClientRect();
+            floatingUnit.style.left = petRect.left + petRect.width/2 - 15 + 'px';
+            floatingUnit.style.top = petRect.top + petRect.height/2 - 15 + 'px';
+            floatingUnit.style.transform = 'scale(0.5)';
+            floatingUnit.style.opacity = '0';
+        }, 100);
+        
+        // Remove after animation
+        setTimeout(function() {
+            if (floatingUnit.parentNode) {
+                floatingUnit.parentNode.removeChild(floatingUnit);
+            }
+        }, 1100);
+    }
+}
+
+function _showSuccessAnimation() {
+    var petImg = document.querySelector('#my-pet-header .mp-pet-img');
+    if (!petImg) return;
+    
+    // Create XP burst effect
+    var burst = document.createElement('div');
+    burst.innerHTML = '✨+' + fmtStat(Math.floor(Math.random() * 1000 + 500)) + ' XP✨';
+    burst.style.cssText = 'position:fixed;z-index:9999;pointer-events:none;color:var(--gold-secondary);font-weight:bold;font-size:1.2rem;transition:all 1.5s ease-out;';
+    
+    var petRect = petImg.getBoundingClientRect();
+    burst.style.left = petRect.left + petRect.width/2 - 50 + 'px';
+    burst.style.top = petRect.top + 'px';
+    document.body.appendChild(burst);
+    
+    // Animate upward and fade
+    setTimeout(function() {
+        burst.style.transform = 'translateY(-50px)';
+        burst.style.opacity = '0';
+    }, 100);
+    
+    // Remove after animation
+    setTimeout(function() {
+        if (burst.parentNode) {
+            burst.parentNode.removeChild(burst);
+        }
+    }, 1600);
+}
 
 }());
 

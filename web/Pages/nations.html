@@ -65,7 +65,7 @@
     </div>
     <div class="card-header">
       <div>
-        <p class="nat-kicker" id="nat-kicker">Nights Watch</p>
+        <p class="nat-kicker" id="nat-kicker">Darkstar</p>
         <p class="nat-title">Alliance Members</p>
       </div>
       <div class="nat-header-right">
@@ -289,9 +289,9 @@
   let _revCache = {}, _revData = null;
   let _linkedNationId = null;
 
-  // Alliance selector state — default to Nights Watch
-  let _selectedAllianceId   = 14225;
-  let _selectedAllianceName = 'Nights Watch';
+  // Alliance selector state — default to Darkstar
+  let _selectedAllianceId   = 10259;
+  let _selectedAllianceName = 'Darkstar';
   let _acCache = null;
   let _acTimer = null;
 
@@ -766,7 +766,7 @@
     status.style.display = 'block'; status.className = 'nat-status';
     status.textContent = 'Loading nations…';
     try {
-      const url = _selectedAllianceId === 14225
+      const url = _selectedAllianceId === 10259
         ? '/api/watch/nations'
         : `/api/watch/nations_by_alliance?alliance_id=${_selectedAllianceId}`;
       const res = await fetch(url);
@@ -1279,7 +1279,7 @@
           // Update kicker immediately
           const kicker = document.getElementById('nat-kicker');
           if (kicker) kicker.textContent = _selectedAllianceName;
-          // Revenue only available for NW; clear for other alliances
+          // Revenue only available for Darkstar; clear for other alliances
           _revCache = {}; _revData = null;
           fetchNations();
           fetchRevenue();

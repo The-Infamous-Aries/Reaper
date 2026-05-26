@@ -1,462 +1,141 @@
-<link href="css/homepage.css" rel="stylesheet">
+<link href="/css/homepage.css" rel="stylesheet">
 <div class="container-fluid py-2">
+    <!-- Hero Section (Combined) -->
     <div class="row">
         <div class="col-12">
-            <div class="welcome-section">
-                <div class="d-flex align-items-center justify-content-center mb-1">
-                    <a href="https://discord.com/oauth2/authorize?client_id=1345073131550801984&permissions=380373429328&integration_type=0&scope=bot+applications.commands" target="_blank" rel="noopener noreferrer" class="me-3">
-                        <img id="bot-avatar" src="/static/Images/avatar.png" alt="Bot Avatar" class="bot-avatar-title" style="width: 240px; height: 240px; object-view-box: cover;">
+            <div class="hero-section">
+                <div class="hero-content">
+                    <a href="https://discord.com/oauth2/authorize?client_id=1345073131550801984&permissions=380373429328&integration_type=0&scope=bot+applications.commands" target="_blank" rel="noopener noreferrer" class="hero-avatar-link">
+                        <img src="/static/Images/keeper.png" alt="The Digital Reaper" class="hero-avatar">
                     </a>
+                    <h1 class="hero-title">The Discord Bot That Collects Souls and Wins Wars</h1>
+                    <p class="hero-subtitle">Politics & War tools, pet battle systems, casino games, astrology, and a news network that reports on 3am war declarations. Join the chaos.</p>
+                    <div class="creator-info">
+                        <p class="aka">"The Infamous Aries" — Cosmic Code Collector</p>
+                        <p class="title">Bot Overlord. Chaos Architect. Professional Soul Harvester.</p>
+                    </div>
                 </div>
+                <div class="hero-stats">
+                    <div class="stat-item">
+                        <span class="stat-value" id="stat-servers">...</span>
+                        <span class="stat-label">Servers</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-value" id="stat-users">...</span>
+                        <span class="stat-label">Users</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-value" id="stat-nations">...</span>
+                        <span class="stat-label">Nations</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-value" id="stat-pets">...</span>
+                        <span class="stat-label">Pets</span>
+                    </div>
+                </div>
+                <div class="mission-statement">
+                    <h3>Our Mission</h3>
+                    <p>To provide the most comprehensive Discord bot experience spanning Politics & War tools, pet battle systems, astrology, and casino games — all wrapped in gothic aesthetics with a side of chaos and a lot of soul harvesting.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
 <script>
-document.addEventListener('DOMContentLoaded', function() {
+(function() {
+    // Load bot avatar
     const botAvatar = document.getElementById('bot-avatar');
-    if (!botAvatar) return;
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 5000);
-    fetch('/api/bot-info', { signal: controller.signal })
-        .then(r => { clearTimeout(timeoutId); if (!r.ok) throw new Error(); return r.json(); })
-        .then(data => {
-            botAvatar.onerror = () => { botAvatar.src = '/static/Images/reaper.png'; botAvatar.onerror = null; };
-            botAvatar.src = (data.avatar_url || '/static/Images/reaper.png') + '?t=' + Date.now();
-        })
-        .catch(() => { clearTimeout(timeoutId); botAvatar.src = '/static/Images/reaper.png'; });
-});
-</script>
-            </div>
-        </div>
-    </div>
-
-    <!-- Politics & War -->
-    <div class="row">
-        <div class="col-12">
-            <h3 class="category-header text-center mb-3" style="color: var(--gold-secondary); font-size: 1.2rem; letter-spacing: 2px;">POLITICS &amp; WAR</h3>
-        </div>
-        <div class="col-md-4 mb-4">
-            <div class="home-card flip-host" data-page="game_info">
-                <div class="flip-card-wrap"><div class="flip-card">
-                    <div class="flip-card-front">
-                        <img src="/static/Emojis/Menu/game_info.png" class="flip-card-front-icon" alt="">
-                        <span class="flip-card-front-title">Game Info</span>
-                    </div>
-                    <div class="flip-card-back">
-                        <div class="flip-card-back-title"><img src="/static/Emojis/Menu/game_info.png" style="width:20px;height:20px"> Game Info</div>
-                        <p class="flip-card-back-desc">Live market prices and turn bonuses, because buying steel at peak hours is a war crime. Watch the ticker, feel smart, then buy at the wrong time anyway.</p>
-                        <button class="flip-card-back-btn" onclick="loadPage('game_info')">Go To Page →</button>
-                    </div>
-                </div></div>
-            </div>
-        </div>
-        <div class="col-md-4 mb-4">
-            <div class="home-card flip-host" data-page="news">
-                <div class="flip-card-wrap"><div class="flip-card">
-                    <div class="flip-card-front">
-                        <img src="/static/Emojis/Menu/news.png" class="flip-card-front-icon" alt="">
-                        <span class="flip-card-front-title">Scythe News Network</span>
-                    </div>
-                    <div class="flip-card-back">
-                        <div class="flip-card-back-title"><img src="/static/Emojis/Menu/news.png" style="width:20px;height:20px"> Scythe News Network</div>
-                        <p class="flip-card-back-desc">SNN — the only news network reporting wars declared at 3am, nukes launched out of spite, and alliances that collapsed because someone forgot to pay their bank. All the drama. Zero spin. We asked the Reaper for a comment. He just pointed.</p>
-                        <button class="flip-card-back-btn" onclick="loadPage('news', '/js/news.js?v=2', 'script', '/css/news.css')">Go To Page →</button>
-                    </div>
-                </div></div>
-            </div>
-        </div>
-        <div class="col-md-4 mb-4">
-            <div class="home-card flip-host" data-page="nations">
-                <div class="flip-card-wrap"><div class="flip-card">
-                    <div class="flip-card-front">
-                        <img src="/static/Emojis/Menu/irs.png" class="flip-card-front-icon" alt="">
-                        <span class="flip-card-front-title">The Watch</span>
-                    </div>
-                    <div class="flip-card-back">
-                        <div class="flip-card-back-title"><img src="/static/Emojis/Menu/irs.png" style="width:20px;height:20px"> The Watch</div>
-                        <p class="flip-card-back-desc">The full Nights Watch member roster — score, cities, military, MMR, projects, and improvements for every nation. Click any row to expand a detailed nation report. Sort by anything. Fear everyone.</p>
-                        <button class="flip-card-back-btn" onclick="loadPage('nations')">Go To Page →</button>
-                    </div>
-                </div></div>
-            </div>
-        </div>
-        <div class="col-md-4 mb-4">
-            <div class="home-card flip-host" data-page="watch">
-                <div class="flip-card-wrap"><div class="flip-card">
-                    <div class="flip-card-front">
-                        <img src="/static/Emojis/Menu/wars.png" class="flip-card-front-icon" alt="">
-                        <span class="flip-card-front-title">War Stats</span>
-                    </div>
-                    <div class="flip-card-back">
-                        <div class="flip-card-back-title"><img src="/static/Emojis/Menu/wars.png" style="width:20px;height:20px"> War Stats</div>
-                        <p class="flip-card-back-desc">The alliance war ledger that names names. See who's actually fighting, who's burning infra, who's looting, and who's just vibing while everyone else bleeds. Sortable by everything.</p>
-                        <button class="flip-card-back-btn" onclick="loadPage('watch', '/js/watch.js', 'script', '/css/watch.css')">Go To Page →</button>
-                    </div>
-                </div></div>
-            </div>
-        </div>
-        <div class="col-md-4 mb-4">
-            <div class="home-card flip-host" data-page="leaderboard">
-                <div class="flip-card-wrap"><div class="flip-card">
-                    <div class="flip-card-front">
-                        <img src="/static/Emojis/Menu/leaderboard.png" class="flip-card-front-icon" alt="">
-                        <span class="flip-card-front-title">Leaderboards</span>
-                    </div>
-                    <div class="flip-card-back">
-                        <div class="flip-card-back-title"><img src="/static/Emojis/Menu/leaderboard.png" style="width:20px;height:20px"> Leaderboards</div>
-                        <p class="flip-card-back-desc">Who dealt the most damage? Who looted the most? Who ate the most missiles like a champ? The monthly and weekly hall of fame — or shame — depending on which side of the war you're on.</p>
-                        <button class="flip-card-back-btn" onclick="loadPage('leaderboard', '/js/leaderboard.js', 'script', '/css/leaderboard.css')">Go To Page →</button>
-                    </div>
-                </div></div>
-            </div>
-        </div>
-        <div class="col-md-4 mb-4">
-            <div class="home-card flip-host" data-page="raids">
-                <div class="flip-card-wrap"><div class="flip-card">
-                    <div class="flip-card-front">
-                        <img src="/static/Emojis/Menu/pirate.png" class="flip-card-front-icon" alt="">
-                        <span class="flip-card-front-title">Raid Finder</span>
-                    </div>
-                    <div class="flip-card-back">
-                        <div class="flip-card-back-title"><img src="/static/Emojis/Menu/pirate.png" style="width:20px;height:20px"> Raid Finder</div>
-                        <p class="flip-card-back-desc">Find the juiciest raid targets in your war range. Filter by activity, military strength, beige status, and minimum loot. Set beige expiry alerts to get a DM 15 minutes before they leave beige.</p>
-                        <button class="flip-card-back-btn" onclick="loadPage('raids')">Go To Page →</button>
-                    </div>
-                </div></div>
-            </div>
-        </div>
-        <div class="col-md-4 mb-4">
-            <div class="home-card flip-host" data-page="cost_calc">
-                <div class="flip-card-wrap"><div class="flip-card">
-                    <div class="flip-card-front">
-                        <img src="/static/Emojis/Menu/calculator.png" class="flip-card-front-icon" alt="">
-                        <span class="flip-card-front-title">Calculators</span>
-                    </div>
-                    <div class="flip-card-back">
-                        <div class="flip-card-back-title"><img src="/static/Emojis/Menu/calculator.png" style="width:20px;height:20px"> Calculators</div>
-                        <p class="flip-card-back-desc">Find out exactly how broke you'll be after that city upgrade, or how many soldiers you need to send to their doom. Spoiler: it's always more than you think.</p>
-                        <button class="flip-card-back-btn" onclick="loadPage('cost_calc')">Go To Page →</button>
-                    </div>
-                </div></div>
-            </div>
-        </div>
-        <div class="col-md-4 mb-4">
-            <div class="home-card flip-host" data-page="comparison">
-                <div class="flip-card-wrap"><div class="flip-card">
-                    <div class="flip-card-front">
-                        <img src="/static/Emojis/Menu/comparison.png" class="flip-card-front-icon" alt="">
-                        <span class="flip-card-front-title">Comparison</span>
-                    </div>
-                    <div class="flip-card-back">
-                        <div class="flip-card-back-title"><img src="/static/Emojis/Menu/comparison.png" style="width:20px;height:20px"> Comparison</div>
-                        <p class="flip-card-back-desc">Stack any two alliances side by side and watch the numbers fight. Military, production, projects, improvements, city distribution — all in one rich breakdown. Nights Watch pre-loaded, obviously.</p>
-                        <button class="flip-card-back-btn" onclick="loadPage('comparison')">Go To Page →</button>
-                    </div>
-                </div></div>
-            </div>
-        </div>
-        <div class="col-md-4 mb-4">
-            <div class="home-card flip-host" data-page="weapons">
-                <div class="flip-card-wrap"><div class="flip-card">
-                    <div class="flip-card-front">
-                        <img src="/static/Emojis/Menu/snipe.png" class="flip-card-front-icon" alt="">
-                        <span class="flip-card-front-title">Weapon Efficiency</span>
-                    </div>
-                    <div class="flip-card-back">
-                        <div class="flip-card-back-title"><img src="/static/Emojis/Menu/snipe.png" style="width:20px;height:20px"> Weapon Efficiency</div>
-                        <p class="flip-card-back-desc">Theory mode plots the full infra-vs-damage curve so you know exactly when nuking someone becomes economically justified. Targeted mode finds the juiciest city and tells you what it's worth. Spoiler: it's always worth it.</p>
-                        <button class="flip-card-back-btn" onclick="loadPage('weapons')">Go To Page →</button>
-                    </div>
-                </div></div>
-            </div>
-        </div>
-        <div class="col-md-4 mb-4">
-            <div class="home-card flip-host" data-page="library">
-                <div class="flip-card-wrap"><div class="flip-card">
-                    <div class="flip-card-front">
-                        <img src="/static/Emojis/Menu/script.png" class="flip-card-front-icon" alt="">
-                        <span class="flip-card-front-title">Scriptorium</span>
-                    </div>
-                    <div class="flip-card-back">
-                        <div class="flip-card-back-title"><img src="/static/Emojis/Menu/script.png" style="width:20px;height:20px"> Scriptorium</div>
-                        <p class="flip-card-back-desc">Five ancient scrolls of forbidden knowledge: the FAFO Doctrine, Basic Building, Beige Cycling, Weapon Efficiency, and Sniping. Click a wax seal, read the scroll, stop being a filthy casual.</p>
-                        <button class="flip-card-back-btn" onclick="loadPage('library')">Go To Page →</button>
-                    </div>
-                </div></div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Pets -->
-    <div class="row">
-        <div class="col-12">
-            <h3 class="category-header text-center mb-3" style="color: var(--gold-secondary); font-size: 1.2rem; letter-spacing: 2px;">PETS</h3>
-        </div>
-        <div class="col-md-4 mb-4">
-            <div class="home-card flip-host" data-page="petconnector">
-                <div class="flip-card-wrap"><div class="flip-card">
-                    <div class="flip-card-front">
-                        <img src="/static/Emojis/Menu/world.png" class="flip-card-front-icon" alt="">
-                        <span class="flip-card-front-title">Pet Connector</span>
-                    </div>
-                    <div class="flip-card-back">
-                        <div class="flip-card-back-title"><img src="/static/Emojis/Menu/world.png" style="width:20px;height:20px"> Pet Connector</div>
-                        <p class="flip-card-back-desc">The interdimensional pet registry. Link your Discord account to your pet so the bot knows who you are and stops treating you like a stranger. One link, zero excuses for not having a pet.</p>
-                        <button class="flip-card-back-btn" onclick="loadPage('petconnector', '/js/petconnector.js', 'script', '/css/petconnector.css')">Go To Page →</button>
-                    </div>
-                </div></div>
-            </div>
-        </div>
-        <div class="col-md-4 mb-4">
-            <div class="home-card flip-host" data-page="mypet">
-                <div class="flip-card-wrap"><div class="flip-card">
-                    <div class="flip-card-front">
-                        <img src="/static/Emojis/Menu/pets.png" class="flip-card-front-icon" alt="">
-                        <span class="flip-card-front-title">My Pet</span>
-                    </div>
-                    <div class="flip-card-back">
-                        <div class="flip-card-back-title"><img src="/static/Emojis/Menu/pets.png" style="width:20px;height:20px"> My Pet</div>
-                        <p class="flip-card-back-desc">Your personal digital companion's full profile — stats, inventory, casino history, and the 7-slot equipment loadout you've been agonizing over. Yes, the hat matters.</p>
-                        <button class="flip-card-back-btn" onclick="loadPage('mypet', '/js/mypet.js', 'script', '/css/mypet.css')">Go To Page →</button>
-                    </div>
-                </div></div>
-            </div>
-        </div>
-        <div class="col-md-4 mb-4">
-            <div class="home-card flip-host" data-page="tasks">
-                <div class="flip-card-wrap"><div class="flip-card">
-                    <div class="flip-card-front">
-                        <img src="/static/Emojis/Menu/tasks.png" class="flip-card-front-icon" alt="">
-                        <span class="flip-card-front-title">Tasks</span>
-                    </div>
-                    <div class="flip-card-back">
-                        <div class="flip-card-back-title"><img src="/static/Emojis/Menu/tasks.png" style="width:20px;height:20px"> Tasks</div>
-                        <p class="flip-card-back-desc">Daily and weekly chores dressed up as quests so you feel like a hero instead of someone doing homework. Complete them, collect rewards, pretend you had a plan all along.</p>
-                        <button class="flip-card-back-btn" onclick="loadPage('tasks', null, 'script', '/css/tasks.css')">Go To Page →</button>
-                    </div>
-                </div></div>
-            </div>
-        </div>
-        <div class="col-md-4 mb-4">
-            <div class="home-card flip-host" data-page="bazaar">
-                <div class="flip-card-wrap"><div class="flip-card">
-                    <div class="flip-card-front">
-                        <img src="/static/Emojis/Menu/bazaar.png" class="flip-card-front-icon" alt="">
-                        <span class="flip-card-front-title">Item Board <span id="bazaar-live-badge" style="display:none;font-family:sans-serif;font-size:0.6rem;font-weight:700;background:rgba(255,215,0,0.15);border:1px solid var(--gold-primary);color:var(--gold-primary);border-radius:10px;padding:1px 6px;margin-left:4px;vertical-align:middle;"></span></span>
-                    </div>
-                    <div class="flip-card-back">
-                        <div class="flip-card-back-title"><img src="/static/Emojis/Menu/bazaar.png" style="width:20px;height:20px"> Item Board</div>
-                        <p class="flip-card-back-desc">The live player marketplace. Post items from your inventory for XP or trade them for something you actually want. The board updates in real time — no refreshing, no waiting, just deals and regret.</p>
-                        <button class="flip-card-back-btn" onclick="loadPage('bazaar', '/js/bazaar.js', 'script', '/css/bazaar.css')">Go To Page →</button>
-                    </div>
-                </div></div>
-            </div>
-        </div>
-    </div>
-
-<script>
-(function () {
-    function updateBazaarBadge() {
-        fetch('/api/bazaar/listings')
-            .then(r => r.ok ? r.json() : null)
-            .then(d => {
-                const badge = document.getElementById('bazaar-live-badge');
-                if (!badge) return;
-                const count = d && d.listings ? d.listings.length : 0;
-                if (count > 0) {
-                    badge.textContent = count + ' listed';
-                    badge.style.display = 'inline';
-                } else {
-                    badge.style.display = 'none';
-                }
+    if (botAvatar) {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000);
+        fetch('/api/bot-info', { signal: controller.signal })
+            .then(r => { clearTimeout(timeoutId); if (!r.ok) throw new Error(); return r.json(); })
+            .then(data => {
+                botAvatar.onerror = () => { botAvatar.src = '/static/Images/reaper.png'; botAvatar.onerror = null; };
+                botAvatar.src = (data.avatar_url || '/static/Images/reaper.png') + '?t=' + Date.now();
             })
-            .catch(() => {});
+            .catch(() => { clearTimeout(timeoutId); botAvatar.src = '/static/Images/reaper.png'; });
     }
-    updateBazaarBadge();
-    const _bzInterval = setInterval(function () {
-        if (!document.getElementById('bazaar-live-badge')) { clearInterval(_bzInterval); return; }
-        updateBazaarBadge();
-    }, 15000);
+
+    // Fetch homepage stats
+    fetch('/api/stats')
+        .then(r => {
+            console.log('Stats API response status:', r.status);
+            if (!r.ok) throw new Error(`HTTP ${r.status}`);
+            return r.json();
+        })
+        .then(data => {
+            console.log('Stats API response data:', data);
+            const serversEl = document.getElementById('stat-servers');
+            const usersEl = document.getElementById('stat-users');
+            const nationsEl = document.getElementById('stat-nations');
+            const petsEl = document.getElementById('stat-pets');
+
+            console.log('Element check - servers:', serversEl, 'users:', usersEl, 'nations:', nationsEl, 'pets:', petsEl);
+
+            if (serversEl) serversEl.textContent = Number(data.servers || 0).toLocaleString();
+            if (usersEl) usersEl.textContent = Number(data.users || 0).toLocaleString();
+            if (nationsEl) nationsEl.textContent = Number(data.nations || 0).toLocaleString();
+            if (petsEl) petsEl.textContent = Number(data.pets || 0).toLocaleString();
+        })
+        .catch(err => {
+            console.error('Failed to fetch stats:', err);
+            // Set default values on error
+            const serversEl = document.getElementById('stat-servers');
+            const usersEl = document.getElementById('stat-users');
+            const nationsEl = document.getElementById('stat-nations');
+            const petsEl = document.getElementById('stat-pets');
+            if (serversEl) serversEl.textContent = '0';
+            if (usersEl) usersEl.textContent = '0';
+            if (nationsEl) nationsEl.textContent = '0';
+            if (petsEl) petsEl.textContent = '0';
+        });
+
+    // Smooth scroll for anchor links
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener('click', function (e) {
+            e.preventDefault();
+            const target = document.querySelector(this.getAttribute('href'));
+            if (target) {
+                target.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'start'
+                });
+            }
+        });
+    });
 })();
 </script>
-        <div class="col-md-4 mb-4">
-            <div class="home-card flip-host" data-page="arena">
-                <div class="flip-card-wrap"><div class="flip-card">
-                    <div class="flip-card-front">
-                        <img src="/static/Emojis/Menu/arena.png" class="flip-card-front-icon" alt="">
-                        <span class="flip-card-front-title">Arena &amp; Casino Floor</span>
-                    </div>
-                    <div class="flip-card-back">
-                        <div class="flip-card-back-title"><img src="/static/Emojis/Menu/arena.png" style="width:20px;height:20px"> Arena &amp; Casino Floor</div>
-                        <p class="flip-card-back-desc">One live page — two worlds. Watch battles and gambling happening in real time, jump into an NPC fight or seek PvP, or grab a casino room and pick a game. Everyone's visible, everything's live, and someone is always losing.</p>
-                        <button class="flip-card-back-btn" onclick="loadPage('arena', '/js/arena.js', 'script', '/css/arena.css /css/casino_lobby.css')">Go To Page →</button>
-                    </div>
-                </div></div>
-            </div>
-        </div>
-        <div class="col-md-4 mb-4">
-            <div class="home-card flip-host" data-page="survive">
-                <div class="flip-card-wrap"><div class="flip-card">
-                    <div class="flip-card-front">
-                        <img src="/static/Emojis/Menu/survive.png" class="flip-card-front-icon" alt="">
-                        <span class="flip-card-front-title">Survive</span>
-                    </div>
-                    <div class="flip-card-back">
-                        <div class="flip-card-back-title"><img src="/static/Emojis/Menu/survive.png" style="width:20px;height:20px"> Survive</div>
-                        <p class="flip-card-back-desc">A Survivor-style elimination game where pets vote each other off the island one by one. Alliances form, betrayals happen, and someone's beloved companion gets ceremonially yeeted into the void. Democracy has never been crueler.</p>
-                        <button class="flip-card-back-btn" onclick="loadPage('survive', '/js/survive.js', 'script', '/css/survive.css')">Go To Page →</button>
-                    </div>
-                </div></div>
-            </div>
-        </div>
-        <div class="col-md-4 mb-4">
-            <div class="home-card flip-host" data-page="dungeon">
-                <div class="flip-card-wrap"><div class="flip-card">
-                    <div class="flip-card-front">
-                        <img src="/static/Emojis/Menu/crawl.png" class="flip-card-front-icon" alt="">
-                        <span class="flip-card-front-title">Dungeon Crawler</span>
-                    </div>
-                    <div class="flip-card-back">
-                        <div class="flip-card-back-title"><img src="/static/Emojis/Menu/crawl.png" style="width:20px;height:20px"> Dungeon Crawler</div>
-                        <p class="flip-card-back-desc">A turn-based roguelite where your pet crawls through procedurally generated dungeons fighting monsters that scale from "adorable" to "why did I bring a level 3 hamster." Solo or co-op with friends who will absolutely blame you when the party wipes to a trap. Room 10 is always a boss. You've been warned.</p>
-                        <button class="flip-card-back-btn" onclick="loadPage('dungeon')">Go To Page →</button>
-                    </div>
-                </div></div>
-            </div>
-        </div>
-        <div class="col-md-4 mb-4">
-            <div class="home-card flip-host" data-page="pet_stock">
-                <div class="flip-card-wrap"><div class="flip-card">
-                    <div class="flip-card-front">
-                        <img src="/static/Emojis/Menu/pet_stock.png" class="flip-card-front-icon" alt="">
-                        <span class="flip-card-front-title">Pet Stocks</span>
-                    </div>
-                    <div class="flip-card-back">
-                        <div class="flip-card-back-title"><img src="/static/Emojis/Menu/pet_stock.png" style="width:20px;height:20px"> Pet Stocks</div>
-                        <p class="flip-card-back-desc">A full stock market, but for pets. Buy low, sell high, watch your portfolio crater because you trusted a raccoon. Live prices, historical charts, and the slow dawning realization that you are not a financial genius.</p>
-                        <button class="flip-card-back-btn" onclick="loadPage('pet_stock', '/js/pet_stock.js', 'script', '/css/pet_stock.css')">Go To Page →</button>
-                    </div>
-                </div></div>
-            </div>
-        </div>
-        <div class="col-md-4 mb-4">
-            <div class="home-card flip-host" data-page="casino">
-                <div class="flip-card-wrap"><div class="flip-card">
-                    <div class="flip-card-front">
-                        <img src="/static/Emojis/Menu/casino.png" class="flip-card-front-icon" alt="">
-                        <span class="flip-card-front-title">Casino</span>
-                    </div>
-                    <div class="flip-card-back">
-                        <div class="flip-card-back-title"><img src="/static/Emojis/Menu/casino.png" style="width:20px;height:20px"> Casino</div>
-                        <p class="flip-card-back-desc">Blackjack, slots, roulette, coin flip, craps, Hold'em, and races — all playable with your pet's currency. The house always wins, but the house is a Discord bot, so at least you can blame the algorithm. Responsibly, of course.</p>
-                        <button class="flip-card-back-btn" onclick="loadPage('casino')">Go To Page →</button>
-                    </div>
-                </div></div>
-            </div>
-        </div>
-        <div class="col-md-4 mb-4">
-            <div class="home-card flip-host" data-page="what_are_pets">
-                <div class="flip-card-wrap"><div class="flip-card">
-                    <div class="flip-card-front">
-                        <img src="/static/Emojis/Menu/what_pets.png" class="flip-card-front-icon" alt="">
-                        <span class="flip-card-front-title">Breakdown</span>
-                    </div>
-                    <div class="flip-card-back">
-                        <div class="flip-card-back-title"><img src="/static/Emojis/Menu/what_pets.png" style="width:20px;height:20px"> Breakdown</div>
-                        <p class="flip-card-back-desc">103 species, 12 elements, 3 types, 78 elemental combos, and a type chart that makes Pokémon look simple. XP formulas, chest tiers, every activity from /play to /tournament, and a full guide to The Floor. Required reading. No quiz, but you'll wish there was.</p>
-                        <button class="flip-card-back-btn" onclick="loadPage('what_are_pets')">Go To Page →</button>
-                    </div>
-                </div></div>
-            </div>
-        </div>
-        <div class="col-md-4 mb-4">
-            <div class="home-card flip-host" data-page="pets">
-                <div class="flip-card-wrap"><div class="flip-card">
-                    <div class="flip-card-front">
-                        <img src="/static/Emojis/Menu/pets.png" class="flip-card-front-icon" alt="">
-                        <span class="flip-card-front-title">Types &amp; Items</span>
-                    </div>
-                    <div class="flip-card-back">
-                        <div class="flip-card-back-title"><img src="/static/Emojis/Menu/pets.png" style="width:20px;height:20px"> Types &amp; Items</div>
-                        <p class="flip-card-back-desc">The full database: every pet, material, gem, monster, hat, and potion — sortable by any stat. Browse in cards or list view. It's the Pokédex we deserved but with more existential dread and significantly worse odds.</p>
-                        <button class="flip-card-back-btn" onclick="loadPage('pets')">Go To Page →</button>
-                    </div>
-                </div></div>
             </div>
         </div>
     </div>
 
-    <!-- Misc -->
-    <div class="row">
-        <div class="col-12">
-            <h3 class="category-header text-center mb-3" style="color: var(--gold-secondary); font-size: 1.2rem; letter-spacing: 2px;">MISC</h3>
+<!-- Footer -->
+<footer class="homepage-footer">
+    <div class="footer-content">
+        <div class="footer-section">
+            <h4>Info Links</h4>
+            <ul>
+                <li><a href="#" onclick="loadPage('commands')">Commands</a></li>
+                <li><a href="privacy.html">Privacy Policy</a></li>
+                <li><a href="terms.html">Terms of Service</a></li>
+            </ul>
         </div>
-        <div class="col-md-4 mb-4">
-            <div class="home-card flip-host" data-page="astrology">
-                <div class="flip-card-wrap"><div class="flip-card">
-                    <div class="flip-card-front">
-                        <img src="/static/Emojis/Menu/astrology.png" class="flip-card-front-icon" alt="">
-                        <span class="flip-card-front-title">Astrology</span>
-                    </div>
-                    <div class="flip-card-back">
-                        <div class="flip-card-back-title"><img src="/static/Emojis/Menu/astrology.png" style="width:20px;height:20px"> Astrology</div>
-                        <p class="flip-card-back-desc">Enter your birthday and get your Western zodiac, Chinese zodiac, and spirit animal in one shot. Then grab a daily horoscope for any sign — yesterday, today, or tomorrow if you're feeling bold and want to be disappointed in advance.</p>
-                        <button class="flip-card-back-btn" onclick="loadPage('astrology')">Go To Page →</button>
-                    </div>
-                </div></div>
-            </div>
+        <div class="footer-section">
+            <h4>Contact Links</h4>
+            <ul>
+                <li><a href="https://github.com/The-Infamous-Aries/Reaper" target="_blank">GitHub</a></li>
+                <li><a href="https://politicsandwar.com/nation/id=680891" target="_blank">PnW Nation</a></li>
+                <li><a href="mailto:cody.ray.inc@gmail.com">Email</a></li>
+            </ul>
         </div>
-    </div>
-
-    <!-- Footer: Commands, Contact, Homepage -->
-    <div class="row mt-2">
-        <div class="col-12">
-            <hr style="border-color: rgba(184,134,11,0.25); margin-bottom: 1.5rem;">
-        </div>
-        <div class="col-md-4 mb-4">
-            <div class="home-card flip-host" data-page="commands">
-                <div class="flip-card-wrap"><div class="flip-card">
-                    <div class="flip-card-front">
-                        <img src="/static/Emojis/Menu/discord.png" class="flip-card-front-icon" alt="">
-                        <span class="flip-card-front-title">Commands</span>
-                    </div>
-                    <div class="flip-card-back">
-                        <div class="flip-card-back-title"><img src="/static/Emojis/Menu/discord.png" style="width:20px;height:20px"> Commands</div>
-                        <p class="flip-card-back-desc">Every slash command, its arguments, and what it actually does — pulled live from the bot. The sacred grimoire of digital servitude. Use them wisely, or at least entertainingly.</p>
-                        <button class="flip-card-back-btn" onclick="loadPage('commands')">Go To Page →</button>
-                    </div>
-                </div></div>
-            </div>
-        </div>
-        <div class="col-md-4 mb-4">
-            <div class="home-card flip-host" data-page="contact">
-                <div class="flip-card-wrap"><div class="flip-card">
-                    <div class="flip-card-front">
-                        <img src="/static/Emojis/Menu/contact.png" class="flip-card-front-icon" alt="">
-                        <span class="flip-card-front-title">Contact</span>
-                    </div>
-                    <div class="flip-card-back">
-                        <div class="flip-card-back-title"><img src="/static/Emojis/Menu/contact.png" style="width:20px;height:20px"> Contact</div>
-                        <p class="flip-card-back-desc">GitHub, PnW nation, email — all the ways to reach the Reaper. Includes a legally binding warning about acceptable reasons to summon him and an estimated response time of "eventually."</p>
-                        <button class="flip-card-back-btn" onclick="loadPage('contact')">Go To Page →</button>
-                    </div>
-                </div></div>
-            </div>
-        </div>
-        <div class="col-md-4 mb-4">
-            <div class="home-card flip-host" data-page="homepage">
-                <div class="flip-card-wrap"><div class="flip-card">
-                    <div class="flip-card-front">
-                        <img src="/static/Emojis/Menu/reaper.png" class="flip-card-front-icon" alt="">
-                        <span class="flip-card-front-title">Homepage</span>
-                    </div>
-                    <div class="flip-card-back">
-                        <div class="flip-card-back-title"><img src="/static/Emojis/Menu/reaper.png" style="width:20px;height:20px"> Homepage</div>
-                        <p class="flip-card-back-desc">You're literally here right now. Reading the card that describes the page you're already on. Peak efficiency. If you click it, you'll reload this exact page and feel nothing.</p>
-                        <button class="flip-card-back-btn" onclick="loadPage('homepage')">Go To Page →</button>
-                    </div>
-                </div></div>
-            </div>
+        <div class="footer-section">
+            <h4>Built by</h4>
+            <p>The Infamous Aries</p>
+            <p class="copyright">© 2024 Reaper Bot. All souls reserved.</p>
         </div>
     </div>
-</div>
+</footer>
 
 <script>
 // ── Flip card toggle ───────────────────────────────────────────────────────
