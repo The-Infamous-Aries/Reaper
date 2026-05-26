@@ -140,9 +140,50 @@ class GlobalNationsDB(BaseDB):
                         moon_landing                INTEGER DEFAULT 0,
                         mars_landing                INTEGER DEFAULT 0,
                         snapshot_at                 TEXT,
-                        updated_at                  TEXT
+                        updated_at                  TEXT,
+                        money                       REAL DEFAULT 0,
+                        coal                        REAL DEFAULT 0,
+                        oil                         REAL DEFAULT 0,
+                        uranium                     REAL DEFAULT 0,
+                        iron                        REAL DEFAULT 0,
+                        bauxite                     REAL DEFAULT 0,
+                        lead                        REAL DEFAULT 0,
+                        gasoline                    REAL DEFAULT 0,
+                        munitions                   REAL DEFAULT 0,
+                        steel                       REAL DEFAULT 0,
+                        aluminum                    REAL DEFAULT 0,
+                        food                        REAL DEFAULT 0
                     )
                 """)
+
+                # Add holdings columns if they don't exist (for existing databases)
+                holdings_columns = {
+                    "money": "REAL DEFAULT 0",
+                    "coal": "REAL DEFAULT 0",
+                    "oil": "REAL DEFAULT 0",
+                    "uranium": "REAL DEFAULT 0",
+                    "iron": "REAL DEFAULT 0",
+                    "bauxite": "REAL DEFAULT 0",
+                    "lead": "REAL DEFAULT 0",
+                    "gasoline": "REAL DEFAULT 0",
+                    "munitions": "REAL DEFAULT 0",
+                    "steel": "REAL DEFAULT 0",
+                    "aluminum": "REAL DEFAULT 0",
+                    "food": "REAL DEFAULT 0",
+                }
+
+                # Get existing columns
+                c.execute("PRAGMA table_info(nations)")
+                existing_columns = {row[1] for row in c.fetchall()}
+
+                # Add missing columns
+                for col_name, col_type in holdings_columns.items():
+                    if col_name not in existing_columns:
+                        try:
+                            c.execute(f"ALTER TABLE nations ADD COLUMN {col_name} {col_type}")
+                            logger.info(f"Added column {col_name} to nations table")
+                        except sqlite3.OperationalError as e:
+                            logger.warning(f"Failed to add column {col_name}: {e}")
 
                 c.execute("""
                     CREATE TABLE IF NOT EXISTS cities (
@@ -189,6 +230,10 @@ class GlobalNationsDB(BaseDB):
                 self._ensure_column(c, "nations", "alliance_name", "TEXT")
                 self._ensure_column(c, "nations", "alliance_flag", "TEXT")
                 self._ensure_column(c, "nations", "military_research", "TEXT")
+                
+                # Unit kill tracking columns (cumulative kills across all wars)
+                for col in ['soldier_kills', 'tank_kills', 'aircraft_kills', 'ship_kills', 'missile_kills', 'nuke_kills', 'spy_kills']:
+                    self._ensure_column(c, "nations", col, "INTEGER DEFAULT 0")
 
                 c.execute("CREATE INDEX IF NOT EXISTS idx_gn_alliance_id   ON nations(alliance_id)")
                 c.execute("CREATE INDEX IF NOT EXISTS idx_gn_alliance_name ON nations(alliance_name)")
@@ -371,6 +416,19 @@ class GlobalNationsDB(BaseDB):
                     "military_research":                  self._serialize_military_research(nation.get("military_research")),
                     "snapshot_at": now if nation.get("nation_name") else nation.get("snapshot_at"),
                     "updated_at":  now,
+                    # Unit kill fields from PnW API - these are cumulative across all wars
+                    "soldier_kills":        int(nation.get("soldier_kills") or 0),
+                    "tank_kills":           int(nation.get("tank_kills") or 0),
+                    "aircraft_kills":       int(nation.get("aircraft_kills") or 0),
+                    "ship_kills":           int(nation.get("ship_kills") or 0),
+                    "missile_kills":        int(nation.get("missile_kills") or 0),
+                    "nuke_kills":           int(nation.get("nuke_kills") or 0),
+                    "spy_kills":            int(nation.get("spy_kills") or 0),
+                    # War statistics from PnW API - total wars won/lost
+                    "wars_won":             int(nation.get("wars_won") or 0),
+                    "wars_lost":            int(nation.get("wars_lost") or 0),
+                    "offensive_wars_count": int(nation.get("offensive_wars_count") or 0),
+                    "defensive_wars_count": int(nation.get("defensive_wars_count") or 0),
                 }
 
                 # Holdings columns — included in INSERT (seed) but NEVER in UPDATE.
@@ -413,7 +471,9 @@ class GlobalNationsDB(BaseDB):
                     c.execute(f"INSERT INTO nations ({cols}) VALUES ({ph})", [nation_id] + insert_vals)
                 else:
                     # UPDATE: never touch holdings columns — HoldingsDB owns them
-                    upd = {k: v for k, v in fields.items() if v is not None}
+                    # Include fields that are present in the API response even if None,
+                    # but exclude fields that are completely missing from the response
+                    upd = {k: v for k, v in fields.items() if k in nation}
                     if upd:
                         set_clause = ", ".join(f"{k} = ?" for k in upd)
                         c.execute(f"UPDATE nations SET {set_clause} WHERE id = ?",
@@ -564,6 +624,39 @@ class GlobalNationsDB(BaseDB):
             if await self.upsert_city(nation_id, city):
                 saved += 1
         return saved
+
+    async def increment_unit_kills(self, nation_id: int, kills: Dict[str, int]) -> bool:
+        """Increment unit kill counts for a nation.
+        
+        Args:
+            nation_id: Nation ID to update
+            kills: Dict with keys 'soldier', 'tank', 'aircraft', 'ship', 'missile', 'nuke', 'spy'
+                   Only non-zero values are incremented.
+        """
+        def _work():
+            try:
+                with self._get_connection() as conn:
+                    c = conn.cursor()
+                    # Build SET clause for only non-zero values
+                    updates = []
+                    params = []
+                    for unit, count in kills.items():
+                        if count and count > 0:
+                            col = f"{unit}_kills"
+                            updates.append(f"{col} = COALESCE({col}, 0) + ?")
+                            params.append(count)
+                    
+                    if updates:
+                        set_clause = ", ".join(updates)
+                        params.append(nation_id)
+                        c.execute(f"UPDATE nations SET {set_clause} WHERE id = ?", params)
+                        conn.commit()
+                        return True
+                    return False
+            except Exception as e:
+                logger.error(f"GlobalNationsDB.increment_unit_kills({nation_id}): {e}", exc_info=True)
+                return False
+        return await self._run_sync(_work)
 
     # ── Queries ───────────────────────────────────────────────────────────────
 
@@ -885,12 +978,8 @@ class GlobalNationsDB(BaseDB):
             "soldiers","tanks","aircraft","ships","missiles","nukes","spies",
             "wars_won","wars_lost","offensive_wars_count","defensive_wars_count",
         )
-        # War count columns are seeded on INSERT but never overwritten on UPDATE.
-        # update_war_counts() owns these columns for real-time tracking; overwriting
-        # them with stale API snapshot values would corrupt the live war counts.
-        _WAR_COUNT_COLS = frozenset((
-            "wars_won", "wars_lost", "offensive_wars_count", "defensive_wars_count",
-        ))
+        # Note: War count columns are now included in regular updates from PnW API
+        # to ensure they reflect the total wars won/lost from the game's perspective
         REAL_FIELDS = (
             "score","gross_national_income","gross_domestic_product",
             "money","coal","oil","uranium","iron","bauxite","lead",
@@ -958,16 +1047,12 @@ class GlobalNationsDB(BaseDB):
                             [int(nid)] + [vd[k] for k in insert_cols],
                         )
 
-                        # ── UPDATE existing rows, skipping holdings + war-count columns ──
-                        # War count columns (wars_won, wars_lost, offensive_wars_count,
-                        # defensive_wars_count) are managed exclusively by update_war_counts()
-                        # for real-time tracking. Overwriting them here with stale API
-                        # snapshot values would corrupt live war counts.
+                        # ── UPDATE existing rows, skipping holdings columns ──
+                        # War count columns are now included in regular updates from PnW API
                         update_cols = [
                             k for k in vd
                             if k != "id"
                             and k not in _HOLDINGS_COLS
-                            and k not in _WAR_COUNT_COLS
                             and vd[k] is not None
                         ]
                         if update_cols:

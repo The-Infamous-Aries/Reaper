@@ -11,6 +11,8 @@ from typing import Any, Dict, Optional
 
 logger = logging.getLogger(__name__)
 
+from PnWHarvester.db import news_writer as nw
+
 
 def _obj_to_dict(obj: Any) -> Dict[str, Any]:
     """Convert objects to dictionaries safely."""
@@ -65,28 +67,41 @@ class WarNewsGenerator:
             att_aflag = (att_obj.get("alliance") or {}).get("flag") if isinstance(att_obj.get("alliance"), dict) else None
             def_aflag = (def_obj.get("alliance") or {}).get("flag") if isinstance(def_obj.get("alliance"), dict) else None
             
-            # Create news event
-            await self.news_component.record_event(
-                event_type="war_declared",
-                nation_id=int(war_data.get("att_id") or 0),
-                nation_name=att_obj.get("nation_name") or war_data.get("att_nation_name"),
-                nation_flag=att_obj.get("flag"),
-                alliance_id=int(war_data.get("att_alliance_id") or 0) or None,
-                alliance_name=att_aname,
-                alliance_flag=att_aflag,
-                sec_nation_id=int(war_data.get("def_id") or 0),
-                sec_nation_name=def_obj.get("nation_name") or war_data.get("def_nation_name"),
-                sec_alliance_id=int(war_data.get("def_alliance_id") or 0) or None,
-                sec_alliance_name=def_aname,
-                headline=f"{att_obj.get('nation_name')} declared war on {def_obj.get('nation_name')}",
-                detail={
-                    "war_id": int(war_data.get("id") or 0),
-                    "war_type": _norm(war_data.get("war_type", "")),
-                    "reason": war_data.get("reason"),
-                    "att_leader_name": att_obj.get("leader_name"),
-                    "def_leader_name": def_obj.get("leader_name"),
-                },
+            # Build headline with alliance information and war type
+            att_name = att_obj.get("nation_name") or war_data.get("att_nation_name") or f"nation {war_data.get('att_id')}"
+            def_name = def_obj.get("nation_name") or war_data.get("def_nation_name") or f"nation {war_data.get('def_id')}"
+            war_type = _norm(war_data.get("war_type", ""))
+            war_type_display = war_type.replace("_", " ").title() if war_type else "War"
+            
+            if att_aname and def_aname:
+                headline = f"{att_name} of {att_aname} declared {war_type_display} war on {def_name} of {def_aname}"
+            elif att_aname:
+                headline = f"{att_name} of {att_aname} declared {war_type_display} war on {def_name}"
+            elif def_aname:
+                headline = f"{att_name} declared {war_type_display} war on {def_name} of {def_aname}"
+            else:
+                headline = f"{att_name} declared {war_type_display} war on {def_name}"
+            
+            # Call news_writer.record_war_declared directly to generate narrative text
+            from PnWHarvester.db.news_writer import record_war_declared
+            await record_war_declared(
+                war_id=int(war_data.get("id") or 0),
+                att_nation_id=int(war_data.get("att_id") or 0),
+                att_nation_name=att_obj.get("nation_name") or war_data.get("att_nation_name"),
+                att_nation_flag=att_obj.get("flag"),
+                att_alliance_id=int(war_data.get("att_alliance_id") or 0) or None,
+                att_alliance_name=att_aname,
+                att_alliance_flag=att_aflag,
+                def_nation_id=int(war_data.get("def_id") or 0),
+                def_nation_name=def_obj.get("nation_name") or war_data.get("def_nation_name"),
+                def_nation_flag=def_obj.get("flag"),
+                def_alliance_id=int(war_data.get("def_alliance_id") or 0) or None,
+                def_alliance_name=def_aname,
+                war_type=war_type,
+                reason=war_data.get("reason"),
                 event_date=str(war_data.get("date") or "").replace("+00:00", "").strip(),
+                att_leader_name=att_obj.get("leader_name"),
+                def_leader_name=def_obj.get("leader_name"),
             )
             
             return {
@@ -229,7 +244,7 @@ class WarNewsGenerator:
                 ))
                 result["news_events"].append("missile_attack")
             
-            # Generate loot news for successful attacks
+            # Generate loot news for successful attacks (nation looting nation)
             if self._is_win_attack(attack_data):
                 money_looted = float(attack_data.get("money_stolen") or attack_data.get("money_looted") or 0)
                 res_looted = {r: float(attack_data.get(f"{r}_looted") or 0) for r in [
@@ -278,32 +293,30 @@ class WarNewsGenerator:
             return
         
         try:
+            from PnWHarvester.db.news_writer import record_wmd_attack
+            
             att_id = attack_data.get("att_id") or attack_data.get("attacker_id")
             def_id = attack_data.get("def_id") or attack_data.get("defender_id")
             
-            await self.news_component.record_event(
-                event_type=f"{attack_type}_attack",
-                nation_id=att_id,
-                nation_name=war_data.get(f"{_att_prefix}_nation_name"),
-                nation_flag=att_flag,
-                alliance_id=att_alliance_id,
-                alliance_name=att_alliance_name,
-                alliance_flag=att_alliance_flag,
-                sec_nation_id=def_id,
-                sec_nation_name=war_data.get(f"{_def_prefix}_nation_name"),
-                sec_alliance_id=def_alliance_id,
-                sec_alliance_name=def_alliance_name,
-                value=infra_val,
-                headline=f"{war_data.get(f'{_att_prefix}_nation_name')} fired {attack_type} at {war_data.get(f'{_def_prefix}_nation_name')}",
-                detail={
-                    "attack_type": attack_type,
-                    "att_id": att_id,
-                    "def_id": def_id,
-                    "infra_destroyed_value": infra_val,
-                    "attack_missed": _attack_missed,
-                    "resistance_lost": _resistance_lost,
-                    "improvements_destroyed": _imps_destroyed,
-                },
+            await record_wmd_attack(
+                attack_type=attack_type,
+                att_nation_id=att_id,
+                att_nation_name=war_data.get(f"{_att_prefix}_nation_name"),
+                att_nation_flag=att_flag,
+                att_alliance_id=att_alliance_id,
+                att_alliance_name=att_alliance_name,
+                att_alliance_flag=att_alliance_flag,
+                def_nation_id=def_id,
+                def_nation_name=war_data.get(f"{_def_prefix}_nation_name"),
+                def_nation_flag=def_flag,
+                def_alliance_id=def_alliance_id,
+                def_alliance_name=def_alliance_name,
+                def_alliance_flag=def_alliance_flag,
+                infra_destroyed_value=infra_val,
+                missed=_attack_missed,
+                resistance_lost=_resistance_lost,
+                improvements_destroyed=_imps_destroyed if _imps_destroyed else None,
+                units_destroyed=self._extract_units_destroyed(attack_data),
                 event_date=str(attack_data.get("date") or "").replace("+00:00", "").strip(),
             )
         except Exception as e:
@@ -393,6 +406,27 @@ class WarNewsGenerator:
             if amt > 0
         )
         return money_looted + resource_value
+    
+    def _extract_units_destroyed(self, attack_data: Dict[str, Any]) -> Dict[str, int]:
+        """Extract units destroyed from attack data."""
+        units = {}
+        _UNIT_FIELDS = [
+            "soldiers_lost", "tanks_lost", "aircraft_lost", "ships_lost",
+            "soldiers_killed", "tanks_killed", "aircraft_killed", "ships_killed",
+        ]
+        for field in _UNIT_FIELDS:
+            val = int(attack_data.get(field) or 0)
+            if val > 0:
+                # Extract unit type from field name
+                if "soldiers" in field:
+                    units["soldiers"] = units.get("soldiers", 0) + val
+                elif "tanks" in field:
+                    units["tanks"] = units.get("tanks", 0) + val
+                elif "aircraft" in field:
+                    units["aircraft"] = units.get("aircraft", 0) + val
+                elif "ships" in field:
+                    units["ships"] = units.get("ships", 0) + val
+        return units
 
 
 class BeigeManager:

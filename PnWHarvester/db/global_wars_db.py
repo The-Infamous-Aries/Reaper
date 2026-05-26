@@ -226,7 +226,7 @@ class GlobalWarsDB(BaseDB):
         - turns_left=0 is always written.
         - Computes is_active and end_reason from incoming data.
         """
-        async with self._lock:
+        async with self._get_lock():
             try:
                 with self._get_connection() as conn:
                     cursor = conn.cursor()
@@ -359,7 +359,7 @@ class GlobalWarsDB(BaseDB):
 
     async def save_war_attack(self, attack_data: Dict[str, Any]) -> bool:
         """Upsert a war attack — never overwrites non-null with NULL."""
-        async with self._lock:
+        async with self._get_lock():
             try:
                 with self._get_connection() as conn:
                     cursor = conn.cursor()
@@ -441,7 +441,7 @@ class GlobalWarsDB(BaseDB):
                 return False
 
     async def get_war(self, war_id: int) -> Optional[Dict[str, Any]]:
-        async with self._lock:
+        async with self._get_lock():
             try:
                 with self._get_connection() as conn:
                     cursor = conn.cursor()
@@ -456,7 +456,7 @@ class GlobalWarsDB(BaseDB):
 
     async def get_wars_by_alliance(self, alliance_id: int) -> List[Dict[str, Any]]:
         """Return all wars where alliance_id is attacker or defender."""
-        async with self._lock:
+        async with self._get_lock():
             try:
                 with self._get_connection() as conn:
                     cursor = conn.cursor()
@@ -478,7 +478,7 @@ class GlobalWarsDB(BaseDB):
         start_date: Optional[date] = None,
         end_date: Optional[date] = None,
     ) -> List[Dict[str, Any]]:
-        async with self._lock:
+        async with self._get_lock():
             try:
                 with self._get_connection() as conn:
                     cursor = conn.cursor()
@@ -508,7 +508,7 @@ class GlobalWarsDB(BaseDB):
                 return []
 
     async def get_war_attacks(self, war_id: int) -> List[Dict[str, Any]]:
-        async with self._lock:
+        async with self._get_lock():
             try:
                 with self._get_connection() as conn:
                     cursor = conn.cursor()
@@ -531,7 +531,7 @@ class GlobalWarsDB(BaseDB):
                 return []
 
     async def get_stats(self) -> Dict[str, int]:
-        async with self._lock:
+        async with self._get_lock():
             try:
                 with self._get_connection() as conn:
                     c = conn.cursor()
@@ -541,3 +541,44 @@ class GlobalWarsDB(BaseDB):
             except Exception as e:
                 logger.error(f"get_stats: {e}")
                 return {"wars": 0, "war_attacks": 0}
+
+    async def get_active_war_counts(self) -> Dict[int, Dict[str, int]]:
+        """Return {nation_id: {'off': int, 'def': int}} for all nations in active wars.
+
+        Uses is_active column as primary signal with multi-condition fallback
+        for legacy rows. This is the authoritative source for the nations page
+        war slot display.
+        """
+        async with self._get_lock():
+            try:
+                with self._get_connection() as conn:
+                    cursor = conn.cursor()
+                    cursor.execute(
+                        """
+                        SELECT att_id, def_id
+                        FROM wars
+                        WHERE (
+                            is_active = 1
+                            OR (
+                                is_active IS NULL
+                                AND (turns_left IS NULL OR turns_left > 0)
+                                AND (end_date IS NULL OR end_date = '')
+                                AND (winner_id IS NULL OR winner_id = 0)
+                                AND NOT (att_peace = 1 AND def_peace = 1)
+                            )
+                        )
+                        AND (att_id IS NOT NULL OR def_id IS NOT NULL)
+                        """
+                    )
+                    counts: Dict[int, Dict[str, int]] = {}
+                    for att_id, def_id in cursor.fetchall():
+                        if att_id:
+                            nid = int(att_id)
+                            counts.setdefault(nid, {'off': 0, 'def': 0})['off'] += 1
+                        if def_id:
+                            nid = int(def_id)
+                            counts.setdefault(nid, {'off': 0, 'def': 0})['def'] += 1
+                    return counts
+            except Exception as e:
+                logger.error(f"Error fetching active war counts: {e}")
+                return {}

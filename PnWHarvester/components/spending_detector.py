@@ -35,6 +35,73 @@ class SpendingDetector:
         """Get current UTC time as string."""
         return datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
     
+    async def detect_city_purchase(
+        self,
+        nation_id: int,
+        old_nation: Dict[str, Any],
+        new_num_cities: int,
+        event_date: Optional[str] = None,
+    ):
+        """
+        Detect and deduct cost for a city purchase (called from city/create event).
+        
+        Args:
+            nation_id: Nation ID
+            old_nation: Nation data from DB before the purchase
+            new_num_cities: City count after the purchase
+            event_date: Event date string
+        """
+        if not self.holdings_db:
+            return
+        
+        from PnWHarvester.db.pnw_costs import city_cost
+        
+        old_num_cities = int(old_nation.get("num_cities") or 0)
+        cities_bought = new_num_cities - old_num_cities
+        
+        if cities_bought <= 0:
+            return
+        
+        nation_name = old_nation.get("nation_name")
+        ev_date = event_date or self._now_str()
+        
+        # Calculate cost for the new city
+        total_city_cost = city_cost(old_num_cities, nation_data=old_nation)
+        
+        if total_city_cost > 0:
+            await self.holdings_db.deduct_spending(
+                nation_id=nation_id,
+                cash_cost=total_city_cost,
+                event_type="city_purchase",
+                description=f"Bought {cities_bought} city/cities ({old_num_cities}→{new_num_cities})",
+                event_date=ev_date,
+                nation_name=nation_name,
+                item_type="city",
+                item_quantity=cities_bought,
+                item_details=f"Cities {old_num_cities}→{new_num_cities}",
+            )
+            logger.info(
+                f"Holdings: nation {nation_id} city purchase "
+                f"${total_city_cost:,.0f} ({old_num_cities}→{new_num_cities} cities)"
+            )
+            # News: city purchase
+            try:
+                import PnWHarvester.db.news_writer as _nw
+                asyncio.create_task(_nw.record_city_purchase(
+                    nation_id=nation_id,
+                    nation_name=nation_name,
+                    nation_flag=old_nation.get("flag"),
+                    alliance_id=int(old_nation.get("alliance_id") or 0) or None,
+                    alliance_name=old_nation.get("alliance_name"),
+                    alliance_flag=old_nation.get("alliance_flag"),
+                    old_cities=old_num_cities,
+                    new_cities=new_num_cities,
+                    cash_cost=total_city_cost,
+                    event_date=ev_date,
+                ))
+            except Exception as _ne:
+                logger.debug(f"news city_purchase: {_ne}")
+    
     async def detect_nation_spending(
         self,
         nation_id: int,
@@ -46,73 +113,29 @@ class SpendingDetector:
         Compare old vs new nation snapshot to detect purchases.
         
         Deducts costs from holdings BEFORE the new snapshot is saved.
+        
+        Note: City purchases are detected in city/create events to avoid double-detection
+        since city/create fires before nation/update and increments num_cities in the DB.
         """
         if not self.holdings_db:
             return
         
         from PnWHarvester.db.pnw_costs import (
-            city_cost, projects_purchased_cost, projects_purchased_resource_costs,
+            projects_purchased_cost, projects_purchased_resource_costs,
         )
         
         nation_name = new_nation.get("nation_name") or old_nation.get("nation_name")
         ev_date = event_date or self._now_str()
         
-        # City purchase detection
-        old_turns_city = int(old_nation.get("turns_since_last_city") or 0)
-        new_turns_city = int(new_nation.get("turns_since_last_city") or 0)
-        old_num_cities = int(old_nation.get("num_cities") or 0)
-        new_num_cities = int(new_nation.get("num_cities") or 0)
-        
-        if old_num_cities > 0:
-            cities_bought = max(0, new_num_cities - old_num_cities)
-            if cities_bought == 0 and old_turns_city > 2 and new_turns_city == 0:
-                cities_bought = 1
-            
-            if cities_bought > 0:
-                total_city_cost = 0.0
-                base_cities = old_num_cities
-                for _ in range(cities_bought):
-                    total_city_cost += city_cost(base_cities, nation_data=new_nation)
-                    base_cities += 1
-                if total_city_cost > 0:
-                    await self.holdings_db.deduct_spending(
-                        nation_id=nation_id,
-                        cash_cost=total_city_cost,
-                        event_type="city_purchase",
-                        description=f"Bought {cities_bought} city/cities ({old_num_cities}→{new_num_cities})",
-                        event_date=ev_date,
-                        nation_name=nation_name,
-                        item_type="city",
-                        item_quantity=cities_bought,
-                        item_details=f"Cities {old_num_cities}→{new_num_cities}",
-                    )
-                    logger.info(
-                        f"Holdings: nation {nation_id} city purchase "
-                        f"${total_city_cost:,.0f} ({old_num_cities}→{new_num_cities} cities)"
-                    )
-                    # News: city purchase
-                    try:
-                        import PnWHarvester.db.news_writer as _nw
-                        asyncio.create_task(_nw.record_city_purchase(
-                            nation_id=nation_id,
-                            nation_name=nation_name,
-                            nation_flag=new_nation.get("flag"),
-                            alliance_id=int(new_nation.get("alliance_id") or 0) or None,
-                            alliance_name=new_nation.get("alliance_name"),
-                            alliance_flag=new_nation.get("alliance_flag"),
-                            old_cities=old_num_cities,
-                            new_cities=new_num_cities,
-                            cash_cost=total_city_cost,
-                            event_date=ev_date,
-                        ))
-                    except Exception as _ne:
-                        logger.debug(f"news city_purchase: {_ne}")
+        # Skip city purchase detection here - handled in city/create events
+        # to avoid double-detection since city/create increments num_cities
+        # before nation/update fires.
         
         # Project purchase detection
         old_turns_proj = int(old_nation.get("turns_since_last_project") or 0)
         new_turns_proj = int(new_nation.get("turns_since_last_project") or 0)
         
-        if old_turns_proj > 2 and new_turns_proj == 0 and old_num_cities > 0:
+        if old_turns_proj > 2 and new_turns_proj == 0:
             proj_cost = projects_purchased_cost(old_nation, new_nation)
             proj_rss = projects_purchased_resource_costs(old_nation, new_nation)
             if proj_cost > 0 or proj_rss:

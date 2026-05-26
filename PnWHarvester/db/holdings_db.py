@@ -45,12 +45,13 @@ MILITARY_COLS = ("soldiers", "tanks", "aircraft", "ships", "missiles", "nukes", 
 
 # War-type base loot percentages — used by apply_loot_event to back-calculate
 # the defender's exact post-loot balance via: remaining = looted * (1/pct - 1)
+# Base loot is 10% for all war types (matches game mechanics)
 _WAR_TYPE_BASE: Dict[str, float] = {
-    "raid":      0.075,
-    "ordinary":  0.050,
-    "attrition": 0.060,
+    "raid":      0.10,
+    "ordinary":  0.10,
+    "attrition": 0.10,
 }
-_DEFAULT_BASE = 0.075
+_DEFAULT_BASE = 0.10
 
 # Military unit purchase costs (cash + resources per unit)
 MILITARY_COSTS: Dict[str, Dict[str, float]] = {
@@ -69,6 +70,7 @@ def _calc_loot_pct(
     att_war_policy: Optional[str] = None,
     def_war_policy: Optional[str] = None,
     att_has_ape: bool = False,
+    def_has_ape: bool = False,
 ) -> float:
     """
     Return the fraction of a defender's holdings looted per ground-win attack.
@@ -78,6 +80,7 @@ def _calc_loot_pct(
       Advanced Pirate Economy (attacker project): ×1.1
       Turtle war policy (defender): ×1.2  (defender loses 20% more loot)
       Moneybags war policy (defender): ×0.6  (defender keeps more)
+      Advanced Pirate Economy (defender project): ×0.9  (defender loses 10% less loot)
     """
     wt   = (war_type or "").lower().replace("_war", "").replace(" ", "_")
     base = _WAR_TYPE_BASE.get(wt, _DEFAULT_BASE)
@@ -90,6 +93,8 @@ def _calc_loot_pct(
         mult *= 1.2
     if (def_war_policy or "").lower() == "moneybags":
         mult *= 0.6
+    if def_has_ape:
+        mult *= 0.9
     return base * mult
 
 
@@ -272,6 +277,7 @@ class HoldingsDB(BaseDB):
         att_war_policy: Optional[str] = None,
         def_war_policy: Optional[str] = None,
         att_has_ape: bool = False,
+        def_has_ape: bool = False,
         attacker_name: Optional[str] = None,
         defender_name: Optional[str] = None,
     ) -> bool:
@@ -297,7 +303,7 @@ class HoldingsDB(BaseDB):
         loot_date_str = str(loot_date or self._now()).replace("T", " ")
 
         # ── Calculate loot percentage to back-derive defender's remaining balance ──
-        loot_pct = _calc_loot_pct(war_type, att_war_policy, def_war_policy, att_has_ape)
+        loot_pct = _calc_loot_pct(war_type, att_war_policy, def_war_policy, att_has_ape, def_has_ape)
 
         # remaining = looted * (1/loot_pct - 1)
         # Guard against division by zero (loot_pct should always be > 0)
@@ -577,18 +583,18 @@ class HoldingsDB(BaseDB):
                     list(mil_updates.values()) + [ev_date, nation_id],
                 )
 
-                if is_fresh:
-                    if total_cash_cost > 0:
+                # Always deduct costs for unit purchases, regardless of confidence
+                if total_cash_cost > 0:
+                    conn.execute(
+                        "UPDATE nations SET money=MAX(0, COALESCE(money,0)-?) WHERE id=?",
+                        (total_cash_cost, nation_id),
+                    )
+                for resource, amount in resource_costs.items():
+                    if amount > 0 and resource in RESOURCE_COLS:
                         conn.execute(
-                            "UPDATE nations SET money=MAX(0, COALESCE(money,0)-?) WHERE id=?",
-                            (total_cash_cost, nation_id),
+                            f"UPDATE nations SET {resource}=MAX(0, COALESCE({resource},0)-?) WHERE id=?",
+                            (amount, nation_id),
                         )
-                    for resource, amount in resource_costs.items():
-                        if amount > 0 and resource in RESOURCE_COLS:
-                            conn.execute(
-                                f"UPDATE nations SET {resource}=MAX(0, COALESCE({resource},0)-?) WHERE id=?",
-                                (amount, nation_id),
-                            )
                 conn.commit()
             return is_fresh
 
@@ -784,6 +790,100 @@ class HoldingsDB(BaseDB):
             return True
         except Exception as e:
             logger.error(f"set_complete_holdings({nation_id}): {e}", exc_info=True)
+            return False
+
+    async def apply_trade_completion(
+        self,
+        buyer_id: int,
+        seller_id: int,
+        money_amount: float,
+        resources: Dict[str, float],
+        trade_date: str,
+        buyer_name: Optional[str] = None,
+        seller_name: Optional[str] = None,
+    ) -> bool:
+        """
+        Apply a completed trade: deduct from seller, add to buyer.
+        
+        This is called when a trade is actually completed (has accept_date),
+        not when it's posted to the market.
+        
+        Args:
+            buyer_id: Nation ID of the buyer
+            seller_id: Nation ID of the seller
+            money_amount: Cash amount traded (positive value)
+            resources: Dict of resource amounts traded
+            trade_date: Trade completion date
+            buyer_name: Buyer nation name (optional)
+            seller_name: Seller nation name (optional)
+            
+        Returns:
+            True if successful, False otherwise
+        """
+        trade_date_str = str(trade_date or self._now()).replace("T", " ")
+        
+        def _work():
+            with self._conn() as conn:
+                # Ensure both rows exist
+                self._ensure_row(conn, buyer_id, buyer_name)
+                self._ensure_row(conn, seller_id, seller_name)
+                
+                # ── Buyer: ADD money and resources ─────────────────────────────
+                buyer_rss_parts = []
+                buyer_rss_vals = []
+                for r in RESOURCE_COLS:
+                    v = resources.get(r, 0.0)
+                    if v > 0:
+                        buyer_rss_parts.append(f"{r}=MAX(0, COALESCE({r},0)+?)")
+                        buyer_rss_vals.append(v)
+                buyer_extra = (", " + ", ".join(buyer_rss_parts)) if buyer_rss_parts else ""
+                conn.execute(
+                    f"UPDATE nations SET "
+                    f"money=MAX(0, COALESCE(money,0)+?), "
+                    f"confidence=CASE WHEN confidence='seeded' THEN 'tracked' ELSE confidence END, "
+                    f"last_event_date=?"
+                    f"{buyer_extra} WHERE id=?",
+                    [money_amount, trade_date_str] + buyer_rss_vals + [buyer_id],
+                )
+                
+                # ── Seller: DEDUCT money and resources ───────────────────────────
+                seller_rss_parts = []
+                seller_rss_vals = []
+                for r in RESOURCE_COLS:
+                    v = resources.get(r, 0.0)
+                    if v > 0:
+                        seller_rss_parts.append(f"{r}=MAX(0, COALESCE({r},0)-?)")
+                        seller_rss_vals.append(v)
+                seller_extra = (", " + ", ".join(seller_rss_parts)) if seller_rss_parts else ""
+                conn.execute(
+                    f"UPDATE nations SET "
+                    f"money=MAX(0, COALESCE(money,0)-?), "
+                    f"confidence=CASE WHEN confidence='seeded' THEN 'tracked' ELSE confidence END, "
+                    f"last_event_date=?"
+                    f"{seller_extra} WHERE id=?",
+                    [money_amount, trade_date_str] + seller_rss_vals + [seller_id],
+                )
+                
+                conn.commit()
+
+        try:
+            await self._run_sync(_work)
+            logger.info(
+                f"Holdings trade completed: buyer={buyer_id}({buyer_name}) "
+                f"seller={seller_id}({seller_name}) "
+                f"money=${money_amount:,.0f} "
+                + (
+                    " | resources: " + ", ".join(
+                        f"{r}={v:,.2f}" for r, v in resources.items() if v > 0
+                    ) if any(v > 0 for v in resources.values()) else ""
+                )
+            )
+            return True
+        except Exception as e:
+            logger.error(
+                f"apply_trade_completion(buyer={buyer_id}, seller={seller_id}): {e}",
+                exc_info=True,
+            )
             return False
 
     # ── Compat stubs ──────────────────────────────────────────────────────────

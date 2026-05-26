@@ -20,7 +20,7 @@ from pnwkit.new import QueryKit
 
 logger = logging.getLogger(__name__)
 
-NW_ALLIANCE_ID = 14225
+NW_ALLIANCE_ID = 10259
 
 
 def _obj_to_dict(obj: Any) -> Dict[str, Any]:
@@ -153,21 +153,16 @@ class NationEventProcessor:
                     # News: alliance change
                     if self.news_component:
                         try:
-                            asyncio.create_task(self.news_component.record_event(
-                                event_type="alliance_change",
+                            from PnWHarvester.db.news_writer import record_alliance_change
+                            asyncio.create_task(record_alliance_change(
                                 nation_id=nation_id_int,
                                 nation_name=nation.get("nation_name"),
                                 nation_flag=nation.get("flag"),
-                                alliance_id=int(new_aid) if new_aid else None,
-                                alliance_name=nation.get("alliance_name"),
-                                alliance_flag=nation.get("alliance_flag"),
-                                headline=f"{nation.get('nation_name')} joins {nation.get('alliance_name')}",
-                                detail={
-                                    "old_alliance_id": int(old_aid) if old_aid else None,
-                                    "old_alliance_name": old_nation.get("alliance_name"),
-                                    "new_alliance_id": int(new_aid) if new_aid else None,
-                                    "new_alliance_name": nation.get("alliance_name"),
-                                },
+                                old_alliance_id=int(old_aid) if old_aid else None,
+                                old_alliance_name=old_nation.get("alliance_name"),
+                                new_alliance_id=int(new_aid) if new_aid else None,
+                                new_alliance_name=nation.get("alliance_name"),
+                                new_alliance_flag=nation.get("alliance_flag"),
                                 event_date=nation.get("last_active"),
                             ))
                         except Exception as _ne:
@@ -313,6 +308,19 @@ class CityEventProcessor:
                 )
             else:
                 is_new_city = True
+                # New city purchased - detect and deduct cost
+                nation_data = await self.get_existing_nation(nation_id)
+                if nation_data:
+                    from .spending_detector import SpendingDetector
+                    detector = SpendingDetector(self.holdings_db)
+                    old_num_cities = int(nation_data.get("num_cities") or 0)
+                    new_num_cities = old_num_cities + 1
+                    await detector.detect_city_purchase(
+                        nation_id=nation_id,
+                        old_nation=nation_data,
+                        new_num_cities=new_num_cities,
+                        event_date=self._now_str(),
+                    )
         
         if self.global_db:
             await self.global_db.upsert_city(nation_id, city)
@@ -560,6 +568,9 @@ class NationComponent:
             logger.warning("NationComponent already running")
             return
         
+        # Recreate QueryKit for fresh connection on each start
+        self.kit = QueryKit(self.api_key)
+        
         self.running = True
         logger.info("Starting NationComponent subscriptions")
         
@@ -598,38 +609,74 @@ class NationComponent:
     
     async def run_forever(self):
         """Run subscriptions indefinitely with automatic restart on disconnect/crash."""
+        retry_count = 0
+        max_retry_delay = 300  # 5 minutes max
+        base_delay = 10  # Start with 10 seconds
+        
         while True:
             try:
                 await self.start()
+                # Reset retry count on successful start
+                retry_count = 0
             except asyncio.CancelledError:
                 logger.info("NationComponent cancelled")
                 break
-            except (aiohttp.ClientError, ConnectionResetError, OSError) as e:
-                logger.warning(f"NationComponent disconnected ({e}) — restarting in 30s")
+            except (aiohttp.ClientError, ConnectionResetError, OSError, ConnectionError) as e:
+                retry_count += 1
+                # Exponential backoff with jitter
+                delay = min(base_delay * (2 ** min(retry_count - 1, 5)), max_retry_delay)
+                # Add jitter to prevent thundering herd
+                import random
+                jitter = random.uniform(0.8, 1.2)
+                actual_delay = delay * jitter
+                
+                logger.warning(f"NationComponent disconnected ({e}) — retry {retry_count}, restarting in {actual_delay:.1f}s")
             except Exception as e:
-                logger.error(f"NationComponent crashed ({e}) — restarting in 30s", exc_info=True)
+                retry_count += 1
+                delay = min(base_delay * (2 ** min(retry_count - 1, 5)), max_retry_delay)
+                import random
+                jitter = random.uniform(0.8, 1.2)
+                actual_delay = delay * jitter
+                
+                logger.error(f"NationComponent crashed ({e}) — retry {retry_count}, restarting in {actual_delay:.1f}s", exc_info=True)
             finally:
                 self.running = False
                 await self.stop()
             
-            await asyncio.sleep(30)
+            await asyncio.sleep(actual_delay)
     
     async def _close_kit_socket(self):
         """Close the pnwkit socket to avoid pending task warnings."""
+        if not hasattr(self, 'kit') or self.kit is None:
+            return
+            
         socket = getattr(self.kit, "socket", None)
         if socket is None:
             return
+            
         tasks_to_cancel = []
-        for attr in ("task", "ping_pong_task"):
+        for attr in ("task", "ping_pong_task", "_heartbeat_task"):
             t = getattr(socket, attr, None)
             if t is not None and not t.done():
                 tasks_to_cancel.append(t)
                 t.cancel()
+                
         if tasks_to_cancel:
-            await asyncio.gather(*tasks_to_cancel, return_exceptions=True)
+            try:
+                await asyncio.gather(*tasks_to_cancel, return_exceptions=True)
+            except Exception as e:
+                logger.warning(f"Error cancelling socket tasks: {e}")
+                
         try:
-            if not socket.closed:
+            # Close WebSocket connection if it exists
+            if hasattr(socket, 'ws') and socket.ws and not socket.ws.closed:
                 await socket.ws.close()
-        except Exception:
-            pass
+            # Close HTTP session if it exists
+            if hasattr(socket, 'session') and socket.session:
+                await socket.session.close()
+        except Exception as e:
+            logger.debug(f"Error closing socket connection: {e}")
+            
+        # Clear references
         self.kit.socket = None
+        self.kit = None

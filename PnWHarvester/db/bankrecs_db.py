@@ -187,7 +187,7 @@ class BankrecsDB(BaseDB):
     async def _save_bankrec_direct(self, rec: Dict[str, Any], rec_id: Any) -> bool:
         """Retry insert after schema rebuild — called only from save_bankrec error path."""
         try:
-            with sqlite3.connect(self.db_path) as conn:
+            with self._get_connection() as conn:
                 now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
                 conn.execute("""
                     INSERT OR IGNORE INTO bankrecs (
@@ -295,7 +295,7 @@ class BankrecsDB(BaseDB):
         """Retry bulk insert after schema rebuild."""
         saved = 0
         try:
-            with sqlite3.connect(self.db_path) as conn:
+            with self._get_connection() as conn:
                 c = conn.cursor()
                 now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
                 for rec in recs:

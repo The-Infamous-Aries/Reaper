@@ -43,8 +43,8 @@ class RevenueProcessor:
         Returns:
             Dictionary with revenue breakdown
         """
-        # Base revenue formula (simplified)
-        # Revenue = GNI * (1 - tax_rate) + city_revenue
+        # Turn revenue formula (2 hours per turn)
+        # Revenue = (GNI * (1 - tax_rate) + city_revenue + resource_production) * 2_hours_per_turn
         
         gni = float(nation_data.get("gross_national_income") or 0)
         tax_bracket = nation_data.get("tax_id", 0)
@@ -54,18 +54,26 @@ class RevenueProcessor:
         tax_rates = {0: 0.0, 1: 0.05, 2: 0.10, 3: 0.15, 4: 0.20, 5: 0.25}
         tax_rate = tax_rates.get(tax_bracket, 0.15)
         
-        # Net after tax
+        # Net after tax (daily income)
         net_income = gni * (1 - tax_rate)
         
-        # City revenue (simplified)
+        # City revenue (daily per city)
         city_revenue = num_cities * 100  # Base per city
         
-        total_revenue = net_income + city_revenue
+        # Resource production (daily) - simplified based on nation's resource production
+        # In reality this would be calculated from each city's resource improvements
+        resource_revenue = 0.0  # GNI already includes resource revenue
+        
+        # Convert daily to turn revenue (2 hours per turn)
+        HOURS_PER_TURN = 2
+        daily_total = net_income + city_revenue + resource_revenue
+        turn_total = daily_total * HOURS_PER_TURN
         
         return {
-            "total": total_revenue,
-            "net_income": net_income,
-            "city_revenue": city_revenue,
+            "total": turn_total,
+            "net_income": net_income * HOURS_PER_TURN,
+            "city_revenue": city_revenue * HOURS_PER_TURN,
+            "resource_revenue": resource_revenue * HOURS_PER_TURN,
             "tax_rate": tax_rate,
         }
     

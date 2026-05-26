@@ -78,68 +78,110 @@ class BankrecEventProcessor:
             logger.debug(f"bankrec/create → duplicate {bankrec_id}, skipping")
             return {"processed": 0, "skipped": 1, "duplicate": True}
         
+        # Two types of war-related bank recs:
+        # 1. Nation loot (stype=1, rtype=1): attacker loots from defender nation - handled by war subscription
+        # 2. Alliance bank loot (stype=2, rtype=1): attacker loots from alliance bank - handled here
+        stype = int(bankrec.get("sender_type") or 0)
+        rtype = int(bankrec.get("receiver_type") or 0)
+        note = bankrec.get("note") or ""
+        _note_lower = note.lower()
+        
+        # More flexible war note detection - check for various loot indicators
+        _is_war_note = (
+            ("defeated" in _note_lower and "captured" in _note_lower)
+            or "looted from war" in _note_lower
+            or "war loot" in _note_lower
+            or ("war #" in _note_lower and "captured" in _note_lower)
+            or ("defeated" in _note_lower and "resources" in _note_lower)
+        )
+        
+        is_nation_loot = (stype == 1 and rtype == 1 and _is_war_note)  # handled by war subscription
+        is_alliance_loot = (stype == 2 and rtype == 1 and _is_war_note)  # alliance bank looted
+        
+        # Log detection for debugging
+        if _is_war_note:
+            logger.info(f"bankrec/create → {bankrec_id} → War note detected: stype={stype}, rtype={rtype}, note='{note}'")
+            logger.info(f"bankrec/create → {bankrec_id} → is_nation_loot={is_nation_loot}, is_alliance_loot={is_alliance_loot}")
+        
         # Save to BankrecsDB
         if self.bankrecs_db:
             await self.bankrecs_db.save_bankrec(bankrec)
         
-        # Update HoldingsDB for nation-type parties
+        # Update HoldingsDB
         if self.holdings_db:
-            party_type = bankrec.get("party_type")
-            if party_type == "nation":
+            if is_alliance_loot:
+                # Alliance loot: only add to winner (receiver), don't affect loser
+                await self._update_holdings_for_alliance_loot(bankrec)
+            elif not is_nation_loot:
+                # Normal bank transfer: apply standard bankrec logic
+                # Skip nation loot (stype=1,rtype=1 war recs) - war subscription handles holdings
                 await self._update_holdings_for_bankrec(bankrec)
         
         # Generate news event
-        await self._generate_bankrec_news(bankrec)
+        # nation loot news is handled by the war subscription - skip here
+        if not is_nation_loot:
+            await self._generate_bankrec_news(bankrec, is_alliance_loot)
         
         self._mark_processed(bankrec_id_int)
         
-        logger.debug(f"bankrec/create → {bankrec_id} → Bankrecs.db")
+        logger.debug(f"bankrec/create → {bankrec_id} → Bankrecs.db (alliance_loot={is_alliance_loot}, nation_loot={is_nation_loot})")
         
         return {"processed": 1, "skipped": 0}
     
     async def _update_holdings_for_bankrec(self, bankrec: Dict[str, Any]):
-        """Update holdings for a nation-type bank record."""
-        nation_id = bankrec.get("party_id")
-        if not nation_id:
+        """Update holdings for a bank record using apply_bankrec."""
+        # apply_bankrec handles both sender and receiver in one call
+        # It checks sender_type/receiver_type to determine which are nations
+        # and correctly adds/deducts from each party's holdings
+        await self.holdings_db.apply_bankrec(bankrec)
+    
+    async def _update_holdings_for_alliance_loot(self, bankrec: Dict[str, Any]):
+        """
+        Update holdings for alliance loot events.
+        
+        Alliance loot only adds to the winner's holdings (receiver).
+        It does NOT affect the loser's holdings since the loot comes from
+        the alliance bank, not the loser's personal holdings.
+        """
+        receiver_id = bankrec.get("receiver_id")
+        if not receiver_id:
+            logger.warning(f"Alliance loot bankrec {bankrec.get('id')} has no receiver_id")
             return
         
-        # Extract resources
-        _RESOURCES = (
+        # Get current holdings for receiver
+        current = await self.holdings_db.get_holdings(int(receiver_id))
+        if not current:
+            logger.warning(f"Alliance loot bankrec {bankrec.get('id')}: nation {receiver_id} not found in holdings")
+            return
+        
+        # Extract loot resources
+        money = float(bankrec.get("money") or 0)
+        resources = {r: float(bankrec.get(r) or 0) for r in (
             "coal", "oil", "uranium", "iron", "bauxite", "lead",
             "gasoline", "munitions", "steel", "aluminum", "food",
+        )}
+        
+        # Add loot to current holdings
+        new_money = current.get("money", 0) + money
+        new_resources = {r: current.get(r, 0) + resources.get(r, 0) for r in resources}
+        
+        # Update holdings
+        await self.holdings_db.set_complete_holdings(
+            nation_id=int(receiver_id),
+            money=new_money,
+            resources=new_resources,
+            military={m: current.get(m, 0) for m in (
+                "soldiers", "tanks", "aircraft", "ships", "missiles", "nukes", "spies"
+            )},
+            confidence=current.get("confidence", "fresh"),
+            event_date=bankrec.get("date"),
+            nation_name=bankrec.get("receiver_name"),
+            description="alliance_loot",
         )
         
-        money = float(bankrec.get("money") or 0)
-        resources = {r: float(bankrec.get(r) or 0) for r in _RESOURCES}
-        
-        # Determine if this is a deposit or withdrawal
-        # Positive values = money/resources leaving the bank (withdrawal)
-        # Negative values = money/resources entering the bank (deposit)
-        # For holdings tracking, we need to invert this logic
-        # Withdrawal from bank = gain for nation
-        # Deposit to bank = loss for nation
-        
-        # Check if money is positive (withdrawal) or negative (deposit)
-        if money > 0:
-            # Withdrawal - nation gains money
-            await self.holdings_db.apply_bank_withdrawal(
-                nation_id=int(nation_id),
-                money_withdrawn=money,
-                resources_withdrawn={r: v for r, v in resources.items() if v > 0},
-                event_date=bankrec.get("date"),
-                nation_name=bankrec.get("party_name"),
-            )
-        elif money < 0:
-            # Deposit - nation loses money
-            await self.holdings_db.apply_bank_deposit(
-                nation_id=int(nation_id),
-                money_deposited=abs(money),
-                resources_deposited={r: abs(v) for r, v in resources.items() if v < 0},
-                event_date=bankrec.get("date"),
-                nation_name=bankrec.get("party_name"),
-            )
+        logger.debug(f"Alliance loot added to nation {receiver_id}: money={money}, resources={resources}")
     
-    async def _generate_bankrec_news(self, bankrec: Dict[str, Any]):
+    async def _generate_bankrec_news(self, bankrec: Dict[str, Any], is_alliance_loot: bool = False):
         """Generate news event for bank transfer."""
         if self.news_component:
             try:
@@ -149,41 +191,109 @@ class BankrecEventProcessor:
                 )}
                 money = float(bankrec.get("money") or 0)
                 
-                # Determine event type and headline based on transfer type
-                sender_type = bankrec.get("sender_type")
-                receiver_type = bankrec.get("receiver_type")
+                if is_alliance_loot:
+                    # Alliance loot event - use news_writer for proper formatting with loot table
+                    from PnWHarvester.db.news_writer import record_loot_attack
+                    
+                    receiver_id = int(bankrec.get("receiver_id") or 0)
+                    receiver_name = bankrec.get("receiver_name") or f"nation {receiver_id}"
+                    sender_name = bankrec.get("sender_name") or "alliance bank"
+                    sender_id = int(bankrec.get("sender_id") or 0)
+                    
+                    logger.info(f"bankrec/create → {bankrec_id} → Processing alliance loot: receiver={receiver_name} ({receiver_id}), sender={sender_name} ({sender_id})")
+                    
+                    # Look up attacker's alliance info from database
+                    att_alliance_id = None
+                    att_alliance_name = None
+                    if receiver_id > 0:
+                        try:
+                            import sqlite3 as _sqlite3
+                            from Systems.Functions.db_paths import GLOBAL_NATIONS_DB_STR
+                            _conn = _sqlite3.connect(GLOBAL_NATIONS_DB_STR)
+                            row = _conn.execute(
+                                "SELECT alliance_id, alliance_name FROM nations WHERE id = ?",
+                                (receiver_id,)
+                            ).fetchone()
+                            _conn.close()
+                            if row:
+                                att_alliance_id = row[0]
+                                att_alliance_name = row[1]
+                                logger.info(f"bankrec/create → {bankrec_id} → Attacker alliance: {att_alliance_name} ({att_alliance_id})")
+                        except Exception as e:
+                            logger.warning(f"Failed to lookup attacker alliance: {e}")
+                    
+                    # Calculate total value
+                    total_value = money
+                    if resources:
+                        # Get resource prices from reaper.db
+                        try:
+                            import sqlite3 as _sqlite3
+                            from Systems.Functions.db_paths import REAPER_DB_STR
+                            _conn = _sqlite3.connect(REAPER_DB_STR)
+                            rows = _conn.execute(
+                                "SELECT resource, best_sell_price FROM resource_prices "
+                                "WHERE timestamp = (SELECT MAX(timestamp) FROM resource_prices)"
+                            ).fetchall()
+                            _conn.close()
+                            prices = {r.lower(): float(p) for r, p in rows if p and float(p) > 0}
+                            for r, amt in resources.items():
+                                if amt > 0 and r in prices:
+                                    total_value += amt * prices[r]
+                        except Exception as e:
+                            logger.warning(f"Failed to get resource prices for alliance loot: {e}")
+                    
+                    logger.info(f"bankrec/create → {bankrec_id} → Alliance loot value: ${total_value:,.2f} (money=${money:,.2f})")
+                    
+                    # Use record_loot_attack to generate proper news with loot table
+                    # Treat alliance bank as "defender" with no nation
+                    await record_loot_attack(
+                        att_nation_id=receiver_id,
+                        att_nation_name=receiver_name,
+                        att_nation_flag=None,
+                        att_alliance_id=att_alliance_id,
+                        att_alliance_name=att_alliance_name,
+                        att_alliance_flag=None,
+                        def_nation_id=0,  # Alliance bank has no nation
+                        def_nation_name=sender_name,  # Alliance bank name
+                        def_nation_flag=None,
+                        def_alliance_id=sender_id,  # Alliance ID
+                        def_alliance_name=sender_name,
+                        money_looted=money,
+                        total_loot_value=total_value,
+                        event_date=bankrec.get("date"),
+                        resources_looted=resources,
+                        improvements_destroyed=None,
+                        infra_destroyed_value=0.0,
+                    )
+                    logger.info(f"bankrec/create → {bankrec_id} → Alliance loot news generated")
+                    return
                 
-                if sender_type == 2 and receiver_type == 1:  # Alliance -> Nation (withdrawal)
-                    event_type = "bank_withdrawal"
-                    headline = f"{bankrec.get('receiver_name')} withdrew money from alliance bank"
-                elif sender_type == 1 and receiver_type == 2:  # Nation -> Alliance (deposit)
-                    event_type = "bank_deposit"
-                    headline = f"{bankrec.get('sender_name')} deposited money to alliance bank"
-                elif sender_type == 1 and receiver_type == 1:  # Nation -> Nation (transfer)
-                    event_type = "bank_transfer"
-                    headline = f"{bankrec.get('sender_name')} sent money to {bankrec.get('receiver_name')}"
-                else:
-                    event_type = "bank_other"
-                    headline = "Bank transfer"
+                # Use news_writer.record_bank_transfer for proper formatting with resource breakdown
+                from PnWHarvester.db.news_writer import record_bank_transfer
                 
-                await self.news_component.record_event(
-                    event_type=event_type,
-                    nation_id=int(bankrec.get("sender_id") or 0),
-                    nation_name=bankrec.get("sender_name"),
-                    alliance_id=int(bankrec.get("receiver_id") or 0) if receiver_type == 2 else None,
-                    alliance_name=bankrec.get("receiver_name") if receiver_type == 2 else None,
-                    value=money,
-                    headline=headline,
-                    detail={
-                        "bankrec_id": int(bankrec.get("id") or 0),
-                        "sender_type": sender_type,
-                        "receiver_type": receiver_type,
-                        "receiver_id": int(bankrec.get("receiver_id") or 0),
-                        "receiver_name": bankrec.get("receiver_name"),
-                        "note": bankrec.get("note"),
-                        "resources": resources,
-                    },
-                    event_date=bankrec.get("date"),
+                # Extract IDs and names based on sender/receiver types
+                stype = bankrec.get("sender_type")
+                rtype = bankrec.get("receiver_type")
+                
+                # Convert empty strings to None so database lookup triggers
+                def _clean_name(val):
+                    return val if val and val != "0" else None
+                
+                def _clean_id(val):
+                    return int(val) if val and int(val) > 0 else None
+                
+                await record_bank_transfer(
+                    rec=bankrec,
+                    sender_nation_id=_clean_id(bankrec.get("sender_id")) if stype == 1 else None,
+                    sender_nation_name=_clean_name(bankrec.get("sender_name")) if stype == 1 else None,
+                    sender_nation_flag=None,
+                    sender_alliance_id=_clean_id(bankrec.get("sender_id")) if stype == 2 else None,
+                    sender_alliance_name=_clean_name(bankrec.get("sender_name")) if stype == 2 else None,
+                    receiver_nation_id=_clean_id(bankrec.get("receiver_id")) if rtype == 1 else None,
+                    receiver_nation_name=_clean_name(bankrec.get("receiver_name")) if rtype == 1 else None,
+                    receiver_nation_flag=None,
+                    receiver_alliance_id=_clean_id(bankrec.get("receiver_id")) if rtype == 2 else None,
+                    receiver_alliance_name=_clean_name(bankrec.get("receiver_name")) if rtype == 2 else None,
                 )
             except Exception as _ne:
                 logger.debug(f"news bankrec: {_ne}")
@@ -273,6 +383,9 @@ class BankrecComponent:
             logger.warning("BankrecComponent already running")
             return
         
+        # Recreate QueryKit for fresh connection on each start
+        self.kit = QueryKit(self.api_key)
+        
         self.running = True
         logger.info("Starting BankrecComponent subscription")
         
@@ -297,38 +410,74 @@ class BankrecComponent:
     
     async def run_forever(self):
         """Run subscription indefinitely with automatic restart on disconnect/crash."""
+        retry_count = 0
+        max_retry_delay = 300  # 5 minutes max
+        base_delay = 10  # Start with 10 seconds
+        
         while True:
             try:
                 await self.start()
+                # Reset retry count on successful start
+                retry_count = 0
             except asyncio.CancelledError:
                 logger.info("BankrecComponent cancelled")
                 break
-            except (aiohttp.ClientError, ConnectionResetError, OSError) as e:
-                logger.warning(f"BankrecComponent disconnected ({e}) — restarting in 30s")
+            except (aiohttp.ClientError, ConnectionResetError, OSError, ConnectionError) as e:
+                retry_count += 1
+                # Exponential backoff with jitter
+                delay = min(base_delay * (2 ** min(retry_count - 1, 5)), max_retry_delay)
+                # Add jitter to prevent thundering herd
+                import random
+                jitter = random.uniform(0.8, 1.2)
+                actual_delay = delay * jitter
+                
+                logger.warning(f"BankrecComponent disconnected ({e}) — retry {retry_count}, restarting in {actual_delay:.1f}s")
             except Exception as e:
-                logger.error(f"BankrecComponent crashed ({e}) — restarting in 30s", exc_info=True)
+                retry_count += 1
+                delay = min(base_delay * (2 ** min(retry_count - 1, 5)), max_retry_delay)
+                import random
+                jitter = random.uniform(0.8, 1.2)
+                actual_delay = delay * jitter
+                
+                logger.error(f"BankrecComponent crashed ({e}) — retry {retry_count}, restarting in {actual_delay:.1f}s", exc_info=True)
             finally:
                 self.running = False
                 await self.stop()
             
-            await asyncio.sleep(30)
+            await asyncio.sleep(actual_delay)
     
     async def _close_kit_socket(self):
         """Close the pnwkit socket to avoid pending task warnings."""
+        if not hasattr(self, 'kit') or self.kit is None:
+            return
+            
         socket = getattr(self.kit, "socket", None)
         if socket is None:
             return
+            
         tasks_to_cancel = []
-        for attr in ("task", "ping_pong_task"):
+        for attr in ("task", "ping_pong_task", "_heartbeat_task"):
             t = getattr(socket, attr, None)
             if t is not None and not t.done():
                 tasks_to_cancel.append(t)
                 t.cancel()
+                
         if tasks_to_cancel:
-            await asyncio.gather(*tasks_to_cancel, return_exceptions=True)
+            try:
+                await asyncio.gather(*tasks_to_cancel, return_exceptions=True)
+            except Exception as e:
+                logger.warning(f"Error cancelling socket tasks: {e}")
+                
         try:
-            if not socket.closed:
+            # Close WebSocket connection if it exists
+            if hasattr(socket, 'ws') and socket.ws and not socket.ws.closed:
                 await socket.ws.close()
-        except Exception:
-            pass
+            # Close HTTP session if it exists
+            if hasattr(socket, 'session') and socket.session:
+                await socket.session.close()
+        except Exception as e:
+            logger.debug(f"Error closing socket connection: {e}")
+            
+        # Clear references
         self.kit.socket = None
+        self.kit = None

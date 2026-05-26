@@ -226,9 +226,18 @@ class DatabasePool:
         """
         # Disable check_same_thread for connection pool usage
         # Connections will be protected by the pool lock
-        conn = sqlite3.connect(self._db_path, timeout=15, check_same_thread=False)
-        self._configure_fn(conn)
-        return PooledConnection(conn, self)
+        try:
+            conn = sqlite3.connect(
+                self._db_path, 
+                timeout=15, 
+                check_same_thread=False,
+                isolation_level=None  # Autocommit mode for better performance
+            )
+            self._configure_fn(conn)
+            return PooledConnection(conn, self)
+        except Exception as e:
+            logger.error(f"Failed to create connection to {self._db_path}: {e}")
+            raise
     
     async def initialize(self) -> None:
         """

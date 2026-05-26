@@ -105,32 +105,38 @@ class GPPManager:
     def __init__(
         self,
         global_nations_db=None,
+        global_wars_db=None,
         irs_wars_db=None,
         bankrecs_db=None,
         holdings_db=None,
         beige_alerts_db=None,
         news_db=None,
         api_key: str = "",
+        query_instance=None,
     ):
         """
         Initialize the GPPManager.
-        
+
         Args:
             global_nations_db: GlobalNationsDB instance
+            global_wars_db: GlobalWarsDB instance
             irs_wars_db: IRSWarsDB instance
             bankrecs_db: BankrecsDB instance
             holdings_db: HoldingsDB instance
             beige_alerts_db: BeigeAlertDB instance
             news_db: NewsDB instance
             api_key: PnW API v3 key
+            query_instance: Query instance for timed queries
         """
         self.global_nations_db = global_nations_db
+        self.global_wars_db = global_wars_db
         self.irs_wars_db = irs_wars_db
         self.bankrecs_db = bankrecs_db
         self.holdings_db = holdings_db
         self.beige_alerts_db = beige_alerts_db
         self.news_db = news_db
         self.api_key = api_key
+        self.query_instance = query_instance
         
         # Core infrastructure
         from .lock_manager import get_lock_manager
@@ -217,6 +223,8 @@ class GPPManager:
             BankrecComponent,
             RevenueComponent,
             BeigeAlertComponent,
+            TradeComponent,
+            TimedQueriesComponent,
         )
         from PnWHarvester.components.news_component import NewsComponent
         
@@ -255,7 +263,9 @@ class GPPManager:
                 nw_db=self.irs_wars_db,
                 holdings_db=self.holdings_db,
                 global_nations_db=self.global_nations_db,
+                global_wars_db=self.global_wars_db,
                 api_key=self.api_key,
+                news_component=self._components.get("news"),
             )
             await war_component.initialize()
             self._components["war"] = war_component
@@ -273,6 +283,17 @@ class GPPManager:
             self._components["bankrec"] = bankrec_component
             self._component_health["bankrec"] = ComponentHealth(name="bankrec")
         
+        # TradeComponent
+        if self.holdings_db:
+            trade_component = TradeComponent(
+                holdings_db=self.holdings_db,
+                news_component=self._components.get("news"),
+                api_key=self.api_key,
+            )
+            await trade_component.initialize()
+            self._components["trade"] = trade_component
+            self._component_health["trade"] = ComponentHealth(name="trade")
+        
         # RevenueComponent
         if self.global_nations_db and self.irs_wars_db:
             revenue_component = RevenueComponent(
@@ -285,6 +306,18 @@ class GPPManager:
             await revenue_component.initialize()
             self._components["revenue"] = revenue_component
             self._component_health["revenue"] = ComponentHealth(name="revenue")
+        
+        # TimedQueriesComponent
+        if self.query_instance:
+            timed_queries_component = TimedQueriesComponent(
+                query_instance=self.query_instance,
+                holdings_db=self.holdings_db,
+                news_component=self._components.get("news"),
+                interval_seconds=900,  # 15 minutes
+            )
+            await timed_queries_component.initialize()
+            self._components["timed_queries"] = timed_queries_component
+            self._component_health["timed_queries"] = ComponentHealth(name="timed_queries")
     
     async def start(self):
         """Start all components."""
@@ -297,10 +330,11 @@ class GPPManager:
         self._start_time = datetime.now(timezone.utc)
         
         # Start components
-        # Subscription components (nation, war, bankrec) use run_forever() for auto-restart
-        # Revenue component uses start() for its background loop
+        # Subscription components (nation, war, bankrec, trade) use run_forever() for auto-restart
+        # Background loop components (revenue, timed_queries) use start() for their loops
         # Helper components (beige, news) don't need start methods
-        subscription_components = ["nation", "war", "bankrec"]
+        subscription_components = ["nation", "war", "bankrec", "trade"]
+        background_loop_components = ["revenue", "timed_queries"]
         
         for name, component in self._components.items():
             try:
@@ -315,8 +349,16 @@ class GPPManager:
                     health.health = HealthStatus.HEALTHY
                     health.last_check = datetime.now(timezone.utc)
                     logger.info(f"Component {name} started (run_forever)")
+                elif name in background_loop_components and hasattr(component, 'start'):
+                    # Start background loop components (e.g., revenue, timed_queries)
+                    task = asyncio.create_task(component.start())
+                    self._component_tasks[name] = task
+                    health.state = ComponentState.RUNNING
+                    health.health = HealthStatus.HEALTHY
+                    health.last_check = datetime.now(timezone.utc)
+                    logger.info(f"Component {name} started (background loop)")
                 elif hasattr(component, 'start'):
-                    # Start components with start method (e.g., revenue)
+                    # Start components with start method
                     await component.start()
                     health.state = ComponentState.RUNNING
                     health.health = HealthStatus.HEALTHY
@@ -413,6 +455,19 @@ class GPPManager:
                 if hasattr(component, 'get_component_stats'):
                     stats = await component.get_component_stats()
                     health.stats = stats
+                
+                # Check WebSocket connection health for subscription components
+                if hasattr(component, 'kit') and hasattr(component, 'running') and component.running:
+                    kit = getattr(component, 'kit', None)
+                    if kit and hasattr(kit, 'socket'):
+                        socket = getattr(kit, 'socket', None)
+                        if socket and hasattr(socket, 'ws'):
+                            ws = getattr(socket, 'ws', None)
+                            if ws and ws.closed:
+                                health.health = HealthStatus.UNHEALTHY
+                                health.last_error = "WebSocket connection closed"
+                                health.error_count += 1
+                                logger.warning(f"Component {name} WebSocket connection is closed")
                 
                 health.last_check = datetime.now(timezone.utc)
                 
@@ -532,25 +587,29 @@ _global_gpp_manager: Optional[GPPManager] = None
 
 def get_gpp_manager(
     global_nations_db=None,
+    global_wars_db=None,
     irs_wars_db=None,
     bankrecs_db=None,
     holdings_db=None,
     beige_alerts_db=None,
     news_db=None,
     api_key: str = "",
+    query_instance=None,
 ) -> GPPManager:
     """
     Get the global GPPManager singleton.
-    
+
     Args:
         global_nations_db: GlobalNationsDB instance
+        global_wars_db: GlobalWarsDB instance
         irs_wars_db: IRSWarsDB instance
         bankrecs_db: BankrecsDB instance
         holdings_db: HoldingsDB instance
         beige_alerts_db: BeigeAlertDB instance
         news_db: NewsDB instance
         api_key: PnW API v3 key
-        
+        query_instance: Query instance for timed queries
+
     Returns:
         The global GPPManager instance
     """
@@ -558,11 +617,13 @@ def get_gpp_manager(
     if _global_gpp_manager is None:
         _global_gpp_manager = GPPManager(
             global_nations_db=global_nations_db,
+            global_wars_db=global_wars_db,
             irs_wars_db=irs_wars_db,
             bankrecs_db=bankrecs_db,
             holdings_db=holdings_db,
             beige_alerts_db=beige_alerts_db,
             news_db=news_db,
             api_key=api_key,
+            query_instance=query_instance,
         )
     return _global_gpp_manager

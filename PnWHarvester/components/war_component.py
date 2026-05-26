@@ -23,7 +23,7 @@ from pnwkit.new import QueryKit
 
 logger = logging.getLogger(__name__)
 
-IRS_ALLIANCE_ID = 14225
+IRS_ALLIANCE_ID = 10259
 EP_ALLIANCE_ID = IRS_ALLIANCE_ID
 
 _RESOURCES = (
@@ -135,6 +135,7 @@ class WarCacheManager:
             "att_war_policy": _norm(att_obj.get("war_policy") or war_data.get("att_war_policy")),
             "def_war_policy": _norm(def_obj.get("war_policy") or war_data.get("def_war_policy")),
             "att_has_ape": bool(att_obj.get("advanced_pirate_economy") or war_data.get("att_has_ape")),
+            "def_has_ape": bool(def_obj.get("advanced_pirate_economy") or war_data.get("def_has_ape")),
         }
 
         if len(self._war_cache) > self._war_cache_maxsize:
@@ -148,17 +149,52 @@ class WarCacheManager:
 class WarEventProcessor:
     """Processes war/create and war/update events."""
     
-    def __init__(self, cache_manager: WarCacheManager, nw_db):
+    def __init__(self, cache_manager: WarCacheManager, nw_db, global_wars_db=None, global_nations_db=None, war_news_generator=None):
         self.cache_manager = cache_manager
         self.nw_db = nw_db
+        self.global_wars_db = global_wars_db
+        self.global_nations_db = global_nations_db
+        self.war_news_generator = war_news_generator
     
     def is_nw_war(self, war_data: Dict[str, Any]) -> bool:
-        """Check if war involves the NW alliance."""
+        """Check if war involves the Darkstar alliance."""
         aid = str(IRS_ALLIANCE_ID)
         return (
             str(war_data.get("att_alliance_id")) == aid
             or str(war_data.get("def_alliance_id")) == aid
         )
+    
+    async def _enrich_war_from_db(self, war_dict: Dict[str, Any]) -> Dict[str, Any]:
+        """Enrich war data with policy and APE information from GlobalNations DB."""
+        att_id = war_dict.get("att_id")
+        def_id = war_dict.get("def_id")
+        
+        if not self.global_nations_db or (not att_id or not def_id):
+            return war_dict
+        
+        try:
+            # Fetch attacker data from GlobalNations DB
+            att_data = await self.global_nations_db.get_nation(int(att_id))
+            # Fetch defender data from GlobalNations DB
+            def_data = await self.global_nations_db.get_nation(int(def_id))
+            
+            if att_data:
+                war_dict["att_war_policy"] = att_data.get("war_policy") or war_dict.get("att_war_policy")
+                war_dict["att_has_ape"] = bool(att_data.get("advanced_pirate_economy")) or war_dict.get("att_has_ape", False)
+                if not war_dict.get("att_nation_name"):
+                    war_dict["att_nation_name"] = att_data.get("nation_name")
+            
+            if def_data:
+                war_dict["def_war_policy"] = def_data.get("war_policy") or war_dict.get("def_war_policy")
+                war_dict["def_has_ape"] = bool(def_data.get("advanced_pirate_economy")) or war_dict.get("def_has_ape", False)
+                if not war_dict.get("def_nation_name"):
+                    war_dict["def_nation_name"] = def_data.get("nation_name")
+            
+            logger.debug(f"Enriched war {war_dict.get('id')} from GlobalNations DB")
+        except Exception as e:
+            logger.error(f"Failed to enrich war {war_dict.get('id')} from GlobalNations DB: {e}")
+        
+        return war_dict
     
     async def process_war_create(self, war_dict: Dict[str, Any]) -> Dict[str, Any]:
         """Process war/create event."""
@@ -166,11 +202,36 @@ class WarEventProcessor:
         if not war_id:
             return {"processed": False, "skipped": 1}
         
+        # Enrich war data with policy and APE from GlobalNations DB
+        war_dict = await self._enrich_war_from_db(war_dict)
+        
+        # Log war policy and APE data for debugging
+        att_obj = war_dict.get("attacker") or {}
+        def_obj = war_dict.get("defender") or {}
+        logger.info(
+            f"War {war_id} policies: "
+            f"att_policy={att_obj.get('war_policy') or war_dict.get('att_war_policy')}, "
+            f"def_policy={def_obj.get('war_policy') or war_dict.get('def_war_policy')}, "
+            f"att_ape={att_obj.get('advanced_pirate_economy') or war_dict.get('att_has_ape')}, "
+            f"def_ape={def_obj.get('advanced_pirate_economy') or war_dict.get('def_has_ape')}, "
+            f"war_type={war_dict.get('war_type')}"
+        )
+        
         self.cache_manager.cache_war(war_dict)
         
+        # Save ALL wars to GlobalWarsDB
+        if self.global_wars_db:
+            await self.global_wars_db.save_war(war_dict)
+            logger.debug(f"war/create → {war_id} → GlobalWars.db [ALL WARS]")
+        
+        # Dual-write Darkstar wars to IRSWarsDB
         if self.is_nw_war(war_dict) and self.nw_db:
             await self.nw_db.save_war(war_dict)
-            logger.debug(f"war/create → {war_id} → IRSWars.db [NW]")
+            logger.debug(f"war/create → {war_id} → IRSWars.db [Darkstar]")
+        
+        # Generate war declared news
+        if self.war_news_generator:
+            await self.war_news_generator.generate_war_declared_news(war_dict)
         
         return {"processed": True, "skipped": 0}
     
@@ -180,20 +241,46 @@ class WarEventProcessor:
         if not war_id:
             return {"processed": False, "skipped": 1}
         
+        # Enrich war data with policy and APE from GlobalNations DB
+        war_dict = await self._enrich_war_from_db(war_dict)
+        
+        # Log war policy and APE data for debugging (debug level to reduce noise)
+        att_obj = war_dict.get("attacker") or {}
+        def_obj = war_dict.get("defender") or {}
+        logger.debug(
+            f"War {war_id} update policies: "
+            f"att_policy={att_obj.get('war_policy') or war_dict.get('att_war_policy')}, "
+            f"def_policy={def_obj.get('war_policy') or war_dict.get('def_war_policy')}, "
+            f"att_ape={att_obj.get('advanced_pirate_economy') or war_dict.get('att_has_ape')}, "
+            f"def_ape={def_obj.get('advanced_pirate_economy') or war_dict.get('def_has_ape')}"
+        )
+        
         self.cache_manager.cache_war(war_dict)
         
+        # Save ALL wars to GlobalWarsDB
+        if self.global_wars_db:
+            await self.global_wars_db.save_war(war_dict)
+            logger.debug(f"war/update → {war_id} → GlobalWars.db [ALL WARS]")
+        
+        # Dual-write Darkstar wars to IRSWarsDB
         if self.is_nw_war(war_dict) and self.nw_db:
             await self.nw_db.save_war(war_dict)
-            logger.debug(f"war/update → {war_id} → IRSWars.db [NW]")
+            logger.debug(f"war/update → {war_id} → IRSWars.db [Darkstar]")
+        
+        # Generate war ended news if war is over
+        if self.war_news_generator and war_dict.get("turns_left") == 0:
+            end_reason = "win" if war_dict.get("winner_id") else "peace"
+            await self.war_news_generator.generate_war_ended_news(war_dict, end_reason)
         
         return {"processed": True, "skipped": 0}
 
 
 class HoldingsUpdater:
-    """Updates HoldingsDB on ground-win attacks."""
+    """Updates HoldingsDB on ground-win attacks and GlobalNationsDB unit kills."""
     
-    def __init__(self, holdings_db):
+    def __init__(self, holdings_db, global_nations_db=None):
         self.holdings_db = holdings_db
+        self.global_nations_db = global_nations_db
     
     def _calc_loot_value(self, money_looted: float, resources_looted: Dict[str, float]) -> float:
         """Calculate total loot value using market prices."""
@@ -236,27 +323,151 @@ class HoldingsUpdater:
         money_looted = float(attack.get("money_stolen") or attack.get("money_looted") or 0)
         resources_looted = {r: float(attack.get(f"{r}_looted") or 0) for r in _RESOURCES}
         
-        # Determine attacker/defender
+        # Determine attacker/defender - attack's att_id could be either war attacker or defender
         att_id = attack.get("att_id") or attack.get("attacker_id")
         war_att_id = war_data.get("att_id")
         war_def_id = war_data.get("def_id")
         
+        # Map attack attacker/defender to war roles
+        if str(att_id) == str(war_att_id):
+            # Attack is from war's attacker
+            actual_attacker_id = int(war_att_id)
+            actual_defender_id = int(war_def_id)
+            att_war_policy = war_data.get("att_war_policy")
+            def_war_policy = war_data.get("def_war_policy")
+            att_has_ape = war_data.get("att_has_ape", False)
+            def_has_ape = war_data.get("def_has_ape", False)
+            attacker_name = war_data.get("att_nation_name")
+            defender_name = war_data.get("def_nation_name")
+        else:
+            # Attack is from war's defender (counter-attack)
+            actual_attacker_id = int(war_def_id)
+            actual_defender_id = int(war_att_id)
+            att_war_policy = war_data.get("def_war_policy")
+            def_war_policy = war_data.get("att_war_policy")
+            att_has_ape = war_data.get("def_has_ape", False)
+            def_has_ape = war_data.get("att_has_ape", False)
+            attacker_name = war_data.get("def_nation_name")
+            defender_name = war_data.get("att_nation_name")
+        
         # Update holdings
         await self.holdings_db.apply_loot_event(
-            attacker_id=int(war_att_id),
-            defender_id=int(war_def_id),
+            attacker_id=actual_attacker_id,
+            defender_id=actual_defender_id,
             money_looted=money_looted,
             resources_looted=resources_looted,
             loot_date=attack.get("date"),
             war_type=war_data.get("war_type"),
-            att_war_policy=war_data.get("att_war_policy"),
-            def_war_policy=war_data.get("def_war_policy"),
-            att_has_ape=war_data.get("att_has_ape", False),
+            att_war_policy=att_war_policy,
+            def_war_policy=def_war_policy,
+            att_has_ape=att_has_ape,
+            def_has_ape=def_has_ape,
+            attacker_name=attacker_name,
+            defender_name=defender_name,
+        )
+        
+        logger.debug(f"Holdings updated for attack {attack.get('id')}: att={actual_attacker_id}, def={actual_defender_id}")
+        
+        return {"processed": True, "skipped": 0}
+    
+    async def update_war_consumption(self, attack: Dict[str, Any], war_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Deduct gasoline and munitions consumed by missile/nuke attacks."""
+        if not self.holdings_db:
+            return {"processed": False, "skipped": 1}
+        
+        # Extract consumption
+        gasoline_used = float(attack.get("gasoline_used") or 0)
+        munitions_used = float(attack.get("munitions_used") or 0)
+        
+        if gasoline_used <= 0 and munitions_used <= 0:
+            return {"processed": False, "skipped": 1}
+        
+        # Get attacker ID
+        att_id = attack.get("att_id") or attack.get("attacker_id")
+        war_att_id = war_data.get("att_id")
+        war_def_id = war_data.get("def_id")
+        
+        # Determine actual attacker
+        if str(att_id) == str(war_att_id):
+            actual_attacker_id = int(war_att_id)
+            attacker_name = war_data.get("att_nation_name")
+        else:
+            actual_attacker_id = int(war_def_id)
+            attacker_name = war_data.get("def_nation_name")
+        
+        await self.holdings_db.apply_war_consumption(
+            nation_id=actual_attacker_id,
+            gasoline=gasoline_used,
+            munitions=munitions_used,
+            event_date=attack.get("date"),
+            nation_name=attacker_name,
+        )
+        
+        logger.debug(f"War consumption deducted for attack {attack.get('id')}: att={actual_attacker_id}")
+        
+        return {"processed": True, "skipped": 0}
+    
+    async def update_combat_losses(self, attack: Dict[str, Any], war_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Deduct military unit losses from war attacks and increment unit kills in GlobalNationsDB."""
+        if not self.holdings_db:
+            return {"processed": False, "skipped": 1}
+        
+        # Extract losses - GlobalWars uses attcas1/defcas1 for soldiers, attcas2/defcas2 for tanks
+        att_losses = {
+            "soldier": int(attack.get("attcas1") or 0),
+            "tank": int(attack.get("attcas2") or 0),
+            "aircraft": int(attack.get("att_aircraft_lost") or 0),  # These may not exist in GlobalWars
+            "ship": int(attack.get("att_ships_lost") or 0),        # These may not exist in GlobalWars
+        }
+        def_losses = {
+            "soldier": int(attack.get("defcas1") or 0),
+            "tank": int(attack.get("defcas2") or 0),
+            "aircraft": int(attack.get("def_aircraft_lost") or 0),  # These may not exist in GlobalWars
+            "ship": int(attack.get("def_ships_lost") or 0),        # These may not exist in GlobalWars
+        }
+        
+        if not any(att_losses.values()) and not any(def_losses.values()):
+            return {"processed": False, "skipped": 1}
+        
+        # Get attacker/defender IDs
+        war_att_id = war_data.get("att_id")
+        war_def_id = war_data.get("def_id")
+        
+        await self.holdings_db.apply_combat_losses(
+            attacker_id=int(war_att_id),
+            defender_id=int(war_def_id),
+            att_losses=att_losses,
+            def_losses=def_losses,
+            event_date=attack.get("date"),
             attacker_name=war_data.get("att_nation_name"),
             defender_name=war_data.get("def_nation_name"),
         )
         
-        logger.debug(f"Holdings updated for attack {attack.get('id')}: att={war_att_id}, def={war_def_id}")
+        # Increment unit kills in GlobalNationsDB (enemy losses = our kills)
+        if self.global_nations_db:
+            # Attacker's kills = defender's losses
+            att_kills = {k: v for k, v in def_losses.items() if v > 0}
+            if att_kills:
+                await self.global_nations_db.increment_unit_kills(int(war_att_id), att_kills)
+            
+            # Defender's kills = attacker's losses
+            def_kills = {k: v for k, v in att_losses.items() if v > 0}
+            if def_kills:
+                await self.global_nations_db.increment_unit_kills(int(war_def_id), def_kills)
+        
+        # Track missiles/nukes fired that hit infrastructure
+        if self.global_nations_db:
+            attack_type = attack.get("type")
+            infra_destroyed = float(attack.get("infra_destroyed") or 0)
+            attacker_id = int(attack.get("attacker_id") or 0)
+            
+            if infra_destroyed > 0 and attacker_id:
+                if attack_type == 5:  # Missile
+                    await self.global_nations_db.increment_unit_kills(attacker_id, {"missile": 1})
+                elif attack_type == 6:  # Nuke
+                    await self.global_nations_db.increment_unit_kills(attacker_id, {"nuke": 1})
+        
+        logger.debug(f"Combat losses deducted for attack {attack.get('id')}")
         
         return {"processed": True, "skipped": 0}
 
@@ -264,10 +475,12 @@ class HoldingsUpdater:
 class AttackEventProcessor:
     """Processes warattack/create events."""
     
-    def __init__(self, cache_manager: WarCacheManager, holdings_updater: HoldingsUpdater, nw_db):
+    def __init__(self, cache_manager: WarCacheManager, holdings_updater: HoldingsUpdater, nw_db, global_wars_db=None, war_news_generator=None):
         self.cache_manager = cache_manager
         self.holdings_updater = holdings_updater
         self.nw_db = nw_db
+        self.global_wars_db = global_wars_db
+        self.war_news_generator = war_news_generator
         self._attack_queue: deque = deque()
         self._processing_queue = False
     
@@ -286,16 +499,32 @@ class AttackEventProcessor:
             self._attack_queue.append(attack_dict)
             return {"processed": False, "skipped": 0, "status": "war_not_found_queued"}
         
-        # Save attack to DB if NW war
+        # Save ALL attacks to GlobalWarsDB
+        if self.global_wars_db:
+            await self.global_wars_db.save_war_attack(attack_dict)
+            logger.debug(f"attack/create → {attack_id} → GlobalWars.db [ALL ATTACKS]")
+        
+        # Dual-write Darkstar attacks to IRSWarsDB
         if self.nw_db:
             aid = str(IRS_ALLIANCE_ID)
             if (str(war_data.get("att_alliance_id")) == aid or
                 str(war_data.get("def_alliance_id")) == aid):
                 await self.nw_db.save_war_attack(attack_dict)
+                logger.debug(f"attack/create → {attack_id} → IRSWars.db [Darkstar]")
         
         # Update holdings on ground win
         if _is_win_attack(attack_dict):
             await self.holdings_updater.update_holdings_for_attack(attack_dict, war_data)
+        
+        # Deduct war consumption (gasoline, munitions) for missile/nuke attacks
+        await self.holdings_updater.update_war_consumption(attack_dict, war_data)
+        
+        # Apply combat losses (military units lost in attack)
+        await self.holdings_updater.update_combat_losses(attack_dict, war_data)
+        
+        # Generate attack news (WMD, loot)
+        if self.war_news_generator:
+            await self.war_news_generator.generate_attack_news(attack_dict, war_data)
         
         logger.debug(f"Attack {attack_id} processed successfully")
         
@@ -318,39 +547,50 @@ class AttackEventProcessor:
 class WarComponent:
     """
     GPP component for war and attack event processing.
-    
+
     Orchestrates the sub-components for processing war and attack events.
     Also manages WebSocket subscriptions for war and attack events.
     """
-    
+
     def __init__(
         self,
         nw_db,
         holdings_db=None,
         global_nations_db=None,
+        global_wars_db=None,
         api_key: str = "",
+        news_component=None,
     ):
         """
         Initialize the WarComponent.
-        
+
         Args:
             nw_db: IRSWarsDB instance
             holdings_db: HoldingsDB instance (optional)
             global_nations_db: GlobalNationsDB instance (optional)
+            global_wars_db: GlobalWarsDB instance (optional)
             api_key: PnW API v3 key
+            news_component: NewsComponent instance (optional)
         """
         self.nw_db = nw_db
         self.holdings_db = holdings_db
         self.global_nations_db = global_nations_db
+        self.global_wars_db = global_wars_db
         self.api_key = api_key
+        self.news_component = news_component
         self.kit = QueryKit(api_key)
-        
+
         # Sub-components
         self.cache_manager = WarCacheManager()
-        self.war_processor = WarEventProcessor(self.cache_manager, nw_db)
-        self.holdings_updater = HoldingsUpdater(holdings_db)
+        self.holdings_updater = HoldingsUpdater(holdings_db, global_nations_db)
+        
+        # News generation
+        from PnWHarvester.subscriptions.war_news_components import WarNewsGenerator
+        self.war_news_generator = WarNewsGenerator(news_component)
+        
+        self.war_processor = WarEventProcessor(self.cache_manager, nw_db, global_wars_db, global_nations_db, self.war_news_generator)
         self.attack_processor = AttackEventProcessor(
-            self.cache_manager, self.holdings_updater, nw_db
+            self.cache_manager, self.holdings_updater, nw_db, global_wars_db, self.war_news_generator
         )
         
         # Subscription state
@@ -472,6 +712,9 @@ class WarComponent:
             logger.warning("WarComponent already running")
             return
         
+        # Recreate QueryKit for fresh connection on each start
+        self.kit = QueryKit(self.api_key)
+        
         self.running = True
         logger.info("Starting WarComponent subscriptions")
         
@@ -508,38 +751,74 @@ class WarComponent:
     
     async def run_forever(self):
         """Run subscriptions indefinitely with automatic restart on disconnect/crash."""
+        retry_count = 0
+        max_retry_delay = 300  # 5 minutes max
+        base_delay = 10  # Start with 10 seconds
+        
         while True:
             try:
                 await self.start()
+                # Reset retry count on successful start
+                retry_count = 0
             except asyncio.CancelledError:
                 logger.info("WarComponent cancelled")
                 break
-            except (aiohttp.ClientError, ConnectionResetError, OSError) as e:
-                logger.warning(f"WarComponent disconnected ({e}) — restarting in 30s")
+            except (aiohttp.ClientError, ConnectionResetError, OSError, ConnectionError) as e:
+                retry_count += 1
+                # Exponential backoff with jitter
+                delay = min(base_delay * (2 ** min(retry_count - 1, 5)), max_retry_delay)
+                # Add jitter to prevent thundering herd
+                import random
+                jitter = random.uniform(0.8, 1.2)
+                actual_delay = delay * jitter
+                
+                logger.warning(f"WarComponent disconnected ({e}) — retry {retry_count}, restarting in {actual_delay:.1f}s")
             except Exception as e:
-                logger.error(f"WarComponent crashed ({e}) — restarting in 30s", exc_info=True)
+                retry_count += 1
+                delay = min(base_delay * (2 ** min(retry_count - 1, 5)), max_retry_delay)
+                import random
+                jitter = random.uniform(0.8, 1.2)
+                actual_delay = delay * jitter
+                
+                logger.error(f"WarComponent crashed ({e}) — retry {retry_count}, restarting in {actual_delay:.1f}s", exc_info=True)
             finally:
                 self.running = False
                 await self.stop()
             
-            await asyncio.sleep(30)
+            await asyncio.sleep(actual_delay)
     
     async def _close_kit_socket(self):
         """Close the pnwkit socket to avoid pending task warnings."""
+        if not hasattr(self, 'kit') or self.kit is None:
+            return
+            
         socket = getattr(self.kit, "socket", None)
         if socket is None:
             return
+            
         tasks_to_cancel = []
-        for attr in ("task", "ping_pong_task"):
+        for attr in ("task", "ping_pong_task", "_heartbeat_task"):
             t = getattr(socket, attr, None)
             if t is not None and not t.done():
                 tasks_to_cancel.append(t)
                 t.cancel()
+                
         if tasks_to_cancel:
-            await asyncio.gather(*tasks_to_cancel, return_exceptions=True)
+            try:
+                await asyncio.gather(*tasks_to_cancel, return_exceptions=True)
+            except Exception as e:
+                logger.warning(f"Error cancelling socket tasks: {e}")
+                
         try:
-            if not socket.closed:
+            # Close WebSocket connection if it exists
+            if hasattr(socket, 'ws') and socket.ws and not socket.ws.closed:
                 await socket.ws.close()
-        except Exception:
-            pass
+            # Close HTTP session if it exists
+            if hasattr(socket, 'session') and socket.session:
+                await socket.session.close()
+        except Exception as e:
+            logger.debug(f"Error closing socket connection: {e}")
+            
+        # Clear references
         self.kit.socket = None
+        self.kit = None

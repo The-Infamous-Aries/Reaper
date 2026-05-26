@@ -444,7 +444,7 @@ class NewsDB:
         against the GlobalNations canonical map.
 
         Alliance IDs get recycled in PnW — an ID that belonged to "Weebunism"
-        may now belong to "Nights Watch".  This pass ensures every row in
+        may now belong to "Darkstar".  This pass ensures every row in
         alliance_stats, nation_stats, and events reflects the current name.
         """
         _nation_cache._ensure_loaded()
