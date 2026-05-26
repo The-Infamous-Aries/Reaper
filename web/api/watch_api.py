@@ -15,7 +15,7 @@ from Systems.PnW.MA.war_net_bd import WarsNetBD
 
 router = APIRouter()
 logger = logging.getLogger("Reaper.WebServer.WatchAPI")
-WATCH_ALLIANCE_ID = 14225
+WATCH_ALLIANCE_ID = 10259
 LOOT_RESOURCES = ("coal", "oil", "uranium", "iron", "bauxite", "lead", "gasoline", "munitions", "steel", "aluminum", "food")
 
 # ── Module-level singletons ───────────────────────────────────────────────────
@@ -37,6 +37,16 @@ def _get_global_nations_db():
         from Systems.Functions.db_paths import GLOBAL_NATIONS_DB_STR
         _global_nations_db = GlobalNationsDB(GLOBAL_NATIONS_DB_STR)
     return _global_nations_db
+
+_global_wars_db = None
+
+def _get_global_wars_db():
+    global _global_wars_db
+    if _global_wars_db is None:
+        from PnWHarvester.db.global_wars_db import GlobalWarsDB
+        from Systems.Functions.db_paths import GLOBAL_WARS_DB_STR
+        _global_wars_db = GlobalWarsDB(GLOBAL_WARS_DB_STR)
+    return _global_wars_db
 
 # ── Simple TTL response cache ─────────────────────────────────────────────────
 # Keyed by (start_date_iso, end_date_iso).  Entries expire after CACHE_TTL_SECS.
@@ -319,7 +329,7 @@ def _build_watch_response(
                 total_loot_resources[res]["value"]  += _as_number(rdata.get("value"))
 
         response["totals"] = {
-            "name": "Nights Watch",
+            "name": "Darkstar",
             "gross_cost":         total_gross,
             "net_damage":         total_net,
             "total_gains":        total_gains,
@@ -453,7 +463,7 @@ async def get_watch_wars_data(request: Request, start_date: str | None = None, e
 
         if not bounds:
             return {
-                **_build_watch_response({}, "No Nights Watch wars were found in the local database."),
+                **_build_watch_response({}, "No Darkstar wars were found in the local database."),
                 "meta": {
                     "available_start_date": None,
                     "available_end_date": None,
@@ -511,7 +521,7 @@ async def get_watch_wars_data(request: Request, start_date: str | None = None, e
 
         if not unique_wars:
             return {
-                **_build_watch_response({}, "No Nights Watch wars were found in the selected date range."),
+                **_build_watch_response({}, "No Darkstar wars were found in the selected date range."),
                 "meta": response_meta,
             }
 
@@ -521,7 +531,7 @@ async def get_watch_wars_data(request: Request, start_date: str | None = None, e
         except Exception as price_error:
             logger.error("Error fetching resource prices for watch page: %s", price_error, exc_info=True)
             return {
-                **_build_watch_response({}, "Nights Watch war data is unavailable right now because resource pricing could not be loaded."),
+                **_build_watch_response({}, "Darkstar war data is unavailable right now because resource pricing could not be loaded."),
                 "meta": response_meta,
             }
 
@@ -664,7 +674,7 @@ async def get_watch_wars_data(request: Request, start_date: str | None = None, e
     except Exception as e:
         logger.error(f"Error getting war data: {e}", exc_info=True)
         return {
-            **_build_watch_response({}, "Failed to retrieve Nights Watch war data."),
+            **_build_watch_response({}, "Failed to retrieve Darkstar war data."),
             "meta": {
                 "available_start_date": None,
                 "available_end_date": None,
@@ -686,7 +696,7 @@ async def get_watch_wars_all_nations(request: Request, start_date: str | None = 
 
         if not nw_nation_ids:
             return {
-                **_build_watch_response({}, "No Nights Watch nations found in the database."),
+                **_build_watch_response({}, "No Darkstar nations found in the database."),
                 "meta": {
                     "available_start_date": None,
                     "available_end_date": None,
@@ -1350,7 +1360,7 @@ def _build_nation_aggregates(nations, city_rows, active_war_counts):
 async def get_nations_by_alliance(request: Request, alliance_id: int):
     """Return nations for any alliance by ID, with city aggregates.
 
-    Always uses GlobalNations.db (all alliances including Nights Watch).
+    Always uses GlobalNations.db (all alliances including Darkstar).
     """
     try:
 
@@ -1359,7 +1369,7 @@ async def get_nations_by_alliance(request: Request, alliance_id: int):
         nations = await db.get_nations_by_alliance(alliance_id)
         db_path = db.db_path
         if alliance_id == WATCH_ALLIANCE_ID:
-            alliance_name = "Nights Watch"
+            alliance_name = "Darkstar"
         else:
             alliance_name = (nations[0].get("alliance_name") or f"Alliance {alliance_id}") if nations else f"Alliance {alliance_id}"
 
@@ -1400,13 +1410,13 @@ async def get_nations_by_alliance(request: Request, alliance_id: int):
 
         city_rows = await asyncio.to_thread(_fetch_city_agg)
 
+        # Fetch active war counts from GlobalWarsDB (contains ALL wars, not just alliance-specific)
         active_war_counts: dict = {}
-        if alliance_id == WATCH_ALLIANCE_ID:
-            try:
-                wars_db = _get_watch_db()
-                active_war_counts = await wars_db.get_active_war_counts()
-            except Exception as _e:
-                logger.warning(f"Could not load active war counts: {_e}")
+        try:
+            global_wars_db = _get_global_wars_db()
+            active_war_counts = await global_wars_db.get_active_war_counts()
+        except Exception as _e:
+            logger.warning(f"Could not load active war counts: {_e}")
 
         result = _build_nation_aggregates(nations, city_rows, active_war_counts)
         return {"nations": result, "count": len(result), "alliance_name": alliance_name}
@@ -1418,7 +1428,7 @@ async def get_nations_by_alliance(request: Request, alliance_id: int):
 
 @router.get("/watch/nations")
 async def get_watch_nations(request: Request):
-    """Return all Nights Watch nations from GlobalNations.db with their city aggregates."""
+    """Return all Darkstar nations from GlobalNations.db with their city aggregates."""
     try:
         db = _get_global_nations_db()
         nations = await db.get_nations_by_alliance(WATCH_ALLIANCE_ID)
@@ -1463,13 +1473,11 @@ async def get_watch_nations(request: Request):
 
         city_map = {r["nation_id"]: dict(r) for r in city_rows}
 
-        # Fetch active war counts (off/def) per nation from wars DB
-        # Used as a fallback only — the nation record's offensive/defensive_wars_count
-        # fields (from the PnW API) are authoritative for all wars, not just NW wars.
+        # Fetch active war counts from GlobalWarsDB (contains ALL wars, not just alliance-specific)
         active_war_counts: dict = {}
         try:
-            wars_db = _get_watch_db()
-            active_war_counts = await wars_db.get_active_war_counts()
+            global_wars_db = _get_global_wars_db()
+            active_war_counts = await global_wars_db.get_active_war_counts()
         except Exception as _e:
             logger.warning(f"Could not load active war counts: {_e}")
 
@@ -1563,7 +1571,7 @@ async def get_watch_nation_detail(request: Request, nation_id: int):
 async def get_watch_revenue(request: Request, alliance_id: int = WATCH_ALLIANCE_ID):
     """Calculate and return revenue for nations in the given alliance.
 
-    Defaults to Nights Watch (WATCH_ALLIANCE_ID) when no alliance_id is supplied.
+    Defaults to Darkstar (WATCH_ALLIANCE_ID) when no alliance_id is supplied.
     Uses revenue_calc_sync (pure CPU) via asyncio.to_thread so the event loop
     stays responsive.  Cities are loaded in a single bulk query instead of one
     per nation.  Results are cached per alliance for the current PnW turn (2-hour window).

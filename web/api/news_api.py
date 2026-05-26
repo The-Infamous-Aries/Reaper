@@ -13,7 +13,7 @@ Endpoints:
 Query params:
   period   : "weekly" | "prev_weekly" | "monthly" | "prev_monthly" | "yearly"
   year     : int (only for period=yearly)
-  scope    : "nw" | "world"  (default: world — NW = alliance_id=14225 only)
+  scope    : "nw" | "world"  (default: world — NW = alliance_id=10259 only)
   type     : comma-separated event types to filter
   limit    : int (default 100, max 500)
   offset   : int (default 0)
@@ -30,7 +30,7 @@ from fastapi.responses import JSONResponse
 router = APIRouter()
 logger = logging.getLogger("Reaper.WebServer.NewsAPI")
 
-NW_ALLIANCE_ID = 14225
+NW_ALLIANCE_ID = 10259
 
 _VALID_PERIODS = {"weekly", "prev_weekly", "monthly", "prev_monthly", "yearly"}
 

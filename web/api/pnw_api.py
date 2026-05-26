@@ -57,7 +57,7 @@ async def _resolve_targets(text: str, query_instance) -> List[Tuple[Optional[int
     for part in parts:
         # Short-circuit NW — it lives in a local DB, not the PnW API
         if _is_nights_watch(part):
-            out.append((WATCH_ALLIANCE_ID, "Nights Watch"))
+            out.append((WATCH_ALLIANCE_ID, "Darkstar"))
             continue
         aid, name = _parse_alliance_identifier(part)
         if isinstance(aid, int) and aid > 0:
@@ -90,7 +90,7 @@ async def get_nation_info(nation_id: str, request: Request):
 @router.get("/pnw/alliances")
 async def search_alliances(q: str = ""):
     """Return alliances from the local DB for autocomplete dropdowns.
-    Searches both the EP (Nights Watch) DB and the Global Nations DB,
+    Searches both the EP (Darkstar) DB and the Global Nations DB,
     merges results, and returns them sorted by member count descending."""
     from Systems.Functions.db_paths import GLOBAL_NATIONS_DB_STR as GLOBAL_NATIONS_DB_PATH
     results: dict[int, dict] = {}
@@ -148,7 +148,7 @@ async def get_compare_data(home_alliance_ids: str, away_alliance_ids: str):
                     nation_id = nation.get('id')
                     if nation_id:
                         nation['cities'] = await ep_db.get_cities_for_nation(int(nation_id))
-                logger.info(f"Loaded {len(nations)} NW nations from GlobalNations.db for compare")
+                logger.info(f"Loaded {len(nations)} Darkstar nations from GlobalNations.db for compare")
             else:
                 nations = await query_instance.get_alliance_nations(str(alliance_id))
             if not nations:
@@ -416,11 +416,11 @@ async def get_compare_graph(home_alliance_ids: str, away_alliance_ids: str):
 
     return HTMLResponse(content=html_content)
 
-WATCH_ALLIANCE_ID = 14225
-NIGHTS_WATCH_ALIASES = {"nights watch", "nightswatch", "nw", "14225"}
+WATCH_ALLIANCE_ID = 10259
+DARKSTAR_ALIASES = {"darkstar", "ds", "10259"}
 
 def _is_nights_watch(alliance: str) -> bool:
-    return alliance.strip().lower() in NIGHTS_WATCH_ALIASES
+    return alliance.strip().lower() in DARKSTAR_ALIASES
 
 def _normalize_nw_wars(wars: list) -> list:
     """Inject nested 'attacker'/'defender' dicts into flat NW DB war rows
@@ -459,11 +459,11 @@ async def get_war_costs_graph(alliance: str, time: str, force_refresh: bool = Fa
         def_wars = await db.get_wars_by_alliance_in_range(WATCH_ALLIANCE_ID, role='defender', start_date=start_date, end_date=end_date)
         all_wars = list({w['id']: w for w in (att_wars + def_wars)}.values())
         if not all_wars:
-            return HTMLResponse(content=f"<h1>No Wars Found</h1><p>No Nights Watch wars found in the last {time}.</p>", status_code=404)
+            return HTMLResponse(content=f"<h1>No Wars Found</h1><p>No Darkstar wars found in the last {time}.</p>", status_code=404)
         all_wars = await _attach_war_attacks(db, all_wars)
         all_wars = _normalize_nw_wars(all_wars)
         alliance_id = WATCH_ALLIANCE_ID
-        alliance_display = "Nights Watch"
+        alliance_display = "Darkstar"
     else:
         query_instance = create_v3_query_instance()
         resolved_alliance_ids = await query_instance.resolve_entities([alliance], 'alliance')
@@ -505,11 +505,11 @@ async def get_war_net_graph(alliance: str, time: str, force_refresh: bool = Fals
         def_wars = await db.get_wars_by_alliance_in_range(WATCH_ALLIANCE_ID, role='defender', start_date=start_date, end_date=end_date)
         all_wars = list({w['id']: w for w in (att_wars + def_wars)}.values())
         if not all_wars:
-            return HTMLResponse(content=f"<h1>No Wars Found</h1><p>No Nights Watch wars found in the last {time}.</p>", status_code=404)
+            return HTMLResponse(content=f"<h1>No Wars Found</h1><p>No Darkstar wars found in the last {time}.</p>", status_code=404)
         all_wars = await _attach_war_attacks(db, all_wars)
         all_wars = _normalize_nw_wars(all_wars)
         alliance_id = WATCH_ALLIANCE_ID
-        alliance_display = "Nights Watch"
+        alliance_display = "Darkstar"
     else:
         query_instance = create_v3_query_instance()
         resolved_alliance_ids = await query_instance.resolve_entities([alliance], 'alliance')

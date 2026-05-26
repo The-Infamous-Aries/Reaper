@@ -364,6 +364,7 @@ async def adopt_pet(request: Request, adoption_data: Dict[str, Any] = Body(...))
             # ── GPP: build animation metadata (Component pattern) ─────────────
             animation = AnimationComponent.for_level_up(0, int(pet_data.get("level", 1)), {})
 
+            _track(user, f"Adopted a new pet", detail=f"{adoption_data.get('species')} named {adoption_data.get('customName')} ({adoption_data.get('element1')}/{adoption_data.get('element2')})")
             return JSONResponse(content={"success": True, "pet": pet_data, "animation": animation})
         else:
             logger.error(f"Pet adoption failed: {result.get('message', 'Unknown error')}")
@@ -743,6 +744,7 @@ async def play_pet(request: Request, data: Dict[str, Any] = Body(...)):
             "animation": animation,
             "pet": _enrich_pet(await user_data_manager.get_pet_data_async(user_id))
         }
+        _track(user, f"Pet played at {location}", detail=f"+{xp} XP | {pet.get('name','?')}")
         return JSONResponse(content=result)
 
     except HTTPException:
@@ -1324,7 +1326,6 @@ async def loot_open(request: Request, data: Dict[str, Any] = Body(...)):
         refreshed = _enrich_pet(await user_data_manager.get_pet_data_async(user_id))
 
         logger.info(f"Loot opened for user {user_id}: {chest_type} x{amount} -> {[i.get('name') for i in awarded_items]}")
-
         return JSONResponse(content={
             "success": True,
             "chest":   chest_type,

@@ -346,15 +346,6 @@
 .arena-hp-wrap { height: 8px; border-radius: 4px; background: rgba(255,255,255,0.08); overflow: hidden; margin-top: 3px; }
 .arena-hp-bar  { height: 100%; border-radius: 4px; transition: width 0.4s ease; }
 
-/* ── Live badge ──────────────────────────────────────────────────────────── */
-.arena-live-badge {
-    display: inline-flex; align-items: center; gap: 5px;
-    background: rgba(231,76,60,0.15); border: 1px solid rgba(231,76,60,0.4);
-    border-radius: 20px; padding: 2px 10px;
-    font-size: 0.65rem; color: #e74c3c; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;
-}
-.arena-live-dot { width: 6px; height: 6px; border-radius: 50%; background: #e74c3c; animation: liveDot 1s ease-in-out infinite; }
-@keyframes liveDot { 0%,100% { opacity:1; } 50% { opacity:0.2; } }
 .arena-spectators { font-size: 0.68rem; color: var(--text-secondary); }
 
 /* ── Combatant card (spectate/challenge) ─────────────────────────────────── */

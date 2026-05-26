@@ -215,6 +215,7 @@ async def post_listing(request: Request, data: Dict[str, Any] = Body(...)):
 
     listings = await pets_db.bazaar_get_active_listings()
     await _broadcast({"type": "board", "listings": listings})
+    price_str = f"{xp_price:,} XP" if price_type == "xp" else f"trade for {trade_item}"
     return JSONResponse({"ok": True, "listing_id": listing_id, "animation": animation})
 
 

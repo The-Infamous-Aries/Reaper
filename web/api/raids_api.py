@@ -781,8 +781,8 @@ async def raids_nations_ac(request: Request, q: str = ""):
                 if r.get("nation_name")
             ]
         else:
-            # No query — return NW nations sorted by score as default suggestions
-            all_nations = await db.get_nations_by_alliance(14225)
+            # No query — return Darkstar nations sorted by score as default suggestions
+            all_nations = await db.get_nations_by_alliance(10259)
             out = [
                 {"id": n["id"], "nation_name": n["nation_name"], "leader_name": n.get("leader_name", "")}
                 for n in all_nations

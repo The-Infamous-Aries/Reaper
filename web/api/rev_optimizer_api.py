@@ -21,8 +21,8 @@ from Systems.Functions.database_manager import (
 
 router = APIRouter()
 logger = logging.getLogger("Reaper.WebServer.RevOptimizerAPI")
-WATCH_ALLIANCE_ID = 14225
-EP_KEYWORDS = {"nights watch", "nightswatch", "nw", str(WATCH_ALLIANCE_ID)}
+WATCH_ALLIANCE_ID = 10259
+EP_KEYWORDS = {"darkstar", "ds", str(WATCH_ALLIANCE_ID)}
 
 
 def _clean(v):
@@ -114,7 +114,7 @@ def _global_db() -> GlobalNationsDB:
 async def _get_nation_with_cities(query: str, query_instance) -> Optional[dict]:
     """
     Fetch nation + cities, checking GlobalNations.db first (single source of truth
-    for all nations including Nights Watch), then falling back to the live PnW API.
+    for all nations including Darkstar), then falling back to the live PnW API.
     """
     clean = query.strip()
 
@@ -157,7 +157,7 @@ def _run_analyze_revenue(nation: dict, prices: dict, colors: dict, seasonal_mod:
 
 @router.get("/revopt/ep_nations")
 async def get_ep_nations():
-    """Return a lightweight list of NW (Nights Watch) nations for the frontend dropdown."""
+    """Return a lightweight list of Darkstar nations for the frontend dropdown."""
     try:
         db = _global_db()
         nations = await db.get_nations_by_alliance(WATCH_ALLIANCE_ID)

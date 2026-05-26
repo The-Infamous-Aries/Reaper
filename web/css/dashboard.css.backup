@@ -63,35 +63,20 @@ h1, h2, h3, h4, h5, h6 {
 /* ── Main Content ────────────────────────────────────────────────────────── */
 .main-content {
     padding: 2rem 2rem 2rem 2rem;
-    flex: 1;
-    display: flex;
-    flex-direction: column;
+    min-height: 100vh;
     position: relative;
     z-index: 1;
-}
-
-/* Mega menu layout - override padding for desktop */
-.main-content.mega-menu-layout {
-    padding: 80px 2rem 2rem 2rem;
+    /* Reserve space for fixed sidebar on desktop */
+    padding-right: calc(280px + 2rem) !important;
 }
 
 .content-wrapper {
     position: relative;
     z-index: 2;
     max-width: 100%;
-    flex: 1;
-    display: flex;
-    flex-direction: column;
 }
 
-#content {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    min-height: 0;
-}
-
-/* ── Sidebar (Mobile Only - Hidden on Desktop via Bootstrap d-md-none) ───────── */
+/* ── Sidebar ─────────────────────────────────────────────────────────────── */
 .sidebar {
     background: linear-gradient(180deg, rgba(15,15,15,0.97), rgba(20,20,20,0.97));
     border-left: 2px solid var(--gold-primary);
@@ -109,10 +94,6 @@ h1, h2, h3, h4, h5, h6 {
     scrollbar-width: thin;
     scrollbar-color: var(--gold-primary) var(--bg-tertiary);
     transition: transform 0.3s ease, width 0.3s ease;
-    transform: translateX(100%); /* Hidden by default on mobile */
-}
-
-.sidebar.mobile-open {
     transform: translateX(0);
 }
 
@@ -803,11 +784,6 @@ table {
 @media (max-width: 768px) {
     /* Main content takes full width, top padding for topbar */
     .main-content {
-        padding: 68px 0.75rem 2rem 0.75rem !important;
-    }
-
-    /* Override mega menu layout padding for mobile */
-    .main-content.mega-menu-layout {
         padding: 68px 0.75rem 2rem 0.75rem !important;
     }
 

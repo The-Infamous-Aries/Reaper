@@ -3,7 +3,7 @@ Weapon Efficiency API — Theory and Targeted modes.
 Mirrors the /weapon_eff Discord command logic for the web dashboard.
 
 Nation and alliance data is read directly from GlobalNations.db (single source
-of truth for all nations including Nights Watch), falling back to the live PnW
+of truth for all nations including Darkstar), falling back to the live PnW
 API if not found locally.
 """
 import math
@@ -30,7 +30,7 @@ logger = logging.getLogger("Reaper.WebServer.WeaponAPI")
 async def _get_nation_with_cities(target: str) -> Optional[dict]:
     """
     Resolve a nation by name or ID, preferring GlobalNations.db (single source of
-    truth for all nations including Nights Watch) over the live API.
+    truth for all nations including Darkstar) over the live API.
     Always attaches cities to the returned dict.
     """
     # GlobalNations.db — all game nations including NW

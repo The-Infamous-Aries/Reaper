@@ -40,6 +40,7 @@ from typing import Optional, Dict, Any
 
 from Systems.Functions.db_paths import (
     GLOBAL_NATIONS_DB_STR,
+    GLOBAL_WARS_DB_STR,
     IRS_WARS_DB_STR,
     ABSORB_DB_STR,
 )
@@ -55,12 +56,13 @@ router = APIRouter()
 
 _ABSORB_DB = ABSORB_DB_STR
 
-# Unit XP multipliers (soldiers/tanks/aircraft/ships)
+# Unit XP multipliers (soldiers/tanks/aircraft/ships/spies)
 _UNIT_MULT = {
     "soldiers": 25,
     "tanks":    100,
     "aircraft": 500,
     "ships":    1000,
+    "spies":    2000,
 }
 # Bomb XP multipliers (missiles/nukes that hit infra)
 _BOMB_MULT = {
@@ -89,6 +91,7 @@ def _init_absorb_db():
                 absorbed_ships      INTEGER NOT NULL DEFAULT 0,
                 absorbed_missiles   INTEGER NOT NULL DEFAULT 0,
                 absorbed_nukes      INTEGER NOT NULL DEFAULT 0,
+                absorbed_spies      INTEGER NOT NULL DEFAULT 0,
                 last_absorb_at      TEXT,
                 created_at          TEXT NOT NULL DEFAULT (datetime('now')),
                 updated_at          TEXT NOT NULL DEFAULT (datetime('now'))
@@ -145,7 +148,7 @@ def _lock_and_update_absorb_state(user_id: str, nation_id: int, delta: Dict[str,
                     (user_id, locked_nation_id,
                      absorbed_wins, absorbed_soldiers, absorbed_tanks,
                      absorbed_aircraft, absorbed_ships,
-                     absorbed_missiles, absorbed_nukes,
+                     absorbed_missiles, absorbed_nukes, absorbed_spies,
                      last_absorb_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
             """, (
@@ -157,6 +160,7 @@ def _lock_and_update_absorb_state(user_id: str, nation_id: int, delta: Dict[str,
                 delta.get("ships", 0),
                 delta.get("missiles", 0),
                 delta.get("nukes", 0),
+                delta.get("spies", 0),
             ))
         else:
             # Nation already locked — only update the absorbed counters
@@ -169,6 +173,7 @@ def _lock_and_update_absorb_state(user_id: str, nation_id: int, delta: Dict[str,
                     absorbed_ships    = absorbed_ships    + ?,
                     absorbed_missiles = absorbed_missiles + ?,
                     absorbed_nukes    = absorbed_nukes    + ?,
+                    absorbed_spies    = absorbed_spies    + ?,
                     last_absorb_at    = datetime('now')
                 WHERE user_id = ?
             """, (
@@ -179,6 +184,7 @@ def _lock_and_update_absorb_state(user_id: str, nation_id: int, delta: Dict[str,
                 delta.get("ships", 0),
                 delta.get("missiles", 0),
                 delta.get("nukes", 0),
+                delta.get("spies", 0),
                 user_id,
             ))
         conn.commit()
@@ -226,86 +232,46 @@ def _resolve_nation_id(user_id: str, state: Optional[Dict[str, Any]]) -> tuple[O
 
 def _get_war_stats_for_nation(nation_id: int) -> Dict[str, int]:
     """
-    Query IRSWars.db for all ended wars involving nation_id.
-
-    Wars table (ended wars only, is_active = 0):
-      Wins:
-        COUNT(*) WHERE winner_id = nation_id
-
-      Unit kills (enemy losses = our kills):
-        As attacker → SUM(def_*_lost) from wars WHERE att_id = nation_id
-        As defender → SUM(att_*_lost) from wars WHERE def_id = nation_id
-
-    war_attacks table:
-      Bombs that hit infra:
-        COUNT(*) WHERE attacker_id = nation_id
-                   AND attack_type IN (5=missile, 6=nuke)
-                   AND infra_destroyed > 0
+    Query war statistics for nation_id from GlobalNations.db.
+    
+    GlobalNations.db tracks:
+      - wars_won: Total wars won by the nation
+      - soldier_kills, tank_kills, aircraft_kills, ship_kills, missile_kills, nuke_kills, spy_kills: Cumulative unit kills
     """
     stats: Dict[str, int] = {
         "wins": 0,
         "soldiers": 0, "tanks": 0, "aircraft": 0, "ships": 0,
-        "missiles": 0, "nukes": 0,
+        "missiles": 0, "nukes": 0, "spies": 0,
     }
 
     try:
-        with sqlite3.connect(IRS_WARS_DB_STR) as conn:
+        with sqlite3.connect(GLOBAL_NATIONS_DB_STR) as conn:
             conn.row_factory = sqlite3.Row
-
-            # ── Wars won ──────────────────────────────────────────────────────
             row = conn.execute(
-                "SELECT COUNT(*) AS cnt FROM wars WHERE winner_id = ? AND is_active = 0",
-                (nation_id,)
-            ).fetchone()
-            stats["wins"] = int(row["cnt"]) if row else 0
-
-            # ── Unit kills as attacker ────────────────────────────────────────
-            att = conn.execute(
                 """
-                SELECT
-                    COALESCE(SUM(def_soldiers_lost), 0) AS soldiers,
-                    COALESCE(SUM(def_tanks_lost),    0) AS tanks,
-                    COALESCE(SUM(def_aircraft_lost), 0) AS aircraft,
-                    COALESCE(SUM(def_ships_lost),    0) AS ships
-                FROM wars WHERE att_id = ? AND is_active = 0
+                SELECT 
+                    wars_won,
+                    COALESCE(soldier_kills, 0) AS soldier_kills,
+                    COALESCE(tank_kills, 0) AS tank_kills,
+                    COALESCE(aircraft_kills, 0) AS aircraft_kills,
+                    COALESCE(ship_kills, 0) AS ship_kills,
+                    COALESCE(missile_kills, 0) AS missile_kills,
+                    COALESCE(nuke_kills, 0) AS nuke_kills,
+                    COALESCE(spy_kills, 0) AS spy_kills
+                FROM nations WHERE id = ?
                 """,
                 (nation_id,)
             ).fetchone()
-
-            # ── Unit kills as defender ────────────────────────────────────────
-            dfn = conn.execute(
-                """
-                SELECT
-                    COALESCE(SUM(att_soldiers_lost), 0) AS soldiers,
-                    COALESCE(SUM(att_tanks_lost),    0) AS tanks,
-                    COALESCE(SUM(att_aircraft_lost), 0) AS aircraft,
-                    COALESCE(SUM(att_ships_lost),    0) AS ships
-                FROM wars WHERE def_id = ? AND is_active = 0
-                """,
-                (nation_id,)
-            ).fetchone()
-
-            for src in (att, dfn):
-                if src:
-                    stats["soldiers"] += int(src["soldiers"] or 0)
-                    stats["tanks"]    += int(src["tanks"]    or 0)
-                    stats["aircraft"] += int(src["aircraft"] or 0)
-                    stats["ships"]    += int(src["ships"]    or 0)
-
-            # ── Bombs that hit (type='MISSILE'/'NUKE'; MISSILEFAIL/NUKEFAIL excluded) ──
-            bombs = conn.execute(
-                """
-                SELECT
-                    COALESCE(SUM(CASE WHEN type = 'MISSILE' THEN 1 ELSE 0 END), 0) AS missiles,
-                    COALESCE(SUM(CASE WHEN type = 'NUKE'    THEN 1 ELSE 0 END), 0) AS nukes
-                FROM war_attacks WHERE attacker_id = ?
-                """,
-                (nation_id,)
-            ).fetchone()
-
-            if bombs:
-                stats["missiles"] += int(bombs["missiles"] or 0)
-                stats["nukes"]    += int(bombs["nukes"]    or 0)
+            
+            if row:
+                stats["wins"] = int(row["wars_won"] or 0)
+                stats["soldiers"] = int(row["soldier_kills"] or 0)
+                stats["tanks"] = int(row["tank_kills"] or 0)
+                stats["aircraft"] = int(row["aircraft_kills"] or 0)
+                stats["ships"] = int(row["ship_kills"] or 0)
+                stats["missiles"] = int(row["missile_kills"] or 0)
+                stats["nukes"] = int(row["nuke_kills"] or 0)
+                stats["spies"] = int(row["spy_kills"] or 0)
 
     except Exception as e:
         logger.error(f"_get_war_stats_for_nation({nation_id}): {e}", exc_info=True)
@@ -364,6 +330,7 @@ async def absorb_status(request: Request):
         "ships":    int(state["absorbed_ships"])    if state else 0,
         "missiles": int(state["absorbed_missiles"]) if state else 0,
         "nukes":    int(state["absorbed_nukes"])    if state else 0,
+        "spies":    int(state.get("absorbed_spies", 0)) if state else 0,
     }
 
     available = _compute_available(total, absorbed)
@@ -497,6 +464,7 @@ async def absorb_kills(request: Request):
         "ships":    int(state["absorbed_ships"])    if state else 0,
         "missiles": int(state["absorbed_missiles"]) if state else 0,
         "nukes":    int(state["absorbed_nukes"])    if state else 0,
+        "spies":    int(state.get("absorbed_spies", 0)) if state else 0,
     }
 
     all_available = {k: max(0, total.get(k, 0) - absorbed.get(k, 0)) for k in absorbed}
@@ -564,4 +532,78 @@ async def absorb_kills(request: Request):
         "nation_id":      nation_id,
         "pet":            pet,
         "message":        f"Absorbed {unit_type or 'all'} kills for {total_xp:,} XP!",
+    })
+
+
+@router.post("/pets/absorb/{unit_type}")
+async def absorb_unit_type(request: Request, unit_type: str):
+    """
+    Absorb a specific unit type (soldiers, tanks, aircraft, ships, missiles, nukes, spies)
+    """
+    if unit_type not in ['soldiers', 'tanks', 'aircraft', 'ships', 'missiles', 'nukes', 'spies']:
+        return JSONResponse(status_code=400, content={"error": "Invalid unit type"})
+    
+    user = request.session.get("discord_user")
+    if not user:
+        return JSONResponse(status_code=401, content={"error": "Not logged in"})
+
+    user_id = str(user.get("id"))
+
+    pet = await user_data_manager.get_pet_data_async(user_id)
+    if not pet:
+        return JSONResponse(status_code=404, content={"error": "No pet found"})
+
+    # Get nation ID (locked or current)
+    state     = await asyncio.to_thread(_get_absorb_state, user_id)
+    nation_id, is_locked = await asyncio.to_thread(_resolve_nation_id, user_id, state)
+    if not nation_id:
+        return JSONResponse(status_code=400, content={
+            "error": "No PnW nation linked to your Discord account. Link your nation in-game first."
+        })
+
+    # Get current stats
+    total = await asyncio.to_thread(_get_war_stats_for_nation, nation_id)
+
+    absorbed = int(state.get(f"absorbed_{unit_type}", 0)) if state else 0
+    available = max(0, total.get(unit_type, 0) - absorbed)
+
+    if available <= 0:
+        return JSONResponse(content={"xp_gained": 0, "amount": 0, "message": f"No new {unit_type} to absorb"})
+
+    # Calculate XP using canonical multipliers
+    level      = int(pet.get("level", 1))
+    equip_mult = StatsCalculator.get_equipment_xp_multiplier(pet)
+    all_mults  = {**_UNIT_MULT, **_BOMB_MULT}
+    mult       = all_mults[unit_type]
+    xp_gain    = int(level * equip_mult * available * mult)
+
+    leveled_up, level_data = await LootCalculator.apply_xp_change(int(user_id), xp_gain, f"absorb_{unit_type}")
+    actually_leveled_up = leveled_up and level_data and level_data.get("new_level", 0) > level_data.get("old_level", 0)
+
+    # Lock nation on first absorb, increment counter
+    await asyncio.to_thread(
+        _lock_and_update_absorb_state,
+        user_id, nation_id, {unit_type: available}
+    )
+
+    pet = await user_data_manager.get_pet_data_async(user_id)
+
+    # ── GPP: emit event + animation (Observer pattern + Component pattern) ─────────
+    queue = EventQueue()
+    queue.push(f"absorb_{unit_type}", {"user_id": user_id, "amount": available, "xp_gained": xp_gain, "leveled_up": actually_leveled_up})
+    await queue.flush()
+
+    animation = AnimationComponent.for_ui_update(f"absorb_{unit_type}", 500, {"xp_gained": xp_gain, "amount": available})
+
+    return JSONResponse(content={
+        "xp_gained":      xp_gain,
+        "amount":         available,
+        "unit_type":      unit_type,
+        "leveled_up":     actually_leveled_up,
+        "level_data":     level_data,
+        "animation": animation,
+        "locked":         True,
+        "nation_id":      nation_id,
+        "pet":            pet,
+        "message":        f"Absorbed {available:,} {unit_type} for {xp_gain:,} XP!",
     })
