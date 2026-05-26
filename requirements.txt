@@ -1,76 +1,87 @@
+# ==========================
+# Discord & Web Framework
+# ==========================
 discord.py==2.3.2
-python-dotenv==1.0.1
-fastapi==0.110.0
-uvicorn==0.29.0
-flask==3.1.3
-jinja2==3.1.6
-starlette==0.36.3
-aiohttp==3.8.6
-httpx
-requests==2.28.2
-async-timeout==4.0.3
-itsdangerous
-pydantic
+python-dotenv>=1.0.1
+fastapi>=0.115.0
+uvicorn[standard]>=0.30.0
+websockets>=12.0
+flask>=3.1.3
+jinja2>=3.1.4
+starlette>=0.41.0
+aiohttp>=3.10.0
+httpx>=0.27.0
+requests>=2.31.0
+async-timeout>=4.0.3
+itsdangerous>=2.2.0
+pydantic>=2.7.0,<3.0.0
 
 # ==========================
 # AI, APIs & External Services
 # ==========================
-grpcio==1.62.0
-grpcio-status==1.62.0
-google-api-core==2.17.1
-google-auth==2.27.0
-google-auth-httplib2==0.2.0
-google-generativeai==0.3.2
-google-resumable-media==2.7.1
-googleapis-common-protos==1.62.0
-protobuf==4.25.3
-httplib2==0.22.0
-groq
+groq>=0.9.0
 
 # ==========================
 # Data, Analytics & Visualization
 # ==========================
-pandas==2.1.4
-numpy
-lttb
-matplotlib==3.8.3
-plotly==5.18.0
+pandas>=2.2.0
+numpy>=1.26.4
+lttb>=0.3.2
+matplotlib>=3.9.0
+plotly>=5.22.0
 kaleido==0.2.1
-Pillow==10.2.0
-networkx==3.6.1
-beautifulsoup4==4.11.2
-markdown==3.10.2
-aiosqlite==0.19.0
+Pillow>=10.3.0
+networkx>=3.3
+beautifulsoup4>=4.12.0
+markdown>=3.6
+aiosqlite>=0.20.0
 
 # ==========================
 # System & Utilities
 # ==========================
-psutil==5.9.8
-aiofiles==23.2.1
-tqdm==4.66.2
-python-editor==1.0.4
-reportlab==4.4.10
-pnwkit-py
-pywin32==306
+psutil>=5.9.8
+aiofiles>=23.2.1
+tqdm>=4.66.4
+python-editor>=1.0.4
+reportlab>=4.2.0
+pnwkit-py>=2.6.26
+pywin32>=306
 
 # ==========================
 # Core Dependencies & Types
 # ==========================
-werkzeug==3.1.6
-itsdangerous==2.2.0
-blinker==1.9.0
-python-multipart==0.0.22
-click==8.3.1
-markupsafe==3.0.3
-pydantic>=2.0.0,<3.0.0
-typing-extensions==4.12.0
-typing-inspection==0.4.2
-annotated-doc==0.0.4
-attrs==23.2.0
-certifi==2023.11.17
-charset-normalizer==3.3.2
-exceptiongroup==1.2.0
-frozenlist==1.4.1
-idna==3.6
-multidict==6.0.5
-six==1.16.0
+werkzeug>=3.0.3
+blinker>=1.8.0
+python-multipart>=0.0.9
+click>=8.1.7
+markupsafe>=2.1.5
+typing-extensions>=4.12.0
+typing-inspection>=0.4.0
+annotated-doc>=0.0.4
+attrs>=23.2.0
+certifi>=2024.2.2
+charset-normalizer>=3.3.2
+frozenlist>=1.4.1
+idna>=3.7
+multidict>=6.0.5
+six>=1.16.0
+
+# ==========================
+# Testing
+# ==========================
+pytest>=9.0.0
+pytest-asyncio>=0.23.0
+
+# ==========================
+# PyTorch ROCm (AMD GPU) - Python 3.12 cp312
+# Install these BEFORE requirements.txt via install_venv.bat
+# or manually with the URLs below:
+#
+# rocm_sdk_core:     https://repo.radeon.com/rocm/windows/.rocm-rel-7.2_a/rocm_sdk_core-7.2.0.dev0-py3-none-win_amd64.whl
+# rocm_sdk_devel:    https://repo.radeon.com/rocm/windows/.rocm-rel-7.2_a/rocm_sdk_devel-7.2.0.dev0-py3-none-win_amd64.whl
+# rocm_sdk_libs:     https://repo.radeon.com/rocm/windows/.rocm-rel-7.2_a/rocm_sdk_libraries_custom-7.2.0.dev0-py3-none-win_amd64.whl
+# rocm meta:         https://repo.radeon.com/rocm/windows/.rocm-rel-7.2_a/rocm-7.2.0.dev0.tar.gz
+# torch:             https://repo.radeon.com/rocm/windows/.rocm-rel-7.2_a/torch-2.9.1+rocmsdk20260116-cp312-cp312-win_amd64.whl
+# torchvision:       https://repo.radeon.com/rocm/windows/.rocm-rel-7.2_a/torchvision-0.24.1+rocmsdk20260116-cp312-cp312-win_amd64.whl
+# torchaudio:        https://repo.radeon.com/rocm/windows/.rocm-rel-7.2_a/torchaudio-2.9.1+rocmsdk20260116-cp312-cp312-win_amd64.whl
+# ==========================
