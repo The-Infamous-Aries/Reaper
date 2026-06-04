@@ -156,8 +156,10 @@ tbody tr.nat-my-nation .nat-chevron { color: var(--gold-primary); font-size: 0.8
 .nat-detail-name { margin:0; font-size:1.05rem; color:var(--gold-primary); }
 .nat-detail-leader { margin:0.15rem 0 0.4rem; color:var(--text-secondary); font-size:0.82rem; }
 .nat-detail-badges { display:flex; gap:0.35rem; flex-wrap:wrap; align-items:center; margin-top:0.3rem; }
-.nat-detail-badge { display:inline-block; padding:2px 7px; border-radius:3px; font-size:0.7rem; background:rgba(255,255,255,0.07); color:rgba(255,255,255,0.6); border:1px solid rgba(255,255,255,0.15); white-space:nowrap; }
+.nat-detail-badge { display:inline-flex; align-items:center; gap:4px; padding:2px 7px; border-radius:3px; font-size:0.7rem; background:rgba(255,255,255,0.07); color:rgba(255,255,255,0.6); border:1px solid rgba(255,255,255,0.15); white-space:nowrap; }
 .nat-badge-stat { background:rgba(255,255,255,0.12); color:#fff; border-color:rgba(255,255,255,0.35); font-weight:600; }
+.nat-policy-badge { font-weight:600; }
+.nat-policy-icon { width:15px; height:15px; object-fit:contain; flex-shrink:0; }
 .nat-badge-wins { background:rgba(255,215,0,0.15); color:#ffd700; border-color:rgba(255,215,0,0.5); font-weight:700; }
 .nat-badge-losses { background:rgba(220,50,50,0.15); color:#ff6b6b; border-color:rgba(220,50,50,0.45); font-weight:700; }
 
@@ -262,9 +264,14 @@ tbody tr.nat-my-nation .nat-chevron { color: var(--gold-primary); font-size: 0.8
 .nat-city-stats strong { color:#fff; }
 .nat-powered   { color:#00c864; }
 .nat-unpowered { color:#e74c3c; }
-.nat-city-imps { display:flex; flex-wrap:wrap; gap:0.2rem; }
+.nat-city-imps { display:flex; flex-wrap:wrap; gap:0.25rem; margin-top:0.15rem; }
 .nat-city-imp { font-size:0.7rem; padding:2px 5px; background:rgba(255,255,255,0.05); border-radius:2px; color:rgba(255,255,255,0.7); border:1px solid rgba(255,255,255,0.08); transition:background 0.1s; cursor:default; }
 .nat-city-imp:hover { background:rgba(255,215,0,0.12); color:#fff; border-color:rgba(255,215,0,0.25); }
+/* emoji icon chips — mirrors mn-imp-chip style from my_nation */
+.nat-imp-chip { display:inline-flex; align-items:center; gap:2px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); border-radius:3px; padding:2px 4px; cursor:default; transition:background 0.1s; }
+.nat-imp-chip:hover { background:rgba(255,215,0,0.12); border-color:rgba(255,215,0,0.3); }
+.nat-imp-chip-icon { width:14px; height:14px; object-fit:contain; }
+.nat-imp-chip-cnt { font-size:0.68rem; color:#fff; font-weight:600; line-height:1; }
 
 
 

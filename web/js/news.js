@@ -205,6 +205,7 @@ const E = {
   alliance:    '/static/Emojis/Menu/alliance.png',
   news:        '/static/Emojis/Menu/news.png',
   pirate:      '/static/Emojis/Menu/pirate.png',
+  treaty:      '/static/Emojis/Military/peace.png',
 };
 
 /** Return an <img> tag for a static emoji, sized for use as an event badge icon */
@@ -229,6 +230,8 @@ const EVENT_META = {
   bank_withdrawal:   { img: E.loot,        label: 'Withdrawal'    },
   bank_transfer:     { img: E.calculator,  label: 'Transfer'      },
   trade_completed:   { img: E.calculator,  label: 'Trade'         },
+  treaty_signed:     { img: E.peace,       label: 'Treaty Signed' },
+  treaty_cancelled:  { img: E.peace,       label: 'Treaty Cancelled' },
 };
 
 function eventMeta(type) {
@@ -562,6 +565,10 @@ function renderEventItem(ev, nameMap) {
       nwToneCls = isNWPrimary ? ' tone-happy' : '';
     } else if (t === 'alliance_leave') {
       nwToneCls = isNWPrimary ? ' tone-neutral' : '';
+    } else if (t === 'treaty_signed') {
+      nwToneCls = isNW ? ' tone-happy' : '';
+    } else if (t === 'treaty_cancelled') {
+      nwToneCls = isNW ? ' tone-neutral' : '';
     }
   }
 
@@ -690,6 +697,7 @@ function renderEventItem(ev, nameMap) {
     // Trade fields rendered in custom breakdown
     'buyer_id', 'buyer_name', 'buyer_alliance_id', 'buyer_alliance_name',
     'seller_id', 'seller_name', 'seller_alliance_id', 'seller_alliance_name',
+    'total_value', 'resource_value',  // Trade: only money_amount is the actual transaction value
   ]);
 
   // Human-readable labels for detail keys

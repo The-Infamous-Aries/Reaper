@@ -6,23 +6,15 @@ const calculatorToggle = document.getElementById('calculator-toggle');
         (function() {
             const input = document.getElementById('nation-query');
             if (!input || input.value.trim()) return;
-            // Try localStorage first (works without Discord login)
-            try {
-                const stored = localStorage.getItem('pnw_linked_nation');
-                if (stored) {
-                    const nation = JSON.parse(stored);
-                    if (nation && nation.nation_id) {
-                        input.value = nation.nation_id;
-                        return;
-                    }
-                }
-            } catch (_) {}
-            // Fall back to server session
-            fetch('/api/discord/linked-nation')
+            // Primary: use /api/settings (respects auto_fill_nation_calc toggle)
+            fetch('/api/settings', { credentials: 'same-origin' })
                 .then(r => r.ok ? r.json() : null)
-                .then(data => {
-                    if (data && data.linked && data.nation_id && !input.value.trim()) {
-                        input.value = data.nation_id;
+                .then(settings => {
+                    if (!settings) return;
+                    if (settings.auto_fill_nation_calc === 1 && settings.linked_nation_id) {
+                        if (!input.value.trim()) {
+                            input.value = settings.linked_nation_name || String(settings.linked_nation_id);
+                        }
                     }
                 })
                 .catch(() => {});

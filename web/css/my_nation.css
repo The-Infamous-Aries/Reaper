@@ -1,0 +1,1213 @@
+/* ── My Nation Page ──────────────────────────────────────────────────────── */
+
+/* ── Page Shell ─────────────────────────────────────────────────────────── */
+.mn-shell { display: grid; gap: 1rem; }
+
+/* ── Search / status bar ────────────────────────────────────────────────── */
+.mn-search-bar { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
+
+.mn-status {
+  padding: 0.75rem 1rem; border-radius: 0.6rem;
+  border: 1px solid rgba(255,215,0,0.24);
+  background: rgba(15,15,15,0.78); color: var(--text-primary); font-size: 0.85rem;
+}
+.mn-status-error { border-color: #b00020; color: #b00020; background: rgba(176,0,32,0.08); }
+
+/* ── Collapsible section card ───────────────────────────────────────────── */
+.mn-section {
+  background: linear-gradient(135deg, rgba(34,27,9,0.96), rgba(11,11,11,0.92));
+  border: 1px solid rgba(255,215,0,0.22);
+  border-radius: 0.65rem;
+  overflow: hidden;
+}
+
+.mn-section-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0.75rem 1.1rem;
+  background: linear-gradient(180deg, rgba(40,32,10,0.98), rgba(22,18,6,0.98));
+  border-bottom: 1px solid rgba(255,215,0,0.18);
+  cursor: pointer; user-select: none;
+  transition: background 0.15s;
+}
+.mn-section-header:hover { background: linear-gradient(180deg, rgba(58,45,15,0.98), rgba(30,24,8,0.98)); }
+.mn-section-title {
+  font-size: 0.82rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.07em; color: var(--gold-primary);
+}
+.mn-section-chevron {
+  color: var(--gold-secondary); font-size: 0.75rem;
+  transition: transform 0.2s;
+}
+.mn-section.collapsed .mn-section-chevron { transform: rotate(-90deg); }
+.mn-section-body { padding: 1rem 1.1rem; }
+.mn-section.collapsed .mn-section-body { display: none; }
+
+/* ── Stat grid (6-column responsive) ───────────────────────────────────── */
+.mn-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 0.75rem;
+}
+@media (max-width: 1200px) { .mn-stat-grid { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 640px)  { .mn-stat-grid { grid-template-columns: repeat(2, 1fr); } }
+
+.mn-stat-card {
+  background: rgba(20,16,6,0.7);
+  border: 1px solid rgba(255,215,0,0.15);
+  border-radius: 0.55rem;
+  padding: 0.85rem 1rem;
+  text-align: center;
+}
+.mn-stat-label {
+  font-size: 0.72rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.06em; color: var(--gold-secondary); margin-bottom: 0.4rem;
+}
+.mn-stat-value {
+  font-size: 1.15rem; font-weight: 700; color: var(--gold-primary);
+}
+.mn-stat-sub { font-size: 0.7rem; color: var(--text-secondary); margin-top: 0.15rem; }
+
+/* ── Nation header section ──────────────────────────────────────────────── */
+.mn-header-inner {
+  display: flex; gap: 1rem; align-items: flex-start; flex-wrap: wrap;
+}
+.mn-flag {
+  width: 72px; height: 48px; object-fit: cover;
+  border-radius: 4px; border: 1px solid rgba(255,215,0,0.3); flex-shrink: 0;
+}
+.mn-header-info { flex: 1; min-width: 200px; }
+.mn-nation-name { margin: 0; font-size: 1.3rem; color: var(--gold-primary); font-weight: 700; }
+.mn-leader-name { margin: 0.15rem 0; color: var(--text-secondary); font-size: 0.85rem; }
+.mn-alliance-line { font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.4rem; }
+.mn-header-badges { display: flex; gap: 0.35rem; flex-wrap: wrap; margin-top: 0.35rem; }
+
+.mn-badge {
+  display: inline-block; padding: 2px 8px; border-radius: 3px;
+  font-size: 0.7rem; font-weight: 700;
+}
+.mn-badge-active   { background: rgba(0,200,100,0.15); color: #00c864; border: 1px solid #00c864; }
+.mn-badge-beige    { background: rgba(210,180,140,0.2); color: #d2b48c; border: 1px solid #d2b48c; }
+.mn-badge-vacation { background: rgba(100,149,237,0.15); color: #6495ed; border: 1px solid #6495ed; }
+.mn-badge-war      { background: rgba(220,50,50,0.15); color: #e05555; border: 1px solid #e05555; }
+.mn-badge-grey     { background: rgba(128,128,128,0.15); color: #aaa; border: 1px solid #666; }
+
+.mn-color-circle {
+  display: inline-block; width: 12px; height: 12px;
+  border-radius: 50%; vertical-align: middle; margin-right: 0.3rem;
+  border: 1px solid rgba(255,255,255,0.25);
+}
+.mn-turn-timer { font-size: 0.78rem; color: var(--text-secondary); margin-top: 0.35rem; }
+.mn-turn-timer strong { color: var(--gold-primary); }
+
+/* ── Policies row ───────────────────────────────────────────────────────── */
+.mn-policies-row { display: flex; gap: 0.4rem; flex-wrap: wrap; margin-top: 0.5rem; }
+.mn-policy-badge {
+  display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 3px;
+  font-size: 0.72rem; font-weight: 600;
+  background: rgba(255,215,0,0.08); color: var(--gold-primary);
+  border: 1px solid rgba(255,215,0,0.2);
+}
+.mn-war-policy-badge   { background: rgba(255,255,255,0.06); }
+.mn-dom-policy-badge   { background: rgba(255,255,255,0.06); }
+.mn-policy-icon { width: 16px; height: 16px; object-fit: contain; flex-shrink: 0; }
+.mn-policy-note { color: var(--text-secondary); font-weight: 400; font-size: 0.68rem; }
+
+/* ── Revenue 3-column grid (Per Turn | Per Day | Per Week) ───────────────── */
+.mn-rev-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+}
+@media (max-width: 1100px) { .mn-rev-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 700px) { .mn-rev-grid { grid-template-columns: 1fr; } }
+
+.mn-rev-col {
+  background: rgba(8,6,2,0.82);
+  border: 1px solid rgba(255,215,0,0.15);
+  border-radius: 0.4rem;
+  padding: 0.75rem;
+  min-width: 0;
+}
+.mn-rev-col-title {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--gold-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid rgba(255,215,0,0.25);
+}
+.mn-rev-sub-title {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--gold-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-top: 0.5rem;
+  margin-bottom: 0.4rem;
+}
+.mn-rev-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.75rem;
+  padding: 0.25rem 0;
+  border-bottom: 1px solid rgba(255,215,0,0.05);
+}
+.mn-rev-row:last-child { border-bottom: none; }
+.mn-rev-row span:first-child { color: var(--text-secondary); }
+.mn-rev-row strong { font-weight: 600; color: var(--text-primary); }
+.mn-rev-row-hdr {
+  font-weight: 600;
+  color: var(--gold-secondary);
+  margin-top: 0.3rem;
+}
+.mn-rev-sub-total {
+  font-weight: 600;
+  padding-top: 0.35rem;
+  margin-top: 0.35rem;
+  border-top: 1px solid rgba(255,215,0,0.18);
+}
+.mn-rev-total {
+  font-weight: 700;
+  font-size: 0.8rem;
+  padding: 0.4rem 0;
+  margin-top: 0.4rem;
+  border-top: 2px solid rgba(255,215,0,0.22);
+}
+.mn-rev-info {
+  font-size: 0.68rem;
+  color: var(--text-secondary);
+  font-style: italic;
+  padding: 0.2rem 0;
+  border-bottom: none;
+}
+.mn-rev-info-val {
+  color: var(--gold-secondary);
+  font-weight: 600;
+}
+.mn-rev-rsc-list {
+  margin-left: 0.75rem;
+  margin-bottom: 0.35rem;
+}
+.mn-rev-rsc-inline {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.72rem;
+  padding: 0.2rem 0;
+  border-bottom: 1px solid rgba(255,215,0,0.03);
+}
+.mn-rev-rsc-inline:last-child { border-bottom: none; }
+.mn-rev-rsc-label {
+  color: var(--text-secondary);
+  text-transform: capitalize;
+  flex: 1;
+}
+.mn-rev-price {
+  font-size: 0.68rem;
+  color: var(--text-secondary);
+  margin-left: 0.3rem;
+}
+
+/* ── Positive / Negative value text ────────────────────────────────────── */
+.mn-positive { color: #c8e6c9; font-weight: 600; }
+.mn-negative { color: #ef9a9a; font-weight: 600; }
+.mn-positive-strong { color: #00c864; font-weight: 700; }
+.mn-negative-strong { color: #e74c3c; font-weight: 700; }
+
+/* ── Resource Stockpile ─────────────────────────────────────────────────── */
+.mn-stockpile-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 0.65rem;
+}
+@media (max-width: 1100px) { .mn-stockpile-grid { grid-template-columns: repeat(4, 1fr); } }
+@media (max-width: 640px)  { .mn-stockpile-grid { grid-template-columns: repeat(3, 1fr); } }
+
+.mn-stockpile-cell {
+  background: rgba(15,12,5,0.7);
+  border: 1px solid rgba(255,215,0,0.1);
+  border-radius: 0.4rem;
+  padding: 0.6rem 0.75rem;
+  display: flex; flex-direction: column; align-items: center; gap: 0.2rem;
+  text-align: center;
+}
+.mn-stockpile-icon { width: 22px; height: 22px; object-fit: contain; }
+.mn-stockpile-name { font-size: 0.65rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.04em; }
+.mn-stockpile-amount { font-size: 0.82rem; font-weight: 700; color: var(--text-primary); }
+.mn-stockpile-days { font-size: 0.65rem; color: #ef9a9a; margin-top: 0.1rem; }
+
+/* ── Cities Grid ────────────────────────────────────────────────────────── */
+.mn-cities-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.75rem;
+}
+@media (max-width: 1100px) { .mn-cities-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 640px)  { .mn-cities-grid { grid-template-columns: 1fr; } }
+
+.mn-city-card {
+  background: rgba(15,12,5,0.75);
+  border: 1px solid rgba(255,215,0,0.12);
+  border-radius: 0.5rem;
+  overflow: hidden;
+  transition: border-color 0.15s;
+}
+.mn-city-card:hover { border-color: rgba(255,215,0,0.28); }
+
+.mn-city-header {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 0.5rem; padding: 0.55rem 0.75rem;
+  background: linear-gradient(180deg, rgba(30,24,8,0.95), rgba(18,14,5,0.95));
+  border-bottom: 1px solid rgba(255,215,0,0.1);
+  flex-wrap: wrap;
+}
+.mn-city-name { font-size: 0.82rem; font-weight: 700; color: var(--gold-primary); }
+.mn-city-stats { display: flex; gap: 0.5rem; font-size: 0.73rem; color: var(--text-secondary); flex-wrap: wrap; }
+.mn-city-stats strong { color: var(--text-primary); }
+.mn-powered   { color: #00c864; font-size: 0.7rem; }
+.mn-unpowered { color: #e74c3c; font-size: 0.7rem; }
+
+.mn-city-body { padding: 0.55rem 0.75rem; }
+
+.mn-city-improvements {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.35rem 0.5rem;
+  margin-bottom: 0.5rem;
+}
+.mn-city-imp-group { font-size: 0.68rem; }
+.mn-city-imp-group-title {
+  font-size: 0.62rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.05em; color: var(--gold-secondary); margin-bottom: 0.15rem;
+}
+.mn-city-imp-row {
+  display: flex; align-items: center; gap: 0.25rem;
+  color: rgba(255,255,255,0.75); padding: 0.05rem 0;
+  font-size: 0.68rem;
+}
+.mn-city-imp-icon { width: 13px; height: 13px; object-fit: contain; flex-shrink: 0; }
+
+.mn-city-footer {
+  display: flex; justify-content: space-between;
+  padding: 0.4rem 0.75rem;
+  border-top: 1px solid rgba(255,215,0,0.08);
+  font-size: 0.7rem; color: var(--text-secondary);
+}
+.mn-city-footer strong { color: var(--text-primary); }
+
+.mn-city-expand-row {
+  padding: 0.5rem 0.75rem;
+  border-top: 1px solid rgba(255,215,0,0.08);
+  background: rgba(8,6,2,0.7);
+  font-size: 0.75rem; color: var(--text-secondary);
+  display: none;
+}
+.mn-city-expand-row.open { display: block; }
+
+/* ── National Projects ──────────────────────────────────────────────────── */
+.mn-project-badges {
+  display: flex; flex-wrap: wrap; gap: 0.35rem;
+}
+.mn-project-badge {
+  display: inline-block; padding: 3px 9px; border-radius: 3px;
+  font-size: 0.72rem; font-weight: 600; cursor: pointer;
+  transition: all 0.15s;
+}
+.mn-project-badge.owned {
+  background: rgba(255,215,0,0.15); color: var(--gold-primary);
+  border: 1px solid var(--gold-primary);
+}
+.mn-project-badge.owned:hover { background: rgba(255,215,0,0.25); }
+.mn-project-badge.unowned {
+  background: rgba(255,255,255,0.04); color: rgba(255,255,255,0.4);
+  border: 1px dashed rgba(255,255,255,0.2);
+}
+.mn-project-badge.unowned:hover {
+  background: rgba(255,215,0,0.07); color: rgba(255,215,0,0.65);
+  border-color: rgba(255,215,0,0.35);
+}
+
+.mn-proj-cat-title {
+  font-size: 0.68rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.06em; color: var(--gold-secondary);
+  margin: 0.6rem 0 0.3rem; padding-bottom: 0.2rem;
+  border-bottom: 1px solid rgba(255,215,0,0.1);
+}
+
+/* ── Military Panel ─────────────────────────────────────────────────────── */
+.mn-mil-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.65rem;
+  margin-bottom: 0.75rem;
+}
+@media (max-width: 900px)  { .mn-mil-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 480px)  { .mn-mil-grid { grid-template-columns: 1fr; } }
+
+/* 7-unit grid for military units — 3-4 columns for more compact display */
+.mn-mil-units-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.4rem;
+  margin-bottom: 0.75rem;
+}
+@media (max-width: 1100px) { .mn-mil-units-grid { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 768px) { .mn-mil-units-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 480px) { .mn-mil-units-grid { grid-template-columns: 1fr; } }
+
+.mn-mil-unit-section {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,215,0,0.1);
+  border-radius: 4px;
+  padding: 0.35rem 0.5rem;
+  min-width: 0;
+}
+
+.mn-mil-unit-title {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--gold-secondary);
+  margin-bottom: 0.25rem;
+  padding-bottom: 0.2rem;
+  border-bottom: 1px solid rgba(255,215,0,0.1);
+}
+
+.mn-mil-unit-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.68rem;
+  padding: 0.08rem 0;
+  border-radius: 2px;
+  transition: background 0.1s;
+}
+.mn-mil-unit-row:hover { background: rgba(255,215,0,0.06); }
+
+.mn-mil-unit-lbl {
+  color: var(--text-secondary);
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  flex-shrink: 0;
+}
+
+.mn-mil-unit-row strong {
+  color: #fff;
+  font-size: 0.68rem;
+  text-align: right;
+  font-weight: 600;
+}
+
+.mn-mil-unit-row .mn-daily,
+.mn-mil-unit-row .mn-max {
+  font-size: 0.66rem;
+  text-align: right;
+  color: var(--text-secondary);
+  font-weight: 400;
+}
+
+/* Military Research panel - more compact, side by side with MMR */
+.mn-mil-stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  margin-top: 0.6rem;
+}
+@media (max-width: 768px) {
+  .mn-mil-stats-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.mn-mil-research {
+  padding: 0.4rem 0.5rem;
+  border: 1px solid rgba(255,215,0,0.1);
+  background: rgba(255,255,255,0.02);
+  border-radius: 3px;
+}
+
+.mn-mil-research-title {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--gold-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 0.3rem;
+}
+
+.mn-mil-research-grid {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.1rem 0.5rem;
+}
+
+.mn-mil-research-lbl {
+  font-size: 0.64rem;
+  color: var(--text-secondary);
+}
+
+.mn-mil-research-val {
+  font-size: 0.64rem;
+  color: #fff;
+  font-weight: 600;
+  text-align: right;
+}
+
+/* MMR section - more compact, side by side with Research */
+.mn-mmr-section {
+  padding: 0.4rem 0.5rem;
+  border: 1px solid rgba(255,215,0,0.1);
+  background: rgba(255,255,255,0.02);
+  border-radius: 3px;
+}
+
+.mn-mil-card {
+  background: rgba(20,16,6,0.7);
+  border: 1px solid rgba(255,215,0,0.12);
+  border-radius: 0.45rem;
+  padding: 0.65rem 0.75rem;
+}
+.mn-mil-card-title {
+  display: flex; align-items: center; gap: 0.3rem;
+  font-size: 0.7rem; font-weight: 700; color: var(--gold-secondary);
+  text-transform: uppercase; letter-spacing: 0.05em;
+  margin-bottom: 0.3rem; padding-bottom: 0.2rem;
+  border-bottom: 1px solid rgba(255,215,0,0.1);
+}
+.mn-mil-icon { width: 14px; height: 14px; object-fit: contain; }
+.mn-mil-count { font-size: 1rem; font-weight: 700; color: var(--text-primary); }
+.mn-mil-max   { font-size: 0.7rem; color: var(--text-secondary); }
+
+/* MMR fill bars */
+.mn-mmr-title {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--gold-secondary);
+  margin-bottom: 0.3rem;
+}
+.mn-mmr-row {
+  display: grid;
+  grid-template-columns: 4.5rem 1fr 2.5rem;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.3rem;
+}
+.mn-mmr-label { font-size: 0.66rem; color: var(--text-secondary); }
+.mn-mmr-bar {
+  height: 0.55rem;
+  background: rgba(255,255,255,0.07);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.mn-mmr-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.4s ease;
+}
+.mn-mmr-fill.green  { background: linear-gradient(90deg, #1a7f3c, #00c864); }
+.mn-mmr-fill.yellow { background: linear-gradient(90deg, #b8860b, #ffd700); }
+.mn-mmr-fill.red    { background: linear-gradient(90deg, #8b0000, #e74c3c); }
+.mn-mmr-value { font-size: 0.66rem; color: var(--text-primary); font-weight: 600; text-align: right; }
+
+/* War record */
+.mn-war-record {
+  display: flex; gap: 0.65rem; flex-wrap: wrap;
+  margin-top: 0.65rem; padding-top: 0.65rem;
+  border-top: 1px solid rgba(255,215,0,0.12);
+}
+.mn-war-item {
+  display: flex; align-items: center; gap: 0.3rem;
+  font-size: 0.8rem;
+}
+.mn-war-icon { width: 14px; height: 14px; object-fit: contain; }
+
+/* Kill stats sub-section */
+.mn-kill-stats { margin-top: 0.5rem; }
+.mn-kill-row {
+  display: flex; justify-content: space-between; align-items: center;
+  font-size: 0.78rem; padding: 0.15rem 0;
+}
+.mn-kill-row span { color: var(--text-secondary); display: flex; align-items: center; gap: 0.3rem; }
+.mn-kill-row strong { color: var(--text-primary); }
+
+/* ── Goals / Planner ────────────────────────────────────────────────────── */
+.mn-planner { display: flex; flex-direction: column; gap: 0; }
+
+.mn-planner-tabs {
+  display: flex; gap: 0; border-radius: 999px; overflow: hidden;
+  border: 1px solid rgba(255,215,0,0.3);
+  background: rgba(14,11,5,0.92);
+  width: fit-content; margin-bottom: 1rem;
+}
+.mn-planner-tab {
+  display: flex; align-items: center; gap: 0.4rem;
+  padding: 0.45rem 0.9rem; border: none; background: transparent;
+  color: rgba(255,255,255,0.55); font-size: 0.82rem; font-weight: 600;
+  cursor: pointer; transition: all 0.15s; white-space: nowrap;
+}
+.mn-planner-tab:hover { color: var(--gold-primary); background: rgba(255,215,0,0.08); }
+.mn-planner-tab.active {
+  background: linear-gradient(135deg, var(--gold-primary), var(--gold-secondary));
+  color: #1a1a1a;
+}
+
+.mn-planner-panel { display: none; }
+.mn-planner-panel.active { display: block; }
+
+/* Goal items */
+.mn-goals-list { display: flex; flex-direction: column; gap: 0.6rem; }
+
+.mn-goal-item {
+  background: rgba(15,12,5,0.8);
+  border: 1px solid rgba(255,215,0,0.12);
+  border-left: 3px solid rgba(255,215,0,0.12);
+  border-radius: 0.45rem;
+  padding: 0.75rem 1rem;
+  transition: border-color 0.15s;
+}
+.mn-goal-item.pending { border-left-color: #ffd700; }
+.mn-goal-item.completed {
+  border-left-color: #00c864;
+  opacity: 0.75;
+}
+.mn-goal-item.completed .mn-goal-label { text-decoration: line-through; color: var(--text-secondary); }
+
+.mn-goal-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem; flex-wrap: wrap; }
+.mn-goal-label { font-size: 0.88rem; font-weight: 600; color: var(--text-primary); }
+.mn-goal-actions { display: flex; gap: 0.4rem; }
+.mn-goal-btn {
+  padding: 2px 8px; border-radius: 3px; border: none;
+  font-size: 0.72rem; font-weight: 600; cursor: pointer; transition: opacity 0.15s;
+}
+.mn-goal-btn:hover { opacity: 0.8; }
+.mn-goal-btn-complete { background: rgba(0,200,100,0.18); color: #00c864; border: 1px solid #00c864; }
+.mn-goal-btn-delete   { background: rgba(220,50,50,0.15); color: #e05555; border: 1px solid #e05555; }
+
+.mn-goal-type-badge {
+  display: inline-block; padding: 1px 6px; border-radius: 3px;
+  font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;
+  background: rgba(255,215,0,0.1); color: var(--gold-secondary);
+  border: 1px solid rgba(255,215,0,0.2); margin-right: 0.3rem;
+}
+.mn-goal-completed-at { font-size: 0.7rem; color: #00c864; margin-top: 0.2rem; }
+
+.mn-goal-time {
+  font-size: 0.75rem; color: var(--text-secondary);
+  margin-top: 0.3rem;
+}
+.mn-goal-time strong { color: var(--gold-primary); }
+
+.mn-goal-progress {
+  margin-top: 0.4rem;
+  height: 0.5rem; background: rgba(255,255,255,0.07);
+  border-radius: 3px; overflow: hidden;
+}
+.mn-goal-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #b8860b, #ffd700);
+  border-radius: 3px; transition: width 0.4s ease;
+}
+.mn-goal-progress-label {
+  font-size: 0.68rem; color: var(--text-secondary); margin-top: 0.15rem;
+}
+
+.mn-goal-cost {
+  display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap;
+  font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.3rem;
+}
+.mn-goal-cost strong { color: var(--text-primary); }
+.mn-goal-notes {
+  font-size: 0.75rem; color: var(--text-secondary); font-style: italic; margin-top: 0.25rem;
+}
+
+/* ── Add Goal form ──────────────────────────────────────────────────────── */
+.mn-add-form { display: flex; flex-direction: column; gap: 0.7rem; max-width: 520px; }
+.mn-form-group { display: flex; flex-direction: column; gap: 0.3rem; }
+.mn-form-label {
+  font-size: 0.75rem; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.05em; color: var(--gold-secondary);
+}
+.mn-form-input, .mn-form-select, .mn-form-textarea {
+  padding: 0.45rem 0.75rem; border-radius: 0.35rem;
+  border: 1px solid rgba(255,215,0,0.25);
+  background: rgba(14,11,5,0.92); color: var(--text-primary);
+  font-size: 0.82rem;
+}
+.mn-form-input:focus, .mn-form-select:focus, .mn-form-textarea:focus {
+  outline: none; border-color: var(--gold-primary); box-shadow: 0 0 6px var(--gold-glow);
+}
+.mn-form-select option { background: #1a1400; color: var(--gold-primary); }
+.mn-form-textarea { resize: vertical; min-height: 56px; }
+
+.mn-cost-preview {
+  background: rgba(10,8,3,0.88);
+  border: 1px solid rgba(255,215,0,0.22);
+  border-radius: 0.45rem;
+  padding: 0.75rem 1rem;
+  font-size: 0.8rem; min-height: 3.5rem;
+}
+.mn-cost-preview-title {
+  font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em;
+  color: var(--gold-secondary); margin-bottom: 0.4rem;
+}
+.mn-cost-preview-cash { font-size: 0.9rem; font-weight: 700; color: var(--gold-primary); }
+.mn-cost-preview-rsc {
+  display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: 0.3rem;
+}
+.mn-cost-preview-rsc-item {
+  display: flex; align-items: center; gap: 0.2rem;
+  font-size: 0.75rem; color: var(--text-secondary);
+}
+.mn-cost-preview-days {
+  margin-top: 0.35rem; font-size: 0.78rem;
+  color: var(--text-secondary);
+}
+.mn-cost-preview-days strong { color: var(--gold-primary); }
+
+.mn-form-submit {
+  padding: 0.5rem 1.25rem; border-radius: 999px; border: none;
+  background: linear-gradient(135deg, var(--gold-primary), var(--gold-secondary));
+  color: #1a1a1a; font-weight: 700; font-size: 0.85rem;
+  cursor: pointer; transition: filter 0.15s; align-self: flex-start;
+}
+.mn-form-submit:hover { filter: brightness(1.1); }
+
+/* ── Combat History ─────────────────────────────────────────────────────── */
+.mn-combat-section { display: flex; flex-direction: column; gap: 0.75rem; }
+
+.mn-combat-coverage {
+  padding: 0.6rem 0.9rem; border-radius: 0.4rem;
+  background: rgba(10,8,3,0.75); border: 1px solid rgba(255,215,0,0.18);
+  font-size: 0.78rem; color: var(--text-secondary);
+}
+.mn-combat-coverage strong { color: var(--gold-primary); }
+
+.mn-combat-panels {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 0.75rem;
+}
+
+.mn-combat-loot, .mn-combat-infra, .mn-combat-units {
+  background: rgba(20,16,6,0.7);
+  border: 1px solid rgba(255,215,0,0.12);
+  border-radius: 0.5rem;
+  padding: 0.75rem 0.9rem;
+}
+.mn-combat-panel-title {
+  font-size: 0.72rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.06em; color: var(--gold-secondary);
+  margin-bottom: 0.5rem; padding-bottom: 0.3rem;
+  border-bottom: 1px solid rgba(255,215,0,0.1);
+}
+
+.mn-loot-row {
+  display: grid;
+  grid-template-columns: 16px 1fr auto auto;
+  align-items: center; gap: 0.35rem;
+  font-size: 0.78rem; padding: 0.12rem 0;
+}
+.mn-loot-icon  { width: 14px; height: 14px; object-fit: contain; }
+.mn-loot-label { color: var(--text-secondary); }
+.mn-loot-amount { font-weight: 600; color: var(--text-primary); text-align: right; }
+.mn-loot-value  { font-size: 0.7rem; color: var(--text-secondary); text-align: right; }
+
+.mn-infra-row {
+  display: flex; justify-content: space-between; align-items: center;
+  font-size: 0.8rem; padding: 0.15rem 0;
+}
+.mn-infra-row span { color: var(--text-secondary); }
+.mn-infra-row strong { color: var(--text-primary); }
+
+.mn-unit-row {
+  display: grid;
+  grid-template-columns: 16px 1fr auto auto;
+  align-items: center; gap: 0.35rem;
+  font-size: 0.78rem; padding: 0.12rem 0;
+}
+.mn-unit-icon   { width: 14px; height: 14px; object-fit: contain; }
+.mn-unit-label  { color: var(--text-secondary); }
+.mn-unit-killed { font-weight: 600; text-align: right; }
+.mn-unit-lost   { font-weight: 600; text-align: right; }
+
+.mn-unit-row-header {
+  display: grid;
+  grid-template-columns: 16px 1fr auto auto;
+  gap: 0.35rem; font-size: 0.65rem;
+  color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.04em;
+  margin-bottom: 0.2rem; padding-bottom: 0.15rem;
+  border-bottom: 1px solid rgba(255,215,0,0.1);
+}
+
+/* ── Pulse animation (newly-completed goal highlight) ───────────────────── */
+@keyframes mn-pulse {
+  0%   { box-shadow: 0 0 0 0 rgba(0, 200, 100, 0.6), inset 0 0 0 1px rgba(0,200,100,0.4); }
+  50%  { box-shadow: 0 0 0 8px rgba(0, 200, 100, 0), inset 0 0 0 1px rgba(0,200,100,0.2); }
+  100% { box-shadow: 0 0 0 0 rgba(0, 200, 100, 0), inset 0 0 0 1px rgba(0,200,100,0); }
+}
+.mn-pulse {
+  animation: mn-pulse 1.5s ease 3;
+  border-color: #00c864 !important;
+}
+
+/* ── Misc utility ───────────────────────────────────────────────────────── */
+.mn-icon-sm { width: 14px; height: 14px; object-fit: contain; vertical-align: middle; }
+.mn-no-data { color: var(--text-secondary); font-size: 0.8rem; padding: 0.5rem 0; }
+.mn-loading  { color: var(--text-secondary); font-size: 0.82rem; padding: 0.5rem 0; }
+
+.mn-section-subtitle {
+  font-size: 0.72rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.06em; color: var(--gold-secondary);
+  margin: 0.75rem 0 0.35rem; padding-bottom: 0.2rem;
+  border-bottom: 1px solid rgba(255,215,0,0.1);
+}
+
+@media (max-width: 640px) {
+  .mn-header-inner { flex-direction: column; }
+  .mn-mil-grid     { grid-template-columns: repeat(2, 1fr); }
+  .mn-combat-panels { grid-template-columns: 1fr; }
+  .mn-planner-tabs  { width: 100%; border-radius: 0.4rem; }
+  .mn-planner-tab   { flex: 1; justify-content: center; }
+}
+
+/* ── Merged Nation Box ──────────────────────────────────────────────────── */
+/* ── Merged Nation Box — Detail Header (matches nations.html) ──────────── */
+.mn-detail-header {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+  margin-bottom: 1rem;
+  padding-bottom: 0.85rem;
+  border-bottom: 1px solid rgba(255,215,0,0.15);
+}
+
+.mn-detail-flag {
+  width: 56px;
+  height: 38px;
+  object-fit: cover;
+  border-radius: 3px;
+  border: 1px solid rgba(255,215,0,0.25);
+  flex-shrink: 0;
+}
+
+.mn-detail-name {
+  margin: 0;
+  font-size: 1.05rem;
+  color: var(--gold-primary);
+}
+
+.mn-detail-leader {
+  margin: 0.15rem 0 0.4rem;
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+}
+
+.mn-badge-header {
+  display: flex;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-top: 0.3rem;
+}
+
+.mn-detail-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 7px;
+  border-radius: 3px;
+  font-size: 0.7rem;
+  background: rgba(255,255,255,0.07);
+  color: rgba(255,255,255,0.6);
+  border: 1px solid rgba(255,255,255,0.15);
+  white-space: nowrap;
+}
+
+.mn-badge-stat {
+  background: rgba(255,255,255,0.12);
+  color: #fff;
+  border-color: rgba(255,255,255,0.35);
+  font-weight: 600;
+}
+
+.mn-policy-badge {
+  font-weight: 600;
+}
+
+.mn-policy-icon {
+  width: 15px;
+  height: 15px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.mn-badge-wins {
+  background: rgba(255,215,0,0.15);
+  color: #ffd700;
+  border-color: rgba(255,215,0,0.5);
+  font-weight: 700;
+}
+
+.mn-badge-losses {
+  background: rgba(220,50,50,0.15);
+  color: #ff6b6b;
+  border-color: rgba(220,50,50,0.45);
+  font-weight: 700;
+}
+
+/* Position badges (Leader, Heir, Officer, Member, Applicant) */
+.mn-pos-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 7px;
+  border-radius: 3px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.mn-pos-leader {
+  background: rgba(255,215,0,0.15);
+  color: #ffd700;
+  border: 1px solid rgba(255,215,0,0.5);
+}
+
+.mn-pos-heir {
+  background: rgba(138,43,226,0.15);
+  color: #ba55d3;
+  border: 1px solid rgba(138,43,226,0.45);
+}
+
+.mn-pos-officer {
+  background: rgba(30,144,255,0.15);
+  color: #4682b4;
+  border: 1px solid rgba(30,144,255,0.45);
+}
+
+.mn-pos-member {
+  background: rgba(60,179,113,0.15);
+  color: #66cdaa;
+  border: 1px solid rgba(60,179,113,0.45);
+}
+
+.mn-pos-app {
+  background: rgba(255,140,0,0.15);
+  color: #ffa500;
+  border: 1px solid rgba(255,140,0,0.45);
+}
+
+/* Legacy nation-top classes (kept for backward compatibility) */
+.mn-nation-top {
+  display: flex; gap: 1rem; align-items: flex-start; flex-wrap: wrap;
+  margin-bottom: 0;
+}
+
+/* Thin gold divider between sub-sections */
+.mn-nation-divider {
+  margin: 0.85rem 0;
+  border: none;
+  border-top: 1px solid rgba(255,215,0,0.18);
+}
+
+/* Sub-section label (Military, MMR, Projects) */
+.mn-nation-section-label {
+  font-size: 0.72rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.07em; color: var(--gold-secondary);
+  margin-bottom: 0.55rem;
+}
+
+/* Mil unit card: now includes a built-in fill bar at the bottom */
+/* (existing .mn-mil-card is reused — the bar is injected inline) */
+
+/* Extras row: spies / missiles / nukes / war record */
+.mn-mil-extras {
+  display: flex; gap: 1rem; flex-wrap: wrap;
+  font-size: 0.8rem; color: var(--text-secondary);
+  margin-top: 0.5rem;
+}
+.mn-mil-extras strong { color: var(--text-primary); }
+
+/* Project area inside the nation box */
+.mn-nation-projects { margin-top: 0.1rem; }
+
+/* Unowned projects toggle: .open makes the child div visible */
+[id^="mn-proj-unowned-"].open { display: block !important; }
+
+/* Compact stat grid inside the nation box — same as before but ensure
+   bottom margin doesn't create too much gap */
+#mn-header-body .mn-stat-grid { margin-bottom: 0.55rem; }
+
+/* Keep the full-width MMR section tidy */
+#mn-header-body .mn-mmr-section { margin-top: 0; }
+
+/* ── Revenue + Stockpile merged box ────────────────────────────────────── */
+
+/* 3-column grid: Cash | Resources/Turn | Stockpile */
+.mn-rev-grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.75rem;
+}
+@media (max-width: 1100px) { .mn-rev-grid-3 { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 640px)  { .mn-rev-grid-3 { grid-template-columns: 1fr; } }
+
+/* Small "+(resources)" annotation inside totals */
+.mn-rev-sub {
+  font-size: 0.63rem; font-weight: 400;
+  color: var(--text-secondary); white-space: nowrap;
+}
+
+/* ── Stockpile column ───────────────────────────────────────────────────── */
+.mn-stock-list {
+  display: flex; flex-direction: column; gap: 0;
+}
+
+/* Each resource row: icon | name | amount | rate/days */
+.mn-stock-row {
+  display: grid;
+  grid-template-columns: 16px 1fr auto auto;
+  align-items: center; gap: 0.35rem;
+  padding: 0.18rem 0;
+  font-size: 0.76rem;
+  border-bottom: 1px solid rgba(255,215,0,0.05);
+}
+.mn-stock-row:last-child { border-bottom: none; }
+
+/* Money row uses a text $ badge instead of an image */
+.mn-stock-money { font-size: 0.78rem; }
+.mn-stock-dollar {
+  display: flex; align-items: center; justify-content: center;
+  width: 16px; height: 16px;
+  font-size: 0.78rem; font-weight: 800;
+  color: var(--gold-primary);
+}
+
+.mn-stock-icon  { width: 14px; height: 14px; object-fit: contain; }
+.mn-stock-label { color: var(--text-secondary); text-transform: capitalize; }
+.mn-stock-amount { font-weight: 700; color: var(--text-primary); text-align: right; }
+.mn-stock-days  {
+  font-size: 0.65rem; color: #ef9a9a;
+  text-align: right; white-space: nowrap;
+}
+.mn-stock-rate  {
+  font-size: 0.65rem; font-weight: 600;
+  text-align: right; white-space: nowrap;
+}
+
+/* ── Compact city cards ─────────────────────────────────────────────────── */
+
+/* More cards per row — 4 columns at full width, responsive down to 1 */
+.mn-cities-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.6rem;
+}
+@media (max-width: 1300px) { .mn-cities-grid { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 900px)  { .mn-cities-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 480px)  { .mn-cities-grid { grid-template-columns: 1fr; } }
+
+/* City card — tighter padding */
+.mn-city-card {
+  background: rgba(15,12,5,0.75);
+  border: 1px solid rgba(255,215,0,0.12);
+  border-radius: 0.45rem;
+  overflow: hidden;
+  transition: border-color 0.15s;
+}
+.mn-city-card:hover { border-color: rgba(255,215,0,0.28); }
+
+/* Header: city name left, infra+power right */
+.mn-city-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0.4rem 0.6rem;
+  background: linear-gradient(180deg, rgba(30,24,8,0.95), rgba(18,14,5,0.95));
+  border-bottom: 1px solid rgba(255,215,0,0.1);
+  gap: 0.4rem;
+}
+.mn-city-name { font-size: 0.78rem; font-weight: 700; color: var(--gold-primary); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mn-city-header-right { display: flex; align-items: center; gap: 0.3rem; flex-shrink: 0; font-size: 0.7rem; }
+.mn-city-infra { color: var(--text-secondary); font-size: 0.7rem; }
+
+/* Improvement chip grid — wrapping icon+count chips */
+.mn-imp-grid {
+  display: flex; flex-wrap: wrap; gap: 0.25rem;
+  padding: 0.45rem 0.6rem;
+  min-height: 2rem;
+}
+
+.mn-imp-chip {
+  display: inline-flex; align-items: center; gap: 0.2rem;
+  background: rgba(255,215,0,0.07);
+  border: 1px solid rgba(255,215,0,0.14);
+  border-radius: 3px;
+  padding: 1px 5px 1px 3px;
+  cursor: default;
+  transition: background 0.12s;
+}
+.mn-imp-chip:hover { background: rgba(255,215,0,0.14); }
+.mn-imp-chip-icon { width: 14px; height: 14px; object-fit: contain; }
+.mn-imp-chip-cnt  { font-size: 0.68rem; font-weight: 700; color: var(--text-primary); }
+
+/* Footer: slots / land / age — compact single line */
+.mn-city-footer {
+  display: flex; justify-content: space-between;
+  padding: 0.3rem 0.6rem;
+  border-top: 1px solid rgba(255,215,0,0.08);
+  font-size: 0.65rem; color: var(--text-secondary);
+}
+.mn-city-footer strong { color: var(--text-primary); }
+
+/* ── Revenue sub-label ───────────────────────────────────────────────────── */
+.mn-rev-sub {
+  font-size: 0.63rem; font-weight: 400; color: var(--text-secondary);
+}
+
+/* ── Condensed Nation top section ───────────────────────────────────────── */
+
+/* Title row: nation name left, badges right on same line */
+.mn-nation-title-row {
+  display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;
+  margin-bottom: 0.2rem;
+}
+
+/* Sub-row: leader · alliance · color · timer all inline */
+.mn-nation-sub-row {
+  display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;
+  font-size: 0.78rem; color: var(--text-secondary);
+}
+.mn-nation-sub-row .mn-leader-name,
+.mn-nation-sub-row .mn-alliance-line { margin: 0; }
+.mn-nation-sub-row .mn-turn-timer { margin: 0; font-size: 0.74rem; }
+
+/* Compact info grid: 6 label:value pairs in a single tight row */
+.mn-info-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 0.4rem;
+  margin-bottom: 0.5rem;
+}
+@media (max-width: 1100px) { .mn-info-grid { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 600px)  { .mn-info-grid { grid-template-columns: repeat(2, 1fr); } }
+
+.mn-info-item {
+  background: rgba(20,16,6,0.6);
+  border: 1px solid rgba(255,215,0,0.12);
+  border-radius: 0.4rem;
+  padding: 0.35rem 0.6rem;
+  display: flex; flex-direction: column; gap: 0.1rem;
+}
+.mn-info-label {
+  font-size: 0.62rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.06em; color: var(--gold-secondary);
+}
+.mn-info-val {
+  font-size: 0.88rem; font-weight: 700; color: var(--gold-primary);
+}
+
+/* ── Projects inline chips row ──────────────────────────────────────────── */
+.mn-proj-row {
+  display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;
+  padding: 0.25rem 0;
+}
+.mn-proj-row-label {
+  font-size: 0.68rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.06em; color: var(--gold-secondary);
+  white-space: nowrap; flex-shrink: 0;
+}
+.mn-proj-chips {
+  display: flex; flex-wrap: wrap; gap: 0.2rem; flex: 1;
+}
+.mn-proj-count {
+  font-size: 0.68rem; color: var(--text-secondary);
+  white-space: nowrap; flex-shrink: 0;
+}
+
+/* Project chip: initials only, tooltip on hover */
+.mn-proj-chip {
+  display: inline-block;
+  padding: 1px 5px; border-radius: 3px;
+  font-size: 0.65rem; font-weight: 700;
+  cursor: default; transition: all 0.12s;
+  font-family: monospace; letter-spacing: 0.02em;
+}
+.mn-proj-chip.owned {
+  background: rgba(255,215,0,0.18); color: var(--gold-primary);
+  border: 1px solid rgba(255,215,0,0.45);
+}
+.mn-proj-chip.unowned {
+  background: rgba(255,255,255,0.03); color: rgba(255,255,255,0.28);
+  border: 1px solid rgba(255,255,255,0.1); cursor: pointer;
+}
+.mn-proj-chip.unowned:hover {
+  background: rgba(255,215,0,0.07); color: rgba(255,215,0,0.55);
+  border-color: rgba(255,215,0,0.3);
+}
+
+/* ── Awards inline chips row ─────────────────────────────────────────────── */
+.mn-awards-row {
+  display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;
+  padding: 0.25rem 0;
+}
+.mn-awards-row-label {
+  font-size: 0.68rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.06em; color: var(--gold-secondary);
+  white-space: nowrap; flex-shrink: 0;
+}
+.mn-awards-chips {
+  display: flex; flex-wrap: wrap; gap: 0.35rem; flex: 1;
+}
+.mn-awards-count {
+  font-size: 0.68rem; color: var(--text-secondary);
+  white-space: nowrap; flex-shrink: 0;
+}
+.mn-awards-loading {
+  font-size: 0.7rem; color: var(--text-secondary);
+  font-style: italic; padding: 0 0.25rem;
+}
+
+/* Award chip: shows rank emojis and category name */
+.mn-award-chip {
+  display: inline-flex; align-items: center; gap: 0.25rem;
+  padding: 3px 8px; border-radius: 4px;
+  font-size: 0.68rem; font-weight: 600;
+  background: rgba(255,215,0,0.12); color: var(--gold-primary);
+  border: 1px solid rgba(255,215,0,0.35);
+  cursor: default; transition: all 0.12s;
+}
+.mn-award-chip:hover {
+  background: rgba(255,215,0,0.18);
+  border-color: rgba(255,215,0,0.5);
+  transform: translateY(-1px);
+}
+.mn-award-icon {
+  width: 14px; height: 14px;
+  object-fit: contain;
+  vertical-align: middle;
+}
+
+/* ── Collapsible Military sub-section ───────────────────────────────────── */
+.mn-mil-collapsible { width: 100%; }
+
+.mn-mil-toggle {
+  display: flex; align-items: center; gap: 0.4rem;
+  width: 100%; padding: 0.4rem 0;
+  background: none; border: none; border-bottom: 1px solid rgba(255,215,0,0.15);
+  color: var(--gold-secondary); font-size: 0.75rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.07em;
+  cursor: pointer; text-align: left;
+  transition: color 0.15s;
+}
+.mn-mil-toggle:hover { color: var(--gold-primary); }
+.mn-mil-toggle-arrow { font-size: 0.62rem; margin-left: auto; }
+
+.mn-mil-body { padding-top: 0.65rem; }
+

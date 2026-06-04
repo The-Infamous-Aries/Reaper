@@ -1,0 +1,1204 @@
+/* ═══════════════════════════════════════════════════════════════
+   Build Plan UI — Complete CSS Stylesheet
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Tab Controls ──────────────────────────────────────────── */
+.plan-tabs {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+  border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+  padding-bottom: 0.5rem;
+}
+
+.plan-tab {
+  padding: 0.75rem 1.5rem;
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: none;
+  border-radius: 6px 6px 0 0;
+  color: var(--text-secondary);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.plan-tab:hover {
+  background: rgba(255, 215, 0, 0.1);
+  color: var(--text);
+}
+
+.plan-tab.active {
+  background: rgba(255, 215, 0, 0.15);
+  border-color: var(--gold);
+  color: var(--gold-secondary);
+  box-shadow: 0 2px 8px rgba(255, 215, 0, 0.2);
+}
+
+/* ── Empty State ───────────────────────────────────────────── */
+.plan-empty-state {
+  text-align: center;
+  padding: 3rem 2rem;
+  background: rgba(0, 0, 0, 0.2);
+  border: 2px dashed rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+}
+
+.plan-empty-state p {
+  font-size: 1.1rem;
+  color: var(--text-secondary);
+  margin-bottom: 1.5rem;
+}
+
+.plan-empty-state button {
+  padding: 0.75rem 2rem;
+  background: var(--gold);
+  color: #000;
+  font-weight: 600;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.plan-empty-state button:hover {
+  background: #f0a500;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(255, 215, 0, 0.3);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   TAB 1: PLAN VIEWER (Progress View)
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Plan Header ───────────────────────────────────────────── */
+.plan-header {
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.1), rgba(255, 215, 0, 0.05));
+  border: 1px solid var(--gold);
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 4px 12px rgba(255, 215, 0, 0.1);
+}
+
+.plan-title {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--gold);
+  margin-bottom: 0.75rem;
+}
+
+.plan-costs {
+  font-size: 0.95rem;
+  color: var(--text-secondary);
+  margin-bottom: 0.5rem;
+  display: flex;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.plan-cost-total {
+  color: var(--gold-secondary);
+  font-weight: 600;
+}
+
+.plan-cost-invested {
+  color: #7ecb35;
+  font-weight: 600;
+}
+
+.plan-cost-remaining {
+  color: #f0a500;
+  font-weight: 600;
+}
+
+.plan-time-estimate {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+/* ── Section Headers ───────────────────────────────────────── */
+.plan-section {
+  margin-bottom: 1.5rem;
+}
+
+.plan-section-header {
+  background: rgba(255, 215, 0, 0.05);
+  border-bottom: 2px solid var(--gold);
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-radius: 6px 6px 0 0;
+}
+
+.plan-section-header:hover {
+  background: rgba(255, 215, 0, 0.08);
+}
+
+.plan-section-title {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--gold-secondary);
+}
+
+.plan-section-progress {
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  margin-left: 1rem;
+}
+
+.plan-section-cost {
+  font-weight: 600;
+  color: var(--gold-secondary);
+  margin-left: auto;
+}
+
+.plan-section-body {
+  padding: 1rem;
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 0 0 6px 6px;
+}
+
+/* ── City Cards ────────────────────────────────────────────── */
+.plan-city-card {
+  background: var(--surface);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  margin-bottom: 0.75rem;
+  padding: 1rem;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  transition: all 0.2s;
+}
+
+.plan-city-card:hover {
+  box-shadow: 0 4px 8px rgba(255, 215, 0, 0.15);
+  transform: translateY(-1px);
+}
+
+.plan-city-done {
+  opacity: 0.65;
+}
+
+.plan-city-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.plan-city-status {
+  font-size: 1.2rem;
+  margin-right: 0.5rem;
+}
+
+.plan-city-name {
+  flex: 1;
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.plan-city-cost {
+  color: var(--gold-secondary);
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.plan-city-steps {
+  margin-bottom: 0.75rem;
+}
+
+.plan-step {
+  display: flex;
+  align-items: center;
+  padding: 0.3rem 0;
+  font-size: 0.85rem;
+}
+
+.plan-step-icon {
+  margin-right: 0.5rem;
+  width: 1.2rem;
+  text-align: center;
+  font-size: 0.9rem;
+}
+
+.plan-step-label {
+  flex: 1;
+  color: var(--text-secondary);
+}
+
+.plan-step-cost {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.plan-step-done .plan-step-label {
+  color: var(--text-muted);
+  text-decoration: line-through;
+}
+
+.plan-city-improvements {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  align-items: center;
+}
+
+.plan-imp-icon {
+  width: 18px;
+  height: 18px;
+  vertical-align: middle;
+}
+
+/* ── Project Cards ─────────────────────────────────────────── */
+.plan-project-card {
+  background: var(--surface);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  margin-bottom: 0.5rem;
+  padding: 0.75rem 1rem;
+  transition: all 0.2s;
+}
+
+.plan-project-card:hover {
+  box-shadow: 0 2px 6px rgba(255, 215, 0, 0.1);
+}
+
+.plan-project-done {
+  opacity: 0.65;
+}
+
+.plan-project-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.plan-project-number {
+  font-weight: 600;
+  color: var(--gold);
+  min-width: 2rem;
+  font-size: 1rem;
+}
+
+.plan-project-name {
+  flex: 1;
+  font-weight: 500;
+}
+
+.plan-project-cost {
+  color: var(--gold-secondary);
+  font-weight: 600;
+}
+
+.plan-project-status {
+  color: #7ecb35;
+  font-style: italic;
+  font-size: 0.9rem;
+}
+
+.plan-project-resources {
+  margin-top: 0.5rem;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  padding-left: 2.75rem;
+}
+
+.plan-project-note {
+  margin-top: 0.25rem;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  font-style: italic;
+  padding-left: 2.75rem;
+}
+
+/* ── Footer Summary ────────────────────────────────────────── */
+.plan-footer-summary {
+  background: rgba(255, 215, 0, 0.08);
+  border-top: 2px solid var(--gold);
+  padding: 1.5rem;
+  margin-top: 1.5rem;
+  border-radius: 6px;
+}
+
+.plan-overall-progress {
+  margin-bottom: 1.25rem;
+}
+
+.plan-progress-label {
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.plan-progress-bar {
+  width: 100%;
+  height: 10px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 5px;
+  overflow: hidden;
+  box-shadow: inset 0 1px 3px rgba(0,0,0,0.3);
+}
+
+.plan-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--gold), #f0a500);
+  transition: width 0.5s ease-in-out;
+  box-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+}
+
+.plan-cost-breakdown {
+  margin-bottom: 1rem;
+}
+
+.plan-cost-line {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.35rem 0;
+  font-size: 0.95rem;
+}
+
+.plan-cost-label {
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.plan-cost-value {
+  font-weight: 600;
+  font-family: 'Courier New', monospace;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   TAB 2: PLAN EDITOR
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Form Controls ─────────────────────────────────────────── */
+.plan-form-group {
+  margin-bottom: 1.5rem;
+}
+
+.plan-form-label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  color: var(--gold-secondary);
+  font-size: 0.95rem;
+}
+
+.plan-form-input {
+  width: 100%;
+  padding: 0.75rem;
+  background: var(--surface);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  color: var(--text);
+  font-size: 0.95rem;
+  transition: all 0.2s;
+}
+
+.plan-form-input:focus {
+  outline: none;
+  border-color: var(--gold);
+  box-shadow: 0 0 0 3px rgba(255, 215, 0, 0.1);
+}
+
+/* ── Editor Sections ───────────────────────────────────────── */
+.plan-editor-section {
+  margin-bottom: 1.5rem;
+}
+
+.plan-editor-section-header {
+  background: rgba(255, 215, 0, 0.05);
+  padding: 0.75rem 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: all 0.2s;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.plan-editor-section-header:hover {
+  background: rgba(255, 215, 0, 0.1);
+}
+
+.plan-chevron {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  transition: transform 0.2s;
+}
+
+.plan-editor-section-header.collapsed .plan-chevron {
+  transform: rotate(-90deg);
+}
+
+.plan-editor-section-body {
+  margin-top: 1rem;
+}
+
+.plan-editor-section-body.collapsed {
+  display: none;
+}
+
+/* ── City Editor Cards ─────────────────────────────────────── */
+.plan-city-editor-card {
+  background: var(--surface);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  margin-bottom: 0.75rem;
+  overflow: hidden;
+}
+
+.plan-city-editor-header {
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  transition: background 0.2s;
+}
+
+.plan-city-editor-header:hover {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.plan-city-editor-name {
+  font-weight: 600;
+  flex: 1;
+}
+
+.plan-city-editor-current {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.plan-city-editor-body {
+  padding: 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  display: none;
+}
+
+.plan-city-editor-body.expanded {
+  display: block;
+}
+
+/* plan-city-editor-inputs, plan-number-input — superseded by .pct-grid tiles */
+
+.plan-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.plan-input-group label {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.plan-input-hint {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.plan-city-cost-preview {
+  margin-top: 1rem;
+  padding: 0.75rem;
+  background: rgba(255, 215, 0, 0.05);
+  border-radius: 4px;
+  text-align: center;
+  font-weight: 600;
+  color: var(--gold-secondary);
+  font-size: 0.95rem;
+}
+
+/* ── Improvement Section ───────────────────────────────────── */
+.plan-improvements-section {
+  margin-top: 1.5rem;
+}
+
+.plan-improvements-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.plan-slot-counter {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.plan-slot-counter.plan-slot-warning {
+  color: #f0a500;
+}
+
+.plan-slot-counter.plan-slot-error {
+  color: #e74c3c;
+  animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+/* ── Compact City Tile Grid (replaces old improvement toggle rows) ── */
+.pct-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.3rem;
+  margin-top: 0.5rem;
+}
+.pct-category-sep {
+  grid-column: 1 / -1;
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--gold);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  padding: 0.25rem 0.2rem 0.1rem;
+  border-bottom: 1px solid rgba(255,215,0,0.15);
+  margin-top: 0.15rem;
+}
+.pct-tile {
+  background: rgba(0,0,0,0.25);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 4px;
+  padding: 0.3rem 0.35rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.18rem;
+  transition: border-color 0.15s;
+}
+.pct-tile--wide {
+  grid-column: span 2;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.55rem;
+}
+.pct-tile--wide .pct-tile-top { flex: 1; }
+.pct-tile--wide .pct-tile-sub { display: none; }
+.pct-tile--wide .pct-val      { width: 64px; }
+.pct-tile-top {
+  display: flex;
+  align-items: center;
+  gap: 0.28rem;
+  min-width: 0;
+}
+.pct-tile-emoji { flex-shrink: 0; font-size: 0.95rem; line-height: 1; }
+.pct-tile-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pct-imp-icon { width: 15px; height: 15px; vertical-align: middle; flex-shrink: 0; }
+.pct-tile-sub { font-size: 0.62rem; color: var(--text-muted); line-height: 1; }
+.pct-tile-controls { display: flex; align-items: center; gap: 0.18rem; }
+.pct-btn {
+  width: 19px; height: 19px; flex-shrink: 0;
+  border: 1px solid rgba(255,255,255,0.14);
+  background: rgba(0,0,0,0.35);
+  color: var(--text);
+  border-radius: 3px; cursor: pointer;
+  font-size: 0.9rem; font-weight: 700; line-height: 1;
+  display: flex; align-items: center; justify-content: center; padding: 0;
+  transition: background 0.12s, border-color 0.12s;
+}
+.pct-btn:hover { background: rgba(255,215,0,0.2); border-color: var(--gold); }
+.pct-val {
+  width: 32px; padding: 0.12rem 0.15rem;
+  text-align: center;
+  background: rgba(0,0,0,0.45);
+  border: 1px solid rgba(255,255,255,0.14);
+  border-radius: 3px;
+  color: var(--text);
+  font-weight: 700; font-size: 0.77rem;
+  font-family: 'Courier New', monospace;
+  -moz-appearance: textfield;
+}
+.pct-val::-webkit-outer-spin-button,
+.pct-val::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.pct-val:focus { outline: none; border-color: var(--gold); }
+.pct-slot-bar { margin-top: 0.35rem; text-align: right; }
+.plan-city-label-input {
+  background: transparent; border: none;
+  border-bottom: 1px solid rgba(255,215,0,0.3);
+  color: var(--text); font-size: 0.95rem; font-weight: 600;
+  width: 150px; padding: 0 0.1rem; outline: none;
+}
+.plan-city-label-input:focus { border-bottom-color: var(--gold); }
+@media (max-width: 900px) {
+  .pct-grid { grid-template-columns: repeat(3, 1fr); }
+  .pct-tile--wide { grid-column: span 3; }
+}
+@media (max-width: 600px) {
+  .pct-grid { grid-template-columns: repeat(2, 1fr); }
+  .pct-tile--wide { grid-column: span 2; }
+}
+}
+
+/* ── New City Cards ────────────────────────────────────────── */
+.plan-new-city-card {
+  background: var(--surface);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  padding: 1rem;
+  margin-bottom: 0.75rem;
+  position: relative;
+}
+
+.plan-new-city-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.plan-new-city-title {
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.plan-remove-city-btn {
+  padding: 0.4rem 0.75rem;
+  background: rgba(231, 76, 60, 0.2);
+  border: 1px solid rgba(231, 76, 60, 0.4);
+  color: #e74c3c;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: all 0.2s;
+}
+
+.plan-remove-city-btn:hover {
+  background: rgba(231, 76, 60, 0.4);
+}
+
+.plan-add-city-btn {
+  width: 100%;
+  padding: 0.75rem;
+  background: rgba(255, 215, 0, 0.1);
+  border: 2px dashed rgba(255, 215, 0, 0.3);
+  color: var(--gold-secondary);
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.95rem;
+  transition: all 0.2s;
+  margin-top: 0.5rem;
+}
+
+.plan-add-city-btn:hover {
+  background: rgba(255, 215, 0, 0.15);
+  border-color: var(--gold);
+  transform: translateY(-1px);
+}
+
+/* ── Project Selector ──────────────────────────────────────── */
+.plan-projects-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.plan-projects-title {
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+  color: var(--gold-secondary);
+  font-size: 1rem;
+}
+
+.plan-project-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-height: 60px;
+}
+
+.plan-project-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  background: var(--surface);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  cursor: move;
+  transition: all 0.2s;
+}
+
+.plan-project-item:hover {
+  background: var(--surface-elevated);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.plan-project-item.dragging {
+  opacity: 0.5;
+}
+
+.plan-project-drag {
+  color: var(--text-muted);
+  cursor: grab;
+  font-size: 1.2rem;
+}
+
+.plan-project-drag:active {
+  cursor: grabbing;
+}
+
+.plan-project-num {
+  font-weight: 600;
+  color: var(--gold);
+  min-width: 1.5rem;
+  font-size: 0.95rem;
+}
+
+.plan-project-label {
+  flex: 1;
+  font-size: 0.95rem;
+}
+
+.plan-project-owned {
+  color: #7ecb35;
+  font-size: 0.85rem;
+  font-style: italic;
+}
+
+.plan-project-remove {
+  width: 26px;
+  height: 26px;
+  border: none;
+  background: rgba(231, 76, 60, 0.2);
+  color: #e74c3c;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.plan-project-remove:hover {
+  background: rgba(231, 76, 60, 0.4);
+  transform: scale(1.1);
+}
+
+.plan-project-category {
+  margin-bottom: 1rem;
+}
+
+.plan-project-category-name {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.plan-project-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.plan-project-chip {
+  padding: 0.5rem 0.75rem;
+  background: rgba(255, 215, 0, 0.1);
+  border: 1px solid rgba(255, 215, 0, 0.3);
+  border-radius: 4px;
+  color: var(--gold-secondary);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.plan-project-chip:hover {
+  background: rgba(255, 215, 0, 0.2);
+  border-color: var(--gold);
+  transform: translateY(-1px);
+}
+
+.plan-project-chip.disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.plan-project-chip.owned {
+  background: rgba(126, 203, 53, 0.1);
+  border-color: rgba(126, 203, 53, 0.3);
+  color: #7ecb35;
+}
+
+/* ── Save Button ───────────────────────────────────────────── */
+.plan-save-btn {
+  width: 100%;
+  padding: 1rem;
+  background: var(--gold);
+  color: #000;
+  font-weight: 700;
+  font-size: 1.05rem;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-top: 1.5rem;
+}
+
+.plan-save-btn:hover {
+  background: #f0a500;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(255, 215, 0, 0.4);
+}
+
+.plan-save-btn:active {
+  transform: translateY(0);
+}
+
+.plan-save-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   TAB 3: PREVIEW
+   ═══════════════════════════════════════════════════════════════ */
+
+.plan-preview {
+  background: var(--surface);
+  border-radius: 8px;
+  padding: 1.5rem;
+}
+
+.plan-preview h3 {
+  color: var(--gold);
+  margin-bottom: 1.5rem;
+  font-size: 1.2rem;
+  border-bottom: 2px solid var(--gold);
+  padding-bottom: 0.5rem;
+}
+
+.plan-preview-section {
+  margin-bottom: 2rem;
+}
+
+.plan-preview-section h4 {
+  color: var(--gold-secondary);
+  margin-bottom: 1rem;
+  font-size: 1rem;
+}
+
+/* ── Revenue Table ─────────────────────────────────────────── */
+.plan-revenue-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 1.5rem;
+}
+
+.plan-revenue-table th,
+.plan-revenue-table td {
+  padding: 0.75rem;
+  text-align: right;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.plan-revenue-table th {
+  background: rgba(0, 0, 0, 0.3);
+  color: var(--text-secondary);
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+.plan-revenue-table td:first-child {
+  text-align: left;
+  font-weight: 500;
+}
+
+.plan-revenue-table tr:hover {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.plan-revenue-positive {
+  color: #7ecb35;
+}
+
+.plan-revenue-negative {
+  color: #e74c3c;
+}
+
+/* ── Military Caps ─────────────────────────────────────────── */
+.plan-military-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.plan-military-item {
+  background: rgba(0, 0, 0, 0.2);
+  padding: 1rem;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.plan-military-label {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  margin-bottom: 0.5rem;
+}
+
+.plan-military-value {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text);
+  font-family: 'Courier New', monospace;
+}
+
+.plan-military-daily {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-top: 0.25rem;
+}
+
+/* ── City Summary ──────────────────────────────────────────── */
+.plan-city-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.plan-summary-stat {
+  background: rgba(0, 0, 0, 0.2);
+  padding: 0.75rem;
+  border-radius: 4px;
+  text-align: center;
+}
+
+.plan-summary-label {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  margin-bottom: 0.25rem;
+}
+
+.plan-summary-value {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+/* ── Warnings ──────────────────────────────────────────────── */
+.plan-warnings {
+  background: rgba(231, 76, 60, 0.1);
+  border: 1px solid rgba(231, 76, 60, 0.3);
+  border-radius: 6px;
+  padding: 1rem;
+}
+
+.plan-warnings h4 {
+  color: #e74c3c;
+  margin-bottom: 0.75rem;
+}
+
+.plan-warning-item {
+  padding: 0.5rem;
+  margin-bottom: 0.5rem;
+  background: rgba(0, 0, 0, 0.2);
+  border-left: 3px solid #e74c3c;
+  border-radius: 2px;
+  font-size: 0.9rem;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   UTILITY CLASSES
+   ═══════════════════════════════════════════════════════════════ */
+
+.plan-loading {
+  text-align: center;
+  padding: 3rem;
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
+.plan-error {
+  background: rgba(231, 76, 60, 0.1);
+  border: 1px solid rgba(231, 76, 60, 0.3);
+  border-radius: 6px;
+  padding: 1rem;
+  margin: 1rem 0;
+  color: #e74c3c;
+}
+
+.plan-success {
+  background: rgba(126, 203, 53, 0.1);
+  border: 1px solid rgba(126, 203, 53, 0.3);
+  border-radius: 6px;
+  padding: 1rem;
+  margin: 1rem 0;
+  color: #7ecb35;
+}
+
+/* ── Responsive Design ─────────────────────────────────────── */
+@media (max-width: 768px) {
+  .plan-tabs {
+    flex-direction: column;
+  }
+  .plan-tab {
+    border-radius: 6px;
+  }
+  .plan-military-grid,
+  .plan-city-summary {
+    grid-template-columns: 1fr;
+  }
+  .plan-costs {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   PHASE 8B ADDITIONS
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Section Collapse/Expand ───────────────────────────────── */
+.plan-editor-section-body.collapsed {
+  display: none !important;
+}
+
+/* ── City Editor Body States ───────────────────────────────── */
+.plan-city-editor-body:not(.expanded) {
+  display: none;
+}
+
+/* ── Dragging States ───────────────────────────────────────── */
+.plan-project-item.dragging {
+  opacity: 0.4;
+  cursor: grabbing;
+}
+
+.plan-project-item:hover {
+  cursor: move;
+}
+
+/* ── Status Messages ───────────────────────────────────────── */
+#editor-status {
+  margin-top: 1rem;
+}
+
+.plan-warning {
+  background: rgba(240, 165, 0, 0.1);
+  border: 1px solid rgba(240, 165, 0, 0.3);
+  border-radius: 6px;
+  padding: 0.75rem;
+  margin: 0.5rem 0;
+  color: #f0a500;
+  font-size: 0.9rem;
+}
+
+/* ── No Data State ────────────────────────────────────────── */
+.plan-no-data {
+  text-align: center;
+  padding: 2rem;
+  color: var(--text-muted);
+  font-style: italic;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+  margin: 0.5rem 0;
+}
+
+/* ── Project Chips Owned State ────────────────────────────── */
+.plan-project-chip.owned {
+  background: rgba(126, 203, 53, 0.1);
+  border-color: rgba(126, 203, 53, 0.3);
+  color: #7ecb35;
+}
+
+.plan-project-chip.owned:hover {
+  background: rgba(126, 203, 53, 0.15);
+}
+
+/* ── Improvement Grid Categories ───────────────────────────── */
+/* (superseded by .pct-category-sep) */
+
+/* ── City Card Animations ──────────────────────────────────── */
+.plan-new-city-card,
+.plan-city-editor-card {
+  animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ── Save Button States ────────────────────────────────────── */
+.plan-save-btn.saving {
+  background: #888;
+  cursor: wait;
+}
+
+.plan-save-btn.saving:hover {
+  background: #888;
+  transform: none;
+}
+
+/* ── Input Focus States ────────────────────────────────────── */
+
+.plan-form-input:invalid {
+  border-color: #e74c3c;
+}
+
+/* ── Responsive Adjustments for Editor ─────────────────────── */
+@media (max-width: 768px) {
+  .plan-project-item {
+    flex-wrap: wrap;
+  }
+  .plan-new-city-card {
+    padding: 0.75rem;
+  }
+}
+
+/* ── Tooltip for Disabled Chips ────────────────────────────── */
+.plan-project-chip[disabled] {
+  cursor: not-allowed;
+}
+/* ── Chevron Rotation ──────────────────────────────────────── */
+.plan-chevron {
+  transition: transform 0.2s;
+  display: inline-block;
+}
+
+.plan-editor-section-header.collapsed .plan-chevron,
+.plan-city-editor-header.collapsed .plan-chevron {
+  transform: rotate(-90deg);
+}

@@ -150,10 +150,10 @@ function calcEquipBonuses(pet) {
     _getList('Monsters').forEach(function(m){ allItems.push(m); });
     _getList('Gems').forEach(function(g){ allItems.push(g); });
 
-    // Sum raw bonuses (prefer cached equipment data, fallback to item's own bonuses)
+    // Sum raw bonuses (reforged items use their own bonuses, plain items use canonical data)
     allItems.forEach(function(item) {
-        var data = getEquipItem(item.name);
-        var b = (data && data.bonuses) ? data.bonuses : (item.bonuses || {});
+        var isReforged = !!(item.reforged);
+        var b = (isReforged && item.bonuses) ? item.bonuses : ((getEquipItem(item.name)||{}).bonuses||{});
         STATS.forEach(function(stat) {
             var val = parseInt(b[stat] || 0, 10);
             if (!isNaN(val)) out[stat] += val;
@@ -1811,7 +1811,13 @@ function getEquipSetState(pet) {
     // ── Set matching (Helmet+Armor+Boots+Shield+Weapon; Ring excluded) ───────
     var setSlots = [helmet, armor, boots, shield, weapon];
     var setSlotsFilled = setSlots.filter(function(s){ return s !== null; });
-    var setTags = setSlotsFilled.map(function(s){ return s.set || null; }).filter(function(t){ return t; });
+    // For reforged items, fall back to canonical equipment data for the set tag
+    // since older reforged items may not have set tag stored on the item object
+    var setTags = setSlotsFilled.map(function(s) {
+        if (s.set) return s.set;
+        var canonical = getEquipItem(s.name);
+        return (canonical && canonical.set) ? canonical.set : null;
+    }).filter(function(t){ return t; });
     var matchingSet = (setSlotsFilled.length === 5 && setTags.length === 5 &&
                        (new Set(setTags)).size === 1);
 
@@ -1920,10 +1926,16 @@ function buildEquipped(pet) {
         var tip         = item.name + ' — ' + bonusTooltip(data || item) + ' (click to unequip)';
         var gc          = glowClass(sl, item);
         var unequipSlot = sl.key;  // server accepts Helmet/Armor/Boots/Ring/Shield/Weapon/Material/Gems/Monsters/Hat
+        var isReforged  = !!(item.reforged);
+
+        // Store reforged bonuses in data attribute for hover display
+        var hoverData = ' data-hover-item="' + escHtml(item.name) + '"';
+        if (isReforged && item.bonuses) {
+            hoverData += ' data-hover-reforged="true" data-hover-bonuses="' + escHtml(JSON.stringify(item.bonuses)) + '"';
+        }
 
         return '<div class="mp-equip-slot mp-equip-filled' + gc + subCls + '" title="' + escHtml(tip) + '" ' +
-            'onclick="window._mpUnequipSlot(' + escArg(unequipSlot) + ')" style="cursor:pointer"' +
-            ' data-hover-item="' + escHtml(item.name) + '">' +
+            'onclick="window._mpUnequipSlot(' + escArg(unequipSlot) + ')" style="cursor:pointer"' + hoverData + '>' +
             '<img src="' + src + '" onerror="this.src=\'/static/Emojis/Pets/Deco/Basic.png\'">' +
             '</div>';
     }
@@ -2042,11 +2054,13 @@ function buildInventoryCollapsible(pet) {
                 action = 'Equip Both';
             }
 
-            // Bonus tooltip from equipment data
+            // Bonus tooltip from equipment data (use reforged bonuses if applicable)
+            var isReforged = !!(item.reforged);
             var data = getEquipItem(item.name);
             var tip = item.name;
-            if (data && data.bonuses) {
-                var bParts = Object.keys(data.bonuses).map(function(k){ return k+': +'+data.bonuses[k]; });
+            var bonuses = (isReforged && item.bonuses) ? item.bonuses : (data ? data.bonuses : null);
+            if (bonuses) {
+                var bParts = Object.keys(bonuses).map(function(k){ return k+': +'+bonuses[k]; });
                 if (bParts.length) tip += ' | '+bParts.join(' | ');
             }
             if (isEquipped) tip += ' · Currently Equipped ('+eqCount+'x)';
@@ -2055,9 +2069,15 @@ function buildInventoryCollapsible(pet) {
             var onclick = clickable ? ' onclick="window._mpInvClick('+escArg(item.name)+','+escArg(t)+','+escArg(action)+','+equipCount+','+escArg(item.rarity||'Common')+','+invCount+')"' : '';
 
             var glowStyle = isEquipped ? 'box-shadow:0 0 5px rgba(255,215,0,0.3);border-color:rgba(255,215,0,0.6);' : '';
+
+            // Store reforged bonuses in data attribute for hover display
+            var hoverData = ' data-hover-item="'+escHtml(item.name)+'"';
+            if (isReforged && item.bonuses) {
+                hoverData += ' data-hover-reforged="true" data-hover-bonuses="'+escHtml(JSON.stringify(item.bonuses))+'"';
+            }
+
             content += '<div class="mp-inv-item'+(clickable?' mp-inv-clickable':'')+'" '+
-                'style="padding:4px 6px;'+glowStyle+'" title="'+escHtml(tip)+'"'+onclick+
-                ' data-hover-item="'+escHtml(item.name)+'">'+
+                'style="padding:4px 6px;'+glowStyle+'" title="'+escHtml(tip)+'"'+onclick+hoverData+'>'+
                 '<img src="/static/Emojis/Pets/Equipment/'+f+'" style="width:22px;height:22px" onerror="this.src=\'/static/Emojis/Pets/Deco/Basic.png\'">'+
                 '<div>'+
                 '<div class="fw-bold '+rcClass+'" style="font-size:0.72rem">'+item.name+'</div>'+
@@ -2223,8 +2243,13 @@ function buildInventoryPanel(pet) {
             var glowStyle = isEquipped ? 'border-color:rgba(255,215,0,0.6);box-shadow:0 0 8px rgba(255,215,0,0.25);' : '';
             var reforgeGlow = isReforged ? 'border-color:rgba(168,85,247,0.5);box-shadow:0 0 8px rgba(168,85,247,0.2);' : '';
 
-            html += '<div class="mp-inv-panel-item'+(clickable?' mp-inv-clickable':'')+'" style="'+glowStyle+reforgeGlow+'"'+onclick+
-                ' data-hover-item="'+escHtml(item.name)+'">';
+            // Store reforged bonuses in data attribute for hover display
+            var hoverData = ' data-hover-item="'+escHtml(item.name)+'"';
+            if (isReforged && item.bonuses) {
+                hoverData += ' data-hover-reforged="true" data-hover-bonuses="'+escHtml(JSON.stringify(item.bonuses))+'"';
+            }
+
+            html += '<div class="mp-inv-panel-item'+(clickable?' mp-inv-clickable':'')+'" style="'+glowStyle+reforgeGlow+'"'+onclick+hoverData+'>';
 
             // Image + equipped badge
             html += '<div class="mp-inv-panel-img-wrap">';
@@ -2376,6 +2401,11 @@ function _renderRfCandidates() {
             '<span class="mp-inv-qty">×'+(item.count||1)+'</span>' +
             '<span class="mp-inv-action" style="color:'+(isSelected?'var(--gold-primary)':'#4caf50')+'">'+(isSelected?'✓ Selected':'Select')+'</span>' +
             '</div>';
+        div.setAttribute('data-hover-item', item.name);
+        if (isReforged && item.bonuses) {
+            div.setAttribute('data-hover-reforged', 'true');
+            div.setAttribute('data-hover-bonuses', JSON.stringify(item.bonuses));
+        }
         div.addEventListener('click', function() {
             _rfItem = item;
             _rfItem.reforge_level = reforgeLevel;
@@ -2396,6 +2426,12 @@ function _renderRfCandidates() {
         var reforgeLevel = isReforged ? (parseInt(item.reforge_level||0,10)) : 0;
         var f = equipImgFile(item);
 
+        // Store reforged bonuses in data attribute for hover display
+        var hoverData = ' data-hover-item="' + escHtml(item.name) + '"';
+        if (isReforged && item.bonuses) {
+            hoverData += ' data-hover-reforged="true" data-hover-bonuses="' + escHtml(JSON.stringify(item.bonuses)) + '"';
+        }
+
         var div = document.createElement('div');
         div.className = 'mp-inv-panel-item mp-inv-clickable';
         div.style.cssText = 'min-width:110px;max-width:140px;cursor:pointer;' +
@@ -2414,6 +2450,11 @@ function _renderRfCandidates() {
             '<span class="mp-inv-qty" style="font-size:0.68rem">×'+(item.count||1)+'</span>' +
             '<span class="mp-inv-action" style="color:'+(isSelected?'#e74c3c':'var(--text-secondary)')+'">'+(isSelected?'✗ Remove':'+ Add')+'</span>' +
             '</div>';
+        div.setAttribute('data-hover-item', item.name);
+        if (isReforged && item.bonuses) {
+            div.setAttribute('data-hover-reforged', 'true');
+            div.setAttribute('data-hover-bonuses', JSON.stringify(item.bonuses));
+        }
         div.addEventListener('click', function() {
             var idx = _rfSacrifices.findIndex(function(s){ return s.name === item.name && !!s.reforged === !!item.reforged && (s.reforge_level||0) === (item.reforge_level||0); });
             if (idx !== -1) {
@@ -3757,7 +3798,8 @@ window._mpInvClick = function(name, type, action, equipCount, rarity, invCount) 
         if (isPotion) {
             _mpUsePotion(name, data, qty);
         } else if (count === 2) {
-            _mpEquipItem(name, type, function() { _mpEquipItem(name, type); });
+            // For multi-slot items (Gems, Monsters), send both names at once
+            _mpEquipItem(name, type, null, 2);
         } else {
             _mpEquipItem(name, type);
         }
@@ -3832,11 +3874,17 @@ window._mpChest4InvSelect = function(selectedType) {
     _mpOpenInventoryChest('chest4', selectedType);
 };
 
-function _mpEquipItem(name, type, callback) {
+function _mpEquipItem(name, type, callback, equipCount) {
+    // For multi-slot items (Gems, Monsters), send comma-separated names if equipCount > 1
+    var bodyData = {name: name, type: type};
+    if (equipCount === 2 && (type === 'Gem' || type === 'Monster')) {
+        bodyData.name = name + ',' + name; // Send same name twice for both slots
+    }
+
     fetch('/api/pets/equip', {
         method: 'POST',
         headers: {'Content-Type':'application/json'},
-        body: JSON.stringify({name: name, type: type})
+        body: JSON.stringify(bodyData)
     })
     .then(function(r){ return r.json(); })
     .then(function(d) {
@@ -4080,15 +4128,29 @@ var BONUS_COLORS = {
 function _showItemHover(name, x, y) {
     var card = document.getElementById('mp-item-hover');
     if (!card) return;
+
+    // Check if the hovered element has reforged data attributes
+    var hoveredEl = document.querySelector('[data-hover-item="' + escHtml(name) + '"]');
+    var isReforged = hoveredEl && hoveredEl.getAttribute('data-hover-reforged') === 'true';
+    var reforgedBonuses = null;
+    if (isReforged) {
+        try {
+            var bonusesJson = hoveredEl.getAttribute('data-hover-bonuses');
+            if (bonusesJson) reforgedBonuses = JSON.parse(bonusesJson);
+        } catch (e) {
+            reforgedBonuses = null;
+        }
+    }
+
     var data = getEquipItem(name);
-    if (!data) { _hideItemHover(); return; }
+    if (!data && !reforgedBonuses) { _hideItemHover(); return; }
 
     var imgSrc = EMOJI_PATH_MAP[name.toLowerCase()]
-        || '/static/Emojis/Pets/Equipment/' + (data.emoji_file || name + '.png');
-    var rarity = data.rarity || 'Common';
+        || '/static/Emojis/Pets/Equipment/' + (data ? data.emoji_file : name + '.png');
+    var rarity = (data ? data.rarity : 'Common') || 'Common';
     var rarityColor = rc(rarity);
-    var bonuses = data.bonuses || {};
-    var effect  = data.use_effect || null;
+    var bonuses = reforgedBonuses || (data ? data.bonuses : {});
+    var effect  = data ? data.use_effect : null;
 
     document.getElementById('mp-hover-img').src = imgSrc;
     document.getElementById('mp-hover-name').textContent = name;

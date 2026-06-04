@@ -10,27 +10,24 @@
 function proxyImageUrl(url) {
     if (!url) return url;
     
-    // List of external domains that need proxying
-    const externalDomains = [
-        'upload.wikimedia.org',
-        // Add other external domains as needed
-    ];
-    
+    // Proxy all external URLs to handle CORS issues universally
+    // This ensures alliance flags work regardless of their source domain
     try {
         const urlObj = new URL(url);
-        const isExternal = externalDomains.some(domain => urlObj.hostname === domain);
         
-        if (isExternal) {
-            const proxiedUrl = `/api/image-proxy?url=${encodeURIComponent(url)}`;
-            console.log(`Proxying image URL: ${url} -> ${proxiedUrl}`);
-            return proxiedUrl;
+        // Don't proxy if it's already our own domain
+        if (urlObj.hostname === window.location.hostname) {
+            return url;
         }
+        
+        // Proxy all external URLs
+        const proxiedUrl = `/api/image-proxy?url=${encodeURIComponent(url)}`;
+        return proxiedUrl;
     } catch (e) {
         // If URL parsing fails, return original
         console.warn('Failed to parse URL for proxying:', url);
+        return url;
     }
-    
-    return url;
 }
 
 /**

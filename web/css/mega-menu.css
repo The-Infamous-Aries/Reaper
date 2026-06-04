@@ -257,30 +257,49 @@
     max-width: 100px;
 }
 
-.nav-pet-info {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    flex-shrink: 0;
-    margin-right: 1rem;
-    padding: 0.25rem 0.5rem;
-    background: rgba(20,20,20,0.5);
-    border: 1px solid rgba(184,134,11,0.3);
-    border-radius: 0.5rem;
+.nav-pet-card-toggle {
+    padding: 0.5rem 0.75rem !important;
 }
 
-.nav-pet-img {
-    width: 24px;
-    height: 24px;
+.nav-pet-card-toggle .nav-pet-img {
+    width: 20px;
+    height: 20px;
     object-fit: contain;
     filter: drop-shadow(0 0 3px var(--gold-glow));
 }
 
-.nav-pet-name {
-    font-size: 0.7rem;
+.nav-pet-card-toggle .nav-pet-name {
+    font-size: 0.85rem;
     font-weight: 700;
     color: var(--gold-primary);
     font-family: 'Orbitron', sans-serif;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100px;
+}
+
+/* Remove Bootstrap's default dropdown-toggle pseudo-element chevron */
+.dropdown-toggle::after {
+    display: none !important;
+}
+
+.nav-nation-card-toggle {
+    padding: 0.5rem 0.75rem !important;
+}
+
+.nav-nation-card-toggle .nav-nation-flag {
+    width: 180px;
+    height: 60px;
+    object-fit: cover;
+    border-radius: 3px;
+    border: 1px solid rgba(184,134,11,0.3);
+}
+
+.nav-nation-card-toggle .nav-nation-name {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--gold-primary);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;

@@ -1546,7 +1546,13 @@ function getEquipSetState(pet) {
     var gems     = getList('Gems');       // up to 2
 
     // ── Set matching (Helmet + Armor + Boots + Shield + Weapon only; Ring excluded) ──
-    function setTag(item) { return item ? (item.set || null) : null; }
+    // For reforged items, fall back to canonical equipment data for the set tag
+    function setTag(item) {
+        if (!item) return null;
+        if (item.set) return item.set;
+        var canonical = typeof getEquipItem === 'function' ? getEquipItem(item.name) : null;
+        return (canonical && canonical.set) ? canonical.set : null;
+    }
     var setSlots = [helmet, armor, boots, shield, weapon];
     var setSlotsFilled = setSlots.filter(function(s){ return s !== null; });
     var setSlotTags = setSlotsFilled.map(setTag).filter(function(t){ return t; });

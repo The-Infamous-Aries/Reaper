@@ -1,0 +1,543 @@
+/* ── Theme Integration ───────────────────────────────────────────────────── */
+/* Uses existing CSS variables from main.css */
+:root {
+  --tu-bg-primary: var(--bg-primary);
+  --tu-bg-secondary: var(--bg-secondary);
+  --tu-gold-primary: var(--gold-primary);
+  --tu-gold-secondary: var(--gold-secondary);
+  --tu-gold-glow: var(--gold-glow);
+  --tu-text-primary: var(--text-primary);
+  --tu-text-secondary: var(--text-secondary);
+}
+
+/* Treaty Type Colors */
+:root {
+  --tu-protectorate: rgba(255, 100, 100, 0.8);
+  --tu-mdoap: rgba(100, 100, 255, 0.8);
+  --tu-odoap: rgba(255, 255, 150, 0.8);
+  --tu-peace: rgba(150, 255, 150, 0.8);
+}
+
+/* ── Container ─────────────────────────────────────────────────────────────── */
+.tu-container {
+  padding: 1.5rem;
+  width: 100%;
+}
+
+/* ── Header ────────────────────────────────────────────────────────────────── */
+.tu-header {
+  margin-bottom: 1.5rem;
+}
+
+.tu-header .card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.tu-header h2 {
+  margin: 0;
+  color: var(--tu-gold-primary);
+  font-size: 1.75rem;
+}
+
+.tu-controls {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.tu-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  font-size: 0.9rem;
+  color: var(--tu-text-primary);
+  user-select: none;
+}
+
+.tu-toggle input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  accent-color: var(--tu-gold-primary);
+}
+
+/* ── Bloc Toggles ─────────────────────────────────────────────────────────── */
+.tu-bloc-toggles {
+  margin-bottom: 1.5rem;
+}
+
+.tu-bloc-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.tu-bloc-btn {
+  padding: 0.4rem 0.8rem;
+  border: 1px solid var(--tu-gold-primary);
+  border-radius: 0.5rem;
+  background: rgba(10, 10, 10, 0.8);
+  color: var(--tu-text-primary);
+  cursor: pointer;
+  font-size: 0.8rem;
+  transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  justify-content: center;
+  white-space: nowrap;
+}
+
+.tu-bloc-btn:hover {
+  background: rgba(255, 215, 0, 0.1);
+  border-color: var(--tu-gold-secondary);
+}
+
+.tu-bloc-btn.active {
+  background: rgba(255, 215, 0, 0.2);
+  border-color: var(--tu-gold-secondary);
+  color: var(--tu-gold-primary);
+}
+
+.tu-bloc-btn .tu-bloc-count {
+  background: rgba(255, 215, 0, 0.3);
+  padding: 0.1rem 0.4rem;
+  border-radius: 0.25rem;
+  font-size: 0.75rem;
+  color: var(--tu-gold-primary);
+}
+
+.tu-loading-text {
+  color: var(--tu-text-secondary);
+  font-size: 0.9rem;
+  margin: 0;
+}
+
+.tu-stats-bar {
+  display: flex;
+  gap: 2rem;
+  flex-wrap: wrap;
+  font-size: 0.95rem;
+  color: var(--tu-text-secondary);
+}
+
+.tu-stats-bar strong {
+  color: var(--tu-gold-primary);
+}
+
+.tu-legend-compact {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  font-size: 0.8rem;
+  color: var(--tu-text-secondary);
+  padding-top: 0.5rem;
+  border-top: 1px solid rgba(255, 215, 0, 0.2);
+}
+
+.tu-legend-compact .tu-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+/* ── Alliance Controls ────────────────────────────────────────────────────── */
+.tu-alliance-controls {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid rgba(255, 215, 0, 0.2);
+  position: relative;
+  z-index: 100;
+}
+
+/* Ensure dropdown isn't clipped by card body overflow */
+.tu-header .card-body {
+  overflow: visible;
+}
+
+.tu-ac-wrap {
+  position: relative;
+  width: 100%;
+  max-width: 400px;
+  z-index: 101;
+}
+
+.tu-ac-input {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.9rem;
+  background: rgba(14, 11, 5, 0.92);
+  border: 1px solid rgba(255, 215, 0, 0.35);
+  border-radius: 999px;
+  color: var(--tu-text-primary);
+  transition: all 0.2s ease;
+}
+
+.tu-ac-input:focus {
+  outline: none;
+  border-color: var(--tu-gold-primary);
+  box-shadow: 0 0 8px var(--tu-gold-glow);
+}
+
+.tu-ac-input::placeholder {
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.tu-ac-dropdown {
+  position: fixed; /* Fixed positioning to escape parent overflow */
+  z-index: 9999;
+  background: #1a1a2e;
+  border: 1px solid rgba(184, 134, 11, 0.4);
+  border-radius: 6px;
+  max-height: 300px;
+  overflow-y: auto;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.7);
+  display: none;
+  min-width: 250px;
+}
+
+.tu-ac-dropdown.open {
+  display: block;
+}
+
+.tu-ac-item {
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 0.88rem;
+  color: #d4af37;
+  border-bottom: 1px solid rgba(184, 134, 11, 0.1);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.tu-ac-item:last-child {
+  border-bottom: none;
+}
+
+.tu-ac-item:hover,
+.tu-ac-item.active {
+  background: rgba(184, 134, 11, 0.15);
+}
+
+.tu-ac-count {
+  font-size: 0.75rem;
+  color: #888;
+  margin-left: 8px;
+}
+
+.tu-selected-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.tu-alliance-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.3rem 0.6rem;
+  background: var(--tu-gold-primary);
+  color: var(--tu-bg-primary);
+  border-radius: 0.25rem;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.tu-tag-remove {
+  background: none;
+  border: none;
+  color: var(--tu-bg-primary);
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+  padding: 0;
+  margin-left: 0.2rem;
+}
+
+.tu-tag-remove:hover {
+  color: #ff6464;
+}
+
+.tu-empty-state {
+  text-align: center;
+  padding: 4rem 2rem;
+  color: var(--tu-text-secondary);
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 100%;
+  max-width: 500px;
+}
+
+/* ── Legend ────────────────────────────────────────────────────────────────── */
+.tu-legend {
+  margin-bottom: 1.5rem;
+}
+
+.tu-legend .card-body {
+  display: flex;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.tu-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  color: var(--tu-text-primary);
+}
+
+.tu-legend-color {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.tu-protectorate { background: var(--tu-protectorate); }
+.tu-mdoap { background: var(--tu-mdoap); }
+.tu-odoap { background: var(--tu-odoap); }
+.tu-peace { background: var(--tu-peace); }
+
+/* ── Universe Canvas ───────────────────────────────────────────────────────── */
+.tu-universe {
+  position: relative;
+  width: 100%;
+  height: 85vh;
+  min-height: 700px;
+  background: rgba(15, 15, 15, 0.8);
+  border: 2px solid var(--tu-gold-primary);
+  border-radius: 0.75rem;
+  box-shadow: 0 0 20px var(--tu-gold-glow);
+  overflow: hidden;
+}
+
+.tu-loading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  background: rgba(10, 10, 10, 0.9);
+  z-index: 10;
+}
+
+.tu-loading p {
+  margin: 0;
+  color: var(--tu-text-secondary);
+  font-size: 0.95rem;
+}
+
+/* ── SVG Layer ─────────────────────────────────────────────────────────────── */
+.tu-svg-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.tu-treaty-line {
+  stroke-width: 2.5;
+  opacity: 0.75;
+  transition: opacity 0.2s, stroke-width 0.2s;
+  stroke-linecap: round;
+}
+
+.tu-treaty-line:hover {
+  opacity: 1;
+  stroke-width: 4;
+  filter: drop-shadow(0 0 3px currentColor);
+}
+
+/* Treaty type stroke colors - brightened for visibility */
+.tu-protectorate { stroke: rgba(255, 100, 100, 0.9); }
+.tu-extension { stroke: rgba(200, 50, 50, 0.9); }
+.tu-mdoap { stroke: rgba(100, 100, 255, 0.9); }
+.tu-mdp { stroke: rgba(70, 70, 200, 0.9); }
+.tu-odoap { stroke: rgba(255, 255, 120, 0.9); }
+.tu-odp { stroke: rgba(220, 220, 80, 0.9); }
+.tu-piat { stroke: rgba(120, 255, 120, 0.9); }
+.tu-nap { stroke: rgba(80, 200, 80, 0.9); }
+
+/* ── Blocs ─────────────────────────────────────────────────────────────────── */
+.tu-bloc {
+  position: absolute;
+  border: 2px dashed var(--tu-gold-primary);
+  border-radius: 1rem;
+  background: rgba(255, 215, 0, 0.05);
+  pointer-events: none;
+  z-index: 2;
+  transition: all 0.3s ease;
+}
+
+.tu-bloc-header {
+  position: absolute;
+  top: -12px;
+  left: 12px;
+  background: var(--tu-bg-secondary);
+  padding: 0.25rem 0.75rem;
+  border-radius: 1rem;
+  border: 1px solid var(--tu-gold-primary);
+  color: var(--tu-gold-primary);
+  font-size: 0.85rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* ── Alliance Elements ─────────────────────────────────────────────────────── */
+.tu-alliance {
+  position: absolute;
+  cursor: pointer;
+  z-index: 5;
+  transition: transform 0.2s, filter 0.2s;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* Note: JavaScript sets transform: translate(-50%, -50%) to center elements
+   The hover effect is handled in JS to properly combine with the centering transform */
+
+/* Selected alliances - more prominent styling */
+.tu-alliance.tu-selected .tu-flag {
+  border: 4px solid var(--tu-gold-primary);
+  box-shadow: 0 0 20px var(--tu-gold-glow), 0 0 40px rgba(255, 215, 0, 0.3);
+}
+
+.tu-alliance.tu-selected .tu-alliance-name {
+  color: var(--tu-gold-primary);
+  font-weight: 700;
+  text-shadow: 0 0 8px var(--tu-gold-glow);
+}
+
+.tu-flag {
+  border-radius: 50%;
+  border: 2px solid var(--tu-gold-primary);
+  object-fit: cover;
+  transition: border-color 0.2s;
+}
+
+.tu-alliance:hover .tu-flag {
+  border-color: var(--tu-gold-secondary);
+}
+
+.tu-alliance-name {
+  margin-top: 0.25rem;
+  font-size: 0.75rem;
+  color: var(--tu-text-primary);
+  text-align: center;
+  white-space: nowrap;
+  text-shadow: 0 0 4px rgba(0, 0, 0, 0.8);
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tu-detail-toggle {
+  display: none;
+  margin-top: 0.25rem;
+  font-size: 0.7rem;
+  color: var(--tu-gold-secondary);
+  text-align: center;
+  white-space: nowrap;
+  text-shadow: 0 0 4px rgba(0, 0, 0, 0.8);
+  line-height: 1.3;
+}
+
+.tu-alliance.tu-show-details .tu-detail-toggle {
+  display: block;
+}
+
+/* ── Modal ────────────────────────────────────────────────────────────────── */
+.tu-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  padding: 1rem;
+}
+
+.tu-modal-content {
+  max-width: 500px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.tu-modal-content .card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.tu-modal-title {
+  color: var(--tu-gold-primary);
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.tu-modal-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.tu-modal-stats > div {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid rgba(255, 215, 0, 0.2);
+}
+
+.tu-modal-stats > div:last-child {
+  border-bottom: none;
+}
+
+/* ── Responsive ───────────────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .tu-container {
+    padding: 1rem;
+  }
+
+  .tu-header .card-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .tu-controls {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .tu-controls select {
+    flex: 1;
+  }
+
+  .tu-stats-bar {
+    gap: 1rem;
+    font-size: 0.85rem;
+  }
+
+  .tu-legend .card-body {
+    gap: 1rem;
+  }
+
+  .tu-universe {
+    min-height: 400px;
+  }
+}

@@ -70,11 +70,16 @@ class MegaMenu {
                 item.addEventListener('click', (e) => {
                     e.preventDefault();
                     const page = item.dataset.page;
-                    const css = item.dataset.css;
-                    const script = item.dataset.script;
+                    const css = item.dataset.css || null;
+                    const script = item.dataset.script || null;
                     
-                    if (page && window.navigateTo) {
-                        window.navigateTo(page);
+                    if (page && window.loadPageDirect) {
+                        // Use loadPageDirect so the mega-menu's data-script/data-css are respected,
+                        // then also update browser history via navigateTo's pushState logic.
+                        const url = new URL(window.location);
+                        url.searchParams.set('page', page);
+                        history.pushState({ page }, '', url.toString());
+                        window.loadPageDirect(page, script, 'script', css);
                     }
                     
                     this.closeDropdown(menu);

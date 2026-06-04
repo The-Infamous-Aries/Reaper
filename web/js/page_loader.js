@@ -18,7 +18,11 @@ class PageScriptManager {
             `v=${Date.now()}&r=${Math.random().toString(36).substr(2, 9)}`;
         const src = scriptPath + (scriptPath.includes('?') ? '&' : '?') + cacheBuster;
         script.src = src;
-        script.type = scriptType;
+        // Only set type for special cases (e.g. 'module'). Never set it to 'script' —
+        // that is not a valid MIME type and causes browsers to silently skip execution.
+        if (scriptType && scriptType !== 'script') {
+            script.type = scriptType;
+        }
         
         // Add cache control attributes
         script.setAttribute('cache', 'no-cache');
@@ -75,10 +79,26 @@ class PageScriptManager {
     unloadAll() {
         // Remove by full src (including cache-buster)
         this.loadedScripts.forEach(src => {
-            document.querySelectorAll(`script[src*="${src.split('?')[0]}"]`).forEach(el => el.remove());
+            const basePath = src.split('?')[0];
+            document.querySelectorAll(`script[src*="${basePath}"]`).forEach(el => {
+                console.log(`[PageScriptManager] Removing script: ${el.src}`);
+                el.remove();
+            });
         });
         this.loadedScripts.clear();
-        
+
+        // Also remove any scripts that might have been loaded outside our tracking
+        // This handles edge cases with settings.js and other page-specific scripts
+        const knownPageScripts = ['/js/settings.js', '/js/raids.js', '/js/compare.js', '/js/arena.js'];
+        knownPageScripts.forEach(scriptPath => {
+            document.querySelectorAll(`script[src*="${scriptPath}"]`).forEach(el => {
+                if (!this.loadedScripts.has(el.src)) {
+                    console.log(`[PageScriptManager] Removing untracked script: ${el.src}`);
+                    el.remove();
+                }
+            });
+        });
+
         this.loadedCSS.forEach(cssPath => {
             const linkElements = document.querySelectorAll(`link[href*="${cssPath}"]`);
             linkElements.forEach(el => el.remove());

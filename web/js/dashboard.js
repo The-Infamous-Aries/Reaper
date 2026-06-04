@@ -83,7 +83,95 @@ function initializeSidebar() {
 
 let currentLoadedPage = null;
 
+// ── Theme Loading ─────────────────────────────────────────────────────────────
+async function loadUserTheme() {
+    // First check localStorage for recently saved theme (for immediate application)
+    const savedTheme = localStorage.getItem('reaper_theme');
+    const savedAt = localStorage.getItem('reaper_theme_saved_at');
+    const now = Date.now();
+
+    // If theme was saved in the last 5 minutes, use it immediately
+    if (savedTheme && savedAt && (now - parseInt(savedAt)) < 300000) {
+        try {
+            const themeData = JSON.parse(savedTheme);
+            console.log('Applying theme from localStorage:', themeData);
+            applyThemeToPage(themeData);
+        } catch (e) {
+            console.error('Failed to parse saved theme:', e);
+        }
+    }
+
+    // Also fetch from API to ensure we have the latest
+    try {
+        const response = await fetch('/api/settings');
+        if (!response.ok) return;
+
+        const settings = await response.json();
+        if (settings && settings.theme_bg_color) {
+            console.log('Applying theme from API');
+            applyThemeToPage(settings);
+
+            // Update localStorage with latest from API
+            localStorage.setItem('reaper_theme', JSON.stringify({
+                theme_bg_color: settings.theme_bg_color,
+                theme_bg_secondary: settings.theme_bg_secondary,
+                theme_bg_tertiary: settings.theme_bg_tertiary,
+                theme_gold_primary: settings.theme_gold_primary,
+                theme_gold_secondary: settings.theme_gold_secondary,
+                theme_text_primary: settings.theme_text_primary,
+                theme_text_secondary: settings.theme_text_secondary,
+                theme_hide_bg_image: settings.theme_hide_bg_image || 0,
+                theme_custom_bg_url: settings.theme_custom_bg_url || null,
+            }));
+        }
+
+        // Language/i18n hook — reserved for future implementation
+    } catch (error) {
+        console.debug('Failed to load user theme from API:', error);
+    }
+}
+
+function applyThemeToPage(settings) {
+    const root = document.documentElement;
+    if (settings.theme_bg_color) {
+        root.style.setProperty('--bg-primary', settings.theme_bg_color);
+    }
+    if (settings.theme_bg_secondary) {
+        root.style.setProperty('--bg-secondary', settings.theme_bg_secondary);
+    }
+    if (settings.theme_bg_tertiary) {
+        root.style.setProperty('--bg-tertiary', settings.theme_bg_tertiary);
+    }
+    if (settings.theme_gold_primary) {
+        root.style.setProperty('--gold-primary', settings.theme_gold_primary);
+    }
+    if (settings.theme_gold_secondary) {
+        root.style.setProperty('--gold-secondary', settings.theme_gold_secondary);
+    }
+    if (settings.theme_text_primary) {
+        root.style.setProperty('--text-primary', settings.theme_text_primary);
+    }
+    if (settings.theme_text_secondary) {
+        root.style.setProperty('--text-secondary', settings.theme_text_secondary);
+    }
+    // Custom uploaded background takes highest priority
+    if (settings.theme_custom_bg_url) {
+        document.body.style.backgroundImage    = `url('${settings.theme_custom_bg_url}')`;
+        document.body.style.backgroundSize     = 'cover';
+        document.body.style.backgroundPosition = 'center';
+        document.body.style.backgroundAttachment = 'fixed';
+        return;
+    }
+    // Hide the dark background photo for light/bright themes
+    const hide = settings.theme_hide_bg_image === true || settings.theme_hide_bg_image === 1 || settings.theme_hide_bg_image === '1';
+    document.body.style.backgroundImage = hide ? 'none' : '';
+}
+
+// Load theme on page load
+document.addEventListener('DOMContentLoaded', loadUserTheme);
+
 function loadPage(page, scriptPath, scriptType, cssPath) {
+    console.log(`[loadPage] Loading page: ${page}, script: ${scriptPath}`);
     let pageFile = page.split('?')[0];
     if (!pageFile.endsWith('.html')) pageFile += '.html';
 
@@ -98,7 +186,17 @@ function loadPage(page, scriptPath, scriptType, cssPath) {
         document.body.style.removeProperty('padding-right');
     }
 
-    if (typeof scriptManager !== 'undefined') scriptManager.unloadAll();
+    // Unload all scripts before loading new page
+    if (typeof scriptManager !== 'undefined') {
+        console.log('[loadPage] Unloading all scripts...');
+        scriptManager.unloadAll();
+    }
+
+    // Special handling for settings page - ensure script is loaded
+    if (pageFile.includes('settings') && !scriptPath) {
+        console.log('[loadPage] Settings page detected without script path, using default');
+        scriptPath = '/js/settings.js';
+    }
     currentLoadedPage = pageFile;
     if (cssPath && typeof scriptManager !== 'undefined') {
         cssPath.split(' ').filter(Boolean).forEach(p => scriptManager.loadCSS(p));
@@ -459,37 +557,40 @@ async function loadUserPet() {
     try {
         const res = await fetch('/api/user/pet');
         if (!res.ok) {
+            console.warn('Pet API returned not ok:', res.status);
             document.getElementById('uc-pet-section').style.display = 'none';
-            // Hide nav pet info
-            const navPetInfo = document.getElementById('nav-pet-info');
-            if (navPetInfo) navPetInfo.style.display = 'none';
+            // Hide nav pet dropdown item
+            const petsDropdownItem = document.getElementById('pets-dropdown-item');
+            if (petsDropdownItem) petsDropdownItem.style.display = 'none';
             return;
         }
         const data = await res.json();
+        console.log('Pet data:', data);
         if (!data.has_pet) {
+            console.log('User has no pet');
             document.getElementById('uc-pet-section').style.display = 'none';
-            // Hide nav pet info
-            const navPetInfo = document.getElementById('nav-pet-info');
-            if (navPetInfo) navPetInfo.style.display = 'none';
+            // Hide nav pet dropdown item
+            const petsDropdownItem = document.getElementById('pets-dropdown-item');
+            if (petsDropdownItem) petsDropdownItem.style.display = 'none';
             return;
         }
-        
+
         // Show pet section
         document.getElementById('uc-pet-section').style.display = 'block';
-        
+
         // Pet image
         const species = data.species || 'Basic';
         document.getElementById('uc-pet-img').src = `/static/Emojis/Pets/${species}.png`;
-        
+
         // Pet name
         document.getElementById('uc-pet-name').textContent = data.name || species;
-        
-        // Update nav pet info
-        const navPetInfo = document.getElementById('nav-pet-info');
+
+        // Show and update nav pet dropdown item
+        const petsDropdownItem = document.getElementById('pets-dropdown-item');
         const navPetImg = document.getElementById('nav-pet-img');
         const navPetName = document.getElementById('nav-pet-name');
-        if (navPetInfo && navPetImg && navPetName) {
-            navPetInfo.style.display = 'flex';
+        if (petsDropdownItem && navPetImg && navPetName) {
+            petsDropdownItem.style.display = 'block';
             navPetImg.src = `/static/Emojis/Pets/${species}.png`;
             navPetName.textContent = data.name || species;
         }
@@ -978,13 +1079,11 @@ function showLinkedNation(nation) {
     else flag.style.display = 'none';
     loadNationRanks(nation.nation_name || '');
     
-    // Also update nav nation info
-    const navNationInfo = document.getElementById('nav-nation-info');
+    // Also update nav nation dropdown item
+    const pnwDropdownItem = document.getElementById('pnw-dropdown-item');
     const navNationFlag = document.getElementById('nav-nation-flag');
-    const navNationName = document.getElementById('nav-nation-name');
-    if (navNationInfo && navNationFlag && navNationName) {
-        navNationInfo.style.display = 'flex';
-        navNationName.textContent = nation.nation_name || `Nation #${nation.nation_id}`;
+    if (pnwDropdownItem && navNationFlag) {
+        pnwDropdownItem.style.display = 'block';
         if (nation.flag) {
             navNationFlag.src = window.ImageUtils ? window.ImageUtils.proxyImageUrl(nation.flag) : nation.flag;
             navNationFlag.style.display = 'inline-block';
@@ -999,10 +1098,10 @@ function showNationInput() {
     document.getElementById('uc-nation-input').style.display = 'block';
     document.getElementById('nation-link-error').style.display = 'none';
     
-    // Hide nav nation info
-    const navNationInfo = document.getElementById('nav-nation-info');
-    if (navNationInfo) {
-        navNationInfo.style.display = 'none';
+    // Hide nav nation dropdown item
+    const pnwDropdownItem = document.getElementById('pnw-dropdown-item');
+    if (pnwDropdownItem) {
+        pnwDropdownItem.style.display = 'none';
     }
 }
 
@@ -1342,3 +1441,93 @@ async function loadNationRanks(name) {
 })();
 
 
+
+
+// ── Menu Layout Reordering ──────────────────────────────────────────────────────
+// Apply custom menu layout from user settings
+async function applyMenuLayout() {
+    try {
+        // Try to get layout from localStorage first for instant effect
+        let layoutData = null;
+        const savedLayout = localStorage.getItem('reaper_menu_layout');
+        if (savedLayout) {
+            try {
+                layoutData = JSON.parse(savedLayout);
+                console.log('[MenuLayout] Applying layout from localStorage');
+            } catch (e) {
+                console.warn('[MenuLayout] Failed to parse localStorage layout', e);
+            }
+        }
+
+        // Also fetch from API for authoritative data
+        const response = await fetch('/api/settings');
+        if (response.ok) {
+            const settings = await response.json();
+            if (settings.menu_layout) {
+                try {
+                    layoutData = JSON.parse(settings.menu_layout);
+                    console.log('[MenuLayout] Applying layout from API');
+                    // Update localStorage with API version
+                    localStorage.setItem('reaper_menu_layout', settings.menu_layout);
+                } catch (e) {
+                    console.warn('[MenuLayout] Failed to parse API layout', e);
+                }
+            }
+        }
+
+        if (!layoutData) {
+            console.log('[MenuLayout] No custom layout found, using default order');
+            return;
+        }
+
+        // Apply layout to each menu group
+        ['pnw', 'pets', 'fun', 'site'].forEach(groupName => {
+            const groupOrder = layoutData[groupName];
+            if (!groupOrder || !Array.isArray(groupOrder)) return;
+
+            // Find the menu container
+            let menuContainer;
+            if (groupName === 'pnw') {
+                menuContainer = document.querySelector('#pnw-dropdown .mega-menu-grid');
+            } else if (groupName === 'pets') {
+                menuContainer = document.querySelector('#pets-dropdown .mega-menu-grid');
+            } else if (groupName === 'fun') {
+                menuContainer = document.querySelector('#fun-dropdown .mega-menu-grid');
+            } else if (groupName === 'site') {
+                menuContainer = document.querySelector('#site-dropdown .mega-menu-grid');
+            }
+
+            if (!menuContainer) {
+                console.warn(`[MenuLayout] Menu container not found for group: ${groupName}`);
+                return;
+            }
+
+            // Get all menu items
+            const items = Array.from(menuContainer.querySelectorAll('.mega-menu-item'));
+            const itemMap = {};
+            items.forEach(item => {
+                const pageId = item.dataset.page;
+                if (pageId) itemMap[pageId] = item;
+            });
+
+            // Reorder based on saved layout
+            groupOrder.forEach(pageId => {
+                const item = itemMap[pageId];
+                if (item) {
+                    menuContainer.appendChild(item);
+                }
+            });
+
+            console.log(`[MenuLayout] Reordered ${groupName} menu with ${groupOrder.length} items`);
+        });
+
+    } catch (error) {
+        console.error('[MenuLayout] Error applying menu layout:', error);
+    }
+}
+
+// Apply layout on page load
+document.addEventListener('DOMContentLoaded', () => {
+    // Wait a bit for the menu to be fully rendered
+    setTimeout(applyMenuLayout, 100);
+});

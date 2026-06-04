@@ -88,12 +88,14 @@
 
 /* Badges */
 .raids-badge {
-  display: inline-block; padding: 1px 6px; border-radius: 3px;
+  display: inline-flex; align-items: center; gap: 3px; padding: 1px 6px; border-radius: 3px;
   font-size: 0.67rem; font-weight: 700;
 }
 .badge-active  { background: rgba(0,200,100,0.15); color: #00c864; border: 1px solid #00c864; }
 .badge-beige   { background: rgba(210,180,140,0.2); color: #d2b48c; border: 1px solid #d2b48c; }
 .badge-policy  { background: rgba(100,149,237,0.12); color: #6495ed; border: 1px solid rgba(100,149,237,0.4); }
+.raids-policy-badge { font-weight: 700; }
+.raids-policy-icon { width: 14px; height: 14px; object-fit: contain; flex-shrink: 0; }
 
 /* Project icons row */
 .raids-proj { display: flex; gap: 3px; flex-wrap: wrap; }

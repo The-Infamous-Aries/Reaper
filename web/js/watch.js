@@ -949,6 +949,10 @@ async function fetchData() {
         if (watchRangeState.selectedEndDate) params.set("end_date", watchRangeState.selectedEndDate);
 
         const endpoint = watchViewMode === "nations" ? "/api/watch/wars/all-nations" : "/api/watch/wars";
+        // alliance_id is only meaningful for the main alliance-wars endpoint
+        if (watchViewMode !== "nations" && window._watchAllianceId && window._watchAllianceId !== 10259) {
+            params.set("alliance_id", String(window._watchAllianceId));
+        }
         const response = await fetch(`${endpoint}${params.toString() ? `?${params.toString()}` : ""}`);
         const data = await response.json();
 
@@ -1093,6 +1097,24 @@ document.addEventListener("mouseout", (e) => {
 function initializeWatchPage() {
     if (watchPageInitialized) return;
     watchPageInitialized = true;
+
+    // Load user's saved home alliance from settings before first fetch
+    // so the correct alliance_id is sent on the initial request.
+    fetch('/api/settings', { credentials: 'same-origin' })
+        .then(r => r.ok ? r.json() : null)
+        .then(s => {
+            if (s && s.watch_home_alliance_id) {
+                window._watchAllianceId = s.watch_home_alliance_id;
+            }
+        })
+        .catch(() => {})
+        .finally(() => {
+            // Always initialise controls and fetch data, even if settings load fails
+            _initWatchControls();
+        });
+}
+
+function _initWatchControls() {
 
     document.querySelectorAll("th[data-sort]").forEach((header) => {
         if (header.dataset.watchInit === "true" || header.dataset.sort === "units_metric") return;
