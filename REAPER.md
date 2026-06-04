@@ -6,101 +6,101 @@
 
 ## Table of Contents
 
-- [🎭 Overview](#overview)
-- [⚙️ Configuration and Environment](#configuration-and-environment)
-- [🚀 Installation and Startup](#installation-and-startup)
-- [🌟 Major Features](#major-features)
-  - [🐾 Pets System](#pets-system)
-  - [⚔️ Politics & War System](#politics--war-system)
-  - [🎫 Tickets System](#tickets-system)
-  - [🌐 Translator System](#translator-system)
-  - [🔮 Astrology System](#astrology-system)
-  - [🎮 Fun System](#fun-system)
-  - [🛠️ Admin and Utilities](#admin-and-utilities)
-- [📊 Database Structure](#database-structure)
-- [🔧 Technical Architecture](#technical-architecture)
+- [Overview](#overview)
+- [Configuration and Environment](#configuration-and-environment)
+- [Installation and Startup](#installation-and-startup)
+- [Architecture](#architecture)
+- [Cog Reference](#cog-reference)
+  - [Admin](#admin)
+  - [Info / Utility](#info--utility)
+  - [EA — Economic Affairs](#ea--economic-affairs)
+  - [FA — Foreign Affairs](#fa--foreign-affairs)
+  - [IA — Internal Affairs](#ia--internal-affairs)
+  - [MA — Military Affairs](#ma--military-affairs)
+  - [Other — PnW Miscellaneous](#other--pnw-miscellaneous)
+  - [Tickets](#tickets)
+  - [Astrology](#astrology)
+  - [Fun](#fun)
+  - [Casino (PnWCasino)](#casino-pnwcasino)
+- [Background Tasks](#background-tasks)
+- [Database Structure](#database-structure)
+- [Dependencies](#dependencies)
 
 ---
 
 ## Overview
 
-Reaper Bot is a self-hosted Discord bot built in Python that runs entirely on your local machine — no cloud hosting, no third-party bot service, no subscription fees. All data stays local: your databases, your API keys, your user data.
+Reaper Bot is a self-hosted Discord bot built in Python that runs entirely on your local machine. All data stays local — databases, API keys, user data. Nothing is stored externally.
 
 The bot has two integrated sides:
 
-- **Discord side** — Handles slash commands and text commands directly in your server for PnW intelligence, pet games, tickets, translation, astrology, and entertainment.
-- **Web side** — Runs a FastAPI server embedded inside the bot process, serving a full browser-based interface for the pet system and PnW analytics tools at your configured domain.
+- **Discord side** — Handles slash and hybrid commands in your server for PnW intelligence, pet games, tickets, translation, astrology, and entertainment.
+- **Web side** — Runs a FastAPI server embedded inside the bot process at port 8080, serving the full browser-based interface for the Pets system and PnW analytics tools.
 
-Both sides start from a single command (`python reaper.py`) and share the same local SQLite databases. There is no separate web server to manage, no Docker container required, and no database server to configure.
+Both sides start from a single command (`python reaper.py`) and share the same local SQLite databases. There is no separate web server to manage, no Docker container, and no database server.
 
-**Key Features:**
+The bot is designed for the **Darkstar alliance** (PnW alliance ID 10259) but all PnW tools work for any alliance or nation. The pet system is entirely self-contained.
 
-- **Pets** — A complete digital pet RPG with stats, elements, equipment, an ability tree, turn-based combat, PvP, tournaments, dungeon crawls, casino games, quests, a stock market, and a full browser-based interface.
-- **Politics & War** — Deep integration with the PnW game: real-time nation and war tracking via live subscriptions, revenue and cost calculators, war intelligence dashboards, raid finders, treaty maps, alliance comparisons, beige alerts, resource price alerts, and a global news/leaderboard system.
-- **Tickets** — A structured support ticket system with category routing, staff assignment, and transcript logging.
-- **Translator** — Automatic message translation using Google Translate, with per-channel language configuration via flag emoji reactions.
-- **Astrology** — Daily horoscopes, tarot readings, and zodiac compatibility checks powered by AI.
-- **Fun** — Roasts, compliments, a zombie survival game, and other entertainment commands.
-
-The bot is designed for the Darkstar alliance (PnW alliance ID 10259) but the PnW tools work for any alliance or nation. The pet system is entirely self-contained and has no PnW dependency.
+**What Reaper does NOT do:** Reaper does not collect live PnW data. All real-time data collection (nation subscriptions, war tracking, bank records, trade tracking, etc.) is handled by the **separate PnWHarvester process** (`python harvester.py`). Reaper is read-only against the harvester's databases.
 
 ---
 
 ## Configuration and Environment
 
-Reaper Bot is configured entirely through a single `.env` file located at `Systems/Functions/.env`. The bot reads this file on startup — no environment variables need to be set at the system level, and there is no fallback to a root-level `.env`. If the file is missing or the Discord token is absent, the bot will not start.
+All configuration lives in a single file: `Systems/Functions/.env`
 
-All secrets stay local to your machine. Nothing is transmitted externally except the specific API calls each key is used for (Discord, PnW, AI providers, etc.). The `.env` file is excluded from version control via `.gitignore`.
+The bot reads this file on startup. There is no fallback to a root-level `.env`. If the file is missing or `DISCORD_TOKEN` is absent, the bot will not start.
 
-### Required Configuration
+### Required
 
 | Variable | Purpose |
 |:---|:---|
-| `DISCORD_TOKEN` | Your bot's authentication token from the Discord Developer Portal. The bot will not start without this. |
+| `DISCORD_TOKEN` | Bot authentication token from the Discord Developer Portal. Required to start. |
 
 ### Optional — Bot Behavior
 
 | Variable | Purpose | Default |
 |:---|:---|:---|
-| `COMMAND_PREFIX` | Prefix for legacy text commands. | `!` |
-| `ADMIN_USER_ID` | Discord user ID of the server owner. Gates admin-only commands. | `0` (disabled) |
-| `RESULTS_CHANNEL_ID` | Channel ID where game results and logs are posted. | `0` (disabled) |
-| `DATA_DIR` | Base directory for data storage. Useful for containerized deployments. | Current working directory |
+| `COMMAND_PREFIX` | Prefix for legacy text commands | `!` |
+| `ADMIN_USER_ID` | Discord user ID that gates admin-only commands | `0` (disabled) |
+| `RESULTS_CHANNEL_ID` | Channel ID where game results are posted | `0` (disabled) |
+| `DATA_DIR` | Base directory for data storage | Current working directory |
+| `SESSION_SECRET` | Secret key for web session signing. Set this persistently or all sessions invalidate on restart. | Random (regenerated each restart if unset) |
 
 ### Optional — AI Features
 
 | Variable | Purpose |
 |:---|:---|
-| `GEMINI_API_KEY` | Google Gemini. Powers the Zombie survival AI story system. |
-| `GROQ_API_KEY` | Groq (Llama 3.1). Powers Tarot readings, roasts, and compliments. |
+| `GROQ_API_KEY` | Groq (Llama 3.1). Powers Tarot readings, roasts, compliments, and the Zombie survival AI story system. |
+| `GEMINI_API_KEY` | Google Gemini. Available as an additional AI provider. |
 
 ### Optional — Politics & War
 
 | Variable | Purpose |
 |:---|:---|
-| `PANDW_API_KEY` | PnW API v2 key. |
-| `PANDW_API_V3_KEY` | PnW API v3 key. Used for all GraphQL queries across PnW commands. |
-| `PANDW_BOT_KEY` | PnW bot key. |
+| `PANDW_API_KEY` | PnW API v2 key |
+| `PANDW_API_V3_KEY` | PnW API v3 GraphQL key. Used by all PnW commands and the Harvester. |
+| `PANDW_BOT_KEY` | PnW bot key |
 
 ### Optional — Other APIs
 
 | Variable | Purpose |
 |:---|:---|
-| `HORSCOPE_API` | Aztro API key for daily horoscopes in the Astrology system. |
-| `GIPHY_KEY` | Giphy API key for GIF responses in the roast/compliment system. |
-| `PIXABAY_KEY` | Pixabay API key for image responses in the roast/compliment system. |
+| `HORSCOPE_API` | RapidAPI key for horoscope fallback in the Astrology system |
+| `GIPHY_KEY` | Giphy API key for GIF responses in roast/compliment |
+| `PIXABAY_KEY` | Pixabay API key for image responses in roast/compliment |
 
 ### Optional — Web & Cloudflare
 
 | Variable | Purpose | Default |
 |:---|:---|:---|
-| `CUSTOM_DOMAIN` | The public-facing domain for the web interface. | `https://reaper.qzz.io` |
-| `USE_CLOUDFLARE_TUNNEL` | Set to `true` to automatically start the Cloudflare tunnel on bot startup. | `false` |
-| `CF_ACCOUNT_ID` | Cloudflare account ID. Required for cache purge operations. | — |
-| `CF_TUNNEL_ID` | Cloudflare tunnel ID for named tunnel routing. | — |
-| `CF_API_TOKEN` | Cloudflare API token. Used to purge the CDN cache programmatically. | — |
-| `CF_TUNNEL_TOKEN` | Cloudflare tunnel authentication token. | — |
-| `CF_CREDENTIALS_FILE` | Path to the Cloudflare tunnel credentials JSON file. | — |
+| `CUSTOM_DOMAIN` | Public-facing domain for the web interface | `https://reaper.qzz.io` |
+| `USE_CLOUDFLARE_TUNNEL` | Set to `true` to auto-start Cloudflare tunnel on bot startup | `false` |
+| `CF_ACCOUNT_ID` | Cloudflare account ID (required for CDN cache purging) | — |
+| `CF_TUNNEL_ID` | Cloudflare tunnel ID | — |
+| `CF_API_TOKEN` | Cloudflare API token | — |
+| `CF_TUNNEL_TOKEN` | Cloudflare tunnel auth token | — |
+| `CF_CREDENTIALS_FILE` | Path to Cloudflare tunnel credentials JSON | — |
 
 ---
 
@@ -108,17 +108,10 @@ All secrets stay local to your machine. Nothing is transmitted externally except
 
 ### Prerequisites
 
-- **Python 3.12** — The bot is designed for Python 3.12. Other versions may work but are not tested.
-- **Node.js and npm** — Required for web frontend dependencies.
-- **Windows** — The bot is primarily designed for Windows (uses Windows-specific paths). Linux support may work with path adjustments.
-
-### Automatic Setup
-
-On first run, the bot automatically checks for its Python virtual environment and Node.js dependencies. If either is missing or incomplete, it installs them before proceeding — no manual setup steps required.
+- Python 3.12 (tested; other versions may work)
+- Node.js and npm (for web frontend dependencies: Bootstrap, Three.js, GSAP)
 
 ### Starting the Bot
-
-Starting the bot is a single command from the project root:
 
 ```bash
 python reaper.py
@@ -126,709 +119,533 @@ python reaper.py
 
 The startup sequence:
 
-1. **Dependency Check** — Verifies Python virtual environment exists and is valid. If not, creates it and installs all requirements from `requirements.txt`.
-2. **Node.js Check** — Verifies `node_modules` exists with required packages. If not, runs `npm install`.
-3. **Bot Initialization** — Creates Discord bot instance with proper intents.
-4. **Cog Loading** — Loads all command cogs in organized sets (Admin, Mythical, Fun, PnW, Management, Tickets).
-5. **Command Sync** — Syncs application commands with Discord.
-6. **Web Server Start** — Starts the embedded FastAPI web server on port 8080.
-7. **Cloudflare Tunnel** — If enabled, starts the Cloudflare tunnel for public access.
-8. **Background Tasks** — Starts periodic user sync and beige notification loops.
+1. **venv self-relaunch** — If not already running inside the project `.venv`, re-execs using the `.venv` Python so all packages are available.
+2. **Dependency check** — Verifies Python venv and Node.js `node_modules`. If missing or invalid, installs them automatically from `requirements.txt` and `package.json`.
+3. **Bot creation** — Creates `discord.py` bot with intents: `message_content`, `members`, `guilds`. Command prefix: `r.`
+4. **Cog loading** (`setup_hook`) — Loads all cog sets:
+   - Admin: `Systems.admin`, `Systems.info`
+   - Mythical: `Systems.Astrology.signs`, `Systems.Astrology.reading`
+   - Fun: `Systems.Fun.zombie`, `Systems.Fun.goodevil`, `Systems.Fun.fun_system`, `Systems.Fun.compete`, `Systems.Fun.troll`
+   - PnW: `Systems.PnW.pnwhopper` (which loads all EA/FA/IA/MA/Other sub-cogs internally)
+   - Tickets: `Systems.Tickets.tickets`
+   - Casino: `Systems.PnWCasino.casino_cog`
+5. **Background tasks start** — Beige notification loop and periodic user sync launch as asyncio tasks.
+6. **Discord connection** — Bot connects to Discord gateway.
+7. **Command sync** (`on_ready`) — Syncs application command tree with Discord.
+8. **Web server start** (`on_ready`) — Starts embedded FastAPI/Uvicorn server on port 8080. Waits up to 30 seconds for it to be ready.
+9. **Cloudflare tunnel** (`on_ready`) — If `USE_CLOUDFLARE_TUNNEL=true`, starts the Cloudflare tunnel and begins monitoring it.
 
-### Manual Installation (Optional)
+### Logs
 
-If you prefer to set up dependencies manually:
+- `reaper_startup.log` — Written during dependency check and initialization (overwritten each restart).
+- `reaper_bot.log` — Switches to this file once the bot is ready (overwritten each restart).
+
+### Manual Dependency Install
 
 ```bash
-# Create virtual environment
 python -m venv .venv
-
-# Activate virtual environment (Windows)
-.venv\Scripts\activate
-
-# Install Python dependencies
+.venv\Scripts\activate       # Windows
+# source .venv/bin/activate  # Linux/macOS
 pip install -r requirements.txt
-
-# Install Node.js dependencies
 npm install
 ```
 
-Then start the bot with `python reaper.py`.
+---
+
+## Architecture
+
+### PnW Data Pipeline
+
+Reaper reads PnW data from local SQLite databases maintained by the separate **PnWHarvester** process (`python harvester.py`). Reaper **never writes** to `GlobalNations.db`, `IRSWars.db`, `GlobalWars.db`, or the news databases — those are the harvester's domain.
+
+This separation means:
+- Bot commands respond immediately from local DB (no API latency)
+- Data stays current even when the bot is offline
+- API rate limits are managed centrally by the harvester
+
+### Web Server
+
+`Systems/Functions/web_server.py` — FastAPI application served by Uvicorn, running as a background asyncio task within the same process as the Discord bot. The web server:
+- Serves HTML/CSS/JS pages from `web/Pages/`, `web/css/`, `web/js/`
+- Serves static assets from `web/static/`
+- Exposes REST/WebSocket API endpoints for the browser UI
+- Shares the bot instance for Discord DMs and status info
+
+### Command Prefix
+
+The bot command prefix is `r.` (not `!`). Slash commands (`/`) are the primary interface.
 
 ---
 
-## Major Features
+## Cog Reference
+
+### Admin
+
+**File:** `Systems/admin.py` — loaded as `Systems.admin`
+
+Administrative commands gated by specific user IDs hardcoded in `config.py`.
+
+| Command | Description | Access |
+|:---|:---|:---|
+| `/shutdown` | Gracefully shut down the bot | `ARIES_USER_ID` only |
+| `/usage` | Paginated view of bot statistics: servers, users with data files, and installed users. Supports remove/leave actions. | `ADMIN_USER_ID` only |
+| `/servers` | Lists all servers the bot is currently in with member counts | `ADMIN_USER_ID` only |
 
 ---
 
-### Pets System
+### Info / Utility
 
-The Pets System is a full digital pet RPG with both Discord commands and a comprehensive browser-based interface. The web interface runs as a FastAPI web server embedded inside the bot, accessible at the configured domain (`https://reaper.qzz.io` by default) or locally at `http://localhost:8080`.
+**File:** `Systems/info.py` — loaded as `Systems.info`
 
-#### Web Interface
+General-purpose utility commands available to all users.
 
-**Authentication**
-
-Access to any personal pet data requires logging in with Discord OAuth2. The login flow redirects to Discord's official authorization page, requests only the `identify`, `email`, and `guilds` scopes, and stores the session server-side. Access tokens are automatically refreshed in the background — users are never interrupted mid-session by an expired token. Avatar and profile data sync to the local database on every login and on a 60-second refresh cycle. No passwords are stored; authentication is entirely delegated to Discord.
-
-**Dashboard**
-
-The main entry point is `web/dashboard.html` — a single-page application that loads all other pages dynamically without full page reloads. It displays the bot's avatar and name, provides sidebar navigation between all sections, and adapts to desktop and mobile screen sizes.
-
-**Pet Management**
-
-The core pet pages let users adopt, view, train, and manage their pet entirely through the browser:
-
-- **Adopt** (`what_are_pets.html`, `petconnector.html`) — New users are walked through the pet system and guided through choosing a species, category, element combination, and custom name. Adoption validates the name for safe characters and prevents duplicate pets per user.
-- **My Pet** (`mypet.html`) — Displays the pet's full stat sheet with computed values, XP bar, level, inventory, equipped items, and battle action labels. Users can rename their pet and set custom names for their three battle actions (Attack, Defense, Charge).
-- **Pet Roster** (`pets.html`) — A broader view of all pets registered in the system, used for game entry and social browsing.
-- **Ability Tree** — An interactive skill tree where users spend stat mastery points and unlock combat abilities for their pet.
-- **Bazaar** (`bazaar.html`) — An in-world marketplace for pet items and equipment.
-
-**Activities**
-
-Pets can be sent on activities directly from the web interface. Each activity has a short cooldown enforced server-side and persisted to the database so it survives bot restarts:
-
-- **Train** — Choose a stat (ATT, DEF, INT, DEX, HAP, ENE) and a difficulty. Success increases the stat; failure decreases it. Equipment multipliers scale the change.
-- **Mission** — Send the pet on a mission at Easy, Average, or Hard difficulty. Success awards XP and key loot scaled to the pet's level. Players can optionally gamble additional XP on the outcome.
-- **Play** — Send the pet to one of twelve locations (Camp, Beach, Forest, Mountain, Glacier, Pyramids, etc.). XP and key loot are influenced by the pet's elements and the location's special properties.
-- **Quest** — A multi-stage adventure with branching choices. Each stage presents a scenario and options; the outcome depends on the pet's stats and the player's decisions.
-
-**Casino**
-
-The casino is a fully multiplayer, room-based system. The lobby (`casino_lobby.html`) shows 12 live rooms with real-time state broadcast over WebSocket — players can see who is in each room, what game is running, and whether seats are available, all without refreshing.
-
-Games available:
-
-- **Slots** (`casino.html`) — Solo slot machine with multiple difficulty tiers and animated reels.
-- **Blackjack** (`blackjack.html`) — Up to 6 players at a table. Supports standard blackjack rules including double-down and split.
-- **Texas Hold'em** (`holdem.html`) — Up to 6 players with AI opponents filling empty seats. Full poker hand evaluation.
-- **Craps** (`craps.html`) — One active roller with observers who can place side-bets on the outcome. The roller can pass the dice to an observer.
-- **Pet Races** (`races.html`) — Up to 4 pets race simultaneously. Observers can bet on any racer before the race starts.
-- **Mini-Games** (`minigames.html`) — A collection of shorter head-to-head games.
-
-Observers in any room can watch live game state updates and, in supported games (Craps, Races), place side-bets on active players. Pending seat requests let observers queue to join at the start of the next round without interrupting an active game. All XP wagers are deducted immediately on placement and paid out (or forfeited) when the round resolves.
-
-**Other Pet Games and Features**
-
-- **Arena** (`arena.html`) — PvP and PvE combat using the full battle system with skills, abilities, and damage calculations.
-- **Colosseum** (`colosseum.html`) — Automated hourly tournament battles between registered pets. Results are tracked on a leaderboard.
-- **Dungeon** (`dungeon.html`) — A crawl-style dungeon with procedurally generated encounters.
-- **Survivor Series** (`survive.html`) — A battle royale format where multiple pets compete across elimination rounds on a procedural map.
-- **Tasks** (`tasks.html`) — A daily and weekly task system. Each pet owner has a set of active tasks that refresh on a schedule. Completing tasks (training, missions, playing, renaming) earns bonus rewards.
-- **Pet Stock Market** (`pet_stock.html`) — A simulated resource stock market tied to pet economy events. Prices update on an hourly loop.
-- **Powerball** (`powerball.html`) — A lottery system where players buy tickets with XP for a chance at a large jackpot.
-- **Wheel of Pets** (`wheel.html`) — A spin-the-wheel game with variable XP prizes.
-- **Scratch Cards** (`scratch.html`) — Instant-win scratch card games.
-- **Keno** (`keno.html`) — A number-pick lottery game.
-- **Leaderboard** (`leaderboard.html`) — Global rankings across multiple categories (level, XP, battle wins, casino earnings, etc.).
-- **Game Info** (`game_info.html`) — A reference page showing current resource prices, color bonuses, and other live game data.
-- **Battle Config** (`battle_config.html`) — Lets users configure their pet's preferred battle settings and action priorities.
-
-**Library**
-
-The library (`library.html`) is an in-app documentation and guide system. It serves Markdown files from `web/Pages/Library/` as formatted articles covering game mechanics, strategy guides, and doctrine documents. Content is rendered client-side from the raw Markdown files served by the library API.
+| Command | Description |
+|:---|:---|
+| `/leadership` | Posts the Alliance Leadership embed to the current channel showing the ICS structure with role mentions |
+| `/webpage` | Sends the web interface URL as a masked link |
 
 ---
 
-### Politics & War System
+### EA — Economic Affairs
 
-The Politics & War System provides deep integration with the PnW game through both Discord commands and a browser-based analytics interface. The bot reads from local databases maintained by the separate PnWHarvester process, ensuring fast responses without excessive API calls.
+**File:** `Systems/PnW/pnwhopper.py` loads the following from `Systems/PnW/EA/`:
 
-#### Web Interface
+#### Colors (`colors.py`)
 
-The PnW web interface is accessible at the same domain as the Pets system. Most pages are publicly viewable without logging in; features that save personal data (such as beige alerts and resource price alerts) require Discord login.
+| Command | Description |
+|:---|:---|
+| `/turn_bonuses` | Shows turn bonuses for all 19 PnW color blocs, sorted highest to lowest with color emoji indicators |
+| `/game_info` | Shows current PnW game state: in-game date, top 20% city average, global radiation, per-continent radiation breakdown with attached pie chart |
 
-All data served by this system comes from two sources: the local `GlobalNations.db` and `IRSWars.db` databases maintained by the PnWHarvester, and the live PnW GraphQL API for data not yet in the local store. The local database is always queried first — API calls are only made when local data is insufficient or a live refresh is explicitly requested.
+#### Resource Stocks (`stocks.py`)
 
-**Watch Page** (`watch.html`)
+| Command | Description |
+|:---|:---|
+| `/stocks [graph_type]` | Current PnW market prices for all 12 resources with 2-hour price change indicators and a 30-day trend graph. `graph_type`: All Resources, Raw Resources, Manufactured Resources, Food, Credit |
+| `/history` | Opens a modal to select a custom date range and generates a historical price chart for that window |
 
-The Watch page is the primary war intelligence dashboard for Darkstar (alliance 10259). It reads directly from the local `IRSWars.db` — no API calls are made for this page. Users can select any date range within the available war history and the page calculates a full breakdown for every nation that fought in that window:
+#### Resource Stats (`resource.py`)
 
-- Gross cost (units lost, infrastructure destroyed, improvements lost, gasoline and munitions consumed)
-- Net damage dealt to opponents
-- Loot gained and lost, broken down by cash and each resource with monetary values at current market prices
-- Per-nation opponent breakdown showing exactly who fought whom and the cost/gain on each side
-- Alliance-wide totals row aggregating all nations
+| Command | Description |
+|:---|:---|
+| `/game_resources [start] [finish] [types]` | Plots historical resource and money holdings across the entire PnW game world over a selected time window. Time supports formats like `7d`, `2w`, `1m`, or `YYYY-MM-DD`. Types: All, Manufactured, Raws, Food, Money, or comma-separated individual resources. |
 
-War data is cached for 2 minutes per date range to avoid redundant recalculation on repeated requests. Revenue calculations are pre-warmed at each PnW turn boundary (every 2 hours) so the first request after a turn change is never slow.
+#### Revenue (`rev.py`)
 
-**Nations Page** (`nations.html`)
+| Command | Description |
+|:---|:---|
+| `/revenue <query_type> <query_value> [alliance_color] [tax_rate]` | Full per-turn and per-day revenue breakdown for a nation or alliance. Shows gross income, color bonus, military upkeep, improvement upkeep, power upkeep, resource upkeep, net cash per turn/day, per-resource production with monetary value, and total monetary net. For Darkstar nations reads from `GlobalNations.db`; other alliances fall back to the PnW API. Optional `tax_rate` override (0–100) and `alliance_color` for alliance tax calculations. |
 
-A searchable, filterable view of all nations tracked in `GlobalNations.db`. Supports searching by nation name, leader name, or alliance. Displays score, city count, military units, war policy, projects, and activity status. Data is read entirely from the local database — no API calls.
+#### Revenue Optimizer (`rev_optimizer.py`)
 
-**Revenue Page** (`revenue.html`)
+| Command | Description |
+|:---|:---|
+| `/rev_optimizer <query_type> <query_value> [tax_rate]` | Full economic optimization analysis for a nation or every nation in an alliance. Generates ranked improvement suggestions (civil, resource, rebuild), infrastructure targets with ROI gating, land suggestions, and project recommendations. Results sorted by daily monetary gain. |
 
-Calculates the full per-turn and per-day revenue for any nation or alliance. Uses the complete city-build engine accounting for improvements, projects, color bloc bonuses, radiation levels, seasonal modifiers, and current resource market prices. For Darkstar nations, data comes from `GlobalNations.db`; for other alliances, it falls back to the live PnW API.
+#### Resource Price Alerts (`rss_alerts.py`)
 
-**Revenue Optimizer** (`rev_optimizer.html`)
-
-Analyzes every city in a nation or every nation in an alliance and generates ranked improvement suggestions to maximize net income. For each city it shows current net revenue, the top improvement changes that would increase it, and the projected gain per suggestion. Project-level suggestions (national projects that affect revenue) are also included. Results are sorted by current monetary output descending so the highest-value nations appear first.
-
-**Cost Calculator** (`cost_calc.html`)
-
-An interactive calculator for estimating the cost of in-game purchases: infrastructure, land, new cities, and national projects. Uses live resource prices from the local database to give accurate monetary estimates at current market rates.
-
-**Comparison Page** (`comparison.html`)
-
-Side-by-side alliance comparison tool. Accepts one or more alliances on each side (by name, ID, or PnW link, comma-separated). Produces a detailed comparison covering:
-
-- Nation counts (total, active, applicants, vacation mode, grey, beige, inactive 7/14 days)
-- Score and city totals and averages
-- Full military breakdown: current units, maximum capacity, daily production, and gaps to max for soldiers, tanks, aircraft, and ships
-- Project counts across all 40+ national projects
-- Improvement totals across all improvement types
-- City count distribution
-
-For Darkstar, data is read from `GlobalNations.db`. For other alliances, the live PnW API is queried. An interactive HTML comparison report can also be generated and saved to `Systems/web/Comparisons/`.
-
-**Raids Page** (`raids.html`)
-
-A raid target finder that searches `GlobalNations.db` for nations within war range of a given attacker. Filters available: inactive only, militarily weak only, beige targets only, minimum projected loot, excluded alliances, and maximum active defensive wars. For each candidate it calculates a projected loot value using live holdings data from `holdings.db` (actual money and resources held, net of all spending and transfers) with a revenue-based fallback when holdings data is unavailable. Results are sorted by projected loot descending.
-
-The page also manages **beige alerts** — per-user notifications set when a target nation is on beige. Alerts are stored in `alerts.db` and the bot sends Discord DMs at two thresholds: ~2 hours before beige expires and ~15 minutes before. Alerts can be set, refreshed, and deleted from the web interface. Refreshing pulls live `beige_turns` from the PnW API and recalculates projected loot from current holdings.
-
-**Weapons Page** (`weapons.html`)
-
-Missile and nuclear weapon efficiency calculator with two modes:
-
-- **Theory mode** — Given any infrastructure level and population density, calculates minimum, maximum, and average damage and infrastructure value destroyed for both missiles and nukes. Shows cost-multiplier thresholds (the infrastructure level needed for a weapon to deal 1×, 2×, 5×, 10× its cost in damage) and a full damage chart across multipliers.
-- **Targeted mode** — Given a specific nation or alliance, scores every city by expected damage value, accounting for Iron Dome (30% missile block chance) and Vital Defense System (25% nuke block chance). Alliance mode ranks all nations by their best-city missile damage, making it easy to identify the highest-value targets.
-
-All calculations use live resource prices from the local database to keep weapon costs current.
-
-**News Page** (`news.html`)
-
-A global PnW event feed and leaderboard system backed by the news databases maintained by the PnWHarvester. Supports four time periods: current week, previous week, current month, previous month, and yearly archives. Features:
-
-- **Event feed** — Paginated list of war declarations, war endings, city builds, project purchases, alliance changes, and other game events. Filterable by event type, alliance, or nation. Nation and alliance IDs are resolved to real names from `GlobalNations.db`.
-- **Alliance leaderboard** — Ranked by wars declared, wars won, loot gained, nukes used, missiles used, cities built, projects bought, and total spending.
-- **Nation leaderboard** — Same metrics at the individual nation level, filterable by alliance.
-- **Summary cards** — High-level world totals for the selected period (total wars, total loot, total nukes, etc.).
-- **War cost drill-down** — Clicking a war event shows the full cost breakdown for both sides pulled from `IRSWars.db`.
-- **Live search** — Searches nations and alliances by name across `GlobalNations.db` for quick filtering.
-- **Resource prices** — Current sell prices shown alongside loot values so resource loot is displayed in monetary terms.
-
-**Resource Price Alerts** (`watch.html` / alerts panel)
-
-Users can set price threshold alerts for any of the 12 PnW resources (food, coal, oil, uranium, lead, iron, bauxite, gasoline, munitions, steel, aluminum, credit). Each alert specifies a resource, buy or sell price, direction (above or below), and threshold value. Alerts are stored in `alerts.db` and checked by the bot's timed query loop, which sends a Discord DM when a threshold is crossed. Alerts can be managed entirely from the web interface.
-
-#### Discord Commands
-
-The PnW Discord System is the collection of slash and hybrid commands that bring Politics & War intelligence directly into your Discord server. Commands are organized into five functional groups — Economic Affairs, Foreign Affairs, Internal Affairs, Military Affairs, and a miscellaneous group for fun PnW tools.
-
-All PnW commands read from the local `GlobalNations.db` and `IRSWars.db` databases first. Live API calls are only made when local data is insufficient or a real-time refresh is explicitly needed. This keeps commands fast and keeps your API key usage low.
-
-**EA — Economic Affairs**
-
-The Economic Affairs module provides Discord commands covering market intelligence, revenue analysis, economic optimization, and price alerting.
-
-- **`/turn_bonuses`** — Displays the current turn bonus for every color bloc in Politics & War, sorted from highest to lowest.
-- **`/game_info`** — Shows the current state of the PnW game world with in-game date, top 20% city average, global radiation level, and per-continent radiation breakdown with an attached pie chart.
-- **`/game_resources`** — Plots historical resource and money holdings across the entire game world over a selected time window with Matplotlib graphs.
-- **`/revenue`** — Calculates the full per-turn and per-day revenue breakdown for a nation or an entire alliance, including gross income, color bloc bonus, military upkeep, improvement upkeep, power upkeep, resource upkeep, net cash per turn/day, per-resource production with monetary value, and total monetary net.
-- **`/rev_optimizer`** — Runs a full economic optimization analysis on a nation or every nation in an alliance, generating ranked improvement suggestions to maximize net income.
-- **`/stocks`** — Displays current PnW market prices for all 12 resources with price change indicators and a 30-day price trend graph.
-- **`/history`** — Opens a modal dialog for selecting a custom date range and generates a historical price chart for that window.
-- **`/rss_alert_set`** — Sets a one-shot price alert for any of the 12 PnW resources.
-- **`/rss_alert_remove`** — Removes a specific active alert before it fires.
-- **`/rss_alert_list`** — Lists all your currently active resource price alerts.
-
-**FA — Foreign Affairs**
-
-The Foreign Affairs module provides Discord commands for visualizing and tracking diplomatic relationships between alliances in Politics & War.
-
-- **`/treaties`** — Displays the full treaty web for any alliance with both a rich Discord embed and a generated treaty web image showing treaty partners arranged in concentric rings by treaty strength. Includes a Refresh button and optional daily auto-update.
-- **`/treaty_universe`** (aliases: `/treaty_map`, `/universe`) — Generates an interactive treaty map centered on any alliance and returns a link to it.
-
-**IA — Internal Affairs**
-
-The Internal Affairs module provides Discord commands for monitoring alliance health, auditing member compliance, looking up nation details, calculating build costs, and delivering in-game guides.
-
-- **`/alliance`** — The main alliance overview command with five interactive views: Alliance Totals, Military, Improvements, Project Totals, and Refresh.
-- **`/audit`** — Audits an alliance for compliance issues with views for Inactives, Color distribution, and MMR Build compliance.
-- **`/show`** — Looks up any nation by name, leader name, nation ID, or PnW link and displays a comprehensive nation profile with all stats, projects, and achievement badges.
-- **`/costs`** — Calculates the cost of infrastructure, land, cities, and national projects for any nation, applying all relevant discounts.
-- **`/snipe_guide`** — Sends the complete 10-step beige sniping and raiding guide.
-- **`/snipe_setup`** — Sends only the setup portion of the snipe guide (steps 1–4).
-- **`/snipe_execute`** — Sends only the execution portion of the snipe guide (steps 5–10).
-- **`/war_guide`** — Sends a structured guide on PnW war mechanics with categories for Ground Supremacy, Air Supremacy, Naval Blockade/Supremacy, Missiles, Nukes, Fortification, Peace, and Key Strategy.
-
-**MA — Military Affairs**
-
-The Military Affairs module provides Discord commands for war intelligence, target finding, cost analysis, war performance tracking, and strategic planning.
-
-- **`/wars`** — Calculates the full cost breakdown for a war matchup between two sides with paginated views for Summary, Military, Destruction, and Loot.
-- **`/wars_cost_bd`** — Generates a full per-nation war cost breakdown for an alliance over a selected time window.
-- **`/wars_net_bd`** — Identical structure to `/wars_cost_bd` but calculates net damage rather than gross cost.
-- **`/war`** — Simulates a full war between two nations turn by turn with a paginated embed showing each turn's results.
-- **`/compare_wars`** — Head-to-head war performance comparison between two Darkstar member nations over a selectable time range.
-- **`/rankings`** — Shows the top 25 Darkstar nations ranked by a selected war statistic over a chosen time range.
-- **`/raids`** — Finds raid targets within war range of a given nation with filters for inactive, weak military, minimum loot, beige status, excluded alliances, and maximum defensive wars.
-- **`/destroy`** — Finds optimal attacker groups from one or more alliances to coordinate a strike on a target nation.
-- **`/offshore`** — Scans an alliance's member bank records for external fund transfers that may indicate offshore banking activity.
-- **`/units`** — Interactive military unit cost calculator with a Recalculate button for live calculations.
-- **`/weapon_eff`** — Weapon efficiency analysis for missiles and nukes with theory mode and targeted mode.
-
-**Other — Fun PnW Stuff**
-
-A collection of miscellaneous Politics & War commands that don't fit neatly into the other categories.
-
-- **`/baseball`** — Looks up the baseball team for any nation with full team stats and a star rating.
-- **Loot Intelligence (message listener)** — Automatically parses spy reports and loot messages when the bot is mentioned, calculating projected loot or actual loot values.
-- **`/activity`** — Displays Politics & War world activity statistics over a configurable time range with a line chart.
-- **`/theme emoji set/remove/list/reload`** — Personal customisation system for how nations and alliances appear in autocomplete dropdowns throughout the bot.
+| Command | Description |
+|:---|:---|
+| `/rss_alert_set <resource> <price_type> <direction> <threshold>` | Set a one-shot price alert for any of the 12 PnW resources. `price_type`: Buy or Sell. `direction`: At/Above (≥) or At/Below (≤). Fires once then is deleted. Sends a Discord DM when triggered. |
+| `/rss_alert_remove <resource> <price_type> <direction>` | Remove a specific active alert before it fires |
+| `/rss_alert_list` | List all your currently active resource price alerts (ephemeral) |
 
 ---
 
-### Tickets System
+### FA — Foreign Affairs
 
-The Tickets System manages membership applications and embassy requests for the Darkstar Discord server. It is purpose-built for the alliance's onboarding workflow and integrates directly with the PnW API and the bot's existing nation/alliance lookup tools.
+**File:** `Systems/PnW/pnwhopper.py` loads the following from `Systems/PnW/FA/`:
 
-All ticket state is persisted to `Databases/Tickets.db` so tickets survive bot restarts. The interactive buttons in the info channel are registered as persistent views and are restored automatically when the bot starts.
+#### Treaties (`treaties.py`)
 
-**How it works**
+| Command | Description |
+|:---|:---|
+| `/treaties <alliance>` | Full treaty web for any alliance: rich Discord embed showing treaty partners with a generated treaty web image (concentric rings by treaty strength). Includes a Refresh button. |
 
-A welcome embed is posted in the designated info channel using `/info`. The embed contains two buttons — **Membership** and **Embassy** — that any server member can click at any time.
+#### Universe (`universe.py`)
 
-Clicking **Membership** opens a modal asking for a nation name or ID. The bot looks up the nation from the PnW API, creates a private ticket channel named `c{cities}-{nation-name}` (e.g. `c15-reaperland`), and immediately posts the full `/show` nation profile inside it. Only the applicant, the bot, and configured staff roles can see the channel.
-
-Clicking **Embassy** opens a modal asking for an alliance name or ID. The bot looks up the alliance, creates a private ticket channel named after the alliance, and immediately posts the full `/alliance` overview inside it. The channel color matches the alliance's PnW color.
-
-**Staff commands**
-
-- **`/verify accept`** — Run inside a ticket channel to accept the application. For membership tickets: assigns the Member role and moves the channel to the accepted members category. For embassy tickets: creates or finds a Discord role named after the alliance, assigns that role plus the Diplomat role, and moves the channel to the accepted embassies category.
-- **`/verify reject`** — Run inside a ticket channel to reject the application. Notifies the applicant, marks the ticket as rejected, waits 5 seconds, then deletes the channel and removes the record.
-- **`/delete_ticket`** — Deletes any ticket by name with autocomplete. Deletes the Discord channel if it still exists and removes the database record.
-- **`/resort_members`** — Re-queries the PnW API for every open membership ticket and renames the channels to reflect the applicant's current city count and nation name.
-
-**Ticket role management**
-
-- **`/ticket_role add <role> [label]`** — Adds a Discord role to the ticket roles list. Every new ticket channel created after this point will automatically grant that role read/write access.
-- **`/ticket_role remove <role>`** — Removes a role from the list.
-- **`/ticket_role list`** — Shows all configured ticket roles with their friendly labels.
-
-**Welcome message**
-
-When a new member joins the server, the bot automatically sends a welcome embed in the info channel. The embed mentions the new member, links to the ticket channel and bot spam channel, links to the website, and includes the alliance's standing rule about the perimeter.
+| Command | Description |
+|:---|:---|
+| `/treaty_universe <alliance>` (aliases: `/treaty_map`, `/universe`) | Generates a link to the interactive Treaty Universe web page centered on the specified alliance |
 
 ---
 
-### Translator System
+### IA — Internal Affairs
 
-The Translator System provides on-demand message translation directly inside Discord channels without requiring any external accounts, API keys, or configuration. It works in two ways — flag emoji reactions and a right-click context menu.
+**File:** `Systems/PnW/pnwhopper.py` loads the following from `Systems/PnW/IA/`:
 
-**Flag emoji reactions**
+#### Alliance (`alliance.py`)
 
-Any user can react to any message with a country flag emoji to request a translation of that message into the corresponding language. The bot watches for flag reactions across all channels it can see. When a supported flag is added, the bot:
+| Command | Description |
+|:---|:---|
+| `/alliance <alliance>` | Main alliance overview with five interactive views navigable via buttons: **Alliance Totals** (nation counts, score, cities, military), **Military** (units, max capacity, gaps, daily production), **Improvements** (totals per improvement type), **Project Totals** (all 40+ projects), and **Refresh**. For Darkstar reads from `GlobalNations.db`; others use PnW API. |
 
-1. Fetches the message content
-2. Sends it to Google Translate with auto-detection for the source language
-3. Posts a short prompt in the channel — "Translation ready for 🇫🇷! (Click below to see it)" — with a **Show Translation** button
-4. The prompt auto-deletes after 60 seconds
+#### Costs (`costs.py`)
 
-The **Show Translation** button is user-locked — only the person who reacted can click it. When clicked, the translation appears as an ephemeral message (visible only to that user) showing the translated text, the source channel name, and a preview of the original message.
+| Command | Description |
+|:---|:---|
+| `/costs <nation> [infrastructure] [land] [cities] [project]` | Calculates the exact cost of infrastructure, land, new cities, and national projects for any nation, applying all relevant discounts (Center for Civil Engineering, Advanced Engineering Corps, Arable Land Agency, Urban Planning, etc.). Uses live market prices. |
 
-A debounce lock prevents the same user from triggering duplicate translations for the same message and emoji within a 2-second window.
+#### Show (`show.py`)
 
-**Supported languages (63 total)**
+| Command | Description |
+|:---|:---|
+| `/show <query>` | Comprehensive nation profile: identity, alliance, military units, war policy, all projects, improvement totals, score, cities, color, beige/vacation status, activity, and achievement badges. Accepts nation name, leader name, nation ID, or PnW URL. |
 
-The flag-to-language mapping covers the major world languages including English, Spanish, French, German, Italian, Portuguese, Russian, Dutch, Polish, Ukrainian, Greek, Turkish, Czech, Hungarian, Romanian, Bulgarian, Swedish, Norwegian, Danish, Finnish, Icelandic, Estonian, Latvian, Lithuanian, Slovak, Slovenian, Croatian, Serbian, Albanian, Maltese, Chinese (Simplified and Traditional), Japanese, Korean, Hindi, Indonesian, Malay, Vietnamese, Thai, Tagalog, Hebrew, Arabic, Persian, Urdu, Bengali, Kazakh, Uzbek, Armenian, Georgian, Azerbaijani, Mongolian, Afrikaans, Amharic, Somali, Wolof, Swahili, Igbo, and Esperanto.
+#### Audit (`audit.py`)
 
-**Right-click context menu**
+| Command | Description |
+|:---|:---|
+| `/audit <alliance>` | Audits an alliance for compliance issues with views for: **Inactives** (7+ day inactive nations), **Color** (color distribution), and **MMR Build** (Minimum Military Requirement build compliance per city count tier). |
 
-A **Translate** option appears in the right-click (or long-press) Apps menu on any message. Selecting it translates the message to English and shows the result as an ephemeral reply — only visible to the user who triggered it.
+#### Guide (`guide.py`)
 
-**Privacy and safety**
-
-All translations are delivered ephemerally where possible — either via the button interaction (visible only to the requester) or via the context menu (also ephemeral). The channel prompt that appears when a flag reaction is used contains no translated text itself, only a button, and auto-deletes after 60 seconds. No message content is stored by the bot; it is passed directly to Google Translate and the result is returned immediately.
-
----
-
-### Astrology System
-
-The Astrology System provides two Discord commands covering tarot card readings and a triple-zodiac personality profile system. Both are slash/hybrid commands.
-
-**`/tarot`**
-
-Performs a professional tarot card reading with three spread options:
-
-- **1 Card** — A single card draw with a direct message from the universe
-- **3 Card (Past/Present/Future)** — Three cards covering the foundation of a situation, where you currently stand, and the path ahead
-- **5 Card (Traditional)** — Five cards covering the core theme, the obstacle, the advice, a hidden influence, and the likely outcome
-
-For each spread, the bot randomly draws unique cards from the full 78-card tarot deck. Each card is randomly assigned an orientation — upright or reversed — which determines whether its light or shadow meanings apply. Major Arcana cards are visually distinguished from Minor Arcana.
-
-The card images are loaded from the local `Systems/Astrology/Tarot/cards/` directory, resized to a consistent size, rotated 180° if reversed, and stitched side-by-side into a single composite PNG image that is attached to the response.
-
-For multi-card spreads, the bot also calculates a **dominant energy** based on which suit appears most frequently — Fire (Wands), Water (Cups), Air (Swords), Earth (Pentacles), or Major Arcana — and displays a thematic atmosphere line if one suit dominates.
-
-An **AI-powered summary** is generated using the Groq API (Llama 3.1). The prompt is tailored to the spread type: a single profound message for 1-card draws, a cohesive narrative connecting past/present/future for 3-card draws, and a comprehensive interpretation covering all five positions for the traditional spread. If the Groq API is unavailable, the reading still works — the AI summary field shows a fallback message and all card details remain fully visible.
-
-The result is a paginated embed with two views navigable via buttons:
-
-- **Cards** — Shows the stitched card image, the dominant energy (if applicable), and a per-card breakdown with position name, transition phrase, card name and orientation, top three meanings, and a fortune-telling line
-- **Summary** — Shows only the AI-generated narrative interpretation, with the image removed for a cleaner read
-
-**`/zodiac`**
-
-Generates a triple-zodiac personality profile from a birthday. Accepts a date and produces a three-page interactive embed navigable via buttons:
-
-- **Western** (♈ button) — The standard sun sign based on month and day. Shows the sign's element, modality, ruling planet, astrological house, associated tarot card, traits, lucky numbers, lucky colors, gemstones, compatibility signs, and a full description. The date range for the sign is displayed and a countdown to the user's next birthday is shown in the footer.
-- **Eastern** (🐉 button) — The Chinese zodiac animal based on the birth year, with proper Chinese New Year boundary handling. The bot uses a lookup table of exact Chinese New Year dates from 1900 to 2027 to correctly assign the animal. Shows the animal's polarity (Yin/Yang), fixed element, trine group, lucky hours, lucky numbers, lucky colors, lucky flowers, traits, and compatibility/incompatibility pairings.
-- **Spirit Animal** (🌀 button) — The Primal Astrology spirit animal, which is the unique combination of Western sun sign and Chinese zodiac animal. Each of the 144 possible combinations maps to a distinct spirit animal with its own description and characteristics.
-
-The Western page also includes a **daily horoscope** fetched from the Aztro API, showing the day's description, mood, lucky color, lucky number, lucky time, and compatibility sign. If the Aztro API is unavailable and a `HORSCOPE_API` key is configured, a RapidAPI fallback is tried. If both are unavailable, a locally generated horoscope is produced from sign-specific templates so the command always returns something useful.
-
-All zodiac data (Western signs, Chinese animals, and Primal combinations) is loaded from local JSON files in `Systems/Astrology/Zodiac/` and cached in memory after the first read. No user data is stored beyond the duration of the command interaction.
+| Command | Description |
+|:---|:---|
+| `/snipe_guide` | Sends the complete 10-step beige sniping and raiding guide |
+| `/snipe_setup` | Sends only the setup portion of the snipe guide (steps 1–4) |
+| `/snipe_execute` | Sends only the execution portion of the snipe guide (steps 5–10) |
+| `/war_guide` | Sends a structured guide on PnW war mechanics covering Ground Supremacy, Air Superiority, Naval Blockade/Supremacy, Missiles, Nukes, Fortification, Peace, and Key Strategy |
 
 ---
 
-### Fun System
+### MA — Military Affairs
 
-The Fun System is a collection of interactive games and entertainment commands. All are slash/hybrid commands.
+**File:** `Systems/PnW/pnwhopper.py` loads the following from `Systems/PnW/MA/`:
 
-**`/rps`**
+#### Wars (`wars.py`)
 
-Rock Paper Scissors with three themes and an optional AI opponent.
+| Command | Description |
+|:---|:---|
+| `/wars <attacker_alliances> <defender_alliances> [start_date] [end_date]` | Full cost breakdown for a war matchup between two sides. Paginated views: **Summary** (totals), **Military** (unit losses), **Destruction** (infra/improvements), **Loot** (loot gained/lost). |
 
-- **Traditional** — Rock, Paper, Scissors
-- **Fantasy** — Knights, Archer, Necromancer
-- **War** — Tank, Jet, Ship
+#### War Costs BD (`war_costs_bd.py`)
 
-Accepts an optional rival mention, a round count (1, 3, or 5), and a theme. If no rival is mentioned, a **Join Game** button appears so anyone can join. Setting `ai_opponent: True` plays against the bot instead. The AI opponent uses `ai_brain.py` to track the player's move history and make informed counter-choices rather than picking randomly.
+| Command | Description |
+|:---|:---|
+| `/wars_cost_bd <alliance> [start_date] [end_date]` | Per-nation war cost breakdown for an alliance over a selected time window. Shows unit cost, infra cost, bomb cost, consumption, and gross cost per nation. |
 
-**`/dice`**
+#### War Net BD (`war_net_bd.py`)
 
-Rolls 1–5 dice. Supports D6 (with color options: Red, Orange, Blue, Yellow, Pink, Green, Purple) and D20. Each result is displayed using the corresponding custom server emoji. D20 results use a dedicated emoji for each face value 1–20.
+| Command | Description |
+|:---|:---|
+| `/wars_net_bd <alliance> [start_date] [end_date]` | Identical structure to `/wars_cost_bd` but calculates net damage (damage dealt minus cost) per nation over the time window. |
 
-**`/card`**
+#### War Simulation (`war_sim.py`)
 
-Draws 1–5 random playing cards from a full 54-card deck (52 standard + 2 jokers). Each card is displayed using its custom server emoji (Hearts, Diamonds, Clubs, Spades, and Jokers categories).
+| Command | Description |
+|:---|:---|
+| `/war <attacker> <defender> <war_type>` | Simulates a full turn-by-turn war between two nations using full game mechanics (MAPs, resistance, ground control, air superiority, naval blockade, unit purchases). Paginated embed with a summary page and one page per turn. `war_type`: Ordinary, Attrition, Raid. |
 
-**`/range`**
+#### Compare Wars (`compare_wars.py`)
 
-Sniper training reaction game. Available round counts: 5, 15, 25, 50, or 100.
+| Command | Description |
+|:---|:---|
+| `/compare_wars <nation1> <nation2> [time]` | Head-to-head war performance comparison between two Darkstar member nations. Three-page paginated embed: Summary (cost, damage, net, loot, verdict), Nation 1 Breakdown, Nation 2 Breakdown. `time`: 1d, 3d, 1w, 2w, 1m, 3m, 6m, 1y, All Time. |
 
-After a 5-second setup message and a 3-second countdown, the bot presents one round at a time. Each round shows 5 buttons — one is the target (🎯 Hit emoji), the rest are misses (🔴 Miss emoji). The player has 1.2 seconds to click the correct button. Clicking the wrong button or timing out counts as a miss.
+#### Rankings (`rankings.py`)
 
-After all rounds, the bot calculates accuracy and assigns a rank from **Blindfolded Intern** (below 20%) up through **Deliverer of Death** (100%). Results show hits/total, accuracy percentage, a visual accuracy bar, and the personal best for that round count. Stats are persisted to the user's data profile across sessions.
+| Command | Description |
+|:---|:---|
+| `/rankings <ranking_type> [time]` | Top 25 Darkstar nations ranked by a selected war statistic. Types: War Cost, War Net, Damages, Bomb Cost, Loot, Soldiers Lost/Killed, Tanks Lost/Killed, Aircraft Lost/Killed, Ships Lost/Killed, Peace, Wins, Losses. `time`: 1d, 3d, 1w, 2w, 1m, 3m, 6m, 1y, All Time, or custom (e.g. `2d`, `1w`). |
 
-**`/tictactoe`**
+#### Raids (`raids.py`)
 
-Tic Tac Toe with optional NPC opponent and three difficulty levels.
+| Command | Description |
+|:---|:---|
+| `/raids [nation] [active] [weak] [min_loot] [beige] [targets] [display] [exclude_alliances] [active_wars]` | Raid target finder. Searches `GlobalNations.db` for nations within war range. Filters: inactive-only, weak military, minimum loot, beige targets, excluded alliances (comma-separated with autocomplete), and max active defensive wars (0, 1, or 2). Projected loot uses live holdings data from `HoldingsDB`. Results sorted by projected loot descending. `display`: Message or PDF report. |
 
-- **Novice** — The bot picks randomly
-- **Competent** — The bot checks for winning/blocking moves before falling back to random
-- **Expert** — The bot uses the minimax algorithm and plays optimally
+#### Destroy (`destroy.py`)
 
-The creator picks their emoji via a modal. A second player joins via a Join Game button and also picks their emoji. The board is displayed as a 3×3 grid of buttons. Supports multi-round series (best of 1, 3, or 5). The series score is shown in the embed title throughout.
+| Command | Description |
+|:---|:---|
+| `/destroy <target> <attacker_alliances>` | Finds optimal attacker groups from one or more alliances to coordinate a strike on a target nation. Scores potential attackers by war range and military strength. |
 
-**`/roast`**
+#### Finder (`finder.py`)
 
-AI-generated roast targeting a mentioned user (or yourself if no target is given). Seven intensity levels: Mild, Simple, Standard, Spicy, Wild, NSFW, and Explicit. Each level has a distinct system prompt that controls tone, language, and content.
+| Command | Description |
+|:---|:---|
+| `/treasures [sort] [active] [score]` | Find all available treasures in the game with sorting (spawn date, bonus, activity) and optional filtering by inactivity threshold and war range score. Paginated. |
+| `/treasure_trades [score] [canceled] [limit]` | Find recent treasure trades. `canceled`: On (show only declined/canceled trades) or Off (all trades). Optional war range filter via `score`. |
+| `/bounty [bounty_type] [price] [active] [sort] [score]` | Find active bounties. `bounty_type`: Any, Ordinary, Attrition, Raid, Nuclear. `price`: >$1M through >$50M. `active`: 7/14/28+ days inactive. `sort`: price or activity. Optional war range filter via `score`. |
 
-The bot attempts to fetch the target's Discord bio to personalise the roast. The content is generated via the Groq API (Llama 3.1) with a 2–3 sentence limit. If the API is unavailable, a theme-appropriate fallback line is used. The intensity level emoji is shown alongside the result.
+#### Offshore (`offshore.py`)
 
-**`/compliment`**
+| Command | Description |
+|:---|:---|
+| `/offshore <alliance> [time]` | Scans `bankrecs.db` for alliance members receiving funds from external sources (outside their own alliance bank). Excludes war bank loot (cross-referenced against `IRSWars.db`). Shows per-member net balance, top suspected source alliances, and a resource breakdown. `time`: e.g. `7d`, `2w` (max 14 days). |
 
-Identical structure to `/roast` but generates praise instead of insults. Same seven intensity levels, same bio personalisation, same Groq API with fallback. The compliment is tailored to highlight positive traits at the appropriate intensity.
+#### Units (`units.py`)
 
-**`/random`**
+| Command | Description |
+|:---|:---|
+| `/units` | Interactive military unit cost calculator with live resource prices and a Recalculate button |
 
-Fetches and posts a random image or GIF. Two types:
+#### Weapon Efficiency (`weapon_eff.py`)
 
-- **JPG** — Fetches a random photo from Pixabay (requires `PIXABAY_KEY`). Picks a random page offset each call for genuine variety.
-- **GIF** — Fetches a random GIF from Giphy (requires `GIPHY_KEY`). Uses the Giphy random endpoint with a general rating.
+| Command | Description |
+|:---|:---|
+| `/weapon_eff` | Missile and nuclear weapon efficiency calculator. **Theory mode**: given infrastructure level and population density, shows min/max/avg damage, cost-multiplier thresholds, and a damage chart. **Targeted mode**: given a specific nation or alliance, scores every city by expected damage value accounting for Iron Dome (30% block) and Vital Defense System (25% block). |
 
-The image is downloaded server-side and posted as a Discord file attachment rather than a URL embed, so it displays inline regardless of link preview settings.
+#### Spy (`spy.py`)
 
-**`/walktru`**
-
-A text-based adventure game with six distinct storylines, each with its own mechanic that changes based on your choices:
-
-- **Horror Sanitarium** — Manage Fear (0–100); too much fear ends the run
-- **1920s Gangster** — Manage Heat (0–100); too much police attention ends the run
-- **Knight's Quest** — Manage Honor (0–150); starts at 100, moral choices raise or lower it
-- **Robot Factory Escape** — Manage Power (0–100); reach 100% by stage 10 to build your body
-- **Western Frontier** — Manage Health (0–100); starts at 100, injuries reduce it
-- **Wizard's Apprentice** — Manage Mana (0–150); starts at 100, spells consume it
-
-A dropdown menu lets you select the adventure. Each stage presents a scenario with numbered choice buttons. Choices have a success chance — the outcome (success or failure) is rolled randomly against that chance. The mechanic value changes based on the outcome, clamped within the adventure's bounds. A visual progress bar with warning messages shows the current mechanic status. The adventure ends when the mechanic hits a critical threshold or the story reaches its conclusion.
-
-**`/zombie_survival`**
-
-An ongoing, AI-driven zombie survival simulation that runs continuously in a channel. Multiple players can join and their fates are shared.
-
-Each round the Groq AI (Llama 3.1) generates a new story event with exactly 4 choices, each assigned a base success probability (meaningfully different from each other — a suicidal charge might be 10–20%, a cautious retreat 60–80%). Players vote by clicking A/B/C/D buttons. The round resolves automatically every 2 hours.
-
-The winning choice is determined by majority vote (ties broken randomly). The final success chance is the base odds plus a vote multiplier (2–5% per voter on the winning choice) plus a random luck factor (±15%). More votes on a choice genuinely improves its odds.
-
-On success, survivors gain small amounts of HP, stamina, morale, and ammo. On failure, stats are penalised. Attack choices consume ammo (rifle preferred, then revolver, with auto-reload from spare). Supply/scavenge choices gain ammo. If a survivor's health reaches 0 they are marked Deceased. If all survivors die, the game ends with a game-over embed and the state is fully wiped.
-
-The round embed shows the current story event, a live countdown to the next resolution using Discord's native timestamp format, the 4 choices, survivor mentions (deceased shown with strikethrough), and the previous round's outcome.
-
-**`/zombie_character`**
-
-Shows your personal survivor card for the active zombie game: health, stamina, morale, revolver ammo (loaded/spare), rifle ammo (loaded/spare), and your randomly assigned melee weapon. Ephemeral — only visible to you.
+| Command | Description |
+|:---|:---|
+| `/spy_chance <attacker> <defender> <espionage_type> [desired_outcome]` | Calculates espionage operation odds and optimal spy allocation. `espionage_type`: Gather Intelligence, Assassinate Spies, Terrorize Civilians, Sabotage Soldiers/Tanks/Aircraft/Ships/Missiles/Nukes. `desired_outcome`: Least Cost & Best Odds (target 99%) or Most Destruction (target 95%, with potential damage simulation). Shows spy counts, war policies, satellite projects, and per-safety-level odds. |
 
 ---
 
-### Admin and Utilities
+### Other — PnW Miscellaneous
 
-The Admin and Utilities module provides core bot management commands and shared utility functions used across all systems.
+**File:** `Systems/PnW/pnwhopper.py` loads the following from `Systems/PnW/Other/`:
 
-**Admin Commands**
+#### Baseball (`baseball.py`)
 
-- **`/shutdown`** — Securely shuts down the bot. Can only be used by the bot owner (ARIES_USER_ID).
-- **`/usage`** — Shows bot usage statistics and allows for server/user management. Can only be used by the admin user (ADMIN_USER_ID). Provides a paginated view with servers, users with data, and installed users.
-- **`/servers`** — Lists all servers the bot is currently in with member counts. Can only be used by the admin user.
+| Command | Description |
+|:---|:---|
+| `/baseball <nation>` | Looks up the baseball team for any nation with full team stats and a star rating |
 
-**Info Command**
+#### Loot (`loot.py`)
 
-- **`/info`** — Posts the welcome embed in the designated info channel with Membership and Embassy buttons for ticket creation.
+**Message listener (no slash command)** — Automatically parses messages when the bot is @mentioned:
 
-**Background Tasks**
+- If the message contains intelligence report text (`gathered intelligence`, `spies discovered`): calculates projected loot under 6 different policy combinations (Pirate, APE, Moneybags permutations) and posts an embed.
+- If the message contains actual loot text (`looted` + `defeated`/`crushed`/`surrender`): calculates the monetary value of all looted resources at current market prices and posts a loot summary embed.
 
-The bot runs several background tasks:
+Both use cached resource prices from `reaper.db` — no API call.
 
-- **Periodic User Sync** — Every 5 minutes, syncs Discord user data for users with stale data (last updated more than 1 day ago). This keeps avatars and profile information current.
-- **Beige Notification Loop** — Every 2 minutes, checks all beige alerts in `alerts.db` and sends Discord DMs at two thresholds: ~2 hours before beige expires and ~15 minutes before. Also drains the early-exit queue written by the harvester when it detects a nation left beige early.
+#### Activity (`activity.py`)
 
-**Shared Utilities**
+| Command | Description |
+|:---|:---|
+| `/activity [type] [time]` | PnW world activity statistics with a Matplotlib line chart. `type`: All, New, 1 Day, 2 Days, 3 Days, 1 Week, 1 Month. `time`: supports formats like `30d`, `4w`, `1m`. Fetches data from the PnW API. |
 
-The `Systems/Functions/` directory contains shared utility modules used across all systems:
+#### Theme (`theme.py`)
 
-- **config.py** — Loads all environment variables from `.env` and provides them as module-level constants.
-- **database_manager.py** — Manages database connections and provides helper functions for database operations.
-- **user_data_manager.py** — Manages user data profiles and syncs Discord user information.
-- **discord_user_sync.py** — Syncs Discord user data (avatar, username, etc.) for multiple users.
-- **emoji.py** — Provides emoji utilities and custom emoji mappings.
-- **utils.py** — General utility functions including Cloudflare tunnel management, web URL generation, and service port cleanup.
-- **beige_alerts_db.py** — Manages beige alert records in `alerts.db` with functions for creating, updating, deleting, and querying alerts.
-- **db_paths.py** — Centralized database path definitions for all database files.
-- **graph_utils.py** — Utilities for generating graphs and charts using Matplotlib and Plotly.
-- **autocomplete_utils.py** — Utilities for Discord autocomplete dropdowns.
-- **cooldown_db.py** — Manages command cooldowns in a database.
-- **nation_emoji_store.py** — Stores custom emoji assignments for nations and alliances used in autocomplete.
-- **pets_db.py** — Database manager for the pets system.
-- **tasks_db.py** — Database manager for the daily/weekly task system.
-- **ss_db.py** — Database manager for the Survivor Series game.
-- **pet_stock_engine.py** — Engine for the pet stock market simulation.
-- **pet_stock_events.py** — Event system for pet stock market events.
-- **local_ai.py** — Local AI utilities for fallback when external AI APIs are unavailable.
-- **ai_brain.py** — AI opponent logic for games like RPS.
-- **ai_gambling.py** — AI utilities for casino games.
-- **optimal_file_manager.py** — Manages optimal file storage and retrieval.
-- **cloudflare_cache.py** — Manages Cloudflare CDN cache purging.
-- **discord_utils.py** — Discord-specific utility functions.
-- **last_seen.py** — Saves the last seen timestamp when the bot disconnects.
-- **irs_nations_db.py** — Backward-compatibility alias for GlobalNationsDB.
-- **irs_nations_manager.py** — Utility for syncing nation data from the PnW API.
-- **irs_wars_db.py** — Database manager for war data.
-- **irs_wars_manager.py** — Utility for syncing war data from the PnW API.
-- **web_server.py** — FastAPI web server implementation with all API endpoints and static file serving.
+| Command | Description |
+|:---|:---|
+| `/theme emoji set <type> <name> <emoji>` | Assign a custom emoji to a nation or alliance for autocomplete dropdown display. `type`: nation or alliance. Persisted to `Systems/Data/nation_emojis.json` and `alliance_emojis.json`. |
+| `/theme emoji remove <type> <name>` | Revert a nation or alliance to its default emoji |
+| `/theme emoji list` | Show all custom nation and alliance emoji assignments (ephemeral, paginated) |
+| `/theme emoji reload` | Reload emoji stores from disk |
+
+---
+
+### Tickets
+
+**File:** `Systems/Tickets/tickets.py` — loaded as `Systems.Tickets.tickets`
+
+Purpose-built membership and embassy ticket system for the Darkstar Discord server.
+
+**How it works:**
+
+1. `/info` posts a welcome embed in the designated info channel (`#1445703670057537700`) with two persistent buttons.
+2. **Membership** button: opens a modal asking for a nation name or ID → bot looks up the nation from PnW API → creates a private ticket channel named `c{cities}-{nation-name}` → posts the full `/show` nation profile inside it.
+3. **Embassy** button: opens a modal asking for an alliance name or ID → bot looks up the alliance → creates a private channel named after the alliance (using acronym if name is long) → posts the full `/alliance` overview inside it with the alliance's PnW color applied to the channel.
+
+Only the applicant, the bot, and configured ticket roles can see each ticket channel.
+
+Persistent views are registered with `bot.add_view()` and restored automatically on restart.
+
+| Command | Description |
+|:---|:---|
+| `/info` | Posts the welcome embed with Membership and Embassy buttons in the designated info channel |
+| `/verify <action>` | Run inside a ticket channel to Accept or Reject. **Accept → Membership**: assigns Member role, moves channel to accepted members category. **Accept → Embassy**: creates/finds a Discord role named after the alliance, assigns that role + Diplomat role, moves channel to accepted embassies category. **Reject**: notifies applicant, waits 5 seconds, deletes channel and DB record. |
+| `/delete_ticket <ticket>` | Deletes any ticket by name (autocomplete from all tickets in DB). Deletes the Discord channel if it exists and removes the DB record. |
+| `/resort_members` | Re-queries the PnW API for every open membership ticket and renames channels to `c{current_cities}-{nation-name}`. |
+| `/ticket_role add <role> [label]` | Adds a Discord role that will automatically get read/write access on all new ticket channels. |
+| `/ticket_role remove <role>` | Removes a role from the ticket access list. |
+| `/ticket_role list` | Shows all configured ticket roles with their labels. |
+
+**Welcome message:** When a new member joins the server, the bot automatically sends a welcome embed in the info channel mentioning the new member.
+
+**Database:** `Databases/Tickets.db` — stores ticket records with channel ID, guild ID, applicant Discord ID, type, status, subject (nation/alliance name), nation/alliance ID, city count, color hex, timestamps.
+
+---
+
+### Astrology
+
+**Files:** `Systems/Astrology/reading.py`, `Systems/Astrology/signs.py` — loaded as `Systems.Astrology.reading`, `Systems.Astrology.signs`
+
+| Command | Description |
+|:---|:---|
+| `/tarot [spread]` | Professional tarot card reading. Spread options: **1 Card** (single draw with direct message), **3 Card Past/Present/Future**, **5 Card Traditional** (core theme, obstacle, advice, hidden influence, likely outcome). Cards are randomly drawn from all 78, randomly assigned upright or reversed orientation. Card images loaded from `Systems/Astrology/Tarot/cards/`, resized, rotated if reversed, and stitched into a composite PNG. Paginated embed: **Cards** view (image + per-card breakdown with position, name, orientation, meanings, fortune line) and **Summary** view (AI-generated narrative from Groq). If Groq is unavailable, all card details still show. |
+| `/zodiac <month> <day> <year>` | Triple-zodiac personality profile from a birthday. Three-page interactive embed: **Western** (sun sign with element, modality, planet, traits, lucky numbers/colors/gems, compatibility, daily horoscope from Aztro API with Groq/local fallback), **Eastern** (Chinese zodiac animal based on exact Chinese New Year dates 1900–2027, with polarity, element, trine, lucky info, compatibility), **Spirit Animal** (Primal Astrology combination of Western + Chinese — 144 possible unique animals). All zodiac data from local JSON files in `Systems/Astrology/Zodiac/`. |
+
+---
+
+### Fun
+
+**Files:** `Systems/Fun/` — loaded as individual cog modules
+
+#### RPS (`compete.py`)
+
+| Command | Description |
+|:---|:---|
+| `/rps [rival] [rounds] [theme] [ai_opponent]` | Rock Paper Scissors. Themes: Traditional (Rock/Paper/Scissors), Fantasy (Knight/Archer/Necromancer), War (Tank/Jet/Ship). Rounds: 1, 3, or 5. If no rival mentioned, a Join Game button appears. `ai_opponent: True` plays against the bot which uses move history to counter. |
+
+#### Dice & Cards (`fun_system.py`)
+
+| Command | Description |
+|:---|:---|
+| `/dice [count] [type]` | Rolls 1–5 dice. D6 (with color options: Red, Orange, Blue, Yellow, Pink, Green, Purple) or D20. Each result shown with its custom server emoji. |
+| `/card [count]` | Draws 1–5 random playing cards from a full 54-card deck (52 standard + 2 jokers). Each card shown with its custom server emoji. |
+
+#### Range (`fun_system.py`)
+
+| Command | Description |
+|:---|:---|
+| `/range [rounds]` | Sniper training reaction game. Available rounds: 5, 15, 25, 50, 100. After a 3-second countdown, each round shows 5 buttons — one target (🎯) among misses (🔴). Player has 1.2 seconds per round. Wrong button or timeout = miss. Results show accuracy, visual bar, rank from Blindfolded Intern to Deliverer of Death, and personal best. Stats persisted across sessions. |
+
+#### Tic Tac Toe (`fun_system.py`)
+
+| Command | Description |
+|:---|:---|
+| `/tictactoe [rival] [ai] [series] [difficulty]` | Tic Tac Toe with optional AI opponent. Difficulties: Novice (random), Competent (checks win/block before random), Expert (minimax, optimal). Series: best of 1, 3, or 5. Both players choose their emoji via modal. Displays a live 3×3 button grid. |
+
+#### Roast & Compliment (`goodevil.py`)
+
+| Command | Description |
+|:---|:---|
+| `/roast [target] [intensity]` | AI-generated roast via Groq (Llama 3.1). 7 intensity levels: Mild → Explicit. Fetches target's Discord bio for personalisation. 2–3 sentence limit. Fallback line if Groq unavailable. |
+| `/compliment [target] [intensity]` | Identical structure to `/roast` but generates praise. Same 7 intensity levels and Groq API with fallback. |
+
+#### Random Image (`fun_system.py`)
+
+| Command | Description |
+|:---|:---|
+| `/random [type]` | Fetches and posts a random image. **JPG**: random photo from Pixabay (`PIXABAY_KEY`). **GIF**: random GIF from Giphy (`GIPHY_KEY`). Downloaded server-side and posted as a file attachment. |
+
+#### Walk-Through Adventure (`fun_system.py`)
+
+| Command | Description |
+|:---|:---|
+| `/walktru` | Text-based adventure with 6 storylines, each with its own mechanics: Horror Sanitarium (Fear 0–100), 1920s Gangster (Heat 0–100), Knight's Quest (Honor 0–150), Robot Factory Escape (Power 0–100), Western Frontier (Health 0–100), Wizard's Apprentice (Mana 0–150). Each stage has numbered choice buttons with success probabilities. Mechanic value changes on success/failure with a visual progress bar. |
+
+#### Zombie Survival (`zombie.py`)
+
+| Command | Description |
+|:---|:---|
+| `/zombie_survival` | Starts or continues an ongoing AI-driven zombie survival game in a channel. Each round the Groq AI generates a story event with exactly 4 choices and base success probabilities. Players vote via A/B/C/D buttons. Resolves every 2 hours. Success odds = base + vote multiplier (2–5% per voter on winning choice) + random luck (±15%). Survivor stats: HP, stamina, morale, revolver ammo, rifle ammo. Deceased survivors marked with strikethrough. Game-over on full wipe. |
+| `/zombie_character` | Shows your personal survivor card (HP, stamina, morale, ammo, melee weapon). Ephemeral. |
+
+#### Troll (`troll.py`)
+
+Passive troll functionality (message reactions/responses).
+
+---
+
+### Casino (PnWCasino)
+
+**File:** `Systems/PnWCasino/casino_cog.py` — loaded as `Systems.PnWCasino.casino_cog`
+
+The PnWCasino cog bridges Discord and the web-based casino. Casino games (Blackjack, Hold'em, Craps, Races, Minigames, Slots, Powerball, Wheel, Scratch, Keno) run primarily through the browser interface at the configured domain. The Discord cog handles any Discord-side interactions. See `Systems/PnWCasino/README.md` for details.
+
+---
+
+## Background Tasks
+
+Two asyncio tasks start in `setup_hook` before the bot connects to Discord:
+
+### Beige Notification Loop
+
+**Runs every 2 minutes.**
+
+Two-stage alert system reading from `Databases/alerts.db`:
+
+- **Early-exit drain** — Checks `beige_early_exit_queue` written by the PnWHarvester when it detects a nation left beige early via `nation/update` subscription. Sends immediate Discord DMs for each queued exit.
+- **Stage 1 alert** — When a beige nation has between 15 minutes and 2h 15m remaining: sends a "⏰ Beige Warning" DM with current military, projected loot (recalculated from live `HoldingsDB` at current market prices), and nation info. Marks as warned.
+- **Stage 2 alert** — When ≤15 minutes remaining: sends a "🚨 Beige Expiring" DM and deletes the alert.
+
+Beige turns are read from `GlobalNations.db` (kept live by the harvester). Projected loot recalculation applies the full loot formula (Pirate ×1.4, APE ×1.1, defender war policy modifier) against live holdings at current sell prices.
+
+### Periodic User Sync
+
+**Runs every 5 minutes.**
+
+Fetches Discord users with stale profile data (last synced > 1 day ago, up to 10 per cycle) and updates their avatar, username, and display name in the bot's user data store.
 
 ---
 
 ## Database Structure
 
-All data is stored locally in SQLite databases under the `Databases/` directory. The bot creates the necessary subdirectories automatically on first run — you do not need to create them manually.
+All databases live under `Databases/`. The bot creates directories automatically on first run.
 
 ### Databases/Pets/
 
-Pet system data:
-
-- **pets.db** — All pet profiles, user relationships (friend/foe/enemy/best friend), and the bazaar marketplace. The primary store for the entire pet system.
-- **Tasks.db** — Daily and weekly task assignments per user, completion state, and reward tracking.
-- **absorb.db** — Survivor Series game state: elimination rounds, procedural map data, and per-round results.
-- **colosseum.db** — Automated hourly Colosseum tournament results and leaderboard.
-- **dungeon.db** — Dungeon crawl session state for active and completed runs.
-- **powerball.db** — Powerball lottery ticket purchases and draw history.
-- **survivorseries.db** — Survivor Series event registration and bracket state.
+| File | Purpose |
+|:---|:---|
+| `pets.db` | All pet profiles, user relationships, bazaar, pet settings |
+| `Tasks.db` | Daily/weekly task assignments, completion state, reward tracking |
+| `absorb.db` | PnW war absorb tracking (locked nation IDs, absorbed unit kill totals) |
+| `colosseum.db` | Hourly colosseum tournament results, pending XP/keys/potions, member roster |
+| `dungeon.db` | Active and completed dungeon crawl session state |
+| `powerball.db` | Powerball lottery tickets and draw history |
+| `survivorseries.db` | Survivor Series game state (lobby, rounds, participants, feed, map) |
 
 ### Databases/PnW/
 
-Politics & War data (maintained by the separate PnWHarvester process, read-only by Reaper):
+**Read-only by Reaper.** Maintained by PnWHarvester.
 
-- **GlobalNations.db** — The central nation database. Stores a complete snapshot of every nation in the game with identity, alliance, stats, military, policies, projects, status, holdings, and a full city table with every improvement slot for every city.
-- **IRSWars.db** — The primary war database for Darkstar. Stores every war involving a Darkstar nation with full attack-level detail.
-- **WeeklyNews.db, MonthlyNews.db, YearlyNews{YYYY}.db** — News databases with identical schemas covering different time windows (current week, current month, full calendar year).
-- **bankrecs.db** — Stores every bank transfer in the game received via the `bankrec/create` subscription.
-- **holdings.db** — Tracks the actual money and resource holdings for every nation in real-time.
+| File | Purpose |
+|:---|:---|
+| `GlobalNations.db` | All PnW nations with stats, military, projects, holdings, cities |
+| `IRSWars.db` | Darkstar (alliance 10259) war records with full attack detail |
+| `GlobalWars.db` | All PnW wars (game-wide) |
+| `bankrecs.db` | All bank transfer records received via harvester subscription |
+| `WeeklyNews.db` | Current week news events and alliance/nation stats |
+| `MonthlyNews.db` | Current month news events and stats |
+| `WeeklyNews_prev.db` | Previous week's data (archived on rollover) |
+| `MonthlyNews_prev.db` | Previous month's data (archived on rollover) |
+| `YearlyNews{YYYY}.db` | Full calendar year news events and stats |
+| `Treaties.db` | Active and historical alliance treaties |
 
 ### Databases/ (root)
 
-Core bot data:
-
-- **reaper.db** — The core bot database. Stores resource market prices (updated every PnW turn), color bloc bonuses, radiation levels, and other game-state data used across multiple systems.
-- **Tickets.db** — Stores all support ticket records: ticket ID, channel ID, applicant Discord ID, ticket type, nation or alliance ID, creation timestamp, and current status.
-- **alerts.db** — Stores two types of user alerts: beige alerts (set when a target nation is on beige) and resource price alerts (one-shot alerts that fire when a resource's buy or sell price crosses a threshold).
-- **zombie.db** — Stores zombie survival game state: active game sessions, player status, story progression, and AI-generated narrative history.
-
-No database credentials are required. All files are local and self-contained.
-
----
-
-## Technical Architecture
-
-### Startup Sequence
-
-The bot follows a carefully ordered startup sequence defined in `reaper.py`:
-
-1. **Virtual Environment Check** — If not running inside the project venv, re-exec using the venv Python so all packages are available.
-2. **Dependency Setup** — Checks Python virtual environment and Node.js dependencies. Installs if missing.
-3. **Bot Instance Creation** — Creates Discord bot instance with proper intents (message_content, members, guilds).
-4. **Cog Loading** — Loads command cogs in organized sets:
-   - Admin: `Systems.admin`, `Systems.info`
-   - Mythical: `Systems.Astrology.signs`, `Systems.Astrology.reading`
-   - Fun: `Systems.Fun.zombie`, `Systems.Fun.goodevil`, `Systems.Fun.fun_system`, `Systems.Fun.compete`, `Systems.Fun.troll`
-   - PnW: `Systems.PnW.pnwhopper`
-   - Management: `Systems.Functions.nations_manager_cog`
-   - Tickets: `Systems.Tickets.tickets`
-5. **Command Sync** — Syncs application command tree with Discord.
-6. **Web Server Start** — Starts the embedded FastAPI web server on port 8080 and waits for it to be ready.
-7. **Cloudflare Tunnel** — If enabled, starts the Cloudflare tunnel for public access.
-8. **Background Tasks** — Starts periodic user sync and beige notification loops.
-
-### Web Server
-
-The web server is implemented in `Systems/Functions/web_server.py` using FastAPI and Uvicorn. It serves:
-
-- **Static files** — CSS, JavaScript, images, and emoji assets from `web/static/`, `web/css/`, `web/js/`.
-- **HTML pages** — All pet and PnW web interface pages from `web/Pages/`.
-- **API endpoints** — RESTful APIs for pet data, PnW data, authentication, and WebSocket connections for real-time casino updates.
-
-The server starts automatically when the bot starts and runs in the background. It shares the same event loop as the Discord bot.
-
-### Logging
-
-Logging is configured in two phases:
-
-1. **Startup logging** — Writes to `reaper_startup.log` during the dependency check and bot initialization phase.
-2. **Runtime logging** — After the bot is ready, switches to `reaper_bot.log` for ongoing operation.
-
-Logs include timestamps, logger name, log level, and message. Both files are overwritten on each bot restart.
-
-### Error Handling
-
-The bot includes comprehensive error handling:
-
-- **Duplicate session detection** — Catches Discord error 40062 and provides a clear message if another bot instance is already running.
-- **Connection errors** — Handles GatewayNotFound, ConnectionClosed, and HTTPException with appropriate logging and cleanup.
-- **Cog loading errors** — Logs which cogs failed to load and continues with the remaining cogs.
-- **Background task errors** — All background loops have try/except blocks with logging and retry logic.
-
-### PnW Data Pipeline
-
-The bot reads PnW data from local databases maintained by the separate PnWHarvester process. This separation ensures:
-
-- The bot is never blocked waiting for API responses
-- The databases are always current regardless of whether the bot is running
-- API rate limits are managed centrally by the harvester
-
-The bot is read-only against `GlobalNations.db` and `IRSWars.db` — it never writes to these files directly. All writes are handled by the harvester.
-
-### Security
-
-- **No external data storage** — All data stays local on your machine
-- **API keys in .env only** — Never logged or echoed
-- **Discord OAuth2** — No passwords stored for web authentication
-- **Ephemeral responses** — Translations and sensitive data are delivered as ephemeral messages where possible
-- **.gitignore** — The `.env` file and all databases are excluded from version control
-
-### Performance
-
-- **Database caching** — Query results are cached with appropriate TTLs
-- **WAL mode** — Databases use Write-Ahead Logging for concurrent reads and writes
-- **Async operations** — All database and API operations are async to avoid blocking
-- **Background processing** — Heavy operations (graph generation, large calculations) run in background threads or processes
-- **WebSocket** — Casino updates use WebSocket for real-time communication without polling
+| File | Purpose |
+|:---|:---|
+| `reaper.db` | Resource market prices (updated by harvester every 15 min), color bonuses, game info, radiation levels, user settings (theme, linked nation, privacy preferences), session store for web auth |
+| `Tickets.db` | Support ticket records: channel ID, applicant, type, status, nation/alliance IDs, timestamps |
+| `alerts.db` | Beige alerts and resource price alerts; also holds the `beige_early_exit_queue` (harvester → bot bridge) |
+| `zombie.db` | Zombie survival game state, player status, story progression, AI narrative history |
+| `sessions.db` | Web session storage (alternative/overflow session store) |
+| `MyNations.db` | Nation goals, build plans, and snapshots for the My Nation web page |
 
 ---
 
 ## Dependencies
 
-The bot requires the following Python packages (see `requirements.txt`):
+**Python (`requirements.txt`):**
 
-### Discord & Web Framework
-- discord.py==2.3.2
-- python-dotenv>=1.0.1
-- fastapi>=0.115.0
-- uvicorn[standard]>=0.30.0
-- websockets>=12.0
-- flask>=3.1.3
-- jinja2>=3.1.4
-- starlette>=0.41.0
-- aiohttp>=3.10.0
-- httpx>=0.27.0
-- requests>=2.31.0
-- async-timeout>=4.0.3
-- itsdangerous>=2.2.0
-- pydantic>=2.7.0,<3.0.0
+| Package | Purpose |
+|:---|:---|
+| `discord.py==2.3.2` | Discord bot framework |
+| `fastapi`, `uvicorn[standard]`, `starlette` | Web server |
+| `websockets`, `aiohttp`, `httpx`, `requests` | HTTP and WebSocket clients |
+| `python-dotenv` | `.env` loading |
+| `pydantic`, `itsdangerous`, `python-multipart` | Request validation and session signing |
+| `groq` | Groq AI API (Llama 3.1 — tarot, roasts, zombie survival) |
+| `pandas`, `numpy`, `lttb` | Data processing and downsampling |
+| `matplotlib`, `plotly`, `kaleido==0.2.1` | Chart and graph generation |
+| `Pillow` | Image processing (tarot cards, treaty maps, game_info chart) |
+| `networkx` | Treaty web graph layout |
+| `aiosqlite` | Async SQLite access |
+| `reportlab` | PDF generation for the raids command |
+| `pnwkit-py>=2.6.26` | PnW GraphQL API client (harvester subscriptions) |
+| `psutil`, `aiofiles`, `tqdm` | System utilities |
+| `pytest`, `pytest-asyncio` | Testing |
+| `pywin32` | Windows-specific utilities |
 
-### AI, APIs & External Services
-- groq>=0.9.0
+**Node.js (`package.json`):**
 
-### Data, Analytics & Visualization
-- pandas>=2.2.0
-- numpy>=1.26.4
-- lttb>=0.3.2
-- matplotlib>=3.9.0
-- plotly>=5.22.0
-- kaleido==0.2.1
-- Pillow>=10.3.0
-- networkx>=3.3
-- beautifulsoup4>=4.12.0
-- markdown>=3.6
-- aiosqlite>=0.20.0
-
-### System & Utilities
-- psutil>=5.9.8
-- aiofiles>=23.2.1
-- tqdm>=4.66.4
-- python-editor>=1.0.4
-- reportlab>=4.2.0
-- pnwkit-py>=2.6.26
-- pywin32>=306 (Windows only)
-
-### Core Dependencies & Types
-- werkzeug>=3.0.3
-- blinker>=1.8.0
-- python-multipart>=0.0.9
-- click>=8.1.7
-- markupsafe>=2.1.5
-- typing-extensions>=4.12.0
-- typing-inspection>=0.4.0
-- annotated-doc>=0.0.4
-- attrs>=23.2.0
-- certifi>=2024.2.2
-- charset-normalizer>=3.3.2
-- frozenlist>=1.4.1
-- idna>=3.7
-- multidict>=6.0.5
-- six>=1.16.0
-
-### Testing
-- pytest>=9.0.0
-- pytest-asyncio>=0.23.0
-
-### Node.js Dependencies
-
-The web frontend requires Node.js packages defined in `package.json`:
-
-- bootstrap — CSS framework
-- three — 3D graphics library
-- gsap — Animation library
+| Package | Purpose |
+|:---|:---|
+| `bootstrap` | CSS framework for web UI |
+| `three` | 3D globe rendering (Treaty Universe page) |
+| `gsap` | Web animation library |
 
 ---
 
 ## License
 
 See LICENSE.txt for license information.
-
----
-
-## Support
-
-For issues, questions, or contributions, please refer to the project repository or contact the development team.

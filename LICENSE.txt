@@ -1,6 +1,6 @@
 MIT License
 
-Copyright (c) 2025 Cody Ray Threewit
+Copyright (c) 2024–2026 Cody Ray Threewit
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -22,140 +22,169 @@ SOFTWARE.
 
 ---
 
-## Software Components
+SOFTWARE COMPONENTS
+===================
 
-This repository contains three main software systems:
+This repository contains three integrated software systems that are all covered
+by the MIT license above.
 
-### 1. ReaperBot (Discord Bot)
-A self-hosted Discord bot built in Python that provides:
-- Pet RPG system with stats, combat, PvP, tournaments, casino games
-- Politics & War integration with nation/war tracking, revenue calculators, war intelligence
-- Support ticket system with category routing
-- Automatic message translation via Google Translate
-- Astrology system with tarot readings and zodiac profiles
-- Entertainment commands (roasts, compliments, games)
+1. REAPER BOT (Discord Bot)
+   A self-hosted Discord bot built in Python (discord.py) providing:
+   - Pets RPG system with stats, combat, PvP, tournaments, dungeon crawls,
+     casino games, and a Survivor Series battle royale
+   - Politics & War integration: revenue calculators, war intelligence dashboards,
+     raid finders, beige alerts, resource price alerts, treaty maps, alliance
+     comparisons, and a global news/leaderboard system
+   - Support ticket system with membership and embassy workflows
+   - Automatic message translation (Google Translate)
+   - Astrology system with tarot readings and triple-zodiac profiles (Western,
+     Chinese, Primal)
+   - Entertainment commands: roasts, compliments, RPS, Tic Tac Toe, sniper
+     training, text adventures, and AI-driven zombie survival
 
-### 2. PnWHarvester (Data Collection Service)
-A standalone asyncio service that:
-- Subscribes to PnW API v3 WebSocket events for real-time data collection
-- Stores data locally in SQLite databases (GlobalNationsDB, IRSWarsDB, HoldingsDB, etc.)
-- Generates narrative news events for wars, trades, and bank transfers
-- Processes turn revenue and manages beige alerts
-- Uses GPP (Good Parallel Programming) architecture with unified locking, connection pooling, and write buffering
+2. PNWHARVESTER (Data Collection Service)
+   A standalone asyncio service that:
+   - Subscribes to PnW API v3 WebSocket events for real-time data collection
+   - Stores data locally in SQLite databases (GlobalNations, IRSWars, GlobalWars,
+     bankrecs, holdings, treaties, news)
+   - Generates narrative news events for wars, trades, bank transfers, city
+     purchases, project purchases, and military changes
+   - Processes turn revenue every 2 hours and manages beige alert state
+   - Uses a GPP (Good Parallel Programming) architecture with unified locking
+     (LockManager), connection pooling (DatabasePool), write buffering
+     (WriteQueue), and in-memory nation caching (NationCache)
 
-### 3. Web Interface
-A FastAPI-based web application embedded within the Discord bot that provides:
-- Browser-based pet system interface (adoption, training, casino games, leaderboards)
-- PnW analytics tools (war intelligence dashboards, revenue calculators, raid finders, treaty maps, alliance comparisons, news feeds)
-- Discord OAuth2 authentication for personal data access
-- Real-time WebSocket updates for casino games
-- Responsive design for desktop and mobile
-
----
-
-## Third-Party Licenses
-
-This software uses the following third-party libraries and components, each licensed under their respective terms:
-
-### Python Dependencies
-
-- **discord.py** (MIT License) - Discord API wrapper
-- **FastAPI** (MIT License) - Modern web framework
-- **uvicorn** (BSD-3-Clause License) - ASGI server
-- **aiohttp** (Apache-2.0 License) - Async HTTP client
-- **aiosqlite** (MIT License) - Async SQLite database
-- **pandas** (BSD-3-Clause License) - Data analysis
-- **matplotlib** (PSF License) - Data visualization
-- **plotly** (MIT License) - Interactive plotting
-- **Pillow** (PIL License) - Image processing
-- **google-generativeai** (Apache-2.0 License) - Google Gemini AI
-- **groq** (MIT License) - Groq LLM API
-- **pnwkit** (MIT License) - Politics & War API toolkit
-- **beautifulsoup4** (MIT License) - HTML parsing
-- **requests** (Apache-2.0 License) - HTTP library
-- **python-dotenv** (BSD-3-Clause License) - Environment variable management
-- **reportlab** (BSD-3-Clause License) - PDF generation
-- **networkx** (BSD-3-Clause License) - Graph analysis
-- **psutil** (BSD-3-Clause License) - System monitoring
-- **pyngrok** (MIT License) - Secure tunneling
-
-### Web Framework and UI Libraries
-
-- **Bootstrap** (MIT License) - Front-end framework
-- **Google Fonts (Roboto)** (SIL Open Font License 1.1) - Open-source fonts
-- **Plotly.js** (MIT License) - JavaScript graphing library
-- **Flask** (BSD-3-Clause License) - Web framework (used in some components)
-- **Jinja2** (BSD-3-Clause License) - Template engine
-- **Werkzeug** (BSD-3-Clause License) - WSGI utility library
-- **itsdangerous** (BSD-3-Clause License) - Security utilities
-- **MarkupSafe** (BSD-3-Clause License) - HTML/XML markup safety
-- **click** (BSD-3-Clause License) - Command-line interface toolkit
-- **starlette** (BSD-3-Clause License) - ASGI framework
-- **python-multipart** (Apache-2.0 License) - Multipart form parsing
-- **typing-inspection** (MIT License) - Runtime typing introspection
-- **annotated-doc** (MIT License) - Inline documentation
-- **markdown** (BSD-3-Clause License) - Markdown parser
-- **blinker** (MIT License) - Signaling library
-
-### External Services
-
-This software integrates with the following external services, each governed by their own terms of service:
-
-- **Discord** - Discord API and OAuth2 (Discord Terms of Service)
-- **Google Gemini AI** - AI content generation (Google AI Terms of Service)
-- **Groq** - LLM API (Groq Terms of Service)
-- **Politics & War (PnW)** - Game data API (PnW Terms of Service)
-- **Google Translate** - Translation service (Google Terms of Service)
-- **Aztro API** - Horoscope data (Aztro Terms of Service)
-- **Giphy** - GIF content (Giphy Terms of Service)
-- **Pixabay** - Image content (Pixabay Terms of Service)
-- **Cloudflare** - Tunneling and CDN (Cloudflare Terms of Service)
+3. WEB INTERFACE
+   A FastAPI/Uvicorn web application embedded within the Discord bot process:
+   - Browser-based pet system (adoption, training, arena, colosseum, dungeon,
+     Survivor Series, casino games, stock market, tasks, leaderboards)
+   - PnW analytics tools (Watch page war dashboard, nations search, revenue
+     calculator, revenue optimizer, cost calculator, raid finder, weapons
+     calculator, treaty universe globe, full-mill rankings, alliance comparison,
+     news feed, personal nation dashboard)
+   - Discord OAuth2 authentication for personal data access
+   - Real-time WebSocket updates for arena battles and casino games
+   - Server-Sent Events for Survivor Series live feed
+   - Cloudflare Tunnel support for public access
 
 ---
 
-## Data Collection and Privacy
+THIRD-PARTY LICENSES
+====================
 
-This software collects and processes data as follows:
+This software uses the following third-party libraries. Each is governed by
+its own license. This list is provided for attribution purposes.
 
-### Discord Bot Data
-- Discord User ID, username, discriminator (for user identification)
-- Server membership and role information (for command permissions)
-- Command usage data (for functionality and debugging)
-- Pet system data (stats, inventory, game progress - stored locally)
-- Support ticket data (stored locally)
+PYTHON DEPENDENCIES
 
-### PnWHarvester Data
-- Public Politics & War game data (nation stats, war records, alliance information)
-- This data is publicly available via the PnW API and is stored locally for analytics
-- No private user data is collected beyond what is publicly available in the game
+  discord.py              MIT License
+  FastAPI                 MIT License
+  uvicorn                 BSD-3-Clause License
+  Starlette               BSD-3-Clause License
+  Pydantic                MIT License
+  aiohttp                 Apache-2.0 License
+  httpx                   BSD-3-Clause License
+  requests                Apache-2.0 License
+  aiosqlite               MIT License
+  python-dotenv           BSD-3-Clause License
+  itsdangerous            BSD-3-Clause License
+  python-multipart        Apache-2.0 License
+  Werkzeug                BSD-3-Clause License
+  Jinja2                  BSD-3-Clause License
+  MarkupSafe              BSD-3-Clause License
+  click                   BSD-3-Clause License
+  blinker                 MIT License
+  Flask                   BSD-3-Clause License
+  groq                    MIT License
+  pandas                  BSD-3-Clause License
+  numpy                   BSD-3-Clause License
+  matplotlib              PSF License
+  plotly                  MIT License
+  kaleido                 MIT License
+  Pillow                  HPND License (PIL fork)
+  lttb                    MIT License
+  networkx                BSD-3-Clause License
+  beautifulsoup4          MIT License
+  markdown                BSD-3-Clause License
+  reportlab               BSD-3-Clause License
+  aiofiles                Apache-2.0 License
+  psutil                  BSD-3-Clause License
+  pnwkit-py               MIT License
+  pywin32                 PSF License (Windows only)
+  pytest                  MIT License
+  pytest-asyncio          Apache-2.0 License
+  tqdm                    MIT / MPL-2.0 License
+  typing-extensions       PSF License
 
-### Web Interface Data
-- Discord OAuth2 authentication data (user ID, access tokens - stored server-side)
-- Pet system data (same as Discord bot, shared database)
-- User alerts (beige alerts, price alerts - stored locally)
-- Session data (stored server-side, expires on logout)
+NODE.JS DEPENDENCIES
 
-### External API Data
-- Translation requests sent to Google Translate (text content only)
-- AI prompts sent to Gemini/Groq (no personal data beyond what user provides)
-- Image searches via Giphy/Pixabay (search terms only)
-
-All data is stored locally on the user's machine in SQLite databases. No data is transmitted to third parties except through the explicitly listed external API integrations.
+  bootstrap               MIT License
+  three (Three.js)        MIT License
+  three-globe             MIT License
+  gsap                    GreenSock Standard License
+                          (see https://gsap.com/standard-license)
+  @3d-dice/dice-box       MIT License
 
 ---
 
-## Disclaimer
+EXTERNAL SERVICES
+=================
 
-This software is provided "as is" without warranty of any kind, express or implied. The authors and copyright holders shall not be liable for any claims, damages, or other liability arising from the use of this software.
+This software integrates with the following external services. Each is
+governed by its own terms of service, which are separate from this license.
 
-The Politics & War integration uses data from the PnW game, which is a separate third-party service. The authors are not affiliated with Politics & War and are not responsible for any changes to the PnW API or game mechanics that may affect this software's functionality.
-
-The casino games use virtual currency (Pet XP) with no real-world value. This is not real gambling and no real money is involved.
+  Discord           Discord API and OAuth2 — discord.com/terms
+  Politics & War    Game data GraphQL API — politicsandwar.com
+  Groq              LLM API (Llama 3.1) — groq.com/legal
+  Google Translate  Translation service — policies.google.com/terms
+  Cloudflare        Tunnel and CDN — cloudflare.com/terms
+  Giphy             GIF content — giphy.com/terms
+  Pixabay           Image content — pixabay.com/service/terms/
 
 ---
 
-## Contact
+DATA AND PRIVACY
+================
 
-For questions, issues, or contributions, please contact:
-- GitHub: [Repository Issues]
-- Discord: the_infamous_aries
+All data processed by this software is stored locally on the operator's
+machine in SQLite database files. No data is transmitted to any party beyond
+the explicit API integrations listed above.
+
+  Discord bot data:    Discord user IDs, usernames, and server membership
+                       (used solely for command permissions and pet system
+                       profiles). Stored in Databases/Pets/pets.db.
+
+  PnWHarvester data:   Public Politics & War game data (nation stats, war
+                       records, alliance information, resource prices).
+                       This data is publicly available via the PnW API and
+                       is stored locally for analytics. No private game data
+                       is collected.
+
+  Web interface data:  Discord OAuth2 session tokens (stored server-side,
+                       expire on logout). User settings (theme, linked nation)
+                       stored in Databases/reaper.db. No passwords are stored.
+                       Authentication is fully delegated to Discord.
+
+  Casino / games:      All virtual currency (Pet XP) has no real-world value.
+                       No real money is involved in any feature of this software.
+
+---
+
+DISCLAIMER
+==========
+
+The Politics & War integration uses publicly available data from the PnW game
+API. The authors are not affiliated with Politics & War and are not responsible
+for changes to the PnW API or game mechanics that may affect this software.
+
+The casino and gambling-themed features use virtual in-game currency (Pet XP)
+exclusively. No real money is wagered, won, or lost under any circumstances.
+
+---
+
+CONTACT
+=======
+
+  Discord:  the_infamous_aries
+  GitHub:   https://github.com/The-Infamous-Aries/Reaper
+  Email:    cody.ray.inc@gmail.com

@@ -6,24 +6,24 @@
 
 ## Table of Contents
 
-- [🌐 Overview](#overview)
-- [⚙️ Architecture](#architecture)
-- [🔐 Authentication](#authentication)
-- [📊 Pages Reference](#pages-reference)
+- [Overview](#overview)
+- [Architecture](#architecture)
+- [Authentication](#authentication)
+- [Pages Reference](#pages-reference)
   - [Dashboard](#dashboard)
   - [Pets Pages](#pets-pages)
   - [Casino Pages](#casino-pages)
   - [PnW Analytics Pages](#pnw-analytics-pages)
   - [Utility Pages](#utility-pages)
-- [🔌 API Reference](#api-reference)
+- [API Reference](#api-reference)
   - [Authentication APIs](#authentication-apis)
   - [Pets APIs](#pets-apis)
   - [Casino APIs](#casino-apis)
   - [PnW APIs](#pnw-apis)
   - [Utility APIs](#utility-apis)
-- [🎨 Static Assets](#static-assets)
-- [🚀 Deployment](#deployment)
-- [🔧 Configuration](#configuration)
+- [Static Assets](#static-assets)
+- [Deployment](#deployment)
+- [Configuration](#configuration)
 
 ---
 
@@ -36,11 +36,12 @@ The ReaperBot web interface is a full-featured browser application that runs as 
 
 The web server starts automatically when the bot launches (`python reaper.py`) and shares the same local SQLite databases as the Discord bot. There is no separate web server to manage, no Docker container required, and no database server to configure.
 
-**Key Features:**
+Key features:
 
 - Single-page application architecture with dynamic page loading
 - Discord OAuth2 authentication for personal data access
-- Real-time WebSocket updates for casino games
+- Real-time WebSocket updates for live battle systems
+- Server-Sent Events (SSE) for Survivor Series live feed
 - Responsive design for desktop and mobile
 - Cloudflare tunnel support for public access
 - CDN caching for static assets
@@ -53,9 +54,11 @@ The web server starts automatically when the bot launches (`python reaper.py`) a
 
 - **Backend:** FastAPI (Python)
 - **Frontend:** Vanilla JavaScript with HTML5
+- **CSS Framework:** Bootstrap 5 (local)
+- **Animation:** GSAP (local)
 - **Database:** SQLite (shared with Discord bot)
 - **Authentication:** Discord OAuth2
-- **Real-time:** WebSocket for casino games
+- **Real-time:** WebSocket for arena/casino, SSE for Survivor Series
 - **Tunneling:** Cloudflare Tunnel (optional)
 
 ### Entry Points
@@ -75,15 +78,27 @@ The web server starts automatically when the bot launches (`python reaper.py`) a
 
 ### Database Access
 
-The web server has read-only access to the same SQLite databases used by the Discord bot:
+The web server reads from the same SQLite databases used by the Discord bot:
 
-- `Databases/Pets/pets.db` — Pet system data
-- `Databases/PnW/GlobalNations.db` — Nation tracking
-- `Databases/PnW/IRSWars.db` — War records
-- `Databases/alerts.db` — User alerts
-- `Databases/Tickets.db` — Support tickets
+| Database | Purpose |
+|:---|:---|
+| `Databases/Pets/pets.db` | Pet system data (stats, inventory, XP) |
+| `Databases/Pets/absorb.db` | PnW war absorb tracking |
+| `Databases/Pets/colosseum.db` | Colosseum passive battle league |
+| `Databases/Pets/dungeon.db` | Dungeon crawl state |
+| `Databases/Pets/survivorseries.db` | Survivor Series game state |
+| `Databases/Pets/powerball.db` | Powerball lottery |
+| `Databases/Pets/Tasks.db` | Daily/weekly tasks |
+| `Databases/PnW/GlobalNations.db` | Nation tracking |
+| `Databases/PnW/IRSWars.db` | War records |
+| `Databases/PnW/Treaties.db` | Alliance treaties |
+| `Databases/PnW/GlobalWars.db` | Global war history |
+| `Databases/PnW/holdings.db` | Nation resource holdings |
+| `Databases/alerts.db` | User alerts |
+| `Databases/reaper.db` | Bot settings and my-nations data |
+| `Databases/sessions.db` | Web session storage |
 
-Write operations are performed through API endpoints that validate user permissions and data integrity.
+Write operations go through API endpoints that validate user permissions and data integrity.
 
 ---
 
@@ -103,16 +118,16 @@ Access to personal pet data and alert management requires Discord OAuth2 authent
 
 ### Session Management
 
-- Sessions are stored server-side in memory
+- Sessions are stored server-side in `Databases/sessions.db`
 - Access tokens refresh automatically before expiration
-- User profile data syncs on login and every 60 seconds
+- User profile data syncs on login and periodically
 - No passwords are stored; authentication is entirely delegated to Discord
 - Sessions persist across page refreshes
 
 ### Public vs Private Pages
 
-- **Public pages:** Most PnW analytics pages (watch, nations, revenue, comparison, raids, weapons, news) are accessible without login
-- **Private pages:** Pet system pages, alert management, and personal data require authentication
+- **Public pages:** Most PnW analytics pages (watch, nations, revenue, comparison, raids, weapons, news, treaty universe, full mill) are accessible without login
+- **Private pages:** Pet system pages, alert management, my-nation dashboard, and personal data require authentication
 
 ---
 
@@ -125,28 +140,32 @@ Access to personal pet data and alert management requires Discord OAuth2 authent
 The main single-page application entry point. Features:
 
 - Bot avatar and name display
-- Sidebar navigation between all sections
-- Dynamic page loading without full refreshes
+- Live bot stats (servers, users, nations, pets) from `GET /api/stats`
+- Recent activity feed via `GET /api/activity/recent`
+- Sidebar navigation between all sections with customizable menu layout
+- Dynamic page loading without full page refreshes
 - Responsive design for desktop and mobile
 - User authentication status indicator
+- Theme customization (colors, custom background image)
+- Language/locale selection
 
 ---
 
 ### Pets Pages
 
-#### Adoption Flow
+#### Onboarding
 
 **Files:** `web/Pages/what_are_pets.html`, `web/Pages/petconnector.html`
 
 New user onboarding for the pet system:
 
-- **what_are_pets.html** — Introduction to the pet system with species, categories, and elements explanation
-- **petconnector.html** — Pet creation wizard with species selection, category choice, element combination, and custom name input
+- **what_are_pets.html** — Introduction to the pet system: species, categories, elements, and gameplay overview
+- **petconnector.html** — Pet creation wizard: species selection, category choice, element combination, custom name input
 
-Validation:
+Validation enforced:
 - Name checked for safe characters
 - Duplicate pets per user prevented
-- Species/category/element combinations validated
+- Species/category/element combinations validated server-side
 
 #### Pet Management
 
@@ -155,12 +174,13 @@ Validation:
 Displays the user's pet with full stat sheet:
 
 - Computed stats (ATT, DEF, INT, DEX, HAP, ENE)
-- XP bar and level
-- Inventory items
-- Equipped items
+- XP bar and current level
+- Inventory items and equipped gear
 - Battle action labels (Attack, Defense, Charge)
 - Rename pet functionality
 - Custom battle action name configuration
+- Colosseum stats, dungeon records, Survivor Series records
+- PnW war absorb section (link nation, absorb wins/unit kills as XP)
 
 **File:** `web/Pages/pets.html`
 
@@ -169,7 +189,7 @@ Global pet roster for game entry and social browsing:
 - All registered pets in the system
 - Search and filter functionality
 - Pet profiles with basic stats
-- Social viewing of other players' pets
+- Social viewing of other players' pets and their relationship status
 
 **File:** `web/Pages/bazaar.html`
 
@@ -177,65 +197,74 @@ In-world marketplace for pet items and equipment:
 
 - Item listings with prices
 - Search and filter by category
-- Purchase functionality
+- Purchase functionality requiring sufficient XP
 - User inventory display
 
-**File:** `web/Pages/ability_tree.html`
+**File:** `web/Pages/ability_tree.html` (`web/css/ability_tree.css`, `web/js/ability_tree.js`)
 
 Interactive skill tree for pet abilities:
 
 - Stat mastery point spending
 - Ability unlocking
 - Prerequisite visualization
-- Skill tree navigation
+- Skill tree navigation with zoom/pan
 
 #### Activities
 
 **File:** `web/Pages/arena.html`
 
-PvP and PvE combat arena:
+Live multi-room combat arena with WebSocket broadcast:
 
-- Full battle system with skills and abilities
-- Damage calculations
-- Turn-based combat
-- Matchmaking for PvP
-- AI opponents for PvE
+- 12 live rooms; states: empty, npc_battle, pvp_waiting, pvp_battle, boss_waiting, boss_battle
+- NPC battle with Easy/Average/Hard difficulty
+- PvP matchmaking (join a room another player is waiting in)
+- 4-player Co-op Boss battle with relationship multipliers
+- Spectator view with live battle log
+- Relationship system (ally, rival, neutral, enemy) affects boss battle damage
 
 **File:** `web/Pages/colosseum.html`
 
-Automated hourly tournament battles:
+Passive hourly battle league:
 
-- Tournament registration
-- Leaderboard display
-- Historical results
-- Automated battle scheduling
+- Enroll your pet; battles run automatically every hour
+- Opponents are matched from the current member pool (35% NPC chance if no player available)
+- Pending XP, keys, and potions accumulate until claimed
+- Key milestone rewards: every 2 wins = Key1, every 5 = Key1+Key2, every 10 = Key1+Key2+Key3
+- PvP battles also award potions (2 for winner, 1 for loser)
+- Historical round log
 
 **File:** `web/Pages/dungeon.html`
 
-Crawl-style dungeon with procedurally generated encounters:
+Multi-floor dungeon crawl with party support:
 
-- Multi-stage dungeon progression
-- Random encounters
-- Loot drops
-- Survival mechanics
+- Create a dungeon solo or with party members
+- 10 rooms per floor, multiple floors
+- Room events: monster battles, boss battles, chests (4 tiers), traps, shrines
+- Party-wide buffs/debuffs from traps and shrines
+- Battle system with action skills, charge mechanics, and elemental advantages
+- Persistent dungeon state across sessions
 
 **File:** `web/Pages/survive.html`
 
-Survivor Series battle royale:
+Survivor Series — real-time battle royale:
 
-- Multi-pet elimination rounds
-- Procedural map generation
-- Bracket system
-- Tournament tracking
+- Lobby system with NPC fill (configurable NPC count)
+- Countdown and auto-start
+- Interactive elemental map (13 zones: fire, water, electric, ice, plant, rock, air, magic, holy, necro, psychic, fighting, basic)
+- Per-round narrative events with elemental interactions
+- Live feed via Server-Sent Events (SSE)
+- Relationship multipliers affect combat outcomes
+- Pet ability bonuses (survive_score_mult, stat mastery, advantage mastery, charge abilities)
+- Historical game archive and pet-specific stats
 
 **File:** `web/Pages/tasks.html`
 
 Daily and weekly task system:
 
-- Task assignments per user
-- Completion tracking
-- Reward claiming
-- Task refresh scheduling
+- Tasks auto-generated for all pet owners
+- Completion tracked from bot and web actions
+- DM notification preferences (on/off)
+- Daily goal reward claiming
 
 **File:** `web/Pages/pet_stock.html`
 
@@ -244,37 +273,27 @@ Simulated resource stock market:
 - Hourly price updates
 - Buy/sell functionality
 - Portfolio tracking
-- Market trends
+- Market price history
 
-**File:** `web/Pages/game_info.html**
+**File:** `web/Pages/game_info.html`
 
 Reference page for live game data:
 
-- Current resource prices
+- Current PnW resource prices
 - Color bonuses
-- Game state information
-- Live data from database
+- Game state (turn, date, radiation)
 
-**File:** `web/Pages/battle_config.html`
+---
 
-Pet battle settings configuration:
-
-- Preferred battle settings
-- Action priorities
-- Equipment loadouts
-- Strategy presets
-
-#### Casino Games
+### Casino Pages
 
 **File:** `web/Pages/casino_lobby.html`
 
 Casino lobby with live room state:
 
-- 12 live game rooms
-- Real-time WebSocket updates
+- 12 live game rooms with real-time WebSocket updates
 - Room status (active, waiting, full)
-- Player counts per room
-- Seat availability indicators
+- Player counts and seat availability indicators
 
 **File:** `web/Pages/casino.html`
 
@@ -285,7 +304,7 @@ Solo slot machine:
 - XP wagering
 - Payout multipliers
 
-**File:** `web/Pages/blackjack.html**
+**File:** `web/Pages/blackjack.html`
 
 Multiplayer blackjack:
 
@@ -301,9 +320,9 @@ Texas Hold'em poker:
 - Up to 6 players
 - AI opponents fill empty seats
 - Full poker hand evaluation
-- Betting rounds
+- Full betting rounds (pre-flop, flop, turn, river)
 
-**File:** `web/Pages/craps.html**
+**File:** `web/Pages/craps.html`
 
 Dice game with side-betting:
 
@@ -324,6 +343,7 @@ Pet racing:
 **File:** `web/Pages/minigames.html`
 
 Collection of head-to-head mini-games:
+
 - Various short-form games
 - Direct player vs player
 - Quick rounds
@@ -337,7 +357,7 @@ Lottery system:
 - Draw history
 - Winner announcements
 
-**File:** `web/Pages/wheel.html**
+**File:** `web/Pages/wheel.html`
 
 Spin-the-wheel game:
 
@@ -353,7 +373,7 @@ Instant-win scratch cards:
 - Instant reveal
 - Prize tiers
 
-**File:** `web/Pages/keno.html**
+**File:** `web/Pages/keno.html`
 
 Number-pick lottery:
 
@@ -365,21 +385,22 @@ Number-pick lottery:
 
 Global rankings:
 
-- Multiple categories (level, XP, battle wins, casino earnings)
-- Leaderboard pagination
-- Player search
-
-#### Library
+- Multiple categories (level, XP, battle wins, casino earnings, colosseum, SS)
+- Privacy controls per user (show/hide from leaderboard)
+- Leaderboard pagination and player search
 
 **File:** `web/Pages/library.html`
 
-In-app documentation system:
+In-app documentation and strategy guide system:
 
-- Markdown file serving from `web/Pages/Library/`
-- Client-side rendering
-- Game mechanics guides
-- Strategy documents
-- Doctrine articles
+- Markdown guides served from `web/Pages/Library/`
+- Available guides:
+  - Basic Building Guide
+  - Beige Cycle Guide
+  - FAFO Doctrine
+  - Pet Guide
+  - Snipe Guide
+  - Weapon Efficiency Guide
 
 ---
 
@@ -389,16 +410,19 @@ In-app documentation system:
 
 **File:** `web/Pages/watch.html`
 
-Primary war intelligence dashboard for Darkstar (alliance 10259):
+War intelligence dashboard for Darkstar (alliance 10259) and any alliance:
 
-- Date range selection
-- Per-nation cost breakdown (units, infra, improvements, consumption)
+- Date range selection (Sun–Sat weeks and calendar months available from `GET /api/watch/periods`)
+- Per-nation cost breakdown: units lost, infra destroyed, improvements, consumption
 - Net damage calculations
 - Loot tracking (cash and resources with monetary values)
 - Per-nation opponent breakdown
 - Alliance-wide totals
-- 2-minute caching per date range
-- Revenue pre-warming at turn boundaries
+- Nation detail view with full city list
+- All-time war stats per nation
+- Top-3 ranking history per nation across all tracked periods
+- Revenue calculation for any alliance via `GET /api/watch/revenue?alliance_id=`
+- 2-minute response cache per date range + alliance combination
 
 **File:** `web/Pages/nations.html`
 
@@ -407,30 +431,28 @@ Global nation search and view:
 - Search by nation name, leader name, or alliance
 - Filterable results
 - Score, city count, military units display
-- War policy and projects
-- Activity status
-- Data from `GlobalNations.db` (no API calls)
+- War policy, projects, activity status
+- All data from `GlobalNations.db` (no live API calls)
 
 **File:** `web/Pages/revenue.html`
 
-Revenue calculator for nations and alliances:
+Revenue calculator for any nation or alliance:
 
 - Per-turn and per-day revenue breakdown
-- City-build engine calculations
-- Improvements, projects, color bonuses
+- Full city-build engine calculations (improvements, projects, color bonuses)
 - Radiation levels and seasonal modifiers
-- Current market prices
-- Darkstar data from database, others from API
+- Current market prices from database
+- Darkstar data served from database; all other alliances/nations fetched via PnW API
 
 **File:** `web/Pages/rev_optimizer.html`
 
 Economic optimization tool:
 
 - City-by-city improvement analysis
-- Ranked suggestions for net income maximization
+- Ranked improvement suggestions for maximum net income
 - Project-level suggestions
-- Current revenue vs projected gains
-- Sorted by monetary output
+- Current revenue vs projected gain comparison
+- Results sorted by monetary output per dollar spent
 
 **File:** `web/Pages/cost_calc.html`
 
@@ -438,7 +460,7 @@ Purchase cost calculator:
 
 - Infrastructure, land, cities, projects
 - Current market prices
-- Discount calculations
+- Discount calculations (Urban Planning, Government Support Agency, etc.)
 - Multi-item cost breakdown
 
 **File:** `web/Pages/comparison.html`
@@ -452,42 +474,73 @@ Alliance comparison tool:
 - Project counts across 40+ projects
 - Improvement totals
 - City count distribution
-- Darkstar data from database, others from API
-- HTML report generation
+- HTML report download
+- Darkstar data from database; others from PnW API
+
+**File:** `web/Pages/fullmill.html`
+
+Full military mill ranking page:
+
+- All game alliances ranked by overall max-mill percentage
+- Per-unit-type percentages (soldiers, tanks, aircraft, ships)
+- Current vs max unit counts, daily production, gaps
+- 10-minute server-side cache for global ranking data
 
 **File:** `web/Pages/raids.html`
 
 Raid target finder:
 
 - War range search from `GlobalNations.db`
-- Filters: inactive, weak military, beige status, minimum loot, excluded alliances, max defensive wars
-- Projected loot from `holdings.db` (actual holdings)
-- Revenue-based fallback for missing holdings
+- Filters: inactive days, weak military, beige status, minimum loot, excluded alliances, max defensive wars
+- Projected loot from `holdings.db` (actual holdings) with revenue-based fallback
 - Sorted by projected loot descending
-- Beige alert management (set, refresh, delete)
+- Beige alert management: set, refresh, delete via `alerts.db`
 - Discord DM notifications at ~2 hours and ~15 minutes before beige expiry
 
 **File:** `web/Pages/weapons.html`
 
 Weapon efficiency calculator:
 
-- **Theory mode:** Infra level and pop density input, min/max/avg damage, cost-multiplier thresholds (1×-20×), damage chart
-- **Targeted mode:** Nation/alliance input, city scoring by expected damage, Iron Dome (30% block) and VDS (25% block) accounting, alliance ranking by best-city missile damage
+- **Theory mode:** Infra level and pop density input → min/max/avg damage, cost-multiplier thresholds (1×–20×), damage chart
+- **Targeted mode:** Nation/alliance input → city scoring by expected missile damage, Iron Dome (30% block) and VDS (25% block) accounting, alliance ranking by best-city missile damage
 - Live resource prices from database
+
+**File:** `web/Pages/treaty_universe.html`
+
+Interactive treaty web visualization:
+
+- 3D globe using Three.js / three-globe
+- Alliance nodes scaled by score
+- Treaty edges colored by treaty type (MDP, ODP, Protectorate, etc.)
+- Autocomplete alliance search
+- Data from `Treaties.db` enriched with member counts from `GlobalNations.db`
 
 **File:** `web/Pages/news.html`
 
 Global PnW event feed and leaderboards:
 
 - Time periods: current week, previous week, current month, previous month, yearly archives
-- Event feed: war declarations, endings, city builds, projects, alliance changes
+- Event feed: war declarations/endings, city builds, projects, alliance changes
 - Filterable by event type, alliance, nation
-- Alliance leaderboard: wars declared/won, loot, nukes/missiles used, cities built, projects bought, spending
+- Alliance leaderboard: wars declared/won, loot, nukes/missiles used, cities built, projects, spending
 - Nation leaderboard: same metrics at individual level
 - Summary cards: world totals for period
 - War cost drill-down from `IRSWars.db`
 - Live search across `GlobalNations.db`
-- Resource prices alongside loot values
+
+**File:** `web/Pages/my_nation.html`
+
+Personal nation dashboard (requires Discord login and linked nation):
+
+- Full nation data bundle: nation stats, cities, revenue, modifiers, goals
+- Per-city derived fields: improvement slots, power status, age
+- Active war slot display (authoritative from `GlobalWarsDB`, not cumulative totals)
+- Revenue breakdown: gross income, tax income, net cash per turn/day/week, upkeep breakdown, resource production
+- Goals CRUD: city, infra, land, improvement, military, project, custom goal types
+- Auto-completion detection: goals automatically marked done when the live nation meets targets
+- Build plan editor: create/save/preview a city build plan with cost and progress tracking
+- War stats panel: per-nation combat history from `IRSWars.db` with leaderboard rankings
+- Nation snapshot save/refresh
 
 ---
 
@@ -495,21 +548,46 @@ Global PnW event feed and leaderboards:
 
 **File:** `web/Pages/homepage.html`
 
-Website homepage with navigation and overview.
+Website homepage with navigation, feature overview, live bot stats, recent activity feed, and creator info.
 
 **File:** `web/Pages/astrology.html`
 
-Astrology system web interface (tarot and zodiac).
+Astrology system interface:
+
+- Western zodiac sign lookup (birth date input)
+- Chinese zodiac sign with authentic New Year dates (1900–2027)
+- Primal astrology (combined spirit animal)
+- Daily horoscope via external API proxy
 
 **File:** `web/Pages/commands.html`
 
-Discord command reference.
+Discord slash command reference.
 
-**File:** `web/Pages/contact.html**
+**File:** `web/Pages/documentation.html`
+
+In-app documentation browser:
+
+- Renders markdown docs from `web/docs/`
+- Available docs: README, REAPER, HARVESTER, WEBSITE
+- Full-text search across all docs
+
+**File:** `web/Pages/settings.html`
+
+User settings panel (requires login):
+
+- Discord profile display
+- Nation linking/unlinking (persisted to database)
+- Theme customization (colors, custom background image, hide background toggle)
+- Auto-fill presets for nations and alliances
+- Privacy toggles (leaderboard visibility)
+- Language/locale selection (en, es, fr, de, pt, zh, ja, ko, ru, ar)
+- Menu layout customization (page order)
+
+**File:** `web/Pages/contact.html`
 
 Contact information page.
 
-**File:** `web/Pages/privacy.html**
+**File:** `web/Pages/privacy.html`
 
 Privacy policy.
 
@@ -519,256 +597,410 @@ Terms of service.
 
 **File:** `web/Pages/cache-management.html`
 
-Cache management interface.
+Cache management interface for CDN/local cache control.
 
 ---
 
 ## API Reference
 
+All API endpoints are served under the `/api` prefix.
+
 ### Authentication APIs
 
-#### `web/api/discord_auth.py`
+**File:** `web/api/discord_auth.py`
 
-Discord OAuth2 authentication flow:
-
-- **`/auth/login`** — Initiates OAuth2 login, redirects to Discord
-- **`/auth/callback`** — OAuth2 callback, exchanges code for access token
-- **`/auth/logout`** — Clears user session
-- **`/auth/user`** — Returns current authenticated user info
-- **`/auth/refresh`** — Refreshes access token if expired
+| Endpoint | Method | Description |
+|:---|:---|:---|
+| `/auth/login` | GET | Initiate OAuth2 login, redirect to Discord |
+| `/auth/callback` | GET | OAuth2 callback, exchange code for access token |
+| `/auth/logout` | GET | Clear user session |
+| `/auth/user` | GET | Return current authenticated user info |
+| `/auth/refresh` | POST | Refresh access token if expired |
 
 ---
 
 ### Pets APIs
 
-#### `web/api/pets_api.py`
+**File:** `web/api/pets_api.py` — Core pet data operations
 
-Core pet data operations:
+Routes include pet creation, stat retrieval, XP/leveling, equipment management, rename, battle simulation (NPC and PvP), and related sub-systems.
 
-- **`/api/pets/my_pet`** — Get user's pet data
-- **`/api/pets/adopt`** — Create new pet
-- **`/api/pets/rename`** — Rename pet
-- **`/api/pets/roster`** — Get global pet roster
-- **`/api/pets/train`** — Send pet on training activity
-- **`/api/pets/mission`** — Send pet on mission
-- **`/api/pets/play`** — Send pet to play location
-- **`/api/pets/quest`** — Start quest adventure
-- **`/api/pets/ability_tree`** — Get ability tree data
-- **`/api/pets/unlock_ability`** — Unlock ability
-- **`/api/pets/battle_config`** — Get/set battle configuration
+**File:** `web/api/absorb_api.py` — PnW war absorb system
 
-#### `web/api/bazaar_api.py`
+| Endpoint | Method | Description |
+|:---|:---|:---|
+| `/pets/absorb/status` | GET | Get absorb status (linked nation, totals, available, XP preview) |
+| `/pets/absorb/wins` | POST | Absorb all available war wins as XP |
+| `/pets/absorb/kills` | POST | Absorb available unit kills (all types or specific type) |
+| `/pets/absorb/{unit_type}` | POST | Absorb a specific unit type (soldiers, tanks, aircraft, ships, missiles, nukes, spies) |
 
-Bazaar marketplace:
+**File:** `web/api/bazaar_api.py` — Bazaar marketplace
 
-- **`/api/bazaar/items`** — Get bazaar listings
-- **`/api/bazaar/buy`** — Purchase item
-- **`/api/bazaar/sell`** — Sell item
+| Endpoint | Method | Description |
+|:---|:---|:---|
+| `/api/bazaar/items` | GET | Get bazaar listings |
+| `/api/bazaar/buy` | POST | Purchase item |
+| `/api/bazaar/sell` | POST | Sell item |
 
-#### `web/api/tasks_api.py`
+**File:** `web/api/tasks_api.py` — Task system
 
-Task system:
+| Endpoint | Method | Description |
+|:---|:---|:---|
+| `/tasks` | GET | Get user's active tasks |
+| `/tasks/ensure-all` | POST | Admin: ensure all pet owners have tasks |
+| `/tasks/dismiss` | POST | Dismiss a task |
+| `/tasks/claim` | POST | Claim completed task reward |
+| `/tasks/claim-goal` | POST | Claim daily goal reward |
+| `/tasks/dm-prefs` | GET | Get DM notification preferences |
+| `/tasks/dm-prefs` | POST | Set DM notification preferences |
 
-- **`/api/tasks/my_tasks`** — Get user's active tasks
-- **`/api/tasks/complete`** — Complete task
-- **`/api/tasks/claim`** — Claim task reward
+**File:** `web/api/pet_stock_api.py` — Pet stock market
 
-#### `web/api/pet_stock_api.py`
+| Endpoint | Method | Description |
+|:---|:---|:---|
+| `/api/stock/prices` | GET | Get current stock prices |
+| `/api/stock/buy` | POST | Buy stock |
+| `/api/stock/sell` | POST | Sell stock |
+| `/api/stock/portfolio` | GET | Get user portfolio |
 
-Pet stock market:
+**File:** `web/api/forge_api.py` — Item crafting/upgrading
 
-- **`/api/stock/prices`** — Get current stock prices
-- **`/api/stock/buy`** — Buy stock
-- **`/api/stock/sell`** — Sell stock
-- **`/api/stock/portfolio`** — Get user portfolio
-
-#### `web/api/forge_api.py`
-
-Item crafting/upgrading:
-
-- **`/api/forge/craft`** — Craft item
-- **`/api/forge/upgrade`** — Upgrade item
+| Endpoint | Method | Description |
+|:---|:---|:---|
+| `/api/forge/craft` | POST | Craft item |
+| `/api/forge/upgrade` | POST | Upgrade item |
 
 ---
 
 ### Casino APIs
 
-#### `web/api/casino_lobby_api.py`
+**File:** `web/api/casino_lobby_api.py`
 
-Casino lobby management:
+| Endpoint | Method | Description |
+|:---|:---|:---|
+| `/api/casino/lobby` | GET | Get lobby state (all rooms) |
+| `/api/casino/join_room` | POST | Join a room |
+| `/api/casino/leave_room` | POST | Leave a room |
 
-- **`/api/casino/lobby`** — Get lobby state (all rooms)
-- **`/api/casino/join_room`** — Join a room
-- **`/api/casino/leave_room`** — Leave a room
+**File:** `web/api/casino_api.py`
 
-#### `web/api/casino_api.py`
+| Endpoint | Method | Description |
+|:---|:---|:---|
+| `/api/casino/start_game` | POST | Start a game |
+| `/api/casino/place_bet` | POST | Place bet |
+| `/api/casino/game_action` | POST | Perform game action |
 
-General casino operations:
+**File:** `web/api/blackjack_api.py`
 
-- **`/api/casino/start_game`** — Start a game
-- **`/api/casino/place_bet`** — Place bet
-- **`/api/casino/game_action`** — Perform game action
+| Endpoint | Method | Description |
+|:---|:---|:---|
+| `/api/blackjack/hit` | POST | Hit |
+| `/api/blackjack/stand` | POST | Stand |
+| `/api/blackjack/double` | POST | Double down |
+| `/api/blackjack/split` | POST | Split |
 
-#### `web/api/blackjack_api.py`
+**File:** `web/api/holdem_api.py`
 
-Blackjack-specific:
+| Endpoint | Method | Description |
+|:---|:---|:---|
+| `/api/holdem/fold` | POST | Fold |
+| `/api/holdem/check` | POST | Check |
+| `/api/holdem/call` | POST | Call |
+| `/api/holdem/raise` | POST | Raise |
 
-- **`/api/blackjack/hit`** — Hit
-- **`/api/blackjack/stand`** — Stand
-- **`/api/blackjack/double`** — Double down
-- **`/api/blackjack/split`** — Split
+**File:** `web/api/craps_api.py`
 
-#### `web/api/holdem_api.py`
+| Endpoint | Method | Description |
+|:---|:---|:---|
+| `/api/craps/roll` | POST | Roll dice |
+| `/api/craps/place_bet` | POST | Place side bet |
 
-Texas Hold'em-specific:
+**File:** `web/api/races_api.py`
 
-- **`/api/holdem/fold`** — Fold
-- **`/api/holdem/check`** — Check
-- **`/api/holdem/call`** — Call
-- **`/api/holdem/raise`** — Raise
+| Endpoint | Method | Description |
+|:---|:---|:---|
+| `/api/races/bet` | POST | Place bet on racer |
+| `/api/races/start` | POST | Start race |
 
-#### `web/api/craps_api.py`
+**File:** `web/api/minigames_api.py`
 
-Craps-specific:
+| Endpoint | Method | Description |
+|:---|:---|:---|
+| `/api/minigames/start` | POST | Start mini-game |
+| `/api/minigames/action` | POST | Game action |
 
-- **`/api/craps/roll`** — Roll dice
-- **`/api/craps/place_bet`** — Place side bet
+**File:** `web/api/powerball_api.py`
 
-#### `web/api/races_api.py`
+| Endpoint | Method | Description |
+|:---|:---|:---|
+| `/api/powerball/buy_ticket` | POST | Buy lottery ticket |
+| `/api/powerball/draw` | GET | Get draw results |
 
-Pet racing:
+**File:** `web/api/scratch_api.py`
 
-- **`/api/races/bet`** — Place bet on racer
-- **`/api/races/start`** — Start race
+| Endpoint | Method | Description |
+|:---|:---|:---|
+| `/api/scratch/buy` | POST | Buy scratch card |
+| `/api/scratch/reveal` | POST | Reveal card |
 
-#### `web/api/minigames_api.py`
+---
 
-Mini-games:
+### Arena API
 
-- **`/api/minigames/start`** — Start mini-game
-- **`/api/minigames/action`** — Game action
+**File:** `web/api/arena_api.py`
 
-#### `web/api/powerball_api.py`
+| Endpoint | Method | Description |
+|:---|:---|:---|
+| `/ws/arena` | WS | WebSocket connection for real-time room state |
+| `/arena/rooms` | GET | Get all 12 room states |
+| `/arena/join` | POST | Join a room (mode: npc, pvp, boss) |
+| `/arena/leave` | POST | Leave current room |
+| `/arena/battle/npc` | POST | Run NPC battle (easy/average/hard) |
+| `/arena/battle/pvp` | POST | Accept PvP challenge from room challenger |
+| `/arena/battle/boss/start` | POST | Start boss battle (requires ≥2 players) |
+| `/arena/battle/boss/state` | GET | Get current boss battle state for room |
+| `/arena/battle/boss/action` | POST | Submit player action for boss turn |
 
-Powerball lottery:
+---
 
-- **`/api/powerball/buy_ticket`** — Buy lottery ticket
-- **`/api/powerball/draw`** — Get draw results
+### Colosseum API
 
-#### `web/api/scratch_api.py`
+**File:** `web/api/colosseum_api.py`
 
-Scratch cards:
+| Endpoint | Method | Description |
+|:---|:---|:---|
+| `/api/colosseum/state` | GET | Get full colosseum state (members + recent log) |
+| `/api/colosseum/join` | POST | Enroll pet in colosseum |
+| `/api/colosseum/leave` | POST | Remove pet from colosseum |
+| `/api/colosseum/claim` | POST | Claim pending XP, keys, and potions |
+| `/api/colosseum/log` | GET | Get recent battle log |
 
-- **`/api/scratch/buy`** — Buy scratch card
-- **`/api/scratch/reveal`** — Reveal card
+---
+
+### Dungeon API
+
+**File:** `web/api/dungeon_api.py`
+
+| Endpoint | Method | Description |
+|:---|:---|:---|
+| `/dungeon/create` | POST | Create a new dungeon (solo or party) |
+| `/dungeon/active` | GET | Get user's active dungeons |
+| `/dungeon/{dungeon_id}` | GET | Get dungeon state |
+| `/dungeon/{dungeon_id}/ready` | POST | Mark user ready to advance |
+| `/dungeon/{dungeon_id}/battle/start` | POST | Start a monster/boss battle in dungeon |
+| `/dungeon/{dungeon_id}/battle/{battle_id}/status` | GET | Poll battle status (for multi-player sync) |
+| `/dungeon/{dungeon_id}/battle/action` | POST | Submit battle action (attack/defend/charge/skill) |
+
+---
+
+### Survivor Series API
+
+**File:** `web/api/ss_api.py`
+
+| Endpoint | Method | Description |
+|:---|:---|:---|
+| `/ss/state` | GET | Get full current game state |
+| `/ss/map` | GET | Get map rendering data (positions, events, seed) |
+| `/ss/join` | POST | Join current lobby |
+| `/ss/start` | POST | Start game (requires ≥2 participants) |
+| `/ss/leave` | POST | Leave (disabled — joining is permanent) |
+| `/ss/events` | GET | Server-Sent Events stream for live updates |
+| `/ss/last_game` | GET | Get last finished game snapshot |
+| `/ss/history` | GET | List past games |
+| `/ss/history/{game_id}/rounds` | GET | Get rounds for a specific game |
+| `/ss/history/{game_id}/feed` | GET | Get live feed for a specific game |
+| `/ss/history/{game_id}/participants` | GET | Get participants and placements for a game |
+| `/ss/pet-stats` | GET | Get SS stats for the logged-in user's pet |
+| `/ss/admin/kick_round` | POST | Admin: force-fire the round loop |
+| `/ss/admin/refresh_abilities` | POST | Admin: refresh all participant abilities |
+| `/ss/reset` | POST | Admin: reset the game entirely |
 
 ---
 
 ### PnW APIs
 
-#### `web/api/watch_api.py`
+**File:** `web/api/watch_api.py`
 
-Watch page war intelligence:
+| Endpoint | Method | Description |
+|:---|:---|:---|
+| `/watch/wars` | GET | War cost data for date range and alliance |
+| `/watch/wars/all-nations` | GET | All-time war stats for NW nations |
+| `/watch/nations` | GET | All Darkstar nations with city aggregates |
+| `/watch/nations/{nation_id}` | GET | Full nation detail including cities |
+| `/watch/nations_by_alliance` | GET | Nations for any alliance by ID |
+| `/watch/revenue` | GET | Revenue calculation for an alliance |
+| `/watch/nation-ranks/{nation_name}` | GET | All periods where nation ranked top 3 |
+| `/watch/periods` | GET | Available date periods with war data |
+| `/watch/invalidate-cache` | POST | Clear wars response cache |
 
-- **`/api/watch/data`** — Get war cost data for date range
-- **`/api/watch/summary`** — Get alliance summary
-- **`/api/watch/nations`** — Get nation breakdown
+**File:** `web/api/pnw_api.py`
 
-#### `web/api/pnw_api.py`
+| Endpoint | Method | Description |
+|:---|:---|:---|
+| `/api/pnw/nations` | GET | Search nations |
+| `/api/pnw/alliance` | GET | Get alliance data |
+| `/api/pnw/nation` | GET | Get nation details |
+| `/api/pnw/projects` | GET | Get project data |
 
-General PnW data:
+**File:** `web/api/rev_optimizer_api.py`
 
-- **`/api/pnw/nations`** — Search nations
-- **`/api/pnw/alliance`** — Get alliance data
-- **`/api/pnw/nation`** — Get nation details
-- **`/api/pnw/projects`** — Get project data
+| Endpoint | Method | Description |
+|:---|:---|:---|
+| `/api/rev_optimizer/nation` | GET | Optimize single nation |
+| `/api/rev_optimizer/alliance` | GET | Optimize entire alliance |
+| `/api/rev_optimizer/suggestions` | GET | Get improvement suggestions |
 
-#### `web/api/rev_optimizer_api.py`
+**File:** `web/api/raids_api.py`
 
-Revenue optimization:
+| Endpoint | Method | Description |
+|:---|:---|:---|
+| `/api/raids/targets` | GET | Find raid targets |
+| `/api/raids/loot` | GET | Calculate projected loot |
+| `/api/raids/alerts` | GET/POST/DELETE | Manage beige alerts |
 
-- **`/api/rev_optimizer/nation`** — Optimize single nation
-- **`/api/rev_optimizer/alliance`** — Optimize entire alliance
-- **`/api/rev_optimizer/suggestions`** — Get improvement suggestions
+**File:** `web/api/weapon_api.py`
 
-#### `web/api/raids_api.py`
+| Endpoint | Method | Description |
+|:---|:---|:---|
+| `/weapons/ac_data` | GET | Autocomplete data for nation/alliance search |
+| `/weapons/theory` | GET | Theory mode calculation (infra + pop density) |
+| `/weapons/targeted/nation` | GET | Targeted mode for a specific nation |
+| `/weapons/targeted/alliance` | GET | Targeted mode for an alliance |
 
-Raid target finder:
+**File:** `web/api/news_api.py`
 
-- **`/api/raids/targets`** — Find raid targets
-- **`/api/raids/loot`** — Calculate projected loot
-- **`/api/raids/alerts`** — Manage beige alerts
+| Endpoint | Method | Description |
+|:---|:---|:---|
+| `/api/news/events` | GET | Event feed for time period |
+| `/api/news/alliance_leaderboard` | GET | Alliance rankings |
+| `/api/news/nation_leaderboard` | GET | Nation rankings |
+| `/api/news/summary` | GET | Period summary totals |
+| `/api/news/war_details` | GET | War cost breakdown |
 
-#### `web/api/weapon_api.py`
+**File:** `web/api/treaty_universe_api.py`
 
-Weapon efficiency:
+| Endpoint | Method | Description |
+|:---|:---|:---|
+| `/treaties/ac_data` | GET | Alliance list for autocomplete |
+| `/treaties/universe` | GET | Full treaty graph (alliances + treaties + scores) |
 
-- **`/api/weapon/theory`** — Theory mode calculations
-- **`/api/weapon/targeted`** — Targeted mode calculations
-- **`/api/weapon/chart`** — Generate damage chart
+**File:** `web/api/fullmill_api.py`
 
-#### `web/api/news_api.py`
+| Endpoint | Method | Description |
+|:---|:---|:---|
+| `/fullmill/rankings` | GET | All alliances ranked by max mill percent (10-min cache) |
 
-News and leaderboards:
+**File:** `web/api/my_nation_api.py` — Personal nation dashboard
 
-- **`/api/news/events`** — Get event feed
-- **`/api/news/alliance_leaderboard`** — Get alliance rankings
-- **`/api/news/nation_leaderboard`** — Get nation rankings
-- **`/api/news/summary`** — Get period summary
-- **`/api/news/war_details`** — Get war cost breakdown
+| Endpoint | Method | Description |
+|:---|:---|:---|
+| `/mynation/{nation_id}` | GET | Full nation data bundle (2-min cache; `?refresh=true` to bust) |
+| `/mynation/goals/check-completion/{nation_id}` | POST | Auto-complete goals that meet targets |
+| `/mynation/goals/{nation_id}` | GET | List goals |
+| `/mynation/goals` | POST | Create goal |
+| `/mynation/goals/{goal_id}/complete` | POST | Mark goal done |
+| `/mynation/goals/{goal_id}` | DELETE | Delete goal |
+| `/mynation/snapshot` | POST | Save/refresh nation snapshot |
 
-#### `web/api/world_api.py`
+**File:** `web/api/plan_api.py` — Nation build plan
 
-World data:
-
-- **`/api/world/game_info`** — Get game state (date, radiation, etc.)
-- **`/api/world/prices`** — Get resource prices
-- **`/api/world/colors`** — Get color bonuses
+| Endpoint | Method | Description |
+|:---|:---|:---|
+| `/mynation/plan/{nation_id}` | GET | Get plan with progress and costs |
+| `/mynation/plan` | POST | Create or update plan |
+| `/mynation/plan/{nation_id}` | DELETE | Delete plan |
+| `/mynation/plan/preview` | POST | Compute simulated nation preview after plan completion |
 
 ---
 
 ### Utility APIs
 
-#### `web/api/bot_info.py`
+**File:** `web/api/stats_api.py`
 
-Bot information:
+| Endpoint | Method | Description |
+|:---|:---|:---|
+| `/stats` | GET | Homepage stats (servers, users, nations, pets) |
+| `/creator` | GET | Creator info |
 
-- **`/api/bot/info`** — Get bot status and info
-- **`/api/bot/stats`** — Get bot statistics
+**File:** `web/api/activity_api.py`
 
-#### `web/api/alerts_api.py`
+| Endpoint | Method | Description |
+|:---|:---|:---|
+| `/activity/recent` | GET | Recent activity feed (last N events) |
+| `/activity/add` | POST | Internal: add an activity entry |
 
-User alerts:
+**File:** `web/api/alerts_api.py`
 
-- **`/api/alerts/beige`** — Get/set beige alerts
-- **`/api/alerts/price`** — Get/set price alerts
-- **`/api/alerts/check`** — Check alert status
+| Endpoint | Method | Description |
+|:---|:---|:---|
+| `/api/alerts/beige` | GET/POST/DELETE | Manage beige alerts |
+| `/api/alerts/price` | GET/POST/DELETE | Manage price alerts |
+| `/api/alerts/check` | GET | Check alert status |
 
-#### `web/api/cache_api.py`
+**File:** `web/api/settings_api.py`
 
-Cache management:
+| Endpoint | Method | Description |
+|:---|:---|:---|
+| `/settings` | GET | Get all settings for current user |
+| `/settings` | POST | Update settings |
+| `/settings` | DELETE | Delete all settings (theme, nation link, privacy, language, auto-fill) |
+| `/settings/link-nation` | POST | Link a nation and persist to database |
+| `/settings/link-nation` | DELETE | Unlink nation |
+| `/settings/upload-background` | POST | Upload custom background image (JPEG/PNG/WebP, max 5 MB) |
+| `/settings/upload-background` | DELETE | Remove custom background image |
 
-- **`/api/cache/stats`** — Get cache statistics
-- **`api/cache/clear`** — Clear cache
+**File:** `web/api/astrology_api.py`
 
-#### `web/api/library.py`
+| Endpoint | Method | Description |
+|:---|:---|:---|
+| `/astrology/signs` | POST | Get Western + Chinese + Primal signs for a birth date |
+| `/astrology/horoscope` | GET | Get daily horoscope for a zodiac sign |
+| `/horoscope-proxy` | GET | Proxy external horoscope API (CORS bypass) |
 
-Documentation library:
+**File:** `web/api/cache_api.py`
 
-- **`/api/library/articles`** — Get article list
-- **`/api/library/article`** — Get article content
+| Endpoint | Method | Description |
+|:---|:---|:---|
+| `/api/cache/stats` | GET | Cache statistics |
+| `/api/cache/clear` | POST | Clear cache |
 
-#### `web/api/image_proxy.py`
+**File:** `web/api/documentation_api.py`
 
-Image proxy:
+| Endpoint | Method | Description |
+|:---|:---|:---|
+| `/list` | GET | List available documentation files |
+| `/{doc_id}` | GET | Get a documentation file (README, REAPER, HARVESTER, WEBSITE) |
+| `/search` | GET | Full-text search across all documentation |
 
-- **`/api/proxy/image`** — Proxy external images (CORS handling)
+**File:** `web/api/library.py`
 
-#### `web/api/docs.py`
+| Endpoint | Method | Description |
+|:---|:---|:---|
+| `/api/library/articles` | GET | Get article list |
+| `/api/library/article` | GET | Get article content |
 
-API documentation:
+**File:** `web/api/image_proxy.py`
 
-- **`/docs`** — Interactive API documentation (Swagger UI)
+| Endpoint | Method | Description |
+|:---|:---|:---|
+| `/api/proxy/image` | GET | Proxy external images (CORS handling) |
+
+**File:** `web/api/world_api.py` — World/social data
+
+| Endpoint | Method | Description |
+|:---|:---|:---|
+| `/world/pets` | GET | Get all pets (for social features) |
+| `/world/pet-info` | GET | Pet species info from `info.json` |
+| `/world/my-relationships` | GET | Get current user's relationship list |
+| `/world/relationship` | POST | Set relationship with another user |
+| `/world/relationship/{target_user_id}` | DELETE | Remove relationship |
+| `/world/gift` | POST | Gift an item to another user |
+
+**File:** `web/api/docs.py`
+
+| Endpoint | Method | Description |
+|:---|:---|:---|
+| `/docs` | GET | Interactive Swagger UI (FastAPI auto-generated) |
 
 ---
 
@@ -777,30 +1009,52 @@ API documentation:
 ### Directory Structure
 
 ```
-web/static/
-├── Images/          # Static images (logos, backgrounds, avatars)
-├── Emojis/          # Custom emoji assets
-│   └── Watcher/     # PnW-related emojis
-├── css/             # Stylesheets (scoped per page)
-├── js/              # JavaScript files (per page functionality)
-└── 404.html         # Custom 404 page
+web/
+├── dashboard.html           Main SPA entry point
+├── static/
+│   ├── Images/              Static images (logos, backgrounds, avatars)
+│   ├── Emojis/              Custom emoji assets organized by category
+│   │   ├── Activity/
+│   │   ├── Casino/
+│   │   ├── Military/
+│   │   ├── Pets/
+│   │   ├── PnW Menu/
+│   │   ├── Resources/
+│   │   ├── War/
+│   │   └── Watcher/
+│   ├── user_backgrounds/    User-uploaded custom backgrounds
+│   ├── locales/             i18n strings (en.json + others)
+│   ├── dice-box/            3D dice rendering assets
+│   ├── 404.html             Custom 404 page
+│   └── 500.html             Custom 500 page
+├── css/                     Per-page stylesheets
+├── js/                      Per-page JavaScript files
+├── Pages/                   HTML pages
+│   └── Library/             Markdown strategy guides
+├── api/                     Backend API modules
+│   └── pets/                Pets sub-helpers (gpp_helpers.py)
+├── components/              Shared HTML components
+│   └── battle_settings_modal.html
+├── docs/                    Documentation served by documentation_api.py
+│   ├── README.md
+│   ├── REAPER.md
+│   ├── HARVESTER.md
+│   └── WEBSITE.md
+└── Wars/                    Static war report HTML files
 ```
 
 ### Caching Strategy
 
 - **Static assets:** Cached at CDN level for up to 1 hour
 - **HTML pages:** Never cached
-- **API responses:** Never cached (except where explicitly implemented)
-- **Images:** Proxied through image proxy for CORS handling
+- **API responses:** Never cached (except where explicitly implemented in-code)
+- **Watch wars data:** 2-minute in-memory cache per date range + alliance ID
+- **Full mill rankings:** 10-minute in-memory cache
+- **My-nation data:** 2-minute in-memory cache per nation ID
 
-### Emoji Assets
+### i18n / Localization
 
-Custom emojis for PnW interface:
-
-- War, tank, soldier, ship, missile, jet
-- Infrastructure, improvement, defense
-- Net damage, damages, cost, consumption
-- Bomb, loot, and more
+Locale strings live in `web/static/locales/`. The settings API exposes a `language` field; the frontend loads the matching locale JSON at startup.
 
 ---
 
@@ -820,7 +1074,7 @@ Access locally at: `http://localhost:8080`
 
 To make the website publicly accessible:
 
-1. **Configure environment variables:**
+1. Configure environment variables:
    ```
    USE_CLOUDFLARE_TUNNEL=true
    CUSTOM_DOMAIN=your-domain.com
@@ -828,15 +1082,15 @@ To make the website publicly accessible:
    CF_TUNNEL_ID=your-tunnel-id
    CF_API_TOKEN=your-api-token
    CF_TUNNEL_TOKEN=your-tunnel-token
-   CF_CREDENTIALS_FILE=path/to/credentials.json
+   CF_CREDENTIALS_FILE=cloudflared-config/creds.json
    ```
 
-2. **Start the bot:**
+2. Start the bot:
    ```bash
    python reaper.py
    ```
 
-3. The Cloudflare tunnel starts automatically, making the site available at your configured domain.
+The Cloudflare tunnel starts automatically, making the site available at your configured domain.
 
 ### Manual Cloudflare Tunnel
 
@@ -861,7 +1115,15 @@ The bot can programmatically purge Cloudflare CDN cache when needed (requires `C
 | Variable | Purpose | Default |
 |:---|:---|:---|
 | `CUSTOM_DOMAIN` | Public-facing domain | `https://reaper.qzz.io` |
-| `USE_CLOUDFLARE_TUNNEL` | Auto-start tunnel | `false` |
+| `USE_CLOUDFLARE_TUNNEL` | Auto-start tunnel on bot startup | `false` |
+
+**Discord OAuth2:**
+
+| Variable | Purpose |
+|:---|:---|
+| `DISCORD_CLIENT_ID` | Discord application client ID |
+| `DISCORD_CLIENT_SECRET` | Discord application client secret |
+| `DISCORD_REDIRECT_URI` | OAuth2 callback URL |
 
 **Cloudflare:**
 
@@ -869,7 +1131,7 @@ The bot can programmatically purge Cloudflare CDN cache when needed (requires `C
 |:---|:---|:---|
 | `CF_ACCOUNT_ID` | Cloudflare account ID | For cache purge |
 | `CF_TUNNEL_ID` | Tunnel ID | For named tunnel |
-| `CF_API_TOKEN` | API token | For cache purge |
+| `CF_API_TOKEN` | API token | For cache purge and tunnel |
 | `CF_TUNNEL_TOKEN` | Tunnel auth token | For tunnel |
 | `CF_CREDENTIALS_FILE` | Credentials JSON path | For tunnel |
 
@@ -879,7 +1141,7 @@ The web server runs on port **8080** by default. This is hardcoded in the bot st
 
 ### CORS Configuration
 
-The web server handles CORS internally. External images are proxied through the image proxy API to avoid CORS issues.
+The web server handles CORS internally. External images are proxied through `image_proxy.py` to avoid CORS issues.
 
 ---
 
@@ -888,24 +1150,28 @@ The web server handles CORS internally. External images are proxied through the 
 ### Adding New Pages
 
 1. Create HTML file in `web/Pages/`
-2. Create corresponding API file in `web/api/` (if needed)
-3. Add navigation entry in `web/dashboard.html`
-4. Add route in FastAPI app (in `reaper.py` or web server initialization)
+2. Create corresponding CSS in `web/css/` (scope to page)
+3. Create corresponding JS in `web/js/`
+4. Create API file in `web/api/` if needed
+5. Register the API router in the FastAPI app initialization
+6. Add navigation entry in `web/dashboard.html`
 
 ### Adding New APIs
 
-1. Create API file in `web/api/`
+1. Create `router = APIRouter()` in a new file under `web/api/`
 2. Define FastAPI routes with proper decorators
 3. Implement database queries or external API calls
 4. Add error handling and validation
-5. Update API documentation (Swagger UI auto-generates)
+5. Register the router in the web server initialization
+6. Swagger UI auto-generates documentation at `/docs`
 
 ### Static Asset Management
 
-- Images go in `web/static/Images/`
-- CSS should be scoped per page in `web/static/css/`
-- JavaScript should be per-page in `web/static/js/`
-- Custom emojis go in `web/static/Emojis/`
+- Images → `web/static/Images/`
+- Per-page CSS → `web/css/`
+- Per-page JavaScript → `web/js/`
+- Custom emojis → `web/static/Emojis/`
+- User-uploaded backgrounds → `web/static/user_backgrounds/` (managed via settings API)
 
 ---
 
@@ -914,39 +1180,40 @@ The web server handles CORS internally. External images are proxied through the 
 ### Web Server Not Starting
 
 - Check port 8080 is not in use
-- Verify FastAPI dependencies are installed
-- Check bot logs for startup errors
+- Verify FastAPI and all dependencies are installed (`pip install -r requirements.txt`)
+- Check `reaper_bot.log` and `site_debug.log` for startup errors
 
 ### Authentication Issues
 
-- Verify Discord application has correct redirect URI
-- Check `DISCORD_TOKEN` is valid
-- Ensure OAuth2 scopes are properly configured
+- Verify the Discord application has the correct redirect URI configured
+- Check `DISCORD_CLIENT_ID` and `DISCORD_CLIENT_SECRET` are set
+- Ensure OAuth2 scopes (`identify email guilds`) are enabled in the Discord app
 
 ### Cloudflare Tunnel Issues
 
-- Verify tunnel credentials are valid
+- Verify tunnel credentials are valid in `cloudflared-config/creds.json`
 - Check `CF_TUNNEL_ID` matches your tunnel
-- Ensure domain DNS is configured correctly
-- Check Cloudflare account permissions
+- Ensure domain DNS points to the tunnel
+- Check Cloudflare account permissions for the API token
 
 ### Database Access Issues
 
-- Verify database files exist in `Databases/`
-- Check file permissions
-- Ensure bot has write access to database directory
+- Verify all database files exist in `Databases/`
+- Check file permissions (bot process must have read/write access)
+- Run `scripts/check_db_structure.py` to validate schema
 
 ---
 
-## Security Considerations
+## Security
 
 - All authentication is delegated to Discord OAuth2
-- No passwords are stored
-- Sessions are server-side only
+- No passwords are stored anywhere
+- Sessions stored server-side in `sessions.db` only
 - Access tokens are automatically refreshed
-- Personal data requires authentication
-- Public pages have no sensitive data exposure
-- API endpoints validate user permissions
+- Personal data endpoints require authentication and validate the requesting user owns the resource
+- My-nation endpoints enforce `_require_own_nation` — users can only view their own linked nation
+- Background image uploads validate magic bytes (JPEG/PNG/WebP), enforce 5 MB limit, and are stored per user ID
+- API endpoints use parameterized SQLite queries throughout
 - Rate limiting is implemented where appropriate
 
 ---
@@ -954,19 +1221,22 @@ The web server handles CORS internally. External images are proxied through the 
 ## Performance
 
 - Static assets cached at CDN level
-- Database queries optimized with indexes
-- WebSocket for real-time updates (casino)
-- Caching for expensive calculations (war costs, revenue)
+- Database queries use indexed columns
+- WebSocket for real-time arena/casino updates
+- SSE for Survivor Series live feed
+- In-memory caching for expensive calculations (war costs, full mill rankings, my-nation data)
 - Lazy loading for large datasets
 - Pagination for leaderboards and feeds
+- Bulk database loads (all nations + all cities in 2 queries) for full mill ranking
 
 ---
 
 ## Browser Support
 
-- Modern browsers with ES6+ support
-- WebSocket support (for casino games)
-- LocalStorage support (for session persistence)
+- Modern browsers with ES6+ support required
+- WebSocket support required for arena and casino games
+- Server-Sent Events support required for Survivor Series live feed
+- LocalStorage support for client-side preferences
 - Recommended: Chrome, Firefox, Safari, Edge (latest versions)
 
 ---
