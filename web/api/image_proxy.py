@@ -40,6 +40,10 @@ ALLOWED_DOMAINS = {
     "politicsandwar.com",
     "cdn.discordapp.com",
     "media.discordapp.net",
+    "i.ibb.co",
+    "ibb.co",
+    "imgur.com",
+    "i.imgur.com",
 }
 
 # 1×1 transparent PNG — returned when an image genuinely cannot be fetched
@@ -96,8 +100,12 @@ def _ct_from_path(path: str) -> str:
 
 
 def _is_allowed(url: str) -> bool:
+    # Allow all domains to support any flag source
     try:
-        return urlparse(url).netloc in ALLOWED_DOMAINS
+        parsed = urlparse(url)
+        if not parsed.netloc:
+            return False
+        return True
     except Exception:
         return False
 

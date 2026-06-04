@@ -1,0 +1,359 @@
+<link rel="stylesheet" href="/css/nations.css">
+<style>
+  .fm-shell {
+    padding: 1rem;
+    max-width: 100%;
+  }
+  .fm-controls {
+    margin-bottom: 1rem;
+  }
+  .fm-header-right {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+  .fm-refresh {
+    background: rgba(184, 134, 11, 0.2);
+    border: 1px solid rgba(184, 134, 11, 0.45);
+    color: #d4af37;
+    padding: 0.4rem 0.8rem;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.85rem;
+  }
+  .fm-refresh:hover {
+    background: rgba(184, 134, 11, 0.3);
+  }
+  .fm-table-card {
+    margin-top: 1rem;
+  }
+  .fm-table-wrap {
+    overflow-x: auto;
+  }
+  .fm-flag {
+    width: 24px;
+    height: 16px;
+    object-fit: cover;
+    border-radius: 2px;
+    margin-right: 0.5rem;
+    vertical-align: middle;
+  }
+  .fm-icon-sm {
+    width: 18px;
+    height: 18px;
+    vertical-align: middle;
+  }
+  .fm-percent-bar {
+    width: 100px;
+    height: 8px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 4px;
+    overflow: hidden;
+    display: inline-block;
+    vertical-align: middle;
+    margin-left: 0.5rem;
+  }
+  .fm-percent-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #4caf50, #8bc34a);
+    transition: width 0.3s;
+  }
+  .fm-percent-fill.high {
+    background: linear-gradient(90deg, #4caf50, #8bc34a);
+  }
+  .fm-percent-fill.medium {
+    background: linear-gradient(90deg, #ff9800, #ffc107);
+  }
+  .fm-percent-fill.low {
+    background: linear-gradient(90deg, #f44336, #ff5722);
+  }
+  .fm-cell {
+    padding: 0.5rem;
+    text-align: center;
+  }
+  .fm-cell-left {
+    text-align: left;
+    padding-left: 1rem;
+  }
+  .fm-alliance-name {
+    font-weight: 600;
+    color: #d4af37;
+  }
+  .fm-alliance-link {
+    color: #d4af37;
+    text-decoration: none;
+  }
+  .fm-alliance-link:hover {
+    text-decoration: underline;
+  }
+  .fm-stat-value {
+    font-family: 'Courier New', monospace;
+    font-size: 0.9rem;
+  }
+  .fm-percent-value {
+    font-weight: 600;
+    font-size: 0.9rem;
+  }
+  .fm-percent-value.high {
+    color: #4caf50;
+  }
+  .fm-percent-value.medium {
+    color: #ff9800;
+  }
+  .fm-percent-value.low {
+    color: #f44336;
+  }
+  .fm-loading {
+    text-align: center;
+    padding: 2rem;
+    color: rgba(255,255,255,0.6);
+  }
+  .fm-status {
+    padding: 0.75rem 1rem;
+    margin-bottom: 1rem;
+    border-radius: 4px;
+    font-size: 0.9rem;
+  }
+  .fm-status.error {
+    background: rgba(244, 67, 54, 0.2);
+    border: 1px solid rgba(244, 67, 54, 0.5);
+    color: #f44336;
+  }
+  .fm-status.info {
+    background: rgba(33, 150, 243, 0.2);
+    border: 1px solid rgba(33, 150, 243, 0.5);
+    color: #2196f3;
+  }
+  .fm-sort-summary {
+    font-size: 0.85rem;
+    color: rgba(255,255,255,0.6);
+  }
+</style>
+
+<div class="fm-shell">
+  <div class="card fm-controls">
+    <div class="card-header">
+      <div>
+        <p class="nat-kicker">Global Rankings</p>
+        <p class="nat-title">Full Mill Alliance Rankings</p>
+      </div>
+      <div class="fm-header-right">
+        <span id="fm-sort-summary" class="fm-sort-summary">Sorted by Overall Mill % ↓</span>
+        <button id="fm-refresh" class="fm-refresh">↻ Refresh</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="fm-status" class="fm-status" style="display:none"></div>
+
+  <div id="fm-loading" class="fm-loading">Loading alliance rankings...</div>
+
+  <div id="fm-table-card" class="card fm-table-card" style="display:none">
+    <div class="card-header">
+      <span>Alliance Rankings (APPS & VM Excluded)</span>
+    </div>
+    <div class="card-body p-0">
+      <div class="fm-table-wrap">
+        <table id="fm-table">
+          <thead>
+            <tr>
+              <th data-col="rank">Rank</th>
+              <th data-col="name" class="fm-cell-left">Alliance</th>
+              <th data-col="overall_percent" class="nat-sort-active">Overall % ↓</th>
+              <th data-col="soldier_percent"><img src="/static/Emojis/Military/soldier.png" class="fm-icon-sm" alt=""> Soldier %</th>
+              <th data-col="tank_percent"><img src="/static/Emojis/Military/tank.png" class="fm-icon-sm" alt=""> Tank %</th>
+              <th data-col="aircraft_percent"><img src="/static/Emojis/Military/jet.png" class="fm-icon-sm" alt=""> Aircraft %</th>
+              <th data-col="ship_percent"><img src="/static/Emojis/Military/ship.png" class="fm-icon-sm" alt=""> Ship %</th>
+              <th data-col="current_missiles"><img src="/static/Emojis/Military/missile.png" class="fm-icon-sm" alt=""> Missiles</th>
+              <th data-col="current_nukes"><img src="/static/Emojis/Military/bomb.png" class="fm-icon-sm" alt=""> Nukes</th>
+              <th data-col="active_nations">Members</th>
+              <th data-col="total_cities">Cities</th>
+              <th data-col="total_score">Score</th>
+            </tr>
+          </thead>
+          <tbody id="fm-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="/js/image-utils.js"></script>
+<script>
+(function () {
+  const fmt = n => Number(n||0).toLocaleString();
+  const fmtF = (n,d=1) => Number(n||0).toLocaleString(undefined,{minimumFractionDigits:d,maximumFractionDigits:d});
+  
+  let _alliances = [];
+  let _sortCol = 'overall_percent';
+  let _sortAsc = false;
+  let _loading = true;
+
+  function getPercentClass(pct) {
+    if (pct >= 80) return 'high';
+    if (pct >= 50) return 'medium';
+    return 'low';
+  }
+
+  function sortedFiltered() {
+    return _alliances.sort((a, b) => {
+      let av = a[_sortCol];
+      let bv = b[_sortCol];
+      
+      // Handle string sorting for name column
+      if (_sortCol === 'name') {
+        av = (av || '').toLowerCase();
+        bv = (bv || '').toLowerCase();
+        if (_sortAsc) {
+          return av < bv ? -1 : av > bv ? 1 : 0;
+        } else {
+          return av > bv ? -1 : av < bv ? 1 : 0;
+        }
+      }
+      
+      // Numeric sorting for other columns
+      av = av ?? 0;
+      bv = bv ?? 0;
+      return _sortAsc ? av - bv : bv - av;
+    });
+  }
+
+  function renderTable() {
+    const list = sortedFiltered();
+    const tbody = document.getElementById('fm-body');
+    const rows = [];
+    
+    list.forEach((alliance, index) => {
+      const rank = index + 1;
+      const overallPct = alliance.overall_percent || 0;
+      const soldierPct = alliance.soldier_percent || 0;
+      const tankPct = alliance.tank_percent || 0;
+      const aircraftPct = alliance.aircraft_percent || 0;
+      const shipPct = alliance.ship_percent || 0;
+      
+      const allianceId = alliance.id;
+      const allianceName = alliance.name;
+      const pnwLink = `https://politicsandwar.com/alliance/id=${allianceId}`;
+      
+      rows.push(`<tr class="nat-row">
+        <td class="fm-cell">#${rank}</td>
+        <td class="fm-cell fm-cell-left">
+          ${alliance.flag ? `<img src="${window.ImageUtils ? window.ImageUtils.proxyImageUrl(alliance.flag) : alliance.flag}" class="fm-flag" alt="">` : ''}
+          <a href="${pnwLink}" target="_blank" class="fm-alliance-link">${allianceName}</a>
+        </td>
+        <td class="fm-cell">
+          <span class="fm-percent-value ${getPercentClass(overallPct)}">${fmtF(overallPct)}%</span>
+          <div class="fm-percent-bar">
+            <div class="fm-percent-fill ${getPercentClass(overallPct)}" style="width: ${Math.min(overallPct, 100)}%"></div>
+          </div>
+        </td>
+        <td class="fm-cell">
+          <span class="fm-percent-value ${getPercentClass(soldierPct)}">${fmtF(soldierPct)}%</span>
+          <div style="font-size: 0.8rem; color: rgba(255,255,255,0.5);">
+            ${fmt(alliance.current_soldiers)}/${fmt(alliance.max_soldiers)}
+          </div>
+        </td>
+        <td class="fm-cell">
+          <span class="fm-percent-value ${getPercentClass(tankPct)}">${fmtF(tankPct)}%</span>
+          <div style="font-size: 0.8rem; color: rgba(255,255,255,0.5);">
+            ${fmt(alliance.current_tanks)}/${fmt(alliance.max_tanks)}
+          </div>
+        </td>
+        <td class="fm-cell">
+          <span class="fm-percent-value ${getPercentClass(aircraftPct)}">${fmtF(aircraftPct)}%</span>
+          <div style="font-size: 0.8rem; color: rgba(255,255,255,0.5);">
+            ${fmt(alliance.current_aircraft)}/${fmt(alliance.max_aircraft)}
+          </div>
+        </td>
+        <td class="fm-cell">
+          <span class="fm-percent-value ${getPercentClass(shipPct)}">${fmtF(shipPct)}%</span>
+          <div style="font-size: 0.8rem; color: rgba(255,255,255,0.5);">
+            ${fmt(alliance.current_ships)}/${fmt(alliance.max_ships)}
+          </div>
+        </td>
+        <td class="fm-cell fm-stat-value">
+          <img src="/static/Emojis/Military/missile.png" class="fm-icon-sm" alt=""> ${fmt(alliance.current_missiles)}
+        </td>
+        <td class="fm-cell fm-stat-value">
+          <img src="/static/Emojis/Military/bomb.png" class="fm-icon-sm" alt=""> ${fmt(alliance.current_nukes)}
+        </td>
+        <td class="fm-cell fm-stat-value">${alliance.active_nations}</td>
+        <td class="fm-cell fm-stat-value">${fmt(alliance.total_cities)}</td>
+        <td class="fm-cell fm-stat-value">${fmt(alliance.total_score)}</td>
+      </tr>`);
+    });
+    
+    tbody.innerHTML = rows.join('');
+  }
+
+  function updateSortHeaders() {
+    document.querySelectorAll('#fm-table th[data-col]').forEach(th => {
+      th.classList.remove('nat-sort-active');
+      th.innerHTML = th.innerHTML.replace(/\s*[↑↓]$/,'');
+      if (th.dataset.col === _sortCol) {
+        th.classList.add('nat-sort-active');
+        th.innerHTML += _sortAsc ? ' ↑' : ' ↓';
+      }
+    });
+    document.getElementById('fm-sort-summary').textContent =
+      `Sorted by ${_sortCol.replace(/_/g, ' ')} ${_sortAsc?'↑':'↓'}`;
+  }
+
+  async function loadData() {
+    try {
+      const res = await fetch('/api/fullmill/rankings');
+      const data = await res.json();
+      
+      if (data.error) {
+        showStatus(data.error, 'error');
+        return;
+      }
+      
+      _alliances = data.alliances || [];
+      _loading = false;
+      
+      document.getElementById('fm-loading').style.display = 'none';
+      document.getElementById('fm-table-card').style.display = 'block';
+      
+      if (data.cached) {
+        showStatus('Showing cached data (refreshes every 10 minutes)', 'info');
+      }
+      
+      renderTable();
+      updateSortHeaders();
+    } catch (e) {
+      console.error('Error loading Full Mill data:', e);
+      showStatus('Failed to load alliance rankings', 'error');
+    }
+  }
+
+  function showStatus(message, type) {
+    const el = document.getElementById('fm-status');
+    el.textContent = message;
+    el.className = `fm-status ${type}`;
+    el.style.display = 'block';
+  }
+
+  // Event listeners
+  document.getElementById('fm-refresh').addEventListener('click', () => {
+    _loading = true;
+    document.getElementById('fm-loading').style.display = 'block';
+    document.getElementById('fm-table-card').style.display = 'none';
+    document.getElementById('fm-status').style.display = 'none';
+    loadData();
+  });
+
+  document.querySelectorAll('#fm-table th[data-col]').forEach(th => {
+    th.addEventListener('click', () => {
+      const col = th.dataset.col;
+      if (_sortCol === col) _sortAsc = !_sortAsc;
+      else { _sortCol = col; _sortAsc = false; }
+      updateSortHeaders();
+      renderTable();
+    });
+  });
+
+  // Initial load
+  loadData();
+})();
+</script>

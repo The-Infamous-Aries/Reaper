@@ -205,29 +205,50 @@
     return s.replace(/_/g,' ').toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
   }
 
-  // War policy badge color
+  // War policy → image filename (matches /static/Emojis/War/*.png)
+  const WAR_POLICY_IMG = {
+    ATTRITION:'attrition', TURTLE:'turtle', BLITZKRIEG:'blitzkrieg',
+    FORTRESS:'fortress', PIRATE:'pirate', GUARDIAN:'guardian',
+    MONEYBAGS:'moneybags', ARCANE:'arcane', COVERT:'covert', TACTICIAN:'tactician',
+  };
+  // War policy badge colors (kept for border tint)
   const WAR_POLICY_COLORS = {
     ATTRITION:'#e05555', TURTLE:'#6495ed', BLITZKRIEG:'#ff8c00',
     FORTRESS:'#9370db', PIRATE:'#20b2aa', GUARDIAN:'#3cb371',
-    MONEYBAGS:'#ffd700', ARCANE:'#da70d6',
+    MONEYBAGS:'#ffd700', ARCANE:'#da70d6', COVERT:'#aaaaaa', TACTICIAN:'#f4a460',
   };
   function warPolicyBadge(val) {
-    const raw = cleanEnum(val);
+    if (!val || val === '—') return '';
+    const raw = cleanEnum(val).toUpperCase();
     const label = fmtPolicy(val);
-    const css = WAR_POLICY_COLORS[raw.toUpperCase()] || 'rgba(255,255,255,0.5)';
-    return `<span class="nat-detail-badge" style="background:${css}22;color:${css};border:1px solid ${css};" title="War Policy">⚔️ ${label}</span>`;
+    const img = WAR_POLICY_IMG[raw];
+    const css = WAR_POLICY_COLORS[raw] || 'rgba(255,255,255,0.5)';
+    const icon = img
+      ? `<img src="/static/Emojis/War/${img}.png" class="nat-policy-icon" alt="">`
+      : '';
+    return `<span class="nat-detail-badge nat-policy-badge" style="background:${css}22;color:${css};border:1px solid ${css};" title="War Policy: ${label}">${icon}${label}</span>`;
   }
 
-  // Domestic policy badge
+  // Domestic policy → image filename (matches /static/Emojis/Domestic/*.png)
+  const DOM_POLICY_IMG = {
+    MANIFEST_DESTINY:'manifestdestiny', OPEN_MARKETS:'openmarkets',
+    TECHNOLOGICAL_ADVANCEMENT:'techadvancement', IMPERIALISM:'imperialism',
+    URBANIZATION:'urbanization', RAPID_EXPANSION:'rapidexpansion',
+  };
   const DOM_POLICY_COLORS = {
     MANIFEST_DESTINY:'#8fbc8f', OPEN_MARKETS:'#87ceeb', TECHNOLOGICAL_ADVANCEMENT:'#9370db',
     IMPERIALISM:'#cd5c5c', URBANIZATION:'#daa520', RAPID_EXPANSION:'#ff8c00',
   };
   function domPolicyBadge(val) {
-    const raw = cleanEnum(val);
+    if (!val || val === '—') return '';
+    const raw = cleanEnum(val).toUpperCase();
     const label = fmtPolicy(val);
-    const css = DOM_POLICY_COLORS[raw.toUpperCase()] || 'rgba(255,255,255,0.5)';
-    return `<span class="nat-detail-badge" style="background:${css}22;color:${css};border:1px solid ${css};" title="Domestic Policy">🏛️ ${label}</span>`;
+    const img = DOM_POLICY_IMG[raw];
+    const css = DOM_POLICY_COLORS[raw] || 'rgba(255,255,255,0.5)';
+    const icon = img
+      ? `<img src="/static/Emojis/Domestic/${img}.png" class="nat-policy-icon" alt="">`
+      : '';
+    return `<span class="nat-detail-badge nat-policy-badge" style="background:${css}22;color:${css};border:1px solid ${css};" title="Domestic Policy: ${label}">${icon}${label}</span>`;
   }
   function cleanEnum(val) {
     if (!val) return '—';
@@ -734,11 +755,13 @@
   // ── fetch ─────────────────────────────────────────────────────────────────
   async function fetchLinkedNation() {
     try {
-      const res = await fetch('/api/discord/linked-nation');
+      // Use /api/settings which already has linked_nation_id and respects
+      // the privacy_show_nations_rankings flag — no separate endpoint needed.
+      const res = await fetch('/api/settings', { credentials: 'same-origin' });
       if (!res.ok) return;
       const data = await res.json();
-      if (data.linked && data.nation_id) {
-        _linkedNationId = String(data.nation_id);
+      if (data.linked_nation_id) {
+        _linkedNationId = String(data.linked_nation_id);
         if (_nations.length) renderTable();
       }
     } catch(_) {}
@@ -788,6 +811,44 @@
       status.className = 'nat-status nat-status-error';
       status.textContent = `Error: ${e.message}`;
     }
+  }
+
+  // ── improvement icon definitions (mirrors my_nation page) ────────────────
+  const NAT_IMP_DEF = [
+    {col:'coal_power',        label:'Coal Power',        img:'res:coal'},
+    {col:'oil_power',         label:'Oil Power',         img:'res:oil'},
+    {col:'nuclear_power',     label:'Nuclear Power',     img:'res:uranium'},
+    {col:'wind_power',        label:'Wind Power',        img:'imp:windmill'},
+    {col:'coal_mine',         label:'Coal Mine',         img:'res:coal'},
+    {col:'oil_well',          label:'Oil Well',          img:'res:oil'},
+    {col:'uranium_mine',      label:'Uranium Mine',      img:'res:uranium'},
+    {col:'iron_mine',         label:'Iron Mine',         img:'res:iron'},
+    {col:'bauxite_mine',      label:'Bauxite Mine',      img:'res:bauxite'},
+    {col:'lead_mine',         label:'Lead Mine',         img:'res:lead'},
+    {col:'farm',              label:'Farm',              img:'res:food'},
+    {col:'oil_refinery',      label:'Oil Refinery',      img:'res:gasoline'},
+    {col:'aluminum_refinery', label:'Alu Refinery',      img:'res:aluminum'},
+    {col:'steel_mill',        label:'Steel Mill',        img:'res:steel'},
+    {col:'munitions_factory', label:'Munitions Factory', img:'res:munitions'},
+    {col:'factory',           label:'Factory',           img:'mil:tank'},
+    {col:'police_station',    label:'Police Station',    img:'imp:police'},
+    {col:'hospital',          label:'Hospital',          img:'imp:hospital'},
+    {col:'recycling_center',  label:'Recycling Center',  img:'imp:recycle'},
+    {col:'subway',            label:'Subway',            img:'imp:subway'},
+    {col:'supermarket',       label:'Supermarket',       img:'imp:supermarket'},
+    {col:'bank',              label:'Bank',              img:'imp:bank'},
+    {col:'shopping_mall',     label:'Shopping Mall',     img:'imp:market'},
+    {col:'stadium',           label:'Stadium',           img:'imp:stadium'},
+    {col:'barracks',          label:'Barracks',          img:'mil:soldier'},
+    {col:'hangar',            label:'Hangar',            img:'mil:jet'},
+    {col:'drydock',           label:'Drydock',           img:'mil:ship'},
+  ];
+  function natImpSrc(img) {
+    const [ns, name] = img.split(':');
+    if (ns === 'res') return `/static/Emojis/Resources/${name}.png`;
+    if (ns === 'imp') return `/static/Emojis/Improvements/${name}.png`;
+    if (ns === 'mil') return `/static/Emojis/Military/${name}.png`;
+    return '';
   }
 
   // ── detail HTML ───────────────────────────────────────────────────────────
@@ -1011,15 +1072,10 @@
           <div class="nat-detail-section-title">🏙️ Cities (${cities.length})</div>
           <div class="nat-cities-wrap">
             ${cities.map(c=>{
-              const allImps = [
-                ['Coal Power',c.coal_power],['Oil Power',c.oil_power],['Nuclear Power',c.nuclear_power],['Wind Power',c.wind_power],
-                ['Coal Mine',c.coal_mine],['Oil Well',c.oil_well],['Uranium Mine',c.uranium_mine],['Lead Mine',c.lead_mine],
-                ['Iron Mine',c.iron_mine],['Bauxite Mine',c.bauxite_mine],['Farm',c.farm],
-                ['Gas Refinery',c.oil_refinery],['Aluminum Refinery',c.aluminum_refinery],['Steel Mill',c.steel_mill],['Munitions Factory',c.munitions_factory],['Factory',c.factory],
-                ['Police Station',c.police_station],['Hospital',c.hospital],['Recycling Center',c.recycling_center],['Subway',c.subway],
-                ['Supermarket',c.supermarket],['Bank',c.bank],['Shopping Mall',c.shopping_mall],['Stadium',c.stadium],
-                ['Barracks',c.barracks],['Hangar',c.hangar],['Drydock',c.drydock],
-              ].filter(([,v])=>v>0);
+              const chips = NAT_IMP_DEF
+                .filter(d => (c[d.col] || 0) > 0)
+                .map(d => `<div class="nat-imp-chip" title="${d.label} ×${c[d.col]}"><img src="${natImpSrc(d.img)}" class="nat-imp-chip-icon" alt=""><span class="nat-imp-chip-cnt">${c[d.col]}</span></div>`)
+                .join('');
               return `<div class="nat-city-card">
                 <div class="nat-city-name">${c.name||`City ${c.id}`}</div>
                 <div class="nat-city-stats">
@@ -1028,7 +1084,7 @@
                   <span class="${c.powered?'nat-powered':'nat-unpowered'}">${c.powered?'⚡':'⚠️'}</span>
                 </div>
                 <div class="nat-city-imps">
-                  ${allImps.map(([l,v])=>`<span class="nat-city-imp">${l}: ${v}</span>`).join('')}
+                  ${chips || '<span style="font-size:0.68rem;opacity:0.5">No improvements</span>'}
                 </div>
               </div>`;
             }).join('')}

@@ -64,7 +64,18 @@ async def _get_revenue_per_turn(nation: dict) -> tuple:
         return 0.0, {}
     try:
         from Systems.PnW.Util.rev_correct import calculate_full_revenue_with_query
-        result = await calculate_full_revenue_with_query(nation_data=nation, is_war=False)
+        
+        # Detect war status for correct military upkeep calculation
+        wars = nation.get('wars') or []
+        if wars:
+            at_war = any(w.get('turnsleft', 0) > 0 for w in wars)
+        else:
+            at_war = (
+                (nation.get('offensive_wars_count') or 0) > 0 or
+                (nation.get('defensive_wars_count') or 0) > 0
+            )
+        
+        result = await calculate_full_revenue_with_query(nation_data=nation, is_war=at_war)
         cash_pt = float(result.get("gross_income") or 0.0)
         rss_pt  = {r: float((result.get("resources") or {}).get(r) or 0.0) for r in RESOURCES}
         return cash_pt, rss_pt

@@ -1,0 +1,1572 @@
+<div class="settings-page">
+
+  <!-- Settings Header -->
+  <div class="settings-page-header">
+    <div class="settings-page-header-icon">⚙️</div>
+    <div>
+      <h1 class="settings-page-title">Settings</h1>
+      <p class="settings-page-subtitle">Manage your account, appearance, and preferences</p>
+    </div>
+  </div>
+
+  <!-- Settings Layout: sidebar + content -->
+  <div class="settings-layout">
+
+    <!-- Left Nav -->
+    <aside class="settings-nav">
+      <button class="settings-nav-item active" data-tab="account" onclick="switchTab('account')">
+        <i class="fab fa-discord"></i> Account
+      </button>
+      <button class="settings-nav-item" data-tab="theme" onclick="switchTab('theme')">
+        <i class="fas fa-palette"></i> Appearance
+      </button>
+      <button class="settings-nav-item" data-tab="autofill" onclick="switchTab('autofill')">
+        <i class="fas fa-magic"></i> Auto-Fill
+      </button>
+      <button class="settings-nav-item" data-tab="notifications" onclick="switchTab('notifications')">
+        <i class="fas fa-bell"></i> Notifications
+      </button>
+      <button class="settings-nav-item" data-tab="privacy" onclick="switchTab('privacy')">
+        <i class="fas fa-user-shield"></i> Privacy
+      </button>
+      <button class="settings-nav-item" data-tab="layout" onclick="switchTab('layout')">
+        <i class="fas fa-th-large"></i> Layout
+      </button>
+    </aside>
+
+    <!-- Right Content -->
+    <div class="settings-content-area">
+
+      <!-- ═══════════════════════════════ ACCOUNT TAB ═══════════════════════════════ -->
+      <section class="settings-tab active" id="tab-account">
+
+        <!-- Discord Card -->
+        <div class="settings-card">
+          <div class="settings-card-header">
+            <i class="fab fa-discord settings-card-icon" style="color:#5865F2"></i>
+            <div>
+              <div class="settings-card-title">Discord Account</div>
+              <div class="settings-card-desc">Connect your Discord account to enable personalized features</div>
+            </div>
+            <div class="settings-card-status-badge" id="discord-badge">
+              <span class="badge-dot disconnected"></span>Not connected
+            </div>
+          </div>
+
+          <!-- Not connected state -->
+          <div id="discord-not-connected" class="settings-card-body">
+            <p class="settings-hint">Sign in with Discord to sync your profile, unlock pets, and save your preferences across devices.</p>
+            <a href="/api/discord/login" class="stn-btn stn-btn-discord">
+              <i class="fab fa-discord"></i> Connect with Discord
+            </a>
+          </div>
+
+          <!-- Connected state -->
+          <div id="discord-connected" class="settings-card-body" style="display:none">
+            <div class="discord-profile-row">
+              <img id="stn-discord-avatar" src="" alt="Avatar" class="stn-discord-avatar">
+              <div class="discord-profile-info">
+                <div class="discord-profile-name" id="stn-discord-name">—</div>
+                <div class="discord-profile-handle" id="stn-discord-handle">—</div>
+                <div class="discord-profile-id" id="stn-discord-id">—</div>
+              </div>
+            </div>
+            <div class="stn-btn-row">
+              <button class="stn-btn stn-btn-secondary" onclick="refreshDiscord()">
+                <i class="fas fa-sync-alt"></i> Refresh Profile
+              </button>
+              <a href="/api/discord/logout" class="stn-btn stn-btn-danger">
+                <i class="fas fa-sign-out-alt"></i> Disconnect
+              </a>
+            </div>
+          </div>
+        </div>
+
+        <!-- PnW Nation Card -->
+        <div class="settings-card">
+          <div class="settings-card-header">
+            <i class="fas fa-globe settings-card-icon" style="color:var(--gold-primary)"></i>
+            <div>
+              <div class="settings-card-title">Politics &amp; War Nation</div>
+              <div class="settings-card-desc">Link your PnW nation to enable auto-fill and personalized tools</div>
+            </div>
+            <div class="settings-card-status-badge" id="pnw-badge">
+              <span class="badge-dot disconnected"></span>Not linked
+            </div>
+          </div>
+
+          <!-- Not linked state -->
+          <div id="pnw-not-linked" class="settings-card-body">
+            <p class="settings-hint">Enter your nation ID to link your Politics &amp; War account.</p>
+            <div class="stn-input-row">
+              <input type="text" id="stn-nation-id-input" class="stn-input" placeholder="Enter Nation ID (numbers only)" inputmode="numeric">
+              <button class="stn-btn stn-btn-primary" id="link-nation-btn" onclick="linkNation()">
+                <i class="fas fa-link"></i> Link Nation
+              </button>
+            </div>
+            <div id="nation-status" class="stn-status-msg" style="display:none"></div>
+          </div>
+
+          <!-- Linked state -->
+          <div id="pnw-linked" class="settings-card-body" style="display:none">
+            <div class="nation-profile-row">
+              <div class="nation-flag-box" id="stn-nation-flag"></div>
+              <div class="nation-profile-info">
+                <div class="nation-profile-name" id="stn-nation-name">—</div>
+                <div class="nation-profile-id">Nation ID: <span id="stn-nation-id">—</span></div>
+                <a class="nation-profile-link" id="stn-nation-ext-link" href="#" target="_blank" rel="noopener">
+                  <i class="fas fa-external-link-alt"></i> View on PnW
+                </a>
+              </div>
+            </div>
+            <div class="stn-btn-row">
+              <button class="stn-btn stn-btn-danger" id="unlink-nation-btn" onclick="unlinkNation()">
+                <i class="fas fa-unlink"></i> Unlink Nation
+              </button>
+            </div>
+            <div id="nation-status-linked" class="stn-status-msg" style="display:none"></div>
+          </div>
+        </div>
+
+      </section>
+
+      <!-- ═══════════════════════════════ THEME TAB ═════════════════════════════════ -->
+      <section class="settings-tab" id="tab-theme" style="display:none">
+
+        <div class="settings-card">
+          <div class="settings-card-header">
+            <i class="fas fa-paint-brush settings-card-icon" style="color:var(--gold-primary)"></i>
+            <div>
+              <div class="settings-card-title">Theme Presets</div>
+              <div class="settings-card-desc">Choose a built-in color scheme</div>
+            </div>
+          </div>
+          <div class="settings-card-body">
+          <div class="preset-grid">
+              <button class="preset-swatch" data-preset="dark" onclick="applyPreset('dark')">
+                <span class="preset-colors">
+                  <span style="background:#0a0a0a"></span>
+                  <span style="background:#0f0f0f"></span>
+                  <span style="background:#ffd700"></span>
+                </span>
+                <span class="preset-label">🌑 Dark</span>
+              </button>
+              <button class="preset-swatch" data-preset="light" onclick="applyPreset('light')">
+                <span class="preset-colors">
+                  <span style="background:#e8e8e8"></span>
+                  <span style="background:#f2f2f2"></span>
+                  <span style="background:#b8860b"></span>
+                </span>
+                <span class="preset-label">☀️ Light</span>
+              </button>
+              <button class="preset-swatch" data-preset="fire" onclick="applyPreset('fire')">
+                <span class="preset-colors">
+                  <span style="background:#120500"></span>
+                  <span style="background:#2e1000"></span>
+                  <span style="background:#ff6a00"></span>
+                </span>
+                <span class="preset-label">🔥 Fire</span>
+              </button>
+              <button class="preset-swatch" data-preset="ember" onclick="applyPreset('ember')">
+                <span class="preset-colors">
+                  <span style="background:#1a0505"></span>
+                  <span style="background:#361010"></span>
+                  <span style="background:#e74c3c"></span>
+                </span>
+                <span class="preset-label">🌋 Ember</span>
+              </button>
+              <button class="preset-swatch" data-preset="forest" onclick="applyPreset('forest')">
+                <span class="preset-colors">
+                  <span style="background:#050f08"></span>
+                  <span style="background:#112614"></span>
+                  <span style="background:#4caf50"></span>
+                </span>
+                <span class="preset-label">🌲 Forest</span>
+              </button>
+              <button class="preset-swatch" data-preset="coral" onclick="applyPreset('coral')">
+                <span class="preset-colors">
+                  <span style="background:#041a1a"></span>
+                  <span style="background:#0d3333"></span>
+                  <span style="background:#26c6da"></span>
+                </span>
+                <span class="preset-label">🪸 Coral</span>
+              </button>
+              <button class="preset-swatch" data-preset="midnight" onclick="applyPreset('midnight')">
+                <span class="preset-colors">
+                  <span style="background:#05071a"></span>
+                  <span style="background:#10163a"></span>
+                  <span style="background:#7c83fd"></span>
+                </span>
+                <span class="preset-label">🌌 Midnight</span>
+              </button>
+              <button class="preset-swatch" data-preset="aurora" onclick="applyPreset('aurora')">
+                <span class="preset-colors">
+                  <span style="background:#030d1a"></span>
+                  <span style="background:#072033"></span>
+                  <span style="background:#00e5ff"></span>
+                </span>
+                <span class="preset-label">🌠 Aurora</span>
+              </button>
+              <button class="preset-swatch" data-preset="nebula" onclick="applyPreset('nebula')">
+                <span class="preset-colors">
+                  <span style="background:#0d0520"></span>
+                  <span style="background:#1c0d42"></span>
+                  <span style="background:#ce93d8"></span>
+                </span>
+                <span class="preset-label">🔭 Nebula</span>
+              </button>
+              <button class="preset-swatch" data-preset="storm" onclick="applyPreset('storm')">
+                <span class="preset-colors">
+                  <span style="background:#080c12"></span>
+                  <span style="background:#161e2e"></span>
+                  <span style="background:#5c9eff"></span>
+                </span>
+                <span class="preset-label">⛈️ Storm</span>
+              </button>
+              <button class="preset-swatch" data-preset="obsidian" onclick="applyPreset('obsidian')">
+                <span class="preset-colors">
+                  <span style="background:#0a0a0f"></span>
+                  <span style="background:#161622"></span>
+                  <span style="background:#e0e0e0"></span>
+                </span>
+                <span class="preset-label">🪨 Obsidian</span>
+              </button>
+              <button class="preset-swatch" data-preset="bronze" onclick="applyPreset('bronze')">
+                <span class="preset-colors">
+                  <span style="background:#100a04"></span>
+                  <span style="background:#261808"></span>
+                  <span style="background:#cd7f32"></span>
+                </span>
+                <span class="preset-label">⚙️ Bronze</span>
+              </button>
+              <button class="preset-swatch" data-preset="neon" onclick="applyPreset('neon')">
+                <span class="preset-colors">
+                  <span style="background:#030303"></span>
+                  <span style="background:#0e0e0e"></span>
+                  <span style="background:#39ff14"></span>
+                </span>
+                <span class="preset-label">⚡ Neon</span>
+              </button>
+              <button class="preset-swatch" data-preset="dusk" onclick="applyPreset('dusk')">
+                <span class="preset-colors">
+                  <span style="background:#100508"></span>
+                  <span style="background:#281018"></span>
+                  <span style="background:#ff6b9d"></span>
+                </span>
+                <span class="preset-label">🌅 Dusk</span>
+              </button>
+              <button class="preset-swatch" data-preset="sand" onclick="applyPreset('sand')">
+                <span class="preset-colors">
+                  <span style="background:#120d04"></span>
+                  <span style="background:#2c200e"></span>
+                  <span style="background:#f5c842"></span>
+                </span>
+                <span class="preset-label">🏜️ Sand</span>
+              </button>
+              <button class="preset-swatch" data-preset="rose" onclick="applyPreset('rose')">
+                <span class="preset-colors">
+                  <span style="background:#120608"></span>
+                  <span style="background:#280f14"></span>
+                  <span style="background:#f06292"></span>
+                </span>
+                <span class="preset-label">🌹 Rose</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="settings-card">
+          <div class="settings-card-header">
+            <i class="fas fa-image settings-card-icon" style="color:var(--gold-primary)"></i>
+            <div>
+              <div class="settings-card-title">Background Image</div>
+              <div class="settings-card-desc">Upload a custom background image for your experience</div>
+            </div>
+            <div class="settings-card-status-badge" id="bg-image-badge">
+              <span class="badge-dot" id="bg-image-badge-dot"></span>
+              <span id="bg-image-badge-label">Default</span>
+            </div>
+          </div>
+          <div class="settings-card-body">
+
+            <!-- Current / preview -->
+            <div class="bg-preview-wrap" id="bg-preview-wrap" style="display:none">
+              <div class="bg-preview-img" id="bg-preview-img"></div>
+              <div class="bg-preview-info">
+                <span id="bg-preview-filename" class="bg-preview-name"></span>
+                <button class="stn-btn stn-btn-danger stn-btn-sm" id="remove-bg-btn" onclick="removeBackground()">
+                  <i class="fas fa-trash-alt"></i> Remove
+                </button>
+              </div>
+            </div>
+
+            <!-- Upload zone -->
+            <div class="bg-upload-zone" id="bg-upload-zone">
+              <i class="fas fa-cloud-upload-alt bg-upload-icon"></i>
+              <div class="bg-upload-text">Drag &amp; drop an image, or</div>
+              <label class="stn-btn stn-btn-secondary" style="cursor:pointer">
+                <i class="fas fa-folder-open"></i> Browse Files
+                <input type="file" id="bg-file-input" accept="image/jpeg,image/png,image/webp" style="display:none" onchange="handleBgFileSelect(this)">
+              </label>
+              <div class="bg-upload-hint">JPG, PNG or WebP · max 5 MB</div>
+            </div>
+
+            <div id="bg-upload-status" class="stn-status-msg" style="display:none"></div>
+
+            <!-- Upload progress -->
+            <div class="bg-upload-progress" id="bg-upload-progress" style="display:none">
+              <div class="bg-progress-bar" id="bg-progress-bar"></div>
+            </div>
+
+          </div>
+        </div>
+
+        <div class="settings-card">
+          <div class="settings-card-header">
+            <i class="fas fa-sliders-h settings-card-icon" style="color:var(--gold-primary)"></i>
+            <div>
+              <div class="settings-card-title">Custom Colors</div>
+              <div class="settings-card-desc">Fine-tune individual colors — changes preview instantly</div>
+            </div>
+          </div>
+          <div class="settings-card-body">
+            <div class="color-grid">
+              <div class="color-row">
+                <label class="color-label">Background Primary</label>
+                <div class="color-pair">
+                  <input type="color" id="bg-primary" class="color-swatch" value="#0a0a0a">
+                  <input type="text" id="bg-primary-text" class="color-hex" value="#0a0a0a" maxlength="7">
+                </div>
+              </div>
+              <div class="color-row">
+                <label class="color-label">Background Secondary</label>
+                <div class="color-pair">
+                  <input type="color" id="bg-secondary" class="color-swatch" value="#0f0f0f">
+                  <input type="text" id="bg-secondary-text" class="color-hex" value="#0f0f0f" maxlength="7">
+                </div>
+              </div>
+              <div class="color-row">
+                <label class="color-label">Background Tertiary</label>
+                <div class="color-pair">
+                  <input type="color" id="bg-tertiary" class="color-swatch" value="#141414">
+                  <input type="text" id="bg-tertiary-text" class="color-hex" value="#141414" maxlength="7">
+                </div>
+              </div>
+              <div class="color-row">
+                <label class="color-label">Accent Primary</label>
+                <div class="color-pair">
+                  <input type="color" id="gold-primary" class="color-swatch" value="#ffd700">
+                  <input type="text" id="gold-primary-text" class="color-hex" value="#ffd700" maxlength="7">
+                </div>
+              </div>
+              <div class="color-row">
+                <label class="color-label">Accent Secondary</label>
+                <div class="color-pair">
+                  <input type="color" id="gold-secondary" class="color-swatch" value="#ffed4e">
+                  <input type="text" id="gold-secondary-text" class="color-hex" value="#ffed4e" maxlength="7">
+                </div>
+              </div>
+              <div class="color-row">
+                <label class="color-label">Text Primary</label>
+                <div class="color-pair">
+                  <input type="color" id="text-primary" class="color-swatch" value="#f0f0f0">
+                  <input type="text" id="text-primary-text" class="color-hex" value="#f0f0f0" maxlength="7">
+                </div>
+              </div>
+              <div class="color-row">
+                <label class="color-label">Text Secondary</label>
+                <div class="color-pair">
+                  <input type="color" id="text-secondary" class="color-swatch" value="#b9bbbe">
+                  <input type="text" id="text-secondary-text" class="color-hex" value="#b9bbbe" maxlength="7">
+                </div>
+              </div>
+            </div>
+            <div id="theme-status" class="stn-status-msg" style="display:none"></div>
+            <div class="stn-btn-row" style="margin-top:1.5rem">
+              <button class="stn-btn stn-btn-primary" id="save-theme-btn" onclick="saveTheme()">
+                <i class="fas fa-save"></i> Save Theme
+              </button>
+              <button class="stn-btn stn-btn-secondary" id="reset-theme-btn" onclick="resetTheme()">
+                <i class="fas fa-undo"></i> Reset
+              </button>
+            </div>
+          </div>
+        </div>
+
+      </section>
+
+      <!-- ═══════════════════════════════ AUTO-FILL TAB ═════════════════════════════ -->
+      <section class="settings-tab" id="tab-autofill" style="display:none">
+
+        <div class="settings-card">
+          <div class="settings-card-header">
+            <i class="fas fa-robot settings-card-icon" style="color:var(--gold-primary)"></i>
+            <div>
+              <div class="settings-card-title">Auto-Fill My Nation</div>
+              <div class="settings-card-desc">Automatically pre-fill your linked nation in these tools</div>
+            </div>
+          </div>
+          <div class="settings-card-body">
+            <div class="toggle-list">
+              <label class="toggle-item">
+                <div class="toggle-item-info">
+                  <div class="toggle-item-title">Raids</div>
+                  <div class="toggle-item-desc">Pre-fill your nation in the Raid Finder tool</div>
+                </div>
+                <div class="stn-toggle">
+                  <input type="checkbox" id="auto-fill-nation-raids">
+                  <span class="stn-toggle-track"></span>
+                </div>
+              </label>
+              <label class="toggle-item">
+                <div class="toggle-item-info">
+                  <div class="toggle-item-title">Revenue Optimizer</div>
+                  <div class="toggle-item-desc">Pre-fill your nation in the Revenue Optimizer</div>
+                </div>
+                <div class="stn-toggle">
+                  <input type="checkbox" id="auto-fill-nation-revopt">
+                  <span class="stn-toggle-track"></span>
+                </div>
+              </label>
+              <label class="toggle-item">
+                <div class="toggle-item-info">
+                  <div class="toggle-item-title">Calculator</div>
+                  <div class="toggle-item-desc">Pre-fill your nation in the War Calculator</div>
+                </div>
+                <div class="stn-toggle">
+                  <input type="checkbox" id="auto-fill-nation-calc">
+                  <span class="stn-toggle-track"></span>
+                </div>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div class="settings-card">
+          <div class="settings-card-header">
+            <i class="fas fa-shield-alt settings-card-icon" style="color:var(--gold-primary)"></i>
+            <div>
+              <div class="settings-card-title">Raids — Exclude Alliances</div>
+              <div class="settings-card-desc">Alliances added here are automatically excluded in the Raid Finder</div>
+            </div>
+          </div>
+          <div class="settings-card-body">
+            <div class="tag-input-zone">
+              <div class="tag-list" id="raids-exclude-tags"></div>
+              <div class="tag-input-wrap">
+                <input type="text" id="add-raids-exclude-input" class="stn-input" placeholder="Search alliances…" autocomplete="off">
+                <div id="raids-exclude-dropdown" class="ac-dropdown" style="display:none"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="settings-card">
+          <div class="settings-card-header">
+            <i class="fas fa-home settings-card-icon" style="color:var(--gold-primary)"></i>
+            <div>
+              <div class="settings-card-title">Compare — Home Alliance</div>
+              <div class="settings-card-desc">Alliances added here are auto-set as the Home Alliance in Comparison</div>
+            </div>
+          </div>
+          <div class="settings-card-body">
+            <div class="tag-input-zone">
+              <div class="tag-list" id="compare-home-tags"></div>
+              <div class="tag-input-wrap">
+                <input type="text" id="add-compare-home-input" class="stn-input" placeholder="Search alliances…" autocomplete="off">
+                <div id="compare-home-dropdown" class="ac-dropdown" style="display:none"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Watch Home Alliance Card -->
+        <div class="settings-card">
+          <div class="settings-card-header">
+            <i class="fas fa-eye settings-card-icon" style="color:var(--gold-primary)"></i>
+            <div>
+              <div class="settings-card-title">Watch — Home Alliance</div>
+              <div class="settings-card-desc">Your home alliance shown in the War Stats ledger. Defaults to Darkstar (10259) if not set.</div>
+            </div>
+            <div class="settings-card-status-badge" id="watch-alliance-badge">
+              <span class="badge-dot" id="watch-alliance-dot" style="background:#636669"></span>
+              <span id="watch-alliance-label">Default</span>
+            </div>
+          </div>
+          <div class="settings-card-body">
+            <div class="tag-input-zone">
+              <div class="tag-list" id="watch-home-tags"></div>
+              <div class="tag-input-wrap">
+                <input type="text" id="add-watch-home-input" class="stn-input" placeholder="Search alliances…" autocomplete="off">
+                <div id="watch-home-dropdown" class="ac-dropdown" style="display:none"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div id="autofill-status" class="stn-status-msg" style="display:none"></div>
+        <div class="stn-btn-row">
+          <button class="stn-btn stn-btn-primary" id="save-autofill-btn" onclick="saveAutoFill()">
+            <i class="fas fa-save"></i> Save Auto-Fill Settings
+          </button>
+        </div>
+
+      </section>
+
+      <!-- ════════════════════════════ NOTIFICATIONS TAB ═══════════════════════════ -->
+      <section class="settings-tab" id="tab-notifications" style="display:none">
+
+        <!-- Resource Price Alerts Card -->
+        <div class="settings-card">
+          <div class="settings-card-header">
+            <i class="fas fa-chart-line settings-card-icon" style="color:var(--gold-primary)"></i>
+            <div>
+              <div class="settings-card-title">Resource Price Alerts</div>
+              <div class="settings-card-desc">Get a Discord DM when a resource crosses your threshold</div>
+            </div>
+            <div class="settings-card-status-badge" id="alerts-badge">
+              <span class="badge-dot" id="alerts-badge-dot" style="background:#636669"></span>
+              <span id="alerts-badge-label">—</span>
+            </div>
+          </div>
+          <div class="settings-card-body">
+            <div id="notif-alerts-list" style="margin-bottom:1rem">
+              <div class="stn-status-msg" style="display:block;background:rgba(255,215,0,.07);color:var(--text-secondary);border:1px solid rgba(255,215,0,.15);">
+                Sign in with Discord to manage price alerts.
+              </div>
+            </div>
+
+            <!-- Add alert form -->
+            <div id="notif-add-alert-form" style="display:none">
+              <div class="notif-alert-form-grid">
+                <div>
+                  <label class="color-label" style="margin-bottom:.4rem;display:block">Resource</label>
+                  <select id="notif-resource" class="stn-input" style="width:100%">
+                    <option value="food">Food</option>
+                    <option value="coal">Coal</option>
+                    <option value="oil">Oil</option>
+                    <option value="uranium">Uranium</option>
+                    <option value="lead">Lead</option>
+                    <option value="iron">Iron</option>
+                    <option value="bauxite">Bauxite</option>
+                    <option value="gasoline">Gasoline</option>
+                    <option value="munitions">Munitions</option>
+                    <option value="steel">Steel</option>
+                    <option value="aluminum">Aluminum</option>
+                    <option value="credit">Credit</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="color-label" style="margin-bottom:.4rem;display:block">Buy / Sell</label>
+                  <select id="notif-price-type" class="stn-input" style="width:100%">
+                    <option value="buy">Buy Price</option>
+                    <option value="sell">Sell Price</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="color-label" style="margin-bottom:.4rem;display:block">Direction</label>
+                  <select id="notif-direction" class="stn-input" style="width:100%">
+                    <option value="above">Above</option>
+                    <option value="below">Below</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="color-label" style="margin-bottom:.4rem;display:block">Threshold</label>
+                  <input type="number" id="notif-threshold" class="stn-input" placeholder="e.g. 3000" min="0" step="any">
+                </div>
+              </div>
+              <div class="stn-btn-row" style="margin-top:.75rem">
+                <button class="stn-btn stn-btn-primary" onclick="addPriceAlert()">
+                  <i class="fas fa-plus"></i> Add Alert
+                </button>
+              </div>
+            </div>
+            <div id="notif-alert-status" class="stn-status-msg" style="display:none"></div>
+          </div>
+        </div>
+
+        <!-- Beige Alerts Card -->
+        <div class="settings-card">
+          <div class="settings-card-header">
+            <i class="fas fa-bell settings-card-icon" style="color:var(--gold-primary)"></i>
+            <div>
+              <div class="settings-card-title">Beige Alerts</div>
+              <div class="settings-card-desc">Discord DM when a watched nation leaves beige</div>
+            </div>
+          </div>
+          <div class="settings-card-body">
+            <p class="settings-hint">
+              You have <strong id="notif-beige-count">—</strong> active beige notifications.
+              <a href="/?page=raids" class="nation-profile-link" style="display:inline-flex;margin-top:.25rem">
+                <i class="fas fa-external-link-alt"></i> Manage in Raid Finder
+              </a>
+            </p>
+          </div>
+        </div>
+
+      </section>
+
+      <!-- ══════════════════════════════ PRIVACY TAB ════════════════════════════════ -->
+      <section class="settings-tab" id="tab-privacy" style="display:none">
+
+        <!-- Visibility Card -->
+        <div class="settings-card">
+          <div class="settings-card-header">
+            <i class="fas fa-user-shield settings-card-icon" style="color:var(--gold-primary)"></i>
+            <div>
+              <div class="settings-card-title">Public Visibility</div>
+              <div class="settings-card-desc">Control where your pet and nation data appears publicly</div>
+            </div>
+          </div>
+          <div class="settings-card-body">
+            <div class="toggle-list">
+
+              <div class="privacy-section-label">🐾 Pet Data</div>
+
+              <label class="toggle-item">
+                <div class="toggle-item-info">
+                  <div class="toggle-item-title">Show on Pet Leaderboard</div>
+                  <div class="toggle-item-desc">Your Discord name and pets appear on public pet rankings</div>
+                </div>
+                <div class="stn-toggle">
+                  <input type="checkbox" id="privacy-show-pet-leaderboard" checked>
+                  <span class="stn-toggle-track"></span>
+                </div>
+              </label>
+
+              <div class="privacy-section-label" style="margin-top:1rem">🌐 PnW Nation Data</div>
+
+              <label class="toggle-item">
+                <div class="toggle-item-info">
+                  <div class="toggle-item-title">Show on Nations Leaderboard</div>
+                  <div class="toggle-item-desc">Your nation appears ranked on the Nations page. When OFF, your stats still count toward your alliance totals.</div>
+                </div>
+                <div class="stn-toggle">
+                  <input type="checkbox" id="privacy-show-nations-leaderboard" checked>
+                  <span class="stn-toggle-track"></span>
+                </div>
+              </label>
+
+              <label class="toggle-item">
+                <div class="toggle-item-info">
+                  <div class="toggle-item-title">Show in Watch / War Stats</div>
+                  <div class="toggle-item-desc">Your nation appears in the All Nations war stats tab. When OFF, your war costs still count toward alliance totals.</div>
+                </div>
+                <div class="stn-toggle">
+                  <input type="checkbox" id="privacy-show-watch-nations" checked>
+                  <span class="stn-toggle-track"></span>
+                </div>
+              </label>
+
+              <label class="toggle-item">
+                <div class="toggle-item-info">
+                  <div class="toggle-item-title">Show in Nations Rankings</div>
+                  <div class="toggle-item-desc">Your nation appears in the general Nations page rankings. When OFF, your revenue still counts toward alliance totals.</div>
+                </div>
+                <div class="stn-toggle">
+                  <input type="checkbox" id="privacy-show-nations-rankings" checked>
+                  <span class="stn-toggle-track"></span>
+                </div>
+              </label>
+
+            </div>
+            <div id="privacy-status" class="stn-status-msg" style="display:none"></div>
+            <div class="stn-btn-row" style="margin-top:1.5rem">
+              <button class="stn-btn stn-btn-primary" onclick="savePrivacySettings()">
+                <i class="fas fa-save"></i> Save Privacy Settings
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Delete Data Card -->
+        <div class="settings-card">
+          <div class="settings-card-header">
+            <i class="fas fa-trash-alt settings-card-icon" style="color:#e74c3c"></i>
+            <div>
+              <div class="settings-card-title">Delete My Data</div>
+              <div class="settings-card-desc">Permanently remove all your stored settings and preferences</div>
+            </div>
+          </div>
+          <div class="settings-card-body">
+            <p class="settings-hint">This removes your theme, linked nation, auto-fill, notification settings, and privacy preferences. Your pet data and casino balance are stored separately and are not affected.</p>
+            <button class="stn-btn stn-btn-danger" onclick="deleteMySettings()">
+              <i class="fas fa-trash-alt"></i> Delete Settings Data
+            </button>
+            <div id="privacy-delete-status" class="stn-status-msg" style="display:none"></div>
+          </div>
+        </div>
+
+      </section>
+
+      <!-- ════════════════════════════ LAYOUT TAB ═══════════════════════════ -->
+      <section class="settings-tab" id="tab-layout" style="display:none">
+
+        <div class="settings-card">
+          <div class="settings-card-header">
+            <i class="fas fa-th-large settings-card-icon" style="color:var(--gold-primary)"></i>
+            <div>
+              <div class="settings-card-title">Menu Layout Customization</div>
+              <div class="settings-card-desc">Drag and drop page icons to reorder them in the mega menu and dashboard</div>
+            </div>
+          </div>
+          <div class="settings-card-body">
+            <p class="settings-hint" style="margin-bottom:1.5rem">
+              <i class="fas fa-info-circle"></i> Rearrange pages within each category by dragging. Your custom layout will be applied to both the navigation menu and dashboard. Click <strong>Save Layout</strong> to persist your changes.
+            </p>
+
+            <!-- PnW Group -->
+            <div class="layout-group-container">
+              <div class="layout-group-header">
+                <img src="/static/Emojis/Menu/darkstar.png" alt="PnW" style="width:24px;height:24px;object-fit:contain;margin-right:8px">
+                <span style="font-weight:700;color:var(--text-primary)">Politics & War</span>
+              </div>
+              <div class="layout-items-grid" id="layout-pnw" data-group="pnw">
+                <!-- Items populated by JS -->
+              </div>
+            </div>
+
+            <!-- Pets Group -->
+            <div class="layout-group-container">
+              <div class="layout-group-header">
+                <img src="/static/Emojis/Menu/pet.png" alt="Pets" style="width:24px;height:24px;object-fit:contain;margin-right:8px">
+                <span style="font-weight:700;color:var(--text-primary)">Pets</span>
+              </div>
+              <div class="layout-items-grid" id="layout-pets" data-group="pets">
+                <!-- Items populated by JS -->
+              </div>
+            </div>
+
+            <!-- Fun Group -->
+            <div class="layout-group-container">
+              <div class="layout-group-header">
+                <img src="/static/Emojis/Menu/astrology.png" alt="Fun" style="width:24px;height:24px;object-fit:contain;margin-right:8px">
+                <span style="font-weight:700;color:var(--text-primary)">Fun</span>
+              </div>
+              <div class="layout-items-grid" id="layout-fun" data-group="fun">
+                <!-- Items populated by JS -->
+              </div>
+            </div>
+
+            <!-- Site Group -->
+            <div class="layout-group-container">
+              <div class="layout-group-header">
+                <img src="/static/Emojis/Menu/site.png" alt="Site" style="width:24px;height:24px;object-fit:contain;margin-right:8px">
+                <span style="font-weight:700;color:var(--text-primary)">Site</span>
+              </div>
+              <div class="layout-items-grid" id="layout-site" data-group="site">
+                <!-- Items populated by JS -->
+              </div>
+            </div>
+
+            <div id="layout-status" class="stn-status-msg" style="display:none"></div>
+            <div class="stn-btn-row" style="margin-top:1.5rem;display:flex;gap:0.75rem">
+              <button class="stn-btn stn-btn-primary" onclick="saveLayoutSettings()">
+                <i class="fas fa-save"></i> Save Layout
+              </button>
+              <button class="stn-btn stn-btn-secondary" onclick="resetLayoutSettings()">
+                <i class="fas fa-undo"></i> Reset to Default
+              </button>
+            </div>
+          </div>
+        </div>
+
+      </section>
+
+    </div><!-- /settings-content-area -->
+  </div><!-- /settings-layout -->
+</div>
+
+<style>
+/* ── Settings Page Shell ─────────────────────────────────────────────────── */
+.settings-page {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem 4rem;
+}
+
+.settings-page-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 2rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 2px solid var(--bg-tertiary, #141414);
+}
+
+.settings-page-header-icon {
+  font-size: 2.5rem;
+  line-height: 1;
+}
+
+.settings-page-title {
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: var(--text-primary, #f0f0f0);
+  margin: 0 0 .2rem;
+  font-family: 'Orbitron', sans-serif;
+}
+
+.settings-page-subtitle {
+  color: var(--text-secondary, #b9bbbe);
+  font-size: .95rem;
+  margin: 0;
+}
+
+/* ── Layout ──────────────────────────────────────────────────────────────── */
+.settings-layout {
+  display: flex;
+  gap: 1.5rem;
+  align-items: flex-start;
+}
+
+/* ── Left Nav ────────────────────────────────────────────────────────────── */
+.settings-nav {
+  flex: 0 0 220px;
+  display: flex;
+  flex-direction: column;
+  gap: .35rem;
+  position: sticky;
+  top: 80px;
+}
+
+.settings-nav-item {
+  display: flex;
+  align-items: center;
+  gap: .65rem;
+  padding: .65rem 1rem;
+  background: none;
+  border: none;
+  border-radius: 8px;
+  color: var(--text-secondary, #b9bbbe);
+  font-size: .92rem;
+  font-weight: 500;
+  cursor: pointer;
+  text-align: left;
+  transition: background .15s, color .15s;
+  width: 100%;
+}
+
+.settings-nav-item i {
+  width: 16px;
+  text-align: center;
+  opacity: .8;
+}
+
+.settings-nav-item:hover {
+  background: var(--bg-tertiary, #141414);
+  color: var(--text-primary, #f0f0f0);
+}
+
+.settings-nav-item.active {
+  background: rgba(var(--gold-rgb, 255,215,0), .12);
+  color: var(--gold-primary, #ffd700);
+  font-weight: 700;
+}
+
+/* ── Content area ────────────────────────────────────────────────────────── */
+.settings-content-area {
+  flex: 1;
+  min-width: 0;
+}
+
+/* ── Cards ───────────────────────────────────────────────────────────────── */
+.settings-card {
+  background: var(--bg-secondary, #0f0f0f);
+  border: 1px solid rgba(255,215,0,.12);
+  border-radius: 12px;
+  margin-bottom: 1.25rem;
+  overflow: visible;
+}
+
+.settings-card-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid var(--bg-tertiary, #141414);
+}
+
+.settings-card-icon {
+  font-size: 1.4rem;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-tertiary, #141414);
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+
+.settings-card-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-primary, #f0f0f0);
+  margin: 0;
+}
+
+.settings-card-desc {
+  font-size: .82rem;
+  color: var(--text-secondary, #b9bbbe);
+  margin: .15rem 0 0;
+}
+
+.settings-card-status-badge {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: .4rem;
+  font-size: .8rem;
+  color: var(--text-secondary, #b9bbbe);
+  white-space: nowrap;
+}
+
+.badge-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.badge-dot.connected { background: #2ecc71; box-shadow: 0 0 6px #2ecc71; }
+.badge-dot.disconnected { background: #636669; }
+
+.settings-card-body {
+  padding: 1.5rem;
+}
+
+/* ── Hint text ───────────────────────────────────────────────────────────── */
+.settings-hint {
+  color: var(--text-secondary, #b9bbbe);
+  font-size: .9rem;
+  margin: 0 0 1rem;
+  line-height: 1.5;
+}
+
+/* ── Discord profile row ─────────────────────────────────────────────────── */
+.discord-profile-row {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  padding: 1rem 1.25rem;
+  background: var(--bg-tertiary, #141414);
+  border-radius: 10px;
+  margin-bottom: 1rem;
+}
+
+.stn-discord-avatar {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  border: 3px solid var(--gold-primary, #ffd700);
+  flex-shrink: 0;
+  object-fit: cover;
+}
+
+.discord-profile-name {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text-primary, #f0f0f0);
+}
+
+.discord-profile-handle,
+.discord-profile-id {
+  font-size: .8rem;
+  color: var(--text-secondary, #b9bbbe);
+  margin-top: .15rem;
+}
+
+/* ── Nation profile row ──────────────────────────────────────────────────── */
+.nation-profile-row {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  padding: 1rem 1.25rem;
+  background: var(--bg-tertiary, #141414);
+  border-radius: 10px;
+  margin-bottom: 1rem;
+}
+
+.nation-flag-box {
+  width: 96px;
+  height: 64px;
+  background-size: cover;
+  background-position: center;
+  border-radius: 6px;
+  border: 1px solid rgba(255,215,0,.3);
+  flex-shrink: 0;
+  background-color: var(--bg-secondary, #0f0f0f);
+}
+
+.nation-profile-name {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text-primary, #f0f0f0);
+}
+
+.nation-profile-id {
+  font-size: .8rem;
+  color: var(--text-secondary, #b9bbbe);
+  margin-top: .15rem;
+}
+
+.nation-profile-link {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  font-size: .8rem;
+  color: var(--gold-primary, #ffd700);
+  text-decoration: none;
+  margin-top: .35rem;
+}
+
+.nation-profile-link:hover { text-decoration: underline; }
+
+/* ── Buttons ─────────────────────────────────────────────────────────────── */
+.stn-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: .5rem;
+  padding: .6rem 1.2rem;
+  border: none;
+  border-radius: 7px;
+  font-size: .9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity .15s, transform .1s;
+  text-decoration: none;
+}
+
+.stn-btn:hover { opacity: .88; transform: translateY(-1px); }
+.stn-btn:active { transform: translateY(0); }
+
+.stn-btn-primary { background: var(--gold-primary, #ffd700); color: #000; }
+.stn-btn-secondary { background: var(--bg-tertiary, #141414); color: var(--text-primary, #f0f0f0); border: 1px solid rgba(255,215,0,.3); }
+.stn-btn-secondary:hover { background: rgba(255,215,0,.1); }
+.stn-btn-danger { background: #e74c3c; color: #fff; }
+.stn-btn-danger:hover { background: #c0392b; opacity: 1; }
+.stn-btn-discord { background: #5865F2; color: #fff; }
+.stn-btn-discord:hover { background: #4752c4; opacity: 1; }
+
+.stn-btn-row {
+  display: flex;
+  gap: .75rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+/* ── Input ───────────────────────────────────────────────────────────────── */
+.stn-input {
+  flex: 1;
+  min-width: 0;
+  padding: .65rem .9rem;
+  background: var(--bg-tertiary, #141414);
+  border: 1px solid rgba(255,215,0,.2);
+  border-radius: 7px;
+  color: var(--text-primary, #f0f0f0);
+  font-size: .9rem;
+  outline: none;
+  transition: border-color .2s;
+}
+
+.stn-input:focus { border-color: var(--gold-primary, #ffd700); }
+.stn-input::placeholder { color: var(--text-secondary, #b9bbbe); }
+
+.stn-input-row {
+  display: flex;
+  gap: .75rem;
+  align-items: stretch;
+}
+
+/* ── Status messages ─────────────────────────────────────────────────────── */
+.stn-status-msg {
+  padding: .65rem 1rem;
+  border-radius: 7px;
+  font-size: .88rem;
+  margin-top: .75rem;
+}
+
+.stn-status-msg.success {
+  background: rgba(46,204,113,.15);
+  color: #2ecc71;
+  border: 1px solid rgba(46,204,113,.3);
+  display: block !important;
+}
+
+.stn-status-msg.error {
+  background: rgba(231,76,60,.15);
+  color: #e74c3c;
+  border: 1px solid rgba(231,76,60,.3);
+  display: block !important;
+}
+
+/* ── Theme presets grid ──────────────────────────────────────────────────── */
+.preset-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  gap: .6rem;
+}
+
+.preset-swatch {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: .45rem;
+  padding: .65rem .5rem;
+  background: var(--bg-tertiary, #141414);
+  border: 2px solid transparent;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: border-color .2s, transform .1s;
+  width: 100%;
+}
+
+.preset-swatch:hover { border-color: rgba(255,215,0,.4); transform: translateY(-2px); }
+.preset-swatch.active { border-color: var(--gold-primary, #ffd700); }
+
+.preset-colors {
+  display: flex;
+  gap: 3px;
+}
+
+.preset-colors span {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1px solid rgba(255,255,255,.1);
+  display: inline-block;
+}
+
+.preset-label {
+  font-size: .8rem;
+  color: var(--text-primary, #f0f0f0);
+  font-weight: 500;
+}
+
+/* ── Color grid ──────────────────────────────────────────────────────────── */
+.color-grid {
+  display: flex;
+  flex-direction: column;
+  gap: .75rem;
+}
+
+.color-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: .75rem 1rem;
+  background: var(--bg-tertiary, #141414);
+  border-radius: 8px;
+}
+
+.color-label {
+  font-size: .88rem;
+  color: var(--text-primary, #f0f0f0);
+  font-weight: 500;
+}
+
+.color-pair {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+}
+
+.color-swatch {
+  width: 40px;
+  height: 32px;
+  border: 1px solid rgba(255,215,0,.3);
+  border-radius: 6px;
+  cursor: pointer;
+  padding: 0;
+  background: none;
+}
+
+.color-hex {
+  width: 90px;
+  padding: .35rem .6rem;
+  background: var(--bg-secondary, #0f0f0f);
+  border: 1px solid rgba(255,215,0,.2);
+  border-radius: 6px;
+  color: var(--text-primary, #f0f0f0);
+  font-family: monospace;
+  font-size: .85rem;
+  outline: none;
+}
+
+.color-hex:focus { border-color: var(--gold-primary, #ffd700); }
+
+/* ── Toggle list ─────────────────────────────────────────────────────────── */
+.toggle-list {
+  display: flex;
+  flex-direction: column;
+  gap: .5rem;
+}
+
+.toggle-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: .9rem 1rem;
+  background: var(--bg-tertiary, #141414);
+  border-radius: 9px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: border-color .2s;
+}
+
+.toggle-item:hover { border-color: rgba(255,215,0,.2); }
+
+.toggle-item-title {
+  font-size: .9rem;
+  font-weight: 600;
+  color: var(--text-primary, #f0f0f0);
+}
+
+.toggle-item-desc {
+  font-size: .78rem;
+  color: var(--text-secondary, #b9bbbe);
+  margin-top: .1rem;
+}
+
+/* Toggle switch */
+.stn-toggle {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.stn-toggle input { display: none; }
+
+.stn-toggle-track {
+  display: block;
+  width: 42px;
+  height: 24px;
+  border-radius: 12px;
+  background: var(--bg-secondary, #0f0f0f);
+  border: 1px solid rgba(255,215,0,.2);
+  position: relative;
+  transition: background .2s;
+  cursor: pointer;
+}
+
+.stn-toggle-track::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--text-secondary, #b9bbbe);
+  transition: transform .2s, background .2s;
+}
+
+.stn-toggle input:checked + .stn-toggle-track {
+  background: rgba(var(--gold-rgb, 255,215,0), .2);
+  border-color: var(--gold-primary, #ffd700);
+}
+
+.stn-toggle input:checked + .stn-toggle-track::after {
+  transform: translateX(18px);
+  background: var(--gold-primary, #ffd700);
+}
+
+/* ── Tag input ───────────────────────────────────────────────────────────── */
+.tag-input-zone {
+  display: flex;
+  flex-direction: column;
+  gap: .5rem;
+}
+
+.tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .4rem;
+  min-height: 28px;
+}
+
+.stn-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  padding: .3rem .75rem;
+  background: rgba(255,215,0,.1);
+  border: 1px solid rgba(255,215,0,.3);
+  border-radius: 20px;
+  font-size: .82rem;
+  color: var(--gold-primary, #ffd700);
+}
+
+.stn-tag-remove {
+  background: none;
+  border: none;
+  color: var(--gold-primary, #ffd700);
+  cursor: pointer;
+  font-size: .95rem;
+  line-height: 1;
+  padding: 0;
+  opacity: .7;
+}
+
+.stn-tag-remove:hover { opacity: 1; }
+
+.tag-input-wrap {
+  position: relative;
+}
+
+.ac-dropdown {
+  position: absolute;
+  z-index: 9999;
+  background: var(--bg-secondary, #0f0f0f);
+  border: 1px solid rgba(255,215,0,.3);
+  border-radius: 8px;
+  max-height: 220px;
+  overflow-y: auto;
+  box-shadow: 0 8px 24px rgba(0,0,0,.5);
+  min-width: 220px;
+}
+
+.ac-item {
+  padding: .55rem 1rem;
+  cursor: pointer;
+  font-size: .88rem;
+  color: var(--text-primary, #f0f0f0);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid rgba(255,215,0,.06);
+  transition: background .12s;
+}
+
+.ac-item:last-child { border-bottom: none; }
+.ac-item:hover, .ac-item.active { background: rgba(255,215,0,.1); color: var(--gold-primary, #ffd700); }
+.ac-item-id { font-size: .75rem; color: var(--text-secondary, #b9bbbe); }
+
+/* ── Responsive ──────────────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .settings-layout { flex-direction: column; }
+  .settings-nav { flex: none; flex-direction: row; flex-wrap: wrap; position: static; }
+  .settings-nav-item { flex: 1; justify-content: center; min-width: 90px; }
+  .stn-input-row { flex-direction: column; }
+  .color-row { flex-direction: column; align-items: flex-start; gap: .5rem; }
+  .preset-grid { gap: .5rem; }
+  .preset-swatch { min-width: 80px; }
+}
+
+/* ── Background upload ───────────────────────────────────────────────────── */
+.bg-upload-zone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: .75rem;
+  padding: 2rem 1rem;
+  border: 2px dashed rgba(255,215,0,.25);
+  border-radius: 10px;
+  background: var(--bg-tertiary, #141414);
+  transition: border-color .2s, background .2s;
+  cursor: default;
+}
+.bg-upload-zone.drag-over {
+  border-color: var(--gold-primary, #ffd700);
+  background: rgba(255,215,0,.06);
+}
+.bg-upload-icon {
+  font-size: 2.2rem;
+  color: var(--text-secondary, #b9bbbe);
+}
+.bg-upload-text {
+  font-size: .9rem;
+  color: var(--text-secondary, #b9bbbe);
+}
+.bg-upload-hint {
+  font-size: .78rem;
+  color: var(--text-secondary, #b9bbbe);
+  opacity: .7;
+}
+
+/* Preview */
+.bg-preview-wrap {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: .75rem 1rem;
+  background: var(--bg-tertiary, #141414);
+  border-radius: 10px;
+  margin-bottom: 1rem;
+  border: 1px solid rgba(255,215,0,.2);
+}
+.bg-preview-img {
+  width: 120px;
+  height: 68px;
+  border-radius: 6px;
+  background-size: cover;
+  background-position: center;
+  border: 1px solid rgba(255,215,0,.3);
+  flex-shrink: 0;
+}
+.bg-preview-info {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex: 1;
+  min-width: 0;
+}
+.bg-preview-name {
+  font-size: .85rem;
+  color: var(--text-secondary, #b9bbbe);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+}
+.stn-btn-sm {
+  padding: .4rem .8rem;
+  font-size: .8rem;
+}
+
+/* Progress bar */
+.bg-upload-progress {
+  height: 4px;
+  background: var(--bg-tertiary, #141414);
+  border-radius: 2px;
+  margin-top: .75rem;
+  overflow: hidden;
+}
+.bg-progress-bar {
+  height: 100%;
+  width: 0%;
+  background: var(--gold-primary, #ffd700);
+  border-radius: 2px;
+  transition: width .2s;
+}
+
+/* ── Privacy section labels ─────────────────────────────────────────────── */
+.privacy-section-label {
+  font-size: .82rem;
+  font-weight: 700;
+  color: var(--gold-primary, #ffd700);
+  padding: .25rem .5rem;
+  border-left: 3px solid var(--gold-primary, #ffd700);
+  margin-bottom: .25rem;
+}
+
+/* ── Notification alert row ─────────────────────────────────────────────── */
+.notif-alert-row {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  padding: .65rem 1rem;
+  background: var(--bg-tertiary, #141414);
+  border-radius: 8px;
+  margin-bottom: .4rem;
+  font-size: .88rem;
+  color: var(--text-primary, #f0f0f0);
+}
+.notif-alert-row:last-child { margin-bottom: 0; }
+.notif-alert-info { flex: 1; min-width: 0; }
+.notif-alert-resource {
+  font-weight: 700;
+  text-transform: capitalize;
+  color: var(--gold-primary, #ffd700);
+}
+.notif-alert-desc {
+  font-size: .78rem;
+  color: var(--text-secondary, #b9bbbe);
+  margin-top: .1rem;
+}
+.notif-alert-form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: .75rem;
+}
+@media (max-width: 768px) {
+  .notif-alert-form-grid { grid-template-columns: 1fr 1fr; }
+}
+
+/* ── Layout Tab Styles ──────────────────────────────────────────────────── */
+.layout-group-container {
+  margin-bottom: 2rem;
+}
+
+.layout-group-header {
+  display: flex;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  background: var(--bg-secondary);
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  border: 1px solid rgba(255, 215, 0, 0.1);
+}
+
+.layout-items-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 1rem;
+  padding: 0.5rem;
+  min-height: 80px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 8px;
+  border: 2px dashed rgba(255, 215, 0, 0.15);
+}
+
+.layout-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem 0.5rem;
+  background: var(--bg-secondary);
+  border: 1px solid rgba(255, 215, 0, 0.2);
+  border-radius: 8px;
+  cursor: grab;
+  transition: all 0.2s ease;
+  user-select: none;
+  text-align: center;
+}
+
+.layout-item:hover {
+  background: var(--bg-tertiary);
+  border-color: var(--gold-primary);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(255, 215, 0, 0.2);
+}
+
+.layout-item.dragging {
+  opacity: 0.5;
+  cursor: grabbing;
+}
+
+.layout-item-icon {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+  margin-bottom: 0.5rem;
+  filter: drop-shadow(0 0 4px rgba(255, 215, 0, 0.3));
+  pointer-events: none;
+}
+
+.layout-item-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.2;
+  pointer-events: none;
+}
+
+.layout-items-grid.drag-over {
+  background: rgba(255, 215, 0, 0.1);
+  border-color: var(--gold-primary);
+}
+
+.stn-btn-secondary {
+  background: rgba(150, 150, 150, 0.1);
+  color: var(--text-secondary);
+  border: 1px solid rgba(150, 150, 150, 0.3);
+}
+
+.stn-btn-secondary:hover {
+  background: rgba(150, 150, 150, 0.2);
+  border-color: rgba(150, 150, 150, 0.5);
+}
+</style>

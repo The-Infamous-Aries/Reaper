@@ -4,9 +4,11 @@ from starlette.requests import Request
 import asyncio
 import logging
 import time
-from typing import Dict, Any
+from typing import Dict, Any, Set
 import re
 from datetime import date
+
+import aiosqlite
 
 from Systems.Functions.irs_wars_db import IRSWarsDB
 from Systems.Functions.db_paths import IRS_WARS_DB_STR as WATCH_DB_PATH
@@ -106,6 +108,72 @@ def _current_user_id(request: Request) -> str | None:
             return str(uid)
     uid = request.session.get("user_id")
     return str(uid) if uid else None
+
+
+# ── Privacy helper ────────────────────────────────────────────────────────────
+async def _get_privacy_hidden_nation_ids(flag_column: str) -> Set[str]:
+    """Return the set of linked_nation_ids belonging to users who have opted out
+    of public display via the given privacy flag column.
+
+    flag_column must be one of:
+      - 'privacy_show_watch_nations'
+      - 'privacy_show_nations_leaderboard'
+      - 'privacy_show_nations_rankings'
+      - 'privacy_show_pet_leaderboard'
+
+    Design contract (from the plan):
+      - Returns nation IDs as strings.
+      - Alliance/global TOTALS are always computed from ALL nations before filtering.
+        This function is only used to strip per-nation rows from the display list.
+      - When a column doesn't exist yet (old DB schema), returns empty set —
+        behaves as if everyone is visible.
+    """
+    allowed_columns = {
+        'privacy_show_watch_nations',
+        'privacy_show_nations_leaderboard',
+        'privacy_show_nations_rankings',
+        'privacy_show_pet_leaderboard',
+    }
+    if flag_column not in allowed_columns:
+        logger.warning("_get_privacy_hidden_nation_ids: invalid column '%s'", flag_column)
+        return set()
+
+    try:
+        from Systems.Functions.db_paths import PETS_DB_STR
+        hidden: Set[str] = set()
+        async with aiosqlite.connect(PETS_DB_STR) as db:
+            # Check column exists first (safe against old DBs that haven't migrated yet)
+            cursor = await db.execute("PRAGMA table_info(user_settings)")
+            cols = {row[1] for row in await cursor.fetchall()}
+            if flag_column not in cols or 'linked_nation_id' not in cols:
+                return set()
+
+            rows = await (await db.execute(
+                f"SELECT linked_nation_id FROM user_settings "
+                f"WHERE {flag_column} = 0 AND linked_nation_id IS NOT NULL"
+            )).fetchall()
+            hidden = {str(row[0]) for row in rows}
+        return hidden
+    except Exception as e:
+        logger.debug("_get_privacy_hidden_nation_ids(%s) failed: %s", flag_column, e)
+        return set()
+
+
+def _apply_privacy_filter(result: Dict[str, Any], hidden_ids: Set[str]) -> Dict[str, Any]:
+    """Remove hidden nation rows from a watch response dict.
+
+    IMPORTANT: The 'totals' key is NEVER modified — it is always computed from
+    all nations so that alliance-level aggregates remain accurate.  Only the
+    per-nation 'nations' dict is filtered.
+    """
+    if not hidden_ids:
+        return result
+    filtered_nations = {
+        nid: ndata
+        for nid, ndata in result.get("nations", {}).items()
+        if nid not in hidden_ids
+    }
+    return {**result, "nations": filtered_nations}
 
 
 def _as_number(value: Any) -> float:
@@ -456,10 +524,10 @@ async def _attach_war_attacks(db: IRSWarsDB, wars: list[Dict[str, Any]]) -> list
     ]
 
 @router.get("/watch/wars")
-async def get_watch_wars_data(request: Request, start_date: str | None = None, end_date: str | None = None, force_refresh: bool = False):
+async def get_watch_wars_data(request: Request, start_date: str | None = None, end_date: str | None = None, force_refresh: bool = False, alliance_id: int = WATCH_ALLIANCE_ID):
     try:
         db = _get_watch_db()
-        bounds = await db.get_alliance_war_date_bounds(WATCH_ALLIANCE_ID)
+        bounds = await db.get_alliance_war_date_bounds(alliance_id)
 
         if not bounds:
             return {
@@ -496,7 +564,7 @@ async def get_watch_wars_data(request: Request, start_date: str | None = None, e
             }
 
         # Check cache before doing any heavy work
-        cache_key = (selected_start.isoformat(), selected_end.isoformat())
+        cache_key = (str(alliance_id), selected_start.isoformat(), selected_end.isoformat())
         if force_refresh:
             invalidate_wars_cache()
         cached = _cache_get(cache_key)
@@ -506,7 +574,7 @@ async def get_watch_wars_data(request: Request, start_date: str | None = None, e
 
         # Single query for both attacker + defender roles (avoids duplicate round-trip)
         unique_wars = await db.get_all_wars_for_alliance_in_range(
-            WATCH_ALLIANCE_ID,
+            alliance_id,
             start_date=selected_start,
             end_date=selected_end,
         )
@@ -540,7 +608,7 @@ async def get_watch_wars_data(request: Request, start_date: str | None = None, e
 
         # 2. Get the breakdown from the "correct" logic in WarsNetBD
         war_net_bd_cog = WarsNetBD(bot=None)
-        nation_breakdown = await war_net_bd_cog._get_nation_breakdown(unique_wars, str(WATCH_ALLIANCE_ID), False, resource_prices)
+        nation_breakdown = await war_net_bd_cog._get_nation_breakdown(unique_wars, str(alliance_id), False, resource_prices)
 
         # Enrich any placeholder names ("Nation <id>") with real names from GlobalNations.db
         placeholder_ids = [
@@ -669,7 +737,17 @@ async def get_watch_wars_data(request: Request, start_date: str | None = None, e
             "meta": response_meta,
         }
         _cache_set(cache_key, result)
-        return result
+        # Privacy: strip per-nation rows for users who opted out.
+        # privacy_show_watch_nations   → hides from War Stats / All Nations tab
+        # privacy_show_nations_leaderboard → hides from War Leaderboard cards
+        # Both flags use the same data source; apply union of both hidden sets.
+        # Totals in 'totals' key are never modified.
+        hidden_watch, hidden_lb = await asyncio.gather(
+            _get_privacy_hidden_nation_ids('privacy_show_watch_nations'),
+            _get_privacy_hidden_nation_ids('privacy_show_nations_leaderboard'),
+        )
+        hidden = hidden_watch | hidden_lb
+        return _apply_privacy_filter(result, hidden)
 
     except Exception as e:
         logger.error(f"Error getting war data: {e}", exc_info=True)
@@ -897,7 +975,9 @@ async def get_watch_wars_all_nations(request: Request, start_date: str | None = 
             "meta": response_meta,
         }
         _cache_set(cache_key, result)
-        return result
+        # Privacy: strip per-nation rows for users who opted out of Watch display.
+        hidden = await _get_privacy_hidden_nation_ids('privacy_show_watch_nations')
+        return _apply_privacy_filter(result, hidden)
 
     except Exception as e:
         logger.error(f"Error getting all-nations war data: {e}", exc_info=True)
@@ -1339,12 +1419,13 @@ def _build_nation_aggregates(nations, city_rows, active_war_counts):
             status_order = 3
         else:
             status_order = 0
-        api_off = n.get("offensive_wars_count")
-        api_def = n.get("defensive_wars_count")
+        # Always use the live wars DB counts for current active war slots.
+        # offensive_wars_count / defensive_wars_count on the nation record are
+        # cumulative lifetime totals and must NOT be used for slot display.
         db_counts = active_war_counts.get(nid, {"off": 0, "def": 0})
         war_counts = {
-            "off": int(api_off) if api_off is not None else db_counts["off"],
-            "def": int(api_def) if api_def is not None else db_counts["def"],
+            "off": db_counts["off"],
+            "def": db_counts["def"],
         }
         result.append({
             **n,
@@ -1419,6 +1500,12 @@ async def get_nations_by_alliance(request: Request, alliance_id: int):
             logger.warning(f"Could not load active war counts: {_e}")
 
         result = _build_nation_aggregates(nations, city_rows, active_war_counts)
+        # Privacy: hide nations whose owners opted out of Nations Rankings display.
+        # Alliance revenue totals come from /api/watch/revenue (a separate endpoint)
+        # which is filtered independently — these rows are display-only.
+        hidden = await _get_privacy_hidden_nation_ids('privacy_show_nations_rankings')
+        if hidden:
+            result = [n for n in result if str(n.get('id', '')) not in hidden]
         return {"nations": result, "count": len(result), "alliance_name": alliance_name}
 
     except Exception as e:
@@ -1531,19 +1618,20 @@ async def get_watch_nations(request: Request):
                 status_order = 3
             else:
                 status_order = 0
-            # War counts: prefer the API-sourced fields on the nation record
-            # (offensive_wars_count / defensive_wars_count) — these reflect ALL
-            # active wars, not just NW wars. Fall back to the wars DB count only
-            # when the nation record doesn't have them (e.g. very stale data).
-            api_off = n.get("offensive_wars_count")
-            api_def = n.get("defensive_wars_count")
+            # Always use the live wars DB counts for current active war slots.
+            # offensive_wars_count / defensive_wars_count on the nation record are
+            # cumulative lifetime totals and must NOT be used for slot display.
             db_counts = active_war_counts.get(nid, {"off": 0, "def": 0})
             war_counts = {
-                "off": int(api_off) if api_off is not None else db_counts["off"],
-                "def": int(api_def) if api_def is not None else db_counts["def"],
+                "off": db_counts["off"],
+                "def": db_counts["def"],
             }
             result.append({**n, "city_agg": {**agg, "mmr": mmr, "mmr_deficit": mmr_deficit, "avg_improvements": avg_improvements}, "total_projects": total_projects, "status_order": status_order, "active_war_counts": war_counts})
 
+        # Privacy: hide nations whose owners opted out of Nations Rankings display.
+        hidden = await _get_privacy_hidden_nation_ids('privacy_show_nations_rankings')
+        if hidden:
+            result = [n for n in result if str(n.get('id', '')) not in hidden]
         return {"nations": result, "count": len(result)}
 
     except Exception as e:
@@ -1813,6 +1901,13 @@ async def get_watch_revenue(request: Request, alliance_id: int = WATCH_ALLIANCE_
             }
         }
         _set_revenue_cache(alliance_id, result)
+        # Privacy: hide per-nation rows from nations page rankings.
+        # alliance_total_turn / alliance_total_day are computed from ALL nations above
+        # and are intentionally NOT modified here — the plan requires totals remain accurate.
+        hidden = await _get_privacy_hidden_nation_ids('privacy_show_nations_rankings')
+        if hidden:
+            filtered = [r for r in revenue_results if str(r.get('nation_id', '')) not in hidden]
+            return {**result, "nations": filtered, "count": len(filtered)}
         return result
 
     except Exception as e:

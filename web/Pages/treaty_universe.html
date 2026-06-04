@@ -1,0 +1,52 @@
+<link rel="stylesheet" href="/css/treaty_universe.css">
+
+<div class="tu-container">
+  <!-- Header Controls -->
+  <div class="tu-header card">
+    <div class="card-header">
+      <h2>🌐 Treaty Universe</h2>
+    </div>
+    <div class="card-body">
+      <div class="tu-stats-bar">
+        <span>Total Alliances: <strong id="tu-total-alliances">—</strong></span>
+        <span>Total Treaties: <strong id="tu-total-treaties">—</strong></span>
+        <span>Visible: <strong id="tu-visible-count">—</strong></span>
+      </div>
+      <div class="tu-legend-compact">
+        <span class="tu-legend-item"><span class="tu-legend-color tu-protectorate"></span>Protectorate/Extension</span>
+        <span class="tu-legend-item"><span class="tu-legend-color tu-mdoap"></span>MDoAP/MDP</span>
+        <span class="tu-legend-item"><span class="tu-legend-color tu-odoap"></span>ODoAP/ODP</span>
+        <span class="tu-legend-item"><span class="tu-legend-color tu-peace"></span>PIAT/NAP</span>
+      </div>
+      <div class="tu-alliance-controls">
+        <div class="tu-ac-wrap">
+          <input type="text" id="tu-alliance-input" class="tu-ac-input"
+                 placeholder="Type to search alliances..." autocomplete="off" autocorrect="off" autocapitalize="off">
+          <div id="tu-ac-dropdown" class="tu-ac-dropdown"></div>
+        </div>
+        <div id="tu-selected-tags" class="tu-selected-tags"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Universe Canvas -->
+  <div id="tu-universe" class="tu-universe">
+    <div id="tu-loading" class="tu-loading">
+      <div class="spinner-border text-warning"></div>
+      <p>Loading treaty universe...</p>
+    </div>
+  </div>
+
+  <!-- Alliance Detail Modal -->
+  <div id="tu-modal" class="tu-modal" style="display:none">
+    <div class="tu-modal-content card">
+      <div class="card-header">
+        <span id="tu-modal-title">Alliance Details</span>
+        <button id="tu-modal-close" class="btn btn-sm btn-gold">×</button>
+      </div>
+      <div class="card-body" id="tu-modal-body"></div>
+    </div>
+  </div>
+</div>
+
+<script src="/js/treaty_universe.js"></script>

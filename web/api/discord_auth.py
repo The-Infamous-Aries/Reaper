@@ -659,7 +659,19 @@ async def refresh_discord_profile(request: Request):
     """
     # Debug session data
     logger.info(f"Session keys: {list(request.session.keys())}")
+
+
+@router.post("/discord/logout")
+async def discord_logout(request: Request):
+    """Log out the current user by clearing their session."""
+    user = request.session.get('discord_user')
+    if user:
+        logger.info(f"User {user.get('id')} logging out")
     
+    # Clear the session
+    request.session.clear()
+    
+    return JSONResponse(content={'success': True, 'message': 'Logged out successfully'})
     user = request.session.get('discord_user')
     access_token = request.session.get('discord_access_token')
     
@@ -1147,6 +1159,22 @@ async def get_linked_nation(request: Request):
     nation = request.session.get("linked_nation")
     if not nation:
         return JSONResponse({"linked": False})
+
+    # Fetch fresh flag from GlobalNations.db to get latest updates
+    nation_id = nation.get("nation_id")
+    if nation_id and nation_id.isdigit():
+        try:
+            from PnWHarvester.db.global_nations_db import GlobalNationsDB
+            from Systems.Functions.db_paths import GLOBAL_NATIONS_DB_STR
+            gdb = GlobalNationsDB(GLOBAL_NATIONS_DB_STR)
+            db_nation = await gdb.get_nation(int(nation_id))
+            if db_nation and db_nation.get("flag"):
+                nation["flag"] = db_nation["flag"]
+                # Update session with fresh flag
+                request.session["linked_nation"] = nation
+        except Exception as e:
+            logger.warning(f"Failed to fetch fresh flag from GlobalNations.db: {e}")
+
     return JSONResponse({"linked": True, **nation})
 
 @router.delete("/discord/link-nation")
@@ -1186,6 +1214,22 @@ async def get_linked_nation(request: Request):
     nation = request.session.get("linked_nation")
     if not nation:
         return JSONResponse({"linked": False})
+
+    # Fetch fresh flag from GlobalNations.db to get latest updates
+    nation_id = nation.get("nation_id")
+    if nation_id and nation_id.isdigit():
+        try:
+            from PnWHarvester.db.global_nations_db import GlobalNationsDB
+            from Systems.Functions.db_paths import GLOBAL_NATIONS_DB_STR
+            gdb = GlobalNationsDB(GLOBAL_NATIONS_DB_STR)
+            db_nation = await gdb.get_nation(int(nation_id))
+            if db_nation and db_nation.get("flag"):
+                nation["flag"] = db_nation["flag"]
+                # Update session with fresh flag
+                request.session["linked_nation"] = nation
+        except Exception as e:
+            logger.warning(f"Failed to fetch fresh flag from GlobalNations.db: {e}")
+
     return JSONResponse({"linked": True, **nation})
 
 @router.delete("/discord/link-nation")

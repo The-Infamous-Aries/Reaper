@@ -94,8 +94,14 @@
     // Smooth scroll for anchor links
     document.querySelectorAll('a[href^="#"]').forEach(anchor => {
         anchor.addEventListener('click', function (e) {
+            const href = this.getAttribute('href');
+            // Skip empty hrefs
+            if (href === '#') {
+                e.preventDefault();
+                return;
+            }
             e.preventDefault();
-            const target = document.querySelector(this.getAttribute('href'));
+            const target = document.querySelector(href);
             if (target) {
                 target.scrollIntoView({
                     behavior: 'smooth',
@@ -109,33 +115,6 @@
             </div>
         </div>
     </div>
-
-<!-- Footer -->
-<footer class="homepage-footer">
-    <div class="footer-content">
-        <div class="footer-section">
-            <h4>Info Links</h4>
-            <ul>
-                <li><a href="#" onclick="loadPage('commands')">Commands</a></li>
-                <li><a href="privacy.html">Privacy Policy</a></li>
-                <li><a href="terms.html">Terms of Service</a></li>
-            </ul>
-        </div>
-        <div class="footer-section">
-            <h4>Contact Links</h4>
-            <ul>
-                <li><a href="https://github.com/The-Infamous-Aries/Reaper" target="_blank">GitHub</a></li>
-                <li><a href="https://politicsandwar.com/nation/id=680891" target="_blank">PnW Nation</a></li>
-                <li><a href="mailto:cody.ray.inc@gmail.com">Email</a></li>
-            </ul>
-        </div>
-        <div class="footer-section">
-            <h4>Built by</h4>
-            <p>The Infamous Aries</p>
-            <p class="copyright">© 2024 Reaper Bot. All souls reserved.</p>
-        </div>
-    </div>
-</footer>
 
 <script>
 // ── Flip card toggle ───────────────────────────────────────────────────────

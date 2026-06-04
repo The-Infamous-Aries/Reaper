@@ -81,6 +81,55 @@
 </div>
 
 <script>
+// ── Auto-fill Integration ───────────────────────────────────────────────────
+async function loadAutoFillSettings() {
+  try {
+    const response = await fetch('/api/settings');
+    if (!response.ok) return;
+    const settings = await response.json();
+    
+    if (settings.auto_fill_alliances_compare_home) {
+      const alliances = JSON.parse(settings.auto_fill_alliances_compare_home);
+      if (alliances && alliances.length > 0) {
+        // Add to Home Alliance input
+        const homeInput = document.getElementById('cmp-home');
+        const homeTags = document.getElementById('cmp-home-tags');
+        if (homeInput && homeTags) {
+          alliances.forEach(alliance => {
+            addTag('cmp-home', alliance, homeTags);
+          });
+        }
+      }
+    }
+  } catch (e) {
+    console.debug('Failed to load auto-fill settings:', e);
+  }
+}
+
+function addTag(inputId, value, tagsContainer) {
+  const existingTags = Array.from(tagsContainer.querySelectorAll('.cmp-tag-text'));
+  if (existingTags.some(t => t.textContent === value)) return;
+  
+  const tag = document.createElement('div');
+  tag.className = 'cmp-tag';
+  tag.innerHTML = `<span class="cmp-tag-text">${value}</span><span class="cmp-tag-x" onclick="removeTag('${inputId}', '${value}')">&times;</span>`;
+  tagsContainer.appendChild(tag);
+}
+
+function removeTag(inputId, value) {
+  const tagsContainer = document.getElementById(inputId + '-tags');
+  const tags = tagsContainer.querySelectorAll('.cmp-tag');
+  tags.forEach(tag => {
+    if (tag.querySelector('.cmp-tag-text').textContent === value) {
+      tag.remove();
+    }
+  });
+}
+
+// Load auto-fill settings on page load
+document.addEventListener('DOMContentLoaded', loadAutoFillSettings);
+
+// ── Main Script ─────────────────────────────────────────────────────────────
 (function() {
   // Military emoji images
   const E = {

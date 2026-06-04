@@ -1,0 +1,2054 @@
+<link rel="stylesheet" href="/css/my_nation.css">
+<link rel="stylesheet" href="/css/plan.css">
+
+<div class="mn-shell" id="mn-shell">
+
+  <div class="mn-search-bar">
+    <button id="mn-refresh-btn" class="btn btn-outline-gold btn-sm" title="Refresh">↻ Refresh</button>
+  </div>
+
+  <div id="mn-status" class="mn-status" style="display:none"></div>
+
+  <!-- Section 1: Nation (header + overview + military + projects merged) -->
+  <div class="mn-section" id="mn-header" style="display:none">
+    <div class="mn-section-header" onclick="mnToggleSection(this)">
+      <span class="mn-section-title">🏴 Nation</span>
+      <i class="mn-section-chevron fas fa-chevron-down"></i>
+    </div>
+    <div class="mn-section-body" id="mn-header-body"></div>
+  </div>
+
+  <!-- Section 3: Revenue — content moved inline into Nation box; this stub kept for compat -->
+  <div class="mn-section" id="mn-revenue" style="display:none">
+    <div class="mn-section-header" onclick="mnToggleSection(this)">
+      <span class="mn-section-title">💰 Revenue</span>
+      <i class="mn-section-chevron fas fa-chevron-down"></i>
+    </div>
+    <div class="mn-section-body" id="mn-revenue-body"></div>
+  </div>
+
+  <!-- Section 5: Cities — content moved inline into Nation box; stub kept for compat -->
+  <div class="mn-section" id="mn-cities" style="display:none">
+    <div class="mn-section-header" onclick="mnToggleSection(this)">
+      <span class="mn-section-title">🏙️ Cities</span>
+      <i class="mn-section-chevron fas fa-chevron-down"></i>
+    </div>
+    <div class="mn-section-body" id="mn-cities-body"></div>
+  </div>
+
+  <!-- Section 6: Combat History (now embedded in Nation box — this card kept for planner/cities) -->
+  <div class="mn-section" id="mn-combat" style="display:none">
+    <div class="mn-section-header" onclick="mnToggleSection(this)">
+      <span class="mn-section-title">⚔️ Combat History</span>
+      <i class="mn-section-chevron fas fa-chevron-down"></i>
+    </div>
+    <div class="mn-section-body" id="mn-combat-body"><div class="mn-loading">Loading combat data…</div></div>
+  </div>
+
+  <!-- Section 9: Build Plan -->
+  <div class="mn-section" id="mn-planner" style="display:none">
+    <div class="mn-section-header" onclick="mnToggleSection(this)">
+      <span class="mn-section-title">📋 Build Plan</span>
+      <i class="mn-section-chevron fas fa-chevron-down"></i>
+    </div>
+    <div class="mn-section-body" id="mn-planner-body"></div>
+  </div>
+
+</div><!-- /mn-shell -->
+
+
+<script>
+(function () {
+'use strict';
+
+// ── Constants ────────────────────────────────────────────────────────────────
+const RSC_ICONS = {
+  food:'food', coal:'coal', oil:'oil', uranium:'uranium', lead:'lead',
+  iron:'iron', bauxite:'bauxite', gasoline:'gasoline', munitions:'munitions',
+  steel:'steel', aluminum:'aluminum'
+};
+
+const MIL_ICONS = {
+  soldiers:'soldier', tanks:'tank', aircraft:'jet',
+  ships:'ship', missiles:'missile', nukes:'bomb', spies:'spy'
+};
+
+const PROJECTS = {
+  // Economic
+  activity_center:                     "Activity Center",
+  advanced_engineering_corps:          "Advanced Engineering Corps",
+  arable_land_agency:                  "Arable Land Agency",
+  bureau_of_domestic_affairs:          "Bureau of Domestic Affairs",
+  center_for_civil_engineering:        "Center Civil Engineering",
+  government_support_agency:           "Government Support Agency",
+  international_trade_center:          "International Trade Center",
+  telecommunications_satellite:        "Telecom Satellite",
+  // Resource
+  arms_stockpile:                      "Arms Stockpile",
+  bauxite_works:                       "Bauxite Works",
+  emergency_gasoline_reserve:          "Emergency Gasoline Reserve",
+  green_technologies:                  "Green Technologies",
+  iron_works:                          "Iron Works",
+  mass_irrigation:                     "Mass Irrigation",
+  recycling_initiative:                "Recycling Initiative",
+  uranium_enrichment_program:          "Uranium Enrichment Program",
+  research_and_development_center:     "R&D Center",
+  // Military
+  advanced_pirate_economy:             "Advanced Pirate Economy",
+  central_intelligence_agency:         "CIA",
+  fallout_shelter:                     "Fallout Shelter",
+  guiding_satellite:                   "Guiding Satellite",
+  iron_dome:                           "Iron Dome",
+  military_doctrine:                   "Military Doctrine",
+  military_research_center:            "Military Research Center",
+  military_salvage:                    "Military Salvage",
+  missile_launch_pad:                  "Missile Launch Pad",
+  nuclear_launch_facility:             "Nuclear Launch Facility",
+  nuclear_research_facility:           "Nuclear Research Facility",
+  pirate_economy:                      "Pirate Economy",
+  propaganda_bureau:                   "Propaganda Bureau",
+  space_program:                       "Space Program",
+  spy_satellite:                       "Spy Satellite",
+  surveillance_network:                "Surveillance Network",
+  vital_defense_system:                "Vital Defense System",
+  // Social/Civil
+  clinical_research_center:            "Clinical Research Center",
+  specialized_police_training_program: "Spec. Police Training",
+  // Space
+  moon_landing:                        "Moon Landing",
+  mars_landing:                        "Mars Landing",
+};
+
+const PROJECT_CATEGORIES = {
+  'Economic':    ['activity_center','advanced_engineering_corps','arable_land_agency',
+                  'bureau_of_domestic_affairs','center_for_civil_engineering',
+                  'government_support_agency','international_trade_center',
+                  'telecommunications_satellite'],
+  'Resource':    ['arms_stockpile','bauxite_works','emergency_gasoline_reserve',
+                  'green_technologies','iron_works','mass_irrigation',
+                  'recycling_initiative','uranium_enrichment_program',
+                  'research_and_development_center'],
+  'Military':    ['advanced_pirate_economy','central_intelligence_agency','fallout_shelter',
+                  'guiding_satellite','iron_dome','military_doctrine','military_research_center',
+                  'military_salvage','missile_launch_pad','nuclear_launch_facility',
+                  'nuclear_research_facility','pirate_economy','propaganda_bureau',
+                  'space_program','spy_satellite','surveillance_network','vital_defense_system'],
+  'Social/Civil':['clinical_research_center','specialized_police_training_program'],
+  'Space':       ['moon_landing','mars_landing'],
+};
+
+const COLOR_MAP = {
+  'Aqua':'#00bcd4','Black':'#212121','Blue':'#1565c0','Brown':'#6d4c41',
+  'Green':'#2e7d32','Lime':'#a5d610','Maroon':'#880e4f','Olive':'#827717',
+  'Orange':'#e65100','Pink':'#f06292','Purple':'#6a1b9a','Red':'#b71c1c',
+  'White':'#e0e0e0','Yellow':'#fdd835','Beige':'#d7ccc8','Gray':'#757575',
+  'Aqua Blue':'#00bcd4','Beige':'#d7ccc8',
+};
+
+const CONTINENT_MAP = {
+  'af':'Africa', 'an':'Antarctica', 'as':'Asia', 'au':'Australia',
+  'eu':'Europe', 'na':'North America', 'sa':'South America',
+};
+
+// ── State ────────────────────────────────────────────────────────────────────
+let _currentNationId = null;
+let _currentData     = null;
+let _revOptCache     = {};
+let _newlyCompleted  = [];
+let _timerInterval   = null;
+let _costDebounce    = null;
+
+
+// ── Utilities ────────────────────────────────────────────────────────────────
+function esc(s) {
+  const d = document.createElement('div');
+  d.textContent = String(s == null ? '' : s);
+  return d.innerHTML;
+}
+
+function $m(v) {
+  if (v == null || isNaN(v)) return '$0.00';
+  const s = v < 0 ? '-' : '';
+  const a = Math.abs(v);
+  if (a >= 1e9)  return s + '$' + (a / 1e9).toFixed(2) + 'B';
+  if (a >= 1e6)  return s + '$' + (a / 1e6).toFixed(2) + 'M';
+  if (a >= 1e3)  return s + '$' + (a / 1e3).toFixed(2) + 'K';
+  return s + '$' + a.toFixed(2);
+}
+
+function $n(v, d) {
+  if (v == null || isNaN(v)) return '0';
+  const dec = (d == null ? 0 : d);
+  return Number(v).toFixed(dec).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+}
+
+function relativeTime(ts) {
+  if (!ts) return 'unknown';
+  const diff = Date.now() - new Date(ts).getTime();
+  const m = Math.floor(diff / 60000);
+  if (m < 1)  return 'just now';
+  if (m < 60) return m + 'm ago';
+  const h = Math.floor(m / 60);
+  if (h < 24) return h + 'h ago';
+  return Math.floor(h / 24) + 'd ago';
+}
+
+function mnToggleSection(header) {
+  const section = header.closest('.mn-section');
+  section.classList.toggle('collapsed');
+}
+
+function showStatus(msg, isError) {
+  const el = document.getElementById('mn-status');
+  el.style.display = 'block';
+  el.className = 'mn-status' + (isError ? ' mn-status-error' : '');
+  el.textContent = msg;
+}
+
+function hideStatus() {
+  const el = document.getElementById('mn-status');
+  if (el) el.style.display = 'none';
+}
+
+function showSection(id) {
+  const el = document.getElementById(id);
+  if (el) el.style.display = '';
+}
+
+function proxyFlag(url) {
+  return window.ImageUtils ? window.ImageUtils.proxyImageUrl(url) : url;
+}
+
+
+// ── Turn timer ───────────────────────────────────────────────────────────────
+function getNextTurnMs(updateTz) {
+  // update_tz 0 → UTC 00,02,04,...22  1 → UTC 06,08,...04  2 → UTC 12,...10  3 → UTC 18,...16
+  const offset = (updateTz || 0) * 6 * 60; // minutes
+  const now    = new Date();
+  const nowMin = now.getUTCHours() * 60 + now.getUTCMinutes();
+  // turns happen every 120 minutes starting from offset
+  const minInCycle = (nowMin - offset + 1440) % 120;
+  const minsLeft   = minInCycle === 0 ? 120 : 120 - minInCycle;
+  return minsLeft * 60 * 1000 - now.getUTCSeconds() * 1000 - now.getUTCMilliseconds();
+}
+
+function startTurnTimer(updateTz) {
+  if (_timerInterval) clearInterval(_timerInterval);
+  const el = document.getElementById('mn-turn-timer');
+  if (!el) return;
+
+  function tick() {
+    const ms = getNextTurnMs(updateTz);
+    if (ms <= 0) {
+      el.innerHTML = '<strong>Turn now!</strong>';
+      clearInterval(_timerInterval);
+      if (_currentNationId) analyzeNation(_currentNationId);
+      return;
+    }
+    const s   = Math.floor(ms / 1000);
+    const min = Math.floor(s / 60);
+    const sec = s % 60;
+    el.innerHTML = 'Next update: <strong>' + min + ':' + String(sec).padStart(2,'0') + '</strong>';
+  }
+  tick();
+  _timerInterval = setInterval(tick, 1000);
+}
+
+
+// ── Section 1: Nation (identity + stats + projects + collapsible military) ─────
+function renderNation(nation, cities, revenue) {
+  const beige   = nation.beige_turns   || 0;
+  const vac     = nation.vacation_mode_turns || 0;
+  // Use live active war counts if available, fall back to snapshot totals
+  const atWar   = ((nation.active_off_wars ?? nation.offensive_wars_count ?? 0) +
+                   (nation.active_def_wars ?? nation.defensive_wars_count ?? 0)) > 0;
+  const color   = nation.color || '';
+  const colorHex = COLOR_MAP[color] || '#888';
+  const colorBonus = revenue ? revenue.color_bonus || 0 : 0;
+
+  let badges = '';
+  if (beige) badges += `<span class="mn-badge mn-badge-beige">🟡 Beige (${beige}t)</span>`;
+  if (vac)   badges += `<span class="mn-badge mn-badge-vacation">🏖 Vacation (${vac}t)</span>`;
+  if (atWar) badges += `<span class="mn-badge mn-badge-war">⚔️ At War</span>`;
+  if (!beige && !vac && !atWar) badges += `<span class="mn-badge mn-badge-active">Active</span>`;
+
+  const flagSrc = nation.flag ? proxyFlag(nation.flag) : '';
+  const flagImg = flagSrc ? `<img src="${flagSrc}" class="mn-flag" alt="" onerror="this.style.display='none'">` : '';
+
+  const alliPos = nation.alliance_position || '';
+  const alliBit = nation.alliance_name
+    ? `<a href="https://politicsandwar.com/alliance/id=${nation.alliance_id}" target="_blank" rel="noopener" style="color:var(--gold-secondary)">${esc(nation.alliance_name)}</a>${alliPos ? ' · ' + esc(alliPos) : ''}`
+    : 'None';
+
+  // ── Policy helpers ────────────────────────────────────────────────────────
+  function mnCleanEnum(val) {
+    if (!val) return '';
+    const s = String(val);
+    const dot = s.lastIndexOf('.');
+    return (dot >= 0 ? s.slice(dot + 1) : s).toUpperCase();
+  }
+  function mnFmtPolicy(val) {
+    const s = mnCleanEnum(val);
+    if (!s) return '—';
+    return s.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
+  }
+
+  // War policy → /static/Emojis/War/<name>.png
+  const MN_WAR_POLICY_IMG = {
+    ATTRITION:'attrition', TURTLE:'turtle', BLITZKRIEG:'blitzkrieg',
+    FORTRESS:'fortress', PIRATE:'pirate', GUARDIAN:'guardian',
+    MONEYBAGS:'moneybags', ARCANE:'arcane', COVERT:'covert', TACTICIAN:'tactician',
+  };
+  const MN_WAR_POLICY_COLORS = {
+    ATTRITION:'#e05555', TURTLE:'#6495ed', BLITZKRIEG:'#ff8c00',
+    FORTRESS:'#9370db', PIRATE:'#20b2aa', GUARDIAN:'#3cb371',
+    MONEYBAGS:'#ffd700', ARCANE:'#da70d6', COVERT:'#aaaaaa', TACTICIAN:'#f4a460',
+  };
+
+  // Domestic policy → /static/Emojis/Domestic/<name>.png
+  const MN_DOM_POLICY_IMG = {
+    MANIFEST_DESTINY:'manifestdestiny', OPEN_MARKETS:'openmarkets',
+    TECHNOLOGICAL_ADVANCEMENT:'techadvancement', IMPERIALISM:'imperialism',
+    URBANIZATION:'urbanization', RAPID_EXPANSION:'rapidexpansion',
+  };
+  const MN_DOM_POLICY_COLORS = {
+    MANIFEST_DESTINY:'#8fbc8f', OPEN_MARKETS:'#87ceeb', TECHNOLOGICAL_ADVANCEMENT:'#9370db',
+    IMPERIALISM:'#cd5c5c', URBANIZATION:'#daa520', RAPID_EXPANSION:'#ff8c00',
+  };
+
+  function mnWarPolicyBadge(val) {
+    const raw = mnCleanEnum(val);
+    const label = mnFmtPolicy(val);
+    if (!raw) return `<span class="mn-policy-badge">—</span>`;
+    const img = MN_WAR_POLICY_IMG[raw];
+    const css = MN_WAR_POLICY_COLORS[raw] || 'rgba(255,255,255,0.5)';
+    const icon = img ? `<img src="/static/Emojis/War/${img}.png" class="mn-policy-icon" alt="">` : '';
+    return `<span class="mn-policy-badge mn-war-policy-badge" style="background:${css}22;color:${css};border:1px solid ${css};" title="War Policy: ${label}">${icon}${label}</span>`;
+  }
+
+  function mnDomPolicyBadge(val) {
+    const raw = mnCleanEnum(val);
+    const label = mnFmtPolicy(val);
+    if (!raw) return `<span class="mn-policy-badge">—</span>`;
+    const img = MN_DOM_POLICY_IMG[raw];
+    const css = MN_DOM_POLICY_COLORS[raw] || 'rgba(255,255,255,0.5)';
+    const icon = img ? `<img src="/static/Emojis/Domestic/${img}.png" class="mn-policy-icon" alt="">` : '';
+    return `<span class="mn-policy-badge mn-dom-policy-badge" style="background:${css}22;color:${css};border:1px solid ${css};" title="Domestic Policy: ${label}">${icon}${label}</span>`;
+  }
+
+  const tzLabels = ['UTC±0','UTC+6','UTC+12','UTC-6'];
+  const tzLabel  = (tzLabels[nation.update_tz||0]||`TZ${nation.update_tz}`) + ` (TZ${nation.update_tz||0})`;
+
+  // ── Compact info grid ────────────────────────────────────────────────────
+  const netMon   = revenue ? (revenue.monetary_net_turn || revenue.net_cash_turn || 0) : 0;
+  const netCls   = netMon >= 0 ? 'mn-positive' : 'mn-negative';
+  const avgInfra = revenue && revenue.population > 0
+    ? Math.round(revenue.population / (nation.num_cities||1) / 100) : 0;
+
+  const infoRows = `
+    <div class="mn-info-grid">
+      <div class="mn-info-item"><span class="mn-info-label">Pop</span><span class="mn-info-val">${$n(nation.population)}</span></div>
+      <div class="mn-info-item"><span class="mn-info-label">Score</span><span class="mn-info-val">${$n(nation.score,2)}</span></div>
+      <div class="mn-info-item"><span class="mn-info-label">Cities</span><span class="mn-info-val">${nation.num_cities||0}<span class="mn-stat-sub"> (${nation.turns_since_last_city||0}t)</span></span></div>
+      <div class="mn-info-item"><span class="mn-info-label">Avg Infra</span><span class="mn-info-val">${$n(avgInfra,0)}</span></div>
+      <div class="mn-info-item"><span class="mn-info-label">Update</span><span class="mn-info-val">${tzLabel}</span></div>
+      <div class="mn-info-item"><span class="mn-info-label">Net/Turn</span><span class="mn-info-val ${netCls}">${$m(netMon)}</span></div>
+    </div>`;
+
+  // ── Badge-like header section (matching nations.html) ─────────────────────
+  // Calculate totals for MMR and other stats
+  const totals = {barracks:0, hangar:0, drydock:0, factory:0, totalInfra:0, totalLand:0};
+  if (cities && cities.length) {
+    cities.forEach(c => {
+      totals.barracks += (c.barracks || 0);
+      totals.hangar   += (c.hangar   || 0);
+      totals.drydock  += (c.drydock  || 0);
+      totals.factory  += (c.factory  || 0);
+      totals.totalInfra += (c.infrastructure || 0);
+      totals.totalLand += (c.land || 0);
+    });
+  }
+  const cityCount = (cities && cities.length) || nation.num_cities || 1;
+  const mmr = `${(totals.barracks/cityCount).toFixed(1)}/${(totals.factory/cityCount).toFixed(1)}/${(totals.hangar/cityCount).toFixed(1)}/${(totals.drydock/cityCount).toFixed(1)}`;
+
+  // Position badge
+  function positionBadge(pos) {
+    const raw = String(pos || 'Member');
+    const p = raw.toUpperCase().replace(/\s+/g, '_');
+    const map = {LEADER:'mn-pos-leader',HEIR:'mn-pos-heir',OFFICER:'mn-pos-officer',MEMBER:'mn-pos-member',APPLICANT:'mn-pos-app'};
+    const cls = map[p] || 'mn-pos-member';
+    return `<span class="mn-pos-badge ${cls}">${raw}</span>`;
+  }
+
+  // War slot calculation (off: 5 base +1 PE +1 APE, def: 3)
+  // active_off_wars / active_def_wars are injected by the API from the live
+  // GlobalWarsDB — these are the CURRENT active war counts, not lifetime totals.
+  const offMax = 5 + (nation.pirate_economy?1:0) + (nation.advanced_pirate_economy?1:0);
+  const offCur = nation.active_off_wars ?? nation.offensive_wars_count ?? 0;
+  const defMax = 3;
+  const defCur = nation.active_def_wars ?? nation.defensive_wars_count ?? 0;
+  function warColor(cur, max) {
+    const ratio = max > 0 ? cur/max : 0;
+    if (ratio === 0)   return '#00c864';
+    if (ratio <= 0.33) return '#7ecb35';
+    if (ratio <= 0.66) return '#f0a500';
+    if (ratio < 1)    return '#e07020';
+    return '#e74c3c';
+  }
+  const oc = warColor(offCur, offMax);
+  const dc = warColor(defCur, defMax);
+
+  // Color badge
+  const colorBadge = `<span class="mn-detail-badge" style="background:${colorHex}22;color:${colorHex};border:1px solid ${colorHex};">${esc(color || '—')}</span>`;
+
+  // ── Badge header HTML ────────────────────────────────────────────────────
+  const badgeHeaderHtml = `
+    <div class="mn-badge-header">
+      ${positionBadge(nation.alliance_position)}
+      <span class="mn-detail-badge mn-badge-stat" title="Cities">c${nation.num_cities||0}</span>
+      <span class="mn-detail-badge mn-badge-stat" title="MMR">MMR ${mmr}</span>
+      <span class="mn-detail-badge" style="background:${oc}22;color:${oc};border:1px solid ${oc};" title="Offensive Wars (max ${offMax})">⚔️ ${offCur}/${offMax}</span>
+      <span class="mn-detail-badge" style="background:${dc}22;color:${dc};border:1px solid ${dc};" title="Defensive Wars (max ${defMax})">🛡️ ${defCur}/${defMax}</span>
+      ${colorBadge}
+      <span class="mn-detail-badge">${CONTINENT_MAP[(nation.continent||'').toLowerCase()] || nation.continent || '—'}</span>
+      ${mnWarPolicyBadge(nation.war_policy)}
+      ${mnDomPolicyBadge(nation.domestic_policy)}
+      <span class="mn-detail-badge mn-badge-stat" title="Score">⭐ ${$n(Math.round(nation.score||0))}</span>
+      <span class="mn-detail-badge mn-badge-stat mn-badge-wins" title="Wars Won">👑 ${nation.wars_won||0}</span>
+      <span class="mn-detail-badge mn-badge-stat mn-badge-losses" title="Wars Lost">💀 ${nation.wars_lost||0}</span>
+      <span class="mn-detail-badge mn-badge-stat" title="Infra: Avg / Total">🏗️ ${$n(totals.totalInfra/cityCount,1)} / ${$n(totals.totalInfra,1)}</span>
+      <span class="mn-detail-badge mn-badge-stat" title="Land: Avg / Total">🌾 ${$n(totals.totalLand/cityCount,1)} / ${$n(totals.totalLand,1)}</span>
+      <span class="mn-detail-badge mn-badge-stat" title="Population">👥 ${$n(nation.population||0)}</span>
+    </div>`;
+
+  // ── Policies — war + domestic get image badges, rest stay plain ──────────
+  const polHtml = `<div class="mn-policies-row">
+    ${mnWarPolicyBadge(nation.war_policy)}
+    ${mnDomPolicyBadge(nation.domestic_policy)}
+    ${[nation.social_policy||'—', nation.government_type||'—', nation.economic_policy||'—']
+      .map(p => `<span class="mn-policy-badge">${p}</span>`).join('')}
+  </div>`;
+
+  // ── Projects — single flat row of initials chips ─────────────────────────
+  // Using the same abbreviations as nations.html
+  const PROJECT_LIST = [
+    ['⚔️ War',[
+      ['Missile Launch Pad','missile_launch_pad','MLP'],['Nuclear Research Facility','nuclear_research_facility','NRF'],
+      ['Nuclear Launch Facility','nuclear_launch_facility','NLF'],['Vital Defense System','vital_defense_system','VDS'],
+      ['Iron Dome','iron_dome','ID'],['Propaganda Bureau','propaganda_bureau','PB'],
+      ['Military Research Center','military_research_center','MRC'],['Space Program','space_program','SP'],
+      ['Spy Satellite','spy_satellite','SS'],['Surveillance Network','surveillance_network','SN'],
+      ['Guiding Satellite','guiding_satellite','GS'],['Fallout Shelter','fallout_shelter','FS'],
+      ['Military Doctrine','military_doctrine','MD'],['Military Salvage','military_salvage','MS'],
+      ['Pirate Economy','pirate_economy','PE'],['Advanced Pirate Economy','advanced_pirate_economy','APE'],
+      ['Central Intelligence Agency','central_intelligence_agency','CIA'],
+    ]],
+    ['🏭 Industry',[
+      ['Arms Stockpile','arms_stockpile','AS'],['Bauxite Works','bauxite_works','BW'],
+      ['Iron Works','iron_works','IW'],['Emergency Gasoline Reserve','emergency_gasoline_reserve','EGR'],
+      ['Uranium Enrichment Program','uranium_enrichment_program','UEP'],['Green Technologies','green_technologies','GT'],
+      ['Recycling Initiative','recycling_initiative','RI'],['Mass Irrigation','mass_irrigation','MI'],
+      ['International Trade Center','international_trade_center','ITC'],
+      ['Clinical Research Center','clinical_research_center','CRC'],
+      ['Specialized Police Training Program','specialized_police_training_program','SPTP'],
+      ['Telecommunications Satellite','telecommunications_satellite','TS'],
+    ]],
+    ['🏛️ Government',[
+      ['Activity Center','activity_center','AC'],['Advanced Engineering Corps','advanced_engineering_corps','AEC'],
+      ['Arable Land Agency','arable_land_agency','ALA'],['Bureau of Domestic Affairs','bureau_of_domestic_affairs','BDA'],
+      ['Center for Civil Engineering','center_for_civil_engineering','CCE'],
+      ['Government Support Agency','government_support_agency','GSA'],
+      ['Research & Development Center','research_and_development_center','RDC'],
+    ]],
+    ['👽 Alien',[['Moon Landing','moon_landing','ML'],['Mars Landing','mars_landing','MaL']]],
+  ];
+
+  // Flatten the list and get owned project count
+  const allProjects = PROJECT_LIST.flatMap(([,items]) => items);
+  const ownedCount  = allProjects.filter(([,col]) => !!(nation[col])).length;
+  
+  // Generate chips using the defined abbreviations
+  const projChips = allProjects.map(([name, col, abbr]) => {
+    const isOwned = !!(nation[col]);
+    const click   = isOwned ? '' : `onclick="openAddGoal('project','${col}')"`;
+    return `<span class="mn-proj-chip ${isOwned?'owned':'unowned'}" title="${esc(name)}" ${click}>${esc(abbr)}</span>`;
+  }).join('');
+  
+  const projHtml = `
+    <div class="mn-proj-row">
+      <span class="mn-proj-row-label">🔬 Projects</span>
+      <div class="mn-proj-chips">${projChips}</div>
+      <span class="mn-proj-count">${ownedCount}/${allProjects.length}</span>
+    </div>`;
+  
+  // ── Awards (leaderboard rankings) ─────────────────────────────────────────
+  const awardsHtml = `
+    <div id="mn-awards-row-${nation.id||'x'}" class="mn-awards-row">
+      <span class="mn-awards-row-label">🏆 Awards</span>
+      <div class="mn-awards-loading">Loading awards...</div>
+    </div>`;
+  
+  // ── Military (collapsible) ────────────────────────────────────────────────
+  const hasPB  = nation.propaganda_bureau;
+  const hasSP  = nation.space_program;
+  const hasNRF = nation.nuclear_research_facility;
+  const hasNLF = nation.nuclear_launch_facility;
+  const hasMLP = nation.missile_launch_pad;
+  const hasCIA = nation.central_intelligence_agency;
+  const pb = v => hasPB ? Math.floor(v*1.10) : v;
+
+  // Military Research data
+  const mr = (typeof nation.military_research === 'string'
+    ? (() => { try { return JSON.parse(nation.military_research); } catch(e) { return {}; } })()
+    : nation.military_research) || {};
+  const gcl = Math.min(parseInt(mr.ground_capacity || nation.ground_capacity || 0), 20);
+  const acl = Math.min(parseInt(mr.air_capacity    || nation.air_capacity    || 0), 20);
+  const ncl = Math.min(parseInt(mr.naval_capacity  || nation.naval_capacity  || 0), 20);
+
+  // Daily purchase limits
+  const soldierDaily  = pb(totals.barracks*1000 + gcl*3000);
+  const tankDaily     = pb(totals.factory*50    + gcl*250);
+  const aircraftDaily = pb(totals.hangar*3      + acl*15);
+  const shipDaily     = pb(totals.drydock*1     + ncl*5);
+  const missilesDaily = hasSP ? 3 : (hasMLP ? 2 : 0);
+  const nukesDaily    = !hasNRF ? 0 : (hasNLF && hasMLP && hasSP ? 2 : 1);
+  // CIA project grants +10 spy cap (50 base → 60 with CIA)
+  const spiesDaily    = hasCIA ? 3 : 2;
+  const spiesMax      = hasCIA ? 60 : 50;
+
+  // Max capacities
+  const maxSoldiers = totals.barracks*3000 + gcl*3000;
+  const maxTanks    = totals.factory*250   + gcl*250;
+  const maxAircraft = totals.hangar*15     + acl*15;
+  const maxShips    = totals.drydock*5     + ncl*5;
+
+  // Unit section — matches nations.html nat-mil-unit-section style
+  function milUnitSection(icon, label, daily, current, max, noMax) {
+    const dailyStr = daily > 0 ? $n(daily) : '—';
+    const maxStr   = noMax ? '∞' : $n(max);
+    return `<div class="mn-mil-unit-section">
+      <div class="mn-mil-unit-title">
+        <img src="/static/Emojis/Military/${icon}" class="mn-mil-icon" alt=""> ${label}
+      </div>
+      <div class="mn-mil-unit-row">
+        <span class="mn-mil-unit-lbl">Daily</span>
+        <span class="mn-daily">${dailyStr}/day</span>
+      </div>
+      <div class="mn-mil-unit-row">
+        <span class="mn-mil-unit-lbl">Current</span>
+        <strong>${$n(current)}</strong>
+      </div>
+      <div class="mn-mil-unit-row">
+        <span class="mn-mil-unit-lbl">Max</span>
+        <span class="mn-max">${maxStr}</span>
+      </div>
+    </div>`;
+  }
+
+  // 7-unit grid (soldiers/tanks/aircraft/ships/missiles/nukes/spies)
+  const milUnitsGrid = `
+    <div class="mn-mil-units-grid">
+      ${milUnitSection('soldier.png','Soldiers', soldierDaily,  nation.soldiers||0, maxSoldiers)}
+      ${milUnitSection('tank.png',   'Tanks',    tankDaily,     nation.tanks||0,    maxTanks)}
+      ${milUnitSection('jet.png',    'Aircraft', aircraftDaily, nation.aircraft||0, maxAircraft)}
+      ${milUnitSection('ship.png',   'Ships',    shipDaily,     nation.ships||0,    maxShips)}
+      ${milUnitSection('missile.png','Missiles', missilesDaily, nation.missiles||0, 0, true)}
+      ${milUnitSection('bomb.png',   'Nukes',    nukesDaily,    nation.nukes||0,    0, true)}
+      ${milUnitSection('spy.png',    'Spies',    spiesDaily,    nation.spies||0,    spiesMax)}
+    </div>`;
+
+  // Military Research panel (shown only when MRC data is available)
+  const hasMR = mr.ground_capacity||mr.air_capacity||mr.naval_capacity||mr.ground_cost||mr.air_cost||mr.naval_cost;
+  const mrPanel = hasMR
+    ? `<div class="mn-mil-research">
+        <div class="mn-mil-research-title">🔬 Military Research</div>
+        <div class="mn-mil-research-grid">
+          <span class="mn-mil-research-lbl">Ground Cap</span><span class="mn-mil-research-val">${mr.ground_capacity||0}</span>
+          <span class="mn-mil-research-lbl">Air Cap</span><span class="mn-mil-research-val">${mr.air_capacity||0}</span>
+          <span class="mn-mil-research-lbl">Naval Cap</span><span class="mn-mil-research-val">${mr.naval_capacity||0}</span>
+          <span class="mn-mil-research-lbl">Ground Cost</span><span class="mn-mil-research-val">${mr.ground_cost||0}</span>
+          <span class="mn-mil-research-lbl">Air Cost</span><span class="mn-mil-research-val">${mr.air_cost||0}</span>
+          <span class="mn-mil-research-lbl">Naval Cost</span><span class="mn-mil-research-val">${mr.naval_cost||0}</span>
+        </div>
+      </div>`
+    : '';
+
+  // MMR bars (condensed, same as before)
+  const mmrItems = [
+    {label:'Barracks', total:totals.barracks, full:5.0},
+    {label:'Factories',total:totals.factory,  full:5.0},
+    {label:'Hangars',  total:totals.hangar,   full:5.0},
+    {label:'Drydocks', total:totals.drydock,  full:3.0},
+  ];
+  const mmrHtml = mmrItems.map(m => {
+    const mmrVal = cityCount > 0 ? m.total / cityCount : 0;
+    const pct = Math.min(100, (mmrVal / m.full) * 100);
+    const cls = mmrVal >= m.full ? 'green' : (mmrVal >= m.full * 0.5 ? 'yellow' : 'red');
+    return `<div class="mn-mmr-row">
+      <span class="mn-mmr-label">${m.label}</span>
+      <div class="mn-mmr-bar"><div class="mn-mmr-fill ${cls}" style="width:${pct}%"></div></div>
+      <span class="mn-mmr-value">${mmrVal.toFixed(1)}/${m.full.toFixed(1)}</span>
+    </div>`;
+  }).join('');
+
+  const milId = 'mn-mil-body-' + (nation.id || 'x');
+  const milSection = `
+    <div class="mn-mil-collapsible">
+      <button class="mn-mil-toggle" onclick="mnToggleMil('${milId}',this)" aria-expanded="false">
+        ⚔️ Military <span class="mn-mil-toggle-arrow">▶</span>
+      </button>
+      <div id="${milId}" class="mn-mil-body" style="display:none">
+        ${milUnitsGrid}
+        <div class="mn-mil-stats-grid">
+          ${mrPanel}
+          <div class="mn-mmr-section">
+            <div class="mn-mmr-title">📊 MMR <span style="font-size:0.62rem;color:var(--text-secondary);font-weight:400;">(buildings/city vs target)</span></div>
+            ${mmrHtml}
+          </div>
+        </div>
+      </div>
+    </div>`;
+
+  // ── Assemble ──────────────────────────────────────────────────────────────
+  document.getElementById('mn-header-body').innerHTML = `
+    <div class="mn-detail-header">
+      ${flagImg}
+      <div>
+        <h3 class="mn-detail-name">
+          <a href="https://politicsandwar.com/nation/id=${nation.id}" target="_blank" rel="noopener" style="color:inherit;text-decoration:none">${esc(nation.nation_name||'Unknown')}</a>
+        </h3>
+        <p class="mn-detail-leader">Leader: ${esc(nation.leader_name||'—')}</p>
+        ${badgeHeaderHtml}
+      </div>
+    </div>
+    <div class="mn-nation-divider"></div>
+    ${projHtml}
+    <div class="mn-nation-divider"></div>
+    ${awardsHtml}
+    <div class="mn-nation-divider"></div>
+    <div class="mn-mil-collapsible">
+      <button class="mn-mil-toggle" onclick="mnToggleInline('mn-rev-inline-body',this)" aria-expanded="false">
+        💰 Revenue <span class="mn-mil-toggle-arrow">▶</span>
+      </button>
+      <div id="mn-rev-inline-body" class="mn-mil-body" style="display:none">
+        <div class="mn-loading" style="padding:0.5rem 0">Loading revenue…</div>
+      </div>
+    </div>
+    <div class="mn-nation-divider"></div>
+    <div class="mn-mil-collapsible">
+      <button class="mn-mil-toggle" onclick="mnToggleInline('mn-cities-inline-body',this)" aria-expanded="false">
+        🏙️ Cities <span class="mn-mil-toggle-arrow">▶</span>
+      </button>
+      <div id="mn-cities-inline-body" class="mn-mil-body" style="display:none">
+        <div class="mn-loading" style="padding:0.5rem 0">Loading cities…</div>
+      </div>
+    </div>
+    <div class="mn-nation-divider"></div>
+    ${milSection}
+    <div id="mn-combat-inline-${nation.id||'x'}" class="mn-combat-inline-wrap"></div>`;
+
+  showSection('mn-header');
+  startTurnTimer(nation.update_tz || 0);
+  // Wire up the inline combat collapsible toggle for this nation
+  _mnSetupCombatToggle(nation.id);
+  // Fetch awards for this nation
+  _mnFetchAwards(nation.id);
+}
+
+function mnToggleMil(bodyId, btn) {
+  const body = document.getElementById(bodyId);
+  if (!body) return;
+  const open = body.style.display !== 'none';
+  body.style.display = open ? 'none' : '';
+  btn.setAttribute('aria-expanded', String(!open));
+  btn.querySelector('.mn-mil-toggle-arrow').textContent = open ? '▶' : '▼';
+}
+
+// Generic toggle for any inline collapsible section (revenue, etc.)
+function mnToggleInline(bodyId, btn) {
+  mnToggleMil(bodyId, btn);
+}
+
+// Expose toggle functions to global scope for onclick handlers
+window.mnToggleMil = mnToggleMil;
+window.mnToggleInline = mnToggleInline;
+window.mnToggleSection = mnToggleSection;
+
+function renderHeader(nation, revenue) {
+  if (arguments.length >= 3) renderNation(arguments[0], arguments[1], arguments[2]);
+}
+
+
+// ── Revenue inline collapsible (inside the Nation box) ───────────────────────
+// renderRevenue builds the 3-col grid HTML matching nations.html style + Per Week column:
+//   1. injects it into the inline toggle inside the Nation box
+//   2. also writes to the legacy mn-revenue-body stub (kept for compat)
+function renderRevenue(revenue, prices) {
+  if (!revenue) return;
+
+  const RSC = {food:'Food',coal:'Coal',oil:'Oil',uranium:'Uranium',lead:'Lead',
+               iron:'Iron',bauxite:'Bauxite',gasoline:'Gasoline',munitions:'Munitions',
+               steel:'Steel',aluminum:'Aluminum'};
+  const TAX     = revenue.alliance_tax_rate  || 0.10;
+  const RTAX    = revenue.resource_tax_rate  || TAX;
+
+  // Per-turn base values
+  const gross    = revenue.gross_income       || 0;
+  const colorB   = revenue.color_bonus        || 0;
+  const milUp    = revenue.military_upkeep    || 0;
+  const impUp    = revenue.improvement_upkeep || 0;  // city improvements
+  const powUp    = revenue.power_upkeep       || 0;  // power plants
+  const rssUp    = revenue.rss_upkeep         || 0;  // resource building upkeep
+  const taxMoney = revenue.alliance_tax_money != null ? revenue.alliance_tax_money : (gross + colorB) * TAX;
+  const taxRsc   = revenue.alliance_tax_resources || 0;
+  const taxTotal = revenue.alliance_tax       || (taxMoney + taxRsc);
+  const netCash  = revenue.turn_revenue       || 0;
+
+  // Resource values per turn
+  const rsc    = revenue.resources || {};
+  const rscVal = Object.entries(rsc).reduce((s,[k,v]) => s + (v * ((prices||{})[k]||0)), 0);
+  const monNet = netCash + rscVal;  // full monetary net per turn
+
+  // Combined improvement upkeep = city improvements + power + resource buildings
+  const totalImpUp = impUp + powUp + rssUp;
+
+  const $m  = v => { const s=v<0?'-':''; return s+'$'+Math.abs(v).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}); };
+  const $n  = (v,d=2) => Number(v||0).toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});
+  const cls = v => v >= 0 ? 'mn-positive' : 'mn-negative';
+
+  // Resource rows — only non-zero, showing qty and value
+  function rscRows(mult) {
+    return Object.entries(RSC).map(([k,label]) => {
+      const amt = (rsc[k] || 0) * mult;
+      if (Math.abs(amt) < 0.001) return '';
+      const price = (prices || {})[k] || 0;
+      const val = amt * price;
+      const c = cls(amt);
+      return `<div class="mn-rev-rsc-inline">
+        <img src="/static/Emojis/Resources/${k}.png" class="mn-icon-sm" alt="">
+        <span class="mn-rev-rsc-label">${label}</span>
+        <span class="${c}">${amt>=0?'+':''}${$n(amt)} <span class="mn-rev-price">(${$m(val)})</span></span>
+      </div>`;
+    }).join('');
+  }
+
+  // Build one time-period column
+  function periodCol(label, mult) {
+    const g   = gross   * mult;
+    const cb  = colorB  * mult;
+    const rv  = rscVal  * mult;
+    const tm  = taxMoney* mult;
+    const tr  = taxRsc  * mult;
+    const tt  = taxTotal* mult;
+    const mu  = milUp   * mult;
+    const iu  = totalImpUp * mult;
+    const nc  = netCash * mult;
+    const mn  = monNet  * mult;
+
+    return `<div class="mn-rev-col">
+      <div class="mn-rev-col-title">${label}</div>
+
+      <div class="mn-rev-sub-title">💰 Income</div>
+      <div class="mn-rev-row"><span>National Tax</span><strong>${$m(g)}</strong></div>
+      <div class="mn-rev-row"><span>Color Bonus</span><strong>${$m(cb)}</strong></div>
+      <div class="mn-rev-row mn-rev-row-hdr"><span>Resources</span><strong>${$m(rv)}</strong></div>
+      <div class="mn-rev-rsc-list">${rscRows(mult)}</div>
+      <div class="mn-rev-row mn-rev-sub-total"><span>Gross Income</span><strong>${$m(g+cb+rv)}</strong></div>
+
+      <div class="mn-rev-sub-title" style="margin-top:0.6rem">📉 Expenses</div>
+      <div class="mn-rev-row"><span>Alliance Tax (${(TAX*100).toFixed(0)}% money)</span><strong class="mn-negative">-${$m(tm)}</strong></div>
+      <div class="mn-rev-row"><span>Military Upkeep</span><strong class="mn-negative">-${$m(mu)}</strong></div>
+      <div class="mn-rev-row"><span>Improvement Upkeep</span><strong class="mn-negative">-${$m(iu)}</strong></div>
+      <div class="mn-rev-row mn-rev-sub-total"><span>Total Expenses</span><strong class="mn-negative">-${$m(tm+mu+iu)}</strong></div>
+
+      <div class="mn-rev-sub-title" style="margin-top:0.6rem">📊 Net</div>
+      <div class="mn-rev-row mn-rev-total"><span>Cash Net</span><strong class="${nc >= 0 ? 'mn-positive' : 'mn-negative'}">${$m(nc)}</strong></div>
+      ${tr > 0 ? `<div class="mn-rev-row mn-rev-info"><span>Resource Tax Value (${(RTAX*100).toFixed(0)}%)</span><span class="mn-rev-info-val">${$m(tr)}</span></div>` : ''}
+      <div class="mn-rev-row mn-rev-total"><span>Monetary Net</span><strong class="${mn >= 0 ? 'mn-positive' : 'mn-negative'}">${$m(mn)}</strong></div>
+    </div>`;
+  }
+
+  const innerHtml = `
+    <div class="mn-rev-grid">
+      ${periodCol('⏱ Per Turn',  1)}
+      ${periodCol('📅 Per Day (×12)',  12)}
+      ${periodCol('📅 Per Week (×84)',  84)}
+    </div>
+    ${revenue.at_war ? '<div style="margin-top:0.6rem;text-align:center"><span class="mn-badge mn-badge-war" style="font-size:0.68rem">⚔️ At War</span></div>' : ''}`;
+
+  // Inject into the inline toggle inside the Nation box
+  const inlineBody = document.getElementById('mn-rev-inline-body');
+  if (inlineBody) inlineBody.innerHTML = innerHtml;
+
+  // Also write to the legacy stub so any external references don't break
+  const legacyEl = document.getElementById('mn-revenue-body');
+  if (legacyEl) legacyEl.innerHTML = innerHtml;
+}
+
+// no-op stub — stockpile removed from revenue box
+function renderStockpile() {}
+
+
+// ── Section 4: Cities Grid ────────────────────────────────────────────────────
+
+// All improvements with correct icon paths matching comparison.html conventions.
+// RES = /static/Emojis/Resources/, IMP = /static/Emojis/Improvements/, MIL = /static/Emojis/Military/
+const IMP_DEF = [
+  // Power
+  {col:'coal_power',        label:'Coal Power',        img:'res:coal'},
+  {col:'oil_power',         label:'Oil Power',         img:'res:oil'},
+  {col:'nuclear_power',     label:'Nuclear Power',     img:'res:uranium'},
+  {col:'wind_power',        label:'Wind Power',        img:'imp:windmill'},
+  // Raw resources
+  {col:'coal_mine',         label:'Coal Mine',         img:'res:coal'},
+  {col:'oil_well',          label:'Oil Well',          img:'res:oil'},
+  {col:'uranium_mine',      label:'Uranium Mine',      img:'res:uranium'},
+  {col:'iron_mine',         label:'Iron Mine',         img:'res:iron'},
+  {col:'bauxite_mine',      label:'Bauxite Mine',      img:'res:bauxite'},
+  {col:'lead_mine',         label:'Lead Mine',         img:'res:lead'},
+  {col:'farm',              label:'Farm',              img:'res:food'},
+  // Manufacturing
+  {col:'oil_refinery',      label:'Oil Refinery',      img:'res:gasoline'},
+  {col:'aluminum_refinery', label:'Alu Refinery',      img:'res:aluminum'},
+  {col:'steel_mill',        label:'Steel Mill',        img:'res:steel'},
+  {col:'munitions_factory', label:'Munitions Factory', img:'res:munitions'},
+  {col:'factory',           label:'Factory',           img:'mil:tank'},
+  // Civil
+  {col:'police_station',    label:'Police Station',    img:'imp:police'},
+  {col:'hospital',          label:'Hospital',          img:'imp:hospital'},
+  {col:'recycling_center',  label:'Recycling Center',  img:'imp:recycle'},
+  {col:'subway',            label:'Subway',            img:'imp:subway'},
+  // Commerce
+  {col:'supermarket',       label:'Supermarket',       img:'imp:supermarket'},
+  {col:'bank',              label:'Bank',              img:'imp:bank'},
+  {col:'shopping_mall',     label:'Shopping Mall',     img:'imp:market'},
+  {col:'stadium',           label:'Stadium',           img:'imp:stadium'},
+  // Military buildings
+  {col:'barracks',          label:'Barracks',          img:'mil:soldier'},
+  {col:'hangar',            label:'Hangar',            img:'mil:jet'},
+  {col:'drydock',           label:'Drydock',           img:'mil:ship'},
+];
+
+function impSrc(img) {
+  const [ns, name] = img.split(':');
+  if (ns === 'res') return `/static/Emojis/Resources/${name}.png`;
+  if (ns === 'imp') return `/static/Emojis/Improvements/${name}.png`;
+  if (ns === 'mil') return `/static/Emojis/Military/${name}.png`;
+  return '';
+}
+
+function renderCities(cities, nationId) {
+  const inlineBody = document.getElementById('mn-cities-inline-body');
+  const legacyBody = document.getElementById('mn-cities-body');
+
+  if (!cities || !cities.length) {
+    const empty = '<div class="mn-no-data">No city data available.</div>';
+    if (inlineBody) inlineBody.innerHTML = empty;
+    if (legacyBody) legacyBody.innerHTML = empty;
+    return;
+  }
+
+  const cards = cities.map(city => {
+    const powered  = city.is_powered;
+    const pwdBadge = powered ? '⚡' : '⚠️';
+
+    // Compact icon grid: only show improvements the city actually has (count > 0)
+    const chips = IMP_DEF
+      .filter(d => (city[d.col] || 0) > 0)
+      .map(d => {
+        const src = impSrc(d.img);
+        const cnt = city[d.col];
+        return `<div class="mn-imp-chip" title="${esc(d.label)} ×${cnt}">
+          <img src="${src}" class="mn-imp-chip-icon" alt="">
+          <span class="mn-imp-chip-cnt">${cnt}</span>
+        </div>`;
+      }).join('');
+
+    return `<div class="mn-city-card" id="mn-city-${city.id}">
+      <div class="mn-city-header">
+        <span class="mn-city-name">${esc(city.name || 'City')}</span>
+        <span class="mn-city-header-right">
+          <span class="mn-city-infra">${$n(city.infrastructure||0,0)}</span>
+          <span class="${powered?'mn-powered':'mn-unpowered'}">${pwdBadge}</span>
+        </span>
+      </div>
+      <div class="mn-imp-grid">${chips || '<span class="mn-no-data" style="font-size:0.68rem">No improvements</span>'}</div>
+      <div class="mn-city-footer">
+        <span>Slots <strong>${city.slots_used||0}/${city.improvement_slots||0}</strong></span>
+        <span>Land <strong>${$n(city.land||0,0)}</strong></span>
+        <span>Age <strong>${city.age_days||0}d</strong></span>
+      </div>
+    </div>`;
+  }).join('');
+
+  const gridHtml = `<div class="mn-cities-grid">${cards}</div>`;
+  
+  // Inject into the inline toggle inside the Nation box
+  if (inlineBody) inlineBody.innerHTML = gridHtml;
+  
+  // Also write to the legacy stub so any external references don't break
+  if (legacyBody) legacyBody.innerHTML = gridHtml;
+}
+
+
+// ── Section 5: Cities Grid ────────────────────────────────────────────────────
+// ── Combat History — inline collapsible inside the Nation box ────────────────
+//
+// Field mapping (API → JS):
+//   global_kill_stats: soldier_kills, tank_kills, aircraft_kills, ship_kills,
+//                      missile_kills, nuke_kills, spy_kills, wars_won, wars_lost,
+//                      offensive_wars_count, defensive_wars_count
+//   irs_stats:         money_gained/lost, resources_gained/lost{},
+//                      infra_dealt_levels/value, infra_recv_levels/value,
+//                      soldiers/tanks/aircraft/ships _killed/_lost,
+//                      missiles_fired/received, nukes_fired/received,
+//                      wars_won, wars_lost, total_wars
+
+function _mnSetupCombatToggle(nationId) {
+  const wrap = document.getElementById('mn-combat-inline-' + (nationId || 'x'));
+  if (!wrap) return;
+  wrap.innerHTML = `
+    <div class="mn-mil-collapsible" style="margin-top:0.5rem">
+      <button class="mn-mil-toggle" onclick="mnToggleCombat(${nationId},this)" aria-expanded="false">
+        🗡 Combat History <span class="mn-mil-toggle-arrow">▶</span>
+      </button>
+      <div id="mn-combat-body-${nationId}" class="mn-mil-body" style="display:none">
+        <div class="mn-loading">Click to load…</div>
+      </div>
+    </div>`;
+}
+
+function mnToggleCombat(nationId, btn) {
+  const body = document.getElementById('mn-combat-body-' + nationId);
+  if (!body) return;
+  const open = body.style.display !== 'none';
+  if (open) {
+    body.style.display = 'none';
+    btn.setAttribute('aria-expanded', 'false');
+    btn.querySelector('.mn-mil-toggle-arrow').textContent = '▶';
+    return;
+  }
+  body.style.display = '';
+  btn.setAttribute('aria-expanded', 'true');
+  btn.querySelector('.mn-mil-toggle-arrow').textContent = '▼';
+  // Only fetch once
+  if (body.dataset.loaded) return;
+  body.dataset.loaded = '1';
+  body.innerHTML = '<div class="mn-loading">Loading combat data…</div>';
+  _mnFetchCombat(nationId, body);
+}
+
+// Expose to global scope for onclick handlers
+window.mnToggleCombat = mnToggleCombat;
+
+function _mnFetchCombat(nationId, el) {
+  fetch(`/api/mynation/war-stats/${nationId}`)
+    .then(r => r.json())
+    .then(data => _mnRenderCombat(data, el))
+    .catch(() => { el.innerHTML = '<div class="mn-status mn-status-error">War data temporarily unavailable.</div>'; });
+}
+
+// ── Awards fetching and rendering ─────────────────────────────────────────────
+function _mnFetchAwards(nationId) {
+  const awardsRow = document.getElementById(`mn-awards-row-${nationId}`);
+  if (!awardsRow) return;
+  
+  const loadingDiv = awardsRow.querySelector('.mn-awards-loading');
+  if (loadingDiv) loadingDiv.textContent = 'Loading awards...';
+  
+  fetch(`/api/mynation/awards/${nationId}`)
+    .then(r => {
+      if (!r.ok) throw new Error('Failed to fetch awards');
+      return r.json();
+    })
+    .then(data => _mnRenderAwards(data, awardsRow))
+    .catch(err => {
+      console.error('Awards fetch error:', err);
+      if (loadingDiv) loadingDiv.textContent = 'Awards unavailable';
+    });
+}
+
+function _mnRenderAwards(data, awardsRow) {
+  const awards = data.awards || [];
+  const totalCount = data.total_count || 0;
+  
+  // Clear loading state
+  const loadingDiv = awardsRow.querySelector('.mn-awards-loading');
+  if (loadingDiv) loadingDiv.remove();
+  
+  // Check if there's already a chips container
+  let chipsDiv = awardsRow.querySelector('.mn-awards-chips');
+  let countSpan = awardsRow.querySelector('.mn-awards-count');
+  
+  if (!chipsDiv) {
+    chipsDiv = document.createElement('div');
+    chipsDiv.className = 'mn-awards-chips';
+    awardsRow.appendChild(chipsDiv);
+  }
+  
+  if (!countSpan) {
+    countSpan = document.createElement('span');
+    countSpan.className = 'mn-awards-count';
+    awardsRow.appendChild(countSpan);
+  }
+  
+  if (totalCount === 0) {
+    chipsDiv.innerHTML = '<span style="color:var(--text-secondary);font-size:0.75rem;font-style:italic;">No awards yet</span>';
+    countSpan.textContent = '0';
+    return;
+  }
+  
+  // Render each award as a chip
+  const chips = awards.map(award => {
+    const parts = [];
+    if (award.first > 0) {
+      parts.push(`<img src="/static/Emojis/Leaderboards/1${award.prefix}.png" class="mn-award-icon" alt="1st"> ${award.first}`);
+    }
+    if (award.second > 0) {
+      parts.push(`<img src="/static/Emojis/Leaderboards/2${award.prefix}.png" class="mn-award-icon" alt="2nd"> ${award.second}`);
+    }
+    if (award.third > 0) {
+      parts.push(`<img src="/static/Emojis/Leaderboards/3${award.prefix}.png" class="mn-award-icon" alt="3rd"> ${award.third}`);
+    }
+    
+    const content = parts.join(' · ');
+    return `<span class="mn-award-chip" title="${esc(award.category_label)}: ${award.first} first, ${award.second} second, ${award.third} third">${content} ${esc(award.category_label)}</span>`;
+  }).join('');
+  
+  chipsDiv.innerHTML = chips;
+  countSpan.textContent = totalCount;
+}
+
+
+function _mnRenderCombat(data, el) {
+  const isDarkstar = data.is_darkstar;
+  // global_kill_stats uses SINGULAR field names: soldier_kills, tank_kills, etc.
+  const g   = data.global_kill_stats || {};
+  const irs = data.irs_stats || {};  // Default to empty object if null
+
+  // ── Coverage notice ────────────────────────────────────────────────────────
+  let coverageHtml;
+  if (isDarkstar && data.tracked_since) {
+    const since = new Date(data.tracked_since).toLocaleDateString('en-US',{year:'numeric',month:'short',day:'numeric'});
+    coverageHtml = `<div class="mn-combat-coverage">📊 Tracked since <strong>${since}</strong> — all Darkstar wars</div>`;
+  } else {
+    coverageHtml = `<div class="mn-combat-coverage">📊 Stats from P&amp;W nation record only</div>`;
+  }
+
+  // ── Global kill stats panel (always shown) ────────────────────────────────
+  // API field names: soldier_kills, tank_kills, aircraft_kills, ship_kills,
+  //                  missile_kills, nuke_kills, spy_kills
+  const GLOBAL_KILLS = [
+    {key:'soldier_kills',  label:'Soldiers', icon:'soldier'},
+    {key:'tank_kills',     label:'Tanks',    icon:'tank'},
+    {key:'aircraft_kills', label:'Aircraft', icon:'jet'},
+    {key:'ship_kills',     label:'Ships',    icon:'ship'},
+    {key:'missile_kills',  label:'Missiles', icon:'missile'},
+    {key:'nuke_kills',     label:'Nukes',    icon:'bomb'},
+    {key:'spy_kills',      label:'Spies',    icon:'spy'},
+  ];
+  const globalKillRows = GLOBAL_KILLS.map(({key, label, icon}) => `
+    <div class="mn-kill-row">
+      <span><img src="/static/Emojis/Military/${icon}.png" class="mn-icon-sm" alt=""> ${label}</span>
+      <strong>${$n(g[key]||0)}</strong>
+    </div>`).join('');
+
+  const globalSection = `<div class="mn-combat-loot">
+    <div class="mn-combat-panel-title">📋 Kill Stats (GlobalNations)</div>
+    ${globalKillRows}
+    <div class="mn-kill-row" style="margin-top:0.4rem;border-top:1px solid rgba(255,215,0,0.1);padding-top:0.3rem">
+      <span><img src="/static/Emojis/Military/win.png"  class="mn-icon-sm" alt=""> Wars Won</span>
+      <strong>${$n(g.wars_won||0)}</strong>
+    </div>
+    <div class="mn-kill-row">
+      <span><img src="/static/Emojis/Military/lose.png" class="mn-icon-sm" alt=""> Wars Lost</span>
+      <strong>${$n(g.wars_lost||0)}</strong>
+    </div>
+  </div>`;
+
+  if (!isDarkstar || !irs) {
+    el.innerHTML = coverageHtml + `<div class="mn-combat-panels">${globalSection}</div>`;
+    return;
+  }
+
+  // ── IRS panels (Darkstar only) ────────────────────────────────────────────
+  const LOOT_RSCS = ['food','coal','oil','uranium','iron','bauxite','lead','gasoline','munitions','steel','aluminum'];
+
+  function lootRows(resObj) {
+    return LOOT_RSCS
+      .filter(r => (resObj[r] || 0) > 0)
+      .map(r => `<div class="mn-loot-row">
+        <img src="/static/Emojis/Resources/${RSC_ICONS[r]}.png" class="mn-loot-icon" alt="">
+        <span class="mn-loot-label">${r}</span>
+        <span class="mn-loot-amount">${$n(resObj[r],0)}</span>
+      </div>`).join('');
+  }
+
+  const lootGained = `<div class="mn-combat-loot">
+    <div class="mn-combat-panel-title">💰 Loot Gained (Attacker)</div>
+    <div class="mn-infra-row"><span>Money</span><strong class="mn-positive">${$m(irs.money_gained||0)}</strong></div>
+    ${lootRows(irs.resources_gained||{})}
+  </div>`;
+
+  const lootLost = `<div class="mn-combat-loot">
+    <div class="mn-combat-panel-title">💸 Loot Lost (Defender)</div>
+    <div class="mn-infra-row"><span>Money</span><strong class="mn-negative">${$m(irs.money_lost||0)}</strong></div>
+    ${lootRows(irs.resources_lost||{})}
+  </div>`;
+
+  const infraPanel = `<div class="mn-combat-infra">
+    <div class="mn-combat-panel-title">💥 Infrastructure</div>
+    <div class="mn-infra-row"><span>Dealt (levels)</span><strong>${$n(irs.infra_dealt_levels||0,0)}</strong></div>
+    <div class="mn-infra-row"><span>Dealt (value)</span><strong class="mn-positive">${$m(irs.infra_dealt_value||0)}</strong></div>
+    <div class="mn-infra-row" style="margin-top:0.35rem"><span>Received (levels)</span><strong>${$n(irs.infra_recv_levels||0,0)}</strong></div>
+    <div class="mn-infra-row"><span>Received (value)</span><strong class="mn-negative">${$m(irs.infra_recv_value||0)}</strong></div>
+  </div>`;
+
+  const unitPanel = `<div class="mn-combat-units">
+    <div class="mn-combat-panel-title">⚔️ Units Killed / Lost</div>
+    <div class="mn-unit-row-header"><span></span><span></span><span>Killed</span><span>Lost</span></div>
+    ${[['soldiers','soldiers_killed','soldiers_lost','soldier_kills'],
+       ['tanks',   'tanks_killed',   'tanks_lost',   'tank_kills'],
+       ['aircraft','aircraft_killed','aircraft_lost','aircraft_kills'],
+       ['ships',   'ships_killed',   'ships_lost',   'ship_kills']].map(([unitKey, killedKey, lostKey, globalKillKey]) => {
+      // Use IRS stats if available (Darkstar), otherwise use global kills
+      const killed = irs[killedKey] || g[globalKillKey] || 0;
+      const lost = irs[lostKey] || 0;
+      const unitLabel = unitKey.charAt(0).toUpperCase() + unitKey.slice(1);
+      return `<div class="mn-unit-row">
+        <img src="/static/Emojis/Military/${MIL_ICONS[unitKey]}.png" class="mn-unit-icon" alt="">
+        <span class="mn-unit-label">${unitLabel}</span>
+        <span class="mn-unit-killed mn-positive">${$n(killed)}</span>
+        <span class="mn-unit-lost mn-negative">${$n(lost)}</span>
+      </div>`;
+    }).join('')}
+    <div class="mn-unit-row">
+      <img src="/static/Emojis/Military/missile.png" class="mn-unit-icon" alt="">
+      <span class="mn-unit-label">Missiles</span>
+      <span class="mn-unit-killed mn-positive">${$n(irs.missiles_fired ?? g.missile_kills ?? 0)} fired</span>
+      <span class="mn-unit-lost mn-negative">${$n(irs.missiles_received ?? 0)} recv</span>
+    </div>
+    <div class="mn-unit-row">
+      <img src="/static/Emojis/Military/bomb.png" class="mn-unit-icon" alt="">
+      <span class="mn-unit-label">Nukes</span>
+      <span class="mn-unit-killed mn-positive">${$n(irs.nukes_fired ?? g.nuke_kills ?? 0)} fired</span>
+      <span class="mn-unit-lost mn-negative">${$n(irs.nukes_received ?? 0)} recv</span>
+    </div>
+    <div style="margin-top:0.5rem;padding-top:0.4rem;border-top:1px solid rgba(255,215,0,0.1);font-size:0.78rem">
+      Total Wars: <strong>${$n(irs.total_wars||g.wars_won+g.wars_lost||0)}</strong> &nbsp;
+      <img src="/static/Emojis/Military/win.png"  class="mn-icon-sm" alt=""> <strong>${$n(irs.wars_won||g.wars_won||0)}</strong> &nbsp;
+      <img src="/static/Emojis/Military/lose.png" class="mn-icon-sm" alt=""> <strong>${$n(irs.wars_lost||g.wars_lost||0)}</strong>
+    </div>
+  </div>`;
+
+  el.innerHTML = coverageHtml + `
+    <div class="mn-combat-panels">
+      ${lootGained}${lootLost}${infraPanel}${unitPanel}${globalSection}
+    </div>`;
+}
+
+// renderCombat kept as no-op — combat is now inline in the Nation box
+function renderCombat() {}
+
+
+// ── Section 9: Build Plan ─────────────────────────────────────────────────────
+async function renderPlanner(goals, nation, cities, revenue) {
+  showSection('mn-planner');
+  const body = document.getElementById('mn-planner-body');
+
+  // Extract nation ID - try multiple possible property names
+  const nationId = nation?.nation_id || nation?.id || nation?.nationId;
+  
+  if (!nationId) {
+    console.error('No nation ID found in nation object:', nation);
+    body.innerHTML = '<div class="plan-error">⚠️ Nation ID not available. Please refresh the page.</div>';
+    return;
+  }
+
+  // Check if a plan exists
+  let hasPlan = false;
+  try {
+    const planResponse = await fetch(`/api/mynation/plan/${nationId}`);
+    if (planResponse.ok) {
+      const planData = await planResponse.json();
+      hasPlan = !!planData.plan;
+    }
+  } catch (e) {
+    console.log('Could not check for existing plan:', e);
+  }
+
+  // Create tabs for the new plan system with a hint badge if no plan exists
+  const noPlanBadge = !hasPlan ? '<span style="background: #e74c3c; color: white; font-size: 0.7rem; padding: 0.15rem 0.4rem; border-radius: 4px; margin-left: 0.3rem; font-weight: 600;">NEW</span>' : '';
+  
+  body.innerHTML = `
+    <div class="plan-tabs">
+      <button class="plan-tab ${hasPlan ? 'active' : ''}" data-tab="viewer" onclick="switchPlanTab(event, 'viewer')">📋 My Plan</button>
+      <button class="plan-tab ${!hasPlan ? 'active' : ''}" data-tab="editor" onclick="switchPlanTab(event, 'editor')">✏️ Edit Plan${noPlanBadge}</button>
+      <button class="plan-tab" data-tab="preview" onclick="switchPlanTab(event, 'preview')">🔍 Preview</button>
+    </div>
+    <div id="plan-tab-content"></div>
+  `;
+
+  // Store nation ID and data globally for tab switching
+  window.currentPlanNationId = nationId;
+  window.currentPlanNation = nation;
+  window.currentPlanCities = cities;
+  
+  // Default to editor tab if no plan exists, otherwise viewer tab
+  const defaultTab = hasPlan ? 'viewer' : 'editor';
+  const defaultTabButton = body.querySelector(`.plan-tab[data-tab="${defaultTab}"]`);
+  switchPlanTab({ target: defaultTabButton }, defaultTab);
+}
+
+// Switch between plan tabs
+function switchPlanTab(event, tabName) {
+  // Update active tab styling
+  const tabsContainer = document.querySelector('.plan-tabs');
+  if (tabsContainer) {
+    tabsContainer.querySelectorAll('.plan-tab').forEach(t => t.classList.remove('active'));
+  }
+  if (event && event.target) {
+    event.target.classList.add('active');
+  }
+
+  const contentEl = document.getElementById('plan-tab-content');
+  if (!contentEl) return;
+
+  const nationId = window.currentPlanNationId;
+  if (!nationId) {
+    console.error('Nation ID not available in switchPlanTab');
+    contentEl.innerHTML = '<div class="plan-error">⚠️ Nation ID not available. Please refresh the page.</div>';
+    return;
+  }
+
+  // Render the appropriate tab
+  if (tabName === 'viewer') {
+    renderPlanViewer(nationId, contentEl);
+  } else if (tabName === 'editor') {
+    renderPlanEditor(nationId, contentEl);
+  } else if (tabName === 'preview') {
+    renderPlanPreview(nationId, contentEl);
+  }
+}
+
+// Keep old functions for backwards compatibility (in case other code calls them)
+function mnSwitchTab(btn, targetId) {
+  btn.closest('.mn-planner').querySelectorAll('.mn-planner-tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  btn.closest('.mn-planner').querySelectorAll('.mn-planner-panel').forEach(p => {
+    p.classList.toggle('active', p.id === targetId);
+  });
+}
+
+function openAddGoal(type, projectCol) {
+  const plannerSection = document.getElementById('mn-planner');
+  if (plannerSection && plannerSection.classList.contains('collapsed')) {
+    plannerSection.classList.remove('collapsed');
+  }
+  // Switch to Add Goal tab
+  const tabs  = document.querySelectorAll('.mn-planner-tab');
+  const panels= document.querySelectorAll('.mn-planner-panel');
+  if (tabs.length >= 2) {
+    tabs.forEach(t => t.classList.remove('active'));
+    tabs[1].classList.add('active');
+    panels.forEach(p => p.classList.remove('active'));
+    document.getElementById('mn-tab-add').classList.add('active');
+  }
+  // Pre-fill project type + dropdown
+  if (type === 'project' && projectCol) {
+    const typeSelect = document.getElementById('mn-goal-type');
+    if (typeSelect) { typeSelect.value = 'project'; typeSelect.dispatchEvent(new Event('change')); }
+    setTimeout(() => {
+      const projSelect = document.getElementById('mn-goal-project-col');
+      if (projSelect) { projSelect.value = projectCol; projSelect.dispatchEvent(new Event('change')); }
+    }, 50);
+  }
+  plannerSection && plannerSection.scrollIntoView({behavior:'smooth', block:'start'});
+}
+
+
+// ── Goals list renderer ───────────────────────────────────────────────────────
+function renderGoalsList(goals, nation, revenue) {
+  const el = document.getElementById('mn-tab-goals');
+  if (!el) return;
+
+  if (!goals || !goals.length) {
+    el.innerHTML = '<div class="mn-no-data">No goals yet. Add one with the ➕ tab.</div>';
+    return;
+  }
+
+  const netCashDay = revenue ? (revenue.net_cash_turn || 0) * 12 : 0;
+
+  const items = goals.map(g => {
+    const completed = !!(g.completed);
+    const cls       = completed ? 'completed' : 'pending';
+    const pulse     = (!completed && _newlyCompleted.includes(g.id)) ? ' mn-pulse' : '';
+
+    let tv = {};
+    try { tv = typeof g.target_value === 'string' ? JSON.parse(g.target_value) : (g.target_value || {}); }
+    catch(_) {}
+
+    let ec = {};
+    try { ec = typeof g.estimated_cost === 'string' ? JSON.parse(g.estimated_cost) : (g.estimated_cost || {}); }
+    catch(_) {}
+
+    const cashCost = ec.money || ec.cash || 0;
+    let daysHtml = '';
+    if (!completed) {
+      if (netCashDay > 0 && cashCost > 0) {
+        const days = (cashCost / netCashDay).toFixed(0);
+        daysHtml = `<div class="mn-goal-time">⏱ ~<strong>${days} days</strong> at ${$m(netCashDay)}/day</div>`;
+      } else if (cashCost > 0) {
+        daysHtml = `<div class="mn-goal-time" style="color:#ef9a9a">⏱ N/A (negative revenue)</div>`;
+      }
+    }
+
+    // Progress bar
+    let progressHtml = '';
+    const gt = g.goal_type;
+    if (!completed && gt !== 'custom' && gt !== 'project') {
+      let cur = 0, tgt = 1, label = '';
+      const curNation = _currentData && _currentData.nation;
+      const cities = _currentData && _currentData.cities || [];
+      
+      if (gt === 'city' && curNation) {
+        cur = curNation.num_cities || 0; 
+        tgt = tv.num_cities || 1;
+        label = `${cur} / ${tgt} cities`;
+      } else if (gt === 'infra') {
+        tgt = tv.infra || 1;
+        if (tv.city_id) {
+          // Specific city
+          const city = cities.find(c => c.id === tv.city_id);
+          cur = city ? (city.infrastructure || 0) : 0;
+          label = `${$n(cur,0)} / ${$n(tgt,0)} infra (${city ? city.name : 'City'})`;
+        } else {
+          // All cities: show min infra
+          const minInfra = cities.length ? Math.min(...cities.map(c => c.infrastructure||0)) : 0;
+          cur = minInfra;
+          label = `${$n(cur,0)} / ${$n(tgt,0)} infra (all cities)`;
+        }
+      } else if (gt === 'land') {
+        tgt = tv.land || 1;
+        if (tv.city_id) {
+          // Specific city
+          const city = cities.find(c => c.id === tv.city_id);
+          cur = city ? (city.land || 0) : 0;
+          label = `${$n(cur,0)} / ${$n(tgt,0)} land (${city ? city.name : 'City'})`;
+        } else {
+          // All cities: show min land
+          const minLand = cities.length ? Math.min(...cities.map(c => c.land||0)) : 0;
+          cur = minLand;
+          label = `${$n(cur,0)} / ${$n(tgt,0)} land (all cities)`;
+        }
+      } else if (gt === 'improvement') {
+        const city = cities.find(c => c.id === tv.city_id);
+        cur = city ? (city[tv.improvement] || 0) : 0;
+        tgt = tv.count || 1;
+        const impName = tv.improvement ? tv.improvement.replace(/_/g, ' ') : 'improvement';
+        label = `${cur} / ${tgt} ${impName} (${city ? city.name : 'City'})`;
+      } else if (gt === 'military' && curNation) {
+        cur = curNation[tv.unit] || 0; 
+        tgt = tv.count || 1;
+        label = `${$n(cur)} / ${$n(tgt)} ${tv.unit}`;
+      }
+      
+      if (tgt > 0) {
+        const pct = Math.min(100, (cur / tgt) * 100).toFixed(1);
+        progressHtml = `<div class="mn-goal-progress"><div class="mn-goal-progress-fill" style="width:${pct}%"></div></div>
+          <div class="mn-goal-progress-label">${esc(label)}</div>`;
+      }
+    }
+
+    // Cost line
+    let costHtml = '';
+    if (cashCost > 0 || Object.keys(ec).some(k => k !== 'money' && k !== 'cash' && ec[k] > 0)) {
+      const rscBits = Object.entries(ec)
+        .filter(([k, v]) => k !== 'money' && k !== 'cash' && v > 0)
+        .map(([k, v]) => {
+          const icon = RSC_ICONS[k] ? `<img src="/static/Emojis/Resources/${RSC_ICONS[k]}.png" class="mn-icon-sm" alt="">` : '';
+          return `${icon} ${$n(v,0)} ${k}`;
+        }).join(' &nbsp; ');
+      costHtml = `<div class="mn-goal-cost">💰 <strong>${$m(cashCost)}</strong>${rscBits ? ' &nbsp;+&nbsp; ' + rscBits : ''}</div>`;
+    }
+
+    const completedDate = g.completed_at
+      ? `<div class="mn-goal-completed-at">✅ Completed ${new Date(g.completed_at).toLocaleDateString()}</div>` : '';
+
+    const notesHtml = g.notes ? `<div class="mn-goal-notes">"${esc(g.notes)}"</div>` : '';
+
+    const actions = completed ? '' : `
+      <div class="mn-goal-actions">
+        <button class="mn-goal-btn mn-goal-btn-complete" onclick="mnCompleteGoal(${g.id})">✅ Complete</button>
+        <button class="mn-goal-btn mn-goal-btn-delete"   onclick="mnDeleteGoal(${g.id},${g.nation_id})">🗑 Delete</button>
+      </div>`;
+
+    return `<div class="mn-goal-item ${cls}${pulse}" id="mn-goal-${g.id}">
+      <div class="mn-goal-header">
+        <span>
+          <span class="mn-goal-type-badge">${esc(g.goal_type)}</span>
+          <span class="mn-goal-label">${esc(g.goal_label)}</span>
+        </span>
+        ${actions}
+      </div>
+      ${completedDate}
+      ${daysHtml}
+      ${progressHtml}
+      ${costHtml}
+      ${notesHtml}
+    </div>`;
+  }).join('');
+
+  el.innerHTML = `<div class="mn-goals-list">${items}</div>`;
+}
+
+function recomputeDaysToGoal(goals, revenue) {
+  if (!goals || !revenue) return;
+  const netCashDay = (revenue.net_cash_turn || 0) * 12;
+  goals.forEach(g => {
+    if (g.completed) return;
+    const el = document.getElementById(`mn-goal-${g.id}`);
+    if (!el) return;
+    let ec = {};
+    try { ec = typeof g.estimated_cost === 'string' ? JSON.parse(g.estimated_cost) : (g.estimated_cost || {}); } catch(_) {}
+    const cashCost = ec.money || ec.cash || 0;
+    const timeEl   = el.querySelector('.mn-goal-time');
+    if (!timeEl || !cashCost) return;
+    if (netCashDay > 0) {
+      const days = (cashCost / netCashDay).toFixed(0);
+      timeEl.innerHTML = `⏱ ~<strong>${days} days</strong> at ${$m(netCashDay)}/day`;
+      timeEl.style.color = '';
+    } else {
+      timeEl.innerHTML = '⏱ N/A (negative revenue)';
+      timeEl.style.color = '#ef9a9a';
+    }
+  });
+}
+
+
+// ── Goal actions ──────────────────────────────────────────────────────────────
+async function mnCompleteGoal(goalId) {
+  try {
+    const r = await fetch(`/api/mynation/goals/${goalId}/complete`, {method:'POST'});
+    if (!r.ok) throw new Error(await r.text());
+    if (_currentNationId) await refreshGoals(_currentNationId);
+  } catch(e) { alert('Failed to complete goal: ' + e.message); }
+}
+
+async function mnDeleteGoal(goalId, nationId) {
+  if (!confirm('Delete this goal?')) return;
+  try {
+    const r = await fetch(`/api/mynation/goals/${goalId}?nation_id=${nationId}`, {method:'DELETE'});
+    if (!r.ok) throw new Error(await r.text());
+    if (_currentNationId) await refreshGoals(_currentNationId);
+  } catch(e) { alert('Failed to delete goal: ' + e.message); }
+}
+
+async function refreshGoals(nationId) {
+  try {
+    const r = await fetch(`/api/mynation/goals/${nationId}`);
+    const goals = await r.json();
+    if (_currentData) _currentData.goals = goals;
+    renderGoalsList(goals, _currentData && _currentData.nation, _currentData && _currentData.revenue);
+  } catch(e) { /* silent */ }
+}
+
+
+// ── Add Goal form ─────────────────────────────────────────────────────────────
+function renderAddGoalForm(nation, cities, revenue) {
+  const el = document.getElementById('mn-tab-add');
+  if (!el) return;
+
+  // Build city options
+  const cityOptions = (cities || []).map(c =>
+    `<option value="${c.id}" data-infra="${c.infrastructure||0}" data-land="${c.land||0}">${esc(c.name||'City')}</option>`
+  ).join('');
+
+  // Build unowned project options
+  const projOptions = Object.entries(PROJECTS)
+    .filter(([col]) => !nation[col])
+    .map(([col, name]) => `<option value="${col}">${esc(name)}</option>`)
+    .join('');
+
+  const milUnits = ['soldiers','tanks','aircraft','ships','missiles','nukes'];
+  const unitOptions = milUnits.map(u => `<option value="${u}">${u}</option>`).join('');
+
+  const impCols = [
+    'coal_power','oil_power','nuclear_power','wind_power',
+    'coal_mine','oil_well','uranium_mine','iron_mine','bauxite_mine','lead_mine','farm',
+    'oil_refinery','aluminum_refinery','steel_mill','munitions_factory','factory',
+    'police_station','hospital','recycling_center','subway',
+    'supermarket','bank','shopping_mall','stadium',
+    'barracks','hangar','drydock'
+  ];
+  const impOptions = impCols.map(c => `<option value="${c}">${c.replace(/_/g,' ')}</option>`).join('');
+
+  el.innerHTML = `
+    <form class="mn-add-form" id="mn-add-goal-form" onsubmit="return false">
+      <div class="mn-form-group">
+        <label class="mn-form-label" for="mn-goal-type">Goal Type</label>
+        <select class="mn-form-select" id="mn-goal-type">
+          <option value="city">City</option>
+          <option value="infra">Infrastructure</option>
+          <option value="land">Land</option>
+          <option value="project">Project</option>
+          <option value="improvement">Improvement</option>
+          <option value="military">Military</option>
+          <option value="custom">Custom</option>
+        </select>
+      </div>
+
+      <div class="mn-form-group" id="mn-fg-label">
+        <label class="mn-form-label" for="mn-goal-label">Label</label>
+        <input class="mn-form-input" id="mn-goal-label" type="text" placeholder="Short description" maxlength="120">
+      </div>
+
+      <!-- City type -->
+      <div id="mn-fg-city" style="display:none">
+        <div class="mn-form-group">
+          <label class="mn-form-label">Target City Count</label>
+          <input class="mn-form-input" id="mn-goal-city-target" type="number" min="1" max="100" placeholder="${(nation.num_cities||0)+1}">
+          <small style="color:var(--text-secondary);font-size:0.7rem">Max: 100 cities</small>
+        </div>
+      </div>
+
+      <!-- Infra type -->
+      <div id="mn-fg-infra" style="display:none">
+        <div class="mn-form-group">
+          <label class="mn-form-label">City (leave blank for all cities)</label>
+          <select class="mn-form-select" id="mn-goal-infra-city"><option value="">All Cities (each must reach target)</option>${cityOptions}</select>
+        </div>
+        <div class="mn-form-group">
+          <label class="mn-form-label">Target Infrastructure</label>
+          <input class="mn-form-input" id="mn-goal-infra-target" type="number" min="10" max="15000" step="0.01" placeholder="2000">
+          <small style="color:var(--text-secondary);font-size:0.7rem">Max: 15,000 per city</small>
+        </div>
+      </div>
+
+      <!-- Land type -->
+      <div id="mn-fg-land" style="display:none">
+        <div class="mn-form-group">
+          <label class="mn-form-label">City (leave blank for all cities)</label>
+          <select class="mn-form-select" id="mn-goal-land-city"><option value="">All Cities (each must reach target)</option>${cityOptions}</select>
+        </div>
+        <div class="mn-form-group">
+          <label class="mn-form-label">Target Land</label>
+          <input class="mn-form-input" id="mn-goal-land-target" type="number" min="250" max="50000" step="0.01" placeholder="2000">
+          <small style="color:var(--text-secondary);font-size:0.7rem">Min: 250, Max: ~50,000 per city</small>
+        </div>
+      </div>
+
+      <!-- Project type -->
+      <div id="mn-fg-project" style="display:none">
+        <div class="mn-form-group">
+          <label class="mn-form-label">Project</label>
+          <select class="mn-form-select" id="mn-goal-project-col"><option value="">— Select —</option>${projOptions}</select>
+        </div>
+      </div>
+
+      <!-- Improvement type -->
+      <div id="mn-fg-improvement" style="display:none">
+        <div class="mn-form-group">
+          <label class="mn-form-label">City</label>
+          <select class="mn-form-select" id="mn-goal-imp-city">${cityOptions}</select>
+        </div>
+        <div class="mn-form-group">
+          <label class="mn-form-label">Improvement</label>
+          <select class="mn-form-select" id="mn-goal-imp-col">${impOptions}</select>
+        </div>
+        <div class="mn-form-group">
+          <label class="mn-form-label">Target Count</label>
+          <input class="mn-form-input" id="mn-goal-imp-target" type="number" min="1" max="50" placeholder="5">
+          <small style="color:var(--text-secondary);font-size:0.7rem">Max: 50 (requires 2,500 infra)</small>
+        </div>
+      </div>
+
+      <!-- Military type -->
+      <div id="mn-fg-military" style="display:none">
+        <div class="mn-form-group">
+          <label class="mn-form-label">Unit</label>
+          <select class="mn-form-select" id="mn-goal-mil-unit">${unitOptions}</select>
+        </div>
+        <div class="mn-form-group">
+          <label class="mn-form-label">Target Count</label>
+          <input class="mn-form-input" id="mn-goal-mil-target" type="number" min="1" placeholder="100000">
+          <small style="color:var(--text-secondary);font-size:0.7rem">Enter your target military unit count</small>
+        </div>
+      </div>
+
+      <!-- Custom type -->
+      <div id="mn-fg-custom" style="display:none">
+        <div class="mn-form-group">
+          <label class="mn-form-label">Cash Cost (optional)</label>
+          <input class="mn-form-input" id="mn-goal-custom-cash" type="number" min="0" placeholder="0">
+        </div>
+      </div>
+
+      <div class="mn-form-group">
+        <label class="mn-form-label" for="mn-goal-notes">Notes (optional)</label>
+        <textarea class="mn-form-textarea" id="mn-goal-notes" maxlength="500" placeholder="Any notes…"></textarea>
+      </div>
+
+      <!-- Cost preview -->
+      <div class="mn-cost-preview" id="mn-cost-preview">
+        <div class="mn-cost-preview-title">💰 Estimated Cost</div>
+        <div style="color:var(--text-secondary);font-size:0.78rem">Fill in the form to see cost estimate.</div>
+      </div>
+
+      <button type="button" class="mn-form-submit" onclick="mnSaveGoal()">📌 Save Goal</button>
+    </form>`;
+
+  // Wire type selector
+  const typeEl = document.getElementById('mn-goal-type');
+  typeEl.addEventListener('change', () => { mnUpdateFormFields(nation, cities); mnTriggerCostPreview(nation.id); });
+  mnUpdateFormFields(nation, cities);
+
+  // Wire all inputs for live cost preview
+  el.querySelectorAll('input, select').forEach(inp => {
+    inp.addEventListener('input', () => mnTriggerCostPreview(nation.id));
+    inp.addEventListener('change', () => mnTriggerCostPreview(nation.id));
+  });
+}
+
+
+function mnUpdateFormFields(nation, cities) {
+  const type = document.getElementById('mn-goal-type').value;
+  const show = id => { const e = document.getElementById(id); if(e) e.style.display=''; };
+  const hide = id => { const e = document.getElementById(id); if(e) e.style.display='none'; };
+
+  ['mn-fg-city','mn-fg-infra','mn-fg-land','mn-fg-project','mn-fg-improvement','mn-fg-military','mn-fg-custom']
+    .forEach(hide);
+
+  switch(type) {
+    case 'city':        show('mn-fg-city');        break;
+    case 'infra':       show('mn-fg-infra');       break;
+    case 'land':        show('mn-fg-land');        break;
+    case 'project':     show('mn-fg-project');     break;
+    case 'improvement': show('mn-fg-improvement'); break;
+    case 'military':    show('mn-fg-military');    break;
+    case 'custom':      show('mn-fg-custom');      break;
+  }
+
+  // Auto-fill current value
+  if (type === 'city') {
+    const inp = document.getElementById('mn-goal-city-target');
+    if (inp && !inp.value) inp.value = (nation.num_cities || 0) + 1;
+  }
+  if (type === 'infra') {
+    const cityEl = document.getElementById('mn-goal-infra-city');
+    const tgtEl  = document.getElementById('mn-goal-infra-target');
+    if (cityEl && tgtEl && !tgtEl.value) {
+      const selOpt = cityEl.options[cityEl.selectedIndex];
+      const curInfra = selOpt ? parseFloat(selOpt.dataset.infra || 0) : 0;
+      tgtEl.placeholder = Math.ceil(curInfra + 500);
+    }
+  }
+  if (type === 'land') {
+    const cityEl = document.getElementById('mn-goal-land-city');
+    const tgtEl  = document.getElementById('mn-goal-land-target');
+    if (cityEl && tgtEl && !tgtEl.value) {
+      const selOpt = cityEl.options[cityEl.selectedIndex];
+      const curLand = selOpt ? parseFloat(selOpt.dataset.land || 0) : 0;
+      tgtEl.placeholder = Math.ceil(curLand + 500);
+    }
+  }
+  if (type === 'military') {
+    const unitEl = document.getElementById('mn-goal-mil-unit');
+    const tgtEl  = document.getElementById('mn-goal-mil-target');
+    if (unitEl && tgtEl && !tgtEl.value) {
+      const cur = nation[unitEl.value] || 0;
+      tgtEl.placeholder = cur + 10000;
+    }
+  }
+}
+
+function mnTriggerCostPreview(nationId) {
+  if (_costDebounce) clearTimeout(_costDebounce);
+  _costDebounce = setTimeout(() => mnFetchCostPreview(nationId), 300);
+}
+
+async function mnFetchCostPreview(nationId) {
+  const typeEl = document.getElementById('mn-goal-type');
+  const previewEl = document.getElementById('mn-cost-preview');
+  if (!typeEl || !previewEl) return;
+
+  const type = typeEl.value;
+  if (type === 'custom') {
+    const cash = parseFloat(document.getElementById('mn-goal-custom-cash').value) || 0;
+    const rev  = _currentData && _currentData.revenue;
+    const ncd  = rev ? (rev.net_cash_turn || 0) * 12 : 0;
+    const daysStr = ncd > 0 && cash > 0 ? `~${(cash/ncd).toFixed(0)} days` : 'N/A';
+    previewEl.innerHTML = `<div class="mn-cost-preview-title">💰 Estimated Cost</div>
+      <div class="mn-cost-preview-cash">${$m(cash)}</div>
+      <div class="mn-cost-preview-days">⏱ <strong>${daysStr}</strong></div>`;
+    return;
+  }
+
+  const params = new URLSearchParams({ nation_id: nationId, type });
+  const nation = _currentData && _currentData.nation;
+  const cities = _currentData && _currentData.cities || [];
+
+  try {
+    if (type === 'city') {
+      const tgt = parseFloat(document.getElementById('mn-goal-city-target').value);
+      if (!tgt || !nation) return;
+      params.set('current', nation.num_cities || 0);
+      params.set('target', tgt);
+    } else if (type === 'infra') {
+      const cityEl  = document.getElementById('mn-goal-infra-city');
+      const tgtEl   = document.getElementById('mn-goal-infra-target');
+      const tgt = parseFloat(tgtEl.value);
+      if (!tgt) return;
+      const cityId  = cityEl.value ? parseInt(cityEl.value) : null;
+      const city    = cityId ? cities.find(c => c.id === cityId) : (cities[0] || {});
+      const current = city ? (city.infrastructure || 0) : 0;
+      params.set('current', current);
+      params.set('target', tgt);
+      if (cityId) params.set('city_id', cityId);
+    } else if (type === 'land') {
+      const cityEl  = document.getElementById('mn-goal-land-city');
+      const tgtEl   = document.getElementById('mn-goal-land-target');
+      const tgt = parseFloat(tgtEl.value);
+      if (!tgt) return;
+      const cityId  = cityEl.value ? parseInt(cityEl.value) : null;
+      const city    = cityId ? cities.find(c => c.id === cityId) : (cities[0] || {});
+      const current = city ? (city.land || 0) : 0;
+      params.set('current', current);
+      params.set('target', tgt);
+      if (cityId) params.set('city_id', cityId);
+    } else if (type === 'project') {
+      const col = document.getElementById('mn-goal-project-col').value;
+      if (!col) return;
+      params.set('current', 0);
+      params.set('target', 1);
+      params.set('project_col', col);
+    } else if (type === 'improvement') {
+      const col     = document.getElementById('mn-goal-imp-col').value;
+      const cityId  = parseInt(document.getElementById('mn-goal-imp-city').value);
+      const tgt     = parseFloat(document.getElementById('mn-goal-imp-target').value);
+      if (!col || !tgt) return;
+      const city    = cities.find(c => c.id === cityId) || {};
+      const current = city[col] || 0;
+      params.set('current', current);
+      params.set('target', tgt);
+      params.set('city_id', cityId);
+      params.set('improvement', col);
+    } else if (type === 'military') {
+      const unit = document.getElementById('mn-goal-mil-unit').value;
+      const tgt  = parseFloat(document.getElementById('mn-goal-mil-target').value);
+      if (!unit || !tgt || !nation) return;
+      params.set('current', nation[unit] || 0);
+      params.set('target', tgt);
+      params.set('unit', unit);
+    }
+
+    const r    = await fetch('/api/mynation/cost-preview?' + params.toString());
+    const data = await r.json();
+
+    const rscBits = Object.entries(data.resources || {})
+      .filter(([,v]) => v > 0)
+      .map(([k,v]) => {
+        const ico = RSC_ICONS[k] ? `<img src="/static/Emojis/Resources/${RSC_ICONS[k]}.png" class="mn-icon-sm" alt="">` : '';
+        return `<span class="mn-cost-preview-rsc-item">${ico} ${$n(v,0)} ${k}</span>`;
+      }).join('');
+
+    const days = data.days_to_goal;
+    const daysStr = days != null ? `~${parseFloat(days).toFixed(0)} days at ${$m((_currentData&&_currentData.revenue||{}).net_cash_turn||0)*12 }/day` : 'N/A (negative revenue)';
+
+    previewEl.innerHTML = `
+      <div class="mn-cost-preview-title">💰 Estimated Cost</div>
+      <div class="mn-cost-preview-cash">${$m(data.cash)}</div>
+      ${rscBits ? `<div class="mn-cost-preview-rsc">${rscBits}</div>` : ''}
+      <div class="mn-cost-preview-days">⏱ <strong>${daysStr}</strong></div>
+      ${data.breakdown ? `<div style="font-size:0.7rem;color:var(--text-secondary);margin-top:0.2rem">${esc(data.breakdown)}</div>` : ''}`;
+  } catch(e) {
+    previewEl.innerHTML = `<div class="mn-cost-preview-title">💰 Estimated Cost</div>
+      <div style="color:#ef9a9a;font-size:0.78rem">Preview unavailable</div>`;
+  }
+}
+
+
+async function mnSaveGoal() {
+  const type  = document.getElementById('mn-goal-type').value;
+  const label = (document.getElementById('mn-goal-label').value || '').trim();
+  const notes = (document.getElementById('mn-goal-notes').value || '').trim();
+
+  if (!label) { alert('Please enter a goal label.'); return; }
+  if (!_currentNationId) { alert('No nation loaded.'); return; }
+
+  let target_value = {};
+  const nation = _currentData && _currentData.nation;
+  const cities = _currentData && _currentData.cities || [];
+
+  try {
+    if (type === 'city') {
+      const tgt = parseInt(document.getElementById('mn-goal-city-target').value);
+      if (!tgt || isNaN(tgt)) { alert('Enter a valid target city count.'); return; }
+      if (tgt <= (nation.num_cities || 0)) { alert('Target must be greater than current city count.'); return; }
+      target_value = {num_cities: tgt};
+    } else if (type === 'infra') {
+      const cityId = document.getElementById('mn-goal-infra-city').value;
+      const tgt    = parseFloat(document.getElementById('mn-goal-infra-target').value);
+      if (!tgt || isNaN(tgt)) { alert('Enter a valid target infrastructure.'); return; }
+      if (tgt < 10) { alert('Infrastructure must be at least 10.'); return; }
+      if (tgt > 15000) { alert('Infrastructure cannot exceed 15,000.'); return; }
+      target_value = {infra: tgt};
+      if (cityId) {
+        target_value.city_id = parseInt(cityId);
+        const city = cities.find(c => c.id === target_value.city_id);
+        if (city && tgt <= (city.infrastructure || 0)) {
+          alert('Target must be greater than current infrastructure.');
+          return;
+        }
+      }
+    } else if (type === 'land') {
+      const cityId = document.getElementById('mn-goal-land-city').value;
+      const tgt    = parseFloat(document.getElementById('mn-goal-land-target').value);
+      if (!tgt || isNaN(tgt)) { alert('Enter a valid target land.'); return; }
+      if (tgt < 250) { alert('Land must be at least 250.'); return; }
+      target_value = {land: tgt};
+      if (cityId) {
+        target_value.city_id = parseInt(cityId);
+        const city = cities.find(c => c.id === target_value.city_id);
+        if (city && tgt <= (city.land || 0)) {
+          alert('Target must be greater than current land.');
+          return;
+        }
+      }
+    } else if (type === 'project') {
+      const col = document.getElementById('mn-goal-project-col').value;
+      if (!col) { alert('Select a project.'); return; }
+      target_value = {project_col: col};
+    } else if (type === 'improvement') {
+      const col    = document.getElementById('mn-goal-imp-col').value;
+      const cityId = parseInt(document.getElementById('mn-goal-imp-city').value);
+      const tgt    = parseInt(document.getElementById('mn-goal-imp-target').value);
+      if (!col || !tgt || isNaN(tgt) || isNaN(cityId)) { 
+        alert('Fill in all improvement details.'); 
+        return; 
+      }
+      if (tgt < 1) { alert('Target count must be at least 1.'); return; }
+      if (tgt > 50) { alert('Target count cannot exceed 50.'); return; }
+      const city = cities.find(c => c.id === cityId);
+      if (city) {
+        const current = city[col] || 0;
+        if (tgt <= current) {
+          alert(`Target count (${tgt}) must be greater than current (${current}).`);
+          return;
+        }
+      }
+      target_value = {improvement: col, city_id: cityId, count: tgt};
+    } else if (type === 'military') {
+      const unit = document.getElementById('mn-goal-mil-unit').value;
+      const tgt  = parseInt(document.getElementById('mn-goal-mil-target').value);
+      if (!unit || !tgt || isNaN(tgt)) { alert('Fill in military details.'); return; }
+      if (tgt < 1) { alert('Target count must be at least 1.'); return; }
+      const current = nation[unit] || 0;
+      if (tgt <= current) {
+        alert(`Target ${unit} (${tgt}) must be greater than current (${current}).`);
+        return;
+      }
+      target_value = {unit, count: tgt};
+    } else if (type === 'custom') {
+      const cash = parseFloat(document.getElementById('mn-goal-custom-cash').value) || 0;
+      target_value = {custom: true};
+      if (cash > 0) target_value.cash = cash;
+    }
+
+    // Get estimated cost from preview
+    let estimated_cost = {};
+    const previewEl = document.getElementById('mn-cost-preview');
+    // Re-fetch to ensure accuracy
+    const params = new URLSearchParams({nation_id: _currentNationId, type});
+    if (type === 'city') { 
+      params.set('current', nation.num_cities||0); 
+      params.set('target', target_value.num_cities); 
+    } else if (type === 'infra') {
+      const city = target_value.city_id ? cities.find(c=>c.id===target_value.city_id) : cities[0];
+      params.set('current', city ? city.infrastructure||0 : 0);
+      params.set('target', target_value.infra);
+      if (target_value.city_id) params.set('city_id', target_value.city_id);
+    } else if (type === 'land') {
+      const city = target_value.city_id ? cities.find(c=>c.id===target_value.city_id) : cities[0];
+      params.set('current', city ? city.land||0 : 0);
+      params.set('target', target_value.land);
+      if (target_value.city_id) params.set('city_id', target_value.city_id);
+    } else if (type === 'project') { 
+      params.set('current',0); 
+      params.set('target',1); 
+      params.set('project_col', target_value.project_col); 
+    } else if (type === 'improvement') {
+      const city = cities.find(c=>c.id===target_value.city_id)||{};
+      params.set('current', city[target_value.improvement]||0);
+      params.set('target', target_value.count);
+      params.set('city_id', target_value.city_id);
+      params.set('improvement', target_value.improvement);
+    } else if (type === 'military') {
+      params.set('current', nation[target_value.unit]||0);
+      params.set('target', target_value.count);
+      params.set('unit', target_value.unit);
+    }
+
+    if (type !== 'custom') {
+      try {
+        const cr = await fetch('/api/mynation/cost-preview?' + params.toString());
+        const cd = await cr.json();
+        estimated_cost = {money: cd.cash || 0, ...cd.resources};
+      } catch(_) {}
+    } else {
+      estimated_cost = {money: target_value.cash || 0};
+    }
+
+    const r = await fetch('/api/mynation/goals', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        nation_id: _currentNationId,
+        goal_type: type,
+        goal_label: label,
+        target_value,
+        estimated_cost,
+        notes,
+      }),
+    });
+    
+    if (!r.ok) { 
+      const errorData = await r.json().catch(() => ({detail: 'Unknown error'}));
+      throw new Error(errorData.detail || 'Save failed'); 
+    }
+    
+    // Reset form
+    document.getElementById('mn-add-goal-form').reset();
+    document.getElementById('mn-cost-preview').innerHTML =
+      '<div class="mn-cost-preview-title">💰 Estimated Cost</div><div style="color:var(--text-secondary);font-size:0.78rem">Fill in the form to see cost estimate.</div>';
+    
+    // Switch back to goals tab and refresh
+    const tabs = document.querySelectorAll('.mn-planner-tab');
+    if (tabs.length) { tabs.forEach(t=>t.classList.remove('active')); tabs[0].classList.add('active'); }
+    const panels = document.querySelectorAll('.mn-planner-panel');
+    panels.forEach(p => p.classList.toggle('active', p.id === 'mn-tab-goals'));
+    
+    await refreshGoals(_currentNationId);
+    
+    // Show success message
+    showStatus('✅ Goal created successfully!', false);
+  } catch(e) { 
+    alert('Failed to save goal: ' + e.message); 
+  }
+}
+
+
+// ── Core fetch + render orchestration ────────────────────────────────────────
+async function analyzeNation(nationId) {
+  if (!nationId) return;
+  _currentNationId = parseInt(nationId);
+  showStatus('Loading nation data…', false);
+
+  try {
+    const r = await fetch(`/api/mynation/${_currentNationId}`);
+    if (!r.ok) {
+      const err = await r.json().catch(() => ({detail:'Unknown error'}));
+      showStatus(err.detail || 'Failed to load nation.', true);
+      return;
+    }
+    const data = await r.json();
+    _currentData    = data;
+    _newlyCompleted = data.newly_completed_goals || [];
+
+    hideStatus();
+
+    const nation  = data.nation  || {};
+    const cities  = data.cities  || [];
+    const revenue = data.revenue || {};
+    const goals   = data.goals   || [];
+    const prices  = data.prices  || {};
+
+    renderNation(nation, cities, revenue);
+    renderRevenue(revenue, prices);
+    renderCities(cities, _currentNationId);
+    renderPlanner(goals, nation, cities, revenue);
+    renderCombat(_currentNationId, nation.alliance_id);
+
+    // Highlight newly completed goals
+    if (_newlyCompleted.length) {
+      _newlyCompleted.forEach(id => {
+        const el = document.getElementById(`mn-goal-${id}`);
+        if (el) { el.classList.add('mn-pulse'); setTimeout(() => el.classList.remove('mn-pulse'), 4500); }
+      });
+    }
+
+    // Also trigger client-side check-completion
+    checkCompletion(_currentNationId);
+
+  } catch(e) {
+    showStatus('Error loading nation: ' + e.message, true);
+  }
+}
+
+async function checkCompletion(nationId) {
+  try {
+    const r = await fetch(`/api/mynation/goals/check-completion/${nationId}`, {method:'POST'});
+    const data = await r.json();
+    if (data.completed && data.completed.length) {
+      data.completed.forEach(id => {
+        const el = document.getElementById(`mn-goal-${id}`);
+        if (el) {
+          el.classList.add('mn-pulse');
+          setTimeout(() => { el.classList.remove('mn-pulse'); el.classList.remove('pending'); el.classList.add('completed'); }, 4500);
+        }
+      });
+      // Refresh goals list after a moment
+      setTimeout(() => refreshGoals(nationId), 5000);
+    }
+  } catch(_) { /* silent */ }
+}
+
+async function loadAutoFill() {
+  try {
+    const r    = await fetch('/api/settings');
+    const data = await r.json();
+    const lid  = data.linked_nation_id;
+    if (lid) {
+      await analyzeNation(lid);
+    } else {
+      showStatus('No nation linked. Sync your nation in Settings.', true);
+    }
+  } catch(_) { showStatus('Could not load your nation. Check Settings.', true); }
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+function init() {
+  loadAutoFill();
+
+  document.getElementById('mn-refresh-btn').addEventListener('click', () => {
+    if (_currentNationId) {
+      fetch(`/api/mynation/${_currentNationId}?refresh=true`)
+        .then(r => r.json())
+        .then(data => {
+          _currentData    = data;
+          _newlyCompleted = data.newly_completed_goals || [];
+          const n = data.nation||{}, c = data.cities||[], rev = data.revenue||{}, g = data.goals||[], p = data.prices||{};
+          renderNation(n, c, rev);
+          renderRevenue(rev, p);
+          renderCities(c, _currentNationId);
+          renderPlanner(g, n, c, rev);
+          renderCombat(_currentNationId, n.alliance_id);
+          recomputeDaysToGoal(g, rev);
+        })
+        .catch(e => showStatus('Refresh failed: ' + e.message, true));
+    }
+  });
+}
+
+document.addEventListener('dashboardPageLoaded', function(e) {
+  if (e.detail.page !== 'my_nation.html') return;
+  init();
+});
+
+})(); // end IIFE
+</script>
+
+<!-- Build Plan Scripts -->
+<script src="/js/plan_viewer.js"></script>
+<script src="/js/plan_editor.js"></script>
+<script src="/js/plan_preview.js"></script>

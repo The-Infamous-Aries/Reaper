@@ -40,6 +40,29 @@
 
 <script src="/js/image-utils.js"></script>
 <script>
+// ── Auto-fill Integration ───────────────────────────────────────────────────
+async function loadAutoFillSettings() {
+  try {
+    const response = await fetch('/api/settings');
+    if (!response.ok) return;
+    const settings = await response.json();
+    
+    // Auto-fill linked nation if enabled
+    if (settings.auto_fill_nation_revopt === 1 && settings.linked_nation_id) {
+      const queryInput = document.getElementById('ro-query');
+      if (queryInput) {
+        queryInput.value = settings.linked_nation_id;
+      }
+    }
+  } catch (e) {
+    console.debug('Failed to load auto-fill settings:', e);
+  }
+}
+
+// Load auto-fill settings on page load
+document.addEventListener('DOMContentLoaded', loadAutoFillSettings);
+
+// ── Main Script ─────────────────────────────────────────────────────────────
 (function () {
   // ── Helpers ────────────────────────────────────────────────────────────────
   const $ = id => document.getElementById(id);

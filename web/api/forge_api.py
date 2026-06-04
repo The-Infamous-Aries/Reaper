@@ -339,6 +339,8 @@ async def reforge_item(request: Request):
 
         emoji_file = reforge_stack.get("emoji_file") or (canonical.get("emoji_file") if canonical else "")
         rarity = reforge_stack.get("rarity") or (canonical.get("rarity") if canonical else "Common")
+        # Preserve set tag from canonical item or existing reforged item so set bonuses still apply
+        set_tag = reforge_stack.get("set") or (canonical.get("set") if canonical else None)
 
         new_item: Dict[str, Any] = {
             "name": reforge_name,
@@ -350,6 +352,8 @@ async def reforge_item(request: Request):
             "reforge_level": new_reforge_level,
             "count": 1,
         }
+        if set_tag:
+            new_item["set"] = set_tag
 
         # ── Apply inventory changes ───────────────────────────────────────────
         # Deduct 5 from the source reforge stack (matched by exact level)
@@ -396,6 +400,9 @@ async def reforge_item(request: Request):
             existing_reforged["count"] = existing_reforged.get("count", 1) + 1
             # Update bonuses to the latest reforge (they should be the same if same level)
             existing_reforged["bonuses"] = new_bonuses
+            # Ensure set tag is preserved (may have been missing from older reforged stacks)
+            if set_tag:
+                existing_reforged["set"] = set_tag
         else:
             inventory.append(new_item)
 

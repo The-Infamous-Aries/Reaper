@@ -246,6 +246,27 @@
     return s.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
   }
 
+  // ── War policy image badge ────────────────────────────────────────────────
+  const WAR_POLICY_IMG = {
+    ATTRITION:'attrition', TURTLE:'turtle', BLITZKRIEG:'blitzkrieg',
+    FORTRESS:'fortress', PIRATE:'pirate', GUARDIAN:'guardian',
+    MONEYBAGS:'moneybags', ARCANE:'arcane', COVERT:'covert', TACTICIAN:'tactician',
+  };
+  const WAR_POLICY_COLORS = {
+    ATTRITION:'#e05555', TURTLE:'#6495ed', BLITZKRIEG:'#ff8c00',
+    FORTRESS:'#9370db', PIRATE:'#20b2aa', GUARDIAN:'#3cb371',
+    MONEYBAGS:'#ffd700', ARCANE:'#da70d6', COVERT:'#aaaaaa', TACTICIAN:'#f4a460',
+  };
+  function warPolicyBadge(val) {
+    const raw = cleanEnum(val).toUpperCase();
+    const label = fmtPolicy(val);
+    if (!label || label === '—') return '<span style="color:var(--text-secondary)">—</span>';
+    const img = WAR_POLICY_IMG[raw];
+    const css = WAR_POLICY_COLORS[raw] || 'rgba(255,255,255,0.5)';
+    const icon = img ? `<img src="/static/Emojis/War/${img}.png" class="raids-policy-icon" alt="">` : '';
+    return `<span class="raids-badge raids-policy-badge" style="background:${css}22;color:${css};border:1px solid ${css};" title="War Policy: ${label}">${icon}${label}</span>`;
+  }
+
   // ── Turn countdown helpers ─────────────────────────────────────────────────
   // PnW turns fire at 00:00, 02:00, 04:00 … 22:00 UTC (every 2 hours).
   // The backend computes expiry_utc = snap(created_at to last 2h boundary) + beige_turns * 2h.
@@ -771,7 +792,7 @@
         <td>${fmt(Math.round(n.score || 0))}</td>
         <td>${n.num_cities || 0}</td>
         <td>${isBeige ? `<span class="raids-badge badge-beige">${n.beige_turns}t</span>` : '—'}</td>
-        <td><span class="raids-badge badge-policy">${fmtPolicy(n.war_policy)}</span></td>
+        <td>${warPolicyBadge(n.war_policy)}</td>
         <td style="font-size:0.75rem;">${n.alliance_name || 'None'}</td>
         <td><div class="raids-proj">${projs.join('') || '<span style="color:var(--text-secondary);font-size:0.7rem;">—</span>'}</div></td>
         <td class="raids-loot-cell raids-est-loot-cell">
@@ -833,10 +854,41 @@
     el.style.display = 'block';
   }
 
+  // ── Auto-fill Settings ─────────────────────────────────────────────────────────
+  async function loadAutoFillSettings() {
+    try {
+      const response = await fetch('/api/settings');
+      if (!response.ok) return;
+      const settings = await response.json();
+
+      // Auto-fill nation if enabled — use nation name so autocomplete + search work correctly
+      if (settings.auto_fill_nation_raids === 1 && settings.linked_nation_id) {
+        const nationInput = $('raids-nation');
+        if (nationInput && !nationInput.value.trim()) {
+          // Prefer stored name; fall back to ID only if name missing
+          nationInput.value = settings.linked_nation_name || String(settings.linked_nation_id);
+        }
+      }
+
+      // Auto-fill exclude alliances — add directly into _exclAlliances Set + re-render
+      if (settings.auto_fill_alliances_raids_exclude) {
+        let alliances = [];
+        try { alliances = JSON.parse(settings.auto_fill_alliances_raids_exclude); } catch (_) {}
+        if (Array.isArray(alliances) && alliances.length > 0) {
+          alliances.forEach(name => { if (name) _exclAlliances.add(name); });
+          renderExclTags();
+        }
+      }
+    } catch (e) {
+      console.debug('[raids] Failed to load auto-fill settings:', e);
+    }
+  }
+
   // ── Init ───────────────────────────────────────────────────────────────────
   async function init() {
     await checkAuth();
     await loadAcNations();
+    await loadAutoFillSettings();
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
