@@ -13,6 +13,7 @@ This is the central orchestrator that manages all PnW Harvester components.
 
 import asyncio
 import logging
+import time
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
@@ -111,8 +112,11 @@ class GPPManager:
         holdings_db=None,
         beige_alerts_db=None,
         news_db=None,
+        treaties_db=None,
         api_key: str = "",
         query_instance=None,
+        websocket_manager=None,
+        nation_cache=None,
     ):
         """
         Initialize the GPPManager.
@@ -125,8 +129,11 @@ class GPPManager:
             holdings_db: HoldingsDB instance
             beige_alerts_db: BeigeAlertDB instance
             news_db: NewsDB instance
+            treaties_db: TreatiesDB instance
             api_key: PnW API v3 key
             query_instance: Query instance for timed queries
+            websocket_manager: SharedWebSocketManager instance (optional)
+            nation_cache: NationCache instance for fast nation/city data access
         """
         self.global_nations_db = global_nations_db
         self.global_wars_db = global_wars_db
@@ -135,8 +142,11 @@ class GPPManager:
         self.holdings_db = holdings_db
         self.beige_alerts_db = beige_alerts_db
         self.news_db = news_db
+        self.treaties_db = treaties_db
         self.api_key = api_key
         self.query_instance = query_instance
+        self.websocket_manager = websocket_manager
+        self.nation_cache = nation_cache
         
         # Core infrastructure
         from .lock_manager import get_lock_manager
@@ -161,7 +171,16 @@ class GPPManager:
         self._health_check_task: Optional[asyncio.Task] = None
         self._health_check_interval = 30.0  # seconds
         
-        logger.info("GPPManager initialized")
+        # Restart tracking to prevent loops
+        self._restart_counts: Dict[str, int] = {}
+        self._last_restart: Dict[str, datetime] = {}
+        self._max_restarts_per_hour = 30  # Increased to handle predictable revenue stalls
+        
+        # Configurable silence threshold (seconds)
+        import os
+        self._max_silence_seconds = float(os.getenv("HARVESTER_MAX_SILENCE", "120"))
+        
+        logger.info(f"GPPManager initialized (max_silence={self._max_silence_seconds}s)")
     
     async def initialize(self):
         """
@@ -170,6 +189,13 @@ class GPPManager:
         This should be called before start().
         """
         logger.info("Initializing GPPManager components...")
+        
+        # Initialize SharedWebSocketManager if not provided
+        if self.websocket_manager is None:
+            from .websocket_manager import get_shared_websocket_manager
+            self.websocket_manager = get_shared_websocket_manager(self.api_key)
+            await self.websocket_manager.initialize()
+            logger.info("SharedWebSocketManager initialized")
         
         # Initialize core components
         await self._init_core_components()
@@ -194,6 +220,8 @@ class GPPManager:
             await self.pool_manager.get_pool(self.bankrecs_db.db_path)
         if self.beige_alerts_db:
             await self.pool_manager.get_pool(self.beige_alerts_db.db_path)
+        if self.treaties_db:
+            await self.pool_manager.get_pool(self.treaties_db.db_path)
         
         # NewsDB manages 3 DB files (weekly, monthly, yearly)
         # Initialize pools for all three
@@ -214,6 +242,8 @@ class GPPManager:
             await self.queue_manager.get_queue(self.bankrecs_db.db_path)
         if self.beige_alerts_db:
             await self.queue_manager.get_queue(self.beige_alerts_db.db_path)
+        if self.treaties_db:
+            await self.queue_manager.get_queue(self.treaties_db.db_path)
     
     async def _init_gpp_components(self):
         """Initialize GPP application components."""
@@ -224,6 +254,7 @@ class GPPManager:
             RevenueComponent,
             BeigeAlertComponent,
             TradeComponent,
+            TreatyComponent,
             TimedQueriesComponent,
         )
         from PnWHarvester.components.news_component import NewsComponent
@@ -251,7 +282,8 @@ class GPPManager:
                 holdings_db=self.holdings_db,
                 beige_component=beige_component,
                 news_component=self._components.get("news"),
-                api_key=self.api_key,
+                websocket_manager=self.websocket_manager,
+                api_key=self.api_key,  # Keep for backward compatibility
             )
             await nation_component.initialize()
             self._components["nation"] = nation_component
@@ -264,7 +296,8 @@ class GPPManager:
                 holdings_db=self.holdings_db,
                 global_nations_db=self.global_nations_db,
                 global_wars_db=self.global_wars_db,
-                api_key=self.api_key,
+                websocket_manager=self.websocket_manager,
+                api_key=self.api_key,  # Keep for backward compatibility
                 news_component=self._components.get("news"),
             )
             await war_component.initialize()
@@ -277,7 +310,8 @@ class GPPManager:
                 bankrecs_db=self.bankrecs_db,
                 holdings_db=self.holdings_db,
                 news_component=self._components.get("news"),
-                api_key=self.api_key,
+                websocket_manager=self.websocket_manager,
+                api_key=self.api_key,  # Keep for backward compatibility
             )
             await bankrec_component.initialize()
             self._components["bankrec"] = bankrec_component
@@ -288,11 +322,24 @@ class GPPManager:
             trade_component = TradeComponent(
                 holdings_db=self.holdings_db,
                 news_component=self._components.get("news"),
-                api_key=self.api_key,
+                websocket_manager=self.websocket_manager,
+                api_key=self.api_key,  # Keep for backward compatibility
             )
             await trade_component.initialize()
             self._components["trade"] = trade_component
             self._component_health["trade"] = ComponentHealth(name="trade")
+
+        # TreatyComponent
+        if self.treaties_db:
+            treaty_component = TreatyComponent(
+                treaties_db=self.treaties_db,
+                news_component=self._components.get("news"),
+                websocket_manager=self.websocket_manager,
+                api_key=self.api_key,  # Keep for backward compatibility
+            )
+            await treaty_component.initialize()
+            self._components["treaty"] = treaty_component
+            self._component_health["treaty"] = ComponentHealth(name="treaty")
         
         # RevenueComponent
         if self.global_nations_db and self.irs_wars_db:
@@ -302,6 +349,7 @@ class GPPManager:
                 holdings_db=self.holdings_db,
                 beige_component=beige_component,
                 interval_seconds=7200,  # 2 hours
+                nation_cache=self.nation_cache,
             )
             await revenue_component.initialize()
             self._components["revenue"] = revenue_component
@@ -329,11 +377,16 @@ class GPPManager:
         self._running = True
         self._start_time = datetime.now(timezone.utc)
         
+        # Start SharedWebSocketManager
+        if self.websocket_manager:
+            await self.websocket_manager.start()
+            logger.info("SharedWebSocketManager started")
+        
         # Start components
-        # Subscription components (nation, war, bankrec, trade) use run_forever() for auto-restart
-        # Background loop components (revenue, timed_queries) use start() for their loops
+        # Subscription components use run_forever() for auto-restart
+        # Background loop components (revenue, timed_queries) use _run_loop() for their loops
         # Helper components (beige, news) don't need start methods
-        subscription_components = ["nation", "war", "bankrec", "trade"]
+        subscription_components = ["nation", "war", "bankrec", "trade", "treaty"]
         background_loop_components = ["revenue", "timed_queries"]
         
         for name, component in self._components.items():
@@ -343,15 +396,17 @@ class GPPManager:
                 
                 if name in subscription_components and hasattr(component, 'run_forever'):
                     # Launch subscription components as background tasks with auto-restart
-                    task = asyncio.create_task(component.run_forever())
+                    task = asyncio.create_task(component.run_forever(), name=f"{name}_run_forever")
                     self._component_tasks[name] = task
                     health.state = ComponentState.RUNNING
                     health.health = HealthStatus.HEALTHY
                     health.last_check = datetime.now(timezone.utc)
                     logger.info(f"Component {name} started (run_forever)")
-                elif name in background_loop_components and hasattr(component, 'start'):
-                    # Start background loop components (e.g., revenue, timed_queries)
-                    task = asyncio.create_task(component.start())
+                elif name in background_loop_components and hasattr(component, '_run_loop'):
+                    # Start background loop components by running their loop directly.
+                    # This creates a tracked task that the manager can monitor and restart.
+                    component.running = True
+                    task = asyncio.create_task(self._run_background_loop(component, name), name=f"{name}_loop")
                     self._component_tasks[name] = task
                     health.state = ComponentState.RUNNING
                     health.health = HealthStatus.HEALTHY
@@ -390,6 +445,11 @@ class GPPManager:
         
         logger.info("Stopping GPPManager...")
         self._running = False
+        
+        # Stop SharedWebSocketManager
+        if self.websocket_manager:
+            await self.websocket_manager.stop()
+            logger.info("SharedWebSocketManager stopped")
         
         # Stop health check task
         if self._health_check_task:
@@ -434,8 +494,62 @@ class GPPManager:
         self._update_health_summary()
         logger.info("GPPManager stopped")
     
+    async def _run_background_loop(self, component, name: str):
+        """
+        Run a background loop component with auto-restart on failure.
+        
+        This wraps the component's _run_loop() method with proper exception
+        handling and restart logic, similar to how run_forever() works for
+        subscription components.
+        
+        Args:
+            component: The component with a _run_loop() method
+            name: Component name for logging
+        """
+        retry_count = 0
+        max_retry_delay = 300  # 5 minutes max
+        base_delay = 10  # Start with 10 seconds
+        
+        while self._running:
+            try:
+                # Ensure component is marked as running
+                component.running = True
+                
+                # Run the component's loop
+                await component._run_loop()
+                
+                # If loop exits normally while manager is still running, restart it
+                if self._running:
+                    logger.warning(f"Background loop {name} exited normally, restarting...")
+                    retry_count = 0
+                    await asyncio.sleep(base_delay)
+                    
+            except asyncio.CancelledError:
+                logger.info(f"Background loop {name} cancelled")
+                break
+            except Exception as e:
+                retry_count += 1
+                delay = min(base_delay * (2 ** min(retry_count - 1, 5)), max_retry_delay)
+                
+                logger.error(
+                    f"Background loop {name} crashed ({e}) — "
+                    f"retry {retry_count}, restarting in {delay:.1f}s",
+                    exc_info=True
+                )
+                
+                # Mark component as not running
+                component.running = False
+                
+                # Wait before restart
+                await asyncio.sleep(delay)
+        
+        logger.info(f"Background loop {name} stopped")
+
     async def _health_check_loop(self):
         """Background health check loop."""
+        # Initial delay to give components time to receive first messages
+        await asyncio.sleep(60)  # 1 minute delay before first health check
+        
         while self._running:
             try:
                 await self._check_component_health()
@@ -446,18 +560,89 @@ class GPPManager:
                 logger.error(f"Health check loop error: {e}", exc_info=True)
     
     async def _check_component_health(self):
-        """Check health of all components."""
+        """Check health of all components with stall detection."""
+        # Skip restarts if shutdown is in progress
+        if not self._running:
+            return
+
         for name, component in self._components.items():
+            restart_triggered = False
             try:
                 health = self._component_health[name]
                 
                 # Get component stats if available
                 if hasattr(component, 'get_component_stats'):
-                    stats = await component.get_component_stats()
-                    health.stats = stats
+                    try:
+                        stats = await component.get_component_stats()
+                        health.stats = stats
+                    except Exception as e:
+                        logger.debug(f"Failed to get stats for {name}: {e}")
                 
-                # Check WebSocket connection health for subscription components
-                if hasattr(component, 'kit') and hasattr(component, 'running') and component.running:
+                # Check ActivityTracker for subscription stalls (subscription components)
+                if hasattr(component, 'activity_tracker') and hasattr(component, 'running'):
+                    # Only check if component has an activity_tracker (subscription-based)
+                    if component.running:
+                        tracker = component.activity_tracker
+                        
+                        # Sync tracker threshold with manager config for subscription components only
+                        # Background loop components (timed_queries, revenue) have their own thresholds
+                        background_loop_components = ["revenue", "timed_queries"]
+                        if name not in background_loop_components and tracker.max_silence != self._max_silence_seconds:
+                            tracker.max_silence = self._max_silence_seconds
+                        
+                        unhealthy = tracker.get_unhealthy_subscriptions()
+                        
+                        logger.debug(f"Component {name} unhealthy subscriptions: {unhealthy}")
+                        
+                        # Check if all subscriptions have never received messages (normal for infrequent subscriptions)
+                        # If so, don't restart the component
+                        all_no_messages = True
+                        for sub_health in tracker.get_all_health().values():
+                            if sub_health.seconds_since_last_message() is not None:
+                                all_no_messages = False
+                                break
+                        
+                        if all_no_messages:
+                            logger.debug(f"Component {name}: all subscriptions have never received messages - skipping stall check")
+                            continue
+                        
+                        if unhealthy:
+                            # Get detailed stall info for logging
+                            stall_details = []
+                            for sub_name in unhealthy:
+                                sub_health = tracker.get_health(sub_name)
+                                if sub_health:
+                                    seconds = sub_health.seconds_since_last_message()
+                                    if seconds is not None:
+                                        stall_details.append(f"{sub_name}({seconds:.0f}s)")
+                                    else:
+                                        stall_details.append(f"{sub_name}(no-msgs)")
+                                else:
+                                    stall_details.append(sub_name)
+
+                            health.health = HealthStatus.UNHEALTHY
+                            health.last_error = f"Stalled: {', '.join(stall_details)}"
+                            health.error_count += 1
+                            logger.warning(
+                                f"Component {name} stalled: {', '.join(stall_details)} "
+                                f"[threshold={self._max_silence_seconds}s]"
+                            )
+
+                            # Trigger restart
+                            restart_triggered = True
+                            await self._restart_component(name)
+                        else:
+                            # Healthy - update status
+                            restart_triggered = False
+                            if health.state == ComponentState.RUNNING:
+                                health.health = HealthStatus.HEALTHY
+                                # Reset error count on sustained health
+                                if health.error_count > 0:
+                                    health.error_count = 0
+                                    health.last_error = None
+                
+                # Check WebSocket connection health for subscription components with kit
+                elif hasattr(component, 'kit') and hasattr(component, 'running') and component.running:
                     kit = getattr(component, 'kit', None)
                     if kit and hasattr(kit, 'socket'):
                         socket = getattr(kit, 'socket', None)
@@ -467,19 +652,21 @@ class GPPManager:
                                 health.health = HealthStatus.UNHEALTHY
                                 health.last_error = "WebSocket connection closed"
                                 health.error_count += 1
-                                logger.warning(f"Component {name} WebSocket connection is closed")
+                                logger.warning(f"Component {name} WebSocket closed - triggering restart")
+                                restart_triggered = True
+                                await self._restart_component(name)
                 
                 health.last_check = datetime.now(timezone.utc)
                 
-                # Determine health based on state and errors
-                if health.state == ComponentState.RUNNING:
+                # Determine health based on state and errors (skip if restart just triggered)
+                if not restart_triggered and health.state == ComponentState.RUNNING:
                     if health.error_count == 0:
                         health.health = HealthStatus.HEALTHY
                     elif health.error_count < 5:
                         health.health = HealthStatus.DEGRADED
                     else:
                         health.health = HealthStatus.UNHEALTHY
-                else:
+                elif not restart_triggered:
                     health.health = HealthStatus.UNKNOWN
                     
             except Exception as e:
@@ -490,6 +677,124 @@ class GPPManager:
                 health.error_count += 1
         
         self._update_health_summary()
+    
+    async def _restart_component(self, name: str):
+        """Restart a specific component with rate limiting."""
+        component = self._components.get(name)
+        if not component:
+            logger.error(f"Cannot restart {name}: component not found")
+            return
+        
+        # Check restart rate limit
+        now = datetime.now(timezone.utc)
+        last_restart = self._last_restart.get(name)
+        restart_count = self._restart_counts.get(name, 0)
+
+        # Check if component has been running healthy for 5+ minutes since last restart - reset counter
+        health = self._component_health[name]
+        if last_restart and health.state == ComponentState.RUNNING:
+            minutes_since_restart = (now - last_restart).total_seconds() / 60
+            if minutes_since_restart >= 5:
+                # Component ran healthy for 5+ min since last restart, reset restart budget
+                if restart_count > 0:
+                    logger.info(f"Component {name} ran healthy for {minutes_since_restart:.0f}m since last restart - resetting restart counter")
+                    self._restart_counts[name] = 0
+                    restart_count = 0
+
+        if last_restart:
+            hours_since = (now - last_restart).total_seconds() / 3600
+            if hours_since < 1 and restart_count >= self._max_restarts_per_hour:
+                logger.error(
+                    f"Component {name} exceeded max restarts ({self._max_restarts_per_hour}/hour). "
+                    f"Manual intervention required."
+                )
+                health.health = HealthStatus.UNHEALTHY
+                health.last_error = f"Max restarts exceeded ({self._max_restarts_per_hour}/hour)"
+                return
+            elif hours_since >= 1:
+                # Reset counter after 1 hour
+                self._restart_counts[name] = 0
+        
+        health = self._component_health[name]
+        health.state = ComponentState.STOPPING
+        
+        try:
+            # Cancel existing task if any
+            if name in self._component_tasks:
+                task = self._component_tasks[name]
+                if task and not task.done():
+                    task.cancel()
+                    try:
+                        await asyncio.wait_for(task, timeout=10.0)
+                    except asyncio.TimeoutError:
+                        logger.warning(f"Component {name} task did not cancel cleanly")
+                    except asyncio.CancelledError:
+                        pass
+                del self._component_tasks[name]
+            
+            # Stop the component
+            if hasattr(component, 'stop'):
+                await component.stop()
+            
+            health.state = ComponentState.STOPPED
+            logger.info(f"Component {name} stopped for restart")
+            
+            # Brief pause to ensure clean teardown
+            await asyncio.sleep(2)
+            
+            # Restart the component
+            health.state = ComponentState.STARTING
+            
+            subscription_components = ["nation", "war", "bankrec", "trade", "treaty"]
+            background_loop_components = ["revenue", "timed_queries"]
+            
+            if name in subscription_components and hasattr(component, 'run_forever'):
+                # Add jitter to prevent thundering herd
+                import random
+                jitter = random.uniform(0, 2)
+                await asyncio.sleep(jitter)
+                
+                task = asyncio.create_task(component.run_forever(), name=f"{name}_run_forever")
+                self._component_tasks[name] = task
+                health.state = ComponentState.RUNNING
+                health.health = HealthStatus.HEALTHY
+                health.last_check = datetime.now(timezone.utc)
+                logger.info(f"Component {name} restarted (run_forever, jitter={jitter:.1f}s)")
+            elif name in background_loop_components and hasattr(component, '_run_loop'):
+                # Restart background loop component via _run_background_loop wrapper
+                import random
+                jitter = random.uniform(0, 2)
+                await asyncio.sleep(jitter)
+                
+                component.running = True
+                task = asyncio.create_task(self._run_background_loop(component, name), name=f"{name}_loop")
+                self._component_tasks[name] = task
+                health.state = ComponentState.RUNNING
+                health.health = HealthStatus.HEALTHY
+                health.last_check = datetime.now(timezone.utc)
+                logger.info(f"Component {name} restarted (background loop, jitter={jitter:.1f}s)")
+            elif hasattr(component, 'start'):
+                await component.start()
+                health.state = ComponentState.RUNNING
+                health.health = HealthStatus.HEALTHY
+                health.last_check = datetime.now(timezone.utc)
+                logger.info(f"Component {name} restarted")
+            
+            # Update restart tracking only for successful starts
+            # (component is now running and healthy)
+            self._last_restart[name] = now
+            self._restart_counts[name] = self._restart_counts.get(name, 0) + 1
+            
+            # Reset error count on successful restart
+            health.error_count = 0
+            health.last_error = None
+            
+        except Exception as e:
+            logger.error(f"Failed to restart component {name}: {e}", exc_info=True)
+            health.state = ComponentState.ERROR
+            health.health = HealthStatus.UNHEALTHY
+            health.last_error = str(e)
+            health.error_count += 1
     
     def _update_health_summary(self):
         """Update overall health summary."""
@@ -593,8 +898,11 @@ def get_gpp_manager(
     holdings_db=None,
     beige_alerts_db=None,
     news_db=None,
+    treaties_db=None,
     api_key: str = "",
     query_instance=None,
+    websocket_manager=None,
+    nation_cache=None,
 ) -> GPPManager:
     """
     Get the global GPPManager singleton.
@@ -607,8 +915,10 @@ def get_gpp_manager(
         holdings_db: HoldingsDB instance
         beige_alerts_db: BeigeAlertDB instance
         news_db: NewsDB instance
+        treaties_db: TreatiesDB instance
         api_key: PnW API v3 key
         query_instance: Query instance for timed queries
+        websocket_manager: SharedWebSocketManager instance (optional)
 
     Returns:
         The global GPPManager instance
@@ -623,7 +933,10 @@ def get_gpp_manager(
             holdings_db=holdings_db,
             beige_alerts_db=beige_alerts_db,
             news_db=news_db,
+            treaties_db=treaties_db,
             api_key=api_key,
             query_instance=query_instance,
+            websocket_manager=websocket_manager,
+            nation_cache=nation_cache,
         )
     return _global_gpp_manager

@@ -45,57 +45,118 @@ from PnWHarvester.db.pnw_costs import (
 logger = logging.getLogger(__name__)
 
 NW_ALLIANCE_ID = 10259
+KEEPER_NATION_ID = 680891
+KEEPER_NATION_NAME = "Flim Flam Fugazies"
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Load Reaper dialog pools from JSON file
+# Load Reaper dialog pools from Dialog folder JSON files
 # ─────────────────────────────────────────────────────────────────────────────
 
-def _load_reaper_dialog() -> Dict[str, List[str]]:
-    """Load Reaper dialog pools from JSON file."""
-    dialog_file = Path(__file__).parent / "reaper_dialog.json"
+def _load_dialog_file(filename: str) -> Dict[str, List[str]]:
+    """Load a single dialog JSON file from the Dialog folder."""
+    dialog_file = Path(__file__).parent / "Dialog" / filename
     try:
         with open(dialog_file, "r", encoding="utf-8") as f:
             return json.load(f)
     except FileNotFoundError:
-        logger.warning(f"Reaper dialog file not found: {dialog_file}, using empty defaults")
+        logger.warning(f"Dialog file not found: {dialog_file}, using empty defaults")
         return {}
     except json.JSONDecodeError as e:
-        logger.error(f"Failed to parse reaper_dialog.json: {e}, using empty defaults")
+        logger.error(f"Failed to parse {filename}: {e}, using empty defaults")
         return {}
 
-_REAPER_DIALOG = _load_reaper_dialog()
+# Load all dialog files
+_CITY_DIALOGS = _load_dialog_file("city_dialogs.json")
+_PROJECT_DIALOGS = _load_dialog_file("project_dialogs.json")
+_ATT_WAR_DIALOGS = _load_dialog_file("att_war_dialogs.json")
+_DEF_WAR_DIALOGS = _load_dialog_file("def_war_dialogs.json")
+_WAR_OUTCOME_DIALOGS = _load_dialog_file("war_outcome_dialogs.json")
+_LOOT_DIALOGS = _load_dialog_file("loot_dialogs.json")
+_WMD_DIALOGS = _load_dialog_file("wmd_dialogs.json")
+_MILITARY_UPGRADE_DIALOGS = _load_dialog_file("military_upgrade_dialogs.json")
+_UPGRADE_DIALOGS = _load_dialog_file("upgrade_dialogs.json")
+_ALLIANCE_DIALOGS = _load_dialog_file("alliance_dialogs.json")
+_BANK_DIALOGS = _load_dialog_file("bank_dialogs.json")
+_TRADE_DIALOGS = _load_dialog_file("trade_dialogs.json")
+_TREATY_DIALOGS = _load_dialog_file("treaty_dialogs.json")
 
-# Convert JSON keys to Python variable names for dialog pools
-_NW_CITY_INTROS = _REAPER_DIALOG.get("nw_city_intros", [])
-_CITY_INTROS = _REAPER_DIALOG.get("city_intros", [])
-_NW_PROJECT_INTROS = _REAPER_DIALOG.get("nw_project_intros", [])
-_PROJECT_INTROS = _REAPER_DIALOG.get("project_intros", [])
-_NW_ATT_WAR_INTROS = _REAPER_DIALOG.get("nw_att_war_intros", [])
-_NW_DEF_WAR_INTROS = _REAPER_DIALOG.get("nw_def_war_intros", [])
-_WAR_DECLARED_INTROS = _REAPER_DIALOG.get("war_declared_intros", [])
-_NW_WIN_INTROS = _REAPER_DIALOG.get("nw_win_intros", [])
-_NW_LOSS_INTROS = _REAPER_DIALOG.get("nw_loss_intros", [])
-_WAR_PEACE_INTROS = _REAPER_DIALOG.get("war_peace_intros", [])
-_NW_LOOTED_INTROS = _REAPER_DIALOG.get("nw_looted_intros", [])
-_NW_LOOT_INTROS = _REAPER_DIALOG.get("nw_loot_intros", [])
-_LOOT_INTROS = _REAPER_DIALOG.get("loot_intros", [])
-_NW_HIT_WMD_INTROS = _REAPER_DIALOG.get("nw_hit_wmd_intros", [])
-_NW_FIRES_WMD_INTROS = _REAPER_DIALOG.get("nw_fires_wmd_intros", [])
-_MISS_INTROS = _REAPER_DIALOG.get("miss_intros", [])
-_NW_MIL_INTROS = _REAPER_DIALOG.get("nw_mil_intros", [])
-_MIL_INTROS = _REAPER_DIALOG.get("mil_intros", [])
-_NW_UPGRADE_INTROS = _REAPER_DIALOG.get("nw_upgrade_intros", [])
-_UPGRADE_INTROS = _REAPER_DIALOG.get("upgrade_intros", [])
-_NW_JOIN_INTROS = _REAPER_DIALOG.get("nw_join_intros", [])
-_NW_LEAVE_INTROS = _REAPER_DIALOG.get("nw_leave_intros", [])
-_ALLIANCE_CHANGE_INTROS = _REAPER_DIALOG.get("alliance_change_intros", [])
-_BANK_INTROS = _REAPER_DIALOG.get("bank_intros", [])
-_BANK_DEPOSIT_INTROS = _REAPER_DIALOG.get("bank_deposit_intros", [])
-_BANK_WITHDRAWAL_INTROS = _REAPER_DIALOG.get("bank_withdrawal_intros", [])
-_ALLIANCE_LOOT_INTROS = _REAPER_DIALOG.get("alliance_loot_intros", [])
-_NW_TRADE_BUY_INTROS = _REAPER_DIALOG.get("nw_trade_buy_intros", [])
-_NW_TRADE_SELL_INTROS = _REAPER_DIALOG.get("nw_trade_sell_intros", [])
-_TRADE_INTROS = _REAPER_DIALOG.get("trade_intros", [])
+# City dialog pools
+_NW_CITY_INTROS = _CITY_DIALOGS.get("nw_city_intros", [])
+_KEEPER_CITY_INTROS = _CITY_DIALOGS.get("keeper_city_intros", [])
+_CITY_INTROS = _CITY_DIALOGS.get("city_intros", [])
+
+# Project dialog pools
+_NW_PROJECT_INTROS = _PROJECT_DIALOGS.get("nw_project_intros", [])
+_KEEPER_PROJECT_INTROS = _PROJECT_DIALOGS.get("keeper_project_intros", [])
+_PROJECT_INTROS = _PROJECT_DIALOGS.get("project_intros", [])
+
+# War dialog pools - offensive
+_NW_ATT_WAR_INTROS = _ATT_WAR_DIALOGS.get("nw_att_war_intros", [])
+_KEEPER_ATT_WAR_INTROS = _ATT_WAR_DIALOGS.get("keeper_att_war_intros", [])
+_ATT_WAR_INTROS = _ATT_WAR_DIALOGS.get("att_war_intros", [])
+
+# War dialog pools - defensive
+_NW_DEF_WAR_INTROS = _DEF_WAR_DIALOGS.get("nw_def_war_intros", [])
+_KEEPER_DEF_WAR_INTROS = _DEF_WAR_DIALOGS.get("keeper_def_war_intros", [])
+_DEF_WAR_INTROS = _DEF_WAR_DIALOGS.get("def_war_intros", [])
+
+# War outcome dialog pools
+_NW_WIN_INTROS = _WAR_OUTCOME_DIALOGS.get("nw_win_intros", [])
+_KEEPER_WIN_INTROS = _WAR_OUTCOME_DIALOGS.get("keeper_win_intros", [])
+_WIN_INTROS = _WAR_OUTCOME_DIALOGS.get("win_intros", [])
+_NW_LOSS_INTROS = _WAR_OUTCOME_DIALOGS.get("nw_loss_intros", [])
+_KEEPER_LOSS_INTROS = _WAR_OUTCOME_DIALOGS.get("keeper_loss_intros", [])
+_LOSS_INTROS = _WAR_OUTCOME_DIALOGS.get("loss_intros", [])
+_NW_PEACE_INTROS = _WAR_OUTCOME_DIALOGS.get("nw_peace_intros", [])
+_KEEPER_PEACE_INTROS = _WAR_OUTCOME_DIALOGS.get("keeper_peace_intros", [])
+_PEACE_INTROS = _WAR_OUTCOME_DIALOGS.get("peace_intros", [])
+_NW_EXPIRED_INTROS = _WAR_OUTCOME_DIALOGS.get("nw_expired_intros", [])
+_KEEPER_EXPIRED_INTROS = _WAR_OUTCOME_DIALOGS.get("keeper_expired_intros", [])
+_EXPIRED_INTROS = _WAR_OUTCOME_DIALOGS.get("expired_intros", [])
+
+# Loot dialog pools
+_NW_LOOTED_INTROS = _LOOT_DIALOGS.get("nw_looted_intros", [])
+_KEEPER_LOOTED_INTROS = _LOOT_DIALOGS.get("keeper_looted_intros", [])
+_LOOTED_INTROS = _LOOT_DIALOGS.get("looted_intros", [])
+_NW_LOOT_INTROS = _LOOT_DIALOGS.get("nw_loot_intros", [])
+_KEEPER_LOOT_INTROS = _LOOT_DIALOGS.get("keeper_loot_intros", [])
+_LOOT_INTROS = _LOOT_DIALOGS.get("loot_intros", [])
+
+# WMD dialog pools
+_NW_WMD_HIT_INTROS = _WMD_DIALOGS.get("nw_wmd_hit_intros", [])
+_KEEPER_WMD_HIT_INTROS = _WMD_DIALOGS.get("keeper_wmd_hit_intros", [])
+_WMD_HIT_INTROS = _WMD_DIALOGS.get("wmd_hit_intros", [])
+_NW_WMD_RECEIVED_INTROS = _WMD_DIALOGS.get("nw_fires_wmd_intros", [])
+_KEEPER_WMD_RECEIVED_INTROS = _WMD_DIALOGS.get("keeper_fires_wmd_intros", [])
+_WMD_RECEIVED_INTROS = _WMD_DIALOGS.get("fires_wmd_intros", [])
+
+# Military dialog pools
+_NW_MIL_INTROS = _MILITARY_UPGRADE_DIALOGS.get("nw_mil_intros", [])
+_KEEPER_MIL_INTROS = _MILITARY_UPGRADE_DIALOGS.get("keeper_mil_intros", [])
+_MIL_INTROS = _MILITARY_UPGRADE_DIALOGS.get("mil_intros", [])
+
+# Upgrade dialog pools (city upgrades - land, infra, improvements)
+_NW_UPGRADE_INTROS = _UPGRADE_DIALOGS.get("nw_upgrade_intros", [])
+_KEEPER_UPGRADE_INTROS = _UPGRADE_DIALOGS.get("keeper_upgrade_intros", [])
+_UPGRADE_INTROS = _UPGRADE_DIALOGS.get("upgrade_intros", [])
+
+# Alliance dialog pools
+_ALLIANCE_INTROS = _ALLIANCE_DIALOGS.get("alliance_intros", [])
+_NW_JOIN_INTROS = _ALLIANCE_DIALOGS.get("nw_join_intros", [])
+_KEEPER_JOIN_INTROS = _ALLIANCE_DIALOGS.get("keeper_join_intros", [])
+_NW_LEAVE_INTROS = _ALLIANCE_DIALOGS.get("nw_leave_intros", [])
+_KEEPER_LEAVE_INTROS = _ALLIANCE_DIALOGS.get("keeper_leave_intros", [])
+_ALLIANCE_LOOT_INTROS = _ALLIANCE_DIALOGS.get("alliance_loot_intros", [])
+
+# Bank dialog pools
+_BANK_DEPOSIT_INTROS = _BANK_DIALOGS.get("bank_deposit_intros", [])
+_BANK_WITHDRAWAL_INTROS = _BANK_DIALOGS.get("bank_withdrawal_intros", [])
+
+# Trade dialog pools
+_TRADE_INTROS = _TRADE_DIALOGS.get("trade_intros", [])
+
+# Treaty dialog pools
+_TREATY_INTROS = _TREATY_DIALOGS.get("treaty_intros", [])
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Thresholds (configurable)
@@ -156,7 +217,20 @@ def _nation_label(nation_name: Optional[str], nation_id: Optional[int]) -> str:
         return nation_name
     if nation_id:
         return f"Nation #{nation_id}"
-    return "Unknown Nation"
+
+
+def _is_keeper(nation_id: Optional[int], nation_name: Optional[str]) -> bool:
+    """Check if the nation is The Keeper (Flim Flam Fugazies)."""
+    if nation_id and nation_id == KEEPER_NATION_ID:
+        return True
+    if nation_name and nation_name == KEEPER_NATION_NAME:
+        return True
+    return False
+
+
+def _is_nw(alliance_id: Optional[int]) -> bool:
+    """Check if alliance is Darkstar."""
+    return alliance_id is not None and alliance_id == NW_ALLIANCE_ID
 
 
 def _alliance_label(alliance_name: Optional[str], alliance_id: Optional[int]) -> str:
@@ -565,7 +639,8 @@ async def record_city_purchase(
         n_tok = _nation_token(nation_id, nation_name)
         a_tok = _alliance_token(alliance_id, alliance_name)
         nw = _is_nw(alliance_id)
-        
+        keeper = _is_keeper(nation_id, nation_name)
+
         # Calculate resource value using shared helper
         resource_value = _calculate_resource_value(resource_costs)
         total_value = cash_cost + resource_value
@@ -577,7 +652,13 @@ async def record_city_purchase(
             headline = f"{n_label} of {a_label} expands to {new_cities} cities (+{count})"
 
         # Build rich article body — use tokens so frontend renders clickable links
-        intro_template = _pick(_NW_CITY_INTROS if nw else _CITY_INTROS)
+        # Prioritize Keeper variants, then Darkstar, then neutral
+        if keeper:
+            intro_template = _pick(_KEEPER_CITY_INTROS)
+        elif nw:
+            intro_template = _pick(_NW_CITY_INTROS)
+        else:
+            intro_template = _pick(_CITY_INTROS)
         intro = _format_dialog(
             intro_template,
             nation=n_label,
@@ -710,6 +791,7 @@ async def record_project_purchase(
         n_label = _nation_label(nation_name, nation_id)
         a_label = _alliance_label(alliance_name, alliance_id)
         nw = _is_nw(alliance_id)
+        keeper = _is_keeper(nation_id, nation_name)
         proj_str = ", ".join(project_names) if project_names else "a project"
 
         if len(project_names) == 1:
@@ -721,7 +803,13 @@ async def record_project_purchase(
         resource_value = _calculate_resource_value(resource_costs)
         total_value = cash_cost + resource_value
 
-        intro_template = _pick(_NW_PROJECT_INTROS if nw else _PROJECT_INTROS)
+        # Prioritize Keeper variants, then Darkstar, then neutral
+        if keeper:
+            intro_template = _pick(_KEEPER_PROJECT_INTROS)
+        elif nw:
+            intro_template = _pick(_NW_PROJECT_INTROS)
+        else:
+            intro_template = _pick(_PROJECT_INTROS)
         intro = _format_dialog(
             intro_template,
             nation=n_label,
@@ -899,6 +987,7 @@ async def record_city_upgrade(
         n_label = _nation_label(nation_name, nation_id)
         a_label = _alliance_label(alliance_name, alliance_id)
         nw = _is_nw(alliance_id)
+        keeper = _is_keeper(nation_id, nation_name)
 
         # Build headline
         parts = []
@@ -928,20 +1017,19 @@ async def record_city_upgrade(
         headline = f"{n_label} of {a_label} invests {_fmt_money(total_value)} in {what}{city_ref}"
 
         # Build article body — use tokens so frontend renders clickable links
-        intro_template = _pick(_NW_UPGRADE_INTROS if nw else _UPGRADE_INTROS)
-        if nw:
-            intro = _format_dialog(
-                intro_template,
-                nation=n_label,
-                upgrade=what
-            )
+        # Prioritize Keeper variants, then Darkstar, then neutral
+        if keeper:
+            intro_template = _pick(_KEEPER_UPGRADE_INTROS)
+        elif nw:
+            intro_template = _pick(_NW_UPGRADE_INTROS)
         else:
-            intro = _format_dialog(
-                intro_template,
-                nation=n_label,
-                alliance=a_label,
-                upgrade=what
-            )
+            intro_template = _pick(_UPGRADE_INTROS)
+        intro = _format_dialog(
+            intro_template,
+            nation=n_label,
+            alliance=a_label if not nw else "",
+            upgrade=what
+        )
         n_tok = _nation_token(nation_id, nation_name)
         a_tok = _alliance_token(alliance_id, alliance_name)
 
@@ -1115,6 +1203,7 @@ async def record_military_purchase(
         n_label = _nation_label(nation_name, nation_id)
         a_label = _alliance_label(alliance_name, alliance_id)
         nw = _is_nw(alliance_id)
+        keeper = _is_keeper(nation_id, nation_name)
         unit_label = _fmt_unit(unit_type, quantity)
 
         headline = (
@@ -1122,22 +1211,20 @@ async def record_military_purchase(
             f"({_fmt_money(total_cost)})"
         )
 
-        intro_template = _pick(_NW_MIL_INTROS if nw else _MIL_INTROS)
-        if nw:
-            intro = _format_dialog(
-                intro_template,
-                nation=n_label,
-                military=unit_label,
-                value=_fmt_money(total_cost)
-            )
+        # Prioritize Keeper variants, then Darkstar, then neutral
+        if keeper:
+            intro_template = _pick(_KEEPER_MIL_INTROS)
+        elif nw:
+            intro_template = _pick(_NW_MIL_INTROS)
         else:
-            intro = _format_dialog(
-                intro_template,
-                nation=n_label,
-                alliance=a_label,
-                military=unit_label,
-                value=_fmt_money(total_cost)
-            )
+            intro_template = _pick(_MIL_INTROS)
+        intro = _format_dialog(
+            intro_template,
+            nation=n_label,
+            alliance=a_label if not nw else "",
+            quantity=quantity,
+            unit_type=unit_label
+        )
 
         # Unit-specific flavor
         _UNIT_FLAVOR_NW = {
@@ -1301,6 +1388,8 @@ async def record_war_declared(
 
         att_nw = _is_nw(att_alliance_id)
         def_nw = _is_nw(def_alliance_id)
+        att_keeper = _is_keeper(att_nation_id, att_nation_name)
+        def_keeper = _is_keeper(def_nation_id, def_nation_name)
 
         att_nation_token   = f"Nation #{att_nation_id}"   if att_nation_id   else att_label
         def_nation_token   = f"Nation #{def_nation_id}"   if def_nation_id   else def_label
@@ -1320,13 +1409,64 @@ async def record_war_declared(
         att_with_a = f"{att_n_tok}{' (' + att_a_tok + ')' if att_a_tok else ''}"
         def_with_a = f"{def_n_tok}{' (' + def_a_tok + ')' if def_a_tok else ''}"
 
-        if att_nw:
+        # Prioritize Keeper variants, then Darkstar attacker/defender, then neutral
+        if att_keeper:
+            intro_template = _pick(_KEEPER_ATT_WAR_INTROS)
+            intro = _format_dialog(
+                intro_template,
+                nation=att_label,
+                alliance=att_a,
+                war_type=war_type,
+                defender=def_label,
+                def_alliance=def_a
+            )
+            _nw_att_bodies = [
+                (
+                    f"The Keeper, {att_leader}, has declared a {wt} war "
+                    f"against {def_leader} of {def_with_a}. "
+                    + (f"The stated reason: \"{reason.strip()}\". " if reason and reason.strip() else "")
+                    + f"The Reaper watches with great anticipation. "
+                    f"The FAFO Doctrine is in effect — "
+                    f"and it does not stop until the job is done."
+                ),
+                (
+                    f"The Keeper's judgment strikes. {att_leader} declares war on "
+                    f"{def_leader} of {def_with_a}. "
+                    + (f"Reason given: \"{reason.strip()}\". " if reason and reason.strip() else "")
+                    + f"The Reaper sharpens his scythe. This is going to be interesting."
+                ),
+            ]
+            body = _pick(_nw_att_bodies)
+        elif def_keeper:
+            intro_template = _pick(_KEEPER_DEF_WAR_INTROS)
+            intro = _format_dialog(
+                intro_template,
+                nation=def_label,
+                alliance=def_a,
+                war_type=war_type,
+                attacker=att_label,
+                att_alliance=att_a
+            )
+            _nw_def_bodies = [
+                (
+                    f"{att_leader} of {att_with_a} has declared a {wt} war "
+                    f"against Flim Flam Fugazies, targeting {def_leader}. "
+                    + (f"Their stated reason: \"{reason.strip()}\". " if reason and reason.strip() else "")
+                    + f"The Reaper has seen many challengers rise against the Keeper. "
+                    + f"They have all met their fate. "
+                    + f"The FAFO Doctrine will be enforced."
+                ),
+            ]
+            body = _pick(_nw_def_bodies)
+        elif att_nw:
             intro_template = _pick(_NW_ATT_WAR_INTROS)
             intro = _format_dialog(
                 intro_template,
                 nation=att_label,
+                alliance=att_a,
                 war_type=war_type,
-                defender=def_label
+                defender=def_label,
+                def_alliance=def_a
             )
             _nw_att_bodies = [
                 (
@@ -1364,8 +1504,10 @@ async def record_war_declared(
             intro = _format_dialog(
                 intro_template,
                 nation=def_label,
+                alliance=def_a,
                 war_type=war_type,
-                attacker=att_label
+                attacker=att_label,
+                att_alliance=att_a
             )
             _nw_def_bodies = [
                 (
@@ -1399,14 +1541,10 @@ async def record_war_declared(
             ]
             body = _pick(_nw_def_bodies)
         else:
-            intro_template = _pick(_WAR_DECLARED_INTROS)
-            intro = _format_dialog(
-                intro_template,
-                attacker=att_label,
-                att_alliance=att_a,
-                defender=def_label,
-                def_alliance=def_a,
-                war_type=war_type
+            # War declared is handled separately, use generic intro
+            intro = (
+                f"{att_label} of {att_a} declares {war_type} war on {def_label} of {def_a}. "
+                f"The Reaper records this conflict."
             )
             _non_nw_bodies = [
                 (
@@ -1531,6 +1669,8 @@ async def record_war_ended(
 
         att_nw = _is_nw(att_alliance_id)
         def_nw = _is_nw(def_alliance_id)
+        att_keeper = _is_keeper(att_nation_id, att_nation_name)
+        def_keeper = _is_keeper(def_nation_id, def_nation_name)
 
         att_won = winner_id is not None and int(winner_id) == int(att_nation_id)
         def_won = winner_id is not None and int(winner_id) == int(def_nation_id)
@@ -1554,7 +1694,7 @@ async def record_war_ended(
 
         if outcome == "peace":
             headline = f"Peace reached: {att_label} ({att_a}) vs {def_label} ({def_a})"
-            intro_template = _pick(_WAR_PEACE_INTROS)
+            intro_template = _pick(_PEACE_INTROS)
             intro = _format_dialog(
                 intro_template,
                 attacker=att_label,
@@ -1571,12 +1711,42 @@ async def record_war_ended(
             ]
             body = f"{intro} {_pick(_peace_bodies)}"
         elif outcome == "attacker_win":
-            if att_nw:
+            if att_keeper:
+                headline = f"Keeper victory: Flim Flam Fugazies defeats {def_label} ({def_a})"
+                intro_template = _pick(_KEEPER_WIN_INTROS)
+                intro = _format_dialog(
+                    intro_template,
+                    nation=att_label,
+                    alliance=att_a,
+                    war_type=war_type,
+                    defender=def_label
+                )
+                _nw_win_bodies = [
+                    f"The Keeper, Flim Flam Fugazies, has defeated {def_with_a}. The FAFO Doctrine is validated. The Reaper bows in recognition of this inevitable outcome.",
+                    f"Victory for the Keeper. {att_n_tok} has crushed {def_with_a}. The Reaper acknowledges that when Aries fights, victory is never in question.",
+                ]
+                body = f"{intro} {_pick(_nw_win_bodies)}"
+            elif def_keeper:
+                headline = f"Keeper defeat: {att_label} ({att_a}) defeats Flim Flam Fugazies"
+                intro_template = _pick(_KEEPER_LOSS_INTROS)
+                intro = _format_dialog(
+                    intro_template,
+                    nation=def_label,
+                    alliance=def_a,
+                    war_type=war_type,
+                    defender=att_label
+                )
+                _nw_loss_bodies = [
+                    f"{att_with_a} has defeated Flim Flam Fugazies. The Reaper notes this apparent defeat with curiosity — understanding that the Keeper's stratagems often serve deeper purposes.",
+                ]
+                body = f"{intro} {_pick(_nw_loss_bodies)}"
+            elif att_nw:
                 headline = f"Darkstar victory: {att_label} defeats {def_label} ({def_a})"
                 intro_template = _pick(_NW_WIN_INTROS)
                 intro = _format_dialog(
                     intro_template,
                     nation=att_label,
+                    alliance=att_a,
                     war_type=war_type,
                     defender=def_label
                 )
@@ -1593,6 +1763,7 @@ async def record_war_ended(
                 intro = _format_dialog(
                     intro_template,
                     nation=def_label,
+                    alliance=def_a,
                     war_type=war_type,
                     defender=att_label
                 )
@@ -1605,7 +1776,7 @@ async def record_war_ended(
                 body = f"{intro} {_pick(_nw_loss_bodies)}"
             else:
                 headline = f"{att_label} ({att_a}) defeats {def_label} ({def_a})"
-                intro_template = _pick(_WAR_DECLARED_INTROS)
+                intro_template = _pick(_WIN_INTROS)
                 intro = _format_dialog(
                     intro_template,
                     attacker=att_label,
@@ -1622,12 +1793,41 @@ async def record_war_ended(
                 ]
                 body = f"{intro} {_pick(_non_nw_win_bodies)}"
         elif outcome == "defender_win":
-            if def_nw:
+            if def_keeper:
+                headline = f"Keeper victory: Flim Flam Fugazies repels {att_label} ({att_a})"
+                intro_template = _pick(_KEEPER_WIN_INTROS)
+                intro = _format_dialog(
+                    intro_template,
+                    nation=def_label,
+                    alliance=def_a,
+                    war_type=war_type,
+                    defender=att_label
+                )
+                _nw_def_win_bodies = [
+                    f"The Keeper has repelled the aggression of {att_with_a}. Flim Flam Fugazies stood firm and emerged victorious. The Reaper bows in recognition of this inevitable outcome.",
+                ]
+                body = f"{intro} {_pick(_nw_def_win_bodies)}"
+            elif att_keeper:
+                headline = f"Keeper repelled: {def_label} ({def_a}) defeats Flim Flam Fugazies"
+                intro_template = _pick(_KEEPER_LOSS_INTROS)
+                intro = _format_dialog(
+                    intro_template,
+                    nation=att_label,
+                    alliance=att_a,
+                    war_type=war_type,
+                    defender=def_label
+                )
+                _nw_att_loss_bodies = [
+                    f"The Keeper's offensive has been repelled by {def_with_a}. The Reaper notes this apparent defeat with curiosity — understanding that the Keeper's stratagems often serve deeper purposes.",
+                ]
+                body = f"{intro} {_pick(_nw_att_loss_bodies)}"
+            elif def_nw:
                 headline = f"Darkstar repels attack: {def_label} defeats {att_label} ({att_a})"
                 intro_template = _pick(_NW_WIN_INTROS)
                 intro = _format_dialog(
                     intro_template,
                     nation=def_label,
+                    alliance=def_a,
                     war_type=war_type,
                     defender=att_label
                 )
@@ -1644,6 +1844,7 @@ async def record_war_ended(
                 intro = _format_dialog(
                     intro_template,
                     nation=att_label,
+                    alliance=att_a,
                     war_type=war_type,
                     defender=def_label
                 )
@@ -1665,7 +1866,7 @@ async def record_war_ended(
                 body = _pick(_non_nw_def_win_bodies)
         else:
             headline = f"War expires: {att_label} ({att_a}) vs {def_label} ({def_a})"
-            intro_template = _pick(_WAR_PEACE_INTROS)
+            intro_template = _pick(_EXPIRED_INTROS)
             intro = _format_dialog(
                 intro_template,
                 attacker=att_label,
@@ -1815,6 +2016,8 @@ async def record_wmd_attack(
 
         att_nw = _is_nw(att_alliance_id)
         def_nw = _is_nw(def_alliance_id)
+        att_keeper = _is_keeper(att_nation_id, att_nation_name)
+        def_keeper = _is_keeper(def_nation_id, def_nation_name)
 
         weapon = "nuclear warhead" if attack_type == "nuke" else "missile"
         weapon_cap = "Nuclear Warhead" if attack_type == "nuke" else "Missile"
@@ -1856,21 +2059,32 @@ async def record_wmd_attack(
             headline = (
                 f"{att_label} ({att_a}) fires {weapon} at {def_label} ({def_a}) — and misses"
             )
-            intro_template = _pick(_MISS_INTROS)
-            if att_nw:
-                intro = _format_dialog(
-                    intro_template,
-                    nation=att_label,
-                    weapon=weapon
-                )
-            else:
-                intro = _format_dialog(
-                    intro_template,
-                    nation=att_label,
-                    alliance=att_a,
-                    weapon=weapon
-                )
-            if att_nw:
+            intro = (
+                f"{att_label} of {att_a} fires {weapon} at {def_label} of {def_a} and misses. "
+                f"The Reaper finds this amusing."
+            )
+            if att_keeper:
+                # Keeper is the attacker — embarrassing miss
+                _nw_miss_bodies = [
+                    (
+                        f"In a development that defies belief, Flim Flam Fugazies has fired a {weapon} "
+                        f"at {def_with_a} and somehow managed to miss. "
+                        f"The Reaper notes that even the Keeper's strategic genius cannot compensate for targeting system failure. "
+                        f"Or perhaps this is part of a deeper plan that mere mortals cannot comprehend."
+                    ),
+                ]
+                body = f"{intro} {_pick(_nw_miss_bodies)}"
+            elif def_keeper:
+                # Keeper is the defender — someone tried to hit the Keeper and missed
+                _nw_def_miss_bodies = [
+                    (
+                        f"{att_with_a} attempted to strike Flim Flam Fugazies with a {weapon} "
+                        f"and has achieved the remarkable feat of missing entirely. "
+                        f"The Keeper is unharmed. The Reaper observes that the FAFO Doctrine protects even from incompetent attacks."
+                    ),
+                ]
+                body = f"{intro} {_pick(_nw_def_miss_bodies)}"
+            elif att_nw:
                 # NW is the attacker — embarrassing miss for the Watch
                 _nw_miss_bodies = [
                     (
@@ -1971,13 +2185,52 @@ async def record_wmd_attack(
                 f"{att_label} ({att_a}) launches {weapon} at {def_label} ({def_a}){damage_str}"
             )
 
-            if att_nw:
-                intro_template = _pick(_NW_FIRES_WMD_INTROS)
+            if att_keeper:
+                intro_template = _pick(_KEEPER_WMD_RECEIVED_INTROS)
                 intro = _format_dialog(
                     intro_template,
                     nation=att_label,
+                    alliance=att_a,
                     weapon=weapon,
-                    defender=def_label
+                    target=def_label,
+                    target_alliance=def_a
+                )
+                _nw_fires_bodies = [
+                    (
+                        f"Flim Flam Fugazies has launched a {weapon} "
+                        f"against {def_with_a}.{_dmg_line} "
+                        f"The Reaper acknowledges that the FAFO Doctrine's ultimate consequence has been delivered. "
+                        f"Let {def_n_tok} remember this day."
+                    ),
+                ]
+                body = f"{intro} {_pick(_nw_fires_bodies)}"
+            elif def_keeper:
+                intro_template = _pick(_KEEPER_WMD_HIT_INTROS)
+                intro = _format_dialog(
+                    intro_template,
+                    nation=def_label,
+                    alliance=def_a,
+                    weapon=weapon,
+                    attacker=att_label,
+                    att_alliance=att_a
+                )
+                _nw_hit_bodies = [
+                    (
+                        f"{att_with_a} has launched a {weapon} against Flim Flam Fugazies.{_dmg_line} "
+                        f"The Reaper warns that attacking the Keeper with weapons of mass destruction is an act of self-annihilation. "
+                        f"The FAFO Doctrine will be enforced in full."
+                    ),
+                ]
+                body = f"{intro} {_pick(_nw_hit_bodies)}"
+            elif att_nw:
+                intro_template = _pick(_NW_WMD_RECEIVED_INTROS)
+                intro = _format_dialog(
+                    intro_template,
+                    nation=att_label,
+                    alliance=att_a,
+                    weapon=weapon,
+                    target=def_label,
+                    target_alliance=def_a
                 )
                 _nw_fires_bodies = [
                     (
@@ -2005,12 +2258,14 @@ async def record_wmd_attack(
                 ]
                 body = f"{intro} {_pick(_nw_fires_bodies)}"
             elif def_nw:
-                intro_template = _pick(_NW_HIT_WMD_INTROS)
+                intro_template = _pick(_NW_WMD_HIT_INTROS)
                 intro = _format_dialog(
                     intro_template,
                     nation=def_label,
+                    alliance=def_a,
                     weapon=weapon,
-                    attacker=att_label
+                    attacker=att_label,
+                    att_alliance=att_a
                 )
                 _nw_hit_bodies = [
                     (
@@ -2040,12 +2295,9 @@ async def record_wmd_attack(
                 ]
                 body = f"{intro} {_pick(_nw_hit_bodies)}"
             else:
-                intro_template = _pick(_MISS_INTROS)
-                intro = _format_dialog(
-                    intro_template,
-                    nation=att_label,
-                    defender=def_label,
-                    weapon=weapon
+                intro = (
+                    f"{att_label} of {att_a} launches {weapon} at {def_label} of {def_a}. "
+                    f"The Reaper records the strike."
                 )
                 _non_nw_wmd_bodies = [
                     (
@@ -2220,6 +2472,8 @@ async def record_loot_attack(
 
         att_nw = _is_nw(att_alliance_id)
         def_nw = _is_nw(def_alliance_id)
+        att_keeper = _is_keeper(att_nation_id, att_nation_name)
+        def_keeper = _is_keeper(def_nation_id, def_nation_name)
         is_alliance_bank = def_nation_id == 0  # Alliance bank, not a nation
 
         if is_alliance_bank:
@@ -2260,6 +2514,8 @@ async def record_loot_attack(
                 intro_template,
                 sender=att_label,
                 sender_alliance=att_a,
+                receiver=def_label,
+                alliance=def_a,
                 resources=_fmt_money(total_loot_value)
             )
             _alliance_loot_bodies = [
@@ -2275,12 +2531,48 @@ async def record_loot_attack(
                 ),
             ]
             body = f"{intro} {_pick(_alliance_loot_bodies)}"
+        elif att_keeper:
+            intro_template = _pick(_KEEPER_LOOT_INTROS)
+            intro = _format_dialog(
+                intro_template,
+                nation=att_label,
+                alliance=att_a,
+                attacker=def_label,
+                att_alliance=def_a
+            )
+            _nw_loot_bodies = [
+                (
+                    f"Flim Flam Fugazies has successfully looted "
+                    f"{def_with_a}, seizing {_fmt_money(total_loot_value)} in total value.{loot_line} "
+                    f"The Reaper acknowledges the FAFO Doctrine in action — consequences delivered with surgical precision."
+                ),
+            ]
+            body = f"{intro} {_pick(_nw_loot_bodies)}"
+        elif def_keeper:
+            intro_template = _pick(_KEEPER_LOOTED_INTROS)
+            intro = _format_dialog(
+                intro_template,
+                nation=def_label,
+                alliance=def_a,
+                attacker=att_label,
+                att_alliance=att_a
+            )
+            _nw_looted_bodies = [
+                (
+                    f"{att_with_a} has committed the cardinal sin of looting Flim Flam Fugazies, "
+                    f"stripping the Keeper of {_fmt_money(total_loot_value)} in total value.{loot_line} "
+                    f"The Reaper warns that this transgression will be met with consequences beyond anything {att_n_tok} can comprehend."
+                ),
+            ]
+            body = f"{intro} {_pick(_nw_looted_bodies)}"
         elif att_nw:
             intro_template = _pick(_NW_LOOT_INTROS)
             intro = _format_dialog(
                 intro_template,
                 nation=att_label,
-                defender=def_label
+                alliance=att_a,
+                attacker=def_label,
+                att_alliance=def_a
             )
             _nw_loot_bodies = [
                 (
@@ -2312,7 +2604,9 @@ async def record_loot_attack(
             intro = _format_dialog(
                 intro_template,
                 nation=def_label,
-                attacker=att_label
+                alliance=def_a,
+                attacker=att_label,
+                att_alliance=att_a
             )
             _nw_looted_bodies = [
                 (
@@ -2345,10 +2639,10 @@ async def record_loot_attack(
             intro_template = _pick(_LOOT_INTROS)
             intro = _format_dialog(
                 intro_template,
-                attacker=att_label,
-                att_alliance=att_a,
-                defender=def_label,
-                def_alliance=def_a
+                nation=att_label,
+                alliance=att_a,
+                attacker=def_label,
+                att_alliance=def_a
             )
             _non_nw_loot_bodies = [
                 (
@@ -2615,19 +2909,15 @@ async def record_bank_transfer(
             intro_template = _pick(_BANK_WITHDRAWAL_INTROS)
             intro = _format_dialog(
                 intro_template,
-                receiver=n_label,
-                receiver_alliance=_alliance_label(receiver_alliance_name, receiver_alliance_id) if receiver_alliance_name or receiver_alliance_id else "",
+                sender=n_label,
+                sender_alliance=_alliance_label(receiver_alliance_name, receiver_alliance_id) if receiver_alliance_name or receiver_alliance_id else "",
                 resources=val_str
             )
         else:
-            intro_template = _pick(_BANK_INTROS)
-            intro = _format_dialog(
-                intro_template,
-                sender=s_label,
-                sender_alliance=_alliance_label(sender_alliance_name, sender_alliance_id) if sender_alliance_name or sender_alliance_id else "",
-                receiver=r_label,
-                receiver_alliance=_alliance_label(receiver_alliance_name, receiver_alliance_id) if receiver_alliance_name or receiver_alliance_id else "",
-                resources=val_str
+            # Generic bank transfer (not deposit/withdrawal)
+            intro = (
+                f"{s_label} transfers {val_str} to {r_label}. "
+                f"The Reaper records this bank transaction."
             )
         
         _note_str = f" The note reads: \"{note.strip()}\"." if note and note.strip() else ""
@@ -2746,6 +3036,7 @@ async def record_alliance_change(
         n_tok = _nation_token(nation_id, nation_name)
         joining_nw  = _is_nw(new_alliance_id)
         leaving_nw  = _is_nw(old_alliance_id)
+        is_keeper = _is_keeper(nation_id, nation_name)
 
         # If old and new names are identical but IDs differ, the old name is stale in the DB.
         # Fall back to "Alliance #ID" for the old alliance so the event shows distinct names.
@@ -2762,11 +3053,23 @@ async def record_alliance_change(
         if new_alliance_id and not old_alliance_id:
             headline = f"{n_label} joins {new_a_label}"
             event_type = "alliance_join"
-            if joining_nw:
+            if is_keeper:
+                intro_template = _pick(_KEEPER_JOIN_INTROS)
+                intro = _format_dialog(
+                    intro_template,
+                    nation=n_label,
+                    alliance=new_a_label
+                )
+                _nw_join_bodies = [
+                    f"Flim Flam Fugazies aligns with the Darkstar, a convergence of strategic vision that promises to reshape Orbis. The Reaper recognizes this alliance as a force multiplier for both parties.",
+                ]
+                body = f"{intro} {_pick(_nw_join_bodies)}"
+            elif joining_nw:
                 intro_template = _pick(_NW_JOIN_INTROS)
                 intro = _format_dialog(
                     intro_template,
-                    nation=n_label
+                    nation=n_label,
+                    alliance=new_a_label
                 )
                 _nw_join_bodies = [
                     f"{n_tok} has taken the oath and joined the Darkstar. The Reaper welcomes this new soul to the fold. The Watch grows stronger. Its enemies should take note.",
@@ -2777,12 +3080,11 @@ async def record_alliance_change(
                 ]
                 body = f"{intro} {_pick(_nw_join_bodies)}"
             else:
-                intro_template = _pick(_ALLIANCE_CHANGE_INTROS)
+                intro_template = _pick(_ALLIANCE_INTROS)
                 intro = _format_dialog(
                     intro_template,
                     nation=n_label,
-                    old_alliance=old_a_label,
-                    new_alliance=new_a_label
+                    alliance=new_a_label
                 )
                 _non_nw_join_bodies = [
                     f"{n_tok} has joined {new_a_tok if new_a_tok else new_a_label}. The Reaper notes the change.",
@@ -2794,11 +3096,23 @@ async def record_alliance_change(
         elif old_alliance_id and not new_alliance_id:
             headline = f"{n_label} leaves {old_a_label}"
             event_type = "alliance_leave"
-            if leaving_nw:
+            if is_keeper:
+                intro_template = _pick(_KEEPER_LEAVE_INTROS)
+                intro = _format_dialog(
+                    intro_template,
+                    nation=n_label,
+                    alliance=old_a_label
+                )
+                _nw_leave_bodies = [
+                    f"Flim Flam Fugazies departs the Darkstar alliance, following a strategic vision that transcends conventional alliance structures. The Reaper understands that the Keeper's moves always serve a greater purpose.",
+                ]
+                body = f"{intro} {_pick(_nw_leave_bodies)}"
+            elif leaving_nw:
                 intro_template = _pick(_NW_LEAVE_INTROS)
                 intro = _format_dialog(
                     intro_template,
-                    nation=n_label
+                    nation=n_label,
+                    alliance=old_a_label
                 )
                 _nw_leave_bodies = [
                     f"{n_tok} has left the Darkstar. The Reaper watches this departure with cold, unblinking eyes. The Watch does not forget those who leave its ranks. It never forgets.",
@@ -2809,12 +3123,11 @@ async def record_alliance_change(
                 ]
                 body = f"{intro} {_pick(_nw_leave_bodies)}"
             else:
-                intro_template = _pick(_ALLIANCE_CHANGE_INTROS)
+                intro_template = _pick(_ALLIANCE_INTROS)
                 intro = _format_dialog(
                     intro_template,
                     nation=n_label,
-                    old_alliance=old_a_label,
-                    new_alliance=new_a_label
+                    alliance=old_a_label
                 )
                 _non_nw_leave_bodies = [
                     f"{n_tok} has left {old_a_tok if old_a_tok else old_a_label}. The Reaper records the departure.",
@@ -2833,7 +3146,8 @@ async def record_alliance_change(
                 intro_template = _pick(_NW_JOIN_INTROS)
                 intro = _format_dialog(
                     intro_template,
-                    nation=n_label
+                    nation=n_label,
+                    alliance=new_a_label
                 )
                 _nw_join_from_bodies = [
                     f"{n_tok} has left {old_a_tok if old_a_tok else old_a_label} and joined the Darkstar. The Reaper welcomes this new addition. The Watch grows. Its enemies should worry.",
@@ -2846,7 +3160,8 @@ async def record_alliance_change(
                 intro_template = _pick(_NW_LEAVE_INTROS)
                 intro = _format_dialog(
                     intro_template,
-                    nation=n_label
+                    nation=n_label,
+                    alliance=old_a_label
                 )
                 _nw_leave_to_bodies = [
                     f"{n_tok} has left the Darkstar for {new_a_tok if new_a_tok else new_a_label}. The Reaper watches this transition with cold eyes. The Watch does not forget. It never forgets.",
@@ -2856,12 +3171,11 @@ async def record_alliance_change(
                 ]
                 body = f"{intro} {_pick(_nw_leave_to_bodies)}"
             else:
-                intro_template = _pick(_ALLIANCE_CHANGE_INTROS)
+                intro_template = _pick(_ALLIANCE_INTROS)
                 intro = _format_dialog(
                     intro_template,
                     nation=n_label,
-                    old_alliance=old_a_label,
-                    new_alliance=new_a_label
+                    alliance=new_a_label
                 )
                 _non_nw_change_bodies = [
                     f"{n_tok} has moved from {old_a_tok if old_a_tok else old_a_label} to {new_a_tok if new_a_tok else new_a_label}. The Reaper records the change.",
@@ -2939,6 +3253,8 @@ async def record_trade_completed(
         
         buyer_nw = _is_nw(buyer_alliance_id)
         seller_nw = _is_nw(seller_alliance_id)
+        buyer_keeper = _is_keeper(buyer_id, buyer_name)
+        seller_keeper = _is_keeper(seller_id, seller_name)
         
         buyer_tok = _nation_token(buyer_id, buyer_name)
         seller_tok = _nation_token(seller_id, seller_name)
@@ -2948,44 +3264,26 @@ async def record_trade_completed(
         # Calculate total resource amount and value
         total_resources = sum(resources_traded.values())
         
-        # Calculate resource value using shared helper
+        # Calculate resource value for informational purposes only
         resource_value = _calculate_resource_value(resources_traded)
-        total_value = money_amount + resource_value
+        # The actual transaction value is just the money amount (what buyer spent)
+        total_value = money_amount
         
         # Format resources string
         resources_str = _fmt_resources(resources_traded)
         
-        # Format the headline
-        headline = f"{buyer_name} bought {total_resources:,.0f} resources for ${total_value:,.0f} from {seller_name}"
+        # Format the headline - use money_amount (what buyer actually spent) not total_value
+        headline = f"{buyer_name} bought {total_resources:,.0f} resources for ${money_amount:,.0f} from {seller_name}"
         
         # Build body with Reaper-style narrative
-        if buyer_nw:
-            intro_template = _pick(_NW_TRADE_BUY_INTROS)
-            intro = _format_dialog(
-                intro_template,
-                nation=buyer_tok,
-                resources=resources_str,
-                value=_fmt_money(total_value)
-            )
-        elif seller_nw:
-            intro_template = _pick(_NW_TRADE_SELL_INTROS)
-            intro = _format_dialog(
-                intro_template,
-                nation=seller_tok,
-                resources=resources_str,
-                value=_fmt_money(total_value)
-            )
-        else:
-            intro_template = _pick(_TRADE_INTROS)
-            intro = _format_dialog(
-                intro_template,
-                buyer=buyer_tok,
-                buyer_alliance=_alliance_label(buyer_alliance_name, buyer_alliance_id) if buyer_alliance_name or buyer_alliance_id else "",
-                seller=seller_tok,
-                seller_alliance=_alliance_label(seller_alliance_name, seller_alliance_id) if seller_alliance_name or seller_alliance_id else "",
-                resources=resources_str,
-                value=_fmt_money(total_value)
-            )
+        intro_template = _pick(_TRADE_INTROS)
+        intro = _format_dialog(
+            intro_template,
+            sender=buyer_tok,
+            sender_alliance=_alliance_label(buyer_alliance_name, buyer_alliance_id) if buyer_alliance_name or buyer_alliance_id else "",
+            receiver=seller_tok,
+            resources=resources_str
+        )
         
         body = (
             f"{intro} {buyer_tok} ({buyer_a_tok}) has completed a trade with "
@@ -3032,3 +3330,185 @@ async def record_trade_completed(
         )
     except Exception as e:
         logger.error(f"NewsWriter.record_trade_completed: {e}", exc_info=True)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Treaty signed / cancelled
+# ─────────────────────────────────────────────────────────────────────────────
+
+async def record_treaty_signed(
+    treaty_id: int,
+    treaty_type: str,
+    treaty_url: Optional[str],
+    alliance1_id: Optional[int],
+    alliance1_name: Optional[str],
+    alliance1_flag: Optional[str],
+    alliance2_id: Optional[int],
+    alliance2_name: Optional[str],
+    alliance2_flag: Optional[str],
+    event_date: Optional[str] = None,
+) -> None:
+    try:
+        db = get_news_db()
+        a1_label = _alliance_label(alliance1_name, alliance1_id)
+        a2_label = _alliance_label(alliance2_name, alliance2_id)
+        a1_tok   = _alliance_token(alliance1_id, alliance1_name)
+        a2_tok   = _alliance_token(alliance2_id, alliance2_name)
+        nw1 = _is_nw(alliance1_id)
+        nw2 = _is_nw(alliance2_id)
+        involves_nw = nw1 or nw2
+
+        headline = f"{a1_label} and {a2_label} sign a {treaty_type}"
+
+        pool = _TREATY_INTROS
+
+        if pool:
+            intro = _format_dialog(
+                _pick(pool),
+                sender=a1_label,
+                sender_alliance=a1_label,
+                receiver=a2_label
+            )
+        else:
+            intro = f"{a1_label} and {a2_label} have signed a {treaty_type}."
+
+        if involves_nw:
+            nw_label = a1_label if nw1 else a2_label
+            other_label = a2_tok or a2_label if nw1 else a1_tok or a1_label
+            body_lines = [
+                f"{intro}",
+                f"The Darkstar's {nw_label} has entered a {treaty_type} with {other_label}.",
+                f"The Reaper records this diplomatic development in full detail.",
+            ]
+        else:
+            body_lines = [
+                f"{intro}",
+                f"{a1_tok or a1_label} and {a2_tok or a2_label} have formalised their relationship with a {treaty_type}.",
+                f"The Reaper notes this shift in the diplomatic landscape of Orbis.",
+            ]
+        if treaty_url:
+            body_lines.append(f'<a href="{treaty_url}" target="_blank">View treaty text</a>')
+        body = " ".join(body_lines)
+
+        primary_alliance_id   = alliance1_id
+        primary_alliance_name = alliance1_name
+        primary_alliance_flag = alliance1_flag
+        if nw2 and not nw1:
+            primary_alliance_id   = alliance2_id
+            primary_alliance_name = alliance2_name
+            primary_alliance_flag = alliance2_flag
+
+        await db.record_event(
+            event_type="treaty_signed",
+            nation_id=None,
+            nation_name=None,
+            nation_flag=None,
+            alliance_id=primary_alliance_id,
+            alliance_name=primary_alliance_name,
+            alliance_flag=primary_alliance_flag,
+            value=0.0,
+            value2=0.0,
+            headline=headline,
+            detail={
+                "body": body,
+                "treaty_id": treaty_id,
+                "treaty_type": treaty_type,
+                "treaty_url": treaty_url,
+                "alliance1_id": alliance1_id,
+                "alliance1_name": alliance1_name,
+                "alliance2_id": alliance2_id,
+                "alliance2_name": alliance2_name,
+                "involves_nw": involves_nw,
+            },
+            event_date=event_date or _now_str(),
+            sec_nation_id=None,
+            sec_nation_name=None,
+            sec_alliance_id=alliance2_id,
+            sec_alliance_name=alliance2_name,
+            alliance_delta={},
+            nation_delta={},
+        )
+    except Exception as e:
+        logger.error(f"NewsWriter.record_treaty_signed: {e}", exc_info=True)
+
+
+async def record_treaty_cancelled(
+    treaty_id: int,
+    treaty_type: str,
+    alliance1_id: Optional[int],
+    alliance1_name: Optional[str],
+    alliance1_flag: Optional[str],
+    alliance2_id: Optional[int],
+    alliance2_name: Optional[str],
+    alliance2_flag: Optional[str],
+    event_date: Optional[str] = None,
+) -> None:
+    try:
+        db = get_news_db()
+        a1_label = _alliance_label(alliance1_name, alliance1_id)
+        a2_label = _alliance_label(alliance2_name, alliance2_id)
+        a1_tok   = _alliance_token(alliance1_id, alliance1_name)
+        a2_tok   = _alliance_token(alliance2_id, alliance2_name)
+        nw1 = _is_nw(alliance1_id)
+        nw2 = _is_nw(alliance2_id)
+        involves_nw = nw1 or nw2
+
+        headline = f"{a1_label} and {a2_label} cancel their {treaty_type}"
+
+        intro = f"{a1_label} and {a2_label} have cancelled their {treaty_type}."
+
+        if involves_nw:
+            nw_label    = a1_label if nw1 else a2_label
+            other_tok   = a2_tok or a2_label if nw1 else a1_tok or a1_label
+            body_lines = [
+                f"{intro}",
+                f"The {treaty_type} between the Darkstar's {nw_label} and {other_tok} has come to an end.",
+                f"The Reaper files the dissolution and watches for what follows.",
+            ]
+        else:
+            body_lines = [
+                f"{intro}",
+                f"The {treaty_type} between {a1_tok or a1_label} and {a2_tok or a2_label} is no more.",
+                f"The Reaper records the split and updates the diplomatic ledger.",
+            ]
+        body = " ".join(body_lines)
+
+        primary_alliance_id   = alliance1_id
+        primary_alliance_name = alliance1_name
+        primary_alliance_flag = alliance1_flag
+        if nw2 and not nw1:
+            primary_alliance_id   = alliance2_id
+            primary_alliance_name = alliance2_name
+            primary_alliance_flag = alliance2_flag
+
+        await db.record_event(
+            event_type="treaty_cancelled",
+            nation_id=None,
+            nation_name=None,
+            nation_flag=None,
+            alliance_id=primary_alliance_id,
+            alliance_name=primary_alliance_name,
+            alliance_flag=primary_alliance_flag,
+            value=0.0,
+            value2=0.0,
+            headline=headline,
+            detail={
+                "body": body,
+                "treaty_id": treaty_id,
+                "treaty_type": treaty_type,
+                "alliance1_id": alliance1_id,
+                "alliance1_name": alliance1_name,
+                "alliance2_id": alliance2_id,
+                "alliance2_name": alliance2_name,
+                "involves_nw": involves_nw,
+            },
+            event_date=event_date or _now_str(),
+            sec_nation_id=None,
+            sec_nation_name=None,
+            sec_alliance_id=alliance2_id,
+            sec_alliance_name=alliance2_name,
+            alliance_delta={},
+            nation_delta={},
+        )
+    except Exception as e:
+        logger.error(f"NewsWriter.record_treaty_cancelled: {e}", exc_info=True)

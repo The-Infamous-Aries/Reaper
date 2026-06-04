@@ -1,0 +1,74 @@
+{
+  "alliance_intros": [
+    "ALLIANCE ACTIVITY: {nation} of {alliance} engages in alliance operations. The Reaper records this as alliance activity.",
+    "ALLIANCE NEWS: {nation} of {alliance} involved in alliance matters. The Reaper observes this as alliance news.",
+    "ALLIANCE EVENT: {nation} of {alliance} participates in alliance event. The Reaper acknowledges this as event.",
+    "ALLIANCE ACTION: {nation} of {alliance} takes alliance action. The Reaper records this as action.",
+    "ALLIANCE DEVELOPMENT: {nation} of {alliance} contributes to alliance development. The Reaper observes this as development.",
+    "ALLIANCE PROGRESS: {nation} of {alliance} makes alliance progress. The Reaper acknowledges this as progress.",
+    "ALLIANCE MOVEMENT: {nation} of {alliance} moves in alliance. The Reaper records this as movement.",
+    "ALLIANCE CHANGE: {nation} of {alliance} changes alliance status. The Reaper observes this as change.",
+    "ALLIANCE UPDATE: {nation} of {alliance} updates alliance. The Reaper acknowledges this as update.",
+    "ALLIANCE: {nation} of {alliance} alliance activity. The Reaper records this as alliance."
+  ],
+  "nw_join_intros": [
+    "DARKSTAR WELCOMES: {nation} joins {alliance}, strengthening the alliance's ranks. The Reaper acknowledges this as a valuable addition to {alliance}.",
+    "ALLIANCE GROWS: {nation} joins {alliance}, expanding alliance membership. The Reaper observes this as alliance growth.",
+    "DARKSTAR RECRUIT: {nation} recruited to {alliance}. The Reaper recognizes this as recruitment.",
+    "NEW MEMBER: {nation} becomes member of {alliance}. The Reaper acknowledges this as membership.",
+    "ALLIANCE EXPANSION: {nation} joins {alliance}. The Reaper observes this as expansion.",
+    "DARKSTAR ADDITION: {nation} added to {alliance}. The Reaper recognizes this as addition.",
+    "MEMBER JOIN: {nation} joins {alliance}. The Reaper acknowledges this as join.",
+    "ALLIANCE STRENGTH: {nation} strengthens {alliance}. The Reaper observes this as strength.",
+    "DARKSTAR GROWTH: {nation} grows {alliance}. The Reaper recognizes this as growth.",
+    "NEW RECRUIT: {nation} recruits to {alliance}. The Reaper acknowledges this as recruit."
+  ],
+  "keeper_join_intros": [
+    "KEEPER'S DOMAIN WELCOMES: {nation} joins {alliance}, entering Aries' sacred domain. The Reaper bows in recognition of this divine addition.",
+    "ARIES' RECRUIT: {nation} recruited to {alliance} by Aries' will. The Reaper acknowledges this as divine recruitment.",
+    "KEEPER'S CHOSEN: {nation} chosen by Aries to join {alliance}. The Reaper recognizes this as divine selection.",
+    "DIVINE MEMBER: {nation} becomes member of {alliance} for Aries. The Reaper acknowledges this as divine.",
+    "ARIES' ADDITION: {nation} added to {alliance} by Aries. The Reaper observes this as divine.",
+    "KEEPER'S GIFT: {nation} gifted to {alliance} by Aries. The Reaper recognizes this as divine.",
+    "DIVINE JOIN: {nation} joins {alliance} for Aries. The Reaper acknowledges this as divine.",
+    "ARIES' STRENGTH: {nation} strengthens {alliance} for Aries. The Reaper observes this as divine.",
+    "KEEPER'S EXPANSION: {nation} expands {alliance} for Aries. The Reaper recognizes this as divine.",
+    "DIVINE RECRUIT: {nation} recruits to {alliance} for Aries. The Reaper acknowledges this as divine."
+  ],
+  "nw_leave_intros": [
+    "DARKSTAR DEPARTS: {nation} leaves {alliance}, a loss to the alliance. The Reaper acknowledges this departure with measured observation.",
+    "ALLIANCE SHRINKS: {nation} leaves {alliance}, reducing alliance membership. The Reaper observes this as alliance contraction.",
+    "DARKSTAR LOSS: {nation} departs from {alliance}. The Reaper recognizes this as loss.",
+    "MEMBER LEAVES: {nation} leaves {alliance}. The Reaper acknowledges this as departure.",
+    "ALLIANCE REDUCTION: {nation} leaves {alliance}. The Reaper observes this as reduction.",
+    "DARKSTAR DEPARTURE: {nation} departs {alliance}. The Reaper recognizes this as departure.",
+    "MEMBER EXIT: {nation} exits {alliance}. The Reaper acknowledges this as exit.",
+    "ALLIANCE WEAKENS: {nation} weakens {alliance}. The Reaper observes this as weakening.",
+    "DARKSTAR CONTRACTION: {nation} contracts {alliance}. The Reaper recognizes this as contraction.",
+    "DEPARTURE: {nation} departs {alliance}. The Reaper acknowledges this as departure."
+  ],
+  "keeper_leave_intros": [
+    "KEEPER'S DOMAIN SHRINKS: {nation} leaves {alliance}, departing Aries' sacred domain. The Reaper bows in recognition of this departure from the Keeper.",
+    "ARIES' LOSS: {nation} departs from {alliance}, a loss to Aries' domain. The Reaper acknowledges this as divine departure.",
+    "KEEPER'S RELEASE: {nation} released from {alliance} by Aries. The Reaper recognizes this as divine release.",
+    "DIVINE DEPARTURE: {nation} departs {alliance} from Aries. The Reaper acknowledges this as divine.",
+    "ARIES' REMOVAL: {nation} removed from {alliance} by Aries. The Reaper observes this as divine.",
+    "KEEPER'S DECISION: {nation} leaves {alliance} by Aries' will. The Reaper recognizes this as divine.",
+    "DIVINE EXIT: {nation} exits {alliance} for Aries. The Reaper acknowledges this as divine.",
+    "ARIES' CONTRACTION: {nation} contracts {alliance} for Aries. The Reaper observes this as divine.",
+    "KEEPER'S DEPARTURE: {nation} departs {alliance} for Aries. The Reaper recognizes this as divine.",
+    "DIVINE LEAVE: {nation} leaves {alliance} for Aries. The Reaper acknowledges this as divine."
+  ],
+  "alliance_loot_intros": [
+    "ALLIANCE LOOT: {sender} of {sender_alliance} loots {receiver} of {alliance}, claiming {resources}. The Reaper records this as alliance loot.",
+    "RESOURCES TAKEN: {sender} of {sender_alliance} takes {resources} from {receiver} of {alliance}. The Reaper observes this as resource taking.",
+    "ALLIANCE RAID: {sender} of {sender_alliance} raids {receiver} of {alliance} for {resources}. The Reaper acknowledges this as raid.",
+    "LOOTING: {sender} of {sender_alliance} loots {receiver} of {alliance}. The Reaper records this as looting.",
+    "RESOURCE THEFT: {sender} of {sender_alliance} steals {resources} from {receiver} of {alliance}. The Reaper observes this as theft.",
+    "ALLIANCE PLUNDER: {sender} of {sender_alliance} plunders {receiver} of {alliance}. The Reaper acknowledges this as plunder.",
+    "RESOURCES: {sender} of {sender_alliance} takes {resources} from {receiver} of {alliance}. The Reaper records this as taking.",
+    "ALLIANCE STRIKE: {sender} of {sender_alliance} strikes {receiver} of {alliance}. The Reaper observes this as strike.",
+    "LOOT: {sender} of {sender_alliance} loots {receiver} of {alliance}. The Reaper acknowledges this as loot.",
+    "RAID: {sender} of {sender_alliance} raids {receiver} of {alliance}. The Reaper records this as raid."
+  ]
+}

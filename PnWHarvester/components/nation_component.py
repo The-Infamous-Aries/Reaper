@@ -1,9 +1,10 @@
 """
-NationComponent — GPP component for nation and city event processing.
+NationComponent — GPP component for nation, city, and alliance event processing.
 
 Sub-components:
 - NationEventProcessor: Handles nation/create, nation/update events
 - CityEventProcessor: Handles city/create, city/update events
+- AllianceEventProcessor: Handles alliance/create, alliance/update events
 - SpendingDetector: Detects and records spending (cities, projects, military, upgrades)
 - BeigeEarlyExitDetector: Detects early beige exits and enqueues notifications
 
@@ -16,7 +17,12 @@ from datetime import datetime, timezone
 from typing import Any, Dict, Optional, Set
 
 import aiohttp
+import pnwkit
 from pnwkit.new import QueryKit
+
+from PnWHarvester.core.activity_tracker import ActivityTracker
+from .spending_detector import SpendingDetector
+from .beige_early_exit_detector import BeigeEarlyExitDetector
 
 logger = logging.getLogger(__name__)
 
@@ -389,6 +395,7 @@ class NationComponent:
         holdings_db=None,
         beige_component=None,
         news_component=None,
+        websocket_manager=None,
         api_key: str = "",
     ):
         """
@@ -396,43 +403,60 @@ class NationComponent:
         
         Args:
             global_db: GlobalNationsDB instance
-            holdings_db: HoldingsDB instance (optional)
-            beige_component: BeigeAlertComponent instance (optional)
-            news_component: NewsComponent instance (optional)
+            holdings_db: HoldingsDB instance
+            beige_component: BeigeAlertComponent instance
+            news_component: NewsComponent instance
+            websocket_manager: SharedWebSocketManager instance
             api_key: PnW API v3 key
         """
         self.global_db = global_db
         self.holdings_db = holdings_db
         self.beige_component = beige_component
         self.news_component = news_component
+        self.websocket_manager = websocket_manager
         self.api_key = api_key
-        self.kit = QueryKit(api_key)
         
-        # Sub-components
+        # Use shared websocket manager if provided, otherwise fallback to own QueryKit
+        if self.websocket_manager:
+            self.kit = None  # Will use shared manager's kit
+        else:
+            self.kit = QueryKit(api_key)
+        
+        # Initialize sub-components
         self.nation_processor = NationEventProcessor(global_db, holdings_db, news_component)
-        self.city_processor = CityEventProcessor(global_db, holdings_db)
+        self.city_processor = CityEventProcessor(global_db)
         self.account_processor = AccountEventProcessor(global_db)
-        
-        # Beige early-exit detector
-        from .beige_early_exit_detector import BeigeEarlyExitDetector
         self.beige_detector = BeigeEarlyExitDetector(beige_component)
         
-        # Subscription state
+        self.activity_tracker = ActivityTracker(max_silence_seconds=120.0)
+        
         self.running = False
         self._tasks: list[asyncio.Task] = []
     
     async def initialize(self):
         """Initialize the component (seed NW set, etc.)."""
+        # Register subscriptions for activity tracking
+        self.activity_tracker.register_subscription("nation/create")
+        self.activity_tracker.register_subscription("nation/update")
+        self.activity_tracker.register_subscription("city/create")
+        self.activity_tracker.register_subscription("city/update")
+        self.activity_tracker.register_subscription("account/update")
+        self.activity_tracker.register_subscription("alliance/create")
+        self.activity_tracker.register_subscription("alliance/update")
+        
         await self.nation_processor.seed_nw_set()
         logger.info("NationComponent initialized")
     
     async def process_nation_update(self, event: Any) -> Dict[str, Any]:
         """Process a nation/update event."""
+        # Fetch old_nation BEFORE saving so beige_detector sees the pre-update state.
+        nation = _obj_to_dict(event)
+        nation_id = nation.get("id")
+        old_nation = await self.nation_processor.get_existing_nation(int(nation_id)) if nation_id else None
+        
         stats = await self.nation_processor.process_nation_event(event, "update")
         
-        # Check for beige early exit
-        nation = _obj_to_dict(event)
-        old_nation = await self.nation_processor.get_existing_nation(int(nation.get("id")))
+        # Check for beige early exit using the pre-save snapshot
         await self.beige_detector.check_early_exit(nation, old_nation)
         
         return stats
@@ -453,6 +477,46 @@ class NationComponent:
         """Process an account/update event."""
         return await self.account_processor.process_account_event(event)
     
+    async def process_alliance_create(self, event: Any) -> Dict[str, Any]:
+        """Process an alliance/create event."""
+        alliance = _obj_to_dict(event)
+        alliance_id = alliance.get("id")
+        alliance_name = alliance.get("name")
+        
+        logger.info(f"alliance/create → {alliance_id} ({alliance_name})")
+        
+        # Update alliance info in nations that belong to this alliance
+        if self.global_db and alliance_id:
+            try:
+                # Alliance creation doesn't require immediate action
+                # Nations will update their alliance info via nation/update
+                pass
+            except Exception as e:
+                logger.error(f"Error processing alliance/create: {e}", exc_info=True)
+        
+        return {"processed": 1, "skipped": 0}
+    
+    async def process_alliance_update(self, event: Any) -> Dict[str, Any]:
+        """Process an alliance/update event."""
+        alliance = _obj_to_dict(event)
+        alliance_id = alliance.get("id")
+        alliance_name = alliance.get("name")
+        
+        logger.info(f"alliance/update → {alliance_id} ({alliance_name})")
+        
+        # Update alliance name/flag for all nations in this alliance
+        if self.global_db and alliance_id:
+            try:
+                await self.global_db.update_alliance_info(
+                    alliance_id=alliance_id,
+                    alliance_name=alliance.get("name"),
+                    alliance_flag=alliance.get("flag"),
+                )
+            except Exception as e:
+                logger.error(f"Error processing alliance/update: {e}", exc_info=True)
+        
+        return {"processed": 1, "skipped": 0}
+    
     async def get_component_stats(self) -> Dict[str, Any]:
         """Get component statistics."""
         return {
@@ -461,12 +525,14 @@ class NationComponent:
             "global_db_path": self.global_db.db_path if self.global_db else None,
             "holdings_db_path": self.holdings_db.db_path if self.holdings_db else None,
             "running": self.running,
+            "activity": self.activity_tracker.to_dict(),
         }
     
     # ── WebSocket subscription listeners ───────────────────────────────────────
     
     async def _listen_nation_updates(self):
         """Listen for nation/update events."""
+        subscription_name = "nation/update"
         try:
             subscription = await self.kit.subscribe("nation", "update")
             logger.info("nation/update subscription active (all nations → GlobalNations.db)")
@@ -475,17 +541,25 @@ class NationComponent:
                 if not self.running:
                     break
                 try:
+                    self.activity_tracker.record_message(subscription_name)
                     await self.process_nation_update(event)
                 except Exception as e:
+                    self.activity_tracker.record_error(subscription_name)
                     logger.error(f"Error processing nation/update event: {e}", exc_info=True)
         except asyncio.CancelledError:
             logger.info("nation/update listener cancelled")
+        except pnwkit.errors.SubscribeError as e:
+            self.activity_tracker.record_error(subscription_name)
+            logger.warning(f"nation/update subscription error: {e} — will restart")
+            raise
         except Exception as e:
+            self.activity_tracker.record_error(subscription_name)
             logger.error(f"nation/update listener error: {e}", exc_info=True)
             raise
     
     async def _listen_nation_creates(self):
         """Listen for nation/create events."""
+        subscription_name = "nation/create"
         try:
             subscription = await self.kit.subscribe("nation", "create")
             logger.info("nation/create subscription active (all nations → GlobalNations.db)")
@@ -494,17 +568,25 @@ class NationComponent:
                 if not self.running:
                     break
                 try:
+                    self.activity_tracker.record_message(subscription_name)
                     await self.process_nation_create(event)
                 except Exception as e:
+                    self.activity_tracker.record_error(subscription_name)
                     logger.error(f"Error processing nation/create event: {e}", exc_info=True)
         except asyncio.CancelledError:
             logger.info("nation/create listener cancelled")
+        except pnwkit.errors.SubscribeError as e:
+            self.activity_tracker.record_error(subscription_name)
+            logger.warning(f"nation/create subscription error: {e} — will restart")
+            raise
         except Exception as e:
+            self.activity_tracker.record_error(subscription_name)
             logger.error(f"nation/create listener error: {e}", exc_info=True)
             raise
     
     async def _listen_account_updates(self):
         """Listen for account/update events."""
+        subscription_name = "account/update"
         try:
             subscription = await self.kit.subscribe("account", "update")
             logger.info("account/update subscription active")
@@ -513,17 +595,25 @@ class NationComponent:
                 if not self.running:
                     break
                 try:
+                    self.activity_tracker.record_message(subscription_name)
                     await self.process_account_update(event)
                 except Exception as e:
+                    self.activity_tracker.record_error(subscription_name)
                     logger.error(f"Error processing account/update event: {e}", exc_info=True)
         except asyncio.CancelledError:
             logger.info("account/update listener cancelled")
+        except pnwkit.errors.SubscribeError as e:
+            self.activity_tracker.record_error(subscription_name)
+            logger.warning(f"account/update subscription error: {e} — will restart")
+            raise
         except Exception as e:
+            self.activity_tracker.record_error(subscription_name)
             logger.error(f"account/update listener error: {e}", exc_info=True)
             raise
     
     async def _listen_city_updates(self):
         """Listen for city/update events."""
+        subscription_name = "city/update"
         try:
             subscription = await self.kit.subscribe("city", "update")
             logger.info("city/update subscription active (all cities → GlobalNations.db)")
@@ -532,17 +622,25 @@ class NationComponent:
                 if not self.running:
                     break
                 try:
+                    self.activity_tracker.record_message(subscription_name)
                     await self.process_city_update(event)
                 except Exception as e:
+                    self.activity_tracker.record_error(subscription_name)
                     logger.error(f"Error processing city/update event: {e}", exc_info=True)
         except asyncio.CancelledError:
             logger.info("city/update listener cancelled")
+        except pnwkit.errors.SubscribeError as e:
+            self.activity_tracker.record_error(subscription_name)
+            logger.warning(f"city/update subscription error: {e} — will restart")
+            raise
         except Exception as e:
+            self.activity_tracker.record_error(subscription_name)
             logger.error(f"city/update listener error: {e}", exc_info=True)
             raise
     
     async def _listen_city_creates(self):
         """Listen for city/create events."""
+        subscription_name = "city/create"
         try:
             subscription = await self.kit.subscribe("city", "create")
             logger.info("city/create subscription active (all cities → GlobalNations.db)")
@@ -551,49 +649,149 @@ class NationComponent:
                 if not self.running:
                     break
                 try:
+                    self.activity_tracker.record_message(subscription_name)
                     await self.process_city_create(event)
                 except Exception as e:
+                    self.activity_tracker.record_error(subscription_name)
                     logger.error(f"Error processing city/create event: {e}", exc_info=True)
         except asyncio.CancelledError:
             logger.info("city/create listener cancelled")
+        except pnwkit.errors.SubscribeError as e:
+            self.activity_tracker.record_error(subscription_name)
+            logger.warning(f"city/create subscription error: {e} — will restart")
+            raise
         except Exception as e:
+            self.activity_tracker.record_error(subscription_name)
             logger.error(f"city/create listener error: {e}", exc_info=True)
+            raise
+    
+    async def _listen_alliance_creates(self):
+        """Listen for alliance/create events."""
+        subscription_name = "alliance/create"
+        try:
+            subscription = await self.kit.subscribe("alliance", "create")
+            logger.info("alliance/create subscription active")
+
+            async for event in subscription:
+                if not self.running:
+                    break
+                try:
+                    self.activity_tracker.record_message(subscription_name)
+                    await self.process_alliance_create(event)
+                except Exception as e:
+                    self.activity_tracker.record_error(subscription_name)
+                    logger.error(f"Error processing alliance/create event: {e}", exc_info=True)
+        except asyncio.CancelledError:
+            logger.info("alliance/create listener cancelled")
+        except pnwkit.errors.SubscribeError as e:
+            self.activity_tracker.record_error(subscription_name)
+            logger.warning(f"alliance/create subscription error: {e} — will restart")
+            raise
+        except Exception as e:
+            self.activity_tracker.record_error(subscription_name)
+            logger.error(f"alliance/create listener error: {e}", exc_info=True)
+            raise
+    
+    async def _listen_alliance_updates(self):
+        """Listen for alliance/update events."""
+        subscription_name = "alliance/update"
+        try:
+            subscription = await self.kit.subscribe("alliance", "update")
+            logger.info("alliance/update subscription active")
+
+            async for event in subscription:
+                if not self.running:
+                    break
+                try:
+                    self.activity_tracker.record_message(subscription_name)
+                    await self.process_alliance_update(event)
+                except Exception as e:
+                    self.activity_tracker.record_error(subscription_name)
+                    logger.error(f"Error processing alliance/update event: {e}", exc_info=True)
+        except asyncio.CancelledError:
+            logger.info("alliance/update listener cancelled")
+        except pnwkit.errors.SubscribeError as e:
+            self.activity_tracker.record_error(subscription_name)
+            logger.warning(f"alliance/update subscription error: {e} — will restart")
+            raise
+        except Exception as e:
+            self.activity_tracker.record_error(subscription_name)
+            logger.error(f"alliance/update listener error: {e}", exc_info=True)
             raise
     
     # ── Lifecycle ─────────────────────────────────────────────────────────────
     
     async def start(self):
-        """Start all WebSocket subscriptions for nation, city, and account events."""
+        """Start all WebSocket subscriptions for nation, city, account, and alliance events."""
         if self.running:
             logger.warning("NationComponent already running")
             return
-        
-        # Recreate QueryKit for fresh connection on each start
-        self.kit = QueryKit(self.api_key)
-        
+
         self.running = True
-        logger.info("Starting NationComponent subscriptions")
         
-        self._tasks = [
-            asyncio.create_task(self._listen_nation_updates()),
-            asyncio.create_task(self._listen_nation_creates()),
-            asyncio.create_task(self._listen_account_updates()),
-            asyncio.create_task(self._listen_city_updates()),
-            asyncio.create_task(self._listen_city_creates()),
-        ]
-        
-        # Wait for the FIRST task to finish (any disconnect/crash triggers restart)
-        done, pending = await asyncio.wait(
-            self._tasks, return_when=asyncio.FIRST_COMPLETED
-        )
-        # Cancel all remaining listeners immediately
-        for t in pending:
-            t.cancel()
-        await asyncio.gather(*pending, return_exceptions=True)
-        # Re-raise the first exception
-        for t in done:
-            if t.exception():
-                raise t.exception()
+        # Use SharedWebSocketManager if available, otherwise use own QueryKit
+        if self.websocket_manager:
+            # Register subscriptions with shared manager
+            await self.websocket_manager.subscribe(
+                "nation", "update", {},
+                self.process_nation_update
+            )
+            await self.websocket_manager.subscribe(
+                "nation", "create", {},
+                self.process_nation_create
+            )
+            await self.websocket_manager.subscribe(
+                "city", "update", {},
+                self.process_city_update
+            )
+            await self.websocket_manager.subscribe(
+                "city", "create", {},
+                self.process_city_create
+            )
+            await self.websocket_manager.subscribe(
+                "account", "update", {},
+                self.process_account_update
+            )
+            await self.websocket_manager.subscribe(
+                "alliance", "create", {},
+                self.process_alliance_create
+            )
+            await self.websocket_manager.subscribe(
+                "alliance", "update", {},
+                self.process_alliance_update
+            )
+            logger.info("NationComponent started (using SharedWebSocketManager)")
+            
+            # Keep running until stopped
+            while self.running:
+                await asyncio.sleep(1)
+        else:
+            # Fallback to own QueryKit
+            self.kit = QueryKit(self.api_key)
+            logger.info("Starting NationComponent subscriptions")
+            
+            self._tasks = [
+                asyncio.create_task(self._listen_nation_updates()),
+                asyncio.create_task(self._listen_nation_creates()),
+                asyncio.create_task(self._listen_account_updates()),
+                asyncio.create_task(self._listen_city_updates()),
+                asyncio.create_task(self._listen_city_creates()),
+                asyncio.create_task(self._listen_alliance_creates()),
+                asyncio.create_task(self._listen_alliance_updates()),
+            ]
+            
+            # Wait for the FIRST task to finish (any disconnect/crash triggers restart)
+            done, pending = await asyncio.wait(
+                self._tasks, return_when=asyncio.FIRST_COMPLETED
+            )
+            # Cancel all remaining listeners immediately
+            for t in pending:
+                t.cancel()
+            await asyncio.gather(*pending, return_exceptions=True)
+            # Re-raise the first exception
+            for t in done:
+                if t.exception():
+                    raise t.exception()
     
     async def stop(self):
         """Stop all subscriptions."""
@@ -612,6 +810,7 @@ class NationComponent:
         retry_count = 0
         max_retry_delay = 300  # 5 minutes max
         base_delay = 10  # Start with 10 seconds
+        actual_delay = base_delay  # Ensure defined before first loop iteration
         
         while True:
             try:
@@ -621,7 +820,7 @@ class NationComponent:
             except asyncio.CancelledError:
                 logger.info("NationComponent cancelled")
                 break
-            except (aiohttp.ClientError, ConnectionResetError, OSError, ConnectionError) as e:
+            except (aiohttp.ClientError, ConnectionResetError, OSError, ConnectionError, pnwkit.errors.SubscribeError) as e:
                 retry_count += 1
                 # Exponential backoff with jitter
                 delay = min(base_delay * (2 ** min(retry_count - 1, 5)), max_retry_delay)
@@ -671,12 +870,15 @@ class NationComponent:
             # Close WebSocket connection if it exists
             if hasattr(socket, 'ws') and socket.ws and not socket.ws.closed:
                 await socket.ws.close()
-            # Close HTTP session if it exists
-            if hasattr(socket, 'session') and socket.session:
-                await socket.session.close()
         except Exception as e:
-            logger.debug(f"Error closing socket connection: {e}")
-            
+            logger.debug(f"Error closing WebSocket: {e}")
+
+        # Do NOT close kit.aiohttp_session here. pnwkit spawns untracked
+        # handle_socket_close() tasks that hold a reference to the session and
+        # call reconnect() on it. Closing the session races with those tasks
+        # causing RuntimeError('Session is closed'). The session will be
+        # garbage-collected harmlessly once those tasks finish.
+
         # Clear references
         self.kit.socket = None
         self.kit = None

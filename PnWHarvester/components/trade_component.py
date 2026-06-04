@@ -15,7 +15,10 @@ from collections import deque
 from typing import Any, Dict, Optional
 
 import aiohttp
+import pnwkit
 from pnwkit.new import QueryKit
+
+from PnWHarvester.core.activity_tracker import ActivityTracker
 
 logger = logging.getLogger(__name__)
 
@@ -222,6 +225,7 @@ class TradeComponent:
         self,
         holdings_db=None,
         news_component=None,
+        websocket_manager=None,
         api_key: str = "",
     ):
         """
@@ -230,15 +234,25 @@ class TradeComponent:
         Args:
             holdings_db: HoldingsDB instance (optional)
             news_component: NewsComponent instance (optional)
+            websocket_manager: SharedWebSocketManager instance (optional)
             api_key: PnW API v3 key
         """
         self.holdings_db = holdings_db
         self.news_component = news_component
+        self.websocket_manager = websocket_manager
         self.api_key = api_key
-        self.kit = QueryKit(api_key)
+        
+        # Use shared websocket manager if provided, otherwise fallback to own QueryKit
+        if self.websocket_manager:
+            self.kit = None  # Will use shared manager's kit
+        else:
+            self.kit = QueryKit(api_key)
         
         # Sub-component
         self.trade_processor = TradeEventProcessor(holdings_db, news_component)
+        
+        # Activity tracking for health monitoring
+        self.activity_tracker = ActivityTracker(max_silence_seconds=120.0)
         
         # Subscription state
         self.running = False
@@ -246,6 +260,8 @@ class TradeComponent:
     
     async def initialize(self):
         """Initialize the component."""
+        # Register subscriptions for activity tracking
+        self.activity_tracker.register_subscription("trade/update")
         logger.info("TradeComponent initialized")
         logger.info(f"TradeComponent config: holdings_db={self.holdings_db is not None}, news_component={self.news_component is not None}, api_key={'*' * len(self.api_key) if self.api_key else 'None'}")
     
@@ -260,12 +276,14 @@ class TradeComponent:
             "holdings_db_path": self.holdings_db.db_path if self.holdings_db else None,
             "running": self.running,
             "processed_trades": len(self.trade_processor._processed_ids),
+            "activity": self.activity_tracker.to_dict(),
         }
     
     # ── WebSocket subscription listener ───────────────────────────────────────
     
     async def _listen_trade_updates(self):
         """Listen for trade/update events."""
+        subscription_name = "trade/update"
         try:
             logger.info("Attempting to subscribe to trade/update with buy_or_sell=1 filter...")
             subscription = await self.kit.subscribe("trade", "update", {"buy_or_sell": 1})
@@ -276,6 +294,7 @@ class TradeComponent:
                 if not self.running:
                     break
                 try:
+                    self.activity_tracker.record_message(subscription_name)
                     event_count += 1
                     trade = _obj_to_dict(event)
                     trade_id = trade.get("id")
@@ -289,10 +308,16 @@ class TradeComponent:
                     
                     await self.process_trade_update(event)
                 except Exception as e:
+                    self.activity_tracker.record_error(subscription_name)
                     logger.error(f"Error processing trade/update event: {e}", exc_info=True)
         except asyncio.CancelledError:
             logger.info("trade/update listener cancelled")
+        except pnwkit.errors.SubscribeError as e:
+            self.activity_tracker.record_error(subscription_name)
+            logger.warning(f"trade/update subscription error: {e} — will restart")
+            raise
         except Exception as e:
+            self.activity_tracker.record_error(subscription_name)
             logger.error(f"trade/update listener error: {e}", exc_info=True)
             raise
     
@@ -303,29 +328,42 @@ class TradeComponent:
         if self.running:
             logger.warning("TradeComponent already running")
             return
-        
-        # Recreate QueryKit for fresh connection on each start
-        self.kit = QueryKit(self.api_key)
-        
+
         self.running = True
-        logger.info("Starting TradeComponent subscription")
         
-        self._tasks = [
-            asyncio.create_task(self._listen_trade_updates()),
-        ]
-        
-        # Wait for the FIRST task to finish (any disconnect/crash triggers restart)
-        done, pending = await asyncio.wait(
-            self._tasks, return_when=asyncio.FIRST_COMPLETED
-        )
-        # Cancel all remaining listeners immediately
-        for t in pending:
-            t.cancel()
-        await asyncio.gather(*pending, return_exceptions=True)
-        # Re-raise the first exception
-        for t in done:
-            if t.exception():
-                raise t.exception()
+        # Use SharedWebSocketManager if available, otherwise use own QueryKit
+        if self.websocket_manager:
+            # Register subscription with shared manager
+            await self.websocket_manager.subscribe(
+                "trade", "update", {"buy_or_sell": 1},
+                self.process_trade_update
+            )
+            logger.info("TradeComponent started (using SharedWebSocketManager)")
+            
+            # Keep running until stopped
+            while self.running:
+                await asyncio.sleep(1)
+        else:
+            # Fallback to own QueryKit
+            self.kit = QueryKit(self.api_key)
+            logger.info("Starting TradeComponent subscription")
+            
+            self._tasks = [
+                asyncio.create_task(self._listen_trade_updates()),
+            ]
+            
+            # Wait for the FIRST task to finish (any disconnect/crash triggers restart)
+            done, pending = await asyncio.wait(
+                self._tasks, return_when=asyncio.FIRST_COMPLETED
+            )
+            # Cancel all remaining listeners immediately
+            for t in pending:
+                t.cancel()
+            await asyncio.gather(*pending, return_exceptions=True)
+            # Re-raise the first exception
+            for t in done:
+                if t.exception():
+                    raise t.exception()
     
     async def stop(self):
         """Stop the subscription."""
@@ -344,6 +382,7 @@ class TradeComponent:
         retry_count = 0
         max_retry_delay = 300  # 5 minutes max
         base_delay = 10  # Start with 10 seconds
+        actual_delay = base_delay  # Ensure defined before first loop iteration
         
         while True:
             try:
@@ -353,7 +392,7 @@ class TradeComponent:
             except asyncio.CancelledError:
                 logger.info("TradeComponent cancelled")
                 break
-            except (aiohttp.ClientError, ConnectionResetError, OSError, ConnectionError) as e:
+            except (aiohttp.ClientError, ConnectionResetError, OSError, ConnectionError, pnwkit.errors.SubscribeError) as e:
                 retry_count += 1
                 # Exponential backoff with jitter
                 delay = min(base_delay * (2 ** min(retry_count - 1, 5)), max_retry_delay)
@@ -403,12 +442,15 @@ class TradeComponent:
             # Close WebSocket connection if it exists
             if hasattr(socket, 'ws') and socket.ws and not socket.ws.closed:
                 await socket.ws.close()
-            # Close HTTP session if it exists
-            if hasattr(socket, 'session') and socket.session:
-                await socket.session.close()
         except Exception as e:
-            logger.debug(f"Error closing socket connection: {e}")
-            
+            logger.debug(f"Error closing WebSocket: {e}")
+
+        # Do NOT close kit.aiohttp_session here. pnwkit spawns untracked
+        # handle_socket_close() tasks that hold a reference to the session and
+        # call reconnect() on it. Closing the session races with those tasks
+        # causing RuntimeError('Session is closed'). The session will be
+        # garbage-collected harmlessly once those tasks finish.
+
         # Clear references
         self.kit.socket = None
         self.kit = None

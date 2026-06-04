@@ -333,7 +333,8 @@ class WarNewsGenerator:
                 return _calc_infra_val(_infra_after, _city_infra_before)
             else:
                 return float(attack_data.get("infra_destroyed_value") or 0)
-        except Exception:
+        except Exception as e:
+            logger.warning(f"Failed to calculate infra value from improvements: {e}")
             return float(attack_data.get("infra_destroyed_value") or 0)
     
     def _determine_attack_missed(self, attack_data: Dict[str, Any], attack_type_raw: str) -> bool:
@@ -397,7 +398,8 @@ class WarNewsGenerator:
             ).fetchall()
             conn.close()
             price_map = {r.lower(): float(p) for r, p in rows if p and float(p) > 0} if rows else _FALLBACK_PRICES
-        except Exception:
+        except Exception as e:
+            logger.warning(f"Failed to load prices from DB cache: {e}, using fallback prices")
             price_map = _FALLBACK_PRICES
         
         resource_value = sum(

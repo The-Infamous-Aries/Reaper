@@ -1,0 +1,26 @@
+{
+  "bank_deposit_intros": [
+    "BANK DEPOSIT: {sender} of {sender_alliance} deposits {resources} into the bank. The Reaper records this as a financial transaction.",
+    "RESOURCES DEPOSITED: {sender} of {sender_alliance} deposits {resources}. The Reaper observes this as resource deposit.",
+    "BANK TRANSACTION: {sender} of {sender_alliance} makes bank deposit of {resources}. The Reaper acknowledges this as transaction.",
+    "DEPOSIT MADE: {sender} of {sender_alliance} deposits {resources}. The Reaper records this as deposit.",
+    "FINANCIAL ACTION: {sender} of {sender_alliance} takes financial action with {resources}. The Reaper observes this as action.",
+    "BANK OPERATION: {sender} of {sender_alliance} operates bank with {resources}. The Reaper acknowledges this as operation.",
+    "RESOURCES STORED: {sender} of {sender_alliance} stores {resources} in bank. The Reaper records this as storage.",
+    "BANK DEPOSIT: {sender} of {sender_alliance} deposits {resources}. The Reaper observes this as banking.",
+    "FINANCIAL: {sender} of {sender_alliance} handles {resources}. The Reaper acknowledges this as financial.",
+    "DEPOSIT: {sender} of {sender_alliance} deposits {resources}. The Reaper records this as deposit."
+  ],
+  "bank_withdrawal_intros": [
+    "BANK WITHDRAWAL: {sender} of {sender_alliance} withdraws {resources} from the bank. The Reaper records this as a financial transaction.",
+    "RESOURCES WITHDRAWN: {sender} of {sender_alliance} withdraws {resources}. The Reaper observes this as resource withdrawal.",
+    "BANK TRANSACTION: {sender} of {sender_alliance} makes bank withdrawal of {resources}. The Reaper acknowledges this as transaction.",
+    "WITHDRAWAL MADE: {sender} of {sender_alliance} withdraws {resources}. The Reaper records this as withdrawal.",
+    "FINANCIAL ACTION: {sender} of {sender_alliance} takes financial action with {resources}. The Reaper observes this as action.",
+    "BANK OPERATION: {sender} of {sender_alliance} operates bank with {resources}. The Reaper acknowledges this as operation.",
+    "RESOURCES RETRIEVED: {sender} of {sender_alliance} retrieves {resources} from bank. The Reaper records this as retrieval.",
+    "BANK WITHDRAWAL: {sender} of {sender_alliance} withdraws {resources}. The Reaper observes this as banking.",
+    "FINANCIAL: {sender} of {sender_alliance} handles {resources}. The Reaper acknowledges this as financial.",
+    "WITHDRAWAL: {sender} of {sender_alliance} withdraws {resources}. The Reaper records this as withdrawal."
+  ]
+}

@@ -16,6 +16,8 @@ import time
 from datetime import datetime, timezone, timedelta
 from typing import Any, Dict, List, Optional
 
+from PnWHarvester.core.activity_tracker import ActivityTracker
+
 logger = logging.getLogger(__name__)
 
 RESOURCES = [
@@ -398,9 +400,74 @@ class TimedQueriesProcessor:
         
         return trade_dict
     
+    async def _process_trade_holdings(self, trade: Dict[str, Any]):
+        """
+        Update holdings database for a completed trade.
+        
+        Args:
+            trade: Trade dictionary from GraphQL query
+        """
+        if not self.holdings_db:
+            return
+        
+        try:
+            # Extract trade details
+            trade_id = trade.get("id")
+            sender_id = trade.get("sender_id")
+            receiver_id = trade.get("receiver_id")
+            offer_resource = trade.get("offer_resource")
+            offer_amount = trade.get("offer_amount")
+            buy_or_sell = trade.get("buy_or_sell")  # "buy" or "sell"
+            price = trade.get("price")
+            date_accepted = trade.get("date_accepted")
+            
+            if not all([sender_id, receiver_id, offer_resource, offer_amount, price]):
+                logger.debug(f"Trade {trade_id} missing required fields, skipping holdings update")
+                return
+            
+            # Determine buyer and seller based on buy_or_sell
+            # If buy_or_sell == "buy": poster is buying (buyer), receiver is selling (seller)
+            # If buy_or_sell == "sell": poster is selling (seller), receiver is buying (buyer)
+            if buy_or_sell == "buy":
+                buyer_id = int(sender_id)
+                seller_id = int(receiver_id)
+            else:  # sell
+                buyer_id = int(receiver_id)
+                seller_id = int(sender_id)
+            
+            # Calculate money amount
+            money_amount = float(offer_amount) * float(price)
+            resource_amount = float(offer_amount)
+            
+            # Get nation names for row creation
+            sender_name = trade.get("sender", {}).get("nation_name") if trade.get("sender") else None
+            receiver_name = trade.get("receiver", {}).get("nation_name") if trade.get("receiver") else None
+            
+            if buy_or_sell == "buy":
+                buyer_name = sender_name
+                seller_name = receiver_name
+            else:
+                buyer_name = receiver_name
+                seller_name = sender_name
+            
+            # Update holdings
+            await self.holdings_db.apply_trade(
+                buyer_id=buyer_id,
+                seller_id=seller_id,
+                resource=offer_resource.lower(),
+                amount=resource_amount,
+                money=money_amount,
+                event_date=date_accepted,
+                buyer_name=buyer_name,
+                seller_name=seller_name,
+            )
+            
+        except Exception as e:
+            logger.error(f"Failed to process trade holdings for trade {trade.get('id')}: {e}", exc_info=True)
+    
     async def _generate_trade_news(self, trades: List[Dict[str, Any]]):
         """
-        Generate news events for completed trades.
+        Generate news events for completed trades and update holdings.
         
         Args:
             trades: List of trade dictionaries from GraphQL query
@@ -417,28 +484,33 @@ class TimedQueriesProcessor:
         generator = TradeNewsGenerator(self.news_component)
         
         generated_count = 0
+        holdings_updated = 0
         for trade in trades:
             try:
-                # Skip trades we've already processed
                 trade_id = trade.get("id")
                 if not trade_id:
                     continue
                     
                 trade_id_int = int(trade_id)
                 
-                # Always update last trade ID to highest seen BEFORE filtering
-                # This ensures we don't skip trades in the same batch
-                if trade_id_int > self._last_trade_id:
-                    self._last_trade_id = trade_id_int
-                
-                # Now check if we've already processed this trade
-                # Use a small buffer (1000) to handle out-of-order trades
-                if trade_id_int <= self._last_trade_id - 1000:
+                # Skip trades already seen in a previous cycle.
+                # _last_trade_id holds the highest ID processed so far;
+                # anything at or below it has already been handled.
+                if trade_id_int <= self._last_trade_id:
                     continue
+                
+                # Update holdings for this trade
+                if self.holdings_db:
+                    await self._process_trade_holdings(trade)
+                    holdings_updated += 1
                 
                 # Convert trade data to format expected by TradeNewsGenerator
                 trade_dict = await self._convert_trade_for_news(trade)
                 result = await generator.generate_trade_completed_news(trade_dict)
+                
+                # Advance the watermark only after a successful generate attempt
+                if trade_id_int > self._last_trade_id:
+                    self._last_trade_id = trade_id_int
                 
                 if result.get("generated"):
                     generated_count += 1
@@ -447,7 +519,7 @@ class TimedQueriesProcessor:
             except Exception as e:
                 logger.error(f"Failed to generate trade news for trade {trade.get('id')}: {e}", exc_info=True)
         
-        logger.info(f"Generated {generated_count} trade news events from {len(trades)} trades")
+        logger.info(f"Generated {generated_count} trade news events from {len(trades)} trades, updated {holdings_updated} holdings")
 
 
 class TimedQueriesComponent:
@@ -485,12 +557,17 @@ class TimedQueriesComponent:
         # Sub-component
         self.processor = TimedQueriesProcessor(query_instance, holdings_db, news_component)
         
+        # Activity tracking for health monitoring
+        self.activity_tracker = ActivityTracker(max_silence_seconds=3600.0)  # 60 minutes (4x interval)
+        
         # Subscription state
         self.running = False
         self._task = None
     
     async def initialize(self):
         """Initialize the component."""
+        # Register subscription for activity tracking
+        self.activity_tracker.register_subscription("timed_queries/update")
         logger.info("TimedQueriesComponent initialized")
         logger.info(f"TimedQueriesComponent config: holdings_db={self.holdings_db is not None}, news_component={self.news_component is not None}, interval_seconds={self.interval_seconds}")
     
@@ -502,10 +579,15 @@ class TimedQueriesComponent:
             "running": self.running,
             "interval_seconds": self.interval_seconds,
             "last_trade_id": self.processor._last_trade_id,
+            "activity": self.activity_tracker.to_dict(),
         }
     
     async def start(self):
-        """Start the background loop."""
+        """Start the background loop.
+        
+        NOTE: GPPManager calls _run_loop() directly after setting running=True.
+        This method is kept for standalone use only.
+        """
         if self.running:
             logger.warning("TimedQueriesComponent already running")
             return
@@ -513,7 +595,7 @@ class TimedQueriesComponent:
         self.running = True
         logger.info("Starting TimedQueriesComponent")
         
-        self._task = asyncio.create_task(self._run_loop())
+        self._task = asyncio.create_task(self._run_loop(), name="timed_queries_loop")
     
     async def stop(self):
         """Stop the background loop."""
@@ -527,10 +609,27 @@ class TimedQueriesComponent:
         logger.info("TimedQueriesComponent stopped")
     
     async def _run_loop(self):
-        """Main loop."""
+        """Main loop - runs indefinitely until stopped."""
+        # Brief startup delay so the first query cycle doesn't collide with
+        # sync_nations and WebSocket subscription negotiation hitting the API
+        # simultaneously, which causes transient 503s on every start.
+        try:
+            await asyncio.sleep(30)
+        except asyncio.CancelledError:
+            logger.info("TimedQueriesComponent startup cancelled")
+            return
+        
+        logger.info("TimedQueriesComponent main loop starting")
+        
         while self.running:
             try:
                 await self._process_update()
+                
+                # Check if we should continue before sleeping
+                if not self.running:
+                    logger.info("TimedQueriesComponent stopping after update cycle")
+                    break
+                    
                 await asyncio.sleep(self.interval_seconds)
             except asyncio.CancelledError:
                 logger.info("TimedQueriesComponent loop cancelled")
@@ -538,12 +637,17 @@ class TimedQueriesComponent:
             except Exception as e:
                 logger.error(f"TimedQueriesComponent loop error: {e}", exc_info=True)
                 await asyncio.sleep(30)  # Wait before retry
+        
+        logger.warning("TimedQueriesComponent main loop exited (self.running=False or cancelled)")
     
     async def _process_update(self):
         """Process one update cycle."""
         logger.info("TimedQueriesComponent: Starting update cycle")
         
         try:
+            # Record activity for health monitoring
+            self.activity_tracker.record_message("timed_queries/update")
+            
             # Fetch game data and resource prices
             master_data = await self.processor.fetch_game_data()
             
@@ -559,14 +663,20 @@ class TimedQueriesComponent:
             logger.info("TimedQueriesComponent: Update cycle complete")
             
         except Exception as e:
+            self.activity_tracker.record_error("timed_queries/update")
             logger.error(f"TimedQueriesComponent update cycle failed: {e}", exc_info=True)
     
     async def run_forever(self):
-        """Run the component indefinitely with auto-restart."""
+        """Run the component indefinitely with auto-restart.
+        
+        NOTE: GPPManager calls _run_loop() directly. This method exists only for
+        standalone use; _run_loop() already handles errors internally.
+        """
         while True:
             try:
-                await self.start()
-                await self._task  # Wait for task to complete
+                if not self.running:
+                    self.running = True
+                await self._run_loop()
             except asyncio.CancelledError:
                 logger.info("TimedQueriesComponent cancelled")
                 break
@@ -574,6 +684,5 @@ class TimedQueriesComponent:
                 logger.error(f"TimedQueriesComponent crashed ({e}) — restarting in 30s", exc_info=True)
             finally:
                 self.running = False
-                await self.stop()
             
             await asyncio.sleep(30)

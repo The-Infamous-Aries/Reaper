@@ -464,7 +464,7 @@ class HoldingsDB(BaseDB):
                 self._ensure_row(conn, nation_id, nation_name)
                 conn.execute(
                     "UPDATE nations SET "
-                    "money=COALESCE(money,0)+?, "
+                    "money=MAX(0, COALESCE(money,0)+?), "
                     "confidence=CASE WHEN confidence='seeded' THEN 'tracked' ELSE confidence END, "
                     "last_revenue_date=?, last_event_date=? WHERE id=?",
                     (money_delta, turn_date, turn_date, nation_id),
@@ -708,6 +708,70 @@ class HoldingsDB(BaseDB):
             return True
         except Exception as e:
             logger.error(f"apply_war_consumption({nation_id}): {e}", exc_info=True)
+            return False
+
+    async def apply_trade(
+        self,
+        buyer_id: int,
+        seller_id: int,
+        resource: str,
+        amount: float,
+        money: float,
+        event_date: Optional[str] = None,
+        buyer_name: Optional[str] = None,
+        seller_name: Optional[str] = None,
+    ) -> bool:
+        """
+        Update buyer and seller holdings for a completed trade.
+        
+        Buyer: gains resources, loses money
+        Seller: loses resources, gains money
+        
+        Args:
+            buyer_id: Nation ID of the buyer
+            seller_id: Nation ID of the seller
+            resource: Resource being traded (e.g., 'food', 'coal')
+            amount: Amount of resource traded
+            money: Money amount exchanged
+            event_date: Event date (ISO format)
+            buyer_name: Buyer nation name (for row creation if needed)
+            seller_name: Seller nation name (for row creation if needed)
+            
+        Returns:
+            True if successful, False otherwise
+        """
+        ev_date = event_date or self._now()
+        
+        def _work():
+            with self._conn() as conn:
+                # Ensure both nations exist in the table
+                self._ensure_row(conn, buyer_id, buyer_name)
+                self._ensure_row(conn, seller_id, seller_name)
+                
+                # Update buyer: add resources, subtract money
+                conn.execute(
+                    f"UPDATE nations SET {resource}=COALESCE({resource},0)+?, "
+                    "money=MAX(0, COALESCE(money,0)-?), "
+                    "last_event_date=? WHERE id=?",
+                    (amount, money, ev_date, buyer_id),
+                )
+                
+                # Update seller: subtract resources, add money
+                conn.execute(
+                    f"UPDATE nations SET {resource}=MAX(0, COALESCE({resource},0)-?), "
+                    "money=COALESCE(money,0)+?, "
+                    "last_event_date=? WHERE id=?",
+                    (amount, money, ev_date, seller_id),
+                )
+                
+                conn.commit()
+        
+        try:
+            await self._run_sync(_work)
+            logger.info(f"Trade applied: buyer={buyer_id} +{amount} {resource} -${money:.2f}, seller={seller_id} -{amount} {resource} +${money:.2f}")
+            return True
+        except Exception as e:
+            logger.error(f"apply_trade({buyer_id}, {seller_id}): {e}", exc_info=True)
             return False
 
     async def apply_combat_losses(

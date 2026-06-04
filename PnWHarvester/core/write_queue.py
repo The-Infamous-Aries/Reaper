@@ -321,8 +321,12 @@ class WriteQueue:
             self._stats.last_error_at = datetime.now(timezone.utc)
             self._stats.last_error_message = errors[-1]
         
-        async with self._lock:
-            self._stats.current_size = len(self._queue)
+        # Update current_size without acquiring self._lock here.
+        # _execute_flush is always called without holding self._lock
+        # (either from _flush_loop or from a create_task'd _flush_unlocked),
+        # but taking the lock would deadlock if a caller holds it while
+        # dispatching the flush task (e.g. enqueue's create_task path).
+        self._stats.current_size = len(self._queue)
         
         logger.info(
             f"Flushed {len(operations)} writes for {self._db_path} "

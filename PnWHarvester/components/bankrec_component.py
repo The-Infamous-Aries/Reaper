@@ -16,7 +16,10 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 import aiohttp
+import pnwkit
 from pnwkit.new import QueryKit
+
+from PnWHarvester.core.activity_tracker import ActivityTracker
 
 logger = logging.getLogger(__name__)
 
@@ -120,7 +123,7 @@ class BankrecEventProcessor:
         # Generate news event
         # nation loot news is handled by the war subscription - skip here
         if not is_nation_loot:
-            await self._generate_bankrec_news(bankrec, is_alliance_loot)
+            await self._generate_bankrec_news(bankrec, is_alliance_loot, bankrec_id=bankrec_id_int)
         
         self._mark_processed(bankrec_id_int)
         
@@ -181,7 +184,7 @@ class BankrecEventProcessor:
         
         logger.debug(f"Alliance loot added to nation {receiver_id}: money={money}, resources={resources}")
     
-    async def _generate_bankrec_news(self, bankrec: Dict[str, Any], is_alliance_loot: bool = False):
+    async def _generate_bankrec_news(self, bankrec: Dict[str, Any], is_alliance_loot: bool = False, bankrec_id: int = 0):
         """Generate news event for bank transfer."""
         if self.news_component:
             try:
@@ -200,7 +203,7 @@ class BankrecEventProcessor:
                     sender_name = bankrec.get("sender_name") or "alliance bank"
                     sender_id = int(bankrec.get("sender_id") or 0)
                     
-                    logger.info(f"bankrec/create → {bankrec_id} → Processing alliance loot: receiver={receiver_name} ({receiver_id}), sender={sender_name} ({sender_id})")
+                    logger.info(f"bankrec/create → {bankrec_id or bankrec.get('id')} → Processing alliance loot: receiver={receiver_name} ({receiver_id}), sender={sender_name} ({sender_id})")
                     
                     # Look up attacker's alliance info from database
                     att_alliance_id = None
@@ -218,7 +221,7 @@ class BankrecEventProcessor:
                             if row:
                                 att_alliance_id = row[0]
                                 att_alliance_name = row[1]
-                                logger.info(f"bankrec/create → {bankrec_id} → Attacker alliance: {att_alliance_name} ({att_alliance_id})")
+                                logger.info(f"bankrec/create → {bankrec_id or bankrec.get('id')} → Attacker alliance: {att_alliance_name} ({att_alliance_id})")
                         except Exception as e:
                             logger.warning(f"Failed to lookup attacker alliance: {e}")
                     
@@ -242,7 +245,7 @@ class BankrecEventProcessor:
                         except Exception as e:
                             logger.warning(f"Failed to get resource prices for alliance loot: {e}")
                     
-                    logger.info(f"bankrec/create → {bankrec_id} → Alliance loot value: ${total_value:,.2f} (money=${money:,.2f})")
+                    logger.info(f"bankrec/create → {bankrec_id or bankrec.get('id')} → Alliance loot value: ${total_value:,.2f} (money=${money:,.2f})")
                     
                     # Use record_loot_attack to generate proper news with loot table
                     # Treat alliance bank as "defender" with no nation
@@ -265,7 +268,7 @@ class BankrecEventProcessor:
                         improvements_destroyed=None,
                         infra_destroyed_value=0.0,
                     )
-                    logger.info(f"bankrec/create → {bankrec_id} → Alliance loot news generated")
+                    logger.info(f"bankrec/create → {bankrec_id or bankrec.get('id')} → Alliance loot news generated")
                     return
                 
                 # Use news_writer.record_bank_transfer for proper formatting with resource breakdown
@@ -312,6 +315,7 @@ class BankrecComponent:
         bankrecs_db,
         holdings_db=None,
         news_component=None,
+        websocket_manager=None,
         api_key: str = "",
     ):
         """
@@ -321,16 +325,26 @@ class BankrecComponent:
             bankrecs_db: BankrecsDB instance
             holdings_db: HoldingsDB instance (optional)
             news_component: NewsComponent instance (optional)
+            websocket_manager: SharedWebSocketManager instance (optional)
             api_key: PnW API v3 key
         """
         self.bankrecs_db = bankrecs_db
         self.holdings_db = holdings_db
         self.news_component = news_component
+        self.websocket_manager = websocket_manager
         self.api_key = api_key
-        self.kit = QueryKit(api_key)
+        
+        # Use shared websocket manager if provided, otherwise fallback to own QueryKit
+        if self.websocket_manager:
+            self.kit = None  # Will use shared manager's kit
+        else:
+            self.kit = QueryKit(api_key)
         
         # Sub-components
         self.bankrec_processor = BankrecEventProcessor(bankrecs_db, holdings_db, news_component)
+        
+        # Activity tracking for health monitoring
+        self.activity_tracker = ActivityTracker(max_silence_seconds=120.0)
         
         # Subscription state
         self.running = False
@@ -338,6 +352,8 @@ class BankrecComponent:
     
     async def initialize(self):
         """Initialize the component."""
+        # Register subscriptions for activity tracking
+        self.activity_tracker.register_subscription("bankrec/create")
         logger.info("BankrecComponent initialized")
     
     async def process_bankrec_create(self, event: Any) -> Dict[str, Any]:
@@ -352,12 +368,14 @@ class BankrecComponent:
             "bankrecs_db_path": self.bankrecs_db.db_path if self.bankrecs_db else None,
             "holdings_db_path": self.holdings_db.db_path if self.holdings_db else None,
             "running": self.running,
+            "activity": self.activity_tracker.to_dict(),
         }
     
     # ── WebSocket subscription listener ────────────────────────────────────────
     
     async def _listen_bankrec_creates(self):
         """Listen for bankrec/create events."""
+        subscription_name = "bankrec/create"
         try:
             subscription = await self.kit.subscribe("bankrec", "create")
             logger.info("bankrec/create subscription active")
@@ -366,12 +384,19 @@ class BankrecComponent:
                 if not self.running:
                     break
                 try:
+                    self.activity_tracker.record_message(subscription_name)
                     await self.process_bankrec_create(event)
                 except Exception as e:
+                    self.activity_tracker.record_error(subscription_name)
                     logger.error(f"Error processing bankrec/create event: {e}", exc_info=True)
         except asyncio.CancelledError:
             logger.info("bankrec/create listener cancelled")
+        except pnwkit.errors.SubscribeError as e:
+            self.activity_tracker.record_error(subscription_name)
+            logger.warning(f"bankrec/create subscription error: {e} — will restart")
+            raise
         except Exception as e:
+            self.activity_tracker.record_error(subscription_name)
             logger.error(f"bankrec/create listener error: {e}", exc_info=True)
             raise
     
@@ -382,19 +407,42 @@ class BankrecComponent:
         if self.running:
             logger.warning("BankrecComponent already running")
             return
-        
-        # Recreate QueryKit for fresh connection on each start
-        self.kit = QueryKit(self.api_key)
-        
+
         self.running = True
-        logger.info("Starting BankrecComponent subscription")
         
-        self._tasks = [
-            asyncio.create_task(self._listen_bankrec_creates()),
-        ]
-        
-        # Wait for the task to complete (disconnect/crash triggers restart)
-        await asyncio.gather(*self._tasks, return_exceptions=True)
+        # Use SharedWebSocketManager if available, otherwise use own QueryKit
+        if self.websocket_manager:
+            # Register subscription with shared manager
+            await self.websocket_manager.subscribe(
+                "bankrec", "create", {},
+                self.process_bankrec_create
+            )
+            logger.info("BankrecComponent started (using SharedWebSocketManager)")
+            
+            # Keep running until stopped
+            while self.running:
+                await asyncio.sleep(1)
+        else:
+            # Fallback to own QueryKit
+            self.kit = QueryKit(self.api_key)
+            logger.info("Starting BankrecComponent subscription")
+            
+            self._tasks = [
+                asyncio.create_task(self._listen_bankrec_creates()),
+            ]
+            
+            # Wait for the FIRST task to finish (any disconnect/crash triggers restart)
+            done, pending = await asyncio.wait(
+                self._tasks, return_when=asyncio.FIRST_COMPLETED
+            )
+            # Cancel all remaining listeners immediately
+            for t in pending:
+                t.cancel()
+            await asyncio.gather(*pending, return_exceptions=True)
+            # Re-raise the first exception
+            for t in done:
+                if t.exception():
+                    raise t.exception()
     
     async def stop(self):
         """Stop subscription."""
@@ -413,6 +461,7 @@ class BankrecComponent:
         retry_count = 0
         max_retry_delay = 300  # 5 minutes max
         base_delay = 10  # Start with 10 seconds
+        actual_delay = base_delay  # Ensure defined before first loop iteration
         
         while True:
             try:
@@ -422,7 +471,7 @@ class BankrecComponent:
             except asyncio.CancelledError:
                 logger.info("BankrecComponent cancelled")
                 break
-            except (aiohttp.ClientError, ConnectionResetError, OSError, ConnectionError) as e:
+            except (aiohttp.ClientError, ConnectionResetError, OSError, ConnectionError, pnwkit.errors.SubscribeError) as e:
                 retry_count += 1
                 # Exponential backoff with jitter
                 delay = min(base_delay * (2 ** min(retry_count - 1, 5)), max_retry_delay)
@@ -472,12 +521,15 @@ class BankrecComponent:
             # Close WebSocket connection if it exists
             if hasattr(socket, 'ws') and socket.ws and not socket.ws.closed:
                 await socket.ws.close()
-            # Close HTTP session if it exists
-            if hasattr(socket, 'session') and socket.session:
-                await socket.session.close()
         except Exception as e:
-            logger.debug(f"Error closing socket connection: {e}")
-            
+            logger.debug(f"Error closing WebSocket: {e}")
+
+        # Do NOT close kit.aiohttp_session here. pnwkit spawns untracked
+        # handle_socket_close() tasks that hold a reference to the session and
+        # call reconnect() on it. Closing the session races with those tasks
+        # causing RuntimeError('Session is closed'). The session will be
+        # garbage-collected harmlessly once those tasks finish.
+
         # Clear references
         self.kit.socket = None
         self.kit = None

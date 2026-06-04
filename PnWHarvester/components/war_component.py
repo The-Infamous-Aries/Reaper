@@ -19,7 +19,10 @@ from collections import deque, defaultdict
 from typing import Any, Dict, List, Optional
 
 import aiohttp
+import pnwkit
 from pnwkit.new import QueryKit
+
+from PnWHarvester.core.activity_tracker import ActivityTracker
 
 logger = logging.getLogger(__name__)
 
@@ -413,17 +416,22 @@ class HoldingsUpdater:
             return {"processed": False, "skipped": 1}
         
         # Extract losses - GlobalWars uses attcas1/defcas1 for soldiers, attcas2/defcas2 for tanks
+        # Keys must match MILITARY_COLS in holdings_db.py (plural forms)
         att_losses = {
-            "soldier": int(attack.get("attcas1") or 0),
-            "tank": int(attack.get("attcas2") or 0),
+            "soldiers": int(attack.get("attcas1") or 0),
+            "tanks": int(attack.get("attcas2") or 0),
             "aircraft": int(attack.get("att_aircraft_lost") or 0),  # These may not exist in GlobalWars
-            "ship": int(attack.get("att_ships_lost") or 0),        # These may not exist in GlobalWars
+            "ships": int(attack.get("att_ships_lost") or 0),        # These may not exist in GlobalWars
+            "missiles": int(attack.get("att_missiles_lost") or 0),
+            "nukes": int(attack.get("att_nukes_lost") or 0),
         }
         def_losses = {
-            "soldier": int(attack.get("defcas1") or 0),
-            "tank": int(attack.get("defcas2") or 0),
+            "soldiers": int(attack.get("defcas1") or 0),
+            "tanks": int(attack.get("defcas2") or 0),
             "aircraft": int(attack.get("def_aircraft_lost") or 0),  # These may not exist in GlobalWars
-            "ship": int(attack.get("def_ships_lost") or 0),        # These may not exist in GlobalWars
+            "ships": int(attack.get("def_ships_lost") or 0),        # These may not exist in GlobalWars
+            "missiles": int(attack.get("def_missiles_lost") or 0),
+            "nukes": int(attack.get("def_nukes_lost") or 0),
         }
         
         if not any(att_losses.values()) and not any(def_losses.values()):
@@ -445,13 +453,24 @@ class HoldingsUpdater:
         
         # Increment unit kills in GlobalNationsDB (enemy losses = our kills)
         if self.global_nations_db:
+            # Convert plural keys to singular for increment_unit_kills
+            _SINGULAR_MAP = {
+                "soldiers": "soldier",
+                "tanks": "tank",
+                "aircraft": "aircraft",
+                "ships": "ship",
+                "missiles": "missile",
+                "nukes": "nuke",
+                "spies": "spy",
+            }
+            
             # Attacker's kills = defender's losses
-            att_kills = {k: v for k, v in def_losses.items() if v > 0}
+            att_kills = {_SINGULAR_MAP.get(k, k): v for k, v in def_losses.items() if v > 0}
             if att_kills:
                 await self.global_nations_db.increment_unit_kills(int(war_att_id), att_kills)
             
             # Defender's kills = attacker's losses
-            def_kills = {k: v for k, v in att_losses.items() if v > 0}
+            def_kills = {_SINGULAR_MAP.get(k, k): v for k, v in att_losses.items() if v > 0}
             if def_kills:
                 await self.global_nations_db.increment_unit_kills(int(war_def_id), def_kills)
         
@@ -558,6 +577,7 @@ class WarComponent:
         holdings_db=None,
         global_nations_db=None,
         global_wars_db=None,
+        websocket_manager=None,
         api_key: str = "",
         news_component=None,
     ):
@@ -566,20 +586,27 @@ class WarComponent:
 
         Args:
             nw_db: IRSWarsDB instance
-            holdings_db: HoldingsDB instance (optional)
-            global_nations_db: GlobalNationsDB instance (optional)
-            global_wars_db: GlobalWarsDB instance (optional)
+            holdings_db: HoldingsDB instance
+            global_nations_db: GlobalNationsDB instance
+            global_wars_db: GlobalWarsDB instance
+            websocket_manager: SharedWebSocketManager instance
             api_key: PnW API v3 key
-            news_component: NewsComponent instance (optional)
+            news_component: NewsComponent instance
         """
         self.nw_db = nw_db
         self.holdings_db = holdings_db
         self.global_nations_db = global_nations_db
         self.global_wars_db = global_wars_db
+        self.websocket_manager = websocket_manager
         self.api_key = api_key
         self.news_component = news_component
-        self.kit = QueryKit(api_key)
-
+        
+        # Use shared websocket manager if provided, otherwise fallback to own QueryKit
+        if self.websocket_manager:
+            self.kit = None  # Will use shared manager's kit
+        else:
+            self.kit = QueryKit(api_key)
+        
         # Sub-components
         self.cache_manager = WarCacheManager()
         self.holdings_updater = HoldingsUpdater(holdings_db, global_nations_db)
@@ -593,13 +620,19 @@ class WarComponent:
             self.cache_manager, self.holdings_updater, nw_db, global_wars_db, self.war_news_generator
         )
         
+        # Activity tracking for health monitoring
+        self.activity_tracker = ActivityTracker(max_silence_seconds=120.0)
+        
         # Subscription state
         self.running = False
         self._tasks: list[asyncio.Task] = []
-        self._last_seen: Dict[str, float] = {}
     
     async def initialize(self):
         """Initialize the component."""
+        # Register subscriptions for activity tracking
+        self.activity_tracker.register_subscription("warattack/create")
+        self.activity_tracker.register_subscription("war/create")
+        self.activity_tracker.register_subscription("war/update")
         logger.info("WarComponent initialized")
     
     async def process_war_create(self, event: Any) -> Dict[str, Any]:
@@ -631,6 +664,7 @@ class WarComponent:
             "nw_db_path": self.nw_db.db_path if self.nw_db else None,
             "holdings_db_path": self.holdings_db.db_path if self.holdings_db else None,
             "running": self.running,
+            "activity": self.activity_tracker.to_dict(),
         }
     
     # ── WebSocket subscription listeners ───────────────────────────────────────
@@ -645,16 +679,19 @@ class WarComponent:
                 if not self.running:
                     break
                 try:
-                    self._last_seen["warattack/create"] = __import__("time").monotonic()
+                    self.activity_tracker.record_message("warattack/create")
                     await self.process_attack_create(attack)
                 except Exception as e:
+                    self.activity_tracker.record_error("warattack/create")
                     logger.error(f"warattack/create event error: {e}", exc_info=True)
         except asyncio.CancelledError:
             logger.info("warattack/create listener cancelled")
-        except (ConnectionResetError, OSError, aiohttp.ClientError) as e:
+        except (ConnectionResetError, OSError, aiohttp.ClientError, pnwkit.errors.SubscribeError) as e:
+            self.activity_tracker.record_error("warattack/create")
             logger.warning(f"warattack/create WebSocket disconnected: {e} — will restart")
             raise
         except Exception as e:
+            self.activity_tracker.record_error("warattack/create")
             logger.error(f"warattack/create subscription crashed: {e}", exc_info=True)
             raise
     
@@ -668,16 +705,19 @@ class WarComponent:
                 if not self.running:
                     break
                 try:
-                    self._last_seen["war/create"] = __import__("time").monotonic()
+                    self.activity_tracker.record_message("war/create")
                     await self.process_war_create(war)
                 except Exception as e:
+                    self.activity_tracker.record_error("war/create")
                     logger.error(f"war/create event error: {e}", exc_info=True)
         except asyncio.CancelledError:
             logger.info("war/create listener cancelled")
-        except (ConnectionResetError, OSError, aiohttp.ClientError) as e:
+        except (ConnectionResetError, OSError, aiohttp.ClientError, pnwkit.errors.SubscribeError) as e:
+            self.activity_tracker.record_error("war/create")
             logger.warning(f"war/create WebSocket disconnected: {e} — will restart")
             raise
         except Exception as e:
+            self.activity_tracker.record_error("war/create")
             logger.error(f"war/create subscription crashed: {e}", exc_info=True)
             raise
     
@@ -691,16 +731,19 @@ class WarComponent:
                 if not self.running:
                     break
                 try:
-                    self._last_seen["war/update"] = __import__("time").monotonic()
+                    self.activity_tracker.record_message("war/update")
                     await self.process_war_update(war)
                 except Exception as e:
+                    self.activity_tracker.record_error("war/update")
                     logger.error(f"war/update event error: {e}", exc_info=True)
         except asyncio.CancelledError:
             logger.info("war/update listener cancelled")
-        except (ConnectionResetError, OSError, aiohttp.ClientError) as e:
+        except (ConnectionResetError, OSError, aiohttp.ClientError, pnwkit.errors.SubscribeError) as e:
+            self.activity_tracker.record_error("war/update")
             logger.warning(f"war/update WebSocket disconnected: {e} — will restart")
             raise
         except Exception as e:
+            self.activity_tracker.record_error("war/update")
             logger.error(f"war/update subscription crashed: {e}", exc_info=True)
             raise
     
@@ -711,31 +754,52 @@ class WarComponent:
         if self.running:
             logger.warning("WarComponent already running")
             return
-        
-        # Recreate QueryKit for fresh connection on each start
-        self.kit = QueryKit(self.api_key)
-        
+
         self.running = True
-        logger.info("Starting WarComponent subscriptions")
         
-        self._tasks = [
-            asyncio.create_task(self._listen_war_attacks()),
-            asyncio.create_task(self._listen_war_creates()),
-            asyncio.create_task(self._listen_war_updates()),
-        ]
-        
-        # Wait for the FIRST task to finish (any disconnect/crash triggers restart)
-        done, pending = await asyncio.wait(
-            self._tasks, return_when=asyncio.FIRST_COMPLETED
-        )
-        # Cancel all remaining listeners immediately
-        for t in pending:
-            t.cancel()
-        await asyncio.gather(*pending, return_exceptions=True)
-        # Re-raise the first exception
-        for t in done:
-            if t.exception():
-                raise t.exception()
+        # Use SharedWebSocketManager if available, otherwise use own QueryKit
+        if self.websocket_manager:
+            # Register subscriptions with shared manager
+            await self.websocket_manager.subscribe(
+                "warattack", "create", {},
+                self.process_attack_create
+            )
+            await self.websocket_manager.subscribe(
+                "war", "create", {},
+                self.process_war_create
+            )
+            await self.websocket_manager.subscribe(
+                "war", "update", {},
+                self.process_war_update
+            )
+            logger.info("WarComponent started (using SharedWebSocketManager)")
+            
+            # Keep running until stopped
+            while self.running:
+                await asyncio.sleep(1)
+        else:
+            # Fallback to own QueryKit
+            self.kit = QueryKit(self.api_key)
+            logger.info("Starting WarComponent subscriptions")
+            
+            self._tasks = [
+                asyncio.create_task(self._listen_war_attacks()),
+                asyncio.create_task(self._listen_war_creates()),
+                asyncio.create_task(self._listen_war_updates()),
+            ]
+            
+            # Wait for the FIRST task to finish (any disconnect/crash triggers restart)
+            done, pending = await asyncio.wait(
+                self._tasks, return_when=asyncio.FIRST_COMPLETED
+            )
+            # Cancel all remaining listeners immediately
+            for t in pending:
+                t.cancel()
+            await asyncio.gather(*pending, return_exceptions=True)
+            # Re-raise the first exception
+            for t in done:
+                if t.exception():
+                    raise t.exception()
     
     async def stop(self):
         """Stop all subscriptions."""
@@ -754,6 +818,7 @@ class WarComponent:
         retry_count = 0
         max_retry_delay = 300  # 5 minutes max
         base_delay = 10  # Start with 10 seconds
+        actual_delay = base_delay  # Ensure defined before first loop iteration
         
         while True:
             try:
@@ -763,7 +828,7 @@ class WarComponent:
             except asyncio.CancelledError:
                 logger.info("WarComponent cancelled")
                 break
-            except (aiohttp.ClientError, ConnectionResetError, OSError, ConnectionError) as e:
+            except (aiohttp.ClientError, ConnectionResetError, OSError, ConnectionError, pnwkit.errors.SubscribeError) as e:
                 retry_count += 1
                 # Exponential backoff with jitter
                 delay = min(base_delay * (2 ** min(retry_count - 1, 5)), max_retry_delay)
@@ -813,12 +878,15 @@ class WarComponent:
             # Close WebSocket connection if it exists
             if hasattr(socket, 'ws') and socket.ws and not socket.ws.closed:
                 await socket.ws.close()
-            # Close HTTP session if it exists
-            if hasattr(socket, 'session') and socket.session:
-                await socket.session.close()
         except Exception as e:
-            logger.debug(f"Error closing socket connection: {e}")
-            
+            logger.debug(f"Error closing WebSocket: {e}")
+
+        # Do NOT close kit.aiohttp_session here. pnwkit spawns untracked
+        # handle_socket_close() tasks that hold a reference to the session and
+        # call reconnect() on it. Closing the session races with those tasks
+        # causing RuntimeError('Session is closed'). The session will be
+        # garbage-collected harmlessly once those tasks finish.
+
         # Clear references
         self.kit.socket = None
         self.kit = None

@@ -658,6 +658,93 @@ class GlobalNationsDB(BaseDB):
                 return False
         return await self._run_sync(_work)
 
+    async def update_nation_military(self, nation_id: int, military_data: Dict[str, int]) -> bool:
+        """
+        Update military units for a nation.
+        
+        Args:
+            nation_id: Nation ID
+            military_data: Dict with military unit counts (soldiers, tanks, aircraft, ships, missiles, nukes, spies)
+            
+        Returns:
+            True if successful, False otherwise
+        """
+        def _work():
+            try:
+                with self._get_connection() as conn:
+                    # Build UPDATE query for military units
+                    set_parts = []
+                    values = []
+                    
+                    military_cols = ["soldiers", "tanks", "aircraft", "ships", "missiles", "nukes", "spies"]
+                    
+                    for col in military_cols:
+                        if col in military_data:
+                            set_parts.append(f"{col} = ?")
+                            values.append(int(military_data[col]))
+                    
+                    if set_parts:
+                        values.append(nation_id)
+                        conn.execute(
+                            f"UPDATE nations SET {', '.join(set_parts)} WHERE id = ?",
+                            values
+                        )
+                        conn.commit()
+                        return True
+                    return False
+            except Exception as e:
+                logger.error(f"GlobalNationsDB.update_nation_military({nation_id}): {e}", exc_info=True)
+                return False
+        return await self._run_sync(_work)
+
+    async def update_alliance_info(
+        self,
+        alliance_id: int,
+        alliance_name: Optional[str] = None,
+        alliance_flag: Optional[str] = None,
+    ) -> bool:
+        """
+        Update alliance name/flag for all nations in the alliance.
+        Called when alliance/update event is received.
+        
+        Args:
+            alliance_id: Alliance ID
+            alliance_name: New alliance name (optional)
+            alliance_flag: New alliance flag URL (optional)
+            
+        Returns:
+            True if update succeeded
+        """
+        def _work():
+            try:
+                with self._get_connection() as conn:
+                    updates = []
+                    values = []
+                    
+                    if alliance_name:
+                        updates.append("alliance_name = ?")
+                        values.append(alliance_name)
+                    
+                    if alliance_flag:
+                        updates.append("alliance_flag = ?")
+                        values.append(alliance_flag)
+                    
+                    if updates:
+                        values.append(alliance_id)
+                        conn.execute(
+                            f"UPDATE nations SET {', '.join(updates)} WHERE alliance_id = ?",
+                            values
+                        )
+                        conn.commit()
+                        affected = conn.total_changes
+                        logger.info(f"Updated {affected} nations for alliance {alliance_id}")
+                        return True
+                    return False
+            except Exception as e:
+                logger.error(f"update_alliance_info({alliance_id}): {e}", exc_info=True)
+                return False
+        return await self._run_sync(_work)
+
     # ── Queries ───────────────────────────────────────────────────────────────
 
     async def get_nation(self, nation_id: int) -> Optional[Dict[str, Any]]:
@@ -762,6 +849,24 @@ class GlobalNationsDB(BaseDB):
             except Exception as e:
                 logger.error(f"get_nations_by_alliance({alliance_id}): {e}")
                 return []
+
+    async def get_alliance_flag(self, alliance_id: int) -> Optional[str]:
+        """Return alliance flag URL from GlobalNations.db for a given alliance_id."""
+        async with self._get_lock():
+            try:
+                with self._get_connection() as conn:
+                    row = conn.execute(
+                        "SELECT alliance_flag FROM nations "
+                        "WHERE alliance_id = ? AND alliance_flag IS NOT NULL AND alliance_flag != '' "
+                        "LIMIT 1",
+                        (alliance_id,)
+                    ).fetchone()
+                    if row:
+                        return row[0]
+                    return None
+            except Exception as e:
+                logger.error(f"get_alliance_flag({alliance_id}): {e}")
+                return None
 
     async def get_distinct_alliances(self, current: str = "") -> List[Dict[str, Any]]:
         """Return distinct (alliance_id, alliance_name) pairs for autocomplete dropdowns.

@@ -6,6 +6,7 @@ Components:
 - WarComponent: War and attack event processing
 - BankrecComponent: Bank record event processing
 - TradeComponent: Trade event processing (completed trades only)
+- TreatyComponent: Treaty create/update/delete event processing
 - RevenueComponent: Turn revenue processing
 - BeigeAlertComponent: Beige alert management
 - TimedQueriesComponent: Periodic data fetching (resource prices, game data, completed trades)
@@ -20,6 +21,7 @@ from .trade_component import TradeComponent
 from .revenue_component import RevenueComponent
 from .beige_alert_component import BeigeAlertComponent
 from .timed_queries_component import TimedQueriesComponent
+from .treaty_component import TreatyComponent
 
 __all__ = [
     "NationComponent",
@@ -28,6 +30,7 @@ __all__ = [
     "WarComponent",
     "BankrecComponent",
     "TradeComponent",
+    "TreatyComponent",
     "RevenueComponent",
     "BeigeAlertComponent",
     "TimedQueriesComponent",
