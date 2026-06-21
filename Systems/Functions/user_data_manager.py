@@ -624,7 +624,31 @@ class UserDataManager:
             
         # Ensure equipment structure
         equip = pet["equipment"]
-        
+
+        # ── Backfill missing set tags on reforged items (inventory + equipment) ──
+        # Reforged items created before the forge_api fix won't have a 'set' key.
+        # We patch them here on load so set-matching works correctly going forward.
+        try:
+            def _backfill_set_tag(item: dict) -> None:
+                if not isinstance(item, dict): return
+                if not item.get('reforged'): return
+                if item.get('set'): return  # already present, skip
+                canonical = self.file_manager.get_equipment_item(item.get('name', ''))
+                if canonical and canonical.get('set'):
+                    item['set'] = canonical['set']
+
+            for inv_item in pet.get('inventory', []):
+                _backfill_set_tag(inv_item)
+
+            for slot_val in equip.values():
+                if isinstance(slot_val, dict):
+                    _backfill_set_tag(slot_val)
+                elif isinstance(slot_val, list):
+                    for slot_item in slot_val:
+                        _backfill_set_tag(slot_item)
+        except Exception:
+            pass  # Never break migration due to set-tag backfill
+
         # Ensure List Slots (Gems, Monsters, Material)
         for list_slot in ["Gems", "Monsters", "Material"]:
             if list_slot in equip:

@@ -270,6 +270,22 @@ class IRSWarsDB:
         conn.execute("PRAGMA busy_timeout=10000")  # wait up to 10s if DB is locked
         return conn
 
+    def checkpoint(self) -> None:
+        """
+        Run a WAL TRUNCATE checkpoint to keep the WAL file small.
+        Called periodically by the harvester loop.
+        """
+        try:
+            with self._connect() as conn:
+                result = conn.execute("PRAGMA wal_checkpoint(TRUNCATE)").fetchone()
+                # result = (busy, log_pages, checkpointed_pages)
+                if result and result[0] == 0:
+                    logger.debug(f"IRSWarsDB checkpoint: {result[1]} pages checkpointed")
+                else:
+                    logger.debug(f"IRSWarsDB checkpoint (busy): {result}")
+        except Exception as e:
+            logger.warning(f"IRSWarsDB.checkpoint error: {e}")
+
     @staticmethod
     def _ensure_column(cursor: sqlite3.Cursor, table_name: str, column_name: str, column_type: str):
         cursor.execute(f"PRAGMA table_info({table_name})")
@@ -1230,3 +1246,39 @@ class IRSWarsDB:
             except Exception as e:
                 logger.error(f"Error bulk-fetching attacks for wars: {e}")
                 return {}
+
+    async def get_all_distinct_alliances(self, current: str = "") -> List[Dict[str, Any]]:
+        """Return distinct alliances (id + name) from ALL wars in the DB.
+
+        Used by autocomplete to let users pick an alliance as team1.
+        Optionally filters by *current* (case-insensitive substring match on name).
+        """
+        async with self._lock:
+            try:
+                with self._connect() as conn:
+                    cursor = conn.cursor()
+                    cursor.execute(
+                        '''
+                        SELECT DISTINCT att_alliance_id, att_alliance_name
+                        FROM wars
+                        WHERE att_alliance_id IS NOT NULL AND att_alliance_id != 0
+                        UNION
+                        SELECT DISTINCT def_alliance_id, def_alliance_name
+                        FROM wars
+                        WHERE def_alliance_id IS NOT NULL AND def_alliance_id != 0
+                        ORDER BY 2
+                        '''
+                    )
+                    rows = cursor.fetchall()
+                    seen: dict[int, str] = {}
+                    for aid, name in rows:
+                        if aid not in seen or (not seen[aid] and name):
+                            seen[aid] = name or ''
+                    results = [{'alliance_id': aid, 'alliance_name': name} for aid, name in seen.items()]
+                    if current:
+                        low = current.lower()
+                        results = [r for r in results if low in (r['alliance_name'] or '').lower() or low in str(r['alliance_id'])]
+                    return results
+            except Exception as e:
+                logger.error(f"Error getting distinct alliances: {e}")
+                return []

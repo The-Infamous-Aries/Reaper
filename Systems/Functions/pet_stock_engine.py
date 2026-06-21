@@ -2,14 +2,14 @@
 Pet Stock Engine
 Manages a simulated stock market for Pet Tokens, priced in Pet XP.
 Tokens are grouped by Pet Type (Land, Swimming, Flying) and Element.
-Prices update every 15 minutes with randomness, buy/sell pressure, and market events.
+Prices update every 2 hours with mild drift, buy/sell pressure, and market events.
 
 Market Dynamics:
-- Random drift: Elements ±20%, Types ±12% per tick
-- Momentum spikes: 10% chance of extra ±12% volatility
-- Circulation pressure: More tokens held → price rises
-- Trade pressure: Recent buys push up, sells push down
-- Events: Holiday (100% when active), Major (75% chance), Minor (85% chance)
+- Random drift: Elements ±0.6%, Types ±0.3% per tick
+- Momentum spikes: 5% chance of extra ±3% volatility
+- Circulation pressure: Millions of tokens needed for any meaningful effect
+- Trade pressure: Recent buys push up, sells push down (minimal effect)
+- Events: Holiday (100% when active), Major (40% chance), Minor (50% chance)
 
 XP Transactions:
 - Buying: Deducts XP from pet (may cause level-down)
@@ -73,11 +73,11 @@ BASE_PRICES: Dict[str, int] = {
 }
 
 # Per-token drift scale: types move at ~half the speed of elements
-# Applied as a multiplier on the random drift and pressure components
+# Greatly reduced — prices are much more stable now with 2-hour ticks
 DRIFT_SCALE: Dict[str, float] = {
-    "land": 0.6, "swimming": 0.6, "flying": 0.6,
-    # Elements all at full scale
-    **{e: 1.0 for e in [
+    "land": 0.015, "swimming": 0.015, "flying": 0.015,
+    # Elements slightly more volatile than types
+    **{e: 0.03 for e in [
         "basic", "fire", "water", "electric", "ice",
         "plant", "rock", "air", "magic", "holy", "necro", "psychic", "fighting",
     ]},
@@ -87,11 +87,11 @@ DRIFT_SCALE: Dict[str, float] = {
 PRICE_MIN = 1.0
 PRICE_MAX = 50_000_000.0
 
-# Update interval in seconds (15 minutes)
-UPDATE_INTERVAL = 900
+# Update interval in seconds (2 hours)
+UPDATE_INTERVAL = 7200
 
-# Max history entries kept per token (15-min ticks: 4/hr × 24hr × 7days = 672)
-MAX_HISTORY = 672
+# Max history entries kept per token (2-hour ticks: 12/day × 14days = 168)
+MAX_HISTORY = 168
 
 # ── Event weight tables ───────────────────────────────────────────────────────
 
@@ -729,8 +729,8 @@ async def _get_or_set_day_major(db: aiosqlite.Connection, now: datetime) -> Opti
 
     Rules:
     - Holidays are handled separately in _get_holiday_event — NOT here.
-    - 85% of days have a major event (up from 67% for more market activity)
-    - Each tick has a 75% chance to trigger the major event application (up from 33%)
+    - 85% of days have a major event
+    - Each tick has a 40% chance to trigger the major event application
     - The day's major event is decided once (random pick + random 2-8 hr window)
     - If no major event was scheduled for today, returns None.
     - Returns the event dict only when the current hour is inside its window.
@@ -746,7 +746,7 @@ async def _get_or_set_day_major(db: aiosqlite.Connection, now: datetime) -> Opti
         row = await cur.fetchone()
 
     if row is None:
-        # First tick of the day — 85% chance a major event is scheduled today
+        # First tick of the day — 85% chance a major event is scheduled
         if random.random() < 0.15:
             # No major event today — store sentinel
             await db.execute(
@@ -788,26 +788,26 @@ async def _get_or_set_day_major(db: aiosqlite.Connection, now: datetime) -> Opti
 
 async def run_price_update():
     """
-    15-minute price update — real stock market behaviour:
+    2-hour price update — stable market behaviour:
 
       1.  Load current prices
-      2.  Fetch buy/sell pressure from last 15 min (actual trade volume)
+      2.  Fetch buy/sell pressure from last 2 hours (actual trade volume)
       3.  Fetch total circulation per token (all held quantities)
-      4.  Apply random drift  (elements ±20%, types ±12%)
-      5.  Apply circulation pressure  (more held = price up, less = price down)
-      6.  Apply buy/sell pressure from recent trades
+      4.  Apply random drift  (elements ±0.6%, types ±0.3%)
+      5.  Apply circulation pressure  (millions needed for any notable effect)
+      6.  Apply buy/sell pressure from recent trades (minimal impact)
       7.  Apply HOLIDAY event every tick it is active (100% chance, all day)
-      8.  Apply non-holiday MAJOR event on 75% of ticks while its window is active (2-8 hour windows)
-      9.  Apply MINOR event on 85% of ticks (almost always fires for constant market movement)
-      10. Hard-clamp [0.01, 999_999_999]
+      8.  Apply non-holiday MAJOR event on 40% of ticks while its window is active
+      9.  Apply MINOR event on 50% of ticks
+      10. Hard-clamp [1.0, 50_000_000]
       11. Persist + log
       
     Event Frequency:
-    - Major events: 85% of days have one (up from 67%)
-    - Major event windows: 2-8 hours (up from 1-6 hours)
-    - Major event application: 75% chance per tick (up from 33%)
-    - Minor event application: 85% chance per tick (up from 50%)
-    - Result: Much more dynamic market with frequent price movements
+    - Major events: 85% of days have one
+    - Major event windows: 2-8 hours
+    - Major event application: 40% chance per tick
+    - Minor event application: 50% chance per tick
+    - Result: Stable background with occasional event-driven movement
     """
     try:
         async with aiosqlite.connect(DB_FILE) as db:
@@ -831,10 +831,10 @@ async def run_price_update():
                 if t not in prices:
                     prices[t] = float(BASE_PRICES[t])
 
-            # ── 2. Buy/sell pressure (trade volume last 15 min) ───────────────
+            # ── 2. Buy/sell pressure (trade volume last 2 hours) ──────────────
             async with db.execute("""
                 SELECT token, SUM(price) AS total FROM pet_stock_prices
-                WHERE timestamp >= datetime('now', '-15 minutes')
+                WHERE timestamp >= datetime('now', '-2 hours')
                   AND (token LIKE '__buy__%' OR token LIKE '__sell__%')
                 GROUP BY token
             """) as cur:
@@ -866,35 +866,35 @@ async def run_price_update():
                 scale   = DRIFT_SCALE.get(token, 1.0)
                 base    = float(BASE_PRICES.get(token, 500))
 
-                # Random drift: elements ±20%, types ±12%
+                # Random drift: elements ±0.6%, types ±0.3%
                 max_drift = 0.20 * scale
                 drift     = random.uniform(-max_drift, max_drift)
 
-                # Momentum spike: 10% chance of extra ±12%
-                if random.random() < 0.10:
-                    drift += random.uniform(-0.12, 0.12) * scale
+                # Momentum spike: 5% chance of extra ±3%
+                if random.random() < 0.05:
+                    drift += random.uniform(-0.03, 0.03)
 
-                # Circulation pressure: tokens in circulation vs base reference (500/250)
-                # More tokens held → price rises; fewer → price drifts back toward base
+                # Circulation pressure: tokens in circulation vs base reference
+                # Neutral circulation is set very high (100k+), so individual users
+                # need millions-billions of collective holdings to move the needle.
                 circ       = circulation.get(token, 0)
-                circ_ref   = base * 2.0          # "neutral" circulation level
+                circ_ref   = max(base * 100, 100000.0)
                 circ_delta = (circ - circ_ref) / max(circ_ref, 1.0)
-                # Cap circulation effect at ±15% per tick
-                circ_effect = max(-0.15, min(0.15, circ_delta * 0.05)) * scale
+                # Cap circulation effect at ±2% per tick
+                circ_effect = max(-0.02, min(0.02, circ_delta * 0.0005))
 
                 # Trade pressure: recent buys push up, recent sells push down
                 bp              = buy_pressure.get(token, 0)
                 sp              = sell_pressure.get(token, 0)
                 net_volume      = bp - sp
-                # Normalise against current price so large prices don't dominate
-                trade_effect    = (net_volume * 0.004 / max(1.0, current)) * scale
+                # Normalise against current price; minimal impact per trade
+                trade_effect    = net_volume * 0.00001 / max(1.0, current)
+                trade_effect    = max(-0.01, min(0.01, trade_effect))
 
-                # Mean-reversion: prevents complete bottom-outs and runaway tops.
-                # Uses log-ratio so the pull is proportional to how far off base we are.
-                # At 1/10th of base → ~+23% pull; at 10x base → ~-23% pull.
-                # Scaled down to ±8% max per tick so it doesn't override real moves.
+                # Mean-reversion: gentle pull back toward base price
+                # Very weak — only noticeable when price is many multiples from base
                 log_ratio = math.log(max(0.0001, current) / max(0.0001, base))
-                reversion = max(-0.08, min(0.08, -log_ratio * 0.08))
+                reversion = max(-0.02, min(0.02, -log_ratio * 0.03))
 
                 prices[token] = current * (1.0 + drift + circ_effect + trade_effect + reversion)
 
@@ -905,17 +905,17 @@ async def run_price_update():
                 prices, holiday_desc = _apply_event(prices, holiday)
                 logger.info(f"Applied holiday event: {holiday['name']}")
 
-            # ── 8. Non-holiday Major event — 75% chance per tick while active ─
+            # ── 8. Non-holiday Major event — 40% chance per tick while active ─
             major      = await _get_or_set_day_major(db, now)
             major_desc: Optional[str] = None
-            if major is not None and random.random() < 0.75:
+            if major is not None and random.random() < 0.40:
                 prices, major_desc = _apply_event(prices, major)
                 logger.info(f"Applied major event: {major['name']}")
 
-            # ── 9. Minor event — 85% chance (almost always fires) ────────────
+            # ── 9. Minor event — 50% chance ──────────────────────────────────
             minor      = random.choices(_MINOR_EVENTS, weights=_MINOR_WEIGHTS, k=1)[0]
             minor_desc: Optional[str] = None
-            if random.random() < 0.85:
+            if random.random() < 0.50:
                 prices, minor_desc = _apply_event(prices, minor)
 
             # ── 10. Hard clamp ────────────────────────────────────────────────
@@ -975,7 +975,7 @@ run_hourly_update = run_price_update
 
 
 async def start_stock_loop():
-    """Background task: run price update every 15 minutes."""
+    """Background task: run price update every 2 hours."""
     prices = await get_latest_prices()
     if not prices or all(prices.get(t) == BASE_PRICES.get(t) for t in PET_TYPES):
         await run_price_update()

@@ -133,12 +133,170 @@ class PetsDatabase:
                 END;
             ''')
 
+            # Create user_settings table for persistent user preferences
+            await db.execute('''
+                CREATE TABLE IF NOT EXISTS user_settings (
+                    user_id TEXT PRIMARY KEY,
+                    linked_nation_id INTEGER,
+                    linked_nation_name TEXT,
+                    linked_alliance_id INTEGER,
+                    linked_alliance_name TEXT,
+                    theme_bg_color TEXT DEFAULT '#0a0a0a',
+                    theme_bg_secondary TEXT DEFAULT '#0f0f0f',
+                    theme_bg_tertiary TEXT DEFAULT '#141414',
+                    theme_gold_primary TEXT DEFAULT '#ffd700',
+                    theme_gold_secondary TEXT DEFAULT '#ffed4e',
+                    theme_text_primary TEXT DEFAULT '#f0f0f0',
+                    theme_text_secondary TEXT DEFAULT '#b9bbbe',
+                    theme_use_custom_image INTEGER DEFAULT 0,
+                    theme_custom_image_url TEXT,
+                    auto_fill_nations TEXT,
+                    auto_fill_alliances TEXT,
+                    auto_fill_nation_raids INTEGER DEFAULT 0,
+                    auto_fill_nation_revopt INTEGER DEFAULT 0,
+                    auto_fill_nation_calc INTEGER DEFAULT 0,
+                    revopt_default_infra REAL,
+                    revopt_default_land REAL,
+                    revopt_default_mmr TEXT DEFAULT '0/3/5/0',
+                    auto_fill_alliances_raids_exclude TEXT,
+                    auto_fill_alliances_compare_home TEXT,
+                    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+                )
+            ''')
+            await db.execute('''
+                CREATE TRIGGER IF NOT EXISTS trg_user_settings_updated_at
+                AFTER UPDATE ON user_settings
+                FOR EACH ROW
+                BEGIN
+                    UPDATE user_settings SET updated_at = CURRENT_TIMESTAMP WHERE user_id = OLD.user_id;
+                END;
+            ''')
+
             # Create indexes for better performance
             await db.execute('CREATE INDEX IF NOT EXISTS idx_user_id ON pets(user_id)')
             await db.execute('CREATE INDEX IF NOT EXISTS idx_users_user_id ON users(user_id)')
             await db.execute('CREATE INDEX IF NOT EXISTS idx_relationships_user_id ON user_relationships(user_id)')
             await db.execute('CREATE INDEX IF NOT EXISTS idx_relationships_target_user_id ON user_relationships(target_user_id)')
             
+            await db.execute('CREATE INDEX IF NOT EXISTS idx_settings_user_id ON user_settings(user_id)')
+            
+            # Migration: Add new auto-fill columns if they don't exist
+            try:
+                cursor = await db.execute("PRAGMA table_info(user_settings)")
+                columns = await cursor.fetchall()
+                column_names = [col[1] for col in columns]
+                
+                if 'auto_fill_nation_raids' not in column_names:
+                    await db.execute('ALTER TABLE user_settings ADD COLUMN auto_fill_nation_raids INTEGER DEFAULT 0')
+                    logger.info("Added auto_fill_nation_raids column to user_settings")
+                
+                if 'auto_fill_nation_revopt' not in column_names:
+                    await db.execute('ALTER TABLE user_settings ADD COLUMN auto_fill_nation_revopt INTEGER DEFAULT 0')
+                    logger.info("Added auto_fill_nation_revopt column to user_settings")
+                
+                if 'auto_fill_nation_calc' not in column_names:
+                    await db.execute('ALTER TABLE user_settings ADD COLUMN auto_fill_nation_calc INTEGER DEFAULT 0')
+                    logger.info("Added auto_fill_nation_calc column to user_settings")
+
+                if 'revopt_default_infra' not in column_names:
+                    await db.execute('ALTER TABLE user_settings ADD COLUMN revopt_default_infra REAL')
+                    logger.info("Added revopt_default_infra column to user_settings")
+
+                if 'revopt_default_land' not in column_names:
+                    await db.execute('ALTER TABLE user_settings ADD COLUMN revopt_default_land REAL')
+                    logger.info("Added revopt_default_land column to user_settings")
+
+                if 'revopt_default_mmr' not in column_names:
+                    await db.execute("ALTER TABLE user_settings ADD COLUMN revopt_default_mmr TEXT DEFAULT '0/3/5/0'")
+                    logger.info("Added revopt_default_mmr column to user_settings")
+                
+                if 'auto_fill_alliances_raids_exclude' not in column_names:
+                    await db.execute('ALTER TABLE user_settings ADD COLUMN auto_fill_alliances_raids_exclude TEXT')
+                    logger.info("Added auto_fill_alliances_raids_exclude column to user_settings")
+                
+                if 'auto_fill_alliances_compare_home' not in column_names:
+                    await db.execute('ALTER TABLE user_settings ADD COLUMN auto_fill_alliances_compare_home TEXT')
+                    logger.info("Added auto_fill_alliances_compare_home column to user_settings")
+
+                if 'linked_nation_leader' not in column_names:
+                    await db.execute('ALTER TABLE user_settings ADD COLUMN linked_nation_leader TEXT')
+                    logger.info("Added linked_nation_leader column to user_settings")
+
+                if 'linked_nation_flag' not in column_names:
+                    await db.execute('ALTER TABLE user_settings ADD COLUMN linked_nation_flag TEXT')
+                    logger.info("Added linked_nation_flag column to user_settings")
+
+                if 'theme_hide_bg_image' not in column_names:
+                    await db.execute('ALTER TABLE user_settings ADD COLUMN theme_hide_bg_image INTEGER DEFAULT 0')
+                    logger.info("Added theme_hide_bg_image column to user_settings")
+
+                if 'theme_custom_bg_url' not in column_names:
+                    await db.execute('ALTER TABLE user_settings ADD COLUMN theme_custom_bg_url TEXT')
+                    logger.info("Added theme_custom_bg_url column to user_settings")
+
+                # ── Plan additions (watch alliance, privacy toggles, language) ──
+                if 'watch_home_alliance_id' not in column_names:
+                    await db.execute('ALTER TABLE user_settings ADD COLUMN watch_home_alliance_id INTEGER')
+                    logger.info("Added watch_home_alliance_id column to user_settings")
+
+                if 'watch_home_alliance_name' not in column_names:
+                    await db.execute('ALTER TABLE user_settings ADD COLUMN watch_home_alliance_name TEXT')
+                    logger.info("Added watch_home_alliance_name column to user_settings")
+
+                # Privacy toggles — default 1 = public (visible), 0 = hidden
+                # Aggregate totals always include the user regardless of these flags.
+                if 'privacy_show_pet_leaderboard' not in column_names:
+                    await db.execute('ALTER TABLE user_settings ADD COLUMN privacy_show_pet_leaderboard INTEGER DEFAULT 1')
+                    logger.info("Added privacy_show_pet_leaderboard column to user_settings")
+
+                if 'privacy_show_nations_leaderboard' not in column_names:
+                    await db.execute('ALTER TABLE user_settings ADD COLUMN privacy_show_nations_leaderboard INTEGER DEFAULT 1')
+                    logger.info("Added privacy_show_nations_leaderboard column to user_settings")
+
+                if 'privacy_show_watch_nations' not in column_names:
+                    await db.execute('ALTER TABLE user_settings ADD COLUMN privacy_show_watch_nations INTEGER DEFAULT 1')
+                    logger.info("Added privacy_show_watch_nations column to user_settings")
+
+                if 'privacy_show_nations_rankings' not in column_names:
+                    await db.execute('ALTER TABLE user_settings ADD COLUMN privacy_show_nations_rankings INTEGER DEFAULT 1')
+                    logger.info("Added privacy_show_nations_rankings column to user_settings")
+
+                # Language / locale preference
+                if 'language' not in column_names:
+                    await db.execute("ALTER TABLE user_settings ADD COLUMN language VARCHAR(5) DEFAULT 'en'")
+                    logger.info("Added language column to user_settings")
+
+                # Menu layout customization (JSON string)
+                if 'menu_layout' not in column_names:
+                    await db.execute('ALTER TABLE user_settings ADD COLUMN menu_layout TEXT')
+                    logger.info("Added menu_layout column to user_settings")
+
+                # Audit defaults
+                if 'audit_default_color' not in column_names:
+                    await db.execute("ALTER TABLE user_settings ADD COLUMN audit_default_color TEXT DEFAULT 'lime'")
+                    logger.info("Added audit_default_color column to user_settings")
+
+                if 'audit_default_mmr' not in column_names:
+                    await db.execute("ALTER TABLE user_settings ADD COLUMN audit_default_mmr TEXT DEFAULT 'basic'")
+                    logger.info("Added audit_default_mmr column to user_settings")
+
+                # Home alliance page toggles
+                if 'home_alliance_nations' not in column_names:
+                    await db.execute('ALTER TABLE user_settings ADD COLUMN home_alliance_nations INTEGER DEFAULT 0')
+                    logger.info("Added home_alliance_nations column to user_settings")
+                if 'home_alliance_compare' not in column_names:
+                    await db.execute('ALTER TABLE user_settings ADD COLUMN home_alliance_compare INTEGER DEFAULT 0')
+                    logger.info("Added home_alliance_compare column to user_settings")
+                if 'home_alliance_destroy' not in column_names:
+                    await db.execute('ALTER TABLE user_settings ADD COLUMN home_alliance_destroy INTEGER DEFAULT 0')
+                    logger.info("Added home_alliance_destroy column to user_settings")
+                if 'home_alliance_spywipe' not in column_names:
+                    await db.execute('ALTER TABLE user_settings ADD COLUMN home_alliance_spywipe INTEGER DEFAULT 0')
+                    logger.info("Added home_alliance_spywipe column to user_settings")
+
+            except Exception as e:
+                logger.error(f"Error migrating user_settings table: {e}")
             # Migration: Handle existing databases that might have 'updated_at' column in users table
             # Check if 'updated_at' column exists and migrate to 'last_updated'
             try:
@@ -783,6 +941,120 @@ class PetsDatabase:
         except Exception as e:
             logger.error(f"bazaar_cancel_listing error: {e}", exc_info=True)
             return {"ok": False, "error": "Internal server error"}
+
+    async def get_user_settings(self, user_id: str) -> Dict[str, Any]:
+        """Get user settings from database."""
+        try:
+            await self._ensure_initialized()
+            async with self._lock:
+                async with aiosqlite.connect(self.db_path) as db:
+                    db.row_factory = aiosqlite.Row
+                    async with db.execute('''
+                        SELECT * FROM user_settings WHERE user_id = ?
+                    ''', (str(user_id),)) as cursor:
+                        row = await cursor.fetchone()
+                        if row:
+                            return dict(row)
+                        else:
+                            # Return default settings
+                            return {
+                                "user_id": str(user_id),
+                                "linked_nation_id": None,
+                                "linked_nation_name": None,
+                                "linked_alliance_id": None,
+                                "linked_alliance_name": None,
+                                "theme_bg_color": "#0a0a0a",
+                                "theme_bg_secondary": "#0f0f0f",
+                                "theme_bg_tertiary": "#141414",
+                                "theme_gold_primary": "#ffd700",
+                                "theme_gold_secondary": "#ffed4e",
+                                "theme_text_primary": "#f0f0f0",
+                                "theme_text_secondary": "#b9bbbe",
+                                "theme_use_custom_image": 0,
+                                "theme_custom_image_url": None,
+                                "theme_custom_bg_url": None,
+                                "theme_hide_bg_image": 0,
+                                "auto_fill_nations": "[]",
+                                "auto_fill_alliances": "[]",
+                                "auto_fill_nation_raids": 0,
+                                "auto_fill_nation_revopt": 0,
+                                "auto_fill_nation_calc": 0,
+                                "revopt_default_infra": None,
+                                "revopt_default_land": None,
+                                "revopt_default_mmr": "0/3/5/0",
+                                "auto_fill_alliances_raids_exclude": "[]",
+                                "auto_fill_alliances_compare_home": "[]",
+                            }
+        except Exception as e:
+            logger.error(f"Error getting user settings for {user_id}: {e}")
+            return {}
+
+    async def update_user_settings(self, user_id: str, settings: Dict[str, Any]) -> bool:
+        """Update user settings in database."""
+        try:
+            await self._ensure_initialized()
+            async with self._lock:
+                async with aiosqlite.connect(self.db_path) as db:
+                    # Filter out read-only / meta columns from the incoming dict
+                    safe = {k: v for k, v in settings.items()
+                            if k not in ("user_id", "created_at", "updated_at")}
+
+                    if not safe:
+                        return True
+
+                    # Build UPDATE clause
+                    set_clause = ", ".join(f"{k} = ?" for k in safe)
+                    update_values = list(safe.values()) + [str(user_id)]
+
+                    await db.execute(
+                        f"UPDATE user_settings SET {set_clause}, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?",
+                        update_values,
+                    )
+
+                    # Check whether any row was touched
+                    cursor = await db.execute("SELECT changes()")
+                    changes = (await cursor.fetchone())[0]
+
+                    if changes == 0:
+                        # Row doesn't exist yet — insert with defaults then apply our values
+                        # Use INSERT OR IGNORE to create the row with defaults first
+                        await db.execute(
+                            "INSERT OR IGNORE INTO user_settings (user_id) VALUES (?)",
+                            (str(user_id),),
+                        )
+                        # Now update the newly-created (or pre-existing) row
+                        await db.execute(
+                            f"UPDATE user_settings SET {set_clause}, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?",
+                            update_values,
+                        )
+
+                    await db.commit()
+                    logger.debug(f"User settings updated for {user_id}")
+                    return True
+        except Exception as e:
+            logger.error(f"Error updating user settings for {user_id}: {e}")
+            return False
+
+    async def delete_user_settings(self, user_id: str) -> bool:
+        """Delete user settings from database."""
+        try:
+            await self._ensure_initialized()
+            async with self._lock:
+                async with aiosqlite.connect(self.db_path) as db:
+                    cursor = await db.execute('''
+                        DELETE FROM user_settings WHERE user_id = ?
+                    ''', (str(user_id),))
+                    await db.commit()
+                    
+                    if cursor.rowcount > 0:
+                        logger.debug(f"User settings deleted for {user_id}")
+                        return True
+                    else:
+                        logger.debug(f"No user settings found to delete for {user_id}")
+                        return False
+        except Exception as e:
+            logger.error(f"Error deleting user settings for {user_id}: {e}")
+            return False
 
 
 # Global instance

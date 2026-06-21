@@ -2,13 +2,13 @@
 Pet Stock Market Events — Tiered System
 ========================================
 MAJOR EVENTS  (tier="major")
-  - Holidays: fire every hour on their calendar date (month, day).
+  - Holidays: fire every tick on their calendar date (month, day).
   - Themed Major: fire once at the start of a random non-holiday day and
     persist all 24 hours of that day.
-  Both types stack with a Minor event each hour for compounding drama.
+  Both types stack with a Minor event each tick for compounding drama.
 
 MINOR EVENTS  (tier="minor")
-  - Fire every hour regardless.
+  - Fire each tick regardless.
   - On a Major day they stack ON TOP of the Major, amplifying the move.
 
 Each element and each type appears in roughly equal numbers of dedicated events.

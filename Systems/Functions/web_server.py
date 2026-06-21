@@ -26,11 +26,163 @@ from fastapi.responses import (FileResponse, HTMLResponse, JSONResponse,
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.sessions import SessionMiddleware
+import aiosqlite
+import json
+import time
+from starlette.datastructures import MutableHeaders
+from starlette.types import ASGIApp, Message, Receive, Scope, Send
 from pydantic import BaseModel
 
 # Add project root to path to allow for clean imports
 project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, project_root)
+
+# Persistent Session Storage Middleware
+class PersistentSessionMiddleware:
+    """
+    Database-backed session middleware that persists sessions across bot restarts.
+    Sessions are stored in SQLite and survive server restarts.
+    """
+    def __init__(self, app: ASGIApp, secret_key: str, session_cookie: str = "session",
+                 max_age: int = 2592000, same_site: str = "lax", https_only: bool = False,
+                 db_path: str = "Databases/sessions.db"):
+        self.app = app
+        self.secret_key = secret_key
+        self.session_cookie = session_cookie
+        self.max_age = max_age
+        self.same_site = same_site
+        self.https_only = https_only
+        self.db_path = db_path
+        self._init_task = None
+        
+    async def _init_db(self):
+        """Initialize the sessions database table."""
+        async with aiosqlite.connect(self.db_path) as db:
+            await db.execute("""
+                CREATE TABLE IF NOT EXISTS sessions (
+                    session_id TEXT PRIMARY KEY,
+                    data TEXT NOT NULL,
+                    created_at INTEGER NOT NULL,
+                    updated_at INTEGER NOT NULL,
+                    expires_at INTEGER NOT NULL
+                )
+            """)
+            await db.execute("""
+                CREATE INDEX IF NOT EXISTS idx_sessions_expires 
+                ON sessions(expires_at)
+            """)
+            await db.commit()
+            
+    async def _load_session(self, session_id: str) -> dict:
+        """Load session data from database."""
+        async with aiosqlite.connect(self.db_path) as db:
+            async with db.execute(
+                "SELECT data, expires_at FROM sessions WHERE session_id = ?",
+                (session_id,)
+            ) as cursor:
+                row = await cursor.fetchone()
+                if row:
+                    data_json, expires_at = row
+                    # Check if session has expired
+                    if expires_at > int(time.time()):
+                        return json.loads(data_json)
+                    else:
+                        # Clean up expired session
+                        await db.execute("DELETE FROM sessions WHERE session_id = ?", (session_id,))
+                        await db.commit()
+        return {}
+        
+    async def _save_session(self, session_id: str, data: dict):
+        """Save session data to database."""
+        now = int(time.time())
+        expires_at = now + self.max_age
+        data_json = json.dumps(data)
+        
+        async with aiosqlite.connect(self.db_path) as db:
+            await db.execute("""
+                INSERT INTO sessions (session_id, data, created_at, updated_at, expires_at)
+                VALUES (?, ?, ?, ?, ?)
+                ON CONFLICT(session_id) DO UPDATE SET
+                    data = excluded.data,
+                    updated_at = excluded.updated_at,
+                    expires_at = excluded.expires_at
+            """, (session_id, data_json, now, now, expires_at))
+            await db.commit()
+            
+    async def _delete_session(self, session_id: str):
+        """Delete session from database."""
+        async with aiosqlite.connect(self.db_path) as db:
+            await db.execute("DELETE FROM sessions WHERE session_id = ?", (session_id,))
+            await db.commit()
+            
+    async def _cleanup_expired_sessions(self):
+        """Remove expired sessions from database."""
+        async with aiosqlite.connect(self.db_path) as db:
+            await db.execute("DELETE FROM sessions WHERE expires_at < ?", (int(time.time()),))
+            await db.commit()
+    
+    async def __call__(self, scope: Scope, receive: Receive, send: Send):
+        if scope["type"] not in ("http", "websocket"):
+            await self.app(scope, receive, send)
+            return
+            
+        # Initialize DB on first request
+        if self._init_task is None:
+            self._init_task = asyncio.create_task(self._init_db())
+            
+        await self._init_task
+        
+        # Extract session ID from cookie
+        session_id = None
+        cookie_header = None
+        for name, value in scope.get("headers", []):
+            if name == b"cookie":
+                cookie_header = value.decode("latin-1")
+                # Parse cookies
+                for cookie in cookie_header.split(";"):
+                    cookie = cookie.strip()
+                    if cookie.startswith(f"{self.session_cookie}="):
+                        session_id = cookie.split("=", 1)[1]
+                        break
+                        
+        # Load existing session or create new one
+        had_session_cookie = bool(session_id)
+        if session_id:
+            session_data = await self._load_session(session_id)
+        else:
+            session_data = {}
+            # Generate new session ID
+            import secrets
+            session_id = secrets.token_urlsafe(32)
+            
+        # Add session to scope
+        scope["session"] = session_data
+        
+        async def send_wrapper(message: Message):
+            if message["type"] == "http.response.start":
+                # Save session data
+                if scope["session"]:
+                    await self._save_session(session_id, scope["session"])
+                    
+                    # Set session cookie
+                    headers = MutableHeaders(scope=message)
+                    cookie_value = (
+                        f"{self.session_cookie}={session_id}; "
+                        f"Max-Age={self.max_age}; Path=/; "
+                        f"SameSite={self.same_site}"
+                    )
+                    if self.https_only:
+                        cookie_value += "; Secure"
+                    headers.append("Set-Cookie", cookie_value)
+                else:
+                    # Session cleared - delete it only if it came from an existing cookie.
+                    # Anonymous static/API requests should not write to the session DB.
+                    if had_session_cookie:
+                        await self._delete_session(session_id)
+                    
+            await send(message)
+            
+        await self.app(scope, receive, send_wrapper)
 
 # Local Application Imports
 import Systems.Functions.database_manager as db
@@ -66,9 +218,12 @@ from web.api.watch_api import router as watch_api
 from web.api.alerts_api import router as alerts_api
 from web.api.arena_api import router as arena_api
 from web.api.weapon_api import router as weapon_api
+from web.api.destroy_api import router as destroy_api
+from web.api.spy_wipe_api import router as spy_wipe_api
 from web.api.bazaar_api import router as bazaar_api
 from web.api.pet_stock_api import router as pet_stock_api
 from web.api.ss_api import router as ss_api
+from web.api.zombie_api import router as zombie_api
 from web.api.world_api import router as world_api
 from web.api.tasks_api import router as tasks_api
 from web.api.powerball_api import router as powerball_api
@@ -81,6 +236,19 @@ from web.api.news_api import router as news_api
 from web.api.colosseum_api import router as colosseum_api
 from web.api.dungeon_api import router as dungeon_api
 from web.api.forge_api import router as forge_api
+from web.api.treaty_universe_api import router as treaty_universe_api
+from web.api.fullmill_api import router as fullmill_api
+from web.api.settings_api import router as settings_api
+from web.api.my_nation_api import router as my_nation_api
+from web.api.plan_api import router as plan_api
+from web.api.documentation_api import router as documentation_api
+from web.api.shop_api import router as shop_api
+from web.api.generator_lab_api import router as generator_lab_api
+from web.api.would_you_rather_api import router as would_you_rather_api
+from web.api.fortune_cookie_api import router as fortune_cookie_api
+from web.api.walktru_api import router as walktru_api
+from web.api.tournament_api import router as tournament_api
+from web.api.access_api import router as access_api
 
 from Systems.Functions.database_manager import get_resource_prices_comparison, get_colors_comparison, get_resource_supply_comparison
 
@@ -121,15 +289,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Add session middleware
-# IMPORTANT: This key should be a secret and loaded from environment variables in a real application
+# Add persistent session middleware (survives bot restarts)
+# Secret is loaded from SESSION_SECRET env var (see config.py)
+from Systems.Functions.config import SESSION_SECRET as _SESSION_SECRET
 app.add_middleware(
-    SessionMiddleware,
-    secret_key="your-secret-key-here",
+    PersistentSessionMiddleware,
+    secret_key=_SESSION_SECRET,
     session_cookie="session",
     same_site="lax",
     https_only=False,  # Cloudflare terminates SSL; server receives plain HTTP
-    max_age=86400,     # 24 hours
+    max_age=2592000,   # 30 days (was 24 hours)
+    db_path="Databases/sessions.db"
 )
 
 # Include all API routers FIRST - before any static file mounting
@@ -152,9 +322,12 @@ app.include_router(watch_api, prefix="/api", tags=["watch"])
 app.include_router(alerts_api, prefix="/api", tags=["alerts"])
 app.include_router(arena_api, prefix="/api", tags=["arena"])
 app.include_router(weapon_api, prefix="/api", tags=["weapons"])
+app.include_router(destroy_api, prefix="/api", tags=["destroy"])
+app.include_router(spy_wipe_api, prefix="/api", tags=["spy-wipe"])
 app.include_router(bazaar_api, prefix="/api", tags=["bazaar"])
 app.include_router(pet_stock_api, prefix="/api", tags=["pet-stock"])
 app.include_router(ss_api, prefix="/api", tags=["survivor-series"])
+app.include_router(zombie_api, prefix="/api", tags=["zombie-survival"])
 app.include_router(world_api, prefix="/api", tags=["world"])
 app.include_router(tasks_api, prefix="/api", tags=["tasks"])
 app.include_router(powerball_api, prefix="/api", tags=["powerball"])
@@ -167,6 +340,18 @@ app.include_router(news_api, prefix="/api", tags=["news"])
 app.include_router(colosseum_api, prefix="/api", tags=["colosseum"])
 app.include_router(dungeon_api, prefix="/api", tags=["dungeon"])
 app.include_router(forge_api, prefix="/api", tags=["forge"])
+app.include_router(treaty_universe_api, prefix="/api", tags=["treaty-universe"])
+app.include_router(fullmill_api, prefix="/api", tags=["fullmill"])
+app.include_router(settings_api, prefix="/api", tags=["settings"])
+app.include_router(my_nation_api, prefix="/api", tags=["my-nation"])
+app.include_router(plan_api, prefix="/api", tags=["plan"])
+app.include_router(documentation_api, prefix="/api/documentation", tags=["documentation"])
+app.include_router(generator_lab_api, prefix="/api", tags=["generator-lab"])
+app.include_router(would_you_rather_api, prefix="/api", tags=["would-you-rather"])
+app.include_router(fortune_cookie_api, prefix="/api", tags=["fortune-cookie"])
+app.include_router(walktru_api, prefix="/api", tags=["walktru"])
+app.include_router(tournament_api, prefix="/api", tags=["tournament"])
+app.include_router(access_api, prefix="/api", tags=["access"])
 
 
 @app.on_event("startup")
@@ -192,24 +377,53 @@ async def startup_event():
     # Start Colosseum hourly battle loop
     from web.api.colosseum_api import start_colosseum_loop
     asyncio.create_task(start_colosseum_loop())
+    # Start session cleanup loop (removes expired sessions daily)
+    asyncio.create_task(_cleanup_sessions_loop())
     # NOTE: Revenue pre-warm disabled - turn revenue is now handled by harvester's RevenueComponent
     # which runs independently and applies revenue directly to GlobalNations.db holdings.
     # The watch API will use the pre-calculated holdings values from the database.
 
+async def _cleanup_sessions_loop():
+    """Background task to clean up expired sessions daily."""
+    while True:
+        try:
+            await asyncio.sleep(86400)  # Run once per day
+            async with aiosqlite.connect("Databases/sessions.db") as db:
+                result = await db.execute("DELETE FROM sessions WHERE expires_at < ?", (int(time.time()),))
+                await db.commit()
+                deleted = result.rowcount if hasattr(result, 'rowcount') else 0
+                logging.getLogger("Reaper.SessionCleanup").info(f"Cleaned up {deleted} expired sessions")
+        except Exception as e:
+            logging.getLogger("Reaper.SessionCleanup").error(f"Session cleanup failed: {e}")
+            await asyncio.sleep(3600)  # Retry in 1 hour on error
+
 app.include_router(astrology_api, prefix="/api", tags=["astrology"])
+app.include_router(shop_api, prefix="/api", tags=["shop"])
+
+@app.get("/quiz-data/quizzes/{file_name}", include_in_schema=False)
+async def serve_quiz_data(file_name: str):
+    """Serve curated quiz JSON files from web/data/quizzes."""
+    if "/" in file_name or "\\" in file_name or not file_name.endswith(".json"):
+        raise HTTPException(status_code=404, detail="Quiz data not found")
+    root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+    file_path = os.path.join(root_dir, "web", "data", "quizzes", file_name)
+    if not os.path.isfile(file_path):
+        raise HTTPException(status_code=404, detail="Quiz data not found")
+    return FileResponse(file_path, media_type="application/json")
 
 # Mount static files AFTER API routes to ensure API takes precedence
 app.mount("/static", StaticFiles(directory="web/static"), name="static")
 app.mount("/css", StaticFiles(directory="web/css"), name="css")
 app.mount("/js", StaticFiles(directory="web/js"), name="js")
 app.mount("/Pages", StaticFiles(directory="web/Pages"), name="pages")
+app.mount("/data", StaticFiles(directory="web/data"), name="data")
 app.mount("/Systems", StaticFiles(directory="Systems"), name="systems")
 app.mount("/node_modules", StaticFiles(directory="node_modules"), name="node_modules")
 
 @app.get("/api/access/check")
-async def access_check_stub():
-    """Stub for removed access control system — always returns full access."""
-    return JSONResponse(content={"allowed_pages": []})
+async def access_check_legacy():
+    """Legacy stub — kept for backwards compatibility. Use /api/access/check-alliance instead."""
+    return JSONResponse(content={"allowed_pages": [], "deprecated": True})
 
 @app.get("/api/game-info/resource-prices")
 async def get_game_info_resource_prices():
@@ -493,7 +707,7 @@ _CSP = ("default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' "
 @app.middleware("http")
 async def add_headers_and_log_requests(request, call_next):
     path = request.url.path
-    is_static = path.startswith(("/static/", "/css/", "/js/", "/Pages/"))
+    is_static = path.startswith(("/static/", "/css/", "/js/", "/Pages/", "/data/"))
 
     response = await call_next(request)
 
@@ -577,6 +791,11 @@ async def get_news_page():
 async def get_casino_page():
     """Serve the casino page."""
     return FileResponse("web/Pages/casino.html")
+
+@app.get("/fullmill", response_class=HTMLResponse)
+async def get_fullmill_page():
+    """Serve the Full Mill alliance rankings page."""
+    return FileResponse("web/Pages/fullmill.html")
 
 
 logger = logging.getLogger("Reaper.WebServer")
