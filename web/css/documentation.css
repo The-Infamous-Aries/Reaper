@@ -1,0 +1,218 @@
+/* Documentation Page Styles */
+
+:root {
+    --doc-bg: #0a0e1a;
+    --doc-content-bg: #ffffff;
+    --doc-text: #333333;
+    --doc-text-light: #666666;
+    --doc-link: #e94560;
+    --doc-link-hover: #d63851;
+    --doc-border: #e0e0e0;
+    --doc-code-bg: #f4f4f4;
+    --doc-code-inline: #e94560;
+    --doc-pre-bg: #1e1e1e;
+    --doc-pre-text: #f8f8f2;
+    --doc-heading: #1a1a2e;
+    --doc-heading-secondary: #16213e;
+    --doc-heading-tertiary: #0f3460;
+}
+
+
+/* Documentation Viewer */
+.documentation-viewer {
+    min-height: 600px;
+    padding: 2rem 0;
+}
+
+.doc-content {
+    background: var(--doc-content-bg);
+    border-radius: 8px;
+    padding: 3rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    color: var(--doc-text);
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+
+/* Markdown Content Styling */
+.doc-content h1 {
+    font-family: 'Cinzel', serif;
+    font-size: 2.5rem;
+    color: var(--doc-heading);
+    margin: 2rem 0 1rem 0;
+    padding-bottom: 0.5rem;
+    border-bottom: 3px solid var(--doc-link);
+}
+
+.doc-content h2 {
+    font-family: 'Cinzel', serif;
+    font-size: 2rem;
+    color: var(--doc-heading-secondary);
+    margin: 1.8rem 0 1rem 0;
+    padding-bottom: 0.3rem;
+    border-bottom: 2px solid var(--doc-border);
+}
+
+.doc-content h3 {
+    font-size: 1.5rem;
+    color: var(--doc-heading-tertiary);
+    margin: 1.5rem 0 0.8rem 0;
+}
+
+.doc-content h4 {
+    font-size: 1.2rem;
+    color: var(--doc-heading-tertiary);
+    margin: 1.2rem 0 0.6rem 0;
+}
+
+.doc-content p {
+    line-height: 1.8;
+    margin: 1rem 0;
+    color: var(--doc-text);
+}
+
+.doc-content code {
+    background: var(--doc-code-bg);
+    padding: 0.2rem 0.4rem;
+    border-radius: 4px;
+    font-family: 'Courier New', monospace;
+    font-size: 0.9em;
+    color: var(--doc-code-inline);
+}
+
+.doc-content pre {
+    background: var(--doc-pre-bg);
+    color: var(--doc-pre-text);
+    padding: 1.5rem;
+    border-radius: 8px;
+    overflow-x: auto;
+    margin: 1.5rem 0;
+}
+
+.doc-content pre code {
+    background: transparent;
+    color: inherit;
+    padding: 0;
+}
+
+.doc-content blockquote {
+    border-left: 4px solid var(--doc-link);
+    padding-left: 1.5rem;
+    margin: 1.5rem 0;
+    color: var(--doc-text-light);
+    font-style: italic;
+}
+
+.doc-content table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1.5rem 0;
+}
+
+.doc-content th {
+    background: var(--doc-heading);
+    color: white;
+    padding: 0.75rem;
+    text-align: left;
+    border: 1px solid var(--doc-border);
+}
+
+.doc-content td {
+    padding: 0.75rem;
+    border: 1px solid var(--doc-border);
+}
+
+.doc-content tr:nth-child(even) {
+    background: #f9f9f9;
+}
+
+.doc-content a {
+    color: var(--doc-link);
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+    transition: border-color 0.3s ease;
+}
+
+.doc-content a:hover {
+    border-bottom-color: var(--doc-link);
+}
+
+.doc-content ul,
+.doc-content ol {
+    line-height: 1.8;
+    margin: 1rem 0;
+    padding-left: 2rem;
+}
+
+.doc-content li {
+    margin: 0.5rem 0;
+}
+
+.doc-content hr {
+    border: none;
+    border-top: 2px solid var(--doc-border);
+    margin: 2rem 0;
+}
+
+/* Loading and Error States */
+.loading-spinner {
+    text-align: center;
+    padding: 3rem;
+    color: var(--doc-text-light);
+    font-size: 1.2rem;
+}
+
+.loading-spinner i {
+    font-size: 2rem;
+    margin-bottom: 1rem;
+    display: block;
+    color: var(--doc-link);
+}
+
+.error-message {
+    text-align: center;
+    padding: 2rem;
+    color: var(--doc-link);
+    background: rgba(233, 69, 96, 0.1);
+    border-radius: 8px;
+    margin: 2rem;
+}
+
+.error-message i {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    display: block;
+}
+
+.error-message h3 {
+    margin: 1rem 0;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .doc-content {
+        padding: 2rem 1.5rem;
+    }
+    
+    .doc-content h1 {
+        font-size: 2rem;
+    }
+    
+    .doc-content h2 {
+        font-size: 1.5rem;
+    }
+    
+    .doc-content h3 {
+        font-size: 1.2rem;
+    }
+    
+    .doc-content table {
+        font-size: 0.9rem;
+    }
+    
+    .doc-content pre {
+        padding: 1rem;
+        font-size: 0.85rem;
+    }
+}

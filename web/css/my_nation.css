@@ -358,6 +358,93 @@
 @media (max-width: 768px) { .mn-mil-units-grid { grid-template-columns: repeat(2, 1fr); } }
 @media (max-width: 480px) { .mn-mil-units-grid { grid-template-columns: 1fr; } }
 
+.mn-mil-units-table {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,215,0,0.12);
+  border-radius: 4px;
+  margin-bottom: 0;
+  overflow: hidden;
+}
+
+.mn-mil-units-row {
+  display: grid;
+  grid-template-columns: minmax(92px, 1.1fr) repeat(3, minmax(58px, 1fr));
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.35rem 0.55rem;
+  border-top: 1px solid rgba(255,215,0,0.08);
+  font-size: 0.72rem;
+}
+
+.mn-mil-units-row:first-child { border-top: 0; }
+.mn-mil-units-row:hover:not(.mn-mil-units-head) { background: rgba(255,215,0,0.06); }
+
+.mn-mil-units-head {
+  color: var(--gold-secondary);
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: rgba(255,215,0,0.05);
+}
+
+.mn-mil-units-row > :first-child {
+  justify-self: start;
+  text-align: left;
+}
+
+.mn-mil-units-row > :nth-child(2),
+.mn-mil-units-row > :nth-child(3),
+.mn-mil-units-row > :nth-child(4) {
+  justify-self: end;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.mn-mil-unit-type {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: var(--text-primary);
+  font-weight: 700;
+  min-width: 0;
+}
+
+.mn-mil-top-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+@media (max-width: 920px) {
+  .mn-mil-top-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.mn-mil-units-row .mn-daily,
+.mn-mil-units-row .mn-max {
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.mn-mil-units-row strong {
+  color: #fff;
+  font-weight: 700;
+}
+
+@media (max-width: 520px) {
+  .mn-mil-units-row {
+    grid-template-columns: minmax(86px, 1.1fr) repeat(3, minmax(54px, 1fr));
+    gap: 0.3rem;
+    padding: 0.35rem 0.4rem;
+    font-size: 0.66rem;
+  }
+  .mn-mil-units-head { font-size: 0.56rem; }
+  .mn-mil-unit-type { gap: 0.2rem; }
+}
+
 .mn-mil-unit-section {
   background: rgba(255,255,255,0.03);
   border: 1px solid rgba(255,215,0,0.1);
@@ -411,6 +498,171 @@
   text-align: right;
   color: var(--text-secondary);
   font-weight: 400;
+}
+
+.mn-missing-units-box {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,215,0,0.14);
+  border-radius: 4px;
+  padding: 0.55rem 0.65rem;
+  margin: 0;
+  min-width: 0;
+}
+
+.mn-missing-units-title {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--gold-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 0.4rem;
+}
+
+.mn-missing-units-list {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.mn-missing-unit-row {
+  display: grid;
+  grid-template-columns: minmax(82px, 0.65fr) minmax(170px, 1.35fr);
+  align-items: center;
+  gap: 0.4rem 0.8rem;
+  padding: 0.25rem 0;
+  border-top: 1px solid rgba(255,215,0,0.08);
+  font-size: 0.72rem;
+}
+
+.mn-missing-unit-row:first-child { border-top: 0; padding-top: 0; }
+
+.mn-missing-unit-type {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+  color: var(--text-secondary);
+}
+
+.mn-missing-unit-label {
+  color: var(--text-primary);
+  font-weight: 700;
+  min-width: 0;
+}
+
+.mn-missing-unit-summary {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  color: var(--text-secondary);
+}
+
+.mn-missing-unit-summary strong { color: var(--gold-primary); }
+.mn-missing-sep { color: rgba(255,255,255,0.35); }
+
+.mn-missing-unit-cost {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.mn-missing-cost-bit {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.18rem;
+  color: var(--text-primary);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.mn-missing-cost-bit small {
+  color: var(--text-secondary);
+  font-size: 0.62rem;
+}
+
+.mn-money-emoji {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1rem;
+  height: 1rem;
+  line-height: 1;
+  border-radius: 999px;
+  background: rgba(255,215,0,0.16);
+  color: var(--gold-primary);
+  border: 1px solid rgba(255,215,0,0.28);
+  font-size: 0.68rem;
+  font-weight: 800;
+}
+
+.mn-missing-totals-row {
+  display: grid;
+  grid-template-columns: minmax(90px, 0.7fr) minmax(160px, 1.3fr);
+  align-items: center;
+  gap: 0.4rem;
+  padding-top: 0.32rem;
+  margin-top: 0.15rem;
+  border-top: 1px solid rgba(255,215,0,0.12);
+  font-size: 0.62rem;
+}
+
+.mn-missing-totals-row span:first-child {
+  color: var(--text-secondary);
+  font-size: 0.54rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.mn-missing-totals-row strong {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  color: var(--text-primary);
+  font-size: 0.62rem;
+}
+
+.mn-missing-total-value strong {
+  color: var(--gold-primary);
+  font-size: 0.66rem;
+}
+
+.mn-missing-total-bit {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.18rem;
+  white-space: nowrap;
+}
+
+.mn-missing-full {
+  color: #00c864;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 0.64rem;
+}
+
+@media (max-width: 640px) {
+  .mn-missing-unit-row {
+    grid-template-columns: 1fr;
+  }
+  .mn-missing-unit-summary {
+    justify-content: flex-start;
+    padding-left: 1.35rem;
+  }
+  .mn-missing-unit-cost {
+    justify-content: flex-start;
+  }
+  .mn-missing-totals-row {
+    grid-template-columns: 1fr;
+  }
+  .mn-missing-totals-row strong {
+    justify-content: flex-start;
+  }
 }
 
 /* Military Research panel - more compact, side by side with MMR */
@@ -1154,20 +1406,32 @@
 
 /* ── Awards inline chips row ─────────────────────────────────────────────── */
 .mn-awards-row {
-  display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;
+  display: flex; align-items: flex-start; gap: 0.5rem; flex-wrap: wrap;
   padding: 0.25rem 0;
 }
 .mn-awards-row-label {
   font-size: 0.68rem; font-weight: 700; text-transform: uppercase;
   letter-spacing: 0.06em; color: var(--gold-secondary);
   white-space: nowrap; flex-shrink: 0;
+  padding-top: 0.15rem;
+}
+.mn-awards-container {
+  display: flex; flex-direction: column; gap: 0.4rem; flex: 1;
+}
+.mn-awards-section {
+  display: flex; flex-direction: column; gap: 0.2rem;
+}
+.mn-awards-section-header {
+  font-size: 0.65rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.05em; color: var(--text-secondary);
 }
 .mn-awards-chips {
-  display: flex; flex-wrap: wrap; gap: 0.35rem; flex: 1;
+  display: flex; flex-wrap: wrap; gap: 0.35rem;
 }
 .mn-awards-count {
   font-size: 0.68rem; color: var(--text-secondary);
   white-space: nowrap; flex-shrink: 0;
+  padding-top: 0.15rem;
 }
 .mn-awards-loading {
   font-size: 0.7rem; color: var(--text-secondary);

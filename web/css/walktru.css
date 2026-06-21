@@ -1,0 +1,471 @@
+.walktru-root {
+    --wt-panel: var(--surface-overlay, rgba(14, 14, 14, 0.86));
+    --wt-panel-2: color-mix(in srgb, var(--bg-secondary, #111) 88%, var(--gold-primary, #ffd700) 12%);
+    --wt-border: var(--border-primary, rgba(255, 215, 0, 0.28));
+    --wt-text: var(--text-primary, #f0f0f0);
+    --wt-muted: var(--text-secondary, #b9bbbe);
+    --wt-gold: var(--gold-primary, #ffd700);
+    --wt-good: color-mix(in srgb, #37b36b 70%, var(--gold-primary, #ffd700) 30%);
+    --wt-bad: color-mix(in srgb, #d54d55 78%, var(--gold-primary, #ffd700) 22%);
+    --wt-blue: color-mix(in srgb, #3d9dd8 62%, var(--gold-primary, #ffd700) 38%);
+    color: var(--wt-text);
+    min-height: calc(100vh - 96px);
+    padding: 16px;
+    background:
+        linear-gradient(135deg,
+            color-mix(in srgb, var(--bg-primary, #0a0a0a) 94%, transparent),
+            color-mix(in srgb, var(--bg-secondary, #101010) 88%, var(--gold-primary, #ffd700) 12%));
+    border: 1px solid color-mix(in srgb, var(--wt-border) 58%, transparent);
+}
+
+.walktru-root [hidden] {
+    display: none !important;
+}
+
+.walktru-stage-panel,
+.walktru-run-panel,
+.walktru-story-card,
+.walktru-result {
+    border: 1px solid var(--wt-border);
+    background: var(--wt-panel);
+    border-radius: 8px;
+    box-shadow: 0 14px 40px color-mix(in srgb, var(--bg-primary, #000) 70%, transparent);
+}
+
+.walktru-title-wrap,
+.walktru-stage-title-wrap,
+.walktru-actions,
+.walktru-choice-top,
+.walktru-panel-head,
+.walktru-stat-head,
+.walktru-result-actions,
+.walktru-result-meta {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.walktru-title-wrap,
+.walktru-stage-title-wrap {
+    min-width: 0;
+}
+
+.walktru-story-icon {
+    width: 52px;
+    height: 52px;
+    object-fit: contain;
+}
+
+.walktru-stage-panel h5,
+.walktru-run-panel h5 {
+    margin: 0;
+    letter-spacing: 0;
+}
+
+.walktru-subline,
+.walktru-kicker,
+.walktru-stage-count,
+.walktru-card-description,
+.walktru-history,
+.walktru-empty,
+.walktru-stat-range,
+.walktru-result-meta {
+    color: var(--wt-muted);
+}
+
+.walktru-layout {
+    display: grid;
+    grid-template-columns: 330px minmax(0, 1fr);
+    gap: 14px;
+    margin-top: 0;
+}
+
+.walktru-story-list {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 10px;
+    align-content: start;
+    max-height: calc(100vh - 160px);
+    overflow: auto;
+    padding-right: 4px;
+}
+
+.walktru-story-card {
+    display: block;
+    width: 100%;
+    height: max-content;
+    min-height: 112px;
+    overflow: visible;
+    text-align: left;
+    color: var(--wt-text);
+    padding: 12px;
+    cursor: pointer;
+    background: color-mix(in srgb, var(--bg-secondary, #111) 88%, transparent);
+    transition: border-color 160ms ease, transform 160ms ease, background 160ms ease;
+}
+
+.walktru-story-card:hover,
+.walktru-story-card.active {
+    border-color: color-mix(in srgb, var(--wt-gold) 72%, var(--wt-border));
+    background: color-mix(in srgb, var(--bg-secondary, #111) 82%, var(--gold-primary, #ffd700) 18%);
+}
+
+.walktru-story-card:hover {
+    transform: translateY(-1px);
+}
+
+.walktru-card-top {
+    display: grid;
+    grid-template-columns: 42px minmax(0, 1fr);
+    gap: 10px;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.walktru-card-top img {
+    width: 42px;
+    height: 42px;
+    object-fit: contain;
+}
+
+.walktru-card-title {
+    font-weight: 800;
+    line-height: 1.2;
+    overflow-wrap: anywhere;
+}
+
+.walktru-card-stat {
+    color: var(--wt-gold);
+    font-size: 0.82rem;
+}
+
+.walktru-card-description {
+    font-size: 0.88rem;
+    line-height: 1.38;
+    margin: 0;
+    overflow-wrap: anywhere;
+}
+
+.walktru-play-area {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 300px;
+    gap: 14px;
+    min-width: 0;
+}
+
+.walktru-stage-panel {
+    min-width: 0;
+    padding: 16px;
+    background: var(--wt-panel-2);
+}
+
+.walktru-stage-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 14px;
+}
+
+.walktru-kicker {
+    display: block;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+}
+
+.walktru-stage-count {
+    flex: 0 0 auto;
+    min-width: 86px;
+    text-align: center;
+    padding: 7px 10px;
+    border-radius: 6px;
+    border: 1px solid color-mix(in srgb, var(--wt-border) 64%, transparent);
+    background: color-mix(in srgb, var(--bg-tertiary, #171717) 82%, transparent);
+}
+
+.walktru-stage-text {
+    margin: 0 0 16px;
+    line-height: 1.65;
+    font-size: 1.02rem;
+}
+
+.walktru-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    gap: 10px;
+    margin-bottom: 14px;
+}
+
+.walktru-stat {
+    border: 1px solid color-mix(in srgb, var(--wt-border) 60%, transparent);
+    border-radius: 8px;
+    padding: 10px;
+    background: color-mix(in srgb, var(--bg-tertiary, #171717) 78%, transparent);
+}
+
+.walktru-stat-head {
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+
+.walktru-stat-name {
+    font-weight: 800;
+}
+
+.walktru-stat-value {
+    color: var(--wt-gold);
+    font-weight: 800;
+}
+
+.walktru-bar {
+    height: 12px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--bg-primary, #050505) 82%, transparent);
+    border: 1px solid color-mix(in srgb, var(--wt-border) 44%, transparent);
+}
+
+.walktru-bar span {
+    display: block;
+    height: 100%;
+    width: 0;
+    border-radius: inherit;
+    background: linear-gradient(90deg, var(--wt-blue), var(--wt-gold));
+    transition: width 220ms ease;
+}
+
+.walktru-bar.good span {
+    background: linear-gradient(90deg, var(--wt-good), var(--wt-gold));
+}
+
+.walktru-bar.bad span {
+    background: linear-gradient(90deg, var(--wt-bad), color-mix(in srgb, var(--wt-bad) 60%, var(--wt-gold)));
+}
+
+.walktru-stat-range {
+    display: block;
+    margin-top: 6px;
+    font-size: 0.78rem;
+}
+
+.walktru-choices {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.walktru-choice {
+    min-height: 138px;
+    border: 1px solid color-mix(in srgb, var(--wt-border) 62%, transparent);
+    border-radius: 8px;
+    color: var(--wt-text);
+    background: color-mix(in srgb, var(--bg-secondary, #111) 84%, transparent);
+    padding: 12px;
+    text-align: left;
+    cursor: pointer;
+    transition: border-color 160ms ease, background 160ms ease, transform 160ms ease;
+}
+
+.walktru-choice:hover:not(:disabled) {
+    border-color: color-mix(in srgb, var(--wt-gold) 74%, var(--wt-border));
+    background: color-mix(in srgb, var(--bg-secondary, #111) 78%, var(--gold-primary, #ffd700) 22%);
+    transform: translateY(-1px);
+}
+
+.walktru-choice:disabled {
+    cursor: not-allowed;
+    opacity: 0.64;
+}
+
+.walktru-choice-top {
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 9px;
+}
+
+.walktru-choice-label {
+    font-weight: 800;
+    line-height: 1.25;
+}
+
+.walktru-choice-number {
+    flex: 0 0 auto;
+    min-width: 28px;
+    height: 28px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    color: var(--bg-primary, #050505);
+    background: var(--wt-gold);
+    font-weight: 900;
+}
+
+.walktru-result {
+    margin: 0 0 14px;
+    padding: 14px;
+    background: color-mix(in srgb, var(--bg-secondary, #111) 84%, transparent);
+}
+
+.walktru-result.success {
+    border-color: color-mix(in srgb, var(--wt-good) 68%, var(--wt-border));
+}
+
+.walktru-result.failure,
+.walktru-result.game-over {
+    border-color: color-mix(in srgb, var(--wt-bad) 76%, var(--wt-border));
+}
+
+.walktru-result h5 {
+    margin: 0 0 8px;
+}
+
+.walktru-result p {
+    margin: 0 0 10px;
+    line-height: 1.55;
+}
+
+.walktru-result-meta {
+    flex-wrap: wrap;
+    font-size: 0.86rem;
+    margin-bottom: 12px;
+}
+
+.walktru-btn {
+    min-height: 36px;
+    border: 1px solid color-mix(in srgb, var(--wt-border) 68%, transparent);
+    border-radius: 6px;
+    color: var(--wt-text);
+    background: color-mix(in srgb, var(--bg-tertiary, #171717) 82%, transparent);
+    padding: 7px 12px;
+    cursor: pointer;
+}
+
+.walktru-btn:hover {
+    border-color: color-mix(in srgb, var(--wt-gold) 70%, var(--wt-border));
+}
+
+.walktru-btn-primary {
+    color: var(--bg-primary, #050505);
+    border-color: color-mix(in srgb, var(--wt-gold) 80%, transparent);
+    background: var(--wt-gold);
+    font-weight: 800;
+}
+
+.walktru-btn-danger {
+    border-color: color-mix(in srgb, var(--wt-bad) 80%, transparent);
+    background: color-mix(in srgb, var(--wt-bad) 32%, var(--bg-tertiary, #171717));
+}
+
+.walktru-run-panel {
+    padding: 14px;
+    min-height: 340px;
+}
+
+.walktru-panel-head {
+    justify-content: space-between;
+    margin-bottom: 12px;
+}
+
+.walktru-panel-head span {
+    color: var(--wt-gold);
+    font-size: 0.84rem;
+}
+
+.walktru-history {
+    display: grid;
+    gap: 8px;
+    max-height: calc(100vh - 250px);
+    overflow: auto;
+}
+
+.walktru-history-item {
+    border-left: 3px solid var(--wt-border);
+    padding: 8px 9px;
+    background: color-mix(in srgb, var(--bg-tertiary, #171717) 76%, transparent);
+    border-radius: 0 6px 6px 0;
+    color: var(--wt-muted);
+}
+
+.walktru-history-item strong {
+    color: var(--wt-text);
+}
+
+.walktru-history-item.success {
+    border-left-color: var(--wt-good);
+}
+
+.walktru-history-item.failure,
+.walktru-history-item.game-over {
+    border-left-color: var(--wt-bad);
+}
+
+.walktru-empty {
+    padding: 12px;
+    border: 1px dashed color-mix(in srgb, var(--wt-border) 48%, transparent);
+    border-radius: 8px;
+}
+
+.walktru-toast {
+    position: fixed;
+    right: 18px;
+    bottom: 18px;
+    z-index: 3000;
+    max-width: min(360px, calc(100vw - 32px));
+    border: 1px solid var(--wt-border);
+    border-radius: 8px;
+    padding: 10px 12px;
+    color: var(--wt-text);
+    background: color-mix(in srgb, var(--bg-secondary, #111) 94%, var(--gold-primary, #ffd700) 6%);
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35);
+}
+
+@media (max-width: 1180px) {
+    .walktru-layout,
+    .walktru-play-area {
+        grid-template-columns: 1fr;
+    }
+
+    .walktru-story-list {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        max-height: none;
+        padding-right: 0;
+    }
+
+    .walktru-history {
+        max-height: 280px;
+    }
+}
+
+@media (max-width: 760px) {
+    .walktru-root {
+        padding: 10px;
+    }
+
+    .walktru-stage-head {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .walktru-result-actions {
+        width: 100%;
+    }
+
+    .walktru-result-actions .walktru-btn {
+        flex: 1 1 0;
+    }
+
+    .walktru-story-list,
+    .walktru-choices,
+    .walktru-stats {
+        grid-template-columns: 1fr;
+    }
+
+    .walktru-choice {
+        min-height: 118px;
+    }
+
+    .walktru-stage-count {
+        min-width: 0;
+    }
+}

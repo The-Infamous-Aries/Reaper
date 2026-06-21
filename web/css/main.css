@@ -4,7 +4,11 @@
     --bg-tertiary: #141414;
     --gold-primary: #ffd700;
     --gold-secondary: #ffed4e;
+    --gold-rgb: 255, 215, 0;
     --gold-glow: rgba(255, 215, 0, 0.3);
+    --accent-contrast: #0a0a0a;
+    --border-primary: rgba(255, 215, 0, 0.3);
+    --surface-overlay: rgba(15, 15, 15, 0.86);
     --text-primary: #f0f0f0;
     --text-secondary: #b9bbbe;
 }
@@ -24,4 +28,97 @@ body {
     overflow-x: hidden;
     display: flex;
     flex-direction: column;
+}
+
+a {
+    color: var(--gold-primary);
+}
+
+a:hover {
+    color: var(--gold-secondary);
+}
+
+.card,
+.modal-content,
+.dropdown-menu,
+.popover,
+.toast {
+    background-color: var(--surface-overlay);
+    border-color: var(--border-primary);
+    color: var(--text-primary);
+}
+
+.card-header,
+.modal-header,
+.modal-footer,
+.dropdown-header {
+    background-color: var(--bg-secondary);
+    border-color: var(--border-primary);
+    color: var(--gold-primary);
+}
+
+.table {
+    --bs-table-bg: transparent;
+    --bs-table-color: var(--text-primary);
+    --bs-table-border-color: var(--border-primary);
+    --bs-table-striped-color: var(--text-primary);
+    --bs-table-striped-bg: rgba(var(--gold-rgb), 0.05);
+    --bs-table-hover-color: var(--text-primary);
+    --bs-table-hover-bg: rgba(var(--gold-rgb), 0.1);
+}
+
+.form-control,
+.form-select,
+.input-group-text,
+textarea {
+    background-color: var(--bg-tertiary);
+    border-color: var(--border-primary);
+    color: var(--text-primary);
+}
+
+.form-control:focus,
+.form-select:focus,
+textarea:focus {
+    background-color: var(--bg-tertiary);
+    border-color: var(--gold-primary);
+    color: var(--text-primary);
+    box-shadow: 0 0 0 0.2rem rgba(var(--gold-rgb), 0.18);
+}
+
+.form-control::placeholder,
+textarea::placeholder {
+    color: var(--text-secondary);
+}
+
+.btn-primary,
+.btn-warning {
+    background-color: var(--gold-primary);
+    border-color: var(--gold-primary);
+    color: var(--accent-contrast);
+}
+
+.btn-primary:hover,
+.btn-warning:hover {
+    background-color: var(--gold-secondary);
+    border-color: var(--gold-secondary);
+    color: var(--accent-contrast);
+}
+
+.btn-outline-primary,
+.btn-outline-warning {
+    border-color: var(--gold-primary);
+    color: var(--gold-primary);
+}
+
+.btn-outline-primary:hover,
+.btn-outline-warning:hover {
+    background-color: var(--gold-primary);
+    border-color: var(--gold-primary);
+    color: var(--accent-contrast);
+}
+
+.badge.bg-warning,
+.badge.bg-primary {
+    background-color: var(--gold-primary) !important;
+    color: var(--accent-contrast) !important;
 }

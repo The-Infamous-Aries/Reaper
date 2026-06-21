@@ -71,6 +71,20 @@
     justify-content: center;
 }
 
+/* 1×4 grid */
+.sc-grid-1x4 {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+}
+
+/* 1×6 grid */
+.sc-grid-1x6 {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+}
+
 /* 3×3 grid */
 .sc-grid-3x3 {
     display: grid;

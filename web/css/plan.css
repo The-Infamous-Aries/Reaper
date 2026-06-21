@@ -351,10 +351,27 @@
 }
 
 .plan-progress-fill {
+  display: block;
   height: 100%;
-  background: linear-gradient(90deg, var(--gold), #f0a500);
-  transition: width 0.5s ease-in-out;
-  box-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+  width: 0;
+  background-image: linear-gradient(
+    90deg,
+    #c62828 0%,
+    #e53935 10%,
+    #f4511e 20%,
+    #fb8c00 30%,
+    #fdd835 42%,
+    #c0ca33 52%,
+    #43a047 62%,
+    #00acc1 74%,
+    #1e88e5 84%,
+    #5e35b1 94%,
+    #8e24aa 100%
+  );
+  background-repeat: no-repeat;
+  background-position: left center;
+  transition: width 0.5s ease-in-out, background-size 0.5s ease-in-out;
+  box-shadow: 0 0 10px rgba(255, 215, 0, 0.35);
 }
 
 .plan-cost-breakdown {
@@ -375,6 +392,26 @@
 
 .plan-cost-value {
   font-weight: 600;
+  font-family: 'Courier New', monospace;
+}
+
+/* Approximate total dollar value shown after resource quantities */
+.plan-cost-total-eq {
+  display: inline-block;
+  margin-left: 0.5rem;
+  padding: 0 0.4rem;
+  background: rgba(255, 215, 0, 0.15);
+  border: 1px solid rgba(255, 215, 0, 0.3);
+  border-radius: 4px;
+  color: var(--gold);
+  font-size: 0.9rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* Resource quantity text next to icon */
+.plan-res-qty {
+  margin-right: 0.25rem;
   font-family: 'Courier New', monospace;
 }
 
@@ -635,6 +672,7 @@
   font-weight: 700; font-size: 0.77rem;
   font-family: 'Courier New', monospace;
   -moz-appearance: textfield;
+  appearance: textfield;
 }
 .pct-val::-webkit-outer-spin-button,
 .pct-val::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
@@ -655,8 +693,6 @@
   .pct-grid { grid-template-columns: repeat(2, 1fr); }
   .pct-tile--wide { grid-column: span 2; }
 }
-}
-
 /* ── New City Cards ────────────────────────────────────────── */
 .plan-new-city-card {
   background: var(--surface);
@@ -884,154 +920,7 @@
   transform: none;
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   TAB 3: PREVIEW
-   ═══════════════════════════════════════════════════════════════ */
 
-.plan-preview {
-  background: var(--surface);
-  border-radius: 8px;
-  padding: 1.5rem;
-}
-
-.plan-preview h3 {
-  color: var(--gold);
-  margin-bottom: 1.5rem;
-  font-size: 1.2rem;
-  border-bottom: 2px solid var(--gold);
-  padding-bottom: 0.5rem;
-}
-
-.plan-preview-section {
-  margin-bottom: 2rem;
-}
-
-.plan-preview-section h4 {
-  color: var(--gold-secondary);
-  margin-bottom: 1rem;
-  font-size: 1rem;
-}
-
-/* ── Revenue Table ─────────────────────────────────────────── */
-.plan-revenue-table {
-  width: 100%;
-  border-collapse: collapse;
-  margin-bottom: 1.5rem;
-}
-
-.plan-revenue-table th,
-.plan-revenue-table td {
-  padding: 0.75rem;
-  text-align: right;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-}
-
-.plan-revenue-table th {
-  background: rgba(0, 0, 0, 0.3);
-  color: var(--text-secondary);
-  font-weight: 600;
-  font-size: 0.85rem;
-}
-
-.plan-revenue-table td:first-child {
-  text-align: left;
-  font-weight: 500;
-}
-
-.plan-revenue-table tr:hover {
-  background: rgba(255, 255, 255, 0.02);
-}
-
-.plan-revenue-positive {
-  color: #7ecb35;
-}
-
-.plan-revenue-negative {
-  color: #e74c3c;
-}
-
-/* ── Military Caps ─────────────────────────────────────────── */
-.plan-military-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 1rem;
-  margin-bottom: 1.5rem;
-}
-
-.plan-military-item {
-  background: rgba(0, 0, 0, 0.2);
-  padding: 1rem;
-  border-radius: 6px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.plan-military-label {
-  font-size: 0.85rem;
-  color: var(--text-secondary);
-  margin-bottom: 0.5rem;
-}
-
-.plan-military-value {
-  font-size: 1.1rem;
-  font-weight: 600;
-  color: var(--text);
-  font-family: 'Courier New', monospace;
-}
-
-.plan-military-daily {
-  font-size: 0.75rem;
-  color: var(--text-muted);
-  margin-top: 0.25rem;
-}
-
-/* ── City Summary ──────────────────────────────────────────── */
-.plan-city-summary {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 1rem;
-  margin-bottom: 1.5rem;
-}
-
-.plan-summary-stat {
-  background: rgba(0, 0, 0, 0.2);
-  padding: 0.75rem;
-  border-radius: 4px;
-  text-align: center;
-}
-
-.plan-summary-label {
-  font-size: 0.8rem;
-  color: var(--text-secondary);
-  margin-bottom: 0.25rem;
-}
-
-.plan-summary-value {
-  font-size: 1.05rem;
-  font-weight: 600;
-  color: var(--text);
-}
-
-/* ── Warnings ──────────────────────────────────────────────── */
-.plan-warnings {
-  background: rgba(231, 76, 60, 0.1);
-  border: 1px solid rgba(231, 76, 60, 0.3);
-  border-radius: 6px;
-  padding: 1rem;
-}
-
-.plan-warnings h4 {
-  color: #e74c3c;
-  margin-bottom: 0.75rem;
-}
-
-.plan-warning-item {
-  padding: 0.5rem;
-  margin-bottom: 0.5rem;
-  background: rgba(0, 0, 0, 0.2);
-  border-left: 3px solid #e74c3c;
-  border-radius: 2px;
-  font-size: 0.9rem;
-}
 
 /* ═══════════════════════════════════════════════════════════════
    UTILITY CLASSES
@@ -1201,4 +1090,235 @@
 .plan-editor-section-header.collapsed .plan-chevron,
 .plan-city-editor-header.collapsed .plan-chevron {
   transform: rotate(-90deg);
+}
+
+/* ── Edit Plan Toggle Bar ──────────────────────────────────── */
+.plan-edit-toggle-bar {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0.5rem 0;
+  margin-top: 0.25rem;
+}
+
+.plan-edit-toggle-btn {
+  padding: 0.5rem 1.25rem;
+  background: rgba(102, 126, 234, 0.15);
+  border: 1px solid rgba(102, 126, 234, 0.4);
+  border-radius: 6px;
+  color: #667eea;
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.plan-edit-toggle-btn:hover {
+  background: rgba(102, 126, 234, 0.28);
+  border-color: #667eea;
+  transform: translateY(-1px);
+}
+
+.plan-edit-toggle-btn.active {
+  background: rgba(231, 76, 60, 0.15);
+  border-color: rgba(231, 76, 60, 0.5);
+  color: #e74c3c;
+}
+
+/* ── Live Cost Preview Bar (inside editor) ─────────────────── */
+.plan-live-cost-bar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: rgba(20, 18, 10, 0.96);
+  border: 1px solid rgba(255, 215, 0, 0.3);
+  border-radius: 6px;
+  padding: 0.55rem 1rem;
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+}
+
+/* ── Inline cost inside project / city card headers ─────────── */
+.plan-inline-cost {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.15rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--gold-secondary);
+}
+
+.pic-cash {
+  font-family: 'Courier New', monospace;
+}
+
+.pic-qty {
+  font-family: 'Courier New', monospace;
+  margin-right: 0.15rem;
+}
+
+/* Owned project badge */
+.plan-project-owned-badge {
+  background: rgba(126, 203, 53, 0.12);
+  border: 1px solid rgba(126, 203, 53, 0.35);
+  border-radius: 4px;
+  color: #7ecb35;
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 0.1rem 0.45rem;
+  white-space: nowrap;
+}
+
+/* City number badge in viewer */
+.plan-city-number {
+  white-space: nowrap;
+}
+
+/* Make project-header wrap on narrow screens */
+.plan-project-header {
+  flex-wrap: wrap;
+  row-gap: 0.3rem;
+}
+
+/* Project cost: push to the right on wide, wrap below on narrow */
+.plan-project-cost {
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+/* ── Overall Progress Step Checklist (pfs = plan-footer-steps) ── */
+
+.pfs-step-list {
+  margin: 1rem 0 0.5rem;
+  border: 1px solid rgba(255, 215, 0, 0.12);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.pfs-group-header {
+  background: rgba(255, 215, 0, 0.08);
+  border-bottom: 1px solid rgba(255, 215, 0, 0.15);
+  padding: 0.4rem 0.85rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  color: var(--gold);
+  text-transform: uppercase;
+}
+
+/* Top-level step row (city / project) */
+.pfs-step {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  padding: 0.45rem 0.85rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  font-size: 0.88rem;
+  transition: background 0.15s;
+}
+
+.pfs-step:last-child { border-bottom: none; }
+
+.pfs-step:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.pfs-step.pfs-step-done {
+  opacity: 0.55;
+}
+
+/* Sub-step row (infra/land/improvement inside a city) */
+.pfs-substep {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  padding: 0.25rem 0.85rem 0.25rem 2.4rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+  font-size: 0.81rem;
+  color: var(--text-secondary);
+}
+
+/* Extra-indented level for individual improvements under an "All improvements" summary */
+.pfs-substep.pfs-substep-l2 {
+  padding-left: 4rem;
+  font-size: 0.78rem;
+  opacity: 0.8;
+}
+
+.pfs-substep:last-child { border-bottom: none; }
+
+.pfs-substep.pfs-step-done {
+  opacity: 0.5;
+}
+
+.pfs-check {
+  flex-shrink: 0;
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+
+.pfs-label {
+  flex: 1;
+  line-height: 1.4;
+}
+
+.pfs-sub {
+  margin-left: 0.4rem;
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  font-weight: 400;
+}
+
+/* Cost pushed to the right */
+.pfs-cost {
+  margin-left: auto;
+  flex-shrink: 0;
+  white-space: nowrap;
+  font-size: 0.82rem;
+}
+
+/* "owned" tag next to project name */
+.pfs-owned-tag {
+  display: inline-block;
+  margin-left: 0.4rem;
+  padding: 0.05rem 0.35rem;
+  background: rgba(126, 203, 53, 0.12);
+  border: 1px solid rgba(126, 203, 53, 0.3);
+  border-radius: 3px;
+  color: #7ecb35;
+  font-size: 0.72rem;
+  font-weight: 600;
+  vertical-align: middle;
+}
+
+.pfs-empty {
+  padding: 1rem;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+/* Totals block at the bottom */
+.pfs-totals {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 2px solid rgba(255, 215, 0, 0.2);
+}
+
+.pfs-policy-note {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-style: italic;
+  margin-bottom: 0.4rem;
+  opacity: 0.8;
+}
+
+.plan-cost-zero {
+  color: var(--text-muted);
 }

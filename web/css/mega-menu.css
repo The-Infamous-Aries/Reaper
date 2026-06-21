@@ -262,9 +262,10 @@
 }
 
 .nav-pet-card-toggle .nav-pet-img {
-    width: 20px;
-    height: 20px;
+    width: 36px;
+    height: 36px;
     object-fit: contain;
+    display: block;
     filter: drop-shadow(0 0 3px var(--gold-glow));
 }
 
@@ -356,12 +357,21 @@
 }
 
 .mega-menu-item img {
-    width: 24px;
-    height: 24px;
+    width: 34px;
+    height: 34px;
     object-fit: contain;
     margin-bottom: 0.5rem;
     filter: none;
     transition: all 0.2s ease;
+}
+
+.mega-menu-item .menu-emoji-icon {
+    width: 34px;
+    height: 34px;
+    margin-bottom: 0.5rem;
+    font-size: 1.8rem;
+    line-height: 1;
+    filter: drop-shadow(0 0 4px var(--gold-glow));
 }
 
 .mega-menu-item:hover img {

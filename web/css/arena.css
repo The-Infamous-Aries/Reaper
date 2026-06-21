@@ -793,3 +793,6 @@
     0%,100% { box-shadow: 0 0 10px rgba(255,69,0,0.4); }
     50%      { box-shadow: 0 0 24px rgba(255,69,0,0.8); }
 }
+
+
+/* Tournament styles moved to tournament.css */

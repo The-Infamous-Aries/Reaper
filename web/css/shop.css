@@ -1,0 +1,672 @@
+/* ══════════════════════════════════════════════════════════════════
+   Shop Page — 5 rotating NPC shops
+   ══════════════════════════════════════════════════════════════════ */
+
+#shop-root {
+    color: var(--text-primary);
+}
+
+/* ── Divider ──────────────────────────────────────────────────────── */
+.sh-divider {
+    border: none;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--gold-primary), transparent);
+    margin: 1.2rem 0;
+    position: relative;
+    overflow: visible;
+}
+.sh-divider::before,
+.sh-divider::after {
+    content: '🛒';
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--gold-primary);
+    font-size: 0.85rem;
+    text-shadow: 0 0 5px var(--gold-glow);
+}
+.sh-divider::before { left: 8%; }
+.sh-divider::after  { right: 8%; }
+
+/* ── XP Balance bar ──────────────────────────────────────────────── */
+.sh-xp-bar {
+    background: linear-gradient(135deg, rgba(15,15,15,0.95), rgba(20,20,20,0.95));
+    border: 1px solid rgba(255,215,0,0.35);
+    border-radius: 8px;
+    padding: 0.65rem 1.1rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-bottom: 1rem;
+}
+.sh-xp-label {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.78rem;
+    color: var(--gold-secondary);
+    letter-spacing: 1px;
+    white-space: nowrap;
+}
+.sh-xp-value {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 1rem;
+    color: #f1c40f;
+    font-weight: 700;
+    text-shadow: 0 0 8px rgba(241,196,15,0.6);
+}
+.sh-xp-pet-name {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    margin-left: auto;
+}
+.sh-xp-progress-wrap {
+    width: 160px;
+    background: rgba(0,0,0,0.4);
+    border-radius: 20px;
+    border: 1px solid rgba(255,215,0,0.2);
+    height: 8px;
+    overflow: hidden;
+}
+.sh-xp-progress-fill {
+    height: 100%;
+    border-radius: 20px;
+    background: linear-gradient(90deg, #f1c40f, #e67e22);
+    transition: width 0.4s ease;
+}
+
+/* ── Shop tabs ───────────────────────────────────────────────────── */
+.sh-tabs {
+    display: flex;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+    margin-bottom: 1.1rem;
+}
+.sh-tab {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.75rem;
+    letter-spacing: 0.5px;
+    padding: 0.5rem 1rem;
+    border: 1px solid rgba(255,215,0,0.3);
+    background: rgba(0,0,0,0.4);
+    color: var(--text-secondary);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+}
+.sh-tab:hover {
+    border-color: var(--gold-primary);
+    color: var(--gold-primary);
+    background: rgba(255,215,0,0.06);
+}
+.sh-tab.active {
+    border-color: var(--gold-primary);
+    background: linear-gradient(135deg, rgba(255,215,0,0.15), rgba(139,69,19,0.15));
+    color: var(--gold-primary);
+    box-shadow: 0 0 10px var(--gold-glow);
+}
+.sh-tab.closed {
+    border-color: rgba(150,0,0,0.5);
+    color: rgba(231,76,60,0.7);
+}
+.sh-tab.closed.active {
+    border-color: #c0392b;
+    background: rgba(192,57,43,0.12);
+    color: #e74c3c;
+    box-shadow: 0 0 10px rgba(231,76,60,0.25);
+}
+.sh-tab-dot {
+    display: inline-block;
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    margin-right: 5px;
+    vertical-align: middle;
+}
+.sh-tab-dot.open  { background: #2ecc71; box-shadow: 0 0 5px #2ecc71; }
+.sh-tab-dot.closed { background: #e74c3c; box-shadow: 0 0 5px #e74c3c; }
+.sh-tab-icon { width: 20px; height: 20px; vertical-align: middle; object-fit: contain; }
+
+/* ── Shop panel ──────────────────────────────────────────────────── */
+.sh-panel {
+    display: none;
+}
+.sh-panel.active {
+    display: block;
+    animation: shFadeIn 0.3s ease;
+}
+@keyframes shFadeIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Shop card ───────────────────────────────────────────────────── */
+.sh-card {
+    background: linear-gradient(135deg, rgba(12,12,18,0.95), rgba(18,18,26,0.95));
+    border: 2px solid transparent;
+    border-image: linear-gradient(45deg, var(--gold-primary), #5a1a1a, var(--gold-primary)) 1;
+    clip-path: polygon(0 14px, 14px 0, calc(100% - 14px) 0, 100% 14px,
+                       100% calc(100% - 14px), calc(100% - 14px) 100%,
+                       14px 100%, 0 calc(100% - 14px));
+    overflow: hidden;
+    margin-bottom: 1.2rem;
+    animation: shCardGlow 4s ease-in-out infinite;
+}
+@keyframes shCardGlow {
+    0%,100% { box-shadow: 0 0 16px var(--gold-glow); }
+    50%      { box-shadow: 0 0 28px rgba(200,0,0,0.3), 0 0 18px var(--gold-glow); }
+}
+.sh-card.closed-card {
+    border-image: linear-gradient(45deg, #5a1a1a, #2a0a0a, #5a1a1a) 1;
+    animation: shCardGlowClosed 4s ease-in-out infinite;
+}
+@keyframes shCardGlowClosed {
+    0%,100% { box-shadow: 0 0 12px rgba(231,76,60,0.2); }
+    50%      { box-shadow: 0 0 22px rgba(231,76,60,0.35); }
+}
+
+.sh-card-header {
+    padding: 0.8rem 1.2rem;
+    border-bottom: 1px solid rgba(255,215,0,0.2);
+    background: rgba(0,0,0,0.3);
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    flex-wrap: wrap;
+}
+.sh-card-header h5 {
+    font-family: 'Orbitron', sans-serif;
+    color: var(--gold-primary);
+    text-shadow: 0 0 8px var(--gold-glow);
+    margin: 0;
+    font-size: 0.95rem;
+}
+.sh-card-body { padding: 1.1rem; }
+
+/* ── Shopkeeper header section ───────────────────────────────────── */
+.sh-keeper-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 1.2rem;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+}
+.sh-keeper-avatar {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    border: 2px solid var(--gold-primary);
+    box-shadow: 0 0 14px var(--gold-glow);
+    object-fit: contain;
+    object-position: center;
+    background: rgba(0,0,0,0.5);
+    flex-shrink: 0;
+    image-rendering: auto;
+    -webkit-image-rendering: auto;
+}
+.sh-keeper-absent {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    border: 2px dashed rgba(231,76,60,0.35);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0,0,0,0.3);
+    flex-shrink: 0;
+}
+.sh-keeper-info {
+    flex: 1;
+    min-width: 160px;
+}
+.sh-keeper-name {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 1rem;
+    color: var(--gold-primary);
+    margin: 0 0 0.2rem;
+}
+.sh-keeper-desc {
+    font-size: 0.83rem;
+    color: var(--text-secondary);
+    margin: 0 0 0.5rem;
+}
+.sh-status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.28rem 0.7rem;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-family: 'Orbitron', sans-serif;
+    letter-spacing: 0.5px;
+}
+.sh-status-badge.open {
+    background: rgba(46,204,113,0.12);
+    border: 1px solid #2ecc71;
+    color: #2ecc71;
+}
+.sh-status-badge.closed {
+    background: rgba(231,76,60,0.12);
+    border: 1px solid #e74c3c;
+    color: #e74c3c;
+}
+.sh-countdown {
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+    margin-top: 0.35rem;
+    font-family: 'Orbitron', sans-serif;
+}
+.sh-countdown span {
+    color: var(--gold-secondary);
+    font-weight: 600;
+}
+
+/* ── Closed overlay ──────────────────────────────────────────────── */
+.sh-closed-overlay {
+    text-align: center;
+    padding: 2.5rem 1rem;
+    color: #e74c3c;
+}
+.sh-closed-overlay img.sh-closed-sign {
+    width: 64px;
+    height: 64px;
+    margin-bottom: 0.8rem;
+    image-rendering: auto;
+    filter: drop-shadow(0 0 8px rgba(231,76,60,0.6));
+}
+.sh-closed-overlay p {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    margin: 0.3rem 0 0;
+}
+
+/* ── Items grid ──────────────────────────────────────────────────── */
+.sh-items-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 0.85rem;
+    margin-top: 0.8rem;
+}
+
+.sh-item-card {
+    background: rgba(0,0,0,0.45);
+    border: 1px solid rgba(255,215,0,0.18);
+    border-radius: 8px;
+    padding: 0.75rem 0.7rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 0.4rem;
+    transition: all 0.22s;
+    position: relative;
+    cursor: pointer;
+    min-height: 210px;
+}
+.sh-item-card:hover:not(.sold-out):not(.no-xp) {
+    border-color: var(--gold-primary);
+    background: rgba(255,215,0,0.06);
+    transform: translateY(-2px);
+    box-shadow: 0 0 14px var(--gold-glow);
+}
+.sh-item-card.sold-out,
+.sh-item-card.no-xp {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+.sh-item-img {
+    width: 72px;
+    height: 72px;
+    object-fit: contain;
+    object-position: center;
+    image-rendering: auto;
+    -webkit-image-rendering: auto;
+    filter: drop-shadow(0 2px 6px rgba(0,0,0,0.6));
+    flex-shrink: 0;
+}
+
+.sh-item-name {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    line-height: 1.2;
+    word-break: break-word;
+}
+
+.sh-item-rarity {
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+}
+.sh-item-type {
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+}
+
+.sh-item-price {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.78rem;
+    color: #f1c40f;
+    font-weight: 700;
+    text-shadow: 0 0 6px rgba(241,196,15,0.5);
+}
+.sh-item-price-label {
+    font-size: 0.65rem;
+    color: var(--text-secondary);
+}
+
+.sh-item-owned {
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+}
+.sh-item-owned span {
+    color: #3498db;
+    font-weight: 600;
+}
+
+.sh-item-buy-btn {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.68rem;
+    letter-spacing: 0.5px;
+    padding: 0.32rem 0.75rem;
+    border: 1px solid var(--gold-primary);
+    background: linear-gradient(135deg, rgba(255,215,0,0.1), rgba(139,69,19,0.1));
+    color: var(--gold-primary);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+    width: 100%;
+    margin-top: auto;
+}
+.sh-item-buy-btn:hover {
+    background: linear-gradient(135deg, rgba(255,215,0,0.22), rgba(139,69,19,0.22));
+    box-shadow: 0 0 8px var(--gold-glow);
+}
+.sh-item-buy-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    box-shadow: none;
+}
+
+/* ── Key shop extras ─────────────────────────────────────────────── */
+.sh-key-mult {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #e67e22;
+    text-shadow: 0 0 6px rgba(230,126,34,0.6);
+    letter-spacing: 0.5px;
+}
+.sh-key-bought {
+    font-size: 0.68rem;
+    color: var(--text-secondary);
+}
+
+/* Sold stamp */
+.sh-sold-stamp {
+    position: absolute;
+    top: 6px; right: 6px;
+    width: 32px; height: 32px;
+    pointer-events: none;
+    filter: drop-shadow(0 0 3px rgba(231,76,60,0.8));
+}
+
+/* Rarity colours (reuse bz- names for consistency) */
+.rarity-common    { color: #aaa; }
+.rarity-uncommon  { color: #2ecc71; }
+.rarity-rare      { color: #3498db; }
+.rarity-epic      { color: #9b59b6; }
+.rarity-mythic    { color: #e67e22; text-shadow: 0 0 6px rgba(230,126,34,0.7); }
+.rarity-special   { color: #f1c40f; text-shadow: 0 0 6px rgba(241,196,15,0.6); }
+
+/* ── Toast ───────────────────────────────────────────────────────── */
+#sh-toast {
+    position: fixed;
+    bottom: 1.5rem;
+    right: 1.5rem;
+    z-index: 9999;
+    min-width: 260px;
+    padding: 0.75rem 1.1rem;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    display: none;
+    animation: shToastIn 0.3s ease;
+    pointer-events: none;
+}
+@keyframes shToastIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+#sh-toast.success { background: rgba(46,204,113,0.15); border: 1px solid #2ecc71; color: #2ecc71; }
+#sh-toast.error   { background: rgba(231,76,60,0.15);  border: 1px solid #e74c3c; color: #e74c3c; }
+#sh-toast.info    { background: rgba(52,152,219,0.15); border: 1px solid #3498db; color: #74b9e8; }
+
+/* ── Loading spinner ─────────────────────────────────────────────── */
+.sh-loading {
+    text-align: center;
+    padding: 3rem;
+    color: var(--text-secondary);
+}
+.sh-loading .spinner-border {
+    color: var(--gold-primary);
+    width: 2.5rem;
+    height: 2.5rem;
+}
+
+/* ── Open Chests tab ─────────────────────────────────────────────── */
+.sh-chest-desc {
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+    margin-bottom: 1rem;
+    padding: 0.75rem;
+    background: rgba(255,215,0,0.04);
+    border-radius: 6px;
+    border: 1px solid rgba(255,215,0,0.08);
+}
+.sh-chest-section-label {
+    font-size: 0.72rem;
+    color: var(--text-secondary);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 6px;
+}
+.sh-chest-keys-bar {
+    margin-bottom: 1rem;
+}
+.sh-chest-keys-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+}
+.sh-key-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,215,0,0.15);
+    border-radius: 6px;
+    padding: 4px 10px 4px 6px;
+    font-size: 0.75rem;
+}
+.sh-key-badge img {
+    width: 20px;
+    height: 20px;
+    object-fit: contain;
+}
+.sh-key-badge-count {
+    color: var(--gold-primary);
+    font-weight: 700;
+}
+.sh-key-badge-name {
+    color: var(--text-secondary);
+}
+.sh-chest-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(175px, 1fr));
+    gap: 0.6rem;
+    margin-bottom: 1rem;
+}
+.sh-chest-card {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid;
+    border-radius: 8px;
+    padding: 0.75rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.sh-chest-card:hover {
+    background: rgba(255,255,255,0.06);
+    transform: translateY(-2px);
+}
+.sh-chest-card-img {
+    width: 40px;
+    height: 40px;
+    object-fit: contain;
+    margin-bottom: 4px;
+}
+.sh-chest-card-label {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.78rem;
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+.sh-chest-card-cost {
+    font-size: 0.72rem;
+    color: var(--text-secondary);
+    margin-bottom: 2px;
+}
+.sh-chest-card-cost img {
+    width: 14px;
+    height: 14px;
+    vertical-align: middle;
+}
+.sh-chest-card-items {
+    font-size: 0.68rem;
+    color: var(--gold-secondary);
+}
+.sh-chest-type-row {
+    margin-bottom: 0.8rem;
+}
+.sh-type-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+.sh-type-chip {
+    font-size: 0.72rem;
+    padding: 4px 10px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,215,0,0.15);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+    color: var(--text-secondary);
+}
+.sh-type-chip:hover {
+    background: rgba(255,255,255,0.08);
+}
+.sh-chest-amt-row {
+    margin-bottom: 0.8rem;
+}
+.sh-amt-input {
+    max-width: 100px;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,215,0,0.15);
+    border-radius: 6px;
+    padding: 6px 10px;
+    color: var(--text-primary);
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.85rem;
+}
+.sh-open-btn {
+    background: linear-gradient(135deg, var(--gold-primary), #f0a500);
+    border: none;
+    color: #1a1a2e;
+    font-family: 'Orbitron', sans-serif;
+    font-weight: 700;
+    font-size: 0.8rem;
+    padding: 0.6rem 1.5rem;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-bottom: 0.8rem;
+}
+.sh-open-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(255,215,0,0.3);
+}
+.sh-chest-result {
+    margin-top: 0.5rem;
+}
+.sh-chest-result-items {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+.sh-result-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,215,0,0.1);
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-size: 0.75rem;
+}
+.sh-battle-card {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid;
+    border-radius: 8px;
+    padding: 0.75rem;
+}
+
+/* ── Chest opening animation overlay ────────────────────────────── */
+.sh-chest-anim-overlay {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.8);
+    z-index: 99999;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+.sh-chest-anim-inner {
+    text-align: center;
+}
+.sh-chest-anim-img {
+    width: 96px;
+    height: 96px;
+    object-fit: contain;
+}
+@keyframes sh-chest-zoom {
+    0%   { transform: scale(0.3); opacity: 0; }
+    50%  { transform: scale(1.2); opacity: 1; }
+    100% { transform: scale(1);   opacity: 1; }
+}
+.sh-chest-anim-items {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    justify-content: center;
+}
+.sh-anim-item {
+    text-align: center;
+    animation: sh-item-fade-in 0.3s ease forwards;
+    opacity: 0;
+}
+@keyframes sh-item-fade-in {
+    to { opacity: 1; }
+}
+
+/* ── Responsive ──────────────────────────────────────────────────── */
+@media (max-width: 575px) {
+    .sh-items-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    .sh-keeper-avatar { width: 52px; height: 52px; }
+    .sh-tabs { gap: 0.3rem; }
+    .sh-tab  { font-size: 0.68rem; padding: 0.4rem 0.6rem; }
+}

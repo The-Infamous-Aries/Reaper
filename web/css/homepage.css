@@ -488,52 +488,13 @@
     cursor: pointer;
 }
 
-.hero-content .creator-info {
-    margin-top: 1.5rem;
-    margin-bottom: 1rem;
-}
-
-.hero-content .creator-info .aka {
+.hero-avatar-prompt {
     font-family: 'Roboto', sans-serif;
     font-size: 1rem;
     color: var(--text-secondary);
-    font-style: italic;
-    margin-bottom: 0.5rem;
-}
-
-.hero-content .creator-info .title {
-    font-family: 'Roboto', sans-serif;
-    font-size: 1.1rem;
-    color: var(--text-primary);
-    font-weight: 500;
-    margin-bottom: 0;
-}
-
-.hero-section .mission-statement {
-    text-align: center;
-    padding: 1.5rem;
-    background: rgba(255, 215, 0, 0.05);
-    border-radius: 10px;
-    border: 1px solid rgba(255, 215, 0, 0.2);
-    margin-top: 2rem;
-}
-
-.hero-section .mission-statement h3 {
-    font-family: 'Orbitron', sans-serif;
-    font-weight: 700;
-    font-size: 1.3rem;
-    color: var(--gold-primary);
-    text-shadow: 0 0 10px var(--gold-glow);
-    margin-bottom: 1rem;
-}
-
-.hero-section .mission-statement p {
-    font-family: 'Roboto', sans-serif;
-    font-size: 1rem;
-    color: var(--text-primary);
-    line-height: 1.6;
-    max-width: 800px;
-    margin: 0 auto;
+    letter-spacing: 0;
+    margin: -0.75rem 0 1.5rem;
+    text-shadow: 0 0 10px rgba(255, 215, 0, 0.25);
 }
 
 .hero-title {
@@ -544,6 +505,12 @@
     text-shadow: 0 0 20px var(--gold-glow), 0 0 40px rgba(255, 215, 0, 0.5);
     margin-bottom: 1rem;
     animation: pulseTextGlow 3s ease-in-out infinite;
+    transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.hero-title.is-changing {
+    opacity: 0;
+    transform: translateY(8px);
 }
 
 .hero-subtitle {
@@ -606,17 +573,20 @@
 }
 
 .hero-stats {
-    display: flex;
-    justify-content: center;
-    gap: 3rem;
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(180px, 1fr));
+    gap: 1rem;
     padding-top: 2rem;
     border-top: 1px solid rgba(255, 215, 0, 0.2);
 }
 
 .stat-item {
     text-align: center;
-    min-width: 100px;
+    min-width: 0;
+    padding: 1rem;
+    background: rgba(255, 215, 0, 0.05);
+    border: 1px solid rgba(255, 215, 0, 0.18);
+    border-radius: 8px;
 }
 
 .stat-value {
@@ -630,11 +600,29 @@
 }
 
 .stat-label {
+    display: block;
     font-family: 'Roboto', sans-serif;
-    font-size: 0.9rem;
-    color: var(--text-secondary);
+    font-size: 0.95rem;
+    color: var(--gold-primary);
     text-transform: uppercase;
     letter-spacing: 1px;
+    margin-bottom: 0.75rem;
+    text-shadow: 0 0 10px var(--gold-glow);
+}
+
+.stat-detail {
+    display: block;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 1rem;
+    color: var(--text-primary);
+    letter-spacing: 0;
+    line-height: 1.7;
+}
+
+.stat-detail span {
+    color: var(--gold-primary);
+    font-weight: 900;
+    text-shadow: 0 0 12px var(--gold-glow);
 }
 
 /* ── About Section ─────────────────────────────────────────────────────────── */
@@ -667,56 +655,6 @@
     border: 3px solid var(--gold-primary);
     box-shadow: 0 0 20px var(--gold-glow);
     object-fit: cover;
-}
-
-.creator-info h2 {
-    font-family: 'Orbitron', sans-serif;
-    font-weight: 900;
-    font-size: 1.8rem;
-    color: var(--gold-primary);
-    text-shadow: 0 0 15px var(--gold-glow);
-    margin-bottom: 0.5rem;
-}
-
-.creator-info .aka {
-    font-family: 'Roboto', sans-serif;
-    font-size: 1rem;
-    color: var(--text-secondary);
-    font-style: italic;
-    margin-bottom: 0.5rem;
-}
-
-.creator-info .title {
-    font-family: 'Roboto', sans-serif;
-    font-size: 1.1rem;
-    color: var(--text-primary);
-    margin-bottom: 0;
-}
-
-.mission-statement {
-    text-align: center;
-    padding: 1.5rem;
-    background: rgba(255, 215, 0, 0.05);
-    border-radius: 10px;
-    border: 1px solid rgba(255, 215, 0, 0.2);
-}
-
-.mission-statement h3 {
-    font-family: 'Orbitron', sans-serif;
-    font-weight: 700;
-    font-size: 1.3rem;
-    color: var(--gold-primary);
-    text-shadow: 0 0 10px var(--gold-glow);
-    margin-bottom: 1rem;
-}
-
-.mission-statement p {
-    font-family: 'Roboto', sans-serif;
-    font-size: 1rem;
-    color: var(--text-primary);
-    line-height: 1.6;
-    max-width: 800px;
-    margin: 0 auto;
 }
 
 /* ── Homepage Layout ───────────────────────────────────────────────────────── */
@@ -1279,11 +1217,12 @@
     }
 
     .hero-stats {
-        gap: 1.5rem;
+        grid-template-columns: 1fr;
+        gap: 1rem;
     }
 
-    .stat-value {
-        font-size: 1.5rem;
+    .stat-detail {
+        font-size: 0.95rem;
     }
 
     .about-card {

@@ -272,8 +272,8 @@
 
 /* Claim daily goal button */
 .task-claim-goal-btn {
-  background: linear-gradient(135deg, rgba(255,215,0,0.22), rgba(255,140,0,0.14));
-  border: 2px solid rgba(255,215,0,0.7);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--gold-primary, #ffd700) 24%, transparent), color-mix(in srgb, var(--gold-primary, #ffd700) 12%, transparent));
+  border: 2px solid color-mix(in srgb, var(--gold-primary, #ffd700) 70%, transparent);
   color: var(--gold-primary, #ffd700);
   border-radius: 10px;
   padding: 9px 20px;
@@ -287,14 +287,19 @@
   animation: claimPulse 1.8s ease-in-out infinite;
 }
 .task-claim-goal-btn:hover:not(:disabled) {
-  background: linear-gradient(135deg, rgba(255,215,0,0.38), rgba(255,140,0,0.25));
-  box-shadow: 0 0 22px rgba(255,215,0,0.55);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--gold-primary, #ffd700) 38%, transparent), color-mix(in srgb, var(--gold-primary, #ffd700) 24%, transparent));
+  box-shadow: 0 0 22px color-mix(in srgb, var(--gold-primary, #ffd700) 55%, transparent);
   transform: translateY(-1px);
 }
 .task-claim-goal-btn:disabled {
-  opacity: 0.5;
+  opacity: 1;
   cursor: not-allowed;
   animation: none;
+  background: rgba(0,0,0,0.48) !important;
+  border-color: rgba(255,255,255,0.14) !important;
+  color: rgba(255,255,255,0.42) !important;
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,0.45) !important;
+  filter: grayscale(0.8);
 }
 
 /* Goal-ready state (completed, not yet claimed) */
@@ -511,6 +516,14 @@
 .goal-reward-preview {
   font-size: 0.85rem;
   color: var(--text-secondary, #aaa);
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px;
+  background: rgba(0,0,0,0.22);
+  border: 1px solid rgba(255,215,0,0.16);
+  border-radius: 8px;
 }
 
 .goal-reward-preview strong {
@@ -518,7 +531,7 @@
 }
 
 .goal-bar-fill {
-  background: linear-gradient(90deg, #ffd700, #ff8c00) !important;
+  background: linear-gradient(90deg, var(--gold-primary, #ffd700), color-mix(in srgb, var(--gold-primary, #ffd700) 72%, #000 28%)) !important;
   filter: brightness(1.0) saturate(1.1);
 }
 
@@ -562,4 +575,400 @@
   color: var(--text-secondary, #888);
   text-transform: uppercase;
   margin-bottom: 12px;
+}
+
+/* ── Weekly Tasks ─────────────────────────────────────────────────────────── */
+
+.tasks-weekly-divider {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 36px 0 14px;
+  font-family: 'Orbitron', monospace;
+  font-size: 0.78rem;
+  letter-spacing: 2px;
+  color: color-mix(in srgb, var(--gold-primary, #ffd700) 78%, #000 22%);
+  text-transform: uppercase;
+}
+.tasks-weekly-divider::before,
+.tasks-weekly-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--gold-primary, #ffd700) 36%, transparent), transparent);
+}
+
+/* Weekly goal card */
+.weekly-goal-card {
+  border-color: var(--lane-border);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--lane-accent) 14%, var(--bg-secondary, #0f0f0f) 86%) 0%, color-mix(in srgb, var(--lane-accent) 8%, var(--bg-primary, #0a0a0a) 92%) 100%);
+  box-shadow: 0 0 24px rgba(0,0,0,0.12);
+}
+.weekly-goal-card:hover {
+  border-color: var(--lane-accent);
+  box-shadow: 0 0 32px color-mix(in srgb, var(--lane-accent) 22%, transparent);
+}
+.weekly-goal-card.goal-ready {
+  border-color: var(--lane-accent-strong);
+  animation: weeklyGoalPulse 2.5s ease-in-out infinite;
+}
+@keyframes weeklyGoalPulse {
+  0%,100% { box-shadow: 0 0 20px color-mix(in srgb, var(--lane-accent) 18%, transparent); }
+  50%      { box-shadow: 0 0 40px color-mix(in srgb, var(--lane-accent) 34%, transparent); }
+}
+.weekly-goal-card.completed {
+  border-color: rgba(80,200,80,0.45);
+  background: linear-gradient(135deg, rgba(80,200,80,0.06) 0%, rgba(40,160,40,0.04) 100%);
+}
+
+/* Weekly badge */
+.weekly-badge {
+  background: linear-gradient(90deg, var(--lane-accent-strong), var(--lane-accent)) !important;
+  color: var(--lane-pill-text) !important;
+}
+
+/* Weekly claim goal button */
+.weekly-claim-goal-btn {
+  border-color: var(--lane-accent) !important;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--lane-accent) 25%, transparent), color-mix(in srgb, var(--lane-accent) 12%, transparent)) !important;
+  color: var(--lane-accent-strong) !important;
+}
+.weekly-claim-goal-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, color-mix(in srgb, var(--lane-accent) 38%, transparent), color-mix(in srgb, var(--lane-accent) 22%, transparent)) !important;
+  box-shadow: 0 0 22px color-mix(in srgb, var(--lane-accent) 55%, transparent) !important;
+  transform: translateY(-1px);
+}
+
+/* Weekly task cards */
+.weekly-task-card {
+  border-color: color-mix(in srgb, var(--lane-accent) 32%, transparent);
+}
+.weekly-task-card:hover {
+  border-color: color-mix(in srgb, var(--lane-accent) 54%, transparent);
+  box-shadow: 0 0 14px color-mix(in srgb, var(--lane-accent) 16%, transparent);
+}
+.weekly-task-card.claim-ready {
+  border-color: var(--lane-accent);
+  background: color-mix(in srgb, var(--lane-accent) 8%, transparent);
+  box-shadow: 0 0 16px color-mix(in srgb, var(--lane-accent) 18%, transparent);
+}
+.weekly-task-card.completed {
+  border-color: rgba(80,200,80,0.35);
+  background: rgba(80,200,80,0.04);
+}
+
+/* Weekly claim button */
+.weekly-claim-btn {
+  background: linear-gradient(135deg, color-mix(in srgb, var(--lane-accent) 25%, transparent), color-mix(in srgb, var(--lane-accent) 12%, transparent));
+  border: 1px solid var(--lane-accent);
+  color: var(--lane-accent-strong);
+  border-radius: 8px;
+  padding: 7px 14px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  align-self: flex-start;
+  margin-top: 2px;
+  animation: weeklyClaimPulse 2s ease-in-out infinite;
+}
+.weekly-claim-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, color-mix(in srgb, var(--lane-accent) 38%, transparent), color-mix(in srgb, var(--lane-accent) 22%, transparent));
+  box-shadow: 0 0 14px color-mix(in srgb, var(--lane-accent) 50%, transparent);
+  transform: translateY(-1px);
+}
+.weekly-claim-btn:disabled { opacity: 0.5; cursor: not-allowed; animation: none; }
+@keyframes weeklyClaimPulse {
+  0%,100% { box-shadow: 0 0 6px color-mix(in srgb, var(--lane-accent) 30%, transparent); }
+  50%      { box-shadow: 0 0 18px color-mix(in srgb, var(--lane-accent) 65%, transparent); }
+}
+
+/* Weekly reset countdown */
+.weekly-reset-timer {
+  font-family: 'Orbitron', monospace;
+  font-size: 0.78rem;
+  color: var(--lane-accent-strong);
+}
+
+/* ── Tab bar ──────────────────────────────────────────────────────────────── */
+
+.tasks-tabs {
+  --tasks-weekly-accent: color-mix(in srgb, var(--gold-primary, #ffd700) 78%, #000 22%);
+  --tasks-monthly-accent: color-mix(in srgb, var(--gold-primary, #ffd700) 58%, #000 42%);
+  --tasks-weekly-accent-soft: color-mix(in srgb, var(--gold-primary, #ffd700) 13%, transparent);
+  --tasks-monthly-accent-soft: color-mix(in srgb, var(--gold-primary, #ffd700) 9%, transparent);
+  display: flex;
+  gap: 6px;
+  margin-bottom: 20px;
+  background: rgba(0,0,0,0.25);
+  border: 1px solid rgba(255,215,0,0.15);
+  border-radius: 12px;
+  padding: 5px;
+}
+
+.tasks-tab {
+  flex: 1;
+  position: relative;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-secondary, #aaa);
+  cursor: pointer;
+  transition: all 0.18s;
+  font-family: 'Orbitron', monospace;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+
+.tasks-tab:hover {
+  color: var(--text-primary, #eee);
+  background: rgba(255,255,255,0.04);
+}
+
+.tasks-tab.active {
+  color: var(--gold-primary, #ffd700);
+  background: rgba(255,215,0,0.1);
+  border-color: rgba(255,215,0,0.4);
+  box-shadow: 0 0 10px rgba(255,215,0,0.12);
+}
+
+/* active tint per tab */
+#tasks-tabbed .tasks-tab[data-tab="weekly"].active {
+  color: var(--tasks-weekly-accent);
+  background: var(--tasks-weekly-accent-soft);
+  border-color: color-mix(in srgb, var(--tasks-weekly-accent) 44%, transparent);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--tasks-weekly-accent) 18%, transparent);
+}
+
+#tasks-tabbed .tasks-tab[data-tab="monthly"].active {
+  color: var(--tasks-monthly-accent);
+  background: var(--tasks-monthly-accent-soft);
+  border-color: color-mix(in srgb, var(--tasks-monthly-accent) 44%, transparent);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--tasks-monthly-accent) 18%, transparent);
+}
+
+.tasks-tab-badge {
+  position: absolute;
+  top: 4px;
+  right: 6px;
+  min-width: 16px;
+  height: 16px;
+  border-radius: 8px;
+  background: var(--gold-primary, #ffd700);
+  color: #111;
+  font-size: 0.6rem;
+  font-weight: 700;
+  font-family: sans-serif;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+}
+
+.tasks-tab-badge--purple { background: var(--tasks-weekly-accent); color: #111; }
+.tasks-tab-badge--orange  { background: var(--tasks-monthly-accent); color: var(--text-primary, #fff); }
+
+/* ── Tab panel ────────────────────────────────────────────────────────────── */
+
+.tasks-tab-panel { animation: taskTabFadeIn 0.18s ease; }
+
+.tasks-lane {
+  --lane-accent: var(--gold-primary, #ffd700);
+  --lane-accent-strong: var(--gold-secondary, #ffed4e);
+  --lane-bg-top: color-mix(in srgb, var(--gold-primary, #ffd700) 24%, var(--bg-secondary, #0f0f0f) 76%);
+  --lane-bg-bottom: color-mix(in srgb, var(--gold-primary, #ffd700) 12%, var(--bg-primary, #0a0a0a) 88%);
+  --lane-border: color-mix(in srgb, var(--gold-primary, #ffd700) 58%, var(--bg-primary, #0a0a0a) 42%);
+  --lane-pill-text: #111;
+  position: relative;
+  padding: 14px;
+  border: 1px solid var(--lane-border);
+  border-top: 4px solid var(--lane-accent);
+  border-radius: 12px;
+  background: linear-gradient(180deg, var(--lane-bg-top), var(--lane-bg-bottom));
+  box-shadow: 0 12px 26px rgba(0,0,0,0.18);
+}
+
+.tasks-lane-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.tasks-lane-header h3 {
+  margin: 2px 0 0;
+  font-size: 1rem;
+  line-height: 1.2;
+  color: var(--lane-accent-strong);
+  font-family: 'Cinzel', serif;
+}
+
+.tasks-lane-kicker,
+.tasks-lane-target {
+  font-family: 'Orbitron', monospace;
+  font-size: 0.64rem;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+}
+
+.tasks-lane-kicker {
+  color: var(--text-secondary, #aaa);
+}
+
+.tasks-lane-target {
+  flex-shrink: 0;
+  color: var(--lane-pill-text);
+  background: linear-gradient(90deg, var(--lane-accent-strong), var(--lane-accent));
+  border-radius: 999px;
+  padding: 5px 8px;
+  font-weight: 800;
+}
+
+.tasks-lane-weekly {
+  --lane-accent: color-mix(in srgb, var(--gold-primary, #ffd700) 78%, #000 22%);
+  --lane-accent-strong: color-mix(in srgb, var(--gold-secondary, #ffed4e) 82%, #000 18%);
+  --lane-bg-top: color-mix(in srgb, var(--gold-primary, #ffd700) 17%, var(--bg-secondary, #0f0f0f) 83%);
+  --lane-bg-bottom: color-mix(in srgb, var(--gold-primary, #ffd700) 9%, var(--bg-primary, #0a0a0a) 91%);
+  --lane-border: color-mix(in srgb, var(--gold-primary, #ffd700) 44%, var(--bg-primary, #0a0a0a) 56%);
+  --lane-pill-text: #111;
+}
+
+.tasks-lane-monthly {
+  --lane-accent: color-mix(in srgb, var(--gold-primary, #ffd700) 58%, #000 42%);
+  --lane-accent-strong: color-mix(in srgb, var(--gold-secondary, #ffed4e) 64%, #000 36%);
+  --lane-bg-top: color-mix(in srgb, var(--gold-primary, #ffd700) 11%, var(--bg-secondary, #0f0f0f) 89%);
+  --lane-bg-bottom: color-mix(in srgb, var(--gold-primary, #ffd700) 6%, var(--bg-primary, #0a0a0a) 94%);
+  --lane-border: color-mix(in srgb, var(--gold-primary, #ffd700) 34%, var(--bg-primary, #0a0a0a) 66%);
+  --lane-pill-text: var(--text-primary, #f0f0f0);
+}
+
+@keyframes taskTabFadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.tasks-tab-desc {
+  font-size: 0.78rem;
+  color: var(--text-secondary, #aaa);
+  margin: 0 0 16px;
+  line-height: 1.5;
+}
+
+/* ── Monthly goal card ────────────────────────────────────────────────────── */
+
+.monthly-goal-card {
+  border-color: var(--lane-border);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--lane-accent) 12%, var(--bg-secondary, #0f0f0f) 88%) 0%, color-mix(in srgb, var(--lane-accent) 7%, var(--bg-primary, #0a0a0a) 93%) 100%);
+  box-shadow: 0 0 24px rgba(0,0,0,0.14);
+}
+
+.monthly-goal-card:hover {
+  border-color: var(--lane-accent);
+  box-shadow: 0 0 32px color-mix(in srgb, var(--lane-accent) 20%, transparent);
+}
+
+.monthly-goal-card.goal-ready {
+  border-color: var(--lane-accent-strong);
+  animation: monthlyGoalPulse 2.5s ease-in-out infinite;
+}
+
+@keyframes monthlyGoalPulse {
+  0%,100% { box-shadow: 0 0 20px color-mix(in srgb, var(--lane-accent) 18%, transparent); }
+  50%      { box-shadow: 0 0 40px color-mix(in srgb, var(--lane-accent) 34%, transparent); }
+}
+
+.monthly-goal-card.completed {
+  border-color: rgba(80,200,80,0.45);
+  background: linear-gradient(135deg, rgba(80,200,80,0.06) 0%, rgba(40,160,40,0.04) 100%);
+}
+
+/* Monthly badge */
+.monthly-badge {
+  background: linear-gradient(90deg, var(--lane-accent-strong), var(--lane-accent)) !important;
+  color: var(--lane-pill-text) !important;
+}
+
+/* Monthly claim goal button */
+.monthly-claim-goal-btn {
+  border-color: var(--lane-accent) !important;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--lane-accent) 25%, transparent), color-mix(in srgb, var(--lane-accent) 12%, transparent)) !important;
+  color: var(--lane-accent-strong) !important;
+}
+.monthly-claim-goal-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, color-mix(in srgb, var(--lane-accent) 38%, transparent), color-mix(in srgb, var(--lane-accent) 22%, transparent)) !important;
+  box-shadow: 0 0 22px color-mix(in srgb, var(--lane-accent) 55%, transparent) !important;
+  transform: translateY(-1px);
+}
+
+/* Monthly task cards */
+.monthly-card {
+  border-color: color-mix(in srgb, var(--lane-accent) 32%, transparent);
+}
+.monthly-card:hover {
+  border-color: color-mix(in srgb, var(--lane-accent) 54%, transparent);
+  box-shadow: 0 0 14px color-mix(in srgb, var(--lane-accent) 16%, transparent);
+}
+.monthly-card.claim-ready {
+  border-color: var(--lane-accent);
+  background: color-mix(in srgb, var(--lane-accent) 8%, transparent);
+  box-shadow: 0 0 16px color-mix(in srgb, var(--lane-accent) 18%, transparent);
+}
+.monthly-card.completed {
+  border-color: rgba(80,200,80,0.35);
+  background: rgba(80,200,80,0.04);
+}
+
+/* Monthly claim button */
+.monthly-claim-btn {
+  background: linear-gradient(135deg, color-mix(in srgb, var(--lane-accent) 25%, transparent), color-mix(in srgb, var(--lane-accent) 12%, transparent));
+  border: 1px solid var(--lane-accent);
+  color: var(--lane-accent-strong);
+  border-radius: 8px;
+  padding: 7px 14px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  align-self: flex-start;
+  margin-top: 2px;
+  animation: monthlyClaimPulse 2s ease-in-out infinite;
+}
+.monthly-claim-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, color-mix(in srgb, var(--lane-accent) 38%, transparent), color-mix(in srgb, var(--lane-accent) 22%, transparent));
+  box-shadow: 0 0 14px color-mix(in srgb, var(--lane-accent) 50%, transparent);
+  transform: translateY(-1px);
+}
+.monthly-claim-btn:disabled { opacity: 0.5; cursor: not-allowed; animation: none; }
+
+@keyframes monthlyClaimPulse {
+  0%,100% { box-shadow: 0 0 6px color-mix(in srgb, var(--lane-accent) 30%, transparent); }
+  50%      { box-shadow: 0 0 18px color-mix(in srgb, var(--lane-accent) 65%, transparent); }
+}
+
+/* Monthly reset countdown */
+.monthly-reset-timer {
+  font-family: 'Orbitron', monospace;
+  font-size: 0.78rem;
+  color: var(--lane-accent-strong);
+}
+
+@media (min-width: 992px) {
+  .tasks-page {
+    max-width: 1200px;
+  }
+  .tasks-all-columns {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
+  }
+  .tasks-tabs {
+    display: none;
+  }
+  .tasks-tab-panel {
+    display: block !important; /* Override inline style from JS */
+  }
 }

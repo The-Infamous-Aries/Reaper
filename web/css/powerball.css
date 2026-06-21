@@ -742,6 +742,88 @@
     .pb-pet-grid { max-height: 200px; }
 }
 
+/* ── Quick Pick ──────────────────────────────────────────────────────────── */
+.pb-quickpick-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+}
+.pb-qp-btn {
+    white-space: nowrap;
+    background: linear-gradient(135deg, rgba(255,215,0,0.15), rgba(255,165,0,0.08));
+    border-color: rgba(255,215,0,0.5);
+    color: var(--gold-primary);
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.7rem;
+    letter-spacing: 0.5px;
+    transition: all 0.15s;
+}
+.pb-qp-btn:hover {
+    background: linear-gradient(135deg, rgba(255,215,0,0.28), rgba(255,165,0,0.16));
+    box-shadow: 0 0 12px rgba(255,215,0,0.4);
+    transform: translateY(-1px);
+}
+/* EM toggle inside Quick Pick row */
+.pb-qp-em-toggle-wrap {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    cursor: pointer;
+    user-select: none;
+    padding: 5px 10px;
+    border-radius: 6px;
+    border: 1px solid rgba(255,165,0,0.25);
+    background: rgba(255,165,0,0.04);
+    transition: border-color 0.15s, background 0.15s;
+}
+.pb-qp-em-toggle-wrap:has(input:checked) {
+    border-color: rgba(255,165,0,0.55);
+    background: rgba(255,165,0,0.1);
+}
+.pb-qp-em-toggle-wrap input {
+    display: none;
+}
+.pb-qp-em-slider {
+    width: 28px;
+    height: 16px;
+    border-radius: 8px;
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,165,0,0.3);
+    position: relative;
+    flex-shrink: 0;
+    transition: background 0.2s;
+}
+.pb-qp-em-slider::after {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.4);
+    transition: transform 0.2s, background 0.2s;
+}
+.pb-qp-em-toggle-wrap input:checked ~ .pb-qp-em-slider {
+    background: rgba(255,165,0,0.35);
+    border-color: #ffa500;
+}
+.pb-qp-em-toggle-wrap input:checked ~ .pb-qp-em-slider::after {
+    transform: translateX(12px);
+    background: #ffa500;
+}
+.pb-qp-em-label {
+    font-size: 0.68rem;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    transition: color 0.15s;
+}
+.pb-qp-em-toggle-wrap:has(input:checked) .pb-qp-em-label {
+    color: #ffa500;
+}
+
 /* ── Rollover multiplier animation ──────────────────────────────────────────── */
 @keyframes pbRolloverGlow {
     0%,100% { color: #27ae60; text-shadow: 0 0 5px rgba(39,174,96,0.3); }

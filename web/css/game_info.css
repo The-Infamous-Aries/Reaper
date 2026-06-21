@@ -1292,6 +1292,8 @@
 
 .chart-modal-legend {
     display: flex;
+    align-items: center;
+    flex-wrap: wrap;
     gap: 16px;
     padding: 8px 18px;
     border-bottom: 1px solid #2a2a2a;
@@ -1312,6 +1314,41 @@
     border-radius: 2px;
 }
 
+.chart-modal-active-readout {
+    display: none;
+    align-items: center;
+    gap: 10px;
+    margin-left: auto;
+    padding: 4px 10px;
+    border: 1px solid #333;
+    border-radius: 6px;
+    background: rgba(12, 12, 14, 0.72);
+    color: #aaa;
+    font-size: 0.74rem;
+}
+
+.chart-modal-active-readout.active {
+    display: inline-flex;
+}
+
+.chart-modal-active-time {
+    color: #d6d6d6;
+}
+
+.chart-modal-active-price {
+    display: inline-flex;
+    gap: 5px;
+    white-space: nowrap;
+}
+
+.chart-modal-active-price.buy {
+    color: #4caf50;
+}
+
+.chart-modal-active-price.sell {
+    color: #f44336;
+}
+
 .chart-modal-scroll {
     overflow-x: auto;
     overflow-y: hidden;
@@ -1322,6 +1359,65 @@
     min-height: 200px;
     display: flex;
     align-items: center;
+}
+
+.chart-history-shell {
+    display: flex;
+    align-items: flex-start;
+    min-width: max-content;
+}
+
+.chart-history-plot {
+    display: block;
+    overflow: visible;
+}
+
+.chart-history-plot {
+    flex: 0 0 auto;
+    touch-action: pan-x;
+}
+
+.chart-history-hover-layer {
+    pointer-events: none;
+}
+
+.chart-history-crosshair {
+    stroke: rgba(255, 215, 0, 0.72);
+    stroke-width: 1.4;
+    stroke-dasharray: 4 4;
+}
+
+.chart-history-point-buy,
+.chart-history-point-sell {
+    stroke: #111;
+    stroke-width: 1.5;
+    filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.18));
+}
+
+.chart-history-point-buy {
+    fill: #4caf50;
+}
+
+.chart-history-point-sell {
+    fill: #f44336;
+}
+
+.chart-history-time-bg {
+    fill: rgba(10, 10, 12, 0.9);
+    stroke: rgba(255, 215, 0, 0.35);
+    stroke-width: 1;
+}
+
+.chart-history-time-label {
+    fill: #ddd;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+}
+
+.chart-history-hitbox {
+    fill: transparent;
+    cursor: crosshair;
+    pointer-events: all;
 }
 
 .chart-modal-scroll::-webkit-scrollbar {

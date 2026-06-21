@@ -1,0 +1,466 @@
+.zombie-root {
+    --z-bg: var(--bg-primary, #0a0a0a);
+    --z-panel: var(--surface-overlay, rgba(15, 15, 15, 0.86));
+    --z-panel-2: color-mix(in srgb, var(--bg-secondary, #0f0f0f) 88%, var(--gold-primary, #ffd700) 12%);
+    --z-border: var(--border-primary, rgba(255, 215, 0, 0.3));
+    --z-text: var(--text-primary, #f0f0f0);
+    --z-muted: var(--text-secondary, #b9bbbe);
+    --z-red: color-mix(in srgb, #c84545 72%, var(--gold-primary, #ffd700) 28%);
+    --z-red-2: color-mix(in srgb, #7e2028 72%, var(--gold-primary, #ffd700) 28%);
+    --z-green: color-mix(in srgb, #4caf50 62%, var(--gold-primary, #ffd700) 38%);
+    --z-gold: var(--gold-primary, #ffd700);
+    --z-blue: color-mix(in srgb, var(--gold-secondary, #ffed4e) 48%, #4ea3d8 52%);
+    color: var(--z-text);
+    min-height: calc(100vh - 96px);
+    padding: 16px;
+    background:
+        linear-gradient(135deg,
+            color-mix(in srgb, var(--bg-primary, #0a0a0a) 92%, transparent),
+            color-mix(in srgb, var(--bg-secondary, #0f0f0f) 88%, var(--gold-primary, #ffd700) 12%)),
+        radial-gradient(circle at 78% 12%, rgba(var(--gold-rgb, 255, 215, 0), 0.12), transparent 34%);
+    border: 1px solid color-mix(in srgb, var(--z-border) 56%, transparent);
+}
+
+.zombie-root [hidden] {
+    display: none !important;
+}
+
+.zombie-topbar,
+.zombie-admin,
+.zombie-scene,
+.zombie-character,
+.zombie-panel,
+.zombie-login {
+    border: 1px solid var(--z-border);
+    background: var(--z-panel);
+    border-radius: 8px;
+    box-shadow: 0 14px 40px color-mix(in srgb, var(--bg-primary, #000) 70%, transparent);
+}
+
+.zombie-topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 14px;
+}
+
+.zombie-title-wrap {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+}
+
+.zombie-menu-icon {
+    width: 44px;
+    height: 44px;
+    object-fit: contain;
+}
+
+.zombie-topbar h4,
+.zombie-scene h5,
+.zombie-panel h5,
+.zombie-login h5 {
+    margin: 0;
+    letter-spacing: 0;
+}
+
+.zombie-subline,
+.zombie-kicker,
+.zombie-meta-row,
+.zombie-user-pill,
+.zombie-preview,
+.zombie-history-item,
+.zombie-empty-panel {
+    color: var(--z-muted);
+}
+
+.zombie-user-pill {
+    border: 1px solid color-mix(in srgb, var(--z-border) 58%, transparent);
+    border-radius: 999px;
+    padding: 7px 10px;
+    font-size: 0.84rem;
+    white-space: nowrap;
+}
+
+.zombie-login {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-top: 14px;
+    padding: 14px;
+}
+
+.zombie-login img {
+    width: 40px;
+    height: 40px;
+}
+
+.zombie-login p {
+    margin: 2px 0 0;
+    color: var(--z-muted);
+}
+
+.zombie-admin {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: 14px;
+    padding: 10px 12px;
+    background: color-mix(in srgb, var(--bg-secondary, #0f0f0f) 92%, var(--gold-primary, #ffd700) 8%);
+}
+
+.zombie-admin-status,
+.zombie-admin-actions,
+.zombie-meta-row,
+.zombie-panel-head,
+.zombie-stat-line {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+}
+
+.zombie-admin-actions {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+}
+
+.zombie-admin input {
+    width: 210px;
+    max-width: 100%;
+    height: 36px;
+    border-radius: 6px;
+    border: 1px solid color-mix(in srgb, var(--z-border) 58%, transparent);
+    background: color-mix(in srgb, var(--bg-tertiary, #141414) 86%, transparent);
+    color: var(--z-text);
+    padding: 0 10px;
+}
+
+.zombie-live-dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: var(--z-green);
+    box-shadow: 0 0 12px color-mix(in srgb, var(--z-green) 70%, transparent);
+}
+
+.zombie-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 340px;
+    gap: 14px;
+    margin-top: 14px;
+}
+
+.zombie-scene {
+    padding: 16px;
+    background: var(--z-panel-2);
+}
+
+.zombie-scene-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.zombie-kicker {
+    display: block;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+}
+
+.zombie-timer {
+    min-width: 84px;
+    text-align: center;
+    padding: 7px 10px;
+    border-radius: 6px;
+    color: var(--z-gold);
+    border: 1px solid color-mix(in srgb, var(--gold-primary, #ffd700) 38%, transparent);
+    background: color-mix(in srgb, var(--bg-tertiary, #141414) 74%, transparent);
+    font-family: Consolas, Monaco, monospace;
+}
+
+#zombie-story {
+    font-size: 1.02rem;
+    line-height: 1.65;
+    margin: 0 0 14px;
+}
+
+.zombie-meta-row {
+    flex-wrap: wrap;
+    justify-content: space-between;
+    font-size: 0.84rem;
+}
+
+.zombie-character {
+    padding: 14px;
+}
+
+.zombie-character-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.zombie-character-name {
+    font-weight: 700;
+    color: var(--z-gold);
+}
+
+.zombie-status {
+    color: var(--z-muted);
+    font-size: 0.84rem;
+}
+
+.zombie-stat-line {
+    justify-content: space-between;
+    margin: 8px 0 4px;
+    font-size: 0.82rem;
+}
+
+.zombie-bar {
+    height: 8px;
+    background: color-mix(in srgb, var(--text-primary, #fff) 8%, transparent);
+    border-radius: 999px;
+    overflow: hidden;
+}
+
+.zombie-bar span {
+    display: block;
+    height: 100%;
+    width: 0;
+    border-radius: inherit;
+}
+
+.zombie-bar-health span { background: linear-gradient(90deg, var(--z-red), color-mix(in srgb, var(--z-red) 45%, var(--gold-secondary, #ffed4e) 55%)); }
+.zombie-bar-stamina span { background: linear-gradient(90deg, var(--z-blue), color-mix(in srgb, var(--z-blue) 46%, var(--text-primary, #f0f0f0) 54%)); }
+.zombie-bar-morale span { background: linear-gradient(90deg, var(--z-gold), color-mix(in srgb, var(--gold-secondary, #ffed4e) 72%, var(--text-primary, #f0f0f0) 28%)); }
+.zombie-bar-melee span { background: linear-gradient(90deg, color-mix(in srgb, var(--text-secondary, #b9bbbe) 58%, var(--z-green) 42%), var(--z-green)); }
+
+.zombie-gear {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.zombie-gear-item {
+    border: 1px solid color-mix(in srgb, var(--z-border) 44%, transparent);
+    background: color-mix(in srgb, var(--bg-tertiary, #141414) 68%, transparent);
+    border-radius: 6px;
+    padding: 8px;
+    font-size: 0.8rem;
+}
+
+.zombie-gear-item strong {
+    display: block;
+    color: var(--z-text);
+    margin-bottom: 2px;
+}
+
+.zombie-choices {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+    margin-top: 14px;
+}
+
+.zombie-choice {
+    min-height: 198px;
+    border: 1px solid color-mix(in srgb, var(--z-border) 44%, transparent);
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--bg-secondary, #0f0f0f) 92%, var(--gold-primary, #ffd700) 8%);
+    padding: 12px;
+    text-align: left;
+    color: var(--z-text);
+    cursor: pointer;
+    transition: border-color 0.18s ease, transform 0.18s ease, background 0.18s ease;
+}
+
+.zombie-choice:hover:not(:disabled) {
+    transform: translateY(-2px);
+    border-color: color-mix(in srgb, var(--gold-primary, #ffd700) 68%, transparent);
+    background: color-mix(in srgb, var(--bg-tertiary, #141414) 82%, var(--gold-primary, #ffd700) 18%);
+}
+
+.zombie-choice:disabled {
+    cursor: default;
+    opacity: 0.72;
+}
+
+.zombie-choice.voted {
+    border-color: color-mix(in srgb, var(--z-green) 76%, transparent);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--z-green) 30%, transparent);
+}
+
+.zombie-choice-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.zombie-choice img {
+    width: 42px;
+    height: 42px;
+    object-fit: contain;
+}
+
+.zombie-choice-label {
+    font-weight: 800;
+    color: var(--z-gold);
+    font-size: 1rem;
+}
+
+.zombie-choice-text {
+    min-height: 72px;
+    line-height: 1.38;
+    margin-bottom: 10px;
+}
+
+.zombie-preview {
+    font-size: 0.76rem;
+    min-height: 34px;
+}
+
+.zombie-vote-count {
+    margin-top: 10px;
+    color: var(--z-green);
+    font-size: 0.82rem;
+}
+
+.zombie-lower-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+    gap: 14px;
+    margin-top: 14px;
+}
+
+.zombie-panel {
+    padding: 13px;
+}
+
+.zombie-panel-head {
+    justify-content: space-between;
+    margin-bottom: 10px;
+}
+
+.zombie-survivors {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+    gap: 8px;
+}
+
+.zombie-survivor {
+    border: 1px solid color-mix(in srgb, var(--z-border) 38%, transparent);
+    background: color-mix(in srgb, var(--bg-tertiary, #141414) 68%, transparent);
+    border-radius: 6px;
+    padding: 8px;
+    font-size: 0.8rem;
+}
+
+.zombie-survivor.me {
+    border-color: color-mix(in srgb, var(--gold-primary, #ffd700) 62%, transparent);
+}
+
+.zombie-survivor.dead {
+    opacity: 0.58;
+}
+
+.zombie-history {
+    display: grid;
+    gap: 8px;
+}
+
+.zombie-history-item {
+    border-left: 3px solid var(--z-red);
+    padding: 7px 8px;
+    background: color-mix(in srgb, var(--bg-tertiary, #141414) 64%, transparent);
+    border-radius: 0 6px 6px 0;
+    line-height: 1.35;
+}
+
+.zombie-btn {
+    height: 36px;
+    border: 1px solid color-mix(in srgb, var(--z-border) 50%, transparent);
+    border-radius: 6px;
+    color: var(--z-text);
+    background: color-mix(in srgb, var(--text-primary, #fff) 8%, transparent);
+    padding: 0 13px;
+    cursor: pointer;
+}
+
+.zombie-btn-primary {
+    background: linear-gradient(135deg, var(--gold-primary, #ffd700), var(--gold-secondary, #ffed4e));
+    border-color: var(--gold-primary, #ffd700);
+    color: var(--accent-contrast, #0a0a0a);
+}
+
+.zombie-btn-danger {
+    background: linear-gradient(180deg, var(--z-red), var(--z-red-2));
+    border-color: color-mix(in srgb, var(--z-red) 70%, transparent);
+}
+
+.zombie-toast {
+    position: fixed;
+    right: 22px;
+    bottom: 22px;
+    z-index: 1000;
+    max-width: 340px;
+    border: 1px solid color-mix(in srgb, var(--z-border) 58%, transparent);
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--bg-primary, #0a0a0a) 94%, var(--gold-primary, #ffd700) 6%);
+    color: var(--z-text);
+    padding: 11px 13px;
+    box-shadow: 0 16px 44px color-mix(in srgb, var(--bg-primary, #000) 72%, transparent);
+}
+
+@media (max-width: 1100px) {
+    .zombie-grid,
+    .zombie-lower-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .zombie-choices {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 640px) {
+    .zombie-root {
+        padding: 10px;
+    }
+
+    .zombie-topbar,
+    .zombie-admin,
+    .zombie-login {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .zombie-user-pill {
+        white-space: normal;
+    }
+
+    .zombie-admin-actions {
+        justify-content: stretch;
+    }
+
+    .zombie-admin input,
+    .zombie-admin .zombie-btn {
+        width: 100%;
+    }
+
+    .zombie-choices {
+        grid-template-columns: 1fr;
+    }
+
+    .zombie-choice {
+        min-height: 0;
+    }
+}
