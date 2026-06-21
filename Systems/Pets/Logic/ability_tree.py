@@ -145,7 +145,7 @@ ABILITIES: List[Dict[str, Any]] = [
         "stat": "ATT",
         "max_level": 5,
         "cost": 1,
-        "description": "Enhanced critical damage. Critical hits deal x{value} damage.",
+        "description": "Enhanced critical damage. Adds +{value} to crit multiplier (base 1.25x → 1.65x/1.80x/1.95x/2.10x/2.25x at L1–5).",
         "effect": {"type": "critical_hit_multiplier", "base": 1.40, "per_level": 0.15},
     },
 

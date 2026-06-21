@@ -127,9 +127,10 @@ class UnifiedBattleView(discord.ui.View):
         """Create opponent scaled to the player's pet stats and difficulty"""
         try:
             diff = str(difficulty or 'easy').lower()
-            atk_base = int(pet.get('attack', 10)) if pet else 10
-            def_base = int(pet.get('defense', 5)) if pet else 5
-            hp_base = int(pet.get('max_health', 500)) if pet else 500
+            pet_stats = StatsCalculator.calculate_pet_stats(pet) if pet else None
+            atk_base = int(pet_stats['attack']) if pet_stats else 10
+            def_base = int(pet_stats['defense']) if pet_stats else 5
+            hp_base = int(pet_stats['max_health']) if pet_stats else 500
         except Exception:
             diff = 'easy'
             atk_base, def_base, hp_base = 10, 5, 500
@@ -280,53 +281,12 @@ class UnifiedBattleView(discord.ui.View):
                 # Use StatsCalculator for comprehensive stats (includes equipment)
                 stats = StatsCalculator.calculate_pet_stats(pet)
                 
-                att = stats['ATT']
-                dex = stats['DEX']
-                deff = stats['DEF']
-                intel = stats['INT']
-                hap = stats['HAP']
-                ene = stats['ENE']
-                
-                base_attack = pet.get('attack', att * dex if att and dex else 10)
-                base_defense = pet.get('defense', deff * intel if deff and intel else 5)
-                total_attack = base_attack
-                total_defense = base_defense
+                total_attack = stats['attack']
+                total_defense = stats['defense']
 
                 level = int(pet.get('level', 1))
-                max_hp = pet.get('max_health', StatsCalculator.calculate_max_health(pet))
+                max_hp = StatsCalculator.calculate_max_health(pet)
                 current_hp = int(pet.get('health', max_hp))
-
-                # Apply ability tree combat multipliers
-                try:
-                    from Systems.Pets.Logic.ability_tree import get_ability_effect
-                    
-                    # Determine battle type for ability effects
-                    # self.battle_type is "solo" for NPC/boss, "pvp" for PvP
-                    if self.is_boss_battle:
-                        battle_type = "boss"
-                    elif str(getattr(self, 'battle_type', 'solo')).lower() == 'pvp':
-                        battle_type = "pvp"
-                    else:
-                        battle_type = "npc"
-                    
-                    # Apply damage multipliers
-                    dmg_mult = get_ability_effect(pet, "battle_damage_mult", battle_type=battle_type)
-                    if dmg_mult != 1.0:
-                        total_attack = int(total_attack * dmg_mult)
-                    
-                    # Apply defense multipliers (note: this reduces incoming damage)
-                    def_mult = get_ability_effect(pet, "battle_defense_mult", battle_type=battle_type)
-                    if def_mult != 1.0:
-                        total_defense = int(total_defense * def_mult)
-                        
-                    # Apply battle health bonus (max_hp and current_hp are now defined above)
-                    health_bonus = get_ability_effect(pet, "battle_health_bonus")
-                    if health_bonus > 0:
-                        max_hp = int(max_hp * (1.0 + health_bonus))
-                        current_hp = min(current_hp, max_hp)  # Don't exceed new max
-                        
-                except Exception:
-                    pass
                 
                 # Apply ability tree charge bonuses
                 starting_charge = 1.0
@@ -708,9 +668,15 @@ class UnifiedBattleView(discord.ui.View):
                 # Use new roll-based defend system
                 target_id = action_data.get('target', player_id)
                 _battle_type = "boss" if self.is_boss_battle else "npc"
+                # Apply active skill DEF buff/debuff multipliers
+                try:
+                    from Systems.Pets.Logic.battle_skills import get_def_multiplier
+                    _def_mult = get_def_multiplier(player_data)
+                except Exception:
+                    _def_mult = 1.0
 
                 battle_result = DamageCalculator.calculate_battle_action(
-                    attacker_attack=player_data['total_defense'],
+                    attacker_attack=int(player_data['total_defense'] * _def_mult),
                     target_defense=0,  # Defense doesn't have an opposing stat
                     charge_multiplier=player_data.get('charge_multiplier', 1.0),
                     action_type="defend",
@@ -764,10 +730,8 @@ class UnifiedBattleView(discord.ui.View):
                 if 'charge' in player_data:
                     current_multiplier = player_data['charge']
                 
-                max_charge_limit = player_data.get('max_charge_limit', 5.0)
-                next_multiplier = DamageCalculator.get_next_charge_multiplier(current_multiplier)
-                # Respect the pet's charge limit
-                next_multiplier = min(next_multiplier, max_charge_limit)
+                # Pass pet so get_next_charge_multiplier respects charge_limit_bonus
+                next_multiplier = DamageCalculator.get_next_charge_multiplier(current_multiplier, player_data.get('pet'))
                 player_data['charge_multiplier'] = next_multiplier
                 player_data['charge'] = next_multiplier  # Keep both for compatibility
                 player_data['charging'] = True
@@ -837,8 +801,14 @@ class UnifiedBattleView(discord.ui.View):
                     if not player_data['alive']:
                         continue
                     
-                    # Self-defense only
-                    assigned_defense = player_data.get('total_defense', 0) if player_data.get('defending') else 0
+                    # Self-defense only, with active skill DEF buff/debuff multiplier
+                    try:
+                        from Systems.Pets.Logic.battle_skills import get_def_multiplier
+                        _def_mult = get_def_multiplier(player_data)
+                    except Exception:
+                        _def_mult = 1.0
+                    base_def = player_data.get('total_defense', 0) if player_data.get('defending') else 0
+                    assigned_defense = int(base_def * _def_mult)
                     
                     player_defenses[player_id] = {
                         'defense': assigned_defense,
@@ -1097,10 +1067,8 @@ class UnifiedBattleView(discord.ui.View):
                 if 'charge' in player_data:
                     current_multiplier = player_data['charge']
                 
-                max_charge_limit = player_data.get('max_charge_limit', 5.0)
-                next_multiplier = DamageCalculator.get_next_charge_multiplier(current_multiplier)
-                # Respect the pet's charge limit
-                next_multiplier = min(next_multiplier, max_charge_limit)
+                # Pass pet so get_next_charge_multiplier respects charge_limit_bonus
+                next_multiplier = DamageCalculator.get_next_charge_multiplier(current_multiplier, player_data.get('pet'))
                 player_data['charge_multiplier'] = next_multiplier
                 player_data['charge'] = next_multiplier  # Keep both for compatibility
                 # Track last action for UI visibility until next pick

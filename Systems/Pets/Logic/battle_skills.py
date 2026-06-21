@@ -1915,13 +1915,17 @@ def init_battle_skill_state(player_data: Dict[str, Any]) -> None:
 
     Per-slot cooldowns: skill_cooldowns = {slot_index: turns_remaining}
     Each slot is independent — using slot 0 does NOT affect slot 1's cooldown.
+
+    NOTE: Always overwrites equipped_skills and skill_cooldowns so callers
+    can safely pre-populate the dict with empty values without blocking init.
     """
-    # Snapshot equipped skills so mid-battle pet changes don't affect the fight
+    # Snapshot equipped skills so mid-battle pet changes don't affect the fight.
+    # Always overwrite — callers may have pre-populated with [] which must be replaced.
     equipped = get_equipped_skills(player_data.get("pet") or {})
-    player_data.setdefault("equipped_skills", equipped)
-    # Per-slot cooldown dict — one entry per equipped slot, all start at 0 (ready)
-    if "skill_cooldowns" not in player_data:
-        player_data["skill_cooldowns"] = {i: 0 for i in range(len(equipped))}
+    player_data["equipped_skills"] = equipped
+    # Per-slot cooldown dict — one entry per equipped slot, all start at 0 (ready).
+    # Always rebuild so stale or empty dicts from pre-population don't persist.
+    player_data["skill_cooldowns"] = {i: 0 for i in range(len(equipped))}
     player_data.setdefault("active_effects", [])
     # Legacy single-cooldown key — keep at 0 so old code doesn't break
     player_data["skill_cooldown"] = 0

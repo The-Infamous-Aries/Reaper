@@ -46,7 +46,8 @@ class BattleScaler:
         """
         Calculate health using logarithmic scaling to prevent extreme values.
         
-        Formula: base_health * log_scale_factor * equipment_factor
+        Base formula: (HAP + ENE) * (equipment_multiplier * 4)
+        Then: base_health * log_scale_factor * equipment_factor
         Where log_scale_factor grows slowly: log(1 + level/100) + 1
         
         This keeps level 1 pets around 100-500 HP, level 100 around 1000-3000 HP,
@@ -61,12 +62,11 @@ class BattleScaler:
                 if stat in stats:
                     stats[stat] = int(stats[stat] * multiplier)
         
-        # Calculate base health using current formula
+        # Calculate base health: (HAP + ENE) * (equipment_multiplier * 4)
         hap = stats.get('HAP', 0)
         ene = stats.get('ENE', 0) 
-        avg_stat = sum(stats.values()) / len(stats)
         
-        base_health = (avg_stat + hap * ene) * 10  # Base multiplier
+        base_health = (hap + ene) * (equipment_multiplier * 4)
         
         # Apply logarithmic level scaling instead of linear
         health_log_factor = config.get("health_log_factor", 2.0)

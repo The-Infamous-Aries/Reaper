@@ -266,6 +266,8 @@ class DamageCalculator:
                 else:
                     final_damage = 0
                     parry_damage = max(1, final_defense - final_attack)
+                    if is_critical:
+                        parry_damage = int(parry_damage * critical_multiplier)
 
             elif target_action_type == "charge":
                 # Attacker hits a charging defender — vulnerability applies
@@ -440,8 +442,8 @@ class DamageCalculator:
         pet_data: Optional[Dict[str, Any]] = None,
     ) -> int:
         """
-        Calculate Max Health using the balanced formula:
-        (Stat Average + (HAP * ENE)) * 10
+        Calculate Max Health using the formula:
+        (HAP + ENE) * (equip_mult * 4)
 
         Applies battle_health_bonus from HAP/ENE ability branches on top.
         pet_data is optional — pass it to include ability bonuses.
@@ -450,15 +452,13 @@ class DamageCalculator:
             hap_i = max(0, int(hap))
             ene_i = max(0, int(ene))
 
-            stats = [hap_i, ene_i]
-            if att:   stats.append(int(att))
-            if deff:  stats.append(int(deff))
-            if intel: stats.append(int(intel))
-            if dex:   stats.append(int(dex))
+            if pet_data:
+                from Systems.Pets.Logic.pet_brain import StatsCalculator
+                equip_mult = StatsCalculator.get_equipment_xp_multiplier(pet_data)
+            else:
+                equip_mult = 1.0
 
-            avg_stat = sum(stats) / len(stats)
-            health_stat = hap_i * ene_i
-            base_health = int((avg_stat + health_stat) * 10)
+            base_health = int((hap_i + ene_i) * (equip_mult * 4))
 
             # Apply battle_health_bonus from abilities (hap_battle_health + ene_battle_stamina)
             if pet_data:

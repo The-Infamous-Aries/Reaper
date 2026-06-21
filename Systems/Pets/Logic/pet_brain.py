@@ -83,7 +83,15 @@ class StatsCalculator:
         # ── Determine set match ───────────────────────────────────────────────
         def _set_tag(item: Optional[Dict]) -> Optional[str]:
             if not item: return None
-            return item.get('set') or None
+            # Reforged items may not have the set tag stored; fall back to canonical
+            tag = item.get('set') or None
+            if not tag:
+                try:
+                    canonical = user_data_manager.file_manager.get_equipment_item(item.get('name', ''))
+                    tag = (canonical.get('set') if canonical else None) or None
+                except Exception:
+                    pass
+            return tag
 
         # Set bonus: Helmet + Armor + Boots + Shield + Weapon only (Ring excluded)
         set_slots = [helmet, armor, boots, shield, weapon]
@@ -263,14 +271,13 @@ class StatsCalculator:
     ) -> int:
         """
         Compute raw health from an already-resolved stats dict (no re-entry).
+        Formula: (HAP + ENE) * (equip_mult * 4)
         Applies battle_health_bonus from abilities on top.
         """
-        total_stats = sum(v for k, v in stats.items() if k in ('ATT', 'DEF', 'INT', 'DEX', 'HAP', 'ENE'))
-        leveled_avg = total_stats / 6
         hap = stats.get('HAP', 0)
         ene = stats.get('ENE', 0)
-        health_stat = hap * ene
-        base_health = int((leveled_avg + health_stat) * 10)
+        equip_mult = StatsCalculator.get_equipment_xp_multiplier(pet_data)
+        base_health = int((hap + ene) * (equip_mult * 4))
 
         # Apply battle_health_bonus from hap_battle_health + ene_battle_stamina
         try:
@@ -291,7 +298,7 @@ class StatsCalculator:
         Priority order:
           1. User's custom formula (if user_id provided and formula is active)
           2. Battle scaling (logarithmic, for high-level pets)
-          3. Original formula: (stat_avg + HAP*ENE) * 10 × ability bonus
+          3. Original formula: (HAP + ENE) * (equip_mult * 4) × ability bonus
 
         All paths apply battle_health_bonus from abilities.
         """

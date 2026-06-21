@@ -50,6 +50,8 @@ class TournamentSize(Enum):
     SMALL = 4
     MEDIUM = 8
     LARGE = 16
+    X_LARGE = 32
+    XX_LARGE = 64
 
 class TournamentBattleView(discord.ui.View):
     """Tournament-specific battle view that uses PvP logic but with tournament modifications"""
@@ -136,27 +138,34 @@ class TournamentBattleView(discord.ui.View):
             
             # Derived base stats from Pets system
             stats = StatsCalculator.calculate_pet_stats(pet_data)
-            att = stats['ATT']
-            dex = stats['DEX']
-            deff = stats['DEF']
-            intel = stats['INT']
-            hap = stats['HAP']
-            ene = stats['ENE']
-            
-            base_attack = pet_data.get('attack', att * dex if att and dex else 10)
-            base_defense = pet_data.get('defense', deff * intel if deff and intel else 5)
             
             level = int(pet_data.get('level', 1))
-            max_hp = pet_data.get('max_health', DamageCalculator.calculate_pet_health(hap, ene, level))
+            max_hp = StatsCalculator.calculate_max_health(pet_data)
             current_hp = int(pet_data.get('health', max_hp))
 
-            player['attack'] = base_attack
-            player['defense'] = base_defense
+            player['attack'] = stats['attack']
+            player['total_attack'] = stats['attack']  # alias used by process_attack
+            player['defense'] = stats['defense']
             player['max_hp'] = max_hp
             player['hp'] = current_hp
             player['type'] = str(pet_data.get('category', 'land')).lower()
             player['element'] = str(pet_data.get('element', 'basic')).lower()
             player['element2'] = str(pet_data.get('element2')).lower() if pet_data.get('element2') else None
+            
+            # Compute max charge limit from ability tree (ene_charge_mastery)
+            try:
+                from Systems.Pets.Logic.ability_tree import get_ability_effect
+                charge_limit_bonus = get_ability_effect(pet_data, "charge_limit_bonus")
+                player['max_charge_limit'] = 5.0 + float(charge_limit_bonus)
+            except Exception:
+                player['max_charge_limit'] = 5.0
+
+            # Initialize battle skill state
+            try:
+                from Systems.Pets.Logic.battle_skills import init_battle_skill_state
+                init_battle_skill_state(player)
+            except Exception:
+                pass
             
         except Exception as e:
             logger.error(f"Error loading pet data for {player_id}: {e}")
@@ -286,12 +295,35 @@ class TournamentBattleView(discord.ui.View):
         if await self.check_battle_end():
             return
         
+        # Tick active skill effects (DoT, HoT, buff/debuff countdowns, cooldowns)
+        try:
+            from Systems.Pets.Logic.battle_skills import tick_battle_effects, is_stunned, consume_stun
+            for pid, player in self.players.items():
+                if not player.get('alive'):
+                    continue
+                if is_stunned(player):
+                    consume_stun(player)
+                    player['charging'] = False
+                    self.battle_log.append(f"💫 {player['user'].display_name} is stunned and cannot act!")
+                    # Force defend for stunned player this turn
+                    self.player_actions[pid] = {'action': 'defend'}
+                net_delta, tick_lines = tick_battle_effects(player, player.get('attack', 10))
+                if net_delta != 0:
+                    player['hp'] = max(0, min(player['max_hp'], player['hp'] + net_delta))
+                for line in tick_lines:
+                    self.battle_log.append(line)
+        except Exception:
+            pass
+        
         # Process charging for all players
         await self.process_charge()
         
-        # Clear previous actions
+        # Clear previous actions (but not the ones just set by stun!)
+        existing_actions = dict(self.player_actions)
         self.player_actions.clear()
         self.defending_players.clear()
+        # Restore stun-forced actions
+        self.player_actions.update(existing_actions)
         
         # Set up action collection
         self.waiting_for_actions = True
@@ -314,19 +346,35 @@ class TournamentBattleView(discord.ui.View):
         await self.process_turn()
     
     async def process_charge(self):
-        """Process charging phase for all players"""
+        """Process charging phase for all players using exponential progression"""
         for player in self.players.values():
             if player['alive'] and player['charging']:
-                player['charge'] = min(player['charge'] + 0.5, 3.0)
-                if player['charge'] >= 3.0:
+                current = player.get('charge', 1.0)
+                max_charge = float(player.get('max_charge_limit', 5.0))
+                next_charge = DamageCalculator.get_next_charge_multiplier(current, player.get('pet'))
+                next_charge = min(next_charge, max_charge)
+                player['charge'] = next_charge
+                if next_charge >= max_charge:
                     player['charging'] = False
-                    self.battle_log.append(f"{emoji_mod.mention('Charge') or '⚡'} {player['user'].display_name} is fully charged!")
+                    self.battle_log.append(f"{emoji_mod.mention('Charge') or '⚡'} {player['user'].display_name} is fully charged (x{next_charge:.0f})!")
     
     async def process_combat_interactions(self):
         """Process all combat interactions for the turn"""
         if not self.player_actions:
             self.battle_log.append(f"{emoji_mod.mention('Loading') or '⏰'} No actions taken this turn.")
             return
+        
+        # Process skills first
+        for player_id, action_data in self.player_actions.items():
+            if action_data['action'] == 'skill':
+                await self._process_tournament_skill(player_id, action_data)
+        
+        # Process charges
+        for player_id, action_data in self.player_actions.items():
+            if action_data['action'] == 'charge':
+                player = self.players.get(player_id)
+                if player:
+                    player['charging'] = True
         
         # Process attacks
         for attacker_id, action_data in self.player_actions.items():
@@ -344,13 +392,36 @@ class TournamentBattleView(discord.ui.View):
         if not attacker or not target or not attacker['alive'] or not target['alive']:
             return
         
-        # Roll-based damage using unified calculator; no defense unless target is explicitly defending in this mode
+        # Apply ATK and DEF multipliers from active skill buffs/debuffs
+        try:
+            from Systems.Pets.Logic.battle_skills import get_atk_multiplier, get_def_multiplier
+            atk_mult = get_atk_multiplier(attacker)
+            def_mult = get_def_multiplier(target)
+        except Exception:
+            atk_mult = 1.0
+            def_mult = 1.0
+        
+        target_is_defending = target_id in self.defending_players
+        target_def = int(target.get('defense', 5) * def_mult) if target_is_defending else 0
+
+        # Determine what the target was doing this turn for correct action resolution
+        target_action = self.player_actions.get(target_id, {}).get('action', 'attack')
+        if target_is_defending:
+            target_action_type = 'defend'
+        elif target.get('charging', False):
+            target_action_type = 'charge'
+        else:
+            target_action_type = 'attack'
+
+        # Roll-based damage using unified calculator
         result = DamageCalculator.calculate_battle_action(
-            attacker_attack=attacker.get('total_attack', attacker.get('attack', 10)),
-            target_defense=0,  # No defense applied during standard attack in tournament rounds
+            attacker_attack=int(attacker.get('total_attack', attacker.get('attack', 10)) * atk_mult),
+            target_defense=target_def,
             charge_multiplier=attacker.get('charge', 1.0),
             target_charge_multiplier=1.0,
             action_type="attack",
+            attacker_action_type="attack",
+            target_action_type=target_action_type,
             attacker_type=attacker.get('type'),
             attacker_element=attacker.get('element'),
             attacker_element2=attacker.get('element2'),
@@ -358,13 +429,41 @@ class TournamentBattleView(discord.ui.View):
             defender_element=target.get('element'),
             defender_element2=target.get('element2'),
             attacker_species=(attacker.get('pet') or {}).get('species'),
-            defender_species=(target.get('pet') or {}).get('species')
+            defender_species=(target.get('pet') or {}).get('species'),
+            attacker_pet_data=attacker.get('pet'),
+            defender_pet_data=target.get('pet'),
+            attacker_user_id=attacker_id,
+            defender_user_id=target_id,
+            defender_current_hp=target.get('hp'),
+            defender_max_hp=target.get('max_hp'),
+            battle_type="pvp",
         )
         
         # Apply charging vulnerability: charging targets take 25% more damage
+        # NOTE: calculate_battle_action already applies this via target_action_type="charge",
+        # so we do NOT apply it again here.
         final_damage = result['final_damage']
-        if target.get('charging', False) and final_damage > 0:
-            final_damage = int(final_damage * 1.25)
+        
+        # ── Apply skill-based damage reduction, shields, and reflect ──
+        try:
+            from Systems.Pets.Logic.battle_skills import (
+                get_damage_reduction, absorb_damage_through_shield, get_reflect_value
+            )
+            skill_dr = get_damage_reduction(target)
+            if skill_dr > 0:
+                final_damage = max(1, int(final_damage * (1.0 - skill_dr)))
+            final_damage, _absorbed, shield_log = absorb_damage_through_shield(target, final_damage)
+            for sl in shield_log:
+                self.battle_log.append(sl)
+            reflect_frac = get_reflect_value(target)
+            if reflect_frac > 0 and final_damage > 0:
+                reflect_dmg = max(1, int(final_damage * reflect_frac))
+                attacker['hp'] = max(0, attacker['hp'] - reflect_dmg)
+                attacker['damage_taken'] += reflect_dmg
+                target['damage_dealt'] += reflect_dmg
+                self.battle_log.append(f"🪞 {target['user'].display_name} reflects {reflect_dmg} damage back!")
+        except Exception:
+            pass
         
         # Apply damage
         target['hp'] = max(0, target['hp'] - final_damage)
@@ -377,8 +476,9 @@ class TournamentBattleView(discord.ui.View):
         
         # Log the attack
         atk_verb = result.get('attacker_action_name', 'attacks')
+        def_text = f" (DEF: {target_def})" if target_is_defending else ""
         self.battle_log.append(
-            f"{emoji_mod.mention('Attack') or '⚔️'} {attacker['user'].display_name} uses {atk_verb} on {target['user'].display_name} for {final_damage} damage!"
+            f"{emoji_mod.mention('Attack') or '⚔️'} {attacker['user'].display_name} uses {atk_verb} on {target['user'].display_name} for {final_damage} damage!{def_text}"
         )
         
         # Check if target is defeated
@@ -386,6 +486,35 @@ class TournamentBattleView(discord.ui.View):
             target['alive'] = False
             attacker['kills'] += 1
             self.battle_log.append(f"{emoji_mod.mention('Dead') or '💀'} {target['user'].display_name} has been defeated!")
+    
+    async def _process_tournament_skill(self, player_id: str, action_data: dict):
+        """Apply a battle skill in tournament context."""
+        skill_id = action_data.get('skill_id', '')
+        player = self.players.get(player_id)
+        if not player or not player.get('alive'):
+            return
+        try:
+            from Systems.Pets.Logic.battle_skills import apply_skill
+            # Target is the other alive player
+            target_data = None
+            for pid, p in self.players.items():
+                if pid != player_id and p.get('alive'):
+                    target_data = p
+                    break
+            slot_index = action_data.get('slot_index', 0)
+            skill_result = apply_skill(skill_id, player, target_data, battle_type="pvp", slot_index=slot_index)
+            if skill_result['ok']:
+                if skill_result['hp_delta_user'] != 0:
+                    player['hp'] = max(0, min(player['max_hp'], player['hp'] + skill_result['hp_delta_user']))
+                if skill_result['hp_delta_target'] != 0 and target_data:
+                    target_data['hp'] = max(0, min(target_data['max_hp'],
+                                                    target_data['hp'] + skill_result['hp_delta_target']))
+                self.battle_log.append(f"✨ {player['user'].display_name}: {skill_result['message']}")
+                # Reset attacker's charge after skill use
+                player['charge'] = 1.0
+                player['charging'] = False
+        except Exception as e:
+            logger.error(f"Tournament skill error: {e}")
     
     async def check_battle_end(self) -> bool:
         """Check if the battle should end"""
@@ -631,6 +760,100 @@ class TournamentBattleView(discord.ui.View):
         alive_players = [p for p in self.players.values() if p['alive']]
         if len(self.player_actions) >= len(alive_players):
             self.turn_event.set()
+    
+    @discord.ui.button(label="Skills", style=discord.ButtonStyle.secondary, emoji="✨")
+    async def skill_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        """Handle skill button press — opens skill selection view"""
+        if not self.waiting_for_actions or self.battle_over:
+            await interaction.response.send_message("❌ Not accepting actions right now.", ephemeral=True)
+            return
+        
+        player_id = str(interaction.user.id)
+        if player_id not in self.players or not self.players[player_id]['alive']:
+            await interaction.response.send_message("❌ You're not in this battle or are defeated.", ephemeral=True)
+            return
+        
+        if player_id in self.player_actions:
+            await interaction.response.send_message("❌ You've already chosen an action this turn.", ephemeral=True)
+            return
+        
+        player = self.players[player_id]
+        equipped = player.get('equipped_skills', [])
+        if not equipped:
+            await interaction.response.send_message("❌ You have no battle skills equipped!", ephemeral=True)
+            return
+        
+        # Build and send the skill selection view
+        skill_view = TournamentSkillSelect(self, player_id, equipped, player)
+        await interaction.response.send_message("✨ **Select a skill to use:**", view=skill_view, ephemeral=True)
+
+class TournamentSkillSelect(discord.ui.View):
+    """Ephemeral skill selection view for tournament battles."""
+    
+    def __init__(self, battle_view: TournamentBattleView, player_id: str, equipped: List[str], player: dict):
+        super().__init__(timeout=30)
+        self.battle_view = battle_view
+        self.player_id = player_id
+        self.player = player
+        try:
+            from Systems.Pets.Logic.battle_skills import SKILL_BY_ID, get_slot_cooldown, can_use_skill
+            cooldowns = player.get('skill_cooldowns', {})
+            for slot_idx, skill_id in enumerate(equipped):
+                sk = SKILL_BY_ID.get(skill_id)
+                if not sk:
+                    continue
+                cd = cooldowns.get(slot_idx, 0)
+                ready = (cd == 0)
+                label = sk['name'][:20]
+                if not ready:
+                    label = f"{label} ({cd}t)"
+                btn = discord.ui.Button(
+                    label=label,
+                    style=discord.ButtonStyle.secondary if ready else discord.ButtonStyle.gray,
+                    emoji="✨" if ready else "⏳",
+                    disabled=not ready,
+                    custom_id=f"tskill_{slot_idx}_{skill_id}",
+                )
+
+                def make_cb(sidx: int, skid: str):
+                    async def cb(interaction: discord.Interaction):
+                        await self._select_skill(interaction, sidx, skid)
+                    return cb
+
+                btn.callback = make_cb(slot_idx, skill_id)
+                self.add_item(btn)
+        except Exception:
+            pass
+    
+    async def _select_skill(self, interaction: discord.Interaction, slot_index: int, skill_id: str):
+        if str(interaction.user.id) != self.player_id:
+            await interaction.response.send_message("This isn't your skill menu!", ephemeral=True, delete_after=3)
+            return
+        
+        try:
+            from Systems.Pets.Logic.battle_skills import can_use_skill, SKILL_BY_ID
+            if not can_use_skill(self.player, slot_index):
+                cd = self.player.get('skill_cooldowns', {}).get(slot_index, 0)
+                await interaction.response.send_message(f"That skill is on cooldown ({cd} turn(s)).", ephemeral=True, delete_after=5)
+                return
+            sk = SKILL_BY_ID.get(skill_id)
+            skill_name = sk['name'] if sk else skill_id
+        except Exception:
+            skill_name = skill_id
+        
+        self.battle_view.player_actions[self.player_id] = {
+            'action': 'skill',
+            'skill_id': skill_id,
+            'slot_index': slot_index,
+            'action_label': f"Skill: {skill_name}",
+        }
+        
+        await interaction.response.edit_message(content=f"✨ **{skill_name}** queued!", view=None)
+        
+        # Check if all alive players have acted
+        alive_players = [p for p in self.battle_view.players.values() if p['alive']]
+        if len(self.battle_view.player_actions) >= len(alive_players):
+            self.battle_view.turn_event.set()
 
 class TournamentMatch:
     """Represents a single match in the tournament bracket"""

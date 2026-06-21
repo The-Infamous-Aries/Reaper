@@ -67,14 +67,27 @@ class LootCalculator:
 
 
     @staticmethod
-    def _get_item_from_inventory(pet: Dict[str, Any], item_name: str, item_type: str) -> Optional[Dict[str, Any]]:
+    def _get_item_from_inventory(pet: Dict[str, Any], item_name: str, item_type: str,
+                                  reforged: Optional[bool] = None,
+                                  reforge_level: Optional[int] = None) -> Optional[Dict[str, Any]]:
         """
-        Retrieves an item from the pet's inventory.
+        Retrieves an item from the pet's inventory using the full identity key.
         Does NOT remove it.
+
+        When `reforged` is None, matches by name+type only (backward-compatible).
+        When `reforged` is True/False, also matches reforged flag and (if provided) reforge_level.
         """
         inventory = pet.get("inventory", [])
         for item in inventory:
             if item.get("name") == item_name and item.get("type") == item_type:
+                if reforged is not None:
+                    item_ref = bool(item.get("reforged", False))
+                    if item_ref != reforged:
+                        continue
+                    if reforge_level is not None:
+                        item_rl = int(item.get("reforge_level", 0))
+                        if item_rl != reforge_level:
+                            continue
                 return item
         return None
 
@@ -1160,7 +1173,9 @@ class LootCalculator:
                           boots_name: Optional[str] = None,
                           ring_name: Optional[str] = None,
                           shield_name: Optional[str] = None,
-                          weapon_name: Optional[str] = None) -> Tuple[bool, str]:
+                          weapon_name: Optional[str] = None,
+                          reforged: bool = False,
+                          reforge_level: int = 0) -> Tuple[bool, str]:
         """Equip items to the user's pet.
 
         Single slots (1 each): Helmet, Armor, Boots, Ring, Shield, Weapon
@@ -1193,7 +1208,11 @@ class LootCalculator:
 
             # ── Helper: equip a single-slot item ─────────────────────────────
             def _equip_single(slot_key: str, item_type: str, name: str) -> None:
-                item_obj = LootCalculator._get_item_from_inventory(pet, name, item_type)
+                item_obj = LootCalculator._get_item_from_inventory(
+                    pet, name, item_type,
+                    reforged=reforged if reforged else None,
+                    reforge_level=reforge_level if reforged else None
+                )
                 if not item_obj:
                     msg_parts.append(f"❌ **{name}** not found in inventory.")
                     return
@@ -1225,7 +1244,11 @@ class LootCalculator:
 
             # ── Helper: equip a multi-slot item (Gems / Monsters) ────────────
             def _equip_multi(slot_key: str, item_type: str, name: str, max_slots: int) -> None:
-                item_obj = LootCalculator._get_item_from_inventory(pet, name, item_type)
+                item_obj = LootCalculator._get_item_from_inventory(
+                    pet, name, item_type,
+                    reforged=reforged if reforged else None,
+                    reforge_level=reforge_level if reforged else None
+                )
                 if not item_obj:
                     msg_parts.append(f"❌ **{name}** not found in inventory.")
                     return
@@ -1264,7 +1287,11 @@ class LootCalculator:
                 weapon_types = ['Dagger', 'Katana', 'Sword', 'Axe', 'Hammer', 'Bow']
                 item_obj = None
                 for wtype in weapon_types:
-                    item_obj = LootCalculator._get_item_from_inventory(pet, weapon_name, wtype)
+                    item_obj = LootCalculator._get_item_from_inventory(
+                        pet, weapon_name, wtype,
+                        reforged=reforged if reforged else None,
+                        reforge_level=reforge_level if reforged else None
+                    )
                     if item_obj:
                         break
                 if not item_obj:

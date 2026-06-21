@@ -1,114 +1,342 @@
+import base64
 import io
+import json
+import logging
+import os
+import re
+import time
+from collections import deque
+from pathlib import Path
+from typing import Any, Dict, Iterable, List, Optional, Tuple
+
 import aiohttp
 import discord
-from PIL import Image
-import os
-import time
-import logging
-from Systems.Functions import emoji as emoji_mod
+from PIL import Image, ImageDraw, ImageFilter
 
 logger = logging.getLogger(__name__)
 
-async def fetch_image(session: aiohttp.ClientSession, url: str) -> Image.Image:
-    """
-    Fetches an image from a Discord CDN URL.
-    Returns a PIL Image in RGBA format.
-    """
-    try:
-        async with session.get(url) as response:
-            if response.status != 200:
-                logger.warning(f"Failed to fetch image from {url}, status: {response.status}")
-                return Image.new("RGBA", (512, 512), (0, 0, 0, 0))
-            
-            data = await response.read()
-            return Image.open(io.BytesIO(data)).convert("RGBA")
-    except Exception as e:
-        logger.error(f"[Badge Maker] Failed to fetch image: {e}", exc_info=True)
-        return Image.new("RGBA", (512, 512), (0, 0, 0, 0))
+SD_API_BASES = [
+    base.rstrip("/")
+    for base in os.getenv("REAPER_SD_API_BASES", "http://127.0.0.1:7861,http://127.0.0.1:7860").split(",")
+    if base.strip()
+]
+BADGE_SIZE = int(os.getenv("REAPER_BADGE_SIZE", "512"))
+FINAL_SIZE = 512
+
+BADGE_DIR = Path(__file__).resolve().parents[2] / "Data" / "Badges"
+
+_PROMPT_JSON_PATH = Path(__file__).resolve().parent / "pet_prompts.json"
+with open(_PROMPT_JSON_PATH, "r", encoding="utf-8") as _f:
+    _PROMPT_DATA = json.load(_f)
+
+_SPECIES_PROMPTS: Dict[str, str] = _PROMPT_DATA.get("pet_prompts", {})
+_TYPE_PROMPTS: Dict[str, str] = _PROMPT_DATA.get("type_prompts", {})
+_ELEMENT_PROMPTS: Dict[str, str] = _PROMPT_DATA.get("element_prompts", {})
 
 
-async def generate_pet_badge(pet_data: dict, user_id: int) -> discord.File:
-    """
-    Generates a 512x512 composite pet badge with a new design.
-    - Background: Enlarged Pet Type emoji
-    - Corners: Element emojis (element1 top-left/bottom-right, element2 top-right/bottom-left)
-    - Center: Species emoji, positioned based on pet type (Flying, Land, Swimming)
-    """
-    try:
-        pet_type = pet_data.get("type") or pet_data.get("category")
-        if not pet_type:
-            logger.error(f"Pet for user {user_id} has neither a 'type' nor a 'category', defaulting to 'Land'.")
-            pet_type = "Land"
 
-        element1 = pet_data.get("element")
-        element2 = pet_data.get("element2")
-        species = pet_data.get("species")
 
-        if not all([pet_type, element1, species]):
-            logger.error(f"Missing critical pet data for badge generation: Type={pet_type}, E1={element1}, Species={species}")
-            return None
+def _clean_token(value: Any) -> str:
+    text = str(value or "").strip()
+    text = re.sub(r"[_-]+", " ", text)
+    text = re.sub(r"(?<=[a-z])(?=[A-Z])", " ", text)
+    text = re.sub(r"\s+", " ", text)
+    return text
 
-        pet_type_emoji = emoji_mod.get_partial(pet_type)
-        element1_emoji = emoji_mod.get_partial(element1)
-        element2_emoji = emoji_mod.get_partial(element2) if element2 else None
-        species_emoji = emoji_mod.get_partial(species)
 
-        if not species_emoji or not pet_type_emoji or not element1_emoji:
-            logger.error(f"Could not find emoji partials for badge: Type={pet_type_emoji}, E1={element1_emoji}, Species={species_emoji}")
-            return None
+def _title_token(value: Any) -> str:
+    text = _clean_token(value)
+    return text.title() if text else ""
 
-        async with aiohttp.ClientSession() as session:
-            bg_img = await fetch_image(session, pet_type_emoji.url)
-            el1_img = await fetch_image(session, element1_emoji.url)
-            el2_img = await fetch_image(session, element2_emoji.url) if element2_emoji else None
-            species_img = await fetch_image(session, species_emoji.url)
 
-        canvas_size = (512, 512)
-        badge = Image.new("RGBA", canvas_size, (0, 0, 0, 0))
+def _norm_key(value: Any) -> str:
+    return _clean_token(value).lower()
 
-        bg_resized = bg_img.resize(canvas_size, Image.Resampling.LANCZOS)
-        badge.paste(bg_resized, (0, 0))
 
-        corner_size = 128
-        el1_resized = el1_img.resize((corner_size, corner_size), Image.Resampling.LANCZOS)
-        badge.paste(el1_resized, (0, 0), el1_resized)
-        badge.paste(el1_resized, (canvas_size[0] - corner_size, canvas_size[1] - corner_size), el1_resized)
-        
-        if el2_img:
-            el2_resized = el2_img.resize((corner_size, corner_size), Image.Resampling.LANCZOS)
-            badge.paste(el2_resized, (canvas_size[0] - corner_size, 0), el2_resized)
-            badge.paste(el2_resized, (0, canvas_size[1] - corner_size), el2_resized)
+def _first_present(data: Dict[str, Any], keys: Iterable[str]) -> str:
+    for key in keys:
+        value = data.get(key)
+        if value not in (None, ""):
+            return str(value)
+    return ""
 
-        tint = Image.new("RGBA", canvas_size, (0, 0, 0, 80))
-        badge = Image.alpha_composite(badge, tint)
 
-        pet_size = 200
-        pet_resized = species_img.resize((pet_size, pet_size), Image.Resampling.LANCZOS)
-        
-        offset_x = (canvas_size[0] - pet_size) // 2
-        if pet_type and pet_type.lower() == 'flying':
-            offset_y = 50
-        elif pet_type and pet_type.lower() == 'swimming':
-            offset_y = canvas_size[1] - pet_size - 50
+def pet_traits(pet_data: Dict[str, Any]) -> Tuple[str, str, str, Optional[str]]:
+    species = _first_present(pet_data, ("species", "emoji_name", "pet", "pet_name"))
+    pet_type = _first_present(pet_data, ("type", "category", "pet_type"))
+    element1 = _first_present(pet_data, ("element", "element1", "primary_element"))
+    element2 = _first_present(pet_data, ("element2", "secondary_element", "second_element"))
+
+    if not pet_type:
+        pet_type = "basic"
+    if not element1:
+        element1 = "basic"
+
+    e1_norm = _norm_key(element1)
+    e2_norm = _norm_key(element2)
+    if e2_norm and e2_norm == e1_norm:
+        element2 = ""
+
+    return (
+        _title_token(species),
+        _title_token(pet_type),
+        _title_token(element1),
+        _title_token(element2) if element2 else None,
+    )
+
+
+def _get_pet_description(species: str) -> str:
+    key = _norm_key(species)
+    for json_key, desc in _SPECIES_PROMPTS.items():
+        if _norm_key(json_key) == key:
+            return desc
+    return f"clear recognizable {species}"
+
+
+def _get_type_description(pet_type: str) -> str:
+    key = _norm_key(pet_type)
+    for json_key, desc in _TYPE_PROMPTS.items():
+        if _norm_key(json_key) == key:
+            return desc
+    return "terrestrial"
+
+
+def _get_element_description(element: str) -> str:
+    key = _norm_key(element)
+    for json_key, desc in _ELEMENT_PROMPTS.items():
+        if _norm_key(json_key) == key:
+            return desc
+    return element
+
+
+def _build_negative_prompt(species: str) -> str:
+    return ""
+
+
+def _build_prompt_from_parts(species: str, pet_type: str, element1: str, element2: Optional[str]) -> str:
+    type_desc = _get_type_description(pet_type)
+    elem1_desc = _get_element_description(element1)
+    parts = [f"cartoon portrait of a {species}", type_desc, elem1_desc]
+    if element2:
+        elem2_desc = _get_element_description(element2)
+        parts.append(elem2_desc)
+    parts.append("solid background")
+    return ", ".join(parts)
+
+
+def build_pet_prompt(pet_data: Dict[str, Any]) -> Tuple[str, str]:
+    species, pet_type, element1, element2 = pet_traits(pet_data)
+    if not species:
+        raise ValueError("Pet data is missing species/emoji_name")
+
+    prompt = _build_prompt_from_parts(species, pet_type, element1, element2)
+    return prompt, ""
+
+
+def build_pet_prompt_identity(pet_data: Dict[str, Any]) -> str:
+    species, pet_type, element1, element2 = pet_traits(pet_data)
+    elements = ", ".join([element1] + ([element2] if element2 else []))
+    return f"Pet: {species}\nType: {pet_type}\nElement(s): {elements}"
+
+
+def build_pet_prompt_with_user_text(
+    pet_data: Dict[str, Any],
+    user_prompt: str = "",
+) -> Tuple[str, str]:
+    species, pet_type, element1, element2 = pet_traits(pet_data)
+    if not species:
+        raise ValueError("Pet data is missing species/emoji_name")
+
+    if user_prompt:
+        return user_prompt, ""
+
+    prompt = _build_prompt_from_parts(species, pet_type, element1, element2)
+    return prompt, ""
+
+
+async def _request_txt2img(prompt: str, negative_prompt: str) -> Image.Image:
+    payload = {
+        "prompt": prompt,
+        "negative_prompt": negative_prompt,
+        "width": BADGE_SIZE,
+        "height": BADGE_SIZE,
+        "steps": int(os.getenv("REAPER_BADGE_STEPS", "28")),
+        "cfg_scale": float(os.getenv("REAPER_BADGE_CFG", "8")),
+        "batch_size": 1,
+        "n_iter": 1,
+        "sampler_name": os.getenv("REAPER_BADGE_SAMPLER", "DPM++ 2M Karras"),
+        "restore_faces": False,
+        "send_images": True,
+        "save_images": False,
+        "override_settings": {
+            "sd_vae": "Automatic",
+            "CLIP_stop_at_last_layers": int(os.getenv("REAPER_BADGE_CLIP_SKIP", "2")),
+        },
+    }
+
+    timeout = aiohttp.ClientTimeout(total=900)
+    errors: List[str] = []
+    async with aiohttp.ClientSession(timeout=timeout) as session:
+        for api_base in SD_API_BASES:
+            try:
+                async with session.post(f"{api_base}/sdapi/v1/txt2img", json=payload) as response:
+                    if response.status != 200:
+                        body = await response.text()
+                        errors.append(f"{api_base} returned {response.status}: {body[:500]}")
+                        continue
+                    data = await response.json()
+                    break
+            except Exception as exc:
+                errors.append(f"{api_base} failed: {exc}")
         else:
-            offset_y = (canvas_size[1] - pet_size) // 2
+            raise RuntimeError("Stable Diffusion API request failed. " + " | ".join(errors))
 
-        badge.paste(pet_resized, (offset_x, offset_y), pet_resized)
+    images = data.get("images") or []
+    if not images:
+        raise RuntimeError("Stable Diffusion API returned no images")
 
-        badge_dir = r"c:\Users\codyr\DiscordBots\Reaper\Systems\Data\Badges"
-        if not os.path.exists(badge_dir):
-            os.makedirs(badge_dir)
-            
-        file_path = os.path.join(badge_dir, f"{user_id}_badge.png")
-        badge.save(file_path, format="PNG")
+    image_data = images[0].split(",", 1)[-1]
+    raw = base64.b64decode(image_data)
+    return Image.open(io.BytesIO(raw)).convert("RGBA")
+
+
+def _color_distance(a: Tuple[int, int, int], b: Tuple[int, int, int]) -> int:
+    return abs(a[0] - b[0]) + abs(a[1] - b[1]) + abs(a[2] - b[2])
+
+
+def _corner_background_color(image: Image.Image) -> Tuple[int, int, int]:
+    rgb = image.convert("RGB")
+    width, height = rgb.size
+    sample_points = [
+        (0, 0),
+        (width - 1, 0),
+        (0, height - 1),
+        (width - 1, height - 1),
+        (width // 2, 0),
+        (width // 2, height - 1),
+        (0, height // 2),
+        (width - 1, height // 2),
+    ]
+    colors = [rgb.getpixel(point) for point in sample_points]
+    colors.sort(key=lambda color: colors.count(color), reverse=True)
+    return colors[0]
+
+
+def _background_mask(image: Image.Image) -> Image.Image:
+    rgb = image.convert("RGB")
+    width, height = rgb.size
+    bg = _corner_background_color(image)
+    tolerance = int(os.getenv("REAPER_BADGE_BG_TOLERANCE", "42"))
+    visited = bytearray(width * height)
+    mask = Image.new("L", (width, height), 0)
+    mask_pixels = mask.load()
+    queue: deque[Tuple[int, int]] = deque()
+
+    for x in range(width):
+        queue.append((x, 0))
+        queue.append((x, height - 1))
+    for y in range(1, height - 1):
+        queue.append((0, y))
+        queue.append((width - 1, y))
+
+    while queue:
+        x, y = queue.popleft()
+        if x < 0 or y < 0 or x >= width or y >= height:
+            continue
+        idx = y * width + x
+        if visited[idx]:
+            continue
+        visited[idx] = 1
+
+        pixel = rgb.getpixel((x, y))
+        if _color_distance(pixel, bg) > tolerance:
+            continue
+
+        mask_pixels[x, y] = 255
+        queue.append((x + 1, y))
+        queue.append((x - 1, y))
+        queue.append((x, y + 1))
+        queue.append((x, y - 1))
+
+    return mask.filter(ImageFilter.GaussianBlur(radius=0.8))
+
+
+def _solid_subject_mask(bg_mask: Image.Image) -> Image.Image:
+    width, height = bg_mask.size
+    preliminary = Image.eval(bg_mask, lambda value: 0 if value > 127 else 255)
+    padded = Image.new("L", (width + 2, height + 2), 0)
+    padded.paste(preliminary, (1, 1))
+    for seed in ((0, 0), (width + 1, 0), (0, height + 1), (width + 1, height + 1)):
+        ImageDraw.floodfill(padded, seed, 128)
+
+    subject = Image.new("L", (width, height), 0)
+    subject_pixels = subject.load()
+    padded_pixels = padded.load()
+    for y in range(height):
+        for x in range(width):
+            if padded_pixels[x + 1, y + 1] != 128:
+                subject_pixels[x, y] = 255
+    return subject
+
+
+def make_background_transparent(image: Image.Image) -> Image.Image:
+    image = image.convert("RGBA")
+    bg_mask = _background_mask(image)
+    subject_mask = _solid_subject_mask(bg_mask)
+    alpha = subject_mask.filter(ImageFilter.GaussianBlur(radius=0.6))
+    result = image.copy()
+    result.putalpha(alpha)
+
+    bbox = alpha.getbbox()
+    if bbox:
+        pad = 28
+        left = max(0, bbox[0] - pad)
+        top = max(0, bbox[1] - pad)
+        right = min(result.width, bbox[2] + pad)
+        bottom = min(result.height, bbox[3] + pad)
+        result = result.crop((left, top, right, bottom))
+
+    result.thumbnail((FINAL_SIZE, FINAL_SIZE), Image.Resampling.LANCZOS)
+    canvas = Image.new("RGBA", (FINAL_SIZE, FINAL_SIZE), (0, 0, 0, 0))
+    x = (FINAL_SIZE - result.width) // 2
+    y = (FINAL_SIZE - result.height) // 2
+    canvas.alpha_composite(result, (x, y))
+    return canvas
+
+
+async def generate_pet_badge_image(
+    pet_data: Dict[str, Any],
+    user_id: int,
+    user_prompt: str = "",
+) -> Tuple[Image.Image, str]:
+    species, pet_type, element1, element2 = pet_traits(pet_data)
+    prompt, negative = build_pet_prompt_with_user_text(pet_data, user_prompt)
+    logger.info(
+        "Generating pet image for user %s: species=%s type=%s element=%s element2=%s prompt=%s",
+        user_id,
+        species,
+        pet_type,
+        element1,
+        element2,
+        prompt[:500],
+    )
+    generated = await _request_txt2img(prompt, negative)
+    transparent = make_background_transparent(generated)
+    filename = f"pet_{user_id}_{int(time.time())}.png"
+    return transparent, filename
+
+
+async def generate_pet_badge(pet_data: Dict[str, Any], user_id: int) -> Optional[discord.File]:
+    try:
+        image, filename = await generate_pet_badge_image(pet_data, user_id)
+
+        BADGE_DIR.mkdir(parents=True, exist_ok=True)
+        image.save(BADGE_DIR / f"{user_id}_badge.png", format="PNG")
 
         buffer = io.BytesIO()
-        badge.save(buffer, format="PNG")
+        image.save(buffer, format="PNG")
         buffer.seek(0)
-        
-        filename = f"pet_badge_{int(time.time())}.png"
         return discord.File(fp=buffer, filename=filename)
-
-    except Exception as e:
-        logger.error(f"Failed to generate pet badge for user {user_id}: {e}", exc_info=True)
+    except Exception as exc:
+        logger.error("Failed to generate AI pet image for user %s: %s", user_id, exc, exc_info=True)
         return None

@@ -219,18 +219,6 @@ async def _on_play_completed(payload: Dict[str, Any]) -> None:
         pass
 
 
-@event_bus.on("quest_completed")
-async def _on_quest_completed(payload: Dict[str, Any]) -> None:
-    """Record quest action for daily tasks."""
-    try:
-        from web.api.tasks_api import record_action as _record
-        user_id = str(payload.get("user_id", ""))
-        if user_id:
-            await _record(user_id, "quest")
-    except Exception:
-        pass
-
-
 @event_bus.on("item_equipped")
 async def _on_item_equipped(payload: Dict[str, Any]) -> None:
     """Record equip action for daily tasks."""

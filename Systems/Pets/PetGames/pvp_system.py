@@ -346,22 +346,13 @@ class PvPBattleView(discord.ui.View):
                 
                 # Use StatsCalculator for comprehensive stats (includes equipment)
                 stats = StatsCalculator.calculate_pet_stats(pet)
-                att = stats['ATT']
-                dex = stats['DEX']
-                deff = stats['DEF']
-                intel = stats['INT']
-                hap = stats['HAP']
-                ene = stats['ENE']
-                
-                base_attack = pet.get('attack', att * dex if att and dex else 10)
-                base_defense = pet.get('defense', deff * intel if deff and intel else 5)
                 
                 level = int(pet.get('level', 1))
-                max_hp = pet.get('max_health', StatsCalculator.calculate_max_health(pet))
+                max_hp = StatsCalculator.calculate_max_health(pet)
                 current_hp = int(pet.get('health', max_hp))
                 
-                total_attack = base_attack
-                total_defense = base_defense
+                total_attack = stats['attack']
+                total_defense = stats['defense']
                 
                 player_data.update({
                     'pet': pet,
@@ -373,6 +364,17 @@ class PvPBattleView(discord.ui.View):
                     'element': str(pet.get('element','')).lower(),
                     'element2': str(pet.get('element2','')).lower() if pet.get('element2') else None
                 })
+                # Apply charge abilities
+                try:
+                    from Systems.Pets.Logic.ability_tree import get_starting_charge_bonus
+                    max_charge_limit = DamageCalculator.get_max_charge(pet)
+                    starting_charge_bonus = get_starting_charge_bonus(pet)
+                    starting_charge = min(max_charge_limit, 1.0 + float(starting_charge_bonus))
+                    player_data['charge'] = starting_charge
+                    player_data['max_charge_limit'] = max_charge_limit
+                except Exception:
+                    player_data.setdefault('charge', 1.0)
+                    player_data.setdefault('max_charge_limit', 5.0)
                 # Initialise battle skill state
                 try:
                     from Systems.Pets.Logic.battle_skills import init_battle_skill_state
@@ -760,7 +762,8 @@ class PvPBattleView(discord.ui.View):
         """Process a charge action using the new progression system"""
         player = self.players[player_id]
         current_charge = player.get('charge', 1.0)
-        new_charge = DamageCalculator.get_next_charge_multiplier(cast(float, current_charge))
+        pet_data = player.get('pet')
+        new_charge = DamageCalculator.get_next_charge_multiplier(cast(float, current_charge), pet_data)
         player['charge'] = new_charge
         # Track last action for UI
         player['last_action'] = 'charge'
@@ -836,13 +839,15 @@ class PvPBattleView(discord.ui.View):
         # Get relationship multiplier for PvP damage
         relationship_mult_attacker, relationship_mult_target = await get_relationship_multipliers(attacker_id, target_id)
         
-        # Use new damage calculator
+        # Use new damage calculator with full ability support
         result = DamageCalculator.calculate_battle_action(
             attacker_attack=_pvp_effective_atk(attacker),
             target_defense=_pvp_effective_def(defender),
             charge_multiplier=cast(float, attacker.get('charge', 1.0)),
             target_charge_multiplier=1.0,
             action_type="attack",
+            attacker_action_type="attack",
+            target_action_type="defend",
             attacker_type=str(attacker.get('type','')).lower(),
             attacker_element=str(attacker.get('element','')).lower(),
             attacker_element2=cast(Optional[str], attacker.get('element2')),
@@ -850,17 +855,19 @@ class PvPBattleView(discord.ui.View):
             defender_element=str(defender.get('element','')).lower(),
             defender_element2=cast(Optional[str], defender.get('element2')),
             attacker_species=cast(Optional[str], cast(Dict[str, Any], attacker.get('pet', {})).get('species')),
-            defender_species=cast(Optional[str], cast(Dict[str, Any], defender.get('pet', {})).get('species'))
+            defender_species=cast(Optional[str], cast(Dict[str, Any], defender.get('pet', {})).get('species')),
+            attacker_pet_data=attacker.get('pet'),
+            defender_pet_data=defender.get('pet'),
+            defender_current_hp=int(target.get('hp', 0)),
+            defender_max_hp=int(target.get('max_hp', 1)),
+            battle_type="pvp",
         )
         
         # Apply damage and parry
         damage_to_target = result['final_damage']
         # Apply relationship multiplier to damage
         damage_to_target = int(damage_to_target * relationship_mult_attacker)
-        
-        # Apply 25% extra incoming damage if target is charging
-        if target.get('charging', False) and damage_to_target > 0:
-            damage_to_target = int(damage_to_target * 1.25)
+        # charge vulnerability is now handled inside DamageCalculator via get_charge_vulnerability_reduction
         parry_damage = result['parry_damage']
         
         # Apply skill-based damage reduction, shields, and reflect on target
@@ -954,13 +961,15 @@ class PvPBattleView(discord.ui.View):
         attacker = self.players[attacker_id]
         target = self.players[target_id]
         
-        # Use new damage calculator with no defense
+        # Use new damage calculator with full ability support
         result = DamageCalculator.calculate_battle_action(
             attacker_attack=_pvp_effective_atk(attacker),
             target_defense=0,
             charge_multiplier=cast(float, attacker.get('charge', 1.0)),
             target_charge_multiplier=1.0,
             action_type="attack",
+            attacker_action_type="attack",
+            target_action_type="charge" if target.get('charging', False) else "attack",
             attacker_type=str(attacker.get('type','')).lower(),
             attacker_element=str(attacker.get('element','')).lower(),
             attacker_element2=cast(Optional[str], attacker.get('element2')),
@@ -968,13 +977,16 @@ class PvPBattleView(discord.ui.View):
             defender_element=str(target.get('element','')).lower(),
             defender_element2=cast(Optional[str], target.get('element2')),
             attacker_species=cast(Optional[str], cast(Dict[str, Any], attacker.get('pet', {})).get('species')),
-            defender_species=cast(Optional[str], cast(Dict[str, Any], target.get('pet', {})).get('species'))
+            defender_species=cast(Optional[str], cast(Dict[str, Any], target.get('pet', {})).get('species')),
+            attacker_pet_data=attacker.get('pet'),
+            defender_pet_data=target.get('pet'),
+            defender_current_hp=int(target.get('hp', 0)),
+            defender_max_hp=int(target.get('max_hp', 1)),
+            battle_type="pvp",
         )
         
-        # Apply full damage, with charging vulnerability if target is charging
+        # Apply full damage; charge vulnerability already handled inside DamageCalculator
         damage = result['final_damage']
-        if target.get('charging', False) and damage > 0:
-            damage = int(damage * 1.25)
 
         # Apply skill-based damage reduction, shields, and reflect on target
         reflect_dmg_to_attacker = 0
@@ -1040,13 +1052,15 @@ class PvPBattleView(discord.ui.View):
         # Get relationship multipliers for both players
         relationship_mult_p1, relationship_mult_p2 = await get_relationship_multipliers(player1_id, player2_id)
         
-        # Calculate damage for player1 attacking player2
+        # Calculate damage for player1 attacking player2 with full ability support
         result1 = DamageCalculator.calculate_battle_action(
             attacker_attack=_pvp_effective_atk(player1),
             target_defense=0,
             charge_multiplier=float(cast(Any, player1.get('charge', 1.0))),
             target_charge_multiplier=1.0,
             action_type="attack",
+            attacker_action_type="attack",
+            target_action_type="charge" if player2.get('charging', False) else "attack",
             attacker_type=str(player1.get('type','')).lower(),
             attacker_element=str(player1.get('element','')).lower(),
             attacker_element2=cast(Optional[str], player1.get('element2')),
@@ -1054,16 +1068,23 @@ class PvPBattleView(discord.ui.View):
             defender_element=str(player2.get('element','')).lower(),
             defender_element2=cast(Optional[str], player2.get('element2')),
             attacker_species=cast(Optional[str], cast(Dict[str, Any], player1.get('pet', {})).get('species')),
-            defender_species=cast(Optional[str], cast(Dict[str, Any], player2.get('pet', {})).get('species'))
+            defender_species=cast(Optional[str], cast(Dict[str, Any], player2.get('pet', {})).get('species')),
+            attacker_pet_data=player1.get('pet'),
+            defender_pet_data=player2.get('pet'),
+            defender_current_hp=int(player2.get('hp', 0)),
+            defender_max_hp=int(player2.get('max_hp', 1)),
+            battle_type="pvp",
         )
         
-        # Calculate damage for player2 attacking player1
+        # Calculate damage for player2 attacking player1 with full ability support
         result2 = DamageCalculator.calculate_battle_action(
             attacker_attack=_pvp_effective_atk(player2),
             target_defense=0,
             charge_multiplier=float(cast(Any, player2.get('charge', 1.0))),
             target_charge_multiplier=1.0,
             action_type="attack",
+            attacker_action_type="attack",
+            target_action_type="charge" if player1.get('charging', False) else "attack",
             attacker_type=str(player2.get('type','')).lower(),
             attacker_element=str(player2.get('element','')).lower(),
             attacker_element2=cast(Optional[str], player2.get('element2')),
@@ -1071,7 +1092,12 @@ class PvPBattleView(discord.ui.View):
             defender_element=str(player1.get('element','')).lower(),
             defender_element2=cast(Optional[str], player1.get('element2')),
             attacker_species=cast(Optional[str], cast(Dict[str, Any], player2.get('pet', {})).get('species')),
-            defender_species=cast(Optional[str], cast(Dict[str, Any], player1.get('pet', {})).get('species'))
+            defender_species=cast(Optional[str], cast(Dict[str, Any], player1.get('pet', {})).get('species')),
+            attacker_pet_data=player2.get('pet'),
+            defender_pet_data=player1.get('pet'),
+            defender_current_hp=int(player1.get('hp', 0)),
+            defender_max_hp=int(player1.get('max_hp', 1)),
+            battle_type="pvp",
         )
         
         # Apply damage simultaneously
@@ -1081,12 +1107,7 @@ class PvPBattleView(discord.ui.View):
         # Apply relationship multipliers
         damage1 = int(damage1 * relationship_mult_p1)
         damage2 = int(damage2 * relationship_mult_p2)
-        
-        # Apply 25% vulnerability if the targets are charging
-        if player2.get('charging', False) and damage1 > 0:
-            damage1 = int(damage1 * 1.25)
-        if player1.get('charging', False) and damage2 > 0:
-            damage2 = int(damage2 * 1.25)
+        # charge vulnerability is handled inside DamageCalculator via get_charge_vulnerability_reduction
         
         # Apply skill-based damage reduction, shields, and reflect on both players
         reflect1_to_p1 = 0  # player2 reflects back to player1
@@ -1622,6 +1643,99 @@ class PvPActionView(discord.ui.View):
         )
         charge_button.callback = self.charge_callback
         self.add_item(charge_button)
+        
+        # Row 2+: one button per equipped skill slot
+        self._add_skill_buttons()
+    
+    def _add_skill_buttons(self):
+        """Add skill buttons for each equipped skill slot."""
+        try:
+            from Systems.Pets.Logic.battle_skills import SKILL_BY_ID, get_slot_cooldown
+            pdata = self.battle_view.players.get(self.player_id, {})
+            equipped = pdata.get('equipped_skills', [])
+            cooldowns = pdata.get('skill_cooldowns', {})
+            
+            for slot_idx, skill_id in enumerate(equipped):
+                sk = SKILL_BY_ID.get(skill_id)
+                if not sk:
+                    continue
+                cd = cooldowns.get(slot_idx, 0)
+                ready = (cd == 0)
+                label = sk['name'][:20]
+                if not ready:
+                    label = f"{label} ({cd}t)"
+                btn_row = min(2 + slot_idx, 4)
+                btn = discord.ui.Button(
+                    label=label,
+                    style=discord.ButtonStyle.secondary,
+                    emoji="✨" if ready else "⏳",
+                    disabled=not ready,
+                    row=btn_row,
+                    custom_id=f"skill_{slot_idx}_{skill_id}",
+                )
+
+                def make_skill_callback(sidx: int, skid: str):
+                    async def skill_callback(interaction: discord.Interaction):
+                        await self._handle_skill_selection(interaction, sidx, skid)
+                    return skill_callback
+
+                btn.callback = make_skill_callback(slot_idx, skill_id)
+                self.add_item(btn)
+        except Exception:
+            pass
+
+    async def _handle_skill_selection(self, interaction: discord.Interaction, slot_index: int, skill_id: str):
+        """Handle a skill button press in PvP — queues the skill as the player's action."""
+        if str(interaction.user.id) != self.player_id:
+            await interaction.response.send_message("This isn't your action menu!", ephemeral=True, delete_after=3)
+            return
+
+        pdata = self.battle_view.players.get(self.player_id, {})
+        
+        try:
+            from Systems.Pets.Logic.battle_skills import can_use_skill, SKILL_BY_ID
+            if not can_use_skill(pdata, slot_index):
+                cd = pdata.get('skill_cooldowns', {}).get(slot_index, 0)
+                await interaction.response.send_message(
+                    f"That skill is on cooldown — {cd} turn(s) remaining.", ephemeral=True, delete_after=5
+                )
+                return
+            sk = SKILL_BY_ID.get(skill_id)
+            skill_name = sk['name'] if sk else skill_id
+        except Exception:
+            skill_name = skill_id
+        
+        # Clean up the action message
+        if self.message:
+            try:
+                await self.message.delete()
+            except Exception:
+                pass
+        
+        # Queue skill as the full action
+        self.battle_view.player_actions[self.player_id] = {
+            'action': 'skill',
+            'skill_id': skill_id,
+            'slot_index': slot_index,
+            'target': None,
+            'action_label': f"Skill: {skill_name}",
+        }
+        
+        # Disable all buttons
+        try:
+            for item in self.children:
+                if hasattr(item, 'disabled'):
+                    item.disabled = True
+            await interaction.response.edit_message(
+                content=f"✨ **{skill_name}** queued!", view=self
+            )
+        except Exception:
+            try:
+                await interaction.response.defer()
+            except Exception:
+                pass
+        
+        await self.battle_view.check_all_actions_ready()
     
     async def attack_callback(self, interaction: discord.Interaction):
         await interaction.response.defer(ephemeral=True)
@@ -1664,7 +1778,7 @@ class PvPActionView(discord.ui.View):
         }
         
         # No confirmation message - action is recorded silently
-        await self.battle_view.check_turn_completion()
+        await self.battle_view.check_all_actions_ready()
     
     async def defend_callback(self, interaction: discord.Interaction):
         await interaction.response.defer(ephemeral=True)
@@ -1701,7 +1815,7 @@ class PvPActionView(discord.ui.View):
         self.battle_view.guard_relationships[self.player_id] = target_id
         
         # No confirmation message - action is recorded silently
-        await self.battle_view.check_turn_completion()
+        await self.battle_view.check_all_actions_ready()
 
     async def on_timeout(self):
         # Default to attack a random target if player doesn't choose
@@ -1772,7 +1886,7 @@ class PvPActionView(discord.ui.View):
         # Set charging state using proper progression system
         player_data['charging'] = True
         current_charge = player_data.get('charge', 1.0)
-        new_charge = DamageCalculator.get_next_charge_multiplier(current_charge)
+        new_charge = DamageCalculator.get_next_charge_multiplier(current_charge, player_data.get('pet'))
         player_data['charge'] = new_charge
         
         # Add to battle log
@@ -1800,4 +1914,4 @@ class PvPActionView(discord.ui.View):
             'action_label': cverb
         }
         
-        await self.battle_view.check_turn_completion()
+        await self.battle_view.check_all_actions_ready()

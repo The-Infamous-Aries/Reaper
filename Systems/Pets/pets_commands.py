@@ -1071,7 +1071,9 @@ class PetCommandsCog(commands.Cog):
         sizes = [
             ("4 Players (2 rounds)", "4"),
             ("8 Players (3 rounds)", "8"),
-            ("16 Players (4 rounds)", "16")
+            ("16 Players (4 rounds)", "16"),
+            ("32 Players (5 rounds)", "32"),
+            ("64 Players (6 rounds)", "64")
         ]
         return [
             app_commands.Choice(name=name, value=value)
@@ -1081,16 +1083,16 @@ class PetCommandsCog(commands.Cog):
     
     @app_commands.command(name="tournament", description="Create a pet tournament bracket")
     @app_commands.describe(
-        size="Tournament size (4, 8, or 16 players)",
+        size="Tournament size (4, 8, 16, 32, or 64 players)",
         participants="Optional: Mention specific users to invite (if none, auto-fills with eligible users)"
     )
     @app_commands.autocomplete(size=tournament_size_autocomplete)
     async def tournament(self, interaction: discord.Interaction, size: str, participants: Optional[str] = None):
         """Create a tournament with the specified size and optional participant mentions"""
         # Validate size
-        if size not in ["4", "8", "16"]:
+        if size not in ["4", "8", "16", "32", "64"]:
             return await interaction.response.send_message(
-                "❌ Invalid tournament size! Please choose 4, 8, or 16 players.",
+                "❌ Invalid tournament size! Please choose 4, 8, 16, 32, or 64 players.",
                 ephemeral=True
             )
         
@@ -1178,3 +1180,96 @@ class PetCommandsCog(commands.Cog):
 async def setup(bot: commands.Bot):
     pet_system = PetSystem(bot)
     await bot.add_cog(PetCommandsCog(bot, pet_system))
+
+
+    @app_commands.command(name="advanced_tournament", description="Create an advanced pet tournament with invitations and NPCs")
+    @app_commands.describe(
+        size="Tournament size (4, 8, 16, 32, or 64 players)",
+        invite_all="Whether to automatically invite all eligible guild members",
+        add_npcs="Whether to fill remaining slots with NPCs"
+    )
+    @app_commands.autocomplete(size=tournament_size_autocomplete)
+    async def advanced_tournament(self, interaction: discord.Interaction, size: str, 
+                                 invite_all: bool = False, add_npcs: bool = True):
+        """Create an advanced tournament with invitation system and NPC support"""
+        # Validate size
+        if size not in ["4", "8", "16", "32", "64"]:
+            return await interaction.response.send_message(
+                "❌ Invalid tournament size! Please choose 4, 8, 16, 32, or 64 players.",
+                ephemeral=True
+            )
+        
+        try:
+            # Check if user has a pet
+            if not await self.pet_system.get_user_pet(interaction.user.id):
+                return await interaction.response.send_message(
+                    "❌ You need a pet to create tournaments! Use `/pet_shop` to get started.",
+                    ephemeral=True
+                )
+            
+            # Ensure interaction.user is a Member
+            if not isinstance(interaction.user, discord.Member):
+                return await interaction.response.send_message(
+                    "❌ This command can only be used in a guild channel.",
+                    ephemeral=True
+                )
+            creator_member: discord.Member = interaction.user
+
+            # Ensure interaction.channel is a TextChannel
+            if not isinstance(interaction.channel, discord.TextChannel):
+                return await interaction.response.send_message(
+                    "❌ Tournaments can only be created in text channels.",
+                    ephemeral=True
+                )
+            channel: discord.TextChannel = interaction.channel
+
+            # Import advanced tournament system
+            from Systems.Pets.PetGames.advanced_tournament import (
+                AdvancedTournament, AdvancedTournamentView, TournamentSize, ParticipantType
+            )
+            
+            tournament_size = TournamentSize(int(size))
+            tournament = AdvancedTournament(self.bot, creator_member, tournament_size, channel)
+            
+            # Add organizer
+            tournament.add_participant(ParticipantType.PLAYER, creator_member)
+            
+            # Invite all eligible users if requested
+            if invite_all:
+                try:
+                    eligible_users = await tournament.get_eligible_users(interaction.guild)
+                    for user in eligible_users:
+                        if user != creator_member and len(tournament.participants) < tournament_size.value:
+                            tournament.add_participant(ParticipantType.PLAYER, user)
+                except Exception as e:
+                    logger.error(f"Error inviting eligible users: {e}")
+            
+            # Add NPCs if requested
+            if add_npcs:
+                slots_needed = tournament_size.value - len(tournament.participants)
+                if slots_needed > 0:
+                    await tournament.generate_npc_participants(slots_needed)
+            
+            # Create tournament view and send message
+            view = AdvancedTournamentView(tournament)
+            embed = view.create_tournament_embed()
+            
+            await interaction.response.send_message(
+                content=f"🏆 **Advanced Tournament Created!**\n"
+                       f"Use the buttons below to manage the tournament.",
+                embed=embed,
+                view=view
+            )
+            
+        except Exception as e:
+            logger.error(f"Error in advanced_tournament command: {e}", exc_info=True)
+            if not interaction.response.is_done():
+                await interaction.response.send_message(
+                    "❌ An error occurred while creating the tournament. Please try again.",
+                    ephemeral=True
+                )
+            else:
+                await interaction.followup.send(
+                    "❌ An error occurred while creating the tournament. Please try again.",
+                    ephemeral=True
+                )
