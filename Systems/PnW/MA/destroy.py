@@ -4,6 +4,8 @@ from discord import app_commands
 import os
 import asyncio
 import re
+import json
+import math
 from typing import List, Dict, Optional, Any, Tuple
 from datetime import datetime, timezone, timedelta
 import sys
@@ -16,6 +18,11 @@ from Systems.PnW.Util.query import create_v3_query_instance, V3GraphQuery
 from Systems.Functions.emoji import SPY_EMOJI, SOLDIER_EMOJI, TANK_EMOJI, JET_EMOJI, SHIP_EMOJI, mention
 from Systems.Functions.config import PANDW_API_KEY
 from Systems.Functions.user_data_manager import UserDataManager
+from Systems.Functions.db_paths import GLOBAL_NATIONS_DB
+from Systems.PnW.MA.weapon_eff import get_weapon_damage, calc_infra_value, infra_price
+from Systems.PnW.Util.war_calc import get_resource_prices, calculate_unit_cost
+from Systems.PnW.Util.attacks_calc import GroundBattleCalculator
+from Systems.PnW.Util.rev_correct import calculate_population_effects
 
 AllianceManager = None
 
@@ -60,7 +67,7 @@ async def _destroy_attackers_autocomplete(
         if prefix:
             # Re-prefix each choice value so the full string is preserved
             return [
-                app_commands.Choice(name=choice.name, value=f"{prefix} {choice.value}")
+                app_commands.Choice(name=choice.name, value=f"{prefix}{choice.value}")
                 for choice in raw_choices
             ]
         return raw_choices
@@ -89,14 +96,6 @@ class DestroyCog(commands.Cog):
             # pnwkit disabled; rely solely on centralized query instance
             self.query_instance: Optional[V3GraphQuery] = None
             self.calculator = self  # Reference to self for military calculations
-            try:
-                self.query_instance = create_v3_query_instance()
-                self.logger.info("Centralized query instance initialized successfully")
-                if hasattr(self.query_instance, 'cache_ttl_seconds'):
-                    self.query_instance.cache_ttl_seconds = 3600
-            except Exception as e:
-                self.logger.error(f"Failed to initialize query instance: {e}")
-                self.query_instance = None
             try:
                 self.query_instance = create_v3_query_instance()
                 self.logger.info("Centralized query instance initialized successfully")
@@ -186,6 +185,34 @@ class DestroyCog(commands.Cog):
         except Exception:
             return None
 
+    async def _fetch_nation_holdings_from_db(self, nation_id: int) -> Optional[Dict[str, Any]]:
+        """Fetch nation holdings from GlobalNationsDB."""
+        try:
+            from PnWHarvester.db.global_nations_db import GlobalNationsDB
+            
+            db = GlobalNationsDB(str(GLOBAL_NATIONS_DB))
+            nation = await db.get_nation(nation_id)
+            
+            if nation:
+                return {
+                    'money': nation.get('money', 0) or 0,
+                    'gasoline': nation.get('gasoline', 0) or 0,
+                    'munitions': nation.get('munitions', 0) or 0,
+                    'coal': nation.get('coal', 0) or 0,
+                    'oil': nation.get('oil', 0) or 0,
+                    'uranium': nation.get('uranium', 0) or 0,
+                    'iron': nation.get('iron', 0) or 0,
+                    'bauxite': nation.get('bauxite', 0) or 0,
+                    'lead': nation.get('lead', 0) or 0,
+                    'steel': nation.get('steel', 0) or 0,
+                    'aluminum': nation.get('aluminum', 0) or 0,
+                    'food': nation.get('food', 0) or 0,
+                }
+            return None
+        except Exception as e:
+            self._log_error(f"Error fetching holdings from DB: {e}", e, "_fetch_nation_holdings_from_db")
+            return None
+
     def _warchest_level(self, nation: Dict[str, Any]) -> int:
         """Calculate warchest level based on resources."""
         try:
@@ -269,6 +296,312 @@ class DestroyCog(commands.Cog):
         except Exception:
             return False
 
+    async def _get_live_weapon_costs(self) -> Dict[str, float]:
+        """Live missile/nuke costs, using the same market logic as /weapon_eff."""
+        fallback = {'missile': 150000.0, 'nuke': 1750000.0, 'source': 'fallback'}
+        try:
+            resource_prices = await get_resource_prices()
+            if not resource_prices or 'sell' not in resource_prices:
+                return fallback
+            missile_cost = calculate_unit_cost('missiles', resource_prices['sell'])
+            nuke_cost = calculate_unit_cost('nukes', resource_prices['sell'])
+            if missile_cost <= 0 or nuke_cost <= 0:
+                return fallback
+            return {'missile': float(missile_cost), 'nuke': float(nuke_cost), 'source': 'live'}
+        except Exception as e:
+            self._log_error("Error fetching live weapon costs", e, "_get_live_weapon_costs")
+            return fallback
+
+    def _weapon_city_population_and_density(self, city: Dict[str, Any]) -> Tuple[float, float]:
+        """Weapon Eff population and displayed density calculation."""
+        infra = city.get('infrastructure', 0) or 0
+        land = max(city.get('land', 0) or 0, 1)
+        base_pop = infra * 100
+
+        powered = city.get('powered', True)
+        commerce = 0.0
+        if powered:
+            commerce += city.get('subway', 0) * 8
+            commerce += city.get('supermarket', 0) * 4
+            commerce += city.get('bank', 0) * 6
+            commerce += city.get('shopping_mall', 0) * 8
+            commerce += city.get('stadium', 0) * 10
+        commerce = min(commerce, 100)
+
+        pollution = 0.0
+        if powered:
+            pollution += city.get('police_station', 0)
+            pollution += city.get('hospital', 0) * 4
+            pollution -= city.get('recycling_center', 0) * 70
+            pollution -= city.get('subway', 0) * 45
+            pollution += city.get('shopping_mall', 0) * 2
+            pollution += city.get('stadium', 0) * 5
+        pollution = max(pollution, 0)
+
+        police_stations = city.get('police_station', 0) if powered else 0
+        hospitals = city.get('hospital', 0) if powered else 0
+        modifiers = {'pol_cri_red': 2.5, 'hos_dis_red': 2.5}
+        if city.get('clinical_research_center'):
+            modifiers['hos_dis_red'] = 3.5
+        if city.get('specialized_police_training_program'):
+            modifiers['pol_cri_red'] = 3.5
+
+        city_for_calc = dict(city)
+        city_for_calc['infrastructure'] = infra
+        city_for_calc['land'] = land
+        pop_result = calculate_population_effects(
+            city_for_calc, modifiers, base_pop, commerce, police_stations, hospitals, pollution
+        )
+        actual_pop = float(pop_result['population'])
+        return actual_pop, max(actual_pop / land, 1.0)
+
+    def _weapon_impact_chance(self, nation: Dict[str, Any], weapon: str) -> float:
+        if weapon == 'missile':
+            return 0.70 if self.has_project(nation, 'Iron Dome') else 1.0
+        return 0.75 if self.has_project(nation, 'Vital Defense System') else 1.0
+
+    def _weapon_city_score(
+        self,
+        city: Dict[str, Any],
+        nation: Dict[str, Any],
+        weapon: str,
+        weapon_cost: float,
+    ) -> Dict[str, Any]:
+        infra = city.get('infrastructure', 0) or 0
+        actual_pop, pop_density = self._weapon_city_population_and_density(city)
+        hit_chance = self._weapon_impact_chance(nation, weapon)
+
+        avg_dmg = get_weapon_damage(infra, weapon, pop_density, 'average')
+        min_dmg = get_weapon_damage(infra, weapon, pop_density, 'min')
+        max_dmg = get_weapon_damage(infra, weapon, pop_density, 'max')
+
+        avg_val = calc_infra_value(infra - avg_dmg, infra)
+        min_val = calc_infra_value(infra - min_dmg, infra)
+        max_val = calc_infra_value(infra - max_dmg, infra)
+
+        return {
+            'city': city,
+            'infra': infra,
+            'pop_density': pop_density,
+            'actual_pop': actual_pop,
+            'hit_chance': hit_chance,
+            'avg_dmg': avg_dmg,
+            'min_dmg': min_dmg,
+            'max_dmg': max_dmg,
+            'avg_val': avg_val,
+            'min_val': min_val,
+            'max_val': max_val,
+            'expected_val': avg_val * hit_chance,
+            'avg_mult': avg_val / weapon_cost if weapon_cost else 0,
+            'expected_mult': (avg_val * hit_chance) / weapon_cost if weapon_cost else 0,
+            'max_mult': max_val / weapon_cost if weapon_cost else 0,
+        }
+
+    def _best_weapon_city(
+        self,
+        nation: Dict[str, Any],
+        weapon: str,
+        weapon_cost: float,
+    ) -> Optional[Dict[str, Any]]:
+        scores = [
+            self._weapon_city_score(city, nation, weapon, weapon_cost)
+            for city in (nation.get('cities') or [])
+            if isinstance(city, dict)
+        ]
+        if not scores:
+            return None
+        return max(scores, key=lambda s: s['expected_val'])
+
+    def _analyze_weapon_optimal_for_target(
+        self,
+        target_nation: Dict[str, Any],
+        weapon_costs: Optional[Dict[str, float]] = None,
+    ) -> Dict[str, Any]:
+        """
+        Analyze whether missiles or nukes are optimal against this target.
+        
+        Returns:
+            Dict with:
+            - optimal_weapon: 'missile', 'nuke', or 'ground'
+            - best_city: city dict with highest infra
+            - missile_analysis: damage, cost, efficiency
+            - nuke_analysis: damage, cost, efficiency
+            - requires_missile_capable: bool
+            - requires_nuke_capable: bool
+        """
+        try:
+            cities = target_nation.get('cities', [])
+            if not cities:
+                return {'optimal_weapon': 'ground', 'reason': 'No cities'}
+
+            missile_cost = float((weapon_costs or {}).get('missile') or 150000)
+            nuke_cost = float((weapon_costs or {}).get('nuke') or 1750000)
+            cost_source = (weapon_costs or {}).get('source', 'fallback')
+            has_iron_dome = self.has_project(target_nation, 'Iron Dome')
+            has_vds = self.has_project(target_nation, 'Vital Defense System')
+
+            missile_score = self._best_weapon_city(target_nation, 'missile', missile_cost)
+            nuke_score = self._best_weapon_city(target_nation, 'nuke', nuke_cost)
+            if not missile_score and not nuke_score:
+                return {'optimal_weapon': 'ground', 'reason': 'No scorable cities'}
+
+            missile_mult = float((missile_score or {}).get('avg_mult', 0) or 0)
+            nuke_mult = float((nuke_score or {}).get('avg_mult', 0) or 0)
+
+            min_weapon_mult = 2.0
+            if missile_mult >= min_weapon_mult and missile_mult >= nuke_mult:
+                optimal = 'missile'
+                best_score = missile_score
+            elif nuke_mult >= min_weapon_mult and nuke_mult > missile_mult:
+                optimal = 'nuke'
+                best_score = nuke_score
+            else:
+                optimal = 'ground'
+                best_score = missile_score if missile_mult >= nuke_mult else nuke_score
+
+            def _analysis_payload(score: Optional[Dict[str, Any]], cost: float) -> Dict[str, Any]:
+                if not score:
+                    return {
+                        'damage': 0,
+                        'min_damage': 0,
+                        'max_damage': 0,
+                        'value': 0,
+                        'min_value': 0,
+                        'max_value': 0,
+                        'cost': cost,
+                        'efficiency': 0,
+                        'expected_value': 0,
+                        'expected_efficiency': 0,
+                        'hit_chance': 0,
+                        'city': None,
+                    }
+                return {
+                    'damage': score['avg_dmg'],
+                    'min_damage': score['min_dmg'],
+                    'max_damage': score['max_dmg'],
+                    'value': score['avg_val'],
+                    'min_value': score['min_val'],
+                    'max_value': score['max_val'],
+                    'cost': cost,
+                    # Weapon Eff ratio shown in web tables is avg infra value / weapon cost.
+                    'efficiency': score['avg_mult'],
+                    'expected_value': score['expected_val'],
+                    'expected_efficiency': score['expected_mult'],
+                    'hit_chance': score['hit_chance'],
+                    'pop_density': score['pop_density'],
+                    'actual_pop': score['actual_pop'],
+                    'city': score['city'],
+                }
+            
+            return {
+                'optimal_weapon': optimal,
+                'best_city': best_score.get('city') if best_score else {},
+                'best_city_infra': best_score.get('infra', 0) if best_score else 0,
+                'pop_density': best_score.get('pop_density', 0) if best_score else 0,
+                'weapon_cost_source': cost_source,
+                'missile_analysis': _analysis_payload(missile_score, missile_cost),
+                'nuke_analysis': _analysis_payload(nuke_score, nuke_cost),
+                'requires_missile_capable': optimal == 'missile',
+                'requires_nuke_capable': optimal == 'nuke',
+                'has_iron_dome': has_iron_dome,
+                'has_vds': has_vds
+            }
+        except Exception as e:
+            self._log_error(f"Error analyzing weapon optimal: {e}", e, "_analyze_weapon_optimal_for_target")
+            return {'optimal_weapon': 'ground', 'reason': f'Error: {e}'}
+
+    def _simulate_ground_battle_outcome(
+        self,
+        attacker: Dict[str, Any],
+        defender: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """
+        Simulate a ground battle to determine if attacker can win.
+        
+        Returns:
+            Dict with:
+            - can_win: bool
+            - victory_type: int (0-3)
+            - expected_casualties: dict
+            - expected_loot: float
+            - ground_control_gain: bool
+        """
+        try:
+            calculator = GroundBattleCalculator()
+            
+            # Munitions determine whether each side's soldiers fight armed.
+            atk_munitions = attacker.get('munitions', 0) or 0
+            atk_soldiers = attacker.get('soldiers', 0) or 0
+            def_munitions = defender.get('munitions', 0) or 0
+            def_soldiers = defender.get('soldiers', 0) or 0
+            soldier_type = 'armed' if atk_munitions >= (atk_soldiers * 0.0002) else 'unarmed'
+            
+            # Get city infrastructure for damage calc
+            cities = defender.get('cities', [])
+            city_infra = 0
+            if cities:
+                city_infra = max((c.get('infrastructure', 0) or 0 for c in cities if isinstance(c, dict)), default=0)
+            
+            # Simulate battle
+            result = calculator.simulate_ground_battle(
+                war_type='ordinary',  # Default to ordinary
+                soldier_type=soldier_type,
+                attacker_has_gc=False,  # Would need to check actual GC status
+                defender_has_gc=False,
+                defender_has_as=False,
+                defender_has_blockade=False,
+                defender_fortified=False,  # Would need to check fortification
+                
+                attacking_soldiers=atk_soldiers,
+                attacking_tanks=attacker.get('tanks', 0) or 0,
+                attacking_aircraft=attacker.get('aircraft', 0) or 0,
+                attacking_ships=attacker.get('ships', 0) or 0,
+                
+                defending_soldiers=def_soldiers,
+                defending_tanks=defender.get('tanks', 0) or 0,
+                defending_aircraft=defender.get('aircraft', 0) or 0,
+                defending_ships=defender.get('ships', 0) or 0,
+                defending_munitions=def_munitions,
+                
+                city_infrastructure=city_infra,
+                defender_cash=defender.get('money', 0) or 0,
+                
+                attacker_policy=attacker.get('war_policy') or 'none',
+                defender_policy=defender.get('war_policy') or 'none'
+            )
+            
+            # Determine if attacker can win (victory_type > 0 means not utter failure)
+            can_win = result.get('victory_type', 0) > 0
+            
+            return {
+                'can_win': can_win,
+                'victory_type': result.get('victory_type', 0),
+                'casualties': result.get('casualties', {}),
+                'loot': result.get('loot', {}).get('actual_loot', 0),
+                'infra_damage': result.get('infrastructure_damage', 0),
+                'ground_control': result.get('ground_control', {}),
+                'resistance_loss': result.get('resistance_loss', 0)
+            }
+        except Exception as e:
+            self._log_error(f"Error simulating ground battle: {e}", e, "_simulate_ground_battle_outcome")
+            return {'can_win': False, 'error': str(e)}
+
+    def _calculate_combat_score(
+        self,
+        attacker: Dict[str, Any],
+        defender: Dict[str, Any]
+    ) -> float:
+        """
+        Calculate a combat score based on simulated battle outcome.
+        
+        Higher score = better attacker.
+        """
+        try:
+            return float(self._combat_simulation_analysis(attacker, defender).get('combat_score', 0) or 0)
+        except Exception as e:
+            self._log_error(f"Error calculating combat score: {e}", e, "_calculate_combat_score")
+            return 0
+
     def calculate_military_purchase_limits(self, nation: Dict[str, Any]) -> Dict[str, int]:
         """Calculate military purchase limits based on nation's cities and research."""
         try:
@@ -294,7 +627,17 @@ class DestroyCog(commands.Cog):
                 total_drydocks = num_cities * avg_improvements
 
             # Military Research capacity levels
-            mr = nation.get('military_research') or {}
+            # Handle both dict (from API) and string (from DB JSON)
+            mr = nation.get('military_research')
+            if isinstance(mr, str):
+                # Parse JSON string from DB
+                try:
+                    mr = json.loads(mr)
+                except:
+                    mr = {}
+            elif not isinstance(mr, dict):
+                mr = {}
+            
             ground_cap_lvl = int(mr.get('ground_capacity', 0) or nation.get('ground_capacity', 0) or 0)
             air_cap_lvl    = int(mr.get('air_capacity',    0) or nation.get('air_capacity',    0) or 0)
             naval_cap_lvl  = int(mr.get('naval_capacity',  0) or nation.get('naval_capacity',  0) or 0)
@@ -315,11 +658,15 @@ class DestroyCog(commands.Cog):
             aircraft_daily = total_hangars * 3
             ship_daily    = total_drydocks * 1
 
-            # Apply capacity bonuses to daily limits
-            soldier_daily  += soldier_cap_bonus
-            tank_daily     += tank_cap_bonus
-            aircraft_daily += aircraft_cap_bonus
-            ship_daily     += ship_cap_bonus
+            # Apply capacity bonuses to daily limits — only if nation has at least 1 of the improvement type
+            if total_barracks > 0:
+                soldier_daily  += soldier_cap_bonus
+            if total_factories > 0:
+                tank_daily     += tank_cap_bonus
+            if total_hangars > 0:
+                aircraft_daily += aircraft_cap_bonus
+            if total_drydocks > 0:
+                ship_daily     += ship_cap_bonus
 
             # Propaganda Bureau bonus
             if self.has_project(nation, 'Propaganda Bureau'):
@@ -334,10 +681,15 @@ class DestroyCog(commands.Cog):
             aircraft_max = total_hangars * 15
             ship_max     = total_drydocks * 5
 
-            soldier_max  += soldier_cap_bonus
-            tank_max     += tank_cap_bonus
-            aircraft_max += aircraft_cap_bonus
-            ship_max     += ship_cap_bonus
+            # Max capacity — same improvement-type gating
+            if total_barracks > 0:
+                soldier_max  += soldier_cap_bonus
+            if total_factories > 0:
+                tank_max     += tank_cap_bonus
+            if total_hangars > 0:
+                aircraft_max += aircraft_cap_bonus
+            if total_drydocks > 0:
+                ship_max     += ship_cap_bonus
 
             # Missile and nuke limits
             missile_limit = 0
@@ -413,10 +765,10 @@ class DestroyCog(commands.Cog):
             return False
 
     def _analyze_party(self, party: List[Dict[str, Any]], target_nation: Dict[str, Any]) -> Dict[str, Any]:
-        """Analyze a party for unit coverage and calculate a score"""
+        """Analyze a party for unit coverage and calculate a score using combat simulation."""
         try:
-            if len(party) != 3:
-                return {'is_valid': False, 'error': 'Party must have exactly 3 members'}
+            if len(party) < 1:
+                return {'is_valid': False, 'error': 'Party must have at least 1 member'}
             
             # Check unit coverage
             has_ground = False
@@ -424,40 +776,21 @@ class DestroyCog(commands.Cog):
             has_navy = False
             has_missile_or_nuke = False
             
-            # Target's military for comparison
-            target_soldiers = target_nation.get('soldiers', 0) if target_nation else 0
-            target_tanks = target_nation.get('tanks', 0) if target_nation else 0
-            target_aircraft = target_nation.get('aircraft', 0) if target_nation else 0
-            target_ships = target_nation.get('ships', 0) if target_nation else 0
-            
             total_infra = 0
-            total_military_score = 0
+            total_combat_score = 0
             unit_coverage_count = 0
             
             for member in party:
+                # Calculate combat score against target
+                combat_score = self._calculate_combat_score(member, target_nation)
+                total_combat_score += combat_score
+                
                 # Get current military units
                 soldiers = member.get('soldiers', 0)
                 tanks = member.get('tanks', 0)
                 aircraft = member.get('aircraft', 0)
                 ships = member.get('ships', 0)
                 
-                # Check if this member has more units than target (good indicator)
-                member_has_advantage = (
-                    (soldiers + tanks * 10) > (target_soldiers + target_tanks * 10) or
-                    aircraft > target_aircraft or
-                    ships > target_ships
-                )
-                
-                # Check unit types (including daily purchase capacity)
-                try:
-                    purchase_limits = self.calculate_military_purchase_limits(member)
-                    soldiers += purchase_limits.get('soldiers_max', 0)
-                    tanks += purchase_limits.get('tanks_max', 0)
-                    aircraft += purchase_limits.get('aircraft_max', 0)
-                    ships += purchase_limits.get('ships_max', 0)
-                except:
-                    pass
-
                 if soldiers > 0 or tanks > 0:
                     has_ground = True
                 if aircraft > 0:
@@ -468,36 +801,29 @@ class DestroyCog(commands.Cog):
                 # Check missile/nuke capability
                 if (member.get('missiles', 0) > 0 or 
                     member.get('nukes', 0) > 0 or
-                    self.has_project(member, 'missile_pad') or
-                    self.has_project(member, 'nuclear_facility')):
+                    self.has_project(member, 'Missile Launch Pad') or
+                    self.has_project(member, 'Nuclear Research Facility')):
                     has_missile_or_nuke = True
                 
                 # Calculate infrastructure
                 total_infra += member.get('infra_average', member.get('infrastructure', 0))
-                
-                # Calculate military score
-                total_military_score += (
-                    soldiers * 0.1 +
-                    tanks * 5 +
-                    aircraft * 50 +
-                    ships * 100
-                )
             
             # Count unit coverage types
             unit_coverage_count = sum([has_ground, has_air, has_navy])
             
-            # Must have at least 2 unit types for basic coverage
-            if unit_coverage_count < 2:
-                return {'is_valid': False, 'error': 'Insufficient unit coverage'}
+            # Must have at least 1 unit type for single attacker, 2 for multiple
+            min_coverage = 1 if len(party) == 1 else 2
+            if unit_coverage_count < min_coverage:
+                return {'is_valid': False, 'error': f'Insufficient unit coverage (need {min_coverage})'}
             
             # Calculate scores
-            avg_infra = total_infra / 3
+            avg_infra = total_infra / len(party)
             
             # Infrastructure score (lower is better for attackers)
             infra_score = 1000 / (avg_infra + 1)
             
-            # Military strength score
-            military_score = total_military_score / 1000
+            # Combat strength score (from simulation)
+            combat_score = total_combat_score / 100
             
             # Strategic bonus for missile/nuke capability
             strategic_bonus = 200 if has_missile_or_nuke else 0
@@ -506,14 +832,14 @@ class DestroyCog(commands.Cog):
             unit_coverage_bonus = unit_coverage_count * 50
             
             # Final score
-            final_score = infra_score + military_score + unit_coverage_bonus + strategic_bonus
+            final_score = infra_score + combat_score + unit_coverage_bonus + strategic_bonus
             
             return {
                 'is_valid': True,
                 'score': final_score,
                 'total_infrastructure': total_infra,
                 'avg_infrastructure': avg_infra,
-                'total_military_score': total_military_score,
+                'total_combat_score': total_combat_score,
                 'unit_coverage': {
                     'ground': has_ground,
                     'air': has_air,
@@ -529,18 +855,330 @@ class DestroyCog(commands.Cog):
             self._log_error("Error analyzing party", e)
             return {'is_valid': False, 'error': str(e)}
 
+    def _max_offensive_slots(self, nation: Dict[str, Any]) -> int:
+        """PnW offensive slots: 5 base, +1 PE, +1 APE."""
+        try:
+            return 5 + int(bool(nation.get('pirate_economy'))) + int(bool(nation.get('advanced_pirate_economy')))
+        except Exception:
+            return 5
+
+    def _slot_state(
+        self,
+        nation: Dict[str, Any],
+        active_war_counts: Optional[Dict[int, Dict[str, int]]] = None,
+    ) -> Dict[str, int]:
+        """Return current/open offensive and defensive war slots for a nation."""
+        try:
+            nation_id = int(nation.get('id') or nation.get('nation_id') or 0)
+        except Exception:
+            nation_id = 0
+
+        live = (active_war_counts or {}).get(nation_id, {}) if nation_id else {}
+        offensive_current = int(live.get('off') if live.get('off') is not None else nation.get('offensive_wars_count', 0) or 0)
+        defensive_current = int(live.get('def') if live.get('def') is not None else nation.get('defensive_wars_count', 0) or 0)
+        offensive_max = self._max_offensive_slots(nation)
+        defensive_max = 3
+        return {
+            'offensive_current': max(0, offensive_current),
+            'offensive_max': offensive_max,
+            'offensive_open': max(0, offensive_max - offensive_current),
+            'defensive_current': max(0, defensive_current),
+            'defensive_max': defensive_max,
+            'defensive_open': max(0, defensive_max - defensive_current),
+        }
+
+    def _attach_slot_state(
+        self,
+        nation: Dict[str, Any],
+        active_war_counts: Optional[Dict[int, Dict[str, int]]] = None,
+    ) -> Dict[str, Any]:
+        state = self._slot_state(nation, active_war_counts)
+        nation['active_war_counts'] = {
+            'off': state['offensive_current'],
+            'def': state['defensive_current'],
+        }
+        nation['offensive_slots_current'] = state['offensive_current']
+        nation['offensive_slots_max'] = state['offensive_max']
+        nation['offensive_slots_open'] = state['offensive_open']
+        nation['defensive_slots_current'] = state['defensive_current']
+        nation['defensive_slots_max'] = state['defensive_max']
+        nation['defensive_slots_open'] = state['defensive_open']
+        return nation
+
+    def _weighted_unit_power(self, nation: Dict[str, Any]) -> float:
+        """Shared weighted unit power for optimizer ranking and web explanations."""
+        return (
+            (nation.get('soldiers', 0) or 0) * 0.01 +
+            (nation.get('tanks', 0) or 0) * 0.6 +
+            (nation.get('aircraft', 0) or 0) * 18 +
+            (nation.get('ships', 0) or 0) * 45
+        )
+
+    def _visible_unit_total(self, nation: Dict[str, Any]) -> int:
+        return sum(int(nation.get(k, 0) or 0) for k in (
+            'soldiers', 'tanks', 'aircraft', 'ships', 'spies', 'missiles', 'nukes'
+        ))
+
+    def _solo_power_margin(self, attacker_power: float, target_power: float) -> bool:
+        """A near-even unit matchup should get backup when target slots allow it."""
+        if target_power <= 0:
+            return True
+        return attacker_power >= target_power * 1.15
+
+    def _recommended_attacker_count(
+        self,
+        sorted_attackers: List[Dict[str, Any]],
+        target_nation: Dict[str, Any],
+        max_attackers: int,
+    ) -> int:
+        """Use as many attackers as needed, without leaving a weaker nation alone."""
+        max_attackers = max(0, min(int(max_attackers or 0), 3))
+        if max_attackers <= 0 or not sorted_attackers:
+            return 0
+        if self._visible_unit_total(target_nation) <= 0:
+            return 1
+
+        target_power = self._weighted_unit_power(target_nation)
+        if target_power <= 0:
+            return 1
+
+        first_power = self._weighted_unit_power(sorted_attackers[0])
+        if first_power >= target_power and self._solo_power_margin(first_power, target_power):
+            return 1
+        if max_attackers <= 1 or len(sorted_attackers) <= 1:
+            return 1 if first_power >= target_power else 0
+
+        combined_power = first_power
+        usable = min(max_attackers, len(sorted_attackers))
+        for count in range(2, usable + 1):
+            combined_power += self._weighted_unit_power(sorted_attackers[count - 1])
+            if combined_power >= target_power * 1.15:
+                return count
+        return 0
+
+    def _daily_unit_power(self, nation: Dict[str, Any]) -> float:
+        limits = self.calculate_military_purchase_limits(nation)
+        return (
+            limits.get('soldiers_daily', 0) * 0.01 +
+            limits.get('tanks_daily', 0) * 0.6 +
+            limits.get('aircraft_daily', 0) * 18 +
+            limits.get('ships_daily', 0) * 45
+        )
+
+    def _combat_simulation_analysis(self, attacker: Dict[str, Any], defender: Dict[str, Any]) -> Dict[str, Any]:
+        """Ground war simulation used as a hard viability gate for destroy targeting."""
+        try:
+            attacker_units = (
+                (attacker.get('soldiers', 0) or 0) +
+                (attacker.get('tanks', 0) or 0) +
+                (attacker.get('aircraft', 0) or 0) +
+                (attacker.get('ships', 0) or 0)
+            )
+            defender_units = (
+                (defender.get('soldiers', 0) or 0) +
+                (defender.get('tanks', 0) or 0) +
+                (defender.get('aircraft', 0) or 0) +
+                (defender.get('ships', 0) or 0)
+            )
+            attacker_ground = (attacker.get('soldiers', 0) or 0) + (attacker.get('tanks', 0) or 0)
+
+            base = {
+                'can_win': False,
+                'victory_type': 0,
+                'combat_score': 0,
+                'loot': 0,
+                'infra_damage': 0,
+                'resistance_loss': 0,
+                'attacker_soldier_casualties': 0,
+                'attacker_tank_casualties': 0,
+                'defender_soldier_casualties': 0,
+                'defender_tank_casualties': 0,
+                'reason': '',
+            }
+
+            if attacker_units <= 0:
+                base['reason'] = 'No military units'
+                return base
+            if attacker_ground <= 0:
+                base['reason'] = 'No soldiers or tanks for ground victory'
+                return base
+            if defender_units <= 0:
+                base.update({
+                    'can_win': True,
+                    'victory_type': 3,
+                    'combat_score': 300,
+                    'reason': 'Defender has no military units',
+                })
+                return base
+
+            battle_result = self._simulate_ground_battle_outcome(attacker, defender)
+            casualties = battle_result.get('casualties', {}) or {}
+            can_win = bool(battle_result.get('can_win')) and int(battle_result.get('victory_type', 0) or 0) > 0
+
+            victory_type = int(battle_result.get('victory_type', 0) or 0)
+            base_score = victory_type * 100
+            loot = float(battle_result.get('loot', 0) or 0)
+            infra_damage = float(battle_result.get('infra_damage', 0) or 0)
+            loot_bonus = min(loot / 1000, 50)
+            infra_bonus = min(infra_damage / 10, 30)
+            att_soldier_loss = float(casualties.get('attacker_soldier_casualties', 0) or 0)
+            att_tank_loss = float(casualties.get('attacker_tank_casualties', 0) or 0)
+            casualty_penalty = (att_soldier_loss * 0.1) + (att_tank_loss * 5)
+            combat_score = max(0, base_score + loot_bonus + infra_bonus - casualty_penalty) if can_win else 0
+
+            return {
+                'can_win': can_win,
+                'victory_type': victory_type,
+                'combat_score': round(float(combat_score), 2),
+                'loot': round(float(loot), 2),
+                'infra_damage': round(float(infra_damage), 2),
+                'resistance_loss': round(float(battle_result.get('resistance_loss', 0) or 0), 2),
+                'attacker_soldier_casualties': round(att_soldier_loss, 2),
+                'attacker_tank_casualties': round(att_tank_loss, 2),
+                'defender_soldier_casualties': round(float(casualties.get('defender_soldier_casualties', 0) or 0), 2),
+                'defender_tank_casualties': round(float(casualties.get('defender_tank_casualties', 0) or 0), 2),
+                'reason': 'Can win simulated ground attack' if can_win else 'Ground sim cannot win',
+            }
+        except Exception as e:
+            self._log_error("Error calculating combat simulation analysis", e)
+            return {
+                'can_win': False,
+                'victory_type': 0,
+                'combat_score': 0,
+                'loot': 0,
+                'infra_damage': 0,
+                'resistance_loss': 0,
+                'attacker_soldier_casualties': 0,
+                'attacker_tank_casualties': 0,
+                'defender_soldier_casualties': 0,
+                'defender_tank_casualties': 0,
+                'reason': str(e),
+            }
+
+    def _attacker_rank_breakdown(self, attacker: Dict[str, Any], target_nation: Dict[str, Any]) -> Dict[str, float]:
+        """Composite optimizer score and the parts that explain it."""
+        try:
+            sim = self._combat_simulation_analysis(attacker, target_nation)
+            combat_score = sim.get('combat_score', 0)
+            target_score = float(target_nation.get('score', 0) or 0)
+            attacker_score = float(attacker.get('score', 0) or 0)
+            if target_score > 0:
+                score_fit = max(0.0, 1.0 - (abs(attacker_score - target_score) / max(target_score, 1.0))) * 160
+            else:
+                score_fit = 0
+
+            target_power = self._weighted_unit_power(target_nation)
+            attacker_power = self._weighted_unit_power(attacker)
+            current_unit_score = min(260, (attacker_power / max(target_power, 1)) * 120)
+
+            daily_power = self._daily_unit_power(attacker)
+            daily_score = min(140, daily_power / 20)
+
+            secs = attacker.get('last_active_seconds')
+            if secs is None:
+                secs = self._seconds_since_last_active(attacker)
+            activity_score = max(0, 120 - ((secs or 0) / 3600) * 4) if secs is not None else 0
+
+            warchest_score = max(0, attacker.get('warchest_level', self._warchest_level(attacker)) or 0) * 30
+            slot_score = (attacker.get('offensive_slots_open', 0) or 0) * 35
+            infra_penalty = max(0, (attacker.get('infra_average', 0) or 0) - 2000) / 10
+
+            total = combat_score + score_fit + current_unit_score + daily_score + activity_score + warchest_score + slot_score - infra_penalty
+            return {
+                'combat_score': round(float(combat_score), 2),
+                'score_fit': round(float(score_fit), 2),
+                'current_unit_score': round(float(current_unit_score), 2),
+                'daily_score': round(float(daily_score), 2),
+                'activity_score': round(float(activity_score), 2),
+                'warchest_score': round(float(warchest_score), 2),
+                'slot_score': round(float(slot_score), 2),
+                'infra_penalty': round(float(infra_penalty), 2),
+                'attacker_unit_power': round(float(attacker_power), 2),
+                'target_unit_power': round(float(target_power), 2),
+                'daily_unit_power': round(float(daily_power), 2),
+                'unit_power_ratio': round(float(attacker_power / max(target_power, 1)), 3),
+                'sim_can_win': bool(sim.get('can_win')),
+                'sim_victory_type': int(sim.get('victory_type', 0) or 0),
+                'sim_resistance_loss': round(float(sim.get('resistance_loss', 0) or 0), 2),
+                'sim_infra_damage': round(float(sim.get('infra_damage', 0) or 0), 2),
+                'sim_loot': round(float(sim.get('loot', 0) or 0), 2),
+                'sim_attacker_soldier_casualties': round(float(sim.get('attacker_soldier_casualties', 0) or 0), 2),
+                'sim_attacker_tank_casualties': round(float(sim.get('attacker_tank_casualties', 0) or 0), 2),
+                'sim_defender_soldier_casualties': round(float(sim.get('defender_soldier_casualties', 0) or 0), 2),
+                'sim_defender_tank_casualties': round(float(sim.get('defender_tank_casualties', 0) or 0), 2),
+                'sim_reason': sim.get('reason', ''),
+                'total': round(float(total), 2),
+            }
+        except Exception as e:
+            self._log_error("Error calculating attacker rank breakdown", e)
+            return {
+                'combat_score': 0,
+                'score_fit': 0,
+                'current_unit_score': 0,
+                'daily_score': 0,
+                'activity_score': 0,
+                'warchest_score': 0,
+                'slot_score': 0,
+                'infra_penalty': 0,
+                'attacker_unit_power': 0,
+                'target_unit_power': 0,
+                'daily_unit_power': 0,
+                'unit_power_ratio': 0,
+                'sim_can_win': False,
+                'sim_victory_type': 0,
+                'sim_resistance_loss': 0,
+                'sim_infra_damage': 0,
+                'sim_loot': 0,
+                'sim_attacker_soldier_casualties': 0,
+                'sim_attacker_tank_casualties': 0,
+                'sim_defender_soldier_casualties': 0,
+                'sim_defender_tank_casualties': 0,
+                'sim_reason': str(e),
+                'total': 0,
+            }
+
+    def _attacker_rank_score(self, attacker: Dict[str, Any], target_nation: Dict[str, Any]) -> float:
+        """Composite optimizer score for a single attacker against one target."""
+        return float(self._attacker_rank_breakdown(attacker, target_nation).get('total', 0) or 0)
+
     def _find_optimal_attackers_sync(
         self,
         alliance_nations: List[Dict[str, Any]],
         target_nation: Dict[str, Any],
         max_groups: int,
-        exclude_unoptimal: bool
+        exclude_unoptimal: bool,
+        num_attackers: int = 3,
+        active_war_counts: Optional[Dict[int, Dict[str, int]]] = None,
+        weapon_costs: Optional[Dict[str, float]] = None,
     ) -> Dict[str, Any]:
         """
         Synchronous worker for finding optimal attackers.
         Executes heavy filtering, sorting, and group finding logic.
+        
+        Args:
+            alliance_nations: List of nations to search through
+            target_nation: Target nation data
+            max_groups: Maximum number of groups to return
+            num_attackers: Number of attackers per group (1-3)
+            exclude_unoptimal: Whether to exclude unoptimal nations
         """
         try:
+            # Analyze optimal weapon for target
+            weapon_analysis = self._analyze_weapon_optimal_for_target(target_nation, weapon_costs)
+            optimal_weapon = weapon_analysis.get('optimal_weapon', 'ground')
+            
+            target_nation = self._attach_slot_state(target_nation, active_war_counts)
+            target_defensive_open = int(target_nation.get('defensive_slots_open', 0) or 0)
+            if target_defensive_open <= 0:
+                return {
+                    'optimal_groups': [],
+                    'all_attackers': [],
+                    'total_found': 0,
+                    'target_slots_full': True,
+                    'message': 'Target has no open defensive slots.',
+                }
+
+            max_attackers = max(1, min(int(num_attackers or 3), 3, target_defensive_open))
             eligible_members = []
             target_score = target_nation.get('score', 0) if target_nation else 0
             
@@ -562,10 +1200,13 @@ class DestroyCog(commands.Cog):
                     member.get('aircraft') is not None and 
                     member.get('ships') is not None and
                     member.get('score') is not None):
+                    member = self._attach_slot_state(member, active_war_counts)
+                    if int(member.get('offensive_slots_open', 0) or 0) <= 0:
+                        continue
                     
                     secs = self._seconds_since_last_active(member)
                     member['last_active_seconds'] = secs if secs is not None else None
-                    if exclude_unoptimal and secs is not None and secs >= 7 * 24 * 3600:
+                    if secs is None or secs >= 7 * 24 * 3600:
                         continue
                     
                     # Exclude unoptimal: zero units or >2000 avg infra
@@ -575,6 +1216,16 @@ class DestroyCog(commands.Cog):
                     ships = (member.get('ships', 0) or 0)
                     if exclude_unoptimal and soldiers == 0 and tanks == 0 and aircraft == 0 and ships == 0:
                         continue
+                    
+                    # Filter by weapon capability if optimal weapon is missile/nuke
+                    if optimal_weapon == 'missile':
+                        if not (member.get('missiles', 0) > 0 or 
+                                self.has_project(member, 'Missile Launch Pad')):
+                            continue
+                    elif optimal_weapon == 'nuke':
+                        if not (member.get('nukes', 0) > 0 or 
+                                self.has_project(member, 'Nuclear Research Facility')):
+                            continue
                     
                     # Calculate infrastructure average
                     cities = member.get('cities', [])
@@ -594,40 +1245,58 @@ class DestroyCog(commands.Cog):
                     
                     # Compute warchest level for prioritization
                     member['warchest_level'] = self._warchest_level(member)
+                    member['destroy_rank_details'] = self._attacker_rank_breakdown(member, target_nation)
+                    if not member['destroy_rank_details'].get('sim_can_win'):
+                        continue
+                    member['destroy_rank_score'] = member['destroy_rank_details'].get('total', 0)
                     
                     members_with_military.append(member)
             
-            # 3. Build all attackers in range, prioritized by activity, warchest, then units
+            # 3. Build all attackers in range, prioritized by the destroy optimizer score,
+            # then activity, warchest, and current units.
             def _sort_key(x: Dict[str, Any]):
                 secs = x.get('last_active_seconds')
                 if secs is None:
                     secs = float('inf')
                 wl = x.get('warchest_level', 0)
                 units = x.get('total_units', 0)
-                return (secs, -wl, -units)
+                rank = x.get('destroy_rank_score', 0)
+                return (-rank, secs, -wl, -units)
             all_attackers_sorted = sorted(members_with_military, key=_sort_key)
+            num_attackers = self._recommended_attacker_count(all_attackers_sorted, target_nation, max_attackers)
+            if num_attackers <= 0:
+                return {
+                    'optimal_groups': [],
+                    'all_attackers': [],
+                    'total_found': len(all_attackers_sorted),
+                    'effective_num_attackers': 0,
+                    'message': 'No safe attacker set found for target unit power.',
+                }
             
             # 4. Create optimal groups using efficient approach when enough members exist
             optimal_groups = []
-            if len(members_with_military) >= 3:
+            if len(members_with_military) >= num_attackers:
                 used_nations = set()
                 
-                # Sort by lowest infrastructure to try better coverage for groups
-                members_for_groups = sorted(members_with_military, key=lambda x: x.get('infra_average', 0))
+                # Sort by the same single-attacker optimizer score used for the flat list.
+                members_for_groups = sorted(
+                    members_with_military,
+                    key=lambda x: (-x.get('destroy_rank_score', 0), x.get('infra_average', 0))
+                )
                 
                 for i, nation in enumerate(members_for_groups):
                     nation_id = nation.get('nation_id') or nation.get('id')
                     if nation_id in used_nations:
                         continue
                     
-                    # Find 2 compatible nations for a party
+                    # Find compatible nations for a party
                     party = [nation]
                     used_nations.add(nation_id)
                     
                     # Look for compatible nations (within war range and good unit coverage)
                     for potential_nation in members_for_groups[i+1:]:
                         potential_id = potential_nation.get('nation_id') or potential_nation.get('id')
-                        if potential_id in used_nations or len(party) >= 3:
+                        if potential_id in used_nations or len(party) >= num_attackers:
                             continue
                         
                         # Check if this nation is compatible with all current party members
@@ -637,12 +1306,12 @@ class DestroyCog(commands.Cog):
                                 is_compatible = False
                                 break
                         
-                        if is_compatible and len(party) < 3:
+                        if is_compatible and len(party) < num_attackers:
                             party.append(potential_nation)
                             used_nations.add(potential_id)
                     
-                    # Only keep parties of exactly 3
-                    if len(party) == 3:
+                    # Only keep parties of exactly num_attackers
+                    if len(party) == num_attackers:
                         # Analyze the party
                         group_analysis = self._analyze_party(party, target_nation)
                         if group_analysis.get('is_valid'):
@@ -662,7 +1331,13 @@ class DestroyCog(commands.Cog):
             return {
                 'optimal_groups': optimal_groups,
                 'all_attackers': all_attackers_sorted,
-                'total_found': len(all_attackers_sorted)
+                'total_found': len(all_attackers_sorted),
+                'effective_num_attackers': num_attackers,
+                'target_slot_state': {
+                    'defensive_open': target_nation.get('defensive_slots_open', 0),
+                    'defensive_current': target_nation.get('defensive_slots_current', target_nation.get('defensive_wars_count', 0)),
+                    'defensive_max': 3,
+                }
             }
         except Exception as e:
             self._log_error(f"Error in _find_optimal_attackers_sync: {str(e)}", e, "_find_optimal_attackers_sync")
@@ -673,6 +1348,7 @@ class DestroyCog(commands.Cog):
         target_nation: Optional[Dict[str, Any]] = None,
         max_groups: int = 10,
         attackers_alliance_ids: Optional[List[str]] = None,
+        num_attackers: int = 3,
         exclude_unoptimal: bool = False,
     ) -> Dict[str, Any]:
         """
@@ -682,6 +1358,8 @@ class DestroyCog(commands.Cog):
             target_nation: Target nation data to check war range against
             max_groups: Maximum number of optimal groups to return
             attackers_alliance_ids: List of alliance IDs to search through
+            num_attackers: Number of attackers per group (1-3)
+            exclude_unoptimal: Whether to exclude unoptimal nations
             
         Returns:
             Dictionary containing optimal attacker groups, and a sorted list of all attackers in range
@@ -712,13 +1390,25 @@ class DestroyCog(commands.Cog):
                     self.logger.warning(f"Error fetching alliance data for {aid}: {e}")
                     continue
             
+            active_war_counts = {}
+            try:
+                from PnWHarvester.db.global_wars_db import GlobalWarsDB
+                from Systems.Functions.db_paths import GLOBAL_WARS_DB_STR
+                wars_db = GlobalWarsDB(GLOBAL_WARS_DB_STR)
+                active_war_counts = await wars_db.get_active_war_counts()
+            except Exception as e:
+                self.logger.warning(f"Could not load active war counts for destroy optimizer: {e}")
+
             # Offload heavy processing to thread
             return await asyncio.to_thread(
                 self._find_optimal_attackers_sync,
                 all_nations,
                 target_nation,
                 max_groups,
-                exclude_unoptimal
+                exclude_unoptimal,
+                num_attackers,
+                active_war_counts,
+                await self._get_live_weapon_costs(),
             )
             
         except Exception as e:
@@ -728,6 +1418,20 @@ class DestroyCog(commands.Cog):
     async def get_alliance_nations(self, alliance_id: str, force_refresh: bool = False) -> Optional[List[Dict[str, Any]]]:
         """Get all nations from an alliance."""
         try:
+            try:
+                from PnWHarvester.db.global_nations_db import GlobalNationsDB
+                from Systems.Functions.db_paths import GLOBAL_NATIONS_DB
+                db = GlobalNationsDB(str(GLOBAL_NATIONS_DB))
+                nations = await db.get_nations_by_alliance(int(alliance_id))
+                if nations:
+                    for nation in nations:
+                        nid = nation.get('id')
+                        if nid:
+                            nation['cities'] = await db.get_cities_for_nation(int(nid))
+                    return nations
+            except Exception as db_err:
+                self.logger.warning(f"GlobalNations.db alliance load failed for {alliance_id}: {db_err}")
+
             if not self.query_instance:
                 self.logger.error("No query instance available")
                 return None
@@ -796,15 +1500,24 @@ class DestroyCog(commands.Cog):
     @app_commands.command(name='destroy', description='Find optimal attackers for a target nation with analysis')
     @app_commands.describe(
         target='Enter Nation Name, Leader Name, or Nation Link/ID',
-        attackers='Enter Alliance Name(s) or ID(s), comma-separated for multiple',
+        attackers='Enter Alliance Name(s) or ID(s), comma-separated for multiple (defaults to Darkstar)',
+        num_attackers='Number of attackers to find (1-3)',
         exclude_unoptimal='Exclude nations with >2000 avg infra or zero units'
+    )
+    @app_commands.choices(
+        num_attackers=[
+            app_commands.Choice(name="1", value=1),
+            app_commands.Choice(name="2", value=2),
+            app_commands.Choice(name="3", value=3),
+        ]
     )
     @app_commands.autocomplete(target=_destroy_target_autocomplete, attackers=_destroy_attackers_autocomplete)
     async def destroy(
         self,
         interaction: discord.Interaction,
         target: str,
-        attackers: Optional[str] = None,
+        attackers: Optional[str] = "10259",
+        num_attackers: int = 3,
         exclude_unoptimal: bool = False,
     ) -> None:
         """
@@ -814,6 +1527,7 @@ class DestroyCog(commands.Cog):
             interaction: Discord interaction
             target: Target nation name, leader name, or nation link/ID
             attackers: Comma-separated alliance names/IDs (optional)
+            num_attackers: Number of attackers to find (1-3)
             exclude_unoptimal: Whether to exclude unoptimal nations
         """
         try:
@@ -949,16 +1663,28 @@ class DestroyCog(commands.Cog):
             except Exception as e:
                 self.logger.warning(f"Failed to fetch Discord username for target: {e}")
             
-            # Update loading message
+            # Analyze weapon optimal for target using the same live costs/formulas as /weapon_eff.
+            weapon_costs = await self._get_live_weapon_costs()
+            weapon_analysis = self._analyze_weapon_optimal_for_target(target_nation, weapon_costs)
+            optimal_weapon = weapon_analysis.get('optimal_weapon', 'ground')
+            
+            # Update loading message with weapon analysis
             if loading_message:
                 alliance_count = len(attackers_ids)
-                await loading_message.edit(content=f"⚔️ **Finding Optimal Attackers...**\nTarget: **{target_nation.get('nation_name', 'Unknown')}**\nSearching across {alliance_count} alliance{'s' if alliance_count != 1 else ''}...")
+                weapon_emoji = '🚀' if optimal_weapon == 'missile' else '☢️' if optimal_weapon == 'nuke' else '⚔️'
+                await loading_message.edit(
+                    content=f"⚔️ **Finding Optimal Attackers...**\n"
+                    f"Target: **{target_nation.get('nation_name', 'Unknown')}**\n"
+                    f"Optimal Weapon: {weapon_emoji} {optimal_weapon.title()}\n"
+                    f"Searching across {alliance_count} alliance{'s' if alliance_count != 1 else ''}..."
+                )
             
             # Find optimal attackers for specified alliances with optional exclusion
             optimal_attackers = await self.find_optimal_attackers(
                 target_nation,
                 max_groups=10,
                 attackers_alliance_ids=attackers_ids,
+                num_attackers=num_attackers,
                 exclude_unoptimal=exclude_unoptimal,
             )
             
@@ -974,6 +1700,11 @@ class DestroyCog(commands.Cog):
                 for group in optimal_attackers.get('optimal_groups', []):
                     if group and group.get('attackers'):
                         attackers_list.extend(group['attackers'])
+            
+            # Limit to the requested number of attackers
+            effective_num_attackers = int(optimal_attackers.get('effective_num_attackers') or num_attackers or 3)
+            if attackers_list and len(attackers_list) > effective_num_attackers:
+                attackers_list = attackers_list[:effective_num_attackers]
             
             # If no attackers at all, inform user and stop
             if not attackers_list:
@@ -992,7 +1723,7 @@ class DestroyCog(commands.Cog):
                 self.logger.warning(f"Failed to fetch Discord usernames for attackers: {e}")
             
             # Build attacker display without interactive buttons (warchest disabled by default)
-            view = self.create_optimal_attackers_view(interaction, target_nation, optimal_attackers, show_warchest=False)
+            view = self.create_optimal_attackers_view(interaction, target_nation, optimal_attackers, show_warchest=False, weapon_analysis=weapon_analysis, num_attackers=num_attackers)
             
             if not view:
                 if loading_message:
@@ -1061,10 +1792,10 @@ class DestroyCog(commands.Cog):
                     pass
             return None
 
-    def create_optimal_attackers_view(self, interaction: discord.Interaction, target_nation: Dict[str, Any], optimal_attackers: Any, show_warchest: bool = False) -> Optional[Any]:
+    def create_optimal_attackers_view(self, interaction: discord.Interaction, target_nation: Dict[str, Any], optimal_attackers: Any, show_warchest: bool = False, weapon_analysis: Optional[Dict[str, Any]] = None, num_attackers: int = 3) -> Optional[Any]:
         """Create a view for displaying optimal attackers."""
         try:
-            return OptimalAttackersView(interaction, target_nation, optimal_attackers, self, show_warchest)
+            return OptimalAttackersView(interaction, target_nation, optimal_attackers, self, show_warchest, weapon_analysis, num_attackers)
         except Exception as e:
             self._log_error(f"Error creating optimal attackers view: {e}", e, "create_optimal_attackers_view")
             return None
@@ -1073,13 +1804,15 @@ class DestroyCog(commands.Cog):
 class OptimalAttackersView:
     """Formatter for displaying target and attacker information as plain text messages."""
     
-    def __init__(self, interaction: discord.Interaction, target_nation: Dict[str, Any], optimal_groups: List[Dict[str, Any]], cog: DestroyCog, show_warchest: bool = False):
+    def __init__(self, interaction: discord.Interaction, target_nation: Dict[str, Any], optimal_groups: List[Dict[str, Any]], cog: DestroyCog, show_warchest: bool = False, weapon_analysis: Optional[Dict[str, Any]] = None, num_attackers: int = 3):
         try:
             self.interaction = interaction
             self.target_nation = target_nation or {}
             self.cog = cog
             self.current_page = 0
             self.show_warchest = bool(show_warchest)
+            self.weapon_analysis = weapon_analysis
+            self.num_attackers = num_attackers
             
             # Build attacker list: handle both list inputs and dict result from find_optimal_attackers
             all_attackers = []
@@ -1104,6 +1837,10 @@ class OptimalAttackersView:
                 else:
                     # Provided directly as a list of attackers
                     all_attackers = optimal_groups or []
+            
+            # Limit to the requested number of attackers
+            if all_attackers and len(all_attackers) > num_attackers:
+                all_attackers = all_attackers[:num_attackers]
             
             # Ensure we have a list before sorting
             if not isinstance(all_attackers, list):
@@ -1284,6 +2021,22 @@ class OptimalAttackersView:
                 f"{JET_EMOJI}{full_purchase_limits.get('aircraft_daily', 0):,}/day  "
                 f"{SHIP_EMOJI}{full_purchase_limits.get('ships_daily', 0):,}/day\n"
             )
+            
+            # Add weapon analysis if available
+            weapon_analysis = getattr(self, 'weapon_analysis', None)
+            if weapon_analysis:
+                optimal_weapon = weapon_analysis.get('optimal_weapon', 'ground')
+                weapon_emoji = '🚀' if optimal_weapon == 'missile' else '☢️' if optimal_weapon == 'nuke' else '⚔️'
+                
+                missile_eff = weapon_analysis.get('missile_analysis', {}).get('efficiency', 0)
+                nuke_eff = weapon_analysis.get('nuke_analysis', {}).get('efficiency', 0)
+                
+                message += f"**Optimal Weapon:** {weapon_emoji} {optimal_weapon.title()}\n"
+                if optimal_weapon == 'missile':
+                    message += f"Missile Efficiency: {missile_eff:.2f}×\n"
+                elif optimal_weapon == 'nuke':
+                    message += f"Nuke Efficiency: {nuke_eff:.2f}×\n"
+            
             return message
             
         except Exception as e:

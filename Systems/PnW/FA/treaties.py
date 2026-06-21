@@ -1036,27 +1036,36 @@ class TreatiesManager(commands.Cog):
         self.logger.info(f"Generating treaty web for center alliance ID: {center_id}")
 
         for t in treaties or []:
-            a1 = t.get('alliance1') or {}
-            a2 = t.get('alliance2') or {}
-            a1_id = int(str(a1.get('id') or t.get('alliance1_id') or 0)) if (a1.get('id') or t.get('alliance1_id')) else 0
-            a2_id = int(str(a2.get('id') or t.get('alliance2_id') or 0)) if (a2.get('id') or t.get('alliance2_id')) else 0
+            # Treaties from TreatiesDB have flat fields, not nested alliance objects
+            a1_id = int(str(t.get('alliance1_id') or 0)) if t.get('alliance1_id') else 0
+            a2_id = int(str(t.get('alliance2_id') or 0)) if t.get('alliance2_id') else 0
+            a1_name = t.get('alliance1_name') or ''
+            a2_name = t.get('alliance2_name') or ''
+            a1_flag = t.get('alliance1_flag') or ''
+            a2_flag = t.get('alliance2_flag') or ''
 
             if a1_id == center_id:
                 if not cy_flag_url:
-                    cy_flag_url = (a1.get('flag') or '').strip()
-                if not center_alliance_color:
-                    center_alliance_color = (a1.get('color') or 'gold').lower()
+                    cy_flag_url = a1_flag.strip()
                 
                 partner_id = a2_id
-                other = a2
+                other = {
+                    'id': a2_id,
+                    'name': a2_name,
+                    'flag': a2_flag,
+                    'color': 'gray'
+                }
             elif a2_id == center_id:
                 if not cy_flag_url:
-                    cy_flag_url = (a2.get('flag') or '').strip()
-                if not center_alliance_color:
-                    center_alliance_color = (a2.get('color') or 'gold').lower()
+                    cy_flag_url = a2_flag.strip()
                 
                 partner_id = a1_id
-                other = a1
+                other = {
+                    'id': a1_id,
+                    'name': a1_name,
+                    'flag': a1_flag,
+                    'color': 'gray'
+                }
             else:
                 continue
 
@@ -1278,8 +1287,18 @@ class TreatiesManager(commands.Cog):
                 color=0xFF0000
             )
 
+    async def alliance_autocomplete(self, interaction: discord.Interaction, current: str) -> List[app_commands.Choice[str]]:
+        """Autocomplete for alliance — All alliances from local databases."""
+        try:
+            from Systems.Functions.autocomplete_utils import alliance_autocomplete
+            return await alliance_autocomplete(current, include_nw=True, limit=25)
+        except Exception as e:
+            self.logger.error(f"Error in treaties alliance autocomplete: {e}")
+            return []
+
     @commands.hybrid_command(name="treaties", description="Show treaties and treaty web for any alliance")  # type: ignore
     @app_commands.describe(alliance="Alliance name or ID", auto_update="Enable auto-updating this message daily (True/False)")
+    @app_commands.autocomplete(alliance=alliance_autocomplete)
     async def treaties_command(self, ctx: commands.Context, alliance: Optional[str] = None, auto_update: bool = False):
         """Query alliance treaties and display them in a rich embed."""
         try:
@@ -1294,9 +1313,9 @@ class TreatiesManager(commands.Cog):
             center_name: Optional[str] = None
             try:
                 alliance_cog = self.bot.get_cog('AllianceManager')
-                if alliance_cog and hasattr(alliance_cog, 'query_system') and alliance_cog.query_system:
-                    arg = (alliance or "").strip()
-                    if arg:
+                arg = (alliance or "").strip()
+                if arg:
+                    if alliance_cog and hasattr(alliance_cog, 'query_system') and alliance_cog.query_system:
                         resolved = await alliance_cog.query_system.resolve_alliance(arg)
                         try:
                             if resolved and isinstance(resolved, dict) and resolved.get('id'):
@@ -1308,28 +1327,35 @@ class TreatiesManager(commands.Cog):
                                 center_id = None
                         except Exception:
                             center_id = None
-
-                        if not center_id or int(center_id) <= 0:
-                            msg = "❌ Could not resolve alliance. Enter a valid name or ID."
-                            if hasattr(ctx, 'interaction') and ctx.interaction:
-                                await ctx.interaction.followup.send(msg)
-                            else:
-                                await ctx.reply(msg)
-                            return
                     else:
-                        if self.default_alliance_id:
-                            center_id = int(self.default_alliance_id)
-                            center_name = self.default_alliance_name
+                        if arg.isdigit():
+                            center_id = int(arg)
                         else:
                             center_id = None
-                            center_name = None
 
-                    res = await alliance_cog.query_system.get_alliance_treaties(str(center_id), force_refresh=True)
-                    treaties = res or []
+                    if not center_id or int(center_id) <= 0:
+                        msg = "❌ Could not resolve alliance. Enter a valid name or ID."
+                        if hasattr(ctx, 'interaction') and ctx.interaction:
+                            await ctx.interaction.followup.send(msg)
+                        else:
+                            await ctx.reply(msg)
+                        return
                 else:
-                    treaties = []
+                    if self.default_alliance_id:
+                        center_id = int(self.default_alliance_id)
+                        center_name = self.default_alliance_name
+                    else:
+                        center_id = None
+                        center_name = None
+
+                # Query treaties from Treaties.db (flags are already stored in the database)
+                from Systems.Functions.db_paths import TREATIES_DB
+                from PnWHarvester.db.treaties_db import TreatiesDB
+                treaties_db = TreatiesDB(str(TREATIES_DB))
+                treaties = await treaties_db.get_treaties_for_alliance(int(center_id)) if center_id else []
+
             except Exception as qerr:
-                self.logger.error(f"Error querying treaties: {qerr}")
+                self.logger.error(f"Error querying treaties: {qerr}", exc_info=True)
 
             treaty_file = await self._compose_treaty_web_image(treaties, center_alliance_id=center_id or 0)
             embed = await asyncio.to_thread(self._format_treaties_embed_sync, treaties, center_id or 0, center_name)
@@ -1346,6 +1372,7 @@ class TreatiesManager(commands.Cog):
                 channel_id = getattr(getattr(ctx, 'channel', None), 'id', None)
                 has_new_file = bool(files)
                 edited = False
+                message_id = None
                 
                 if channel_id and channel_id in self.treaties_message_map:
                     try:
@@ -1360,6 +1387,7 @@ class TreatiesManager(commands.Cog):
                             self._save_persistent_views()  # type: ignore
                             self.treaties_message_map[channel_id] = sent.id
                             edited = True  # Mark as handled
+                            message_id = sent.id
                         else:
                             # Edit existing message without files
                             await last_msg.edit(embed=embed, view=view, attachments=list(last_msg.attachments))
@@ -1368,32 +1396,42 @@ class TreatiesManager(commands.Cog):
                                 self.persistent_views[last_msg.id] = cast(int, center_id)
                                 self._save_persistent_views()
                             edited = True
+                            message_id = last_msg.id
                     except Exception:
                         edited = False
                         
                 if not edited:
-                            # Send new message
-                        sent = await ctx.send(embed=embed, view=view, files=files if files else [])
-                        self.persistent_views[sent.id] = cast(int, center_id)
-                        self._save_persistent_views()  # type: ignore
-                        try:
-                            if channel_id:
-                                self.treaties_message_map[channel_id] = sent.id
-                        except Exception:
-                            pass
+                    # Send new message
+                    sent = await ctx.send(embed=embed, view=view, files=files if files else [])
+                    self.persistent_views[sent.id] = cast(int, center_id)
+                    self._save_persistent_views()  # type: ignore
+                    try:
+                        if channel_id:
+                            self.treaties_message_map[channel_id] = sent.id
+                    except Exception:
+                        pass
+                    message_id = sent.id
 
-                    # --- Auto-update handling ---
-                        if auto_update:
-                            now = datetime.now(timezone.utc)
-                            self.auto_update_data[sent.id] = {
-                                'alliance_id': cast(int, center_id),
-                                'channel_id': channel_id,
-                                'auto_update_enabled': True,
-                                'last_update': now.isoformat(),
-                                'next_update': (now + timedelta(hours=24)).isoformat()
-                            }
-                            self._save_auto_update_data()
-                            self.logger.info(f"Enabled auto-update for message {sent.id}")
+                # --- Auto-update handling (applies to both new and edited messages) ---
+                if message_id and center_id and channel_id:
+                    now = datetime.now(timezone.utc)
+                    
+                    # If auto_update is True, enable or update auto-update
+                    if auto_update:
+                        self.auto_update_data[message_id] = {
+                            'alliance_id': cast(int, center_id),
+                            'channel_id': channel_id,
+                            'auto_update_enabled': True,
+                            'last_update': now.isoformat(),
+                            'next_update': (now + timedelta(hours=24)).isoformat()
+                        }
+                        self._save_auto_update_data()
+                        self.logger.info(f"Enabled auto-update for message {message_id}")
+                    # If auto_update is False, remove from auto-update if it was previously enabled
+                    elif message_id in self.auto_update_data:
+                        del self.auto_update_data[message_id]
+                        self._save_auto_update_data()
+                        self.logger.info(f"Disabled auto-update for message {message_id}")
 
                 try:
                     if hasattr(ctx, 'interaction') and ctx.interaction:

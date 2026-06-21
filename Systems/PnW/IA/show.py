@@ -1551,7 +1551,18 @@ async def _loot_calculate(nation: Dict[str, Any], prices: Dict[str, float]) -> D
         if nation.get("cities"):
             try:
                 from Systems.PnW.Util.rev_correct import calculate_full_revenue_with_query
-                rev     = await calculate_full_revenue_with_query(nation_data=nation, is_war=False)
+                
+                # Detect war status for correct military upkeep calculation
+                wars = nation.get('wars') or []
+                if wars:
+                    at_war = any(w.get('turnsleft', 0) > 0 for w in wars)
+                else:
+                    at_war = (
+                        (nation.get('offensive_wars_count') or 0) > 0 or
+                        (nation.get('defensive_wars_count') or 0) > 0
+                    )
+                
+                rev     = await calculate_full_revenue_with_query(nation_data=nation, is_war=at_war)
                 cash_pt = float(rev.get("gross_income") or 0.0)
                 rss_pt  = {r: float((rev.get("resources") or {}).get(r) or 0.0) for r in _LOOT_RESOURCES}
             except Exception:

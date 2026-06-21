@@ -14,6 +14,8 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
 from Systems.PnW.Util.query import get_color_info, create_v3_query_instance, V3GraphQuery
+from Systems.PnW.Util.war_calc import UNIT_COSTS, calculate_unit_cost
+from Systems.PnW.Util.calc import AllianceCalculator, has_project
 from Systems.Functions import emoji as emoji_mod
 from Systems.Functions.config import PANDW_API_KEY
 import Systems.Functions.database_manager as db_manager
@@ -21,6 +23,9 @@ from Systems.Functions.nation_emoji_store import get_nation_emoji, strip_emoji_p
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
+
+# Spy purchase cost
+SPY_COST = 50000
 
 # Domestic Policy effects
 DOMESTIC_POLICIES = {
@@ -233,18 +238,19 @@ def infra_purchase_cost(current_infra: float, infra_to_buy: float, nation_data: 
     """
     Calculates infrastructure cost.
     - Base Cost: Includes discounts from the nation's existing projects.
-    - Final Cost: Includes project discounts AND the 'Urbanization' policy discount.
+    - Final Cost: Includes project discounts AND the 'Urbanization' policy discount (always applied for web display).
     """
     target_infra = current_infra + infra_to_buy
     raw_cost = calc_infra_value(current_infra, target_infra)
     
     project_discounts = calculate_project_discounts(nation_data)
     
-    # Base cost includes project discounts
+    # Base cost includes project discounts only
     project_reduction = project_discounts["infra_cost_reduction"]
     base_cost = raw_cost * (1.0 - project_reduction)
     
-    # Final cost also includes the 'Urbanization' policy discount
+    # Final cost always includes the Urbanization policy discount
+    # (multiplied by BDA/GSA amplifier if owned)
     policy_reduction = 0.05 * project_discounts["domestic_policy_multiplier"]
     final_cost = base_cost * (1.0 - policy_reduction)
     
@@ -259,18 +265,19 @@ def land_purchase_cost(current_land: float, land_to_buy: float, nation_data: Dic
     """
     Calculates land cost.
     - Base Cost: Includes discounts from the nation's existing projects.
-    - Final Cost: Includes project discounts AND the 'Rapid Expansion' policy discount.
+    - Final Cost: Includes project discounts AND the 'Rapid Expansion' policy discount (always applied for web display).
     """
     target_land = current_land + land_to_buy
     raw_cost = calc_land_value(current_land, target_land)
     
     project_discounts = calculate_project_discounts(nation_data)
     
-    # Base cost includes project discounts
+    # Base cost includes project discounts only
     project_reduction = project_discounts["land_cost_reduction"]
     base_cost = raw_cost * (1.0 - project_reduction)
     
-    # Final cost also includes the 'Rapid Expansion' policy discount
+    # Final cost always includes the Rapid Expansion policy discount
+    # (multiplied by BDA/GSA amplifier if owned)
     policy_reduction = 0.05 * project_discounts["domestic_policy_multiplier"]
     final_cost = base_cost * (1.0 - policy_reduction)
     
@@ -285,7 +292,7 @@ def city_purchase_cost(city_to_buy: int, top_20_average: float, nation_data: Dic
     """
     Calculates city cost.
     - Base Cost: Is the raw cost, as no projects discount it.
-    - Final Cost: Includes the 'Manifest Destiny' policy discount.
+    - Final Cost: Includes the 'Manifest Destiny' policy discount (always applied for web display).
     """
     term1 = 100000 * ((city_to_buy - (top_20_average / 4)) ** 3)
     term2 = 150000 * (city_to_buy - (top_20_average / 4))
@@ -297,7 +304,8 @@ def city_purchase_cost(city_to_buy: int, top_20_average: float, nation_data: Dic
     
     project_discounts = calculate_project_discounts(nation_data)
     
-    # Final cost includes the 'Manifest Destiny' policy discount
+    # Final cost always includes the Manifest Destiny policy discount
+    # (multiplied by BDA/GSA amplifier if owned)
     policy_reduction = 0.05 * project_discounts["domestic_policy_multiplier"]
     final_cost = base_cost * (1.0 - policy_reduction)
     
@@ -664,6 +672,18 @@ class CostsCommand(commands.Cog):
                 
                 description_parts.append("")
 
+        # --- MILL UP DISPLAY ---
+        if 'mill_up' in costs_data:
+            mu = costs_data['mill_up']
+            description_parts.append(f"{emoji_mod.mention('missile')} **Mill Up Costs:**")
+            description_parts.append(f"  **Soldiers:** {mu['soldiers']['current']:,} → {mu['soldiers']['max']:,} — Need {mu['soldiers']['gap']:,} — ${mu['soldiers']['cost']:,.2f}")
+            description_parts.append(f"  **Tanks:** {mu['tanks']['current']:,} → {mu['tanks']['max']:,} — Need {mu['tanks']['gap']:,} — ${mu['tanks']['cost']:,.2f}")
+            description_parts.append(f"  **Aircraft:** {mu['aircraft']['current']:,} → {mu['aircraft']['max']:,} — Need {mu['aircraft']['gap']:,} — ${mu['aircraft']['cost']:,.2f}")
+            description_parts.append(f"  **Ships:** {mu['ships']['current']:,} → {mu['ships']['max']:,} — Need {mu['ships']['gap']:,} — ${mu['ships']['cost']:,.2f}")
+            description_parts.append(f"  **Spies:** {mu['spies']['current']:,} → {mu['spies']['max']:,} — Need {mu['spies']['gap']:,} — ${mu['spies']['cost']:,.2f}")
+            description_parts.append(f"  **Total Mill Up Cost:** ${mu['total_cost']:,.2f}")
+            description_parts.append("")
+
         if not description_parts:
             description_parts.append("No specific costs requested or calculated.")
 
@@ -684,7 +704,8 @@ class CostsCommand(commands.Cog):
         desired_infra='Desired infrastructure to reach (e.g., 1000)',
         desired_land='Desired land to reach (e.g., 500)',
         cities_to_buy='Number of new cities to buy (e.g., 1)',
-        projects_to_buy='Comma-separated list of projects to buy'
+        projects_to_buy='Comma-separated list of projects to buy',
+        mill_up='Calculate cost to fill all military units to max capacity'
     )
     @app_commands.autocomplete(projects_to_buy=project_autocomplete, nation_query=nation_autocomplete)
     async def costs_command_new(
@@ -694,7 +715,8 @@ class CostsCommand(commands.Cog):
         desired_infra: Optional[int] = None,
         desired_land: Optional[int] = None,
         cities_to_buy: Optional[int] = None,
-        projects_to_buy: Optional[str] = None
+        projects_to_buy: Optional[str] = None,
+        mill_up: Optional[bool] = False
     ) -> None:
         await ctx.defer()
 
@@ -931,6 +953,50 @@ class CostsCommand(commands.Cog):
                     costs_data['total_cost_all_discounts'] += final_money_cost + final_resource_cost
             
             costs_data['project_costs'] = project_costs_details
+
+        # --- Mill Up Costs ---
+        if mill_up:
+            calc = AllianceCalculator()
+            limits = calc.calculate_military_purchase_limits(nation_data)
+
+            current_soldiers = nation_data.get('soldiers', 0) or 0
+            current_tanks = nation_data.get('tanks', 0) or 0
+            current_aircraft = nation_data.get('aircraft', 0) or 0
+            current_ships = nation_data.get('ships', 0) or 0
+            current_spies = nation_data.get('spies', 0) or 0
+
+            max_soldiers = limits.get('soldiers_max', 0)
+            max_tanks = limits.get('tanks_max', 0)
+            max_aircraft = limits.get('aircraft_max', 0)
+            max_ships = limits.get('ships_max', 0)
+
+            spy_mult = 10 if has_project(nation_data, 'Central Intelligence Agency') else 5
+            max_spies = min(num_cities * spy_mult, 60)
+
+            soldier_gap = max(0, max_soldiers - current_soldiers)
+            tank_gap = max(0, max_tanks - current_tanks)
+            aircraft_gap = max(0, max_aircraft - current_aircraft)
+            ship_gap = max(0, max_ships - current_ships)
+            spy_gap = max(0, max_spies - current_spies)
+
+            soldier_cost_total = soldier_gap * UNIT_COSTS['soldiers']['cash']
+            tank_cost_total = calculate_unit_cost('tanks', best_buy_price_map) * tank_gap
+            aircraft_cost_total = calculate_unit_cost('aircraft', best_buy_price_map) * aircraft_gap
+            ship_cost_total = calculate_unit_cost('ships', best_buy_price_map) * ship_gap
+            spy_cost_total = spy_gap * SPY_COST
+
+            total_mill_up_cost = soldier_cost_total + tank_cost_total + aircraft_cost_total + ship_cost_total + spy_cost_total
+
+            costs_data['mill_up'] = {
+                'soldiers': {'current': current_soldiers, 'max': max_soldiers, 'gap': soldier_gap, 'cost': soldier_cost_total},
+                'tanks': {'current': current_tanks, 'max': max_tanks, 'gap': tank_gap, 'cost': tank_cost_total},
+                'aircraft': {'current': current_aircraft, 'max': max_aircraft, 'gap': aircraft_gap, 'cost': aircraft_cost_total},
+                'ships': {'current': current_ships, 'max': max_ships, 'gap': ship_gap, 'cost': ship_cost_total},
+                'spies': {'current': current_spies, 'max': max_spies, 'gap': spy_gap, 'cost': spy_cost_total},
+                'total_cost': total_mill_up_cost
+            }
+            costs_data['total_cost_projects_only'] += total_mill_up_cost
+            costs_data['total_cost_all_discounts'] += total_mill_up_cost
 
         embed = await self._create_costs_embed(ctx, nation_data, costs_data, best_buy_price_map)
         

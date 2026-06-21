@@ -107,35 +107,12 @@ class RevenueCommand(commands.Cog):
     
     async def alliance_autocomplete(self, interaction: discord.Interaction, current: str) -> List[app_commands.Choice[str]]:
         """Autocomplete for alliance names — pulls from GlobalNations.db, emojis from alliance emoji store."""
-        choices = []
-
-        # Always include Darkstar first if it matches
-        ep_label = "Darkstar"
-        if not current or current.lower() in ep_label.lower():
-            nw_emoji = get_alliance_emoji(ep_label)
-            choices.append(app_commands.Choice(name=f"{nw_emoji} {ep_label}", value=ep_label))
-
-        # Pull all alliances from GlobalNations.db
         try:
-            global_db = _get_global_nations_db()
-            if global_db and GLOBAL_NATIONS_DB.exists():
-                alliances = await global_db.get_distinct_alliances(current)
-                for a in alliances:
-                    aid   = a.get("alliance_id")
-                    aname = a.get("alliance_name") or str(aid)
-                    count = a.get("member_count", 0)
-                    # Skip NW — already added above
-                    if aid == NIGHTS_WATCH_ALLIANCE_ID:
-                        continue
-                    emoji = get_alliance_emoji(aname)
-                    label = f"{emoji} {aname} ({count})" if count else f"{emoji} {aname}"
-                    choices.append(app_commands.Choice(name=label[:100], value=aname))
-                    if len(choices) >= 25:
-                        break
+            from Systems.Functions.autocomplete_utils import alliance_autocomplete
+            return await alliance_autocomplete(current, include_nw=True, limit=25)
         except Exception as e:
-            logger.debug(f"alliance_autocomplete GlobalDB lookup failed: {e}")
-
-        return choices[:25]
+            logger.error(f"Error in rev alliance autocomplete: {e}")
+            return []
         
     async def project_autocomplete(self, interaction: discord.Interaction, current: str):
         filtered_projects = [
@@ -151,15 +128,38 @@ class RevenueCommand(commands.Cog):
     @app_commands.describe(
         query_type='Type of query: nation or alliance',
         query_value='Nation/Alliance name or ID',
+        alliance_color='Alliance color for tax calculation (only used when query_type is alliance)',
         tax_rate='Optional alliance tax rate override (0–100). If omitted, uses the nation\'s actual bracket.'
     )
     @app_commands.choices(
         query_type=[
             app_commands.Choice(name='Nation', value='nation'),
             app_commands.Choice(name='Alliance', value='alliance')
+        ],
+        alliance_color=[
+            app_commands.Choice(name='Beige', value='beige'),
+            app_commands.Choice(name='White', value='white'),
+            app_commands.Choice(name='Grey', value='grey'),
+            app_commands.Choice(name='Black', value='black'),
+            app_commands.Choice(name='Gold', value='gold'),
+            app_commands.Choice(name='Pink', value='pink'),
+            app_commands.Choice(name='Brown', value='brown'),
+            app_commands.Choice(name='Mint', value='mint'),
+            app_commands.Choice(name='Green', value='green'),
+            app_commands.Choice(name='Aqua', value='aqua'),
+            app_commands.Choice(name='Lavender', value='lavender'),
+            app_commands.Choice(name='Lime', value='lime'),
+            app_commands.Choice(name='Maroon', value='maroon'),
+            app_commands.Choice(name='Olive', value='olive'),
+            app_commands.Choice(name='Yellow', value='yellow'),
+            app_commands.Choice(name='Turquoise', value='turquoise'),
+            app_commands.Choice(name='Red', value='red'),
+            app_commands.Choice(name='Purple', value='purple'),
+            app_commands.Choice(name='Orange', value='orange'),
+            app_commands.Choice(name='Blue', value='blue'),
         ]
     )
-    async def revenue_command(self, ctx: commands.Context, query_type: str, query_value: str, tax_rate: Optional[float] = None) -> None:
+    async def revenue_command(self, ctx: commands.Context, query_type: str, query_value: str, alliance_color: Optional[str] = None, tax_rate: Optional[float] = None) -> None:
         try:
             if not query_value or not query_value.strip():
                 await ctx.send("❌ Please provide a valid nation/alliance name or ID. Use `/revenuehelp` for examples.")
@@ -179,7 +179,7 @@ class RevenueCommand(commands.Cog):
             if query_type == 'nation':
                 await self._calculate_nation_revenue(ctx, query_value, loading_msg, tax_rate=tax_rate_decimal)
             else:
-                await self._calculate_alliance_revenue(ctx, query_value, loading_msg, tax_rate=tax_rate_decimal)
+                await self._calculate_alliance_revenue(ctx, query_value, loading_msg, tax_rate=tax_rate_decimal, alliance_color=alliance_color)
 
         except Exception as e:
             logger.error(f"Error in revenue command: {e}")
@@ -235,7 +235,7 @@ class RevenueCommand(commands.Cog):
             logger.error(f"Error calculating nation revenue: {e}", exc_info=True)
             await loading_msg.edit(content=f"❌ Error calculating nation revenue: {str(e)}")
 
-    async def _calculate_alliance_revenue(self, ctx, alliance_query: str, loading_msg, tax_rate: Optional[float] = None):
+    async def _calculate_alliance_revenue(self, ctx, alliance_query: str, loading_msg, tax_rate: Optional[float] = None, alliance_color: Optional[str] = None):
         try:
             # Strip emoji prefix from autocomplete selection
             clean_query = strip_emoji_prefix(alliance_query)
@@ -268,8 +268,8 @@ class RevenueCommand(commands.Cog):
                     'flag': None
                 }
                 
-                alliance_revenue = await self._calculate_alliance_revenue_data(nations, rev_ctx=rev_ctx, tax_rate=tax_rate)
-                embed = await self._create_alliance_revenue_embed(alliance_data, alliance_revenue)
+                alliance_revenue = await self._calculate_alliance_revenue_data(nations, rev_ctx=rev_ctx, tax_rate=tax_rate, alliance_color=alliance_color)
+                embed = await self._create_alliance_revenue_embed(alliance_data, alliance_revenue, alliance_color=alliance_color)
                 await loading_msg.edit(content="", embed=embed)
                 return
             
@@ -301,8 +301,8 @@ class RevenueCommand(commands.Cog):
                         # Get alliance name for embed
                         aname = (nations[0].get("alliance_name") or clean_query) if nations else clean_query
                         alliance_data = {"id": alliance_id_int, "name": aname, "flag": None}
-                        alliance_revenue = await self._calculate_alliance_revenue_data(nations, rev_ctx=rev_ctx, tax_rate=tax_rate)
-                        embed = await self._create_alliance_revenue_embed(alliance_data, alliance_revenue)
+                        alliance_revenue = await self._calculate_alliance_revenue_data(nations, rev_ctx=rev_ctx, tax_rate=tax_rate, alliance_color=alliance_color)
+                        embed = await self._create_alliance_revenue_embed(alliance_data, alliance_revenue, alliance_color=alliance_color)
                         await loading_msg.edit(content="", embed=embed)
                         return
 
@@ -324,8 +324,8 @@ class RevenueCommand(commands.Cog):
                 await loading_msg.edit(content="❌ No nations found in this alliance.")
                 return
 
-            alliance_revenue = await self._calculate_alliance_revenue_data(nations, rev_ctx=rev_ctx, tax_rate=tax_rate)
-            embed = await self._create_alliance_revenue_embed(alliance_data, alliance_revenue)
+            alliance_revenue = await self._calculate_alliance_revenue_data(nations, rev_ctx=rev_ctx, tax_rate=tax_rate, alliance_color=alliance_color)
+            embed = await self._create_alliance_revenue_embed(alliance_data, alliance_revenue, alliance_color=alliance_color)
             await loading_msg.edit(content="", embed=embed)
 
         except Exception as e:
@@ -469,10 +469,13 @@ class RevenueCommand(commands.Cog):
             logger.error(f"Error calculating nation revenue data: {e}")
             raise
 
-    async def _calculate_alliance_revenue_data(self, nations: List[Dict[str, Any]], rev_ctx: Optional[Dict] = None, tax_rate: Optional[float] = None) -> Dict[str, Any]:
+    async def _calculate_alliance_revenue_data(self, nations: List[Dict[str, Any]], rev_ctx: Optional[Dict] = None, tax_rate: Optional[float] = None, alliance_color: Optional[str] = None) -> Dict[str, Any]:
         try:
             if not self.query_instance:
                 self.query_instance = create_v3_query_instance()
+
+            # Alliance color for tax calculation (default to black if not specified)
+            tax_color = (alliance_color or 'black').lower()
 
             # Alliance totals for embed (like a nation's totals)
             alliance_population = 0
@@ -482,23 +485,23 @@ class RevenueCommand(commands.Cog):
             alliance_improvement_upkeep_turn = 0.0
             alliance_power_upkeep_turn = 0.0
             alliance_rss_upkeep_turn = 0.0
-            
+
             # Alliance tax income (what alliance receives)
             alliance_tax_income_turn = 0.0
             alliance_tax_money_turn = 0.0
             alliance_tax_resources_turn = 0.0
-            
+
             # Alliance net income (tax income minus alliance expenses if any)
             alliance_net_income_turn = 0.0
-            
+
             # Individual nation data for display
             nation_revenues = []
             color_breakdown: dict[str, int] = {}
-            
+
             # Resource totals for alliance
             alliance_resources = {}
             alliance_resource_values = {}
-            resource_names = ['coal', 'oil', 'uranium', 'lead', 'iron', 'bauxite', 
+            resource_names = ['coal', 'oil', 'uranium', 'lead', 'iron', 'bauxite',
                             'gasoline', 'munitions', 'steel', 'aluminum', 'food']
 
             # Get best sell market prices for resource valuation
@@ -528,10 +531,10 @@ class RevenueCommand(commands.Cog):
 
                 revenue_data = nation_rev['revenue_data']
                 color = nation_rev['color']
-                
+
                 # Add to color breakdown
                 color_breakdown[color] = color_breakdown.get(color, 0) + 1
-                
+
                 # Accumulate alliance totals (from all nations)
                 alliance_population += revenue_data.get('nationpop', 0)
                 alliance_gross_income_turn += revenue_data.get('gross_income', 0)
@@ -540,18 +543,18 @@ class RevenueCommand(commands.Cog):
                 alliance_improvement_upkeep_turn += revenue_data.get('improvement_upkeep_turn', 0)
                 alliance_power_upkeep_turn += revenue_data.get('power_upkeep_turn', 0)
                 alliance_rss_upkeep_turn += revenue_data.get('rss_upkeep_turn', 0)
-                
-                # Alliance tax income = sum of alliance tax from black nations only.
+
+                # Alliance tax income = sum of alliance tax from nations matching the alliance color.
                 # Clamp to 0 — negative tax must never reduce the alliance total.
-                if color == 'black':
+                if color == tax_color:
                     alliance_tax_turn = max(0.0, revenue_data.get('alliance_tax_turn', 0))
                     alliance_tax_money = max(0.0, revenue_data.get('alliance_tax_money_turn', 0))
                     alliance_tax_resources = max(0.0, revenue_data.get('alliance_tax_resource_turn', 0))
-                    
+
                     alliance_tax_income_turn += alliance_tax_turn
                     alliance_tax_money_turn += alliance_tax_money
                     alliance_tax_resources_turn += alliance_tax_resources
-                
+
                 # Accumulate alliance resource production
                 for resource in resource_names:
                     resource_amount = revenue_data.get(resource, 0)
@@ -560,7 +563,7 @@ class RevenueCommand(commands.Cog):
                         # Calculate resource value
                         price = market_prices.get(resource, 0) if market_prices else 0
                         alliance_resource_values[resource] = alliance_resource_values.get(resource, 0) + (resource_amount * price)
-                
+
                 # Store individual nation data for top nations display
                 nation_revenues.append({
                     'nation_name': nation_rev['nation_name'],
@@ -570,7 +573,7 @@ class RevenueCommand(commands.Cog):
 
             # Calculate alliance net income (tax income is what alliance gets)
             alliance_net_income_turn = alliance_tax_income_turn
-            
+
             # Sort nations by their individual net revenue for display
             nation_revenues.sort(key=lambda x: x['turn_revenue'], reverse=True)
 
@@ -590,12 +593,13 @@ class RevenueCommand(commands.Cog):
                 'alliance_resources': alliance_resources,
                 'alliance_resource_values': alliance_resource_values,
                 'market_prices': market_prices,
-                
+
                 # Individual nation data for display
                 'nation_count': len(nation_revenues),
                 'nation_revenues': nation_revenues[:10],
                 'color_breakdown': color_breakdown,
-                'black_nations_count': color_breakdown.get('black', 0),
+                'tax_color_nations_count': color_breakdown.get(tax_color, 0),
+                'tax_color': tax_color,
                 'last_updated': datetime.now(tz=timezone.utc)
             }
 
@@ -640,6 +644,9 @@ class RevenueCommand(commands.Cog):
         prices          = rev_data.get('prices', {})
         alliance_tax_t  = rev_data.get('alliance_tax_money_turn', 0)
         alliance_tax_r  = rev_data.get('alliance_tax_rate', 0)
+        resource_tax_r = rev_data.get('resource_tax_rate', alliance_tax_r)
+        resource_tax_t = rev_data.get('alliance_tax_resource_turn', 0)
+        total_tax_t    = rev_data.get('alliance_tax_turn', 0)  # cash tax + resource tax (in money terms)
         net_after_tax_t = rev_data.get('net_income', 0)
         # monetary_net_num = net cash + all resource monetary values (already computed in rev_correct)
         total_mon_t_precomputed = rev_data.get('monetary_net_num', None)
@@ -666,21 +673,19 @@ class RevenueCommand(commands.Cog):
             inline=False,
         )
 
-        # Net Income (gross, no tax deducted)
+        # Net Cash Income (cash revenue - military upkeep - improvement upkeep - cash tax)
         tax_note = ""
         if alliance_tax_r > 0:
             tax_note = (
-                f"\n*Tax ({alliance_tax_r*100:.0f}%): "
-                f"-${alliance_tax_t:,.2f}/t "
-                f"→ ${net_after_tax_t:,.2f}/t after tax*"
+                f"\n*Pre-tax: ${gross_cash_t:,.2f}/t | Tax: -${alliance_tax_t:,.2f}/t*"
             )
         embed.add_field(
-            name="Net Income (Gross)",
-            value=f"**${gross_cash_t:,.2f}/t**\u2002|\u2002**${gross_cash_d:,.2f}/d**{tax_note}",
+            name="Net Cash Income (After Tax)",
+            value=f"**${net_after_tax_t:,.2f}/t**\u2002|\u2002**${net_after_tax_t*12:,.2f}/d**{tax_note}",
             inline=False,
         )
 
-        # Resource Net Income
+        # Resource Net Income (after tax for positive resources)
         rss_lines = []
         total_rss_value_t = 0.0
         for rss in RESOURCE_ORDER:
@@ -688,34 +693,41 @@ class RevenueCommand(commands.Cog):
             if amt_t == 0.0:
                 continue
             price = prices.get(rss, 0.0)
-            total_rss_value_t += amt_t * price
+            # Apply tax to positive resources only
+            if amt_t > 0 and resource_tax_r > 0:
+                amt_t_after_tax = amt_t * (1 - resource_tax_r)
+            else:
+                amt_t_after_tax = amt_t
+            total_rss_value_t += amt_t_after_tax * price
             sign = "+" if amt_t >= 0 else ""
             rss_lines.append(
-                f"{self._get_resource_emoji(rss)} {sign}{amt_t:,.2f}/t\u2002|\u2002{sign}{amt_t*12:,.2f}/d"
+                f"{self._get_resource_emoji(rss)} {sign}{amt_t_after_tax:,.2f}/t\u2002|\u2002{sign}{amt_t_after_tax*12:,.2f}/d"
             )
         if rss_lines:
-            embed.add_field(name="Resource Net Income", value="\n".join(rss_lines), inline=False)
+            embed.add_field(name="Resource Net Income (After Tax)", value="\n".join(rss_lines), inline=False)
 
-        # Total Monetary Value — use precomputed value from rev_correct if available,
-        # otherwise fall back to gross_cash + resource values
-        if total_mon_t_precomputed is not None:
-            total_mon_t = total_mon_t_precomputed
-        else:
-            total_mon_t = gross_cash_t + total_rss_value_t
+        # Total Monetary Value (after tax: cash after tax + resources after tax)
+        # gross_cash_t is pre-tax cash, alliance_tax_t is cash tax only
+        # total_rss_value_t is already after-tax resources (positive resources taxed, negative not)
+        total_mon_t = (gross_cash_t - alliance_tax_t) + total_rss_value_t
         embed.add_field(
-            name="Total Monetary Value",
+            name="Total Monetary Value (After Tax)",
             value=f"**${total_mon_t:,.2f}/t**\u2002|\u2002**${total_mon_t*12:,.2f}/d**",
             inline=False,
         )
 
-        embed.set_footer(text="Revenue shown gross (before alliance tax). Tax shown as informational only.")
+        embed.set_footer(text="Revenue shown after alliance tax deduction.")
         return embed
 
-    async def _create_alliance_revenue_embed(self, alliance_data: Dict[str, Any], alliance_revenue: Dict[str, Any]) -> discord.Embed:
+    async def _create_alliance_revenue_embed(self, alliance_data: Dict[str, Any], alliance_revenue: Dict[str, Any], alliance_color: Optional[str] = None) -> discord.Embed:
         alliance_name = alliance_data.get('name', 'Unknown Alliance')
         alliance_id = alliance_data.get('id', '')
         alliance_url = f"https://politicsandwar.com/alliance/id={alliance_id}"
         alliance_flag = alliance_data.get('flag', None)
+
+        # Get the tax color (used for tax calculations) - default to black
+        tax_color = alliance_revenue.get('tax_color', 'black')
+        tax_color_nations_count = alliance_revenue.get('tax_color_nations_count', 0)
 
         # Use alliance color or default to blue
         embed_color = discord.Color.blue()
@@ -744,13 +756,12 @@ class RevenueCommand(commands.Cog):
         # Raw components (per turn)
         alliance_population = alliance_revenue.get('alliance_population', 0)
         nation_count = alliance_revenue.get('nation_count', 0)
-        black_nations_count = alliance_revenue.get('black_nations_count', 0)
-        
+
         # Alliance tax income (what alliance receives)
         alliance_tax_income = alliance_revenue.get('alliance_tax_income_turn', 0)
         alliance_tax_money = alliance_revenue.get('alliance_tax_money_turn', 0)
         alliance_tax_resources = alliance_revenue.get('alliance_tax_resources_turn', 0)
-        
+
         # Alliance resources and prices
         alliance_resources = alliance_revenue.get('alliance_resources', {})
         market_prices = alliance_revenue.get('market_prices', {})
@@ -758,17 +769,17 @@ class RevenueCommand(commands.Cog):
         # Description: Population + Nations (like nation format)
         desc_lines = []
         desc_lines.append(f"**Total Population:** {alliance_population:,}")
-        desc_lines.append(f"**Nations:** {nation_count:,} ({black_nations_count:,} on black)")
+        desc_lines.append(f"**Nations:** {nation_count:,} ({tax_color_nations_count:,} on {tax_color})")
         embed.description = "\n".join(desc_lines)
 
-        # Alliance Tax Income (what the alliance receives from black nations)
+        # Alliance Tax Income (what the alliance receives from nations on the tax color)
         tax_lines = []
         if alliance_tax_money > 0:
             tax_lines.append(f"**Money Tax:** {fmt_turn_day(alliance_tax_money, '$')}")
         if alliance_tax_resources > 0:
             tax_lines.append(f"**Resource Tax:** {fmt_turn_day(alliance_tax_resources, '$')}")
-        tax_lines.append(f"*Received from {black_nations_count} nations on black color*")
-        
+        tax_lines.append(f"*Received from {tax_color_nations_count} nations on {tax_color} color*")
+
         embed.add_field(name="Alliance Tax Income", value="\n".join(tax_lines), inline=False)
 
         # Alliance Net Income (cash from tax, like nation format)

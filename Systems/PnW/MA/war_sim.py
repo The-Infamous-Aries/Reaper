@@ -115,9 +115,12 @@ def get_all_nation_names() -> List[str]:
 
 async def nation_autocomplete(interaction: discord.Interaction, current: str) -> List[app_commands.Choice[str]]:
     """Autocomplete for nation names from GlobalNations.db."""
-    all_names = get_all_nation_names()
-    filtered = [name for name in all_names if current.lower() in name.lower()]
-    return [app_commands.Choice(name=name, value=name) for name in filtered[:25]]
+    try:
+        from Systems.Functions.autocomplete_utils import nation_autocomplete
+        return await nation_autocomplete(current, nw_only=False, limit=25)
+    except Exception as e:
+        logging.error(f"Error in war_sim nation autocomplete: {e}")
+        return []
 
 class WarSimPaginator(discord.ui.View):
     def __init__(self, embeds: List[discord.Embed]):

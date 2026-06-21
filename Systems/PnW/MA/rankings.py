@@ -12,8 +12,6 @@ from Systems.Functions.db_paths import NW_WARS_DB_STR as NW_DB_PATH
 from Systems.PnW.Util.war_calc import get_resource_prices, calculate_unit_cost
 
 # ── Constants ─────────────────────────────────────────────────────────────────
-NW_ALLIANCE_ID = 10259
-NW_ALLIANCE_NAME = "Darkstar"
 
 RANKING_TYPES = [
     app_commands.Choice(name="War Cost", value="war_cost"),
@@ -90,13 +88,10 @@ class Rankings(commands.Cog):
         
         return None
 
-    async def _calculate_nation_stats(self, wars: List[Dict[str, Any]], resource_prices: Dict[str, Any], 
-                                    ranking_type: str, enemy_alliance_ids: List[int]) -> Dict[int, Dict[str, Any]]:
-        """Calculate statistics for each nation based on ranking type."""
+    async def _calculate_nation_stats(self, wars: List[Dict[str, Any]], resource_prices: Dict[str, Any]) -> Dict[int, Dict[str, Any]]:
+        """Calculate statistics for ALL nations appearing in wars (both sides)."""
         nation_stats = {}
 
-        # Always bulk-fetch attacks — needed for bomb counts (war-level missile/nuke
-        # columns are always 0 in the DB; real data lives in attack rows).
         war_ids = [war['id'] for war in wars]
         db = IRSWarsDB(NW_DB_PATH)
         attacks_by_war = await db.get_attacks_for_wars(war_ids)
@@ -104,55 +99,36 @@ class Rankings(commands.Cog):
         for war in wars:
             att_id = war.get('att_id')
             def_id = war.get('def_id')
-            att_alliance_id = war.get('att_alliance_id')
-            def_alliance_id = war.get('def_alliance_id')
-            
-            # Determine if this is a relevant war based on enemy filter
-            is_relevant_war = False
-            nw_nation_id = None
-            
-            if att_alliance_id == NW_ALLIANCE_ID:
-                if not enemy_alliance_ids or def_alliance_id in enemy_alliance_ids:
-                    is_relevant_war = True
-                    nw_nation_id = att_id
-            elif def_alliance_id == NW_ALLIANCE_ID:
-                if not enemy_alliance_ids or att_alliance_id in enemy_alliance_ids:
-                    is_relevant_war = True
-                    nw_nation_id = def_id
-            
-            if not is_relevant_war or not nw_nation_id:
+            att_nation_name = war.get('att_nation_name')
+            def_nation_name = war.get('def_nation_name')
+
+            if att_id is None and def_id is None:
                 continue
-            
-            if nw_nation_id not in nation_stats:
-                nation_stats[nw_nation_id] = {
-                    'nation_name': war.get('att_nation_name') if att_id == nw_nation_id else war.get('def_nation_name'),
-                    'war_cost': 0, 'war_net': 0, 'damages': 0, 'bomb_cost': 0, 'loot': 0,
-                    'wars_count': 0,
-                    'soldiers_lost': 0, 'soldiers_killed': 0,
-                    'tanks_lost': 0,    'tanks_killed': 0,
-                    'aircraft_lost': 0, 'aircraft_killed': 0,
-                    'ships_lost': 0,    'ships_killed': 0,
-                    'wins': 0, 'losses': 0, 'peace': 0,
-                }
-            
-            stats = nation_stats[nw_nation_id]
-            # Keep the first non-None name we encounter
-            if not stats['nation_name']:
-                stats['nation_name'] = (
-                    war.get('att_nation_name') if att_id == nw_nation_id else war.get('def_nation_name')
-                )
-            stats['wars_count'] += 1
+
             war_attacks = attacks_by_war.get(war['id'], [])
 
-            if att_id == nw_nation_id:
+            # Process attacker's perspective
+            if att_id is not None:
+                nid = int(att_id)
+                if nid not in nation_stats:
+                    nation_stats[nid] = {
+                        'nation_name': att_nation_name,
+                        'war_cost': 0, 'war_net': 0, 'damages': 0, 'bomb_cost': 0, 'loot': 0,
+                        'wars_count': 0,
+                        'soldiers_lost': 0, 'soldiers_killed': 0,
+                        'tanks_lost': 0,    'tanks_killed': 0,
+                        'aircraft_lost': 0, 'aircraft_killed': 0,
+                        'ships_lost': 0,    'ships_killed': 0,
+                        'wins': 0, 'losses': 0, 'peace': 0,
+                    }
+                stats = nation_stats[nid]
+                if not stats['nation_name']:
+                    stats['nation_name'] = att_nation_name
+                stats['wars_count'] += 1
+
                 self._add_attacker_stats(stats, war, war_attacks, resource_prices)
                 self._add_attacker_loot(stats, war, war_attacks, resource_prices)
-            else:
-                self._add_defender_stats(stats, war, war_attacks, resource_prices)
-                self._add_defender_loot(stats, war, war_attacks, resource_prices)
 
-            # ── Unit counts (always from war-level columns) ───────────────────
-            if att_id == nw_nation_id:
                 stats['soldiers_lost']   += war.get('att_soldiers_lost',  0) or 0
                 stats['tanks_lost']      += war.get('att_tanks_lost',     0) or 0
                 stats['aircraft_lost']   += war.get('att_aircraft_lost',  0) or 0
@@ -161,7 +137,31 @@ class Rankings(commands.Cog):
                 stats['tanks_killed']    += war.get('def_tanks_lost',     0) or 0
                 stats['aircraft_killed'] += war.get('def_aircraft_lost',  0) or 0
                 stats['ships_killed']    += war.get('def_ships_lost',     0) or 0
-            else:
+
+                self._add_war_outcome(stats, war, nid)
+
+            # Process defender's perspective
+            if def_id is not None:
+                nid = int(def_id)
+                if nid not in nation_stats:
+                    nation_stats[nid] = {
+                        'nation_name': def_nation_name,
+                        'war_cost': 0, 'war_net': 0, 'damages': 0, 'bomb_cost': 0, 'loot': 0,
+                        'wars_count': 0,
+                        'soldiers_lost': 0, 'soldiers_killed': 0,
+                        'tanks_lost': 0,    'tanks_killed': 0,
+                        'aircraft_lost': 0, 'aircraft_killed': 0,
+                        'ships_lost': 0,    'ships_killed': 0,
+                        'wins': 0, 'losses': 0, 'peace': 0,
+                    }
+                stats = nation_stats[nid]
+                if not stats['nation_name']:
+                    stats['nation_name'] = def_nation_name
+                stats['wars_count'] += 1
+
+                self._add_defender_stats(stats, war, war_attacks, resource_prices)
+                self._add_defender_loot(stats, war, war_attacks, resource_prices)
+
                 stats['soldiers_lost']   += war.get('def_soldiers_lost',  0) or 0
                 stats['tanks_lost']      += war.get('def_tanks_lost',     0) or 0
                 stats['aircraft_lost']   += war.get('def_aircraft_lost',  0) or 0
@@ -171,38 +171,44 @@ class Rankings(commands.Cog):
                 stats['aircraft_killed'] += war.get('att_aircraft_lost',  0) or 0
                 stats['ships_killed']    += war.get('att_ships_lost',     0) or 0
 
-            # ── Win / loss / peace ────────────────────────────────────────────
-            winner_id = war.get('winner_id')
-            att_peace = war.get('att_peace')
-            def_peace = war.get('def_peace')
-            is_peace = (
-                (not winner_id or str(winner_id) == '0')
-                and att_peace == 1 and def_peace == 1
-            )
-            if is_peace:
-                stats['peace'] += 1
-            elif winner_id and str(winner_id) != '0':
-                if str(winner_id) == str(nw_nation_id):
-                    stats['wins'] += 1
-                else:
-                    stats['losses'] += 1
+                self._add_war_outcome(stats, war, nid)
 
-        # ── Backfill missing nation names from GlobalNations.db ───────────────
+        # Backfill missing nation names from GlobalNations.db
         missing_ids = [nid for nid, s in nation_stats.items() if not s['nation_name']]
         if missing_ids:
             try:
                 from PnWHarvester.db.global_nations_db import GlobalNationsDB
                 from Systems.Functions.db_paths import GLOBAL_NATIONS_DB as _GNDB
                 gdb = GlobalNationsDB(str(_GNDB))
-                nw_nations = await gdb.get_nations_by_alliance(NW_ALLIANCE_ID)
-                name_map = {n['nation_id']: n['nation_name'] for n in nw_nations if n.get('nation_id') and n.get('nation_name')}
+                name_map = {}
                 for nid in missing_ids:
-                    if nid in name_map:
-                        nation_stats[nid]['nation_name'] = name_map[nid]
+                    nation = await gdb.get_nation(nid)
+                    if nation and nation.get('nation_name'):
+                        name_map[nid] = nation['nation_name']
+                for nid, name in name_map.items():
+                    if nid in nation_stats:
+                        nation_stats[nid]['nation_name'] = name
             except Exception as e:
                 self.logger.warning(f"Could not backfill nation names: {e}")
-        
+
         return nation_stats
+
+    @staticmethod
+    def _add_war_outcome(stats: Dict[str, Any], war: Dict[str, Any], nation_id: int):
+        winner_id = war.get('winner_id')
+        att_peace = war.get('att_peace')
+        def_peace = war.get('def_peace')
+        is_peace = (
+            (not winner_id or str(winner_id) == '0')
+            and att_peace == 1 and def_peace == 1
+        )
+        if is_peace:
+            stats['peace'] += 1
+        elif winner_id and str(winner_id) != '0':
+            if str(winner_id) == str(nation_id):
+                stats['wins'] += 1
+            else:
+                stats['losses'] += 1
 
     def _add_attacker_stats(self, stats: Dict[str, Any], war: Dict[str, Any], attacks: List[Dict[str, Any]], resource_prices: Dict[str, Any]):
         """Add statistics for when NW nation is the attacker."""
@@ -505,37 +511,24 @@ class Rankings(commands.Cog):
         try:
             # Parse parameters
             after_datetime = self._parse_time_to_datetime(time or "all")
-            enemy_alliance_ids: List[int] = []
             
             # Get resource prices
             resource_prices = await get_resource_prices()
             if not resource_prices:
                 resource_prices = {"sell": {}, "buy": {}}
             
-            # Get wars from database
+            # Get ALL wars from IRSWars.db within the time range
             db = IRSWarsDB(NW_DB_PATH)
             start_date = after_datetime.date() if after_datetime else None
             end_date = datetime.now(timezone.utc).date()
             
-            # Get wars where NW is attacker or defender
-            att_wars = await db.get_wars_by_alliance_in_range(
-                NW_ALLIANCE_ID, role='attacker', start_date=start_date, end_date=end_date
-            )
-            def_wars = await db.get_wars_by_alliance_in_range(
-                NW_ALLIANCE_ID, role='defender', start_date=start_date, end_date=end_date
+            all_wars = await db.get_all_wars_in_range(
+                start_date=start_date, end_date=end_date
             )
             
-            # Combine and deduplicate wars
-            seen_ids = set()
-            all_wars = []
-            for war in att_wars + def_wars:
-                if war['id'] not in seen_ids:
-                    seen_ids.add(war['id'])
-                    all_wars.append(war)
-            
-            # Calculate nation statistics
+            # Calculate nation statistics for ALL nations appearing in wars
             nation_stats = await self._calculate_nation_stats(
-                all_wars, resource_prices, ranking_type, enemy_alliance_ids
+                all_wars, resource_prices
             )
             
             # Create and send embed

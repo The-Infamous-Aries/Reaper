@@ -449,20 +449,20 @@ def _nation_embed(s: NationWarStats, nation_id: Any,
 # ── Cog ───────────────────────────────────────────────────────────────────────
 
 class CompareWars(commands.Cog):
-    """Compare two Night\'s Watch nations\' war performance head-to-head."""
+    """Compare two Darkstar nations' war performance head-to-head."""
 
     def __init__(self, bot):
         self.bot    = bot
         self.logger = logging.getLogger(__name__)
 
-    async def _get_nw_nations(self) -> List[Dict[str, Any]]:
+    async def _get_darkstar_nations(self) -> List[Dict[str, Any]]:
         try:
             from PnWHarvester.db.global_nations_db import GlobalNationsDB
             from Systems.Functions.db_paths import GLOBAL_NATIONS_DB as _GNDB, NW_ALLIANCE_ID
             db = GlobalNationsDB(str(_GNDB))
             return await db.get_nations_by_alliance(NW_ALLIANCE_ID)
         except Exception as e:
-            self.logger.warning(f"compare_wars: could not load NW nations: {e}")
+            self.logger.warning(f"compare_wars: could not load Darkstar nations: {e}")
             return []
 
     def _resolve(self, value: str, nations: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
@@ -553,11 +553,11 @@ class CompareWars(commands.Cog):
 
     @app_commands.command(
         name="compare_wars",
-        description="Compare two Night\'s Watch nations\' war performance head-to-head",
+        description="Compare two Darkstar nations' war performance head-to-head",
     )
     @app_commands.describe(
-        nation1="First NW nation to compare",
-        nation2="Second NW nation to compare (cannot be the same as Nation 1)",
+        nation1="First Darkstar nation to compare",
+        nation2="Second Darkstar nation to compare (cannot be the same as Nation 1)",
         time="How far back to look (defaults to All Time)",
     )
     @app_commands.choices(time=TIME_CHOICES)
@@ -567,14 +567,14 @@ class CompareWars(commands.Cog):
                            time: Optional[str] = "all"):
         await interaction.response.defer()
         try:
-            nations = await self._get_nw_nations()
+            nations = await self._get_darkstar_nations()
             n1_data = self._resolve(nation1, nations)
             n2_data = self._resolve(nation2, nations)
 
             def _not_found(val: str):
                 return discord.Embed(
                     title="❌ Nation Not Found",
-                    description=f"Could not find **{_strip_emoji(val)}** in the Night\'s Watch nations database.",
+                    description=f"Could not find **{_strip_emoji(val)}** in the Darkstar nations database.",
                     color=discord.Color.red(),
                 )
 

@@ -729,28 +729,28 @@ class ResourceCog(commands.Cog):
             return embed
         elif mode_key == "average":
             title_name = "Average Prices"
-            description_text = "Average daily prices for each resource"
+            description_text = "Resource — Avg Price"
             color = discord.Color.blue()
             price_key_root = "average_price"
             price_key_nested = None
             no_offer_text = "N/A"
         elif mode_key == "best buy offer":
             title_name = "Best Buy Offers"
-            description_text = "Highest Listed (Best Buy Offer) for each resource"
+            description_text = "Resource — Best Buy"
             color = discord.Color.green()
             price_key_root = "best_buy_offer"
             price_key_nested = "price"
             no_offer_text = "No Active Buy Offers"
         elif mode_key == "best sell offer":
             title_name = "Best Sell Offers"
-            description_text = "Lowest Listed (Best Sell Offer) for each resource"
+            description_text = "Resource — Best Sell"
             color = discord.Color.gold()
             price_key_root = "best_sell_offer"
             price_key_nested = "price"
             no_offer_text = "No Active Sell Offers"
         elif mode_key == "margin":
             title_name = "Trade Margins"
-            description_text = "Difference between Best Sell and Best Buy offers"
+            description_text = "Resource — Best Buy | Best Sell | Margin"
             color = discord.Color.purple()
             price_key_root = None  # Handled separately
             price_key_nested = None # Handled separately
@@ -777,12 +777,12 @@ class ResourceCog(commands.Cog):
                 best_sell_price = item.get("best_sell_offer", {}).get("price")
 
                 if best_buy_price is not None and best_sell_price is not None:
-                    margin = best_sell_price - best_buy_price
-                    if best_buy_price != 0:
-                        percent_margin = (margin / best_buy_price) * 100
-                        display_price = f"Buy: ${best_buy_price:,.2f} | Sell: ${best_sell_price:,.2f} | Margin: ${margin:,.2f} ({percent_margin:.2f}%)"
+                    margin = best_buy_price - best_sell_price
+                    if best_sell_price != 0:
+                        percent_margin = (margin / best_sell_price) * 100
+                        display_price = f"${best_buy_price:,.2f} | ${best_sell_price:,.2f} | ${margin:,.2f} ({percent_margin:.2f}%)"
                     else:
-                        display_price = f"Buy: ${best_buy_price:,.2f} | Sell: ${best_sell_price:,.2f} | Margin: ${margin:,.2f} (N/A%)"
+                        display_price = f"${best_buy_price:,.2f} | ${best_sell_price:,.2f} | ${margin:,.2f} (N/A%)"
                 else:
                     display_price = "No sufficient offers for margin calculation"
             else:
@@ -795,9 +795,9 @@ class ResourceCog(commands.Cog):
                 display_price = f"${price:,.2f}" if price else no_offer_text
 
             emoji = emoji_map.get(res)
-            line = f"{emoji} {fmt_name(res)}: {display_price}" if prefer_emoji and emoji else f"{fmt_name(res)}: {display_price}"
+            line = f"{emoji} - {display_price}" if prefer_emoji and emoji else f"{fmt_name(res)}: {display_price}"
 
-            if mode_key == "margin" and margin is not None and margin < 0:
+            if mode_key == "margin" and margin is not None and margin > 0:
                 line = f"**{line}**"
 
             if res in raw_resources:
@@ -852,6 +852,7 @@ class ResourceCog(commands.Cog):
     )
     async def values(self, ctx: commands.Context, mode: str = "average"):
         """Display resource prices."""
+        await ctx.defer()
         try:
             if not self.query_instance:
                 await ctx.send("Trade query is unavailable. Please try again later.")
@@ -859,7 +860,7 @@ class ResourceCog(commands.Cog):
 
             data = await self.query_instance.get_trade_resource_values()
             if not data:
-                await ctx.send("Could not fetch trade values from the API.") 
+                await ctx.send("Could not fetch trade values from the API.")
                 return
 
             emoji_map = emoji_mod.resource_codes()

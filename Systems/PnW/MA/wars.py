@@ -26,22 +26,6 @@ from Systems.PnW.Util.war_calc import (
 )
 import uuid
 
-# ── NW local DB constants ──────────────────────────────────────────
-NW_ALLIANCE_ID = 10259
-NW_ALLIANCE_NAME = "Darkstar"
-NIGHTS_WATCH_ALIASES = {"darkstar", "ds", str(NW_ALLIANCE_ID)}
-
-
-def _is_nights_watch_alliance(identifier: Union[int, str]) -> bool:
-    """Return True if the identifier refers to the Darkstar alliance."""
-    s = str(identifier).strip().lower()
-    # Strip leading emoji + space (e.g. '⭐ ' prepended by autocomplete)
-    if ' ' in s:
-        parts = s.split(' ', 1)
-        if len(parts[0]) <= 2:  # emoji is 1-2 chars
-            s = parts[1].strip()
-    return s in NIGHTS_WATCH_ALIASES
-
 class Wars(commands.Cog):
     """Cog for P&W war-related commands."""
 
@@ -87,8 +71,8 @@ class Wars(commands.Cog):
                 identifiers.append(item)
         return identifiers
 
-    def _normalize_nw_wars(self, wars: list) -> list:
-        """Inject nested attacker/defender dicts into flat NW DB rows so they
+    def _normalize_wars(self, wars: list) -> list:
+        """Inject nested attacker/defender dicts into flat DB rows so they
         match the structure expected by calculate_war_costs and _get_war_participants."""
         normalized = []
         for war in wars:
@@ -98,7 +82,7 @@ class Wars(commands.Cog):
                 w['attacker'] = {
                     'nation_name': att_name,
                     'leader_name': w.get('att_leader_name', ''),
-                    'alliance_name': NW_ALLIANCE_NAME if w.get('att_alliance_id') == NW_ALLIANCE_ID else (w.get('att_alliance_name') or ''),
+                    'alliance_name': w.get('att_alliance_name') or '',
                     'id': w.get('att_id'),
                     'alliance_id': w.get('att_alliance_id'),
                 }
@@ -107,49 +91,40 @@ class Wars(commands.Cog):
                 w['defender'] = {
                     'nation_name': def_name,
                     'leader_name': w.get('def_leader_name', ''),
-                    'alliance_name': NW_ALLIANCE_NAME if w.get('def_alliance_id') == NW_ALLIANCE_ID else (w.get('def_alliance_name') or ''),
+                    'alliance_name': w.get('def_alliance_name') or '',
                     'id': w.get('def_id'),
                     'alliance_id': w.get('def_alliance_id'),
                 }
             normalized.append(w)
         return normalized
 
-    async def _get_nw_wars_from_db(self, after_datetime: Optional[datetime]) -> list:
-        """Fetch NW wars from the local DB (both as attacker and defender),
-        with their attacks attached so war_calc can process missile/nuke losses."""
+    async def _get_all_wars_from_db(self, after_datetime: Optional[datetime]) -> list:
+        """Fetch ALL wars from IRSWars.db (no alliance filter), with attacks attached."""
         from Systems.Functions.irs_wars_db import IRSWarsDB
         db = IRSWarsDB(NW_DB_PATH)
         start_date = after_datetime.date() if after_datetime else None
         end_date = datetime.now(timezone.utc).date()
-        att_wars = await db.get_wars_by_alliance_in_range(NW_ALLIANCE_ID, role='attacker', start_date=start_date, end_date=end_date)
-        def_wars = await db.get_wars_by_alliance_in_range(NW_ALLIANCE_ID, role='defender', start_date=start_date, end_date=end_date)
-        seen_ids = set()
-        combined = []
-        for w in att_wars + def_wars:
-            if w['id'] not in seen_ids:
-                seen_ids.add(w['id'])
-                combined.append(w)
-        return await self._attach_attacks(db, self._normalize_nw_wars(combined))
+        all_wars = await db.get_all_wars_in_range(start_date=start_date, end_date=end_date)
+        return await self._attach_attacks(db, self._normalize_wars(all_wars))
 
-    async def _get_nw_nation_wars_from_db(self, nation_ids: List[int], after_datetime: Optional[datetime]) -> list:
-        """Fetch wars from the local DB for specific NW member nation IDs, with attacks attached."""
+    async def _get_nation_wars_from_db(self, nation_ids: List[int], after_datetime: Optional[datetime]) -> list:
+        """Fetch wars from IRSWars.db for specific nation IDs (attacker or defender), with attacks attached."""
         from Systems.Functions.irs_wars_db import IRSWarsDB
         db = IRSWarsDB(NW_DB_PATH)
         start_date = after_datetime.date() if after_datetime else None
         end_date = datetime.now(timezone.utc).date()
-        att_wars = await db.get_wars_by_alliance_in_range(NW_ALLIANCE_ID, role='attacker', start_date=start_date, end_date=end_date)
-        def_wars = await db.get_wars_by_alliance_in_range(NW_ALLIANCE_ID, role='defender', start_date=start_date, end_date=end_date)
+        all_wars = await db.get_all_wars_in_range(start_date=start_date, end_date=end_date)
         nation_id_set = {int(n) for n in nation_ids}
         seen_ids = set()
         combined = []
-        for w in att_wars + def_wars:
+        for w in all_wars:
             if w['id'] not in seen_ids:
                 att_id = w.get('att_id')
                 def_id = w.get('def_id')
                 if (att_id and int(att_id) in nation_id_set) or (def_id and int(def_id) in nation_id_set):
                     seen_ids.add(w['id'])
                     combined.append(w)
-        return await self._attach_attacks(db, self._normalize_nw_wars(combined))
+        return await self._attach_attacks(db, self._normalize_wars(combined))
 
     async def _attach_attacks(self, db, wars: list) -> list:
         """Bulk-fetch and attach war_attacks to each war dict so war_calc can
@@ -187,8 +162,8 @@ class Wars(commands.Cog):
             war['attacks'] = attacks
         return wars
 
-    def _extract_team2_from_nw_wars(self, wars: list, team1_id_set: set, team1_type: str) -> tuple:
-        """From a list of NW DB wars, derive the opponent IDs and type for Team2.
+    def _extract_team2_from_wars(self, wars: list, team1_id_set: set, team1_type: str) -> tuple:
+        """From a list of wars, derive the opponent IDs and type for Team2.
         Returns (team2_id_set, team2_type, team2_label).
         """
         opp_nation_ids = set()
@@ -214,16 +189,11 @@ class Wars(commands.Cog):
                 if att_id and att_id != '0' and att_id != 'None':
                     opp_nation_ids.add(int(att_id))
 
-        # Remove NW itself from opponent sets
-        opp_alliance_ids.discard(NW_ALLIANCE_ID)
-
         if team1_type == 'alliance':
-            # When team1 is an alliance, group opponents by alliance
             if opp_alliance_ids:
                 return opp_alliance_ids, 'alliance', 'Opponents'
             return opp_nation_ids, 'nation', 'Opponents'
         else:
-            # When team1 is a nation, group opponents by nation
             if opp_nation_ids:
                 return opp_nation_ids, 'nation', 'Opponents'
             return opp_alliance_ids, 'alliance', 'Opponents'
@@ -234,19 +204,18 @@ class Wars(commands.Cog):
         """Resolve nation names/IDs to IDs using GlobalNations.db — no API call."""
         try:
             from PnWHarvester.db.global_nations_db import GlobalNationsDB
-            from Systems.Functions.db_paths import GLOBAL_NATIONS_DB as _GNDB, NW_ALLIANCE_ID
+            from Systems.Functions.db_paths import GLOBAL_NATIONS_DB as _GNDB
             db = GlobalNationsDB(str(_GNDB))
-            nations = await db.get_nations_by_alliance(NW_ALLIANCE_ID)
             resolved = []
             for ident in identifiers:
                 ident_str = str(ident).strip()
-                for n in nations:
-                    if ident_str.isdigit() and str(n.get('id')) == ident_str:
-                        resolved.append(int(n['id']))
-                        break
-                    elif not ident_str.isdigit() and n.get('nation_name', '').lower() == ident_str.lower():
-                        resolved.append(int(n['id']))
-                        break
+                if ident_str.isdigit():
+                    resolved.append(int(ident_str))
+                else:
+                    low = ident_str.lower()
+                    nation = await db.get_nation_by_name(low)
+                    if nation and nation.get('id'):
+                        resolved.append(int(nation['id']))
             return resolved
         except Exception as e:
             logging.warning(f"_resolve_nation_ids_from_db failed: {e}")
@@ -309,44 +278,51 @@ class Wars(commands.Cog):
 
     # ── Autocomplete helpers ──────────────────────────────────────────────────
 
-    async def _get_nw_nations_for_autocomplete(self) -> list:
-        """Load NW member nations from GlobalNations.db for autocomplete."""
+    async def _get_nations_for_autocomplete(self) -> list:
+        """Load nations from GlobalNations.db for autocomplete."""
         try:
             from PnWHarvester.db.global_nations_db import GlobalNationsDB
-            from Systems.Functions.db_paths import GLOBAL_NATIONS_DB as _GNDB, NW_ALLIANCE_ID
+            from Systems.Functions.db_paths import GLOBAL_NATIONS_DB as _GNDB
             db = GlobalNationsDB(str(_GNDB))
-            return await db.get_nations_by_alliance(NW_ALLIANCE_ID)
+            return await db.get_all_nations()
         except Exception as e:
-            logging.warning(f"wars autocomplete: could not load NW nations: {e}")
+            logging.warning(f"wars autocomplete: could not load nations: {e}")
             return []
 
     async def team1_autocomplete(self, interaction: discord.Interaction, current: str) -> List[app_commands.Choice[str]]:
         """Autocomplete for team1.
         Requires team1_type to be selected first — returns empty until it is.
-        - team1_type == alliance → suggest IRS alliance
-        - team1_type == nation   → suggest NW member nations filtered by typed text
+        - team1_type == alliance → suggest alliances from the wars DB
+        - team1_type == nation   → suggest nations from GlobalNations.db
         """
         try:
             team1_type = getattr(interaction.namespace, 'team1_type', None)
 
-            # Force user to pick type first
             if not team1_type:
                 return []
 
-            low = current.lower()
-
             if team1_type == 'alliance':
-                # Only suggest IRS; filter if user is typing
-                if not current or low in NW_ALLIANCE_NAME.lower():
-                    return [app_commands.Choice(name=f"💰 {NW_ALLIANCE_NAME}", value=NW_ALLIANCE_NAME)]
-                return []
+                try:
+                    from Systems.Functions.irs_wars_db import IRSWarsDB
+                    db = IRSWarsDB(NW_DB_PATH)
+                    rows = await db.get_all_distinct_alliances(current)
+                    choices = []
+                    for r in rows[:25]:
+                        aid = str(r['alliance_id'])
+                        name = r['alliance_name']
+                        label = name if name else f"Alliance {aid}"
+                        choices.append(app_commands.Choice(name=label, value=aid))
+                    return choices
+                except Exception as e:
+                    logging.warning(f"team1 alliance autocomplete error: {e}")
+                    return []
 
             if team1_type == 'nation':
                 try:
                     from Systems.Functions.autocomplete_utils import nation_autocomplete
                     return await nation_autocomplete(current, nw_only=False, limit=25)
                 except Exception as e:
-                    logging.warning(f"Error in wars team1 nation autocomplete: {e}")
+                    logging.warning(f"team1 nation autocomplete error: {e}")
                     return []
 
             return []
@@ -389,49 +365,55 @@ class Wars(commands.Cog):
 
             db = IRSWarsDB(NW_DB_PATH)
 
-            # ── Team1 is IRS alliance ──────────────────────────────
-            if team1_type == 'alliance' and _is_nights_watch_alliance(team1_val):
+            # ── Team1 is an alliance ───────────────────────────────
+            if team1_type == 'alliance' and team1_val:
+                # Resolve the alliance ID from the label/ID
+                try:
+                    alliance_id = int(team1_val) if team1_val.isdigit() else None
+                except ValueError:
+                    alliance_id = None
 
-                if team2_type == 'nation':
-                    names = await db.get_opponent_nation_names(NW_ALLIANCE_ID, current)
-                    return [app_commands.Choice(name=n, value=n) for n in names[:25]]
-
-                if team2_type == 'alliance':
-                    rows = await db.get_opponent_alliance_ids(NW_ALLIANCE_ID, current)
-                    choices = []
-                    for r in rows[:25]:
-                        aid = str(r['alliance_id'])
-                        name = r['alliance_name']
-                        label = name if name else f"Alliance {aid}"
-                        choices.append(app_commands.Choice(name=label, value=aid))
-                    return choices
-
-            # ── Team1 is a specific NW member nation ─────────────────────────
-            if team1_type == 'nation' and team1_val:
-                nations = await self._get_nw_nations_for_autocomplete()
-                nation_id = None
-                low_val = team1_val.lower()
-                for n in nations:
-                    n_name = n.get('nation_name', '')
-                    if (team1_val.isdigit() and str(n.get('id')) == team1_val) or \
-                       n_name.lower() == low_val:
-                        nation_id = n.get('id')
-                        break
-
-                if not nation_id:
-                    # Partial match fallback — user may still be typing
-                    for n in nations:
-                        if low_val in n.get('nation_name', '').lower():
-                            nation_id = n.get('id')
-                            break
-
-                if nation_id:
+                if alliance_id:
                     if team2_type == 'nation':
-                        names = await db.get_opponent_nation_names_for_nation(int(nation_id), current)
+                        names = await db.get_opponent_nation_names(alliance_id, current)
                         return [app_commands.Choice(name=n, value=n) for n in names[:25]]
 
                     if team2_type == 'alliance':
-                        rows = await db.get_opponent_alliance_ids_for_nation(int(nation_id), current)
+                        rows = await db.get_opponent_alliance_ids(alliance_id, current)
+                        choices = []
+                        for r in rows[:25]:
+                            aid = str(r['alliance_id'])
+                            name = r['alliance_name']
+                            label = name if name else f"Alliance {aid}"
+                            choices.append(app_commands.Choice(name=label, value=aid))
+                        return choices
+
+            # ── Team1 is a specific nation ─────────────────────────
+            if team1_type == 'nation' and team1_val:
+                try:
+                    nation_id = int(team1_val) if team1_val.isdigit() else None
+                except ValueError:
+                    nation_id = None
+
+                if not nation_id:
+                    # Try to resolve by name from GlobalNations.db
+                    try:
+                        from PnWHarvester.db.global_nations_db import GlobalNationsDB
+                        from Systems.Functions.db_paths import GLOBAL_NATIONS_DB as _GNDB
+                        ndb = GlobalNationsDB(str(_GNDB))
+                        nat = await ndb.get_nation_by_name(team1_val)
+                        if nat and nat.get('id'):
+                            nation_id = int(nat['id'])
+                    except Exception:
+                        pass
+
+                if nation_id:
+                    if team2_type == 'nation':
+                        names = await db.get_opponent_nation_names_for_nation(nation_id, current)
+                        return [app_commands.Choice(name=n, value=n) for n in names[:25]]
+
+                    if team2_type == 'alliance':
+                        rows = await db.get_opponent_alliance_ids_for_nation(nation_id, current)
                         choices = []
                         for r in rows[:25]:
                             aid = str(r['alliance_id'])
@@ -484,35 +466,35 @@ class Wars(commands.Cog):
 
             resource_prices = await get_resource_prices()
 
-            # ── Detect IRS routing ──────────────────────────────────
-            is_nw_alliance = (team1_type == 'alliance' and any(_is_nights_watch_alliance(i) for i in team1_ids))
-            is_nw_nation = False
-            nw_wars_from_db: Optional[list] = None
+            # ── Resolve Team1 and fetch wars ───────────────────────
+            all_wars_db = await self._get_all_wars_from_db(after_datetime)
 
-            if is_nw_alliance:
-                nw_wars_from_db = await self._get_nw_wars_from_db(after_datetime)
-                resolved_team1_ids = [NW_ALLIANCE_ID]
-            elif team1_type == 'nation':
-                # Resolve nation IDs from the NW nations DB — no API call
-                resolved_team1_ids = await self._resolve_nation_ids_from_db(team1_ids)
-                if resolved_team1_ids:
-                    candidate_wars = await self._get_nw_nation_wars_from_db(resolved_team1_ids, after_datetime)
-                    if candidate_wars:
-                        is_nw_nation = True
-                        nw_wars_from_db = candidate_wars
-                if not resolved_team1_ids:
-                    await interaction.followup.send("❌ Nation not found in the IRS database.")
-                    return
+            if team1_type == 'alliance':
+                # For alliance, the identifier is the alliance ID from autocomplete
+                resolved_team1_ids = [int(i) for i in team1_ids if str(i).isdigit()]
             else:
-                # Alliance type but not NW — not in our DB
-                await interaction.followup.send("❌ Only Darkstar alliance data is available. Please use Darkstar or a Darkstar member nation.")
-                return
+                # For nation, resolve IDs from GlobalNations.db
+                resolved_team1_ids = await self._resolve_nation_ids_from_db(team1_ids)
 
-            if nw_wars_from_db is None:
-                await interaction.followup.send("❌ No wars found in the database for the specified criteria.")
+            if not resolved_team1_ids:
+                await interaction.followup.send("❌ Could not resolve Team 1. Please use a valid nation or alliance ID.")
                 return
 
             team1_id_set = set(resolved_team1_ids)
+
+            # ── Filter wars to those involving Team1 ──────────────────────────
+            str_t1 = {str(i) for i in team1_id_set}
+            filtered_wars = []
+            for war in all_wars_db:
+                if (str(war.get('att_id')) in str_t1 or
+                    str(war.get('att_alliance_id')) in str_t1 or
+                    str(war.get('def_id')) in str_t1 or
+                    str(war.get('def_alliance_id')) in str_t1):
+                    filtered_wars.append(war)
+
+            if not filtered_wars:
+                await interaction.followup.send("❌ No wars found for the specified criteria.")
+                return
 
             # ── Resolve Team2 entirely from DB ────────────────────────────────
             resolved_team2_ids: List[int] = []
@@ -521,22 +503,23 @@ class Wars(commands.Cog):
             if team2 and team2_type:
                 team2_ids = self._parse_identifiers(team2)
                 resolved_team2_ids = await self._resolve_team2_ids_from_db(
-                    team2_ids, team2_type, nw_wars_from_db
+                    team2_ids, team2_type, filtered_wars
                 )
             else:
-                auto_t2_ids, auto_t2_type, _ = self._extract_team2_from_nw_wars(
-                    nw_wars_from_db, team1_id_set, team1_type
+                auto_t2_ids, auto_t2_type, _ = self._extract_team2_from_wars(
+                    filtered_wars, team1_id_set, team1_type
                 )
                 resolved_team2_ids = list(auto_t2_ids)
                 effective_team2_type = auto_t2_type
 
-            all_wars = nw_wars_from_db
+            all_wars = filtered_wars
 
-            # ── Filter wars to the relevant matchup ───────────────────────────
-            wars_data = []
+            # ── When team2 is specified, narrow wars to those involving BOTH ────
+            wars_data = list(all_wars)  # all already involve team1
             team2_id_set = set(resolved_team2_ids) if resolved_team2_ids else None
 
             if team2_id_set:
+                wars_data = []
                 for war in all_wars:
                     war_att_ids = {
                         int(war[key]) for key in ('att_id', 'att_alliance_id') if war.get(key)
@@ -550,34 +533,23 @@ class Wars(commands.Cog):
                     )
                     if is_match:
                         wars_data.append(war)
-            else:
-                str_team1_id_set = {str(i) for i in team1_id_set}
-                for war in all_wars:
-                    if (str(war.get('att_id')) in str_team1_id_set or
-                        str(war.get('att_alliance_id')) in str_team1_id_set or
-                        str(war.get('def_id')) in str_team1_id_set or
-                        str(war.get('def_alliance_id')) in str_team1_id_set):
-                        wars_data.append(war)
 
             if not wars_data:
                 await interaction.followup.send("❌ No wars found for the specified criteria.")
                 return
-            
-            # For NW, we always have a team2 derived from the DB; pov_ids only applies when no team2
+
             has_team2 = bool(resolved_team2_ids)
             pov_ids = team1_id_set if not has_team2 else None
             final_team2_id_set = set(resolved_team2_ids) if resolved_team2_ids else None
 
-            # Use effective_team2_type (may be auto-derived for NW) for display
             display_team2_type = effective_team2_type
-            display_team2 = team2  # user-supplied label; may be None for auto-derived NW opponents
+            display_team2 = team2
 
             costs = await calculate_war_costs(wars_data, resource_prices, team1_id_set=team1_id_set, team2_id_set=final_team2_id_set)
-            
+
             embeds = {}
-            
-            # Summary Embed — use NW alliance name when applicable
-            display_team1 = NW_ALLIANCE_NAME if is_nw_alliance else team1
+
+            display_team1 = team1
             summary_embed = self._create_summary_embed(costs, wars_data, time, display_team1, pov_ids, team2=display_team2)
             embeds['summary'] = summary_embed
 

@@ -18,7 +18,8 @@ Key design decisions:
 from __future__ import annotations
 
 import logging
-from typing import Dict, List, Optional
+import math
+from typing import Dict, List, Optional, Tuple
 
 import discord
 from discord.ext import commands
@@ -30,6 +31,7 @@ from Systems.PnW.Util.rev_correct import (
     calculate_power_generation,
     calculate_resource_production,
     calculate_manufacturing,
+    calculate_food_production,
     calculate_civil_improvements,
     calculate_population_effects,
     revenue_calc_sync,
@@ -37,6 +39,7 @@ from Systems.PnW.Util.rev_correct import (
 from Systems.PnW.IA.costs import (
     calc_land_value, calc_infra_value, PROJECT_BUILD_COSTS,
     calculate_project_discounts,
+    infra_purchase_cost, land_purchase_cost,
 )
 from Systems.PnW.Util.war_calc import IMPROVEMENT_COSTS
 from Systems.Functions.nation_emoji_store import get_nation_emoji, strip_emoji_prefix
@@ -52,9 +55,19 @@ IMPROVEMENT_LIMITS = {
     'farm': 20,
     'oil_refinery': 5, 'steel_mill': 5, 'aluminum_refinery': 5, 'munitions_factory': 5,
     'police_station': 5, 'hospital': 5, 'recycling_center': 3,
-    'subway': 6, 'supermarket': 5, 'bank': 5, 'shopping_mall': 4, 'stadium': 3,
+    'subway': 1, 'supermarket': 4, 'bank': 5, 'shopping_mall': 4, 'stadium': 3,
     'coal_power': 5, 'oil_power': 5, 'nuclear_power': 5, 'wind_power': 50,
     'barracks': 5, 'factory': 5, 'hangar': 5, 'drydock': 3,
+}
+
+# Only count-limit bonuses belong here. Projects that improve effect strength
+# or max commerce (CRC/SPTP/RI/ITC/Telecom) are handled in revenue modifiers
+# and do not raise per-city improvement count caps.
+PROJECT_IMPROVEMENT_LIMIT_BONUSES: Dict[str, Dict[str, int]] = {
+    'clinical_research_center': {'hospital': 1},
+    'international_trade_center': {'bank': 1},
+    'recycling_initiative': {'recycling_center': 1},
+    'telecommunications_satellite': {'shopping_mall': 1},
 }
 
 IMP_DISPLAY = {
@@ -66,6 +79,10 @@ IMP_DISPLAY = {
     'oil_refinery': 'Oil Refinery', 'steel_mill': 'Steel Mill',
     'aluminum_refinery': 'Aluminum Refinery', 'munitions_factory': 'Munitions Factory',
     'farm': 'Farm', 'infrastructure': 'Infrastructure', 'land': 'Land',
+    'coal_power': 'Coal Power Plant', 'oil_power': 'Oil Power Plant',
+    'nuclear_power': 'Nuclear Power Plant', 'wind_power': 'Wind Power Plant',
+    'barracks': 'Barracks', 'factory': 'Factory', 'hangar': 'Hangar',
+    'drydock': 'Drydock',
 }
 
 # Civil improvements that affect cash income (commerce, crime, disease, pollution)
@@ -89,6 +106,23 @@ RESOURCE_IMPS: List[tuple] = [
     ('aluminum_refinery', 'aluminum',  ['bauxite']),
     ('munitions_factory', 'munitions', ['lead']),
 ]
+
+POWER_IMPS = ['coal_power', 'oil_power', 'nuclear_power', 'wind_power']
+MILITARY_IMPS = ['barracks', 'factory', 'hangar', 'drydock']
+ECON_IMPS = CIVIL_IMPS + [imp for imp, _, _ in RESOURCE_IMPS]
+RAW_RESOURCE_IMPS = {
+    'coal_mine', 'oil_well', 'bauxite_mine', 'iron_mine', 'lead_mine',
+    'uranium_mine', 'farm',
+}
+MANUFACTURING_IMPS = {
+    'oil_refinery', 'steel_mill', 'aluminum_refinery', 'munitions_factory',
+}
+RESOURCE_KEYS = (
+    'coal', 'oil', 'uranium', 'lead', 'iron', 'bauxite',
+    'gasoline', 'munitions', 'steel', 'aluminum', 'food',
+)
+
+DEFAULT_OPTIMIZER_MMR = (0, 3, 5, 0)
 
 # Projects to evaluate: (api_flag, display_name, is_resource_project)
 # is_resource_project=True → use monetary baseline for gain calculation
@@ -165,6 +199,15 @@ def _slots(infra: float) -> int:
     return min(int(infra // 50), 50)
 
 
+def _improvement_limit(nation: dict, imp: str) -> int:
+    """Per-city cap for an improvement, including owned project cap bonuses."""
+    limit = IMPROVEMENT_LIMITS.get(imp, 0)
+    for project_flag, bonuses in PROJECT_IMPROVEMENT_LIMIT_BONUSES.items():
+        if nation.get(project_flag):
+            limit += int(bonuses.get(imp, 0) or 0)
+    return limit
+
+
 def _dc(nation: dict) -> dict:
     """Shallow-copy nation with a new cities list (each city is a plain dict shallow copy).
     Avoids copy.deepcopy which can hit recursion limits on sqlite3.Row-derived dicts
@@ -195,6 +238,7 @@ def _city_stats(city: dict, modifiers: dict, seasonal_mod: dict,
     civil    = calculate_civil_improvements(city, modifiers, unpow)
     poll     = max(power['pollution'] + rss['pollution'] + mfg['pollution'] + civil['pollution'], 0)
     com      = civil['commerce']
+    raw_com  = civil.get('raw_commerce', com)
     pop      = calculate_population_effects(city, modifiers, base_pop, com,
                                             civil['police_stations'], civil['hospitals'], poll)
     slots_used  = sum(city.get(k, 0) for k in IMPROVEMENT_LIMITS)
@@ -202,12 +246,69 @@ def _city_stats(city: dict, modifiers: dict, seasonal_mod: dict,
     return {
         'pollution':   poll,
         'commerce':    com,
+        'raw_commerce': raw_com,
         'crime':       pop['crime_rate'],
         'disease':     pop['disease_rate'],
         'population':  pop['population'],
         'slots_used':  slots_used,
         'slots_total': slots_total,
         'slots_free':  max(slots_total - slots_used, 0),
+    }
+
+
+def _active_resource_projects(nation: dict) -> list[str]:
+    project_labels = {
+        'mass_irrigation': 'Mass Irrigation',
+        'emergency_gasoline_reserve': 'Emergency Gasoline Reserve',
+        'iron_works': 'Iron Works',
+        'bauxite_works': 'Bauxite Works',
+        'arms_stockpile': 'Arms Stockpile',
+        'uranium_enrichment_program': 'Uranium Enrichment Program',
+        'green_technologies': 'Green Technologies',
+        'fallout_shelter': 'Fallout Shelter',
+    }
+    return [label for flag, label in project_labels.items() if nation.get(flag)]
+
+
+def _city_resource_flows_day(city: dict, nation: dict, modifiers: dict,
+                             seasonal_mod: dict, radiation: dict) -> dict:
+    """Per-city resource production/consumption per day using rev_correct math."""
+    flows = {
+        rss: {'produced': 0.0, 'consumed': 0.0, 'net': 0.0}
+        for rss in RESOURCE_KEYS
+    }
+
+    def add(source: dict, multiplier: float = 12.0) -> None:
+        for rss in RESOURCE_KEYS:
+            val = float(source.get(rss, 0.0) or 0.0) * multiplier
+            if val > 0:
+                flows[rss]['produced'] += val
+            elif val < 0:
+                flows[rss]['consumed'] += abs(val)
+            flows[rss]['net'] += val
+
+    power = calculate_power_generation(city)
+    raw = calculate_resource_production(city, modifiers)
+    mfg = calculate_manufacturing(city, modifiers, power['unpowered_infra'])
+    civil = calculate_civil_improvements(city, modifiers, power['unpowered_infra'])
+    add(power)
+    add(raw)
+    add(mfg)
+    if int(city.get('farm', 0) or 0) > 0:
+        food_turn = calculate_food_production(city, nation, modifiers, seasonal_mod, radiation)
+        add({'food': food_turn})
+    base_pop = city['infrastructure'] * 100
+    pollution = max(power['pollution'] + raw['pollution'] + mfg['pollution'] + civil['pollution'], 0)
+    pop = calculate_population_effects(
+        city, modifiers, base_pop, civil['commerce'],
+        civil['police_stations'], civil['hospitals'], pollution
+    )
+    add({'food': -float(pop.get('food_consumption', 0.0) or 0.0)})
+
+    return {
+        rss: {k: round(v, 4) for k, v in data.items()}
+        for rss, data in flows.items()
+        if abs(data['produced']) >= 0.001 or abs(data['consumed']) >= 0.001 or abs(data['net']) >= 0.001
     }
 
 
@@ -225,8 +326,12 @@ def _produces(nation: dict, resource: str) -> bool:
 
 def _improvement_cost(imp: str, count: int, prices: dict) -> float:
     """Total money-equivalent cost to buy `count` of an improvement at current market prices."""
-    # Map rev_optimizer field names → war_calc IMPROVEMENT_COSTS keys
-    _KEY_MAP = {
+    return _improvement_cost_breakdown(imp, count, prices)['total']
+
+
+def _improvement_cost_key(imp: str) -> str:
+    # Map rev_optimizer field names to war_calc IMPROVEMENT_COSTS keys
+    key_map = {
         'oil_refinery':       'oil_refinery',
         'steel_mill':         'steel_mill',
         'aluminum_refinery':  'aluminum_refinery',
@@ -246,18 +351,136 @@ def _improvement_cost(imp: str, count: int, prices: dict) -> float:
         'bank':               'bank',
         'shopping_mall':      'shopping_mall',
         'stadium':            'stadium',
+        'coal_power':         'coal_power_plant',
+        'oil_power':          'oil_power_plant',
+        'nuclear_power':      'nuclear_power_plant',
+        'wind_power':         'wind_power_plant',
+        'barracks':           'barracks',
+        'factory':            'factory',
+        'hangar':             'hangar',
+        'drydock':            'drydock',
     }
-    key = _KEY_MAP.get(imp, imp)
+    return key_map.get(imp, imp)
+
+
+def _empty_cost_breakdown() -> dict:
+    return {
+        'cash': 0.0,
+        'resource_value': 0.0,
+        'total': 0.0,
+        'infra_cash': 0.0,
+        'land_cash': 0.0,
+        'improvement_cash': 0.0,
+        'improvement_resource_value': 0.0,
+        'resources': {},
+        'lines': [],
+    }
+
+
+def _add_cost_line(breakdown: dict, line: dict) -> None:
+    cash = float(line.get('cash', 0.0) or 0.0)
+    resource_value = float(line.get('resource_value', 0.0) or 0.0)
+    resources = line.get('resources') or {}
+    breakdown['cash'] += cash
+    breakdown['resource_value'] += resource_value
+    breakdown['total'] += cash + resource_value
+    for rss, qty in resources.items():
+        breakdown['resources'][rss] = breakdown['resources'].get(rss, 0.0) + float(qty or 0.0)
+    typ = line.get('type')
+    if typ == 'infra':
+        breakdown['infra_cash'] += cash
+    elif typ == 'land':
+        breakdown['land_cash'] += cash
+    elif typ == 'improvement':
+        breakdown['improvement_cash'] += cash
+        breakdown['improvement_resource_value'] += resource_value
+    breakdown['lines'].append(line)
+
+
+def _merge_cost_breakdowns(*items: Optional[dict]) -> dict:
+    merged = _empty_cost_breakdown()
+    for item in items:
+        if not item:
+            continue
+        for line in item.get('lines', []):
+            _add_cost_line(merged, line)
+    return merged
+
+
+def _improvement_cost_breakdown(imp: str, count: int, prices: dict) -> dict:
+    """Cash/resource cost to buy `count` of an improvement."""
+    count = int(count or 0)
+    breakdown = _empty_cost_breakdown()
+    if count <= 0:
+        return breakdown
+    key = _improvement_cost_key(imp)
     raw = IMPROVEMENT_COSTS.get(key)
     if not raw:
-        return 0.0
-    cash = raw.get('cash', 0.0)
-    resource_cost = sum(
-        qty * prices.get(rss, 0)
+        return breakdown
+    cash = float(raw.get('cash', 0.0) or 0.0) * count
+    resources = {
+        rss: float(qty or 0.0) * count
         for rss, qty in raw.items()
         if rss != 'cash'
-    )
-    return (cash + resource_cost) * count
+    }
+    resource_value = sum(qty * prices.get(rss, 0) for rss, qty in resources.items())
+    _add_cost_line(breakdown, {
+        'type': 'improvement',
+        'key': imp,
+        'label': IMP_DISPLAY.get(imp, imp),
+        'count': count,
+        'cash': cash,
+        'resources': resources,
+        'resource_value': resource_value,
+        'total': cash + resource_value,
+    })
+    return breakdown
+
+
+def _target_city_cost_breakdown(original_nation: dict, target_nation: dict,
+                                city_idx: int, prices: dict) -> dict:
+    """Infra/land purchase cost to reach the target city settings."""
+    breakdown = _empty_cost_breakdown()
+    try:
+        original_city = original_nation['cities'][city_idx]
+        target_city = target_nation['cities'][city_idx]
+    except Exception:
+        return breakdown
+
+    current_infra = float(original_city.get('infrastructure', 0) or 0)
+    target_infra = float(target_city.get('infrastructure', current_infra) or current_infra)
+    if target_infra > current_infra:
+        cost = infra_purchase_cost(current_infra, target_infra - current_infra, original_nation)
+        final_cost = float(cost.get('final_cost', 0.0) or 0.0)
+        _add_cost_line(breakdown, {
+            'type': 'infra',
+            'label': 'Infrastructure',
+            'from': current_infra,
+            'to': target_infra,
+            'amount': target_infra - current_infra,
+            'cash': final_cost,
+            'resources': {},
+            'resource_value': 0.0,
+            'total': final_cost,
+        })
+
+    current_land = float(original_city.get('land', 0) or 0)
+    target_land = float(target_city.get('land', current_land) or current_land)
+    if target_land > current_land:
+        cost = land_purchase_cost(current_land, target_land - current_land, original_nation)
+        final_cost = float(cost.get('final_cost', 0.0) or 0.0)
+        _add_cost_line(breakdown, {
+            'type': 'land',
+            'label': 'Land',
+            'from': current_land,
+            'to': target_land,
+            'amount': target_land - current_land,
+            'cash': final_cost,
+            'resources': {},
+            'resource_value': 0.0,
+            'total': final_cost,
+        })
+    return breakdown
 
 
 def _project_cost_money(flag: str, nation: dict, prices: dict) -> float:
@@ -383,10 +606,479 @@ def _civil_reason(imp: str, stats: dict, modifiers: dict, add: int) -> str:
     return f'+{add} {IMP_DISPLAY.get(imp, imp)}'
 
 
+def _parse_mmr(mmr: Optional[str | Tuple[int, int, int, int] | List[int]]) -> Tuple[int, int, int, int]:
+    """Return capped B/F/H/D counts per city."""
+    caps = (5, 5, 5, 3)
+    try:
+        if mmr is None:
+            vals = DEFAULT_OPTIMIZER_MMR
+        elif isinstance(mmr, str):
+            parts = mmr.replace('-', '/').split('/')
+            vals = tuple(int(float(p.strip() or 0)) for p in parts[:4])
+        else:
+            vals = tuple(int(float(x or 0)) for x in list(mmr)[:4])
+    except (TypeError, ValueError):
+        vals = DEFAULT_OPTIMIZER_MMR
+    vals = (vals + (0, 0, 0, 0))[:4] if len(vals) < 4 else vals[:4]
+    return tuple(max(0, min(v, caps[i])) for i, v in enumerate(vals))
+
+
+def _apply_targets(nation: dict, desired_infra: Optional[float],
+                   desired_land: Optional[float], desired_mmr: Optional[str]) -> dict:
+    """Copy a nation and apply planning infra/land/MMR while keeping current econ build."""
+    tn = _dc(nation)
+    mmr = _parse_mmr(desired_mmr) if desired_mmr else None
+    for city in tn.get('cities', []):
+        if desired_infra and desired_infra > 0:
+            city['infrastructure'] = float(desired_infra)
+        if desired_land and desired_land > 0:
+            city['land'] = float(desired_land)
+        if mmr is not None:
+            city['barracks'], city['factory'], city['hangar'], city['drydock'] = mmr
+    return tn
+
+
+def _optimal_power_counts(infra: float) -> dict:
+    """Power audit target: nuclear only, enough to cover infra, no excess non-nuclear plants."""
+    nuclear = int(math.ceil(max(float(infra or 0), 1.0) / 2000.0)) if infra > 0 else 0
+    return {'coal_power': 0, 'oil_power': 0, 'wind_power': 0, 'nuclear_power': nuclear}
+
+
+def _power_audit(city: dict) -> dict:
+    infra = float(city.get('infrastructure', 0) or 0)
+    target = _optimal_power_counts(infra)
+    current = {k: int(city.get(k, 0) or 0) for k in POWER_IMPS}
+    issues = []
+    if current['coal_power'] or current['oil_power'] or current['wind_power']:
+        wrong = ', '.join(
+            f"{current[k]} {IMP_DISPLAY[k]}"
+            for k in ('coal_power', 'oil_power', 'wind_power') if current[k]
+        )
+        issues.append(f"remove non-nuclear power ({wrong})")
+    if current['nuclear_power'] != target['nuclear_power']:
+        issues.append(
+            f"use {target['nuclear_power']} nuclear for {infra:.0f} infra "
+            f"(currently {current['nuclear_power']})"
+        )
+    return {'current': current, 'target': target, 'issues': issues}
+
+
+def _set_city_counts(city: dict, counts: dict) -> None:
+    for imp in ECON_IMPS + POWER_IMPS + MILITARY_IMPS:
+        if imp in counts:
+            city[imp] = int(counts[imp])
+
+
+def _city_counts(city: dict, keys: list[str]) -> dict:
+    return {k: int(city.get(k, 0) or 0) for k in keys}
+
+
+def _used_slots(city: dict) -> int:
+    return sum(int(city.get(k, 0) or 0) for k in IMPROVEMENT_LIMITS)
+
+
+def _diff_counts(before: dict, after: dict) -> tuple[dict, dict]:
+    remove, add = {}, {}
+    for key in ECON_IMPS + POWER_IMPS + MILITARY_IMPS:
+        b = int(before.get(key, 0) or 0)
+        a = int(after.get(key, 0) or 0)
+        if a > b:
+            add[key] = a - b
+        elif b > a:
+            remove[key] = b - a
+    return remove, add
+
+
+def _format_count_diff(diff: dict) -> str:
+    if not diff:
+        return 'none'
+    return ', '.join(f"{v} {IMP_DISPLAY.get(k, k)}" for k, v in diff.items() if v)
+
+
+def _resource_value_breakdown(before_rev: dict, after_rev: dict, prices: dict) -> dict:
+    resources = ('coal', 'oil', 'uranium', 'lead', 'iron', 'bauxite',
+                 'gasoline', 'munitions', 'steel', 'aluminum', 'food')
+    deltas = {}
+    value = 0.0
+    for rss in resources:
+        d = (after_rev.get(rss, 0) or 0) - (before_rev.get(rss, 0) or 0)
+        if abs(d) >= 0.01:
+            deltas[rss] = d * 12
+            value += d * prices.get(rss, 0) * 12
+    return {'resource_deltas_day': deltas, 'resource_value_day': value}
+
+
+def _rev_full(nation: dict, prices: dict, colors: dict,
+              seasonal_mod: dict, radiation: dict, treasures: list) -> dict:
+    return revenue_calc_sync(
+        nation=nation, radiation=radiation, treasures=treasures,
+        prices=prices, colors=colors, seasonal_mod=seasonal_mod, include_spies=True,
+    )
+
+
+def _score_city_build(base_nation: dict, city_idx: int, counts: dict,
+                      prices: dict, colors: dict, seasonal_mod: dict,
+                      radiation: dict, treasures: list,
+                      metric: str = 'monetary') -> tuple[float, dict]:
+    tn = _dc(base_nation)
+    _set_city_counts(tn['cities'][city_idx], counts)
+    rev = _rev(tn, prices, colors, seasonal_mod, radiation, treasures)
+    return rev.get(metric, rev['monetary']), tn
+
+
+def _best_greedy_econ_counts(base_nation: dict, city_idx: int, start_counts: dict,
+                             slots_total: int, prices: dict, colors: dict,
+                             seasonal_mod: dict, radiation: dict,
+                             treasures: list, allowed: Optional[set[str]] = None,
+                             metric: str = 'monetary') -> dict:
+    """Greedy slot optimizer using full simulated revenue for each marginal add."""
+    counts = {k: int(start_counts.get(k, 0) or 0) for k in ECON_IMPS + POWER_IMPS + MILITARY_IMPS}
+    allowed = allowed or set(ECON_IMPS)
+    while sum(counts.values()) < slots_total:
+        current_score, _ = _score_city_build(
+            base_nation, city_idx, counts, prices, colors, seasonal_mod, radiation, treasures, metric
+        )
+        best_imp, best_gain = None, 0.0
+        for imp in ECON_IMPS:
+            if imp not in allowed:
+                continue
+            limit = _improvement_limit(base_nation, imp)
+            if counts.get(imp, 0) >= limit:
+                continue
+            trial = {k: v for k, v in counts.items()}
+            trial[imp] = trial.get(imp, 0) + 1
+            score, _ = _score_city_build(
+                base_nation, city_idx, trial, prices, colors, seasonal_mod, radiation, treasures, metric
+            )
+            gain = score - current_score
+            if gain > best_gain:
+                best_gain, best_imp = gain, imp
+        if not best_imp:
+            break
+        counts[best_imp] = counts.get(best_imp, 0) + 1
+    return counts
+
+
+def _candidate_counts_for_city(city: dict, base_counts: dict, slots_total: int) -> list[tuple[str, dict, str]]:
+    """Build scenario seeds that force stack breakpoints before greedy fill."""
+    current_econ = _city_counts(city, ECON_IMPS)
+    current_resource_types = {imp for imp in RAW_RESOURCE_IMPS | MANUFACTURING_IMPS if current_econ.get(imp, 0) > 0}
+    current_raw_types = current_resource_types & RAW_RESOURCE_IMPS
+    current_mfg_types = current_resource_types & MANUFACTURING_IMPS
+    seeds: list[tuple[str, dict, str]] = []
+
+    def add_seed(key: str, forced: dict, title: str) -> None:
+        counts = {k: int(base_counts.get(k, 0) or 0) for k in ECON_IMPS + POWER_IMPS + MILITARY_IMPS}
+        for imp in ECON_IMPS:
+            counts[imp] = 0
+        for imp, val in forced.items():
+            counts[imp] = min(IMPROVEMENT_LIMITS[imp], int(val))
+        if sum(counts.values()) <= slots_total:
+            seeds.append((key, counts, title))
+
+    add_seed('no_resources', {}, 'No mines/manufacturing')
+
+    if current_resource_types:
+        forced = {imp: IMPROVEMENT_LIMITS[imp] for imp in current_resource_types}
+        add_seed('optimized_current_resources', forced, 'Stack current mines/manufacturing to max')
+
+    for imp in sorted(RAW_RESOURCE_IMPS | MANUFACTURING_IMPS):
+        add_seed(f'max_{imp}', {imp: IMPROVEMENT_LIMITS[imp]}, f'Max {IMP_DISPLAY[imp]}')
+
+    if current_raw_types and current_mfg_types:
+        for raw_imp in sorted(current_raw_types):
+            for mfg_imp in sorted(current_mfg_types):
+                add_seed(
+                    f'max_{raw_imp}_{mfg_imp}',
+                    {raw_imp: IMPROVEMENT_LIMITS[raw_imp], mfg_imp: IMPROVEMENT_LIMITS[mfg_imp]},
+                    f'Max {IMP_DISPLAY[raw_imp]} + {IMP_DISPLAY[mfg_imp]}',
+                )
+
+    return seeds
+
+
+def _build_city_scenarios(target_nation: dict, city_idx: int, prices: dict, colors: dict,
+                          seasonal_mod: dict, radiation: dict, treasures: list,
+                          baseline_rev: dict) -> list[dict]:
+    city = target_nation['cities'][city_idx]
+    infra = float(city.get('infrastructure', 0) or 0)
+    slots_total = _slots(infra)
+    power_target = _optimal_power_counts(infra)
+    base_counts = _city_counts(city, ECON_IMPS + POWER_IMPS + MILITARY_IMPS)
+    base_counts.update(power_target)
+
+    # MMR is already applied to target_nation. Keep those counts fixed.
+    for imp in MILITARY_IMPS:
+        base_counts[imp] = int(city.get(imp, 0) or 0)
+
+    locked = sum(base_counts.get(k, 0) for k in POWER_IMPS + MILITARY_IMPS)
+    if locked > slots_total:
+        return [{
+            'type': 'slot_conflict',
+            'city': city.get('name', f'City {city_idx + 1}'),
+            'city_idx': city_idx,
+            'gain_per_turn': 0,
+            'gain_per_day': 0,
+            'cost': 0,
+            'reason': (
+                f"Desired MMR + nuclear power need {locked} slots, but "
+                f"{infra:.0f} infra only gives {slots_total} slots."
+            ),
+        }]
+
+    scenarios = []
+    before_counts = _city_counts(city, ECON_IMPS + POWER_IMPS + MILITARY_IMPS)
+    for scenario_key, seed, title in _candidate_counts_for_city(city, base_counts, slots_total):
+        allowed = set(ECON_IMPS)
+        if scenario_key == 'no_resources':
+            allowed -= (RAW_RESOURCE_IMPS | MANUFACTURING_IMPS)
+        elif scenario_key == 'optimized_current_resources':
+            allowed -= ((RAW_RESOURCE_IMPS | MANUFACTURING_IMPS) - {
+                imp for imp in RAW_RESOURCE_IMPS | MANUFACTURING_IMPS if seed.get(imp, 0) > 0
+            })
+        counts = _best_greedy_econ_counts(
+            target_nation, city_idx, seed, slots_total,
+            prices, colors, seasonal_mod, radiation, treasures, allowed=allowed
+        )
+        tn = _dc(target_nation)
+        _set_city_counts(tn['cities'][city_idx], counts)
+        after_rev_full = _rev_full(tn, prices, colors, seasonal_mod, radiation, treasures)
+        remove, add = _diff_counts(before_counts, counts)
+        gain_turn = after_rev_full.get('monetary_net_num', 0) - baseline_rev.get('monetary_net_num', 0)
+        cash_gain_turn = after_rev_full.get('net_cash_num', 0) - baseline_rev.get('net_cash_num', 0)
+        rss_breakdown = _resource_value_breakdown(baseline_rev, after_rev_full, prices)
+        if gain_turn <= 0 and scenario_key not in ('no_resources', 'optimized_current_resources'):
+            continue
+        scenarios.append({
+            'type': 'swap_build',
+            'scenario': scenario_key,
+            'title': title,
+            'city': city.get('name', f'City {city_idx + 1}'),
+            'city_idx': city_idx,
+            'from_slots_used': _used_slots(city),
+            'to_slots_used': sum(counts.values()),
+            'slots_total': slots_total,
+            'remove': remove,
+            'add': add,
+            'final_counts': {k: v for k, v in counts.items() if v},
+            'gain_per_turn': gain_turn,
+            'gain_per_day': gain_turn * 12,
+            'cash_gain_per_day': cash_gain_turn * 12,
+            'resource_value_day': rss_breakdown['resource_value_day'],
+            'resource_deltas_day': rss_breakdown['resource_deltas_day'],
+            'cost': 0,
+            'slots_needed': 0,
+            'reason': (
+                f"Swap out {_format_count_diff(remove)}; add {_format_count_diff(add)}. "
+                f"Cash change {cash_gain_turn * 12:+,.0f}/day, resource value "
+                f"{rss_breakdown['resource_value_day']:+,.0f}/day."
+            ),
+        })
+
+    dedup = {}
+    for s in scenarios:
+        signature = tuple(sorted(s.get('final_counts', {}).items()))
+        if signature not in dedup or s['gain_per_day'] > dedup[signature]['gain_per_day']:
+            dedup[signature] = s
+    ranked = sorted(dedup.values(), key=lambda x: x.get('gain_per_day', 0), reverse=True)
+    pinned = [
+        s for s in ranked
+        if s.get('scenario') in ('no_resources', 'optimized_current_resources')
+    ]
+    picked = pinned[:]
+    for s in ranked:
+        if s in picked:
+            continue
+        picked.append(s)
+        if len(picked) >= 6:
+            break
+    return picked
+
+
+def _build_single_city_update(target_nation: dict, city_idx: int, prices: dict, colors: dict,
+                              seasonal_mod: dict, radiation: dict, treasures: list,
+                              baseline_rev: dict,
+                              city_purchase_cost: Optional[dict] = None,
+                              original_nation: Optional[dict] = None) -> list[dict]:
+    """Return exactly one final city update.
+
+    Processing order: Power → MMR → Resources/Manufacturing → Commerce/Civil.
+    Sets optimal nuclear power, applies target MMR, maxes existing resource
+    improvements in the city, then fills remaining slots with the best
+    cash-producing civil/commerce improvements.
+    Compares against the original (pre-target) city so MMR adds/removes show.
+    """
+    city = target_nation['cities'][city_idx]
+    city_name = city.get('name', f'City {city_idx + 1}')
+    infra = float(city.get('infrastructure', 0) or 0)
+    slots_total = _slots(infra)
+
+    # Use original city for before-comparison so MMR/resource/power changes show
+    original_city = (original_nation or target_nation)['cities'][city_idx]
+    before_counts = _city_counts(original_city, ECON_IMPS + POWER_IMPS + MILITARY_IMPS)
+
+    # Step 1: Power — optimal nuclear only
+    counts = {k: 0 for k in ECON_IMPS + POWER_IMPS + MILITARY_IMPS}
+    counts.update(_optimal_power_counts(infra))
+
+    # Step 2: MMR — apply target military counts from analysis_nation
+    for imp in MILITARY_IMPS:
+        counts[imp] = int(city.get(imp, 0) or 0)
+
+    resource_candidates = []
+    for imp in RAW_RESOURCE_IMPS | MANUFACTURING_IMPS:
+        current = int(city.get(imp, 0) or 0)
+        if current <= 0:
+            continue
+        limit = _improvement_limit(target_nation, imp)
+        resource_candidates.append({
+            'imp': imp,
+            'current': current,
+            'limit': limit,
+            'fullness': current / limit if limit else 0,
+        })
+    resource_candidates.sort(
+        key=lambda x: (-x['fullness'], -x['current'], x['limit'], IMP_DISPLAY.get(x['imp'], x['imp']))
+    )
+
+    locked_base = sum(counts.values())
+    if locked_base > slots_total:
+        return [{
+            'type': 'slot_conflict',
+            'scenario': 'final_city_update',
+            'title': 'Final city update',
+            'city': city_name,
+            'city_idx': city_idx,
+            'gain_per_turn': 0,
+            'gain_per_day': 0,
+            'cash_gain_per_day': 0,
+            'resource_value_day': 0,
+            'cost': 0,
+            'reason': (
+                f"Desired MMR and correct nuclear power need {locked_base} slots, "
+                f"but {infra:.0f} infra gives {slots_total} slots."
+            ),
+        }]
+
+    selected_resource_types = []
+    skipped_resource_types = []
+    for candidate in resource_candidates:
+        imp = candidate['imp']
+        limit = candidate['limit']
+        if sum(counts.values()) + limit <= slots_total:
+            counts[imp] = limit
+            selected_resource_types.append(imp)
+        else:
+            skipped_resource_types.append(imp)
+
+    counts = _best_greedy_econ_counts(
+        target_nation, city_idx, counts, slots_total,
+        prices, colors, seasonal_mod, radiation, treasures,
+        allowed=set(CIVIL_IMPS), metric='cash'
+    )
+
+    tn = _dc(target_nation)
+    _set_city_counts(tn['cities'][city_idx], counts)
+    after_rev_full = _rev_full(tn, prices, colors, seasonal_mod, radiation, treasures)
+    modifiers = calculate_nation_modifiers(target_nation)
+    before_stats = _city_stats(original_city, modifiers, seasonal_mod, radiation, target_nation)
+    after_stats = _city_stats(tn['cities'][city_idx], modifiers, seasonal_mod, radiation, target_nation)
+    before_resource_flows = _city_resource_flows_day(original_city, target_nation, modifiers, seasonal_mod, radiation)
+    after_resource_flows = _city_resource_flows_day(tn['cities'][city_idx], target_nation, modifiers, seasonal_mod, radiation)
+    remove, add = _diff_counts(before_counts, counts)
+    improvement_cost = _merge_cost_breakdowns(*[
+        _improvement_cost_breakdown(imp, qty, prices)
+        for imp, qty in add.items()
+    ])
+    cost_breakdown = _merge_cost_breakdowns(city_purchase_cost, improvement_cost)
+    gain_turn = after_rev_full.get('monetary_net_num', 0) - baseline_rev.get('monetary_net_num', 0)
+    cash_gain_turn = after_rev_full.get('net_cash_num', 0) - baseline_rev.get('net_cash_num', 0)
+    rss_breakdown = _resource_value_breakdown(baseline_rev, after_rev_full, prices)
+
+    resource_text = (
+        "no resource stack in this city"
+        if not selected_resource_types
+        else "max " + ', '.join(IMP_DISPLAY.get(imp, imp) for imp in selected_resource_types)
+    )
+    if skipped_resource_types:
+        resource_text += (
+            "; remove partial " +
+            ', '.join(IMP_DISPLAY.get(imp, imp) for imp in skipped_resource_types) +
+            " because there are not enough slots to max those stacks"
+        )
+    power = _power_audit(city)
+    power_text = "correct nuclear power" if not power['issues'] else '; '.join(power['issues'])
+
+    # Format military changes for reason text
+    military_remove = {k: v for k, v in remove.items() if k in MILITARY_IMPS}
+    military_add = {k: v for k, v in add.items() if k in MILITARY_IMPS}
+    mmr_text = ''
+    if military_remove:
+        mmr_text += f"remove extra {_format_count_diff(military_remove)}; "
+    if military_add:
+        mmr_text += f"build {_format_count_diff(military_add)}; "
+    if not military_remove and not military_add:
+        mmr_text = "current MMR OK; "
+
+    return [{
+        'type': 'swap_build',
+        'scenario': 'final_city_update',
+        'title': 'Final city update',
+        'city': city_name,
+        'city_idx': city_idx,
+        'from_slots_used': _used_slots(original_city),
+        'to_slots_used': sum(counts.values()),
+        'slots_total': slots_total,
+        'remove': remove,
+        'add': add,
+        'final_counts': {k: int(v or 0) for k, v in counts.items()},
+        'gain_per_turn': gain_turn,
+        'gain_per_day': gain_turn * 12,
+        'cash_gain_per_day': cash_gain_turn * 12,
+        'resource_value_day': rss_breakdown['resource_value_day'],
+        'resource_deltas_day': rss_breakdown['resource_deltas_day'],
+        'before_commerce': before_stats['commerce'],
+        'after_commerce': after_stats['commerce'],
+        'before_raw_commerce': before_stats['raw_commerce'],
+        'after_raw_commerce': after_stats['raw_commerce'],
+        'before_pollution': before_stats['pollution'],
+        'after_pollution': after_stats['pollution'],
+        'before_crime': before_stats['crime'],
+        'after_crime': after_stats['crime'],
+        'before_disease': before_stats['disease'],
+        'after_disease': after_stats['disease'],
+        'before_population': before_stats['population'],
+        'after_population': after_stats['population'],
+        'before_resource_flows_day': before_resource_flows,
+        'after_resource_flows_day': after_resource_flows,
+        'active_resource_projects': _active_resource_projects(target_nation),
+        'cost': cost_breakdown['total'],
+        'cost_breakdown': cost_breakdown,
+        'slots_needed': 0,
+        'reason': (
+            f"Final build order: Power → MMR → Resources/Manufacturing → Commerce/Civil. "
+            f"Power: {power_text}; "
+            f"MMR: {mmr_text}"
+            f"Resources: {resource_text}; "
+            f"Civil/commerce scored by full rev calc: capped commerce "
+            f"{before_stats['commerce']:.0f}->{after_stats['commerce']:.0f} "
+            f"(raw {before_stats['raw_commerce']:.0f}->{after_stats['raw_commerce']:.0f}), "
+            f"pollution {before_stats['pollution']:.0f}->{after_stats['pollution']:.0f}. "
+            f"Stadiums only stay when their commerce beats upkeep + pollution after caps. "
+            f"Resource stacking uses rev calc bonuses + active project modifiers. "
+            f"Cash change {cash_gain_turn * 12:+,.0f}/day, resource value "
+            f"{rss_breakdown['resource_value_day']:+,.0f}/day."
+        ),
+    }]
+
+
 # ── Core analysis ──────────────────────────────────────────────────────────────
 
 def analyze_revenue(nation: dict, prices: dict, colors: dict,
-                    seasonal_mod: dict, radiation: dict, treasures: list) -> dict:
+                    seasonal_mod: dict, radiation: dict, treasures: list,
+                    desired_infra: Optional[float] = None,
+                    desired_land: Optional[float] = None,
+                    desired_mmr: Optional[str] = None) -> dict:
     """
     Full revenue optimization analysis. Returns:
       current_net       — cash/turn baseline
@@ -395,8 +1087,10 @@ def analyze_revenue(nation: dict, prices: dict, colors: dict,
       project_suggestions — ranked project list with cost + payoff
       top_suggestions   — globally ranked flat list of all actions
     """
-    modifiers = calculate_nation_modifiers(nation)
-    base      = _rev(nation, prices, colors, seasonal_mod, radiation, treasures)
+    analysis_nation = _apply_targets(nation, desired_infra, desired_land, desired_mmr)
+    modifiers = calculate_nation_modifiers(analysis_nation)
+    base_full = _rev_full(analysis_nation, prices, colors, seasonal_mod, radiation, treasures)
+    base      = {'cash': base_full.get('net_cash_num', 0.0), 'monetary': base_full.get('monetary_net_num', 0.0)}
     cur_cash  = base['cash']
     cur_mon   = base['monetary']
 
@@ -404,11 +1098,11 @@ def analyze_revenue(nation: dict, prices: dict, colors: dict,
     all_suggestions:  List[dict] = []
 
     # ── Per-city analysis ──────────────────────────────────────────────────────
-    for city_idx, city in enumerate(nation.get('cities', [])):
+    for city_idx, city in enumerate(analysis_nation.get('cities', [])):
         infra     = city.get('infrastructure', 0)
         land      = city.get('land', 0)
         city_name = city.get('name', f'City {city_idx + 1}')
-        stats     = _city_stats(city, modifiers, seasonal_mod, radiation, nation)
+        stats     = _city_stats(city, modifiers, seasonal_mod, radiation, analysis_nation)
         slots_free = stats['slots_free']
         city_sugg: List[dict] = []
 
@@ -417,7 +1111,7 @@ def analyze_revenue(nation: dict, prices: dict, colors: dict,
         # Only suggest if they would actually help with current problems
         for imp in CIVIL_IMPS:
             cur_n = city.get(imp, 0)
-            limit = IMPROVEMENT_LIMITS[imp]
+            limit = _improvement_limit(analysis_nation, imp)
             if cur_n >= limit:
                 continue
             
@@ -444,7 +1138,7 @@ def analyze_revenue(nation: dict, prices: dict, colors: dict,
                 
             best_add, best_gain = 0, 0.0
             sim_city   = {k: v for k, v in city.items()}
-            sim_nation = _dc(nation)
+            sim_nation = _dc(analysis_nation)
             for n in range(1, limit - cur_n + 1):
                 if n > slots_free:
                     break
@@ -471,15 +1165,15 @@ def analyze_revenue(nation: dict, prices: dict, colors: dict,
         # Use monetary baseline — production value only shows up there
         # Only suggest if nation already produces the output OR has all inputs
         for imp, out_rss, req_inputs in RESOURCE_IMPS:
-            if not _produces(nation, out_rss) and not all(_produces(nation, r) for r in req_inputs):
+            if not _produces(analysis_nation, out_rss) and not all(_produces(analysis_nation, r) for r in req_inputs):
                 continue
             cur_n = city.get(imp, 0)
-            limit = IMPROVEMENT_LIMITS[imp]
+            limit = _improvement_limit(analysis_nation, imp)
             if cur_n >= limit:
                 continue
             best_add, best_gain = 0, 0.0
             sim_city   = {k: v for k, v in city.items()}
-            sim_nation = _dc(nation)
+            sim_nation = _dc(analysis_nation)
             for n in range(1, min(limit - cur_n, slots_free) + 1):
                 sim_city[imp] = cur_n + n
                 sim_nation['cities'][city_idx] = sim_city
@@ -503,16 +1197,16 @@ def analyze_revenue(nation: dict, prices: dict, colors: dict,
         # ── 2.6. Missing resource improvements (war damage detection) ───────────
         # Detect if they're missing resource improvements they should have based on their production
         for imp, out_rss, req_inputs in RESOURCE_IMPS:
-            if not (_produces(nation, out_rss) or all(_produces(nation, r) for r in req_inputs)):
+            if not (_produces(analysis_nation, out_rss) or all(_produces(analysis_nation, r) for r in req_inputs)):
                 continue
                 
             cur_n = city.get(imp, 0)
-            limit = IMPROVEMENT_LIMITS[imp]
+            limit = _improvement_limit(analysis_nation, imp)
             
             # Check if other cities have this improvement - if so, this city probably should too
             other_cities_have = any(
                 other_city.get(imp, 0) > 0 
-                for other_idx, other_city in enumerate(nation.get('cities', []))
+                for other_idx, other_city in enumerate(analysis_nation.get('cities', []))
                 if other_idx != city_idx
             )
             
@@ -521,14 +1215,14 @@ def analyze_revenue(nation: dict, prices: dict, colors: dict,
                 # Suggest rebuilding 1-2 based on what other cities have
                 avg_in_other_cities = sum(
                     other_city.get(imp, 0) 
-                    for other_idx, other_city in enumerate(nation.get('cities', []))
+                    for other_idx, other_city in enumerate(analysis_nation.get('cities', []))
                     if other_idx != city_idx
-                ) / max(1, len(nation.get('cities', [])) - 1)
+                ) / max(1, len(analysis_nation.get('cities', [])) - 1)
                 
                 suggested_rebuild = min(max(1, int(avg_in_other_cities)), min(3, slots_free))
                 
                 sim_city = {k: v for k, v in city.items()}
-                sim_nation = _dc(nation)
+                sim_nation = _dc(analysis_nation)
                 sim_city[imp] = suggested_rebuild
                 sim_nation['cities'][city_idx] = sim_city
                 gain = _rev(sim_nation, prices, colors, seasonal_mod, radiation, treasures)['monetary'] - cur_mon
@@ -558,7 +1252,7 @@ def analyze_revenue(nation: dict, prices: dict, colors: dict,
                 current_slots = _slots(infra)
                 slots_gained = target_slots - current_slots
                 if slots_gained >= needed_slots:
-                    tn = _dc(nation)
+                    tn = _dc(analysis_nation)
                     tn['cities'][city_idx]['infrastructure'] = float(target)
                     gain = _rev(tn, prices, colors, seasonal_mod, radiation, treasures)['cash'] - cur_cash
                     cost = calc_infra_value(infra, float(target))
@@ -585,7 +1279,7 @@ def analyze_revenue(nation: dict, prices: dict, colors: dict,
         best_land: Optional[dict] = None
         for land_add in [250, 500, 1000, 2000, 5000]:
             new_land = land + land_add
-            tn = _dc(nation)
+            tn = _dc(analysis_nation)
             tn['cities'][city_idx]['land'] = new_land
             gain = _rev(tn, prices, colors, seasonal_mod, radiation, treasures)['monetary'] - cur_mon
             cost = calc_land_value(land, new_land)
@@ -607,11 +1301,38 @@ def analyze_revenue(nation: dict, prices: dict, colors: dict,
         if best_land:
             city_sugg.append(best_land)
 
+        power = _power_audit(city)
+        if power['issues']:
+            tn = _dc(analysis_nation)
+            for p_imp, p_count in power['target'].items():
+                tn['cities'][city_idx][p_imp] = p_count
+            after = _rev_full(tn, prices, colors, seasonal_mod, radiation, treasures)
+            gain_turn = after.get('monetary_net_num', 0) - base_full.get('monetary_net_num', 0)
+            city_sugg.append({
+                'type': 'power', 'city': city_name, 'city_idx': city_idx,
+                'improvement': 'nuclear_power', 'add': power['target']['nuclear_power'],
+                'from': power['current'], 'to': power['target'],
+                'gain_per_turn': gain_turn, 'gain_per_day': gain_turn * 12,
+                'cost': 0, 'payoff_days': 0, 'slots_needed': 0,
+                'reason': (
+                    'Power audit: ' + '; '.join(power['issues']) +
+                    f'. Revenue change {gain_turn * 12:+,.0f}/day.'
+                ),
+            })
+
+        city_purchase_cost = _target_city_cost_breakdown(nation, analysis_nation, city_idx, prices)
+        build_scenarios = _build_single_city_update(
+            analysis_nation, city_idx, prices, colors, seasonal_mod, radiation, treasures,
+            base_full, city_purchase_cost, original_nation=nation
+        )
+        city_sugg = build_scenarios
+
         city_sugg.sort(key=lambda x: x['gain_per_day'], reverse=True)
         city_analyses.append({
             'name': city_name, 'city_idx': city_idx,
             'infra': infra, 'land': land,
             'stats': stats, 'suggestions': city_sugg,
+            'build_scenarios': build_scenarios,
         })
         all_suggestions.extend(city_sugg)
 
@@ -620,7 +1341,7 @@ def analyze_revenue(nation: dict, prices: dict, colors: dict,
     for flag, display, is_resource in ALL_PROJECTS:
         if nation.get(flag):
             continue
-        tn = _dc(nation)
+        tn = _dc(analysis_nation)
         tn[flag] = True
         rev = _rev(tn, prices, colors, seasonal_mod, radiation, treasures)
         gain = (rev['monetary'] - cur_mon) if is_resource else (rev['cash'] - cur_cash)
@@ -644,9 +1365,46 @@ def analyze_revenue(nation: dict, prices: dict, colors: dict,
     project_suggestions.sort(key=lambda x: (-x['gain_per_day'], x['cost']))
     all_suggestions.sort(key=lambda x: x['gain_per_day'], reverse=True)
 
+    optimized_nation = _dc(analysis_nation)
+    total_update_cost = _empty_cost_breakdown()
+    applied_final_updates = 0
+    for ca in city_analyses:
+        final = next((
+            s for s in ca.get('suggestions', [])
+            if s.get('scenario') == 'final_city_update' and s.get('final_counts')
+        ), None)
+        if not final:
+            continue
+        city = optimized_nation['cities'][final['city_idx']]
+        for imp in ECON_IMPS + POWER_IMPS + MILITARY_IMPS:
+            city[imp] = 0
+        for imp, count in final['final_counts'].items():
+            city[imp] = int(count or 0)
+        total_update_cost = _merge_cost_breakdowns(total_update_cost, final.get('cost_breakdown'))
+        applied_final_updates += 1
+    optimized_full = (
+        _rev_full(optimized_nation, prices, colors, seasonal_mod, radiation, treasures)
+        if applied_final_updates else base_full
+    )
+    optimized_cash = optimized_full.get('net_cash_num', cur_cash)
+    optimized_monetary = optimized_full.get('monetary_net_num', cur_mon)
+
     return {
         'current_net':      cur_cash,
         'current_monetary': cur_mon,
+        'optimized_net': optimized_cash,
+        'optimized_monetary': optimized_monetary,
+        'optimized_net_gain_day': (optimized_cash - cur_cash) * 12,
+        'optimized_monetary_gain_day': (optimized_monetary - cur_mon) * 12,
+        'optimized_updates_applied': applied_final_updates,
+        'before_revenue_full': base_full,
+        'after_revenue_full': optimized_full,
+        'total_update_cost': total_update_cost,
+        'target_settings': {
+            'desired_infra': desired_infra,
+            'desired_land': desired_land,
+            'desired_mmr': '/'.join(str(x) for x in _parse_mmr(desired_mmr)) if desired_mmr else None,
+        },
         'city_analyses':    city_analyses,
         'project_suggestions': project_suggestions,
         'top_suggestions':  all_suggestions,

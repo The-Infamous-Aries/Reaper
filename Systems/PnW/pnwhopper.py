@@ -53,6 +53,8 @@ PNW_COGS = {
         ("Systems.PnW.MA.offshore", "Offshore"),
         ("Systems.PnW.MA.rankings", "Rankings"),
         ("Systems.PnW.MA.compare_wars", "CompareWars"),
+        ("Systems.PnW.MA.spy", "SpyCog"),
+        ("Systems.PnW.MA.track", "TrackCog"),
     ],
     # Other Cogs
     "Other": [
@@ -61,6 +63,12 @@ PNW_COGS = {
         ("Systems.PnW.Other.activity", "Activity"),
         # ("Systems.PnW.timed_queries", "TimedQueries"),  # Moved to harvester's TimedQueriesComponent
         ("Systems.PnW.Other.theme", "ThemeCog")
+    ],
+    # Utility Cogs
+    "Util": [
+        ("Systems.PnW.Util.reaper_verify", "ReaperVerify"),
+        ("Systems.PnW.Util.self_verify",   "SelfVerify"),
+        ("Systems.PnW.Util.self_verify",   "AllianceAccess"),
     ]
 }
 
@@ -182,6 +190,9 @@ async def setup(bot: commands.Bot):
                     else:
                         instance = cog_class(bot)
 
+                elif category == "Util":
+                    instance = cog_class(bot)
+
                 await bot.add_cog(instance)
                 logger.info(f"Successfully loaded PnW cog: {class_name} ({category})")
                 loaded_count += 1
@@ -190,4 +201,3 @@ async def setup(bot: commands.Bot):
                 logger.error(f"Failed to load PnW cog '{class_name}' from '{module_path}' ({category}): {e}", exc_info=True)
 
     logger.info(f"PnW System Hopper complete. {loaded_count}/{total_cogs} components loaded across categories: {', '.join(PNW_COGS.keys())}")
-

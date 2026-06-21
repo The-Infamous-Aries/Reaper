@@ -34,8 +34,8 @@ class AuditManager(commands.Cog):
         self.logger = logging.getLogger(self.__class__.__name__)
         self.query_instance = query_instance
         self.calc_instance = calc_instance
-        self.default_alliance_id: Optional[int] = None
-        self.default_alliance_name: Optional[str] = None
+        self.default_alliance_id: int = NIGHTS_WATCH_ALLIANCE_ID
+        self.default_alliance_name: str = NIGHTS_WATCH_ALLIANCE_NAME
 
     # Dynamic autocomplete for mmr_mode: only suggest when view=="mmr"
     async def _mmr_mode_autocomplete(self, interaction: discord.Interaction, current: str):
@@ -44,16 +44,73 @@ class AuditManager(commands.Cog):
         except Exception:
             view_sel = None
         if view_sel == 'mmr':
-            base = [
-                app_commands.Choice(name="Basic", value="basic"),
-                app_commands.Choice(name="Max", value="max"),
-            ]
+            # Generate all MMR combinations: 0-5/0-5/0-5/0-3
+            choices = []
+            for b in range(0, 6):  # barracks 0-5
+                for f in range(0, 6):  # factory 0-5
+                    for a in range(0, 6):  # air 0-5
+                        for d in range(0, 4):  # drydock 0-3
+                            mmr_str = f"{b}/{f}/{a}/{d}"
+                            choices.append(app_commands.Choice(name=mmr_str, value=mmr_str))
+            
+            # Filter based on user input
             cur = (current or "").lower()
             if cur:
-                return [c for c in base if (cur in c.name.lower()) or (cur in c.value)]
-            return base
+                # Filter by matching the pattern
+                filtered = []
+                for c in choices:
+                    if cur in c.name.lower() or cur in c.value:
+                        filtered.append(c)
+                # Limit to 25 results to avoid overwhelming the UI
+                return filtered[:25]
+            # If no input, return first 25 combinations
+            return choices[:25]
         # When not in MMR view, no suggestions (keeps UI clean)
         return []
+
+    # Dynamic autocomplete for color: only suggest when view=="color"
+    async def _color_autocomplete(self, interaction: discord.Interaction, current: str):
+        """Autocomplete for color parameter - only shows when view is 'color'"""
+        try:
+            view_sel = getattr(interaction.namespace, 'view', None)
+        except Exception:
+            view_sel = None
+
+        if view_sel != 'color':
+            return []
+
+        # All game colors
+        all_colors = [
+            ("Beige", "beige"),
+            ("White", "white"),
+            ("Grey", "grey"),
+            ("Black", "black"),
+            ("Gold", "gold"),
+            ("Pink", "pink"),
+            ("Brown", "brown"),
+            ("Mint", "mint"),
+            ("Green", "green"),
+            ("Aqua", "aqua"),
+            ("Lavender", "lavender"),
+            ("Lime", "lime"),
+            ("Maroon", "maroon"),
+            ("Olive", "olive"),
+            ("Yellow", "yellow"),
+            ("Turquoise", "turquoise"),
+            ("Red", "red"),
+            ("Purple", "purple"),
+            ("Orange", "orange"),
+            ("Blue", "blue"),
+        ]
+
+        cur = (current or "").lower()
+        choices = []
+        for name, value in all_colors:
+            if not cur or cur in name.lower() or cur in value.lower():
+                choices.append(app_commands.Choice(name=name, value=value))
+            if len(choices) >= 25:
+                break
+        return choices
 
     async def _get_alliance_nations(self, alliance_id: int, force_refresh: bool = True) -> List[Dict[str, Any]]:
         """Use query instance to fetch nations."""
@@ -212,14 +269,38 @@ class AuditManager(commands.Cog):
         return chunks or ["None"]
 
     async def _audit_mmr_sync(self, active_members: List[Dict[str, Any]], mmr_mode: str) -> discord.Embed:
+        # Parse mmr_mode - can be "basic", "max", or custom format "b/f/a/d"
         if (mmr_mode or "basic") == "max":
             thresh = {"barracks": 5.0, "factory": 5.0, "air": 5.0, "drydock": 3.0}
             title = f"{emoji_mod.mention('max') or '⚙️'} MMR Build Audit — Max"
             note = "Shows ALL nations below 5/5/5/3 per-city average."
-        else:
-            thresh = {"barracks": 0.0, "factory": 2.0, "air": 5.0, "drydock": 1.0}
+        elif (mmr_mode or "basic") == "basic":
+            thresh = {"barracks": 0.0, "factory": 3.0, "air": 5.0, "drydock": 0.0}
             title = f"{emoji_mod.mention('min') or '⚙️'} MMR Build Audit — Basic"
-            note = "Shows nations below minimum 0/2/5/1 per-city average (more is fine)."
+            note = "Shows nations below minimum 0/3/5/0 per-city average (more is fine)."
+        else:
+            # Try to parse custom format "b/f/a/d"
+            try:
+                parts = (mmr_mode or "").split("/")
+                if len(parts) == 4:
+                    thresh = {
+                        "barracks": float(parts[0]),
+                        "factory": float(parts[1]),
+                        "air": float(parts[2]),
+                        "drydock": float(parts[3])
+                    }
+                    title = f"{emoji_mod.mention('max') or '⚙️'} MMR Build Audit — {mmr_mode}"
+                    note = f"Shows nations below {mmr_mode} per-city average."
+                else:
+                    # Fallback to basic if parsing fails
+                    thresh = {"barracks": 0.0, "factory": 3.0, "air": 5.0, "drydock": 0.0}
+                    title = f"{emoji_mod.mention('min') or '⚙️'} MMR Build Audit — Basic"
+                    note = "Shows nations below minimum 0/3/5/0 per-city average (more is fine)."
+            except Exception:
+                # Fallback to basic if parsing fails
+                thresh = {"barracks": 0.0, "factory": 3.0, "air": 5.0, "drydock": 0.0}
+                title = f"{emoji_mod.mention('min') or '⚙️'} MMR Build Audit — Basic"
+                note = "Shows nations below minimum 0/3/5/0 per-city average (more is fine)."
         EPSILON = 0.05
 
         def compute_mmr_avgs(n: Dict[str, Any]) -> Dict[str, float]:
@@ -480,16 +561,39 @@ class AuditManager(commands.Cog):
     @app_commands.describe(
         view="Select what to display: Inactives, Color, or MMR Build",
         alliance="Alliance name or ID",
-        mmr_mode="If MMR Build is selected, choose Basic or Max"
+        color="Target color for color audit (only when view is 'color')",
+        mmr_mode="Basic (0/3/5/0) if not specified otherwise pick a custom MMR (e.g., 3/2/5/0)"
     )
     @app_commands.choices(view=[
         app_commands.Choice(name="Inactives", value="inactives"),
         app_commands.Choice(name="Color", value="color"),
         app_commands.Choice(name="MMR Build", value="mmr"),
+    ],
+    color=[
+        app_commands.Choice(name="Beige", value="beige"),
+        app_commands.Choice(name="White", value="white"),
+        app_commands.Choice(name="Grey", value="grey"),
+        app_commands.Choice(name="Black", value="black"),
+        app_commands.Choice(name="Gold", value="gold"),
+        app_commands.Choice(name="Pink", value="pink"),
+        app_commands.Choice(name="Brown", value="brown"),
+        app_commands.Choice(name="Mint", value="mint"),
+        app_commands.Choice(name="Green", value="green"),
+        app_commands.Choice(name="Aqua", value="aqua"),
+        app_commands.Choice(name="Lavender", value="lavender"),
+        app_commands.Choice(name="Lime", value="lime"),
+        app_commands.Choice(name="Maroon", value="maroon"),
+        app_commands.Choice(name="Olive", value="olive"),
+        app_commands.Choice(name="Yellow", value="yellow"),
+        app_commands.Choice(name="Turquoise", value="turquoise"),
+        app_commands.Choice(name="Red", value="red"),
+        app_commands.Choice(name="Purple", value="purple"),
+        app_commands.Choice(name="Orange", value="orange"),
+        app_commands.Choice(name="Blue", value="blue"),
     ])
-    @app_commands.autocomplete(mmr_mode=_mmr_mode_autocomplete, alliance=_alliance_autocomplete)
     @commands.hybrid_command(name="audit", description="Audit alliance issues")  # type: ignore
-    async def audit_command(self, ctx: commands.Context, view: Literal["inactives", "color", "mmr"], alliance: Optional[str] = None, mmr_mode: Optional[Literal["basic", "max"]] = "basic"):
+    @app_commands.autocomplete(mmr_mode=_mmr_mode_autocomplete, alliance=_alliance_autocomplete, color=_color_autocomplete)
+    async def audit_command(self, ctx: commands.Context, view: Literal["inactives", "color", "mmr"], alliance: Optional[str] = None, color: Optional[str] = None, mmr_mode: Optional[str] = "basic"):
 
         """Generate an "Audit Issues" embed listing issue categories as nation links."""
         try:
@@ -620,11 +724,19 @@ class AuditManager(commands.Cog):
                     else:
                         await ctx.reply(embed=embed)
                     return
-            alliance_color: Optional[str] = None
+            # Get alliance color from API for reference
+            alliance_color_from_api: Optional[str] = None
             if center_id:
                 resolved_alliance_details = await self.query_instance.resolve_alliance(center_id)
                 if resolved_alliance_details:
-                    alliance_color = (resolved_alliance_details.get('color') or '').strip().upper()
+                    alliance_color_from_api = (resolved_alliance_details.get('color') or '').strip().upper()
+
+            # Use the selected color parameter if provided, otherwise fall back to alliance color
+            target_color: Optional[str] = None
+            if color:
+                target_color = color.strip().upper()
+            else:
+                target_color = alliance_color_from_api
 
             beige = [n for n in active_members if (n.get('color', '') or '').strip().upper() == 'BEIGE']
             grey = [n for n in active_members if (n.get('color', '') or '').strip().upper() in ('GREY', 'GRAY')]
@@ -632,15 +744,15 @@ class AuditManager(commands.Cog):
             correct_color_members: List[Dict[str, Any]] = []
             wrong_color_members: List[Dict[str, Any]] = []
 
-            if alliance_color:
-                correct_color_members = [n for n in active_members if (n.get('color', '') or '').strip().upper() == alliance_color]
-                # Wrong color members are those not matching alliance_color, and also not Beige or Grey
+            if target_color:
+                correct_color_members = [n for n in active_members if (n.get('color', '') or '').strip().upper() == target_color]
+                # Wrong color members are those not matching target_color, and also not Beige or Grey
                 wrong_color_members = [
                     n for n in active_members
-                    if (n.get('color', '') or '').strip().upper() not in (alliance_color, 'BEIGE', 'GREY', 'GRAY')
+                    if (n.get('color', '') or '').strip().upper() not in (target_color, 'BEIGE', 'GREY', 'GRAY')
                 ]
             else:
-                # Fallback if alliance color cannot be determined
+                # Fallback if no target color can be determined
                 wrong_color_members = [n for n in active_members if (n.get('color', '') or '').strip().upper() not in ('LIME', 'GREY', 'GRAY', 'BEIGE')]
 
 
@@ -674,11 +786,12 @@ class AuditManager(commands.Cog):
             elif view_key == "color":
                 await self._add_category_fields(embed, "Beige", "🩼", beige)
                 await self._add_category_fields(embed, "Grey", "⚪", grey)
-                if alliance_color:
-                    await self._add_category_fields(embed, f"Correct Color ({alliance_color})", "✅", [], count_only=len(correct_color_members))
+                if target_color:
+                    color_source = "(selected)" if color else "(alliance default)"
+                    await self._add_category_fields(embed, f"Correct Color ({target_color}) {color_source}", "✅", [], count_only=len(correct_color_members))
                     await self._add_category_fields(embed, "Wrong Color", "🎨", wrong_color_members)
                 else:
-                    embed.add_field(name="Color Audit", value="❌ Could not determine alliance color. Showing default 'Wrong Color' audit.", inline=False)
+                    embed.add_field(name="Color Audit", value="❌ Could not determine target color. Please specify a color or use an alliance with a known color.", inline=False)
                     await self._add_category_fields(embed, "Wrong Color (Default)", "🎨", wrong_color_members)
 
 

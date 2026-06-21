@@ -303,7 +303,18 @@ class Raids(commands.Cog):
             return 0.0
         try:
             from Systems.PnW.Util.rev_correct import calculate_full_revenue_with_query
-            result = await calculate_full_revenue_with_query(nation_data=nation, is_war=False)
+            
+            # Detect war status for correct military upkeep calculation
+            wars = nation.get('wars') or []
+            if wars:
+                at_war = any(w.get('turnsleft', 0) > 0 for w in wars)
+            else:
+                at_war = (
+                    (nation.get('offensive_wars_count') or 0) > 0 or
+                    (nation.get('defensive_wars_count') or 0) > 0
+                )
+            
+            result = await calculate_full_revenue_with_query(nation_data=nation, is_war=at_war)
             net_per_turn = float(result.get("gross_income") or 0.0)
         except Exception as e:
             self.logger.warning(f"Revenue calc failed for {nation.get('id')}: {e}")
@@ -370,7 +381,18 @@ class Raids(commands.Cog):
             if nation.get("cities"):
                 try:
                     from Systems.PnW.Util.rev_correct import calculate_full_revenue_with_query
-                    rev_result = await calculate_full_revenue_with_query(nation_data=nation, is_war=False)
+                    
+                    # Detect war status for correct military upkeep calculation
+                    wars = nation.get('wars') or []
+                    if wars:
+                        at_war = any(w.get('turnsleft', 0) > 0 for w in wars)
+                    else:
+                        at_war = (
+                            (nation.get('offensive_wars_count') or 0) > 0 or
+                            (nation.get('defensive_wars_count') or 0) > 0
+                        )
+                    
+                    rev_result = await calculate_full_revenue_with_query(nation_data=nation, is_war=at_war)
                     rss_pt = {r: float((rev_result.get("resources") or {}).get(r) or 0.0)
                               for r in RESOURCES_LIST}
                 except Exception as e:
