@@ -8,6 +8,7 @@ to nation data (like revenue processing).
 
 import asyncio
 import logging
+import copy
 from datetime import datetime, timezone, timedelta
 from typing import Any, Dict, List, Optional
 
@@ -89,6 +90,115 @@ class NationCache:
             del self._nations_cache[nation_id]
         if nation_id in self._cities_cache:
             del self._cities_cache[nation_id]
+
+    def upsert_nation(self, nation: Dict[str, Any], merge: bool = True) -> bool:
+        """Insert or merge a nation snapshot into the cache."""
+        nation_id = nation.get("id")
+        if not nation_id:
+            return False
+
+        nation_id = int(nation_id)
+        cached = self._nations_cache.get(nation_id, {}) if merge else {}
+        merged = dict(cached)
+        merged.update({k: copy.deepcopy(v) for k, v in nation.items() if k != "cities"})
+        merged["id"] = nation_id
+        self._nations_cache[nation_id] = merged
+
+        if "cities" in nation and isinstance(nation["cities"], list):
+            self.replace_cities(nation_id, nation["cities"])
+        return True
+
+    def delete_nation(self, nation_id: int) -> None:
+        """Remove a nation and all cached cities for it."""
+        self._nations_cache.pop(int(nation_id), None)
+        self._cities_cache.pop(int(nation_id), None)
+
+    def upsert_city(self, nation_id: int, city: Dict[str, Any]) -> bool:
+        """Insert or merge a city snapshot into the cache by city id."""
+        city_id = city.get("id")
+        if not city_id:
+            return False
+
+        nation_id = int(nation_id)
+        city_id = int(city_id)
+        cached_cities = list(self._cities_cache.get(nation_id, []))
+        city_copy = {k: copy.deepcopy(v) for k, v in city.items()}
+        city_copy["id"] = city_id
+        city_copy["nation_id"] = nation_id
+
+        for index, cached_city in enumerate(cached_cities):
+            if int(cached_city.get("id") or 0) == city_id:
+                merged = dict(cached_city)
+                merged.update(city_copy)
+                cached_cities[index] = merged
+                break
+        else:
+            cached_cities.append(city_copy)
+
+        self._cities_cache[nation_id] = cached_cities
+        return True
+
+    def delete_city(self, nation_id: int, city_id: int) -> bool:
+        """Remove one city from the cached city list for a nation."""
+        nation_id = int(nation_id)
+        city_id = int(city_id)
+        cached_cities = list(self._cities_cache.get(nation_id, []))
+        filtered = [
+            city for city in cached_cities
+            if int(city.get("id") or 0) != city_id
+        ]
+        self._cities_cache[nation_id] = filtered
+        return len(filtered) != len(cached_cities)
+
+    def replace_cities(self, nation_id: int, cities: List[Dict[str, Any]]) -> None:
+        """Replace the full cached city list for one nation."""
+        nation_id = int(nation_id)
+        self._cities_cache[nation_id] = [
+            {**copy.deepcopy(city), "nation_id": int(city.get("nation_id") or nation_id)}
+            for city in cities
+            if city.get("id")
+        ]
+
+    def increment_num_cities(self, nation_id: int, amount: int = 1) -> None:
+        """Increment cached num_cities for a nation if it is cached."""
+        nation = self._nations_cache.get(int(nation_id))
+        if not nation:
+            return
+        nation["num_cities"] = max(0, int(nation.get("num_cities") or 0) + int(amount))
+
+    def update_alliance_info(
+        self,
+        alliance_id: int,
+        alliance_name: Optional[str] = None,
+        alliance_flag: Optional[str] = None,
+    ) -> int:
+        """Update cached alliance fields for all nations in an alliance."""
+        updated = 0
+        alliance_id = int(alliance_id)
+        for nation in self._nations_cache.values():
+            if int(nation.get("alliance_id") or 0) != alliance_id:
+                continue
+            if alliance_name is not None:
+                nation["alliance_name"] = alliance_name
+            if alliance_flag is not None:
+                nation["alliance_flag"] = alliance_flag
+            updated += 1
+        return updated
+
+    def clear_alliance_info(self, alliance_id: int) -> int:
+        """Clear cached alliance fields for nations in a deleted alliance."""
+        updated = 0
+        alliance_id = int(alliance_id)
+        for nation in self._nations_cache.values():
+            if int(nation.get("alliance_id") or 0) != alliance_id:
+                continue
+            nation["alliance_id"] = 0
+            nation["alliance_name"] = None
+            nation["alliance_flag"] = None
+            nation["alliance_position"] = None
+            nation["alliance_seniority"] = None
+            updated += 1
+        return updated
     
     def invalidate_all(self):
         """Invalidate the entire cache (force reload on next access)."""

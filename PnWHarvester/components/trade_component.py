@@ -2,11 +2,11 @@
 TradeComponent — GPP component for trade event processing.
 
 Sub-components:
-- TradeEventProcessor: Handles trade/update events (only completed trades)
+- TradeEventProcessor: Handles trade/update events and processes accepted trades
 - TradeNewsGenerator: Generates news events for completed trades
 
 This component writes to HoldingsDB and generates news for trade completions.
-Only processes trades that are actually completed (have accept_date), not when posted.
+Only processes trades that are actually completed (accepted/date_accepted), not posted offers.
 """
 
 import asyncio
@@ -19,23 +19,18 @@ import pnwkit
 from pnwkit.new import QueryKit
 
 from PnWHarvester.core.activity_tracker import ActivityTracker
+from PnWHarvester.core.pnwkit_compat import close_querykit, patch_pnwkit
+from PnWHarvester.components.trade_utils import (
+    normalize_trade_event,
+    normalized_trade_to_news_payload,
+    obj_to_dict,
+)
+
+patch_pnwkit()
 
 logger = logging.getLogger(__name__)
 
-_RESOURCES = (
-    "coal", "oil", "uranium", "iron", "bauxite", "lead",
-    "gasoline", "munitions", "steel", "aluminum", "food",
-)
-
-
-def _obj_to_dict(obj: Any) -> Dict[str, Any]:
-    """Convert objects to dictionaries safely."""
-    if hasattr(obj, "to_dict"):
-        return obj.to_dict()
-    if isinstance(obj, dict):
-        return dict(obj)
-    return vars(obj)
-
+_obj_to_dict = obj_to_dict
 
 class TradeEventProcessor:
     """Processes trade/update events for completed trades only."""
@@ -64,8 +59,8 @@ class TradeEventProcessor:
         """
         Check if a trade is actually completed.
         
-        With the buy_or_sell=1 subscription filter, we only receive completed trades
-        (actual marketplace transactions). We still validate to ensure data integrity.
+        Live code below overrides this legacy helper with accepted/date_accepted
+        validation; this block is retained only for compatibility during import.
         
         A trade is completed if:
         - It is not rejected
@@ -86,9 +81,8 @@ class TradeEventProcessor:
         """
         Process a trade/update event.
         
-        With the buy_or_sell=1 subscription filter, we only receive completed trades
-        (actual marketplace transactions). All received events are processed for
-        holdings updates and news generation.
+        Live code below overrides this legacy method with canonical
+        buy_or_sell/accepted normalization.
         
         Args:
             event: The pnwkit event object
@@ -113,6 +107,13 @@ class TradeEventProcessor:
         is_completed = self._is_trade_completed(trade)
         
         if is_completed:
+            if self.holdings_db and hasattr(self.holdings_db, "claim_processed_event"):
+                claimed = await self.holdings_db.claim_processed_event("trade_completed", trade_id_int)
+                if not claimed:
+                    self._mark_processed(trade_id_int)
+                    logger.debug(f"trade/update → duplicate persisted {trade_id}, skipping")
+                    return {"processed": 0, "skipped": 1, "duplicate": True}
+
             # Update HoldingsDB for completed trades
             if self.holdings_db:
                 await self._update_holdings_for_trade(trade)
@@ -212,13 +213,162 @@ class TradeEventProcessor:
                 logger.error(f"news trade_completed error: {e}", exc_info=True)
 
 
+    def _is_trade_completed(self, trade: Dict[str, Any]) -> bool:
+        """
+        Check if a trade is actually completed.
+
+        trade/update can fire for any row update. A completed trade has
+        accepted/date_accepted and is not rejected/cancelled.
+        """
+        normalized = normalize_trade_event(trade)
+        return bool(normalized and normalized.get("completed"))
+
+    async def _normalize_and_enrich_trade(self, trade: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        normalized = normalize_trade_event(trade)
+        if not normalized:
+            return None
+
+        if self.holdings_db and hasattr(self.holdings_db, "get_trade_identities"):
+            identities = await self.holdings_db.get_trade_identities(
+                [normalized.get("buyer_id"), normalized.get("seller_id")]
+            )
+            normalized = normalize_trade_event(trade, identities)
+        return normalized
+
+    async def _already_legacy_processed(self, trade_id: int) -> bool:
+        if not self.holdings_db or not hasattr(self.holdings_db, "is_processed_event"):
+            return False
+        return await self.holdings_db.is_processed_event("trade_completed", trade_id)
+
+    async def _claim(self, event_type: str, trade_id: int) -> bool:
+        if not self.holdings_db or not hasattr(self.holdings_db, "claim_processed_event"):
+            return True
+        return await self.holdings_db.claim_processed_event(event_type, trade_id)
+
+    async def _unclaim(self, event_type: str, trade_id: int) -> None:
+        if self.holdings_db and hasattr(self.holdings_db, "unclaim_processed_event"):
+            await self.holdings_db.unclaim_processed_event(event_type, trade_id)
+
+    async def process_trade_update(self, event: Any) -> Dict[str, Any]:
+        """Process a completed trade/update event using canonical buyer/seller mapping."""
+        trade = obj_to_dict(event)
+        trade_id = trade.get("id")
+        if not trade_id:
+            return {"processed": 0, "skipped": 1, "reason": "no_id"}
+
+        trade_id_int = int(trade_id)
+        if self._is_duplicate(trade_id_int):
+            logger.debug(f"trade/update -> duplicate {trade_id}, skipping")
+            return {"processed": 0, "skipped": 1, "duplicate": True}
+
+        normalized = await self._normalize_and_enrich_trade(trade)
+        if not normalized:
+            logger.debug(f"trade/update -> {trade_id} skipped: unable to normalize payload")
+            self._mark_processed(trade_id_int)
+            return {"processed": 0, "skipped": 1, "reason": "invalid_trade"}
+
+        if not normalized.get("completed"):
+            logger.debug(f"trade/update -> {trade_id} skipped: not completed")
+            self._mark_processed(trade_id_int)
+            return {"processed": 0, "skipped": 1, "completed": False}
+
+        if not normalized.get("buyer_id") or not normalized.get("seller_id"):
+            logger.warning(
+                f"trade/update -> {trade_id} skipped: completed trade missing "
+                "buyer/seller identity; timed query backfill will retry from GraphQL"
+            )
+            return {
+                "processed": 0,
+                "skipped": 1,
+                "completed": True,
+                "reason": "missing_buyer_seller_identity",
+            }
+
+        if await self._already_legacy_processed(trade_id_int):
+            self._mark_processed(trade_id_int)
+            logger.debug(f"trade/update -> duplicate legacy trade_completed {trade_id}, skipping")
+            return {"processed": 0, "skipped": 1, "duplicate": True, "legacy": True}
+
+        holdings_updated = False
+        news_generated = False
+
+        if self.holdings_db and await self._claim("trade_holdings_applied", trade_id_int):
+            holdings_updated = await self._update_holdings_for_trade(normalized)
+            if not holdings_updated:
+                await self._unclaim("trade_holdings_applied", trade_id_int)
+        elif self.holdings_db:
+            logger.debug(f"trade/update -> holdings already applied for trade {trade_id}")
+
+        if self.news_component and await self._claim("trade_news_generated", trade_id_int):
+            news_generated = await self._generate_trade_news(normalized)
+            if not news_generated:
+                await self._unclaim("trade_news_generated", trade_id_int)
+        elif self.news_component:
+            logger.debug(f"trade/update -> news already generated for trade {trade_id}")
+
+        logger.info(
+            f"trade/update -> {trade_id} -> completed "
+            f"holdings_updated={holdings_updated} news_generated={news_generated}"
+        )
+        self._mark_processed(trade_id_int)
+        return {
+            "processed": 1,
+            "skipped": 0,
+            "completed": True,
+            "holdings_updated": holdings_updated,
+            "news_generated": news_generated,
+        }
+
+    async def _update_holdings_for_trade(self, trade: Dict[str, Any]) -> bool:
+        """Update holdings for a completed trade."""
+        if not self.holdings_db:
+            return False
+        try:
+            buyer = trade.get("buyer") or {}
+            seller = trade.get("seller") or {}
+            buyer_id = trade.get("buyer_id")
+            seller_id = trade.get("seller_id")
+            if not buyer_id or not seller_id:
+                logger.warning(f"Trade {trade.get('id')} missing buyer/seller ids, skipping holdings update")
+                return False
+
+            return await self.holdings_db.apply_trade_completion(
+                buyer_id=int(buyer_id),
+                seller_id=int(seller_id),
+                money_amount=float(trade.get("money_amount") or 0),
+                resources=trade.get("resources_traded") or {},
+                trade_date=trade.get("date_accepted") or trade.get("date"),
+                buyer_name=buyer.get("name"),
+                seller_name=seller.get("name"),
+            )
+        except Exception as e:
+            logger.error(f"Failed to update holdings for trade {trade.get('id')}: {e}", exc_info=True)
+            return False
+
+    async def _generate_trade_news(self, trade: Dict[str, Any]) -> bool:
+        """Generate news event for a completed trade."""
+        if not self.news_component:
+            return False
+        try:
+            from PnWHarvester.subscriptions.trade_news_components import TradeNewsGenerator
+            generator = TradeNewsGenerator(self.news_component)
+            result = await generator.generate_trade_completed_news(
+                normalized_trade_to_news_payload(trade)
+            )
+            logger.info(f"trade/update -> {trade.get('id')} -> News generation result: {result}")
+            return bool(result.get("generated"))
+        except Exception as e:
+            logger.error(f"news trade_completed error: {e}", exc_info=True)
+            return False
+
+
 class TradeComponent:
     """
     GPP component for trade event processing.
     
     Orchestrates the trade event processor and manages WebSocket subscription
-    for trade/update events. Uses buy_or_sell=1 filter to receive only completed
-    marketplace transactions (actual buys/sells), not posted offers.
+    for trade/update events. The subscription receives trade row updates and
+    this component processes only accepted marketplace transactions.
     """
     
     def __init__(
@@ -285,9 +435,9 @@ class TradeComponent:
         """Listen for trade/update events."""
         subscription_name = "trade/update"
         try:
-            logger.info("Attempting to subscribe to trade/update with buy_or_sell=1 filter...")
-            subscription = await self.kit.subscribe("trade", "update", {"buy_or_sell": 1})
-            logger.info("trade/update subscription active (completed trades only → Holdings.db + News)")
+            logger.info("Attempting to subscribe to trade/update...")
+            subscription = await self.kit.subscribe("trade", "update")
+            logger.info("trade/update subscription active (accepted trades -> Holdings.db + News)")
 
             event_count = 0
             async for event in subscription:
@@ -296,15 +446,24 @@ class TradeComponent:
                 try:
                     self.activity_tracker.record_message(subscription_name)
                     event_count += 1
-                    trade = _obj_to_dict(event)
+                    trade = obj_to_dict(event)
                     trade_id = trade.get("id")
-                    is_buying = trade.get("buying", False)
-                    is_selling = trade.get("selling", False)
+                    buy_or_sell = trade.get("buy_or_sell")
+                    accepted = trade.get("accepted")
+                    date_accepted = trade.get("date_accepted") or trade.get("accept_date")
                     
                     if event_count % 100 == 0:
-                        logger.info(f"trade/update: received {event_count} events (last: id={trade_id}, buying={is_buying}, selling={is_selling})")
+                        logger.info(
+                            f"trade/update: received {event_count} events "
+                            f"(last: id={trade_id}, buy_or_sell={buy_or_sell}, "
+                            f"accepted={accepted}, date_accepted={date_accepted})"
+                        )
                     else:
-                        logger.debug(f"trade/update received: id={trade_id}, buying={is_buying}, selling={is_selling}")
+                        logger.debug(
+                            f"trade/update received: id={trade_id}, "
+                            f"buy_or_sell={buy_or_sell}, accepted={accepted}, "
+                            f"date_accepted={date_accepted}"
+                        )
                     
                     await self.process_trade_update(event)
                 except Exception as e:
@@ -335,7 +494,7 @@ class TradeComponent:
         if self.websocket_manager:
             # Register subscription with shared manager
             await self.websocket_manager.subscribe(
-                "trade", "update", {"buy_or_sell": 1},
+                "trade", "update", {},
                 self.process_trade_update
             )
             logger.info("TradeComponent started (using SharedWebSocketManager)")
@@ -418,39 +577,5 @@ class TradeComponent:
     
     async def _close_kit_socket(self):
         """Close the pnwkit socket to avoid pending task warnings."""
-        if not hasattr(self, 'kit') or self.kit is None:
-            return
-            
-        socket = getattr(self.kit, "socket", None)
-        if socket is None:
-            return
-            
-        tasks_to_cancel = []
-        for attr in ("task", "ping_pong_task", "_heartbeat_task"):
-            t = getattr(socket, attr, None)
-            if t is not None and not t.done():
-                tasks_to_cancel.append(t)
-                t.cancel()
-                
-        if tasks_to_cancel:
-            try:
-                await asyncio.gather(*tasks_to_cancel, return_exceptions=True)
-            except Exception as e:
-                logger.warning(f"Error cancelling socket tasks: {e}")
-                
-        try:
-            # Close WebSocket connection if it exists
-            if hasattr(socket, 'ws') and socket.ws and not socket.ws.closed:
-                await socket.ws.close()
-        except Exception as e:
-            logger.debug(f"Error closing WebSocket: {e}")
-
-        # Do NOT close kit.aiohttp_session here. pnwkit spawns untracked
-        # handle_socket_close() tasks that hold a reference to the session and
-        # call reconnect() on it. Closing the session races with those tasks
-        # causing RuntimeError('Session is closed'). The session will be
-        # garbage-collected harmlessly once those tasks finish.
-
-        # Clear references
-        self.kit.socket = None
+        await close_querykit(getattr(self, "kit", None))
         self.kit = None

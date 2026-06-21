@@ -38,8 +38,7 @@ class TradeNewsGenerator:
         """
         Generate news for a completed trade.
         
-        With the buy_or_sell=1 subscription filter, all received events are
-        actual marketplace transactions (completed trades), not posted offers.
+        Callers pass only accepted marketplace transactions, not posted offers.
         """
         try:
             # Extract buyer and seller information
@@ -150,16 +149,30 @@ class TradeNewsGenerator:
             # Get trade date
             trade_date = trade.get("accept_date") or trade.get("date")
             trade_date_str = str(trade_date).replace("+00:00", "").strip() if trade_date else None
+
+            if not buyer_id or not seller_id:
+                logger.warning(
+                    "Trade %s missing buyer/seller ids, skipping news generation",
+                    trade.get("id"),
+                )
+                return {
+                    "status": "skipped",
+                    "reason": "missing_buyer_seller_identity",
+                    "generated": False,
+                    "trade_id": trade.get("id"),
+                    "buyer_id": buyer_id,
+                    "seller_id": seller_id,
+                }
             
             # Generate news
-            await nw.record_trade_completed(
-                buyer_id=int(buyer_id) if buyer_id else 0,
+            recorded = await nw.record_trade_completed(
+                buyer_id=int(buyer_id),
                 buyer_name=buyer_name,
                 buyer_flag=buyer_flag,
                 buyer_alliance_id=int(buyer_alliance_id) if buyer_alliance_id else None,
                 buyer_alliance_name=buyer_alliance_name,
                 buyer_alliance_flag=buyer_alliance_flag,
-                seller_id=int(seller_id) if seller_id else 0,
+                seller_id=int(seller_id),
                 seller_name=seller_name,
                 seller_flag=seller_flag,
                 seller_alliance_id=int(seller_alliance_id) if seller_alliance_id else None,
@@ -170,6 +183,8 @@ class TradeNewsGenerator:
                 price_per_unit=price_per_unit,
                 event_date=trade_date_str,
             )
+            if not recorded:
+                return {"status": "error", "reason": "record_event_failed", "generated": False}
             
             return {
                 "status": "generated",

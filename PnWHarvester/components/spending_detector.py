@@ -87,7 +87,7 @@ class SpendingDetector:
             # News: city purchase
             try:
                 import PnWHarvester.db.news_writer as _nw
-                asyncio.create_task(_nw.record_city_purchase(
+                await _nw.record_city_purchase(
                     nation_id=nation_id,
                     nation_name=nation_name,
                     nation_flag=old_nation.get("flag"),
@@ -98,7 +98,7 @@ class SpendingDetector:
                     new_cities=new_num_cities,
                     cash_cost=total_city_cost,
                     event_date=ev_date,
-                ))
+                )
             except Exception as _ne:
                 logger.debug(f"news city_purchase: {_ne}")
     
@@ -160,7 +160,7 @@ class SpendingDetector:
                 try:
                     import PnWHarvester.db.news_writer as _nw
                     proj_names = _nw._detect_projects_purchased(old_nation, new_nation)
-                    asyncio.create_task(_nw.record_project_purchase(
+                    await _nw.record_project_purchase(
                         nation_id=nation_id,
                         nation_name=nation_name,
                         nation_flag=new_nation.get("flag"),
@@ -171,7 +171,7 @@ class SpendingDetector:
                         cash_cost=proj_cost,
                         resource_costs=proj_rss if proj_rss else None,
                         event_date=ev_date,
-                    ))
+                    )
                 except Exception as _ne:
                     logger.debug(f"news project_purchase: {_ne}")
         
@@ -285,7 +285,7 @@ class SpendingDetector:
                     _delta = max(0, _after - _before)
                     if _delta > 0:
                         _imps_built[_col] = _delta
-                asyncio.create_task(_nw.record_city_upgrade(
+                await _nw.record_city_upgrade(
                     nation_id=nation_id,
                     nation_name=nation_name,
                     nation_flag=_nd.get("flag"),
@@ -306,6 +306,6 @@ class SpendingDetector:
                     infra_after=new_infra if new_infra > old_infra else None,
                     land_before=old_land if new_land > old_land else None,
                     land_after=new_land if new_land > old_land else None,
-                ))
+                )
             except Exception as _ne:
                 logger.debug(f"news city_upgrade: {_ne}")

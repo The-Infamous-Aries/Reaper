@@ -170,13 +170,12 @@ class TreatiesDB(BaseDB):
         try:
             def _do():
                 with self._get_connection() as conn:
-                    row = conn.execute(
+                    cur = conn.execute(
                         "SELECT * FROM treaties WHERE id=?", (treaty_id,)
-                    ).fetchone()
+                    )
+                    row = cur.fetchone()
                     if row:
-                        cols = [d[0] for d in conn.execute(
-                            "SELECT * FROM treaties WHERE id=?", (treaty_id,)
-                        ).description or []]
+                        cols = [d[0] for d in cur.description]
                         return dict(zip(cols, row))
                     return None
             return await self._run_sync(_do)
@@ -189,12 +188,13 @@ class TreatiesDB(BaseDB):
         try:
             def _do():
                 with self._get_connection() as conn:
-                    rows = conn.execute(
+                    cur = conn.execute(
                         "SELECT * FROM treaties WHERE active=1 ORDER BY date DESC"
-                    ).fetchall()
-                    cols = [d[0] for d in conn.execute(
-                        "SELECT * FROM treaties WHERE active=1"
-                    ).description or []] if rows else []
+                    )
+                    rows = cur.fetchall()
+                    if not rows:
+                        return []
+                    cols = [d[0] for d in cur.description]
                     return [dict(zip(cols, r)) for r in rows]
             return await self._run_sync(_do)
         except Exception as e:
@@ -206,13 +206,14 @@ class TreatiesDB(BaseDB):
         try:
             def _do():
                 with self._get_connection() as conn:
-                    rows = conn.execute(
+                    cur = conn.execute(
                         "SELECT * FROM treaties WHERE active=1 AND (alliance1_id=? OR alliance2_id=?) ORDER BY date DESC",
                         (alliance_id, alliance_id)
-                    ).fetchall()
-                    cols = [d[0] for d in conn.execute(
-                        "SELECT * FROM treaties WHERE active=1 LIMIT 1"
-                    ).description or []] if rows else []
+                    )
+                    rows = cur.fetchall()
+                    if not rows:
+                        return []
+                    cols = [d[0] for d in cur.description]
                     return [dict(zip(cols, r)) for r in rows]
             return await self._run_sync(_do)
         except Exception as e:

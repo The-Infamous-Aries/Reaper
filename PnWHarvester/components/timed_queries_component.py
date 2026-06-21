@@ -17,6 +17,10 @@ from datetime import datetime, timezone, timedelta
 from typing import Any, Dict, List, Optional
 
 from PnWHarvester.core.activity_tracker import ActivityTracker
+from PnWHarvester.components.trade_utils import (
+    normalize_trade_event,
+    normalized_trade_to_news_payload,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -177,65 +181,83 @@ class TimedQueriesProcessor:
         """
         try:
             cutoff = datetime.now(timezone.utc) - timedelta(minutes=minutes_back)
-            after_str = cutoff.strftime("%Y-%m-%d %H:%M:%S")
-            
-            # Use date_accepted filter to only get trades accepted in the last N minutes
-            # This ensures we don't re-process old trades on restart
-            gql = f"""
-            query {{
-              trades(
-                first: 100
-                accepted: true
-              ) {{
-                data {{
-                  id
-                  date
-                  sender_id
-                  receiver_id
-                  offer_resource
-                  offer_amount
-                  buy_or_sell
-                  price
-                  date_accepted
-                  sender {{
-                    id
-                    nation_name
-                    flag
-                    alliance {{ id name flag }}
-                  }}
-                  receiver {{
-                    id
-                    nation_name
-                    flag
-                    alliance {{ id name flag }}
-                  }}
-                }}
-              }}
-            }}
-            """
-            
-            raw = await self.query._make_graphql_request(gql, timeout=60)
-            block = (raw or {}).get("trades") or {}
-            all_trades = block.get("data") or []
-            
-            # Filter to only trades accepted in the last N minutes
             cutoff_timestamp = int(cutoff.timestamp())
             filtered_trades = []
-            for trade in all_trades:
-                date_accepted = trade.get("date_accepted")
-                if date_accepted:
-                    # Parse ISO format datetime
+            all_seen = 0
+            page = 1
+            max_pages = 20
+            reached_cutoff = False
+
+            while page <= max_pages and not reached_cutoff:
+                gql = f"""
+                query {{
+                  trades(
+                    first: 500
+                    page: {page}
+                    accepted: true
+                    orderBy: {{ column: ID, order: DESC }}
+                  ) {{
+                    paginatorInfo {{ hasMorePages currentPage lastPage total }}
+                    data {{
+                      id
+                      date
+                      sender_id
+                      receiver_id
+                      offer_resource
+                      offer_amount
+                      buy_or_sell
+                      price
+                      accepted
+                      date_accepted
+                      sender {{
+                        id
+                        nation_name
+                        flag
+                        alliance {{ id name flag }}
+                      }}
+                      receiver {{
+                        id
+                        nation_name
+                        flag
+                        alliance {{ id name flag }}
+                      }}
+                    }}
+                  }}
+                }}
+                """
+
+                raw = await self.query._make_graphql_request(gql, timeout=60)
+                block = (raw or {}).get("trades") or {}
+                page_trades = block.get("data") or []
+                all_seen += len(page_trades)
+
+                for trade in page_trades:
+                    date_accepted = trade.get("date_accepted")
+                    if not date_accepted:
+                        continue
                     from datetime import datetime as dt
                     try:
-                        accepted_dt = dt.fromisoformat(date_accepted.replace('Z', '+00:00'))
+                        accepted_dt = dt.fromisoformat(str(date_accepted).replace("Z", "+00:00"))
+                        if accepted_dt.tzinfo is None:
+                            accepted_dt = accepted_dt.replace(tzinfo=timezone.utc)
                         accepted_timestamp = int(accepted_dt.timestamp())
-                        if accepted_timestamp >= cutoff_timestamp:
-                            filtered_trades.append(trade)
                     except (ValueError, AttributeError):
-                        # If we can't parse the date, skip this trade
                         continue
+
+                    if accepted_timestamp >= cutoff_timestamp:
+                        filtered_trades.append(trade)
+                    else:
+                        reached_cutoff = True
+
+                paginator = block.get("paginatorInfo") or {}
+                if not paginator.get("hasMorePages"):
+                    break
+                page += 1
             
-            logger.info(f"Fetched {len(filtered_trades)} completed trades accepted in the last {minutes_back} minutes (from {len(all_trades)} total)")
+            logger.info(
+                f"Fetched {len(filtered_trades)} completed trades accepted in the last "
+                f"{minutes_back} minutes (scanned {all_seen} accepted trades across {page} page(s))"
+            )
             return filtered_trades
             
         except Exception as e:
@@ -252,155 +274,12 @@ class TimedQueriesProcessor:
         Returns:
             Trade data in format expected by TradeNewsGenerator
         """
-        # Extract basic trade info
-        trade_id = trade.get("id")
-        date_str = trade.get("date")
-        date_accepted_str = trade.get("date_accepted")
-        offer_resource = trade.get("offer_resource")
-        offer_amount = trade.get("offer_amount")
-        buy_or_sell = trade.get("buy_or_sell")
-        price = trade.get("price")
-        
-        # Extract sender (poster) info
-        sender = trade.get("sender") or {}
-        sender_id = sender.get("id")
-        sender_name = sender.get("nation_name")
-        sender_flag = sender.get("flag")
-        sender_alliance = sender.get("alliance") or {}
-        sender_alliance_id = sender_alliance.get("id")
-        sender_alliance_name = sender_alliance.get("name")
-        sender_alliance_flag = sender_alliance.get("flag")
-        
-        # Extract receiver (buyer) info
-        receiver = trade.get("receiver") or {}
-        receiver_id = receiver.get("id")
-        receiver_name = receiver.get("nation_name")
-        receiver_flag = receiver.get("flag")
-        receiver_alliance = receiver.get("alliance") or {}
-        receiver_alliance_id = receiver_alliance.get("id")
-        receiver_alliance_name = receiver_alliance.get("name")
-        receiver_alliance_flag = receiver_alliance.get("flag")
-        
-        # Determine direction and construct trade dict
-        # In the API, sender is always the poster, receiver is the buyer
-        # buy_or_sell indicates what the poster is doing
-        
-        if buy_or_sell == "sell":
-            # Poster is selling, receiver is buying
-            seller_id = sender_id
-            seller_name = sender_name
-            seller_flag = sender_flag
-            seller_alliance_id = sender_alliance_id
-            seller_alliance_name = sender_alliance_name
-            seller_alliance_flag = sender_alliance_flag
-            
-            buyer_id = receiver_id
-            buyer_name = receiver_name
-            buyer_flag = receiver_flag
-            buyer_alliance_id = receiver_alliance_id
-            buyer_alliance_name = receiver_alliance_name
-            buyer_alliance_flag = receiver_alliance_flag
-        else:
-            # Poster is buying, receiver is selling
-            buyer_id = sender_id
-            buyer_name = sender_name
-            buyer_flag = sender_flag
-            buyer_alliance_id = sender_alliance_id
-            buyer_alliance_name = sender_alliance_name
-            buyer_alliance_flag = sender_alliance_flag
-            
-            seller_id = receiver_id
-            seller_name = receiver_name
-            seller_flag = receiver_flag
-            seller_alliance_id = receiver_alliance_id
-            seller_alliance_name = receiver_alliance_name
-            seller_alliance_flag = receiver_alliance_flag
-        
-        # Calculate money amount
-        money_amount = float(offer_amount or 0) * float(price or 0)
-        
-        # Build resource dict
-        resources_traded = {r: 0.0 for r in RESOURCES}
-        if offer_resource:
-            resources_traded[offer_resource.lower()] = float(offer_amount or 0)
-        
-        # Calculate price per unit
-        total_resources = sum(resources_traded.values())
-        price_per_unit = money_amount / total_resources if total_resources > 0 else 0
-        
-        # Construct trade dict in TradeNewsGenerator format
-        # TradeNewsGenerator expects:
-        # - For buying trades: nation is the buyer, seller_nation is the seller
-        # - For selling trades: nation is the seller, buyer_nation is the buyer
-        
-        if buy_or_sell == "buy":
-            # Poster is buying: nation is buyer, seller_nation is seller
-            trade_dict = {
-                "id": trade_id,
-                "date": date_str,
-                "accept_date": date_accepted_str,
-                "buying": True,
-                "selling": False,
-                "money": money_amount,
-                "nation": {
-                    "id": buyer_id,
-                    "nation_name": buyer_name,
-                    "flag": buyer_flag,
-                    "alliance": {
-                        "id": buyer_alliance_id,
-                        "name": buyer_alliance_name,
-                        "flag": buyer_alliance_flag,
-                    } if buyer_alliance_id else None,
-                },
-                "seller_nation": {
-                    "id": seller_id,
-                    "nation_name": seller_name,
-                    "flag": seller_flag,
-                    "alliance": {
-                        "id": seller_alliance_id,
-                        "name": seller_alliance_name,
-                        "flag": seller_alliance_flag,
-                    } if seller_alliance_id else None,
-                },
-            }
-        else:
-            # Poster is selling: nation is seller, buyer_nation is buyer
-            trade_dict = {
-                "id": trade_id,
-                "date": date_str,
-                "accept_date": date_accepted_str,
-                "buying": False,
-                "selling": True,
-                "money": money_amount,
-                "nation": {
-                    "id": seller_id,
-                    "nation_name": seller_name,
-                    "flag": seller_flag,
-                    "alliance": {
-                        "id": seller_alliance_id,
-                        "name": seller_alliance_name,
-                        "flag": seller_alliance_flag,
-                    } if seller_alliance_id else None,
-                },
-                "buyer_nation": {
-                    "id": buyer_id,
-                    "nation_name": buyer_name,
-                    "flag": buyer_flag,
-                    "alliance": {
-                        "id": buyer_alliance_id,
-                        "name": buyer_alliance_name,
-                        "flag": buyer_alliance_flag,
-                    } if buyer_alliance_id else None,
-                },
-            }
-        
-        # Add resource fields
-        for r in RESOURCES:
-            trade_dict[r] = resources_traded[r]
-        
-        return trade_dict
+        normalized = normalize_trade_event(trade)
+        if not normalized:
+            raise ValueError(f"Unable to normalize trade {trade.get('id')}")
+        return normalized_trade_to_news_payload(normalized)
     
-    async def _process_trade_holdings(self, trade: Dict[str, Any]):
+    async def _process_trade_holdings(self, trade: Dict[str, Any]) -> bool:
         """
         Update holdings database for a completed trade.
         
@@ -408,62 +287,29 @@ class TimedQueriesProcessor:
             trade: Trade dictionary from GraphQL query
         """
         if not self.holdings_db:
-            return
+            return False
         
         try:
-            # Extract trade details
-            trade_id = trade.get("id")
-            sender_id = trade.get("sender_id")
-            receiver_id = trade.get("receiver_id")
-            offer_resource = trade.get("offer_resource")
-            offer_amount = trade.get("offer_amount")
-            buy_or_sell = trade.get("buy_or_sell")  # "buy" or "sell"
-            price = trade.get("price")
-            date_accepted = trade.get("date_accepted")
-            
-            if not all([sender_id, receiver_id, offer_resource, offer_amount, price]):
-                logger.debug(f"Trade {trade_id} missing required fields, skipping holdings update")
-                return
-            
-            # Determine buyer and seller based on buy_or_sell
-            # If buy_or_sell == "buy": poster is buying (buyer), receiver is selling (seller)
-            # If buy_or_sell == "sell": poster is selling (seller), receiver is buying (buyer)
-            if buy_or_sell == "buy":
-                buyer_id = int(sender_id)
-                seller_id = int(receiver_id)
-            else:  # sell
-                buyer_id = int(receiver_id)
-                seller_id = int(sender_id)
-            
-            # Calculate money amount
-            money_amount = float(offer_amount) * float(price)
-            resource_amount = float(offer_amount)
-            
-            # Get nation names for row creation
-            sender_name = trade.get("sender", {}).get("nation_name") if trade.get("sender") else None
-            receiver_name = trade.get("receiver", {}).get("nation_name") if trade.get("receiver") else None
-            
-            if buy_or_sell == "buy":
-                buyer_name = sender_name
-                seller_name = receiver_name
-            else:
-                buyer_name = receiver_name
-                seller_name = sender_name
-            
-            # Update holdings
-            await self.holdings_db.apply_trade(
-                buyer_id=buyer_id,
-                seller_id=seller_id,
-                resource=offer_resource.lower(),
-                amount=resource_amount,
-                money=money_amount,
-                event_date=date_accepted,
-                buyer_name=buyer_name,
-                seller_name=seller_name,
+            normalized = normalize_trade_event(trade)
+            if not normalized or not normalized.get("completed"):
+                logger.debug(f"Trade {trade.get('id')} is not a completed trade, skipping holdings update")
+                return False
+
+            buyer = normalized.get("buyer") or {}
+            seller = normalized.get("seller") or {}
+            return await self.holdings_db.apply_trade_completion(
+                buyer_id=int(normalized["buyer_id"]),
+                seller_id=int(normalized["seller_id"]),
+                money_amount=float(normalized.get("money_amount") or 0),
+                resources=normalized.get("resources_traded") or {},
+                trade_date=normalized.get("date_accepted") or normalized.get("date"),
+                buyer_name=buyer.get("name"),
+                seller_name=seller.get("name"),
             )
             
         except Exception as e:
             logger.error(f"Failed to process trade holdings for trade {trade.get('id')}: {e}", exc_info=True)
+            return False
     
     async def _generate_trade_news(self, trades: List[Dict[str, Any]]):
         """
@@ -472,20 +318,20 @@ class TimedQueriesProcessor:
         Args:
             trades: List of trade dictionaries from GraphQL query
         """
-        if not self.news_component:
-            logger.debug("No news component available, skipping trade news generation")
-            return
-        
         if not trades:
             logger.debug("No trades to generate news for")
             return
         
-        from PnWHarvester.subscriptions.trade_news_components import TradeNewsGenerator
-        generator = TradeNewsGenerator(self.news_component)
+        generator = None
+        if self.news_component:
+            from PnWHarvester.subscriptions.trade_news_components import TradeNewsGenerator
+            generator = TradeNewsGenerator(self.news_component)
+        else:
+            logger.debug("No news component available; timed trades will update holdings only")
         
         generated_count = 0
         holdings_updated = 0
-        for trade in trades:
+        for trade in sorted(trades, key=lambda t: int(t.get("id") or 0)):
             try:
                 trade_id = trade.get("id")
                 if not trade_id:
@@ -493,26 +339,61 @@ class TimedQueriesProcessor:
                     
                 trade_id_int = int(trade_id)
                 
-                # Skip trades already seen in a previous cycle.
-                # _last_trade_id holds the highest ID processed so far;
-                # anything at or below it has already been handled.
-                if trade_id_int <= self._last_trade_id:
+                normalized = normalize_trade_event(trade)
+                if not normalized or not normalized.get("completed"):
+                    logger.debug(f"Trade {trade_id} is not a valid completed trade, skipping")
                     continue
-                
-                # Update holdings for this trade
-                if self.holdings_db:
-                    await self._process_trade_holdings(trade)
-                    holdings_updated += 1
-                
-                # Convert trade data to format expected by TradeNewsGenerator
+
+                legacy_processed = False
+                if self.holdings_db and hasattr(self.holdings_db, "is_processed_event"):
+                    legacy_processed = await self.holdings_db.is_processed_event(
+                        "trade_completed", trade_id_int
+                    )
+
+                if not legacy_processed and self.holdings_db:
+                    holdings_claimed = True
+                    if hasattr(self.holdings_db, "claim_processed_event"):
+                        holdings_claimed = await self.holdings_db.claim_processed_event(
+                            "trade_holdings_applied", trade_id_int
+                        )
+                    if holdings_claimed:
+                        if await self._process_trade_holdings(trade):
+                            holdings_updated += 1
+                        elif hasattr(self.holdings_db, "unclaim_processed_event"):
+                            await self.holdings_db.unclaim_processed_event(
+                                "trade_holdings_applied", trade_id_int
+                            )
+                    else:
+                        logger.debug(f"Trade {trade_id} holdings already processed, skipping holdings")
+                elif legacy_processed:
+                    logger.debug(f"Trade {trade_id} has legacy trade_completed claim, skipping holdings")
+
+                if not generator:
+                    if trade_id_int > self._last_trade_id:
+                        self._last_trade_id = trade_id_int
+                    continue
+
+                news_claimed = True
+                if self.holdings_db and hasattr(self.holdings_db, "claim_processed_event"):
+                    news_claimed = await self.holdings_db.claim_processed_event(
+                        "trade_news_generated", trade_id_int
+                    )
+                if not news_claimed:
+                    if trade_id_int > self._last_trade_id:
+                        self._last_trade_id = trade_id_int
+                    logger.debug(f"Trade {trade_id} news already generated, skipping news")
+                    continue
+
                 trade_dict = await self._convert_trade_for_news(trade)
                 result = await generator.generate_trade_completed_news(trade_dict)
-                
-                # Advance the watermark only after a successful generate attempt
-                if trade_id_int > self._last_trade_id:
-                    self._last_trade_id = trade_id_int
-                
+                if not result.get("generated") and self.holdings_db and hasattr(self.holdings_db, "unclaim_processed_event"):
+                    await self.holdings_db.unclaim_processed_event(
+                        "trade_news_generated", trade_id_int
+                    )
+
                 if result.get("generated"):
+                    if trade_id_int > self._last_trade_id:
+                        self._last_trade_id = trade_id_int
                     generated_count += 1
                     logger.info(f"Trade news generated for trade {trade_id}")
                     
@@ -610,15 +491,6 @@ class TimedQueriesComponent:
     
     async def _run_loop(self):
         """Main loop - runs indefinitely until stopped."""
-        # Brief startup delay so the first query cycle doesn't collide with
-        # sync_nations and WebSocket subscription negotiation hitting the API
-        # simultaneously, which causes transient 503s on every start.
-        try:
-            await asyncio.sleep(30)
-        except asyncio.CancelledError:
-            logger.info("TimedQueriesComponent startup cancelled")
-            return
-        
         logger.info("TimedQueriesComponent main loop starting")
         
         while self.running:

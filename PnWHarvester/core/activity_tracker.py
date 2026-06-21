@@ -42,6 +42,7 @@ class SubscriptionHealth:
     
     def record_error(self):
         self.error_count += 1
+        self.is_healthy = False
 
 
 class ActivityTracker:
@@ -83,19 +84,16 @@ class ActivityTracker:
         for health in self._subscriptions.values():
             if not health.is_healthy:
                 return False
-            # Check silence threshold
-            seconds = health.seconds_since_last_message()
-            if seconds is None:
-                # Never received any message
-                health.is_healthy = False
-                return False
-            if seconds > self.max_silence:
-                health.is_healthy = False
-                return False
         return True
     
     def get_unhealthy_subscriptions(self) -> List[str]:
-        """Get list of unhealthy subscription names."""
+        """Get list of unhealthy subscription names.
+        
+        A subscription is considered unhealthy if:
+        1. Its is_healthy flag is False (recorded error)
+        2. It has received at least one message but has been silent for > max_silence
+        3. It has never received a message and has been registered for > max_silence
+        """
         unhealthy = []
         now = datetime.now(timezone.utc)
         logger.debug(f"get_unhealthy_subscriptions: checking {len(self._subscriptions)} subscriptions")
@@ -103,23 +101,17 @@ class ActivityTracker:
             seconds = health.seconds_since_last_message()
             logger.debug(f"Subscription {name}: is_healthy={health.is_healthy}, seconds_since_last_message={seconds}")
             
-            # Reset is_healthy to True for subscriptions with no messages to prevent stale state
-            if seconds is None:
-                health.is_healthy = True
-                # Never received any message - this is normal for infrequent subscriptions
-                # like nation/create, trade/update, treaty/delete. Don't flag as stalled.
-                # Only flag as stalled if a subscription has received at least one message
-                # and then goes silent.
-                logger.debug(f"Subscription {name} has no messages yet - skipping stall check")
-                continue
-            
             if not health.is_healthy:
                 logger.debug(f"Subscription {name} unhealthy (is_healthy=False)")
                 unhealthy.append(name)
-            elif seconds > self.max_silence:
-                logger.warning(f"Subscription {name} stalled ({seconds:.0f}s > {self.max_silence}s)")
-                health.is_healthy = False
+            elif health.last_message_at and seconds is not None and seconds > self.max_silence:
+                logger.debug(f"Subscription {name} unhealthy (silent {seconds:.0f}s > {self.max_silence}s)")
                 unhealthy.append(name)
+            elif health.last_message_at is None and health.start_time:
+                elapsed = (now - health.start_time).total_seconds()
+                if elapsed > self.max_silence:
+                    logger.debug(f"Subscription {name} unhealthy (no messages after {elapsed:.0f}s)")
+                    unhealthy.append(name)
         logger.debug(f"get_unhealthy_subscriptions: returning {unhealthy}")
         return unhealthy
     

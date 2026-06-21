@@ -487,19 +487,18 @@ class GlobalNationsDB(BaseDB):
 
     # ── City upsert ───────────────────────────────────────────────────────────
 
-    async def increment_num_cities(self, nation_id: int) -> None:
-        """Increment num_cities by 1 for a nation. Called on city/create events
-        so the count stays accurate without waiting for the next nation/update."""
+    async def increment_num_cities(self, nation_id: int, amount: int = 1) -> None:
+        """Adjust num_cities for a nation after city create/delete events."""
         def _work():
             try:
                 with self._get_connection() as conn:
                     conn.execute(
-                        "UPDATE nations SET num_cities = MAX(0, COALESCE(num_cities, 0) + 1) WHERE id = ?",
-                        (nation_id,),
+                        "UPDATE nations SET num_cities = MAX(0, COALESCE(num_cities, 0) + ?) WHERE id = ?",
+                        (int(amount), nation_id),
                     )
                     conn.commit()
             except Exception as e:
-                logger.warning(f"increment_num_cities(nation={nation_id}): {e}")
+                logger.warning(f"increment_num_cities(nation={nation_id}, amount={amount}): {e}")
         await self._run_sync(_work)
 
     async def update_war_counts(
@@ -747,6 +746,39 @@ class GlobalNationsDB(BaseDB):
 
     # ── Queries ───────────────────────────────────────────────────────────────
 
+    async def clear_alliance_info(self, alliance_id: int) -> int:
+        """
+        Clear a deleted alliance from all nation rows.
+
+        Called when an alliance/delete event is received. Alliance data is
+        denormalized onto nations, so this removes stale alliance identity from
+        nations that still reference the deleted alliance.
+        """
+        def _work():
+            try:
+                with self._get_connection() as conn:
+                    cur = conn.execute(
+                        """
+                        UPDATE nations
+                        SET alliance_id = 0,
+                            alliance_name = NULL,
+                            alliance_flag = NULL,
+                            alliance_position = NULL,
+                            alliance_seniority = NULL
+                        WHERE alliance_id = ?
+                        """,
+                        (alliance_id,),
+                    )
+                    conn.commit()
+                    cleared = cur.rowcount
+                    if cleared:
+                        logger.info(f"clear_alliance_info({alliance_id}): cleared {cleared} nation rows")
+                    return cleared
+            except Exception as e:
+                logger.error(f"clear_alliance_info({alliance_id}): {e}", exc_info=True)
+                return 0
+        return await self._run_sync(_work)
+
     async def get_nation(self, nation_id: int) -> Optional[Dict[str, Any]]:
         def _work():
             try:
@@ -756,6 +788,30 @@ class GlobalNationsDB(BaseDB):
             except Exception as e:
                 logger.error(f"get_nation({nation_id}): {e}")
                 return None
+        return await self._run_sync(_work)
+
+    async def get_alliance_snapshot(self, alliance_id: int) -> Dict[str, Any]:
+        """Return denormalized alliance info and member stats before a mutation."""
+        def _work():
+            try:
+                with self._get_connection() as conn:
+                    row = conn.execute(
+                        """
+                        SELECT
+                            COALESCE(NULLIF(alliance_name, ''), NULL) AS alliance_name,
+                            COALESCE(NULLIF(alliance_flag, ''), NULL) AS alliance_flag,
+                            COUNT(*) AS member_count,
+                            COALESCE(SUM(num_cities), 0) AS city_count,
+                            COALESCE(SUM(score), 0) AS score_total
+                        FROM nations
+                        WHERE alliance_id = ?
+                        """,
+                        (alliance_id,),
+                    ).fetchone()
+                    return dict(row) if row else {}
+            except Exception as e:
+                logger.error(f"get_alliance_snapshot({alliance_id}): {e}")
+                return {}
         return await self._run_sync(_work)
 
     async def get_nation_by_name(self, name: str) -> Optional[Dict[str, Any]]:
@@ -789,7 +845,7 @@ class GlobalNationsDB(BaseDB):
         Used by the revenue endpoint to avoid N individual city lookups.
         Returns: {nation_id: [city_dict, ...]}
         """
-        async with self._get_lock():
+        def _work():
             try:
                 with self._get_connection() as conn:
                     rows = conn.execute("SELECT * FROM cities").fetchall()
@@ -803,6 +859,9 @@ class GlobalNationsDB(BaseDB):
             except Exception as e:
                 logger.error(f"get_all_cities_bulk: {e}")
                 return {}
+
+        async with self._get_lock():
+            return await self._run_sync(_work)
 
     async def get_cities_bulk_for_alliance(self, alliance_id: int) -> Dict[int, List[Dict[str, Any]]]:
         """Return cities grouped by nation_id, filtered to a single alliance.
@@ -916,7 +975,7 @@ class GlobalNationsDB(BaseDB):
 
     async def get_all_nations(self) -> List[Dict[str, Any]]:
         """Return all nations in the database."""
-        async with self._get_lock():
+        def _work():
             try:
                 with self._get_connection() as conn:
                     c = conn.cursor()
@@ -926,6 +985,9 @@ class GlobalNationsDB(BaseDB):
             except Exception as e:
                 logger.error(f"Error getting all nations: {e}")
                 return []
+
+        async with self._get_lock():
+            return await self._run_sync(_work)
 
     async def get_all_nation_ids(self) -> List[int]:
         """Return all nation IDs in the database (fast — no full row fetch)."""
@@ -1280,6 +1342,54 @@ class GlobalNationsDB(BaseDB):
         # The subscription already updates alliance_id via _save_nation.
         logger.debug(f"remove_single_nation({nation_id}): no-op in single-DB mode")
         return True
+
+    async def delete_nation(self, nation_id: int) -> bool:
+        """
+        Permanently delete a nation and all its cities from the database.
+
+        Called when a nation/delete event is received from the PnW subscription,
+        meaning the nation has been deleted from the game entirely.
+
+        Returns True if the nation row was found and deleted, False otherwise.
+        """
+        async with self._get_lock():
+            try:
+                with self._get_connection() as conn:
+                    # Delete associated cities first (FK relationship)
+                    conn.execute("DELETE FROM cities WHERE nation_id = ?", (nation_id,))
+                    cur = conn.execute("DELETE FROM nations WHERE id = ?", (nation_id,))
+                    conn.commit()
+                    deleted = cur.rowcount > 0
+                    if deleted:
+                        logger.info(f"delete_nation({nation_id}): removed from GlobalNations.db (nation deleted in-game)")
+                    else:
+                        logger.debug(f"delete_nation({nation_id}): nation not found in DB (already absent)")
+                    return deleted
+            except Exception as e:
+                logger.error(f"delete_nation({nation_id}): {e}", exc_info=True)
+                return False
+
+    async def delete_city(self, city_id: int) -> bool:
+        """
+        Permanently delete a city row from the database.
+
+        Called when a city/delete event is received from the PnW subscription.
+        Returns True if the city row was found and deleted, False otherwise.
+        """
+        async with self._get_lock():
+            try:
+                with self._get_connection() as conn:
+                    cur = conn.execute("DELETE FROM cities WHERE id = ?", (city_id,))
+                    conn.commit()
+                    deleted = cur.rowcount > 0
+                    if deleted:
+                        logger.info(f"delete_city({city_id}): removed from GlobalNations.db")
+                    else:
+                        logger.debug(f"delete_city({city_id}): city not found in DB")
+                    return deleted
+            except Exception as e:
+                logger.error(f"delete_city({city_id}): {e}", exc_info=True)
+                return False
 
     async def save_tax_brackets(self, alliance_id: int, tax_brackets: list) -> int:
         """Stub — tax bracket storage not implemented in GlobalNationsDB."""

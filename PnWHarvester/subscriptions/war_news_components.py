@@ -134,7 +134,7 @@ class WarNewsGenerator:
             def_aflag = (def_obj.get("alliance") or {}).get("flag") if isinstance(def_obj.get("alliance"), dict) else None
             
             # Create news event
-            asyncio.create_task(nw.record_war_ended(
+            await nw.record_war_ended(
                 war_id=int(war_data.get("id") or 0),
                 att_nation_id=int(war_data.get("att_id") or 0),
                 att_nation_name=att_obj.get("nation_name") or war_data.get("att_nation_name"),
@@ -152,7 +152,7 @@ class WarNewsGenerator:
                 end_reason=end_reason,
                 war_type=_norm(war_data.get("war_type", "")),
                 event_date=str(war_data.get("end_date") or war_data.get("date") or "").replace("+00:00", "").strip(),
-            ))
+            )
             
             return {
                 "status": "generated",
@@ -227,21 +227,21 @@ class WarNewsGenerator:
             
             # Generate WMD news for nuke/missile attacks
             if attack_type_raw in ("nuke", "nukefail"):
-                asyncio.create_task(self._safe_record_wmd(
+                await self._safe_record_wmd(
                     "nuke", attack_data, war_data, _att_prefix, _def_prefix,
                     att_alliance_id, def_alliance_id, att_alliance_name, def_alliance_name,
                     att_flag, def_flag, att_alliance_flag, def_alliance_flag,
                     infra_val, _attack_missed, _resistance_lost, _imps_destroyed
-                ))
+                )
                 result["news_events"].append("nuke_attack")
             
             elif attack_type_raw in ("missile", "missilefail"):
-                asyncio.create_task(self._safe_record_wmd(
+                await self._safe_record_wmd(
                     "missile", attack_data, war_data, _att_prefix, _def_prefix,
                     att_alliance_id, def_alliance_id, att_alliance_name, def_alliance_name,
                     att_flag, def_flag, att_alliance_flag, def_alliance_flag,
                     infra_val, _attack_missed, _resistance_lost, _imps_destroyed
-                ))
+                )
                 result["news_events"].append("missile_attack")
             
             # Generate loot news for successful attacks (nation looting nation)
@@ -254,7 +254,7 @@ class WarNewsGenerator:
                 total_loot = self._calc_loot_value(money_looted, res_looted)
                 
                 if total_loot > 0:
-                    asyncio.create_task(nw.record_loot_attack(
+                    await nw.record_loot_attack(
                         att_nation_id=attack_data.get("att_id") or attack_data.get("attacker_id"),
                         att_nation_name=att_name,
                         att_nation_flag=att_flag,
@@ -272,7 +272,7 @@ class WarNewsGenerator:
                         resources_looted={r: v for r, v in res_looted.items() if v > 0},
                         improvements_destroyed=_imps_destroyed if _imps_destroyed else None,
                         infra_destroyed_value=infra_val,
-                    ))
+                    )
                     result["news_events"].append("loot_attack")
             
             return result
@@ -379,7 +379,12 @@ class WarNewsGenerator:
         return any(float(attack.get(f"{r}_looted") or 0) > 0 for r in _RESOURCES)
     
     def _calc_loot_value(self, money_looted: float, resources_looted: Dict[str, float]) -> float:
-        """Calculate total loot value."""
+        """Calculate total loot value using cached fallback prices.
+        
+        Prices are fetched synchronously via thread-pool in the DB layer; here
+        we use the reaper.db synchronously because this is called from a sync
+        helper. If the DB is unavailable we fall back to static estimates.
+        """
         _FALLBACK_PRICES = {
             "coal": 2000, "oil": 2000, "uranium": 4000, "iron": 2000,
             "bauxite": 2000, "lead": 2000, "gasoline": 3000, "munitions": 2000,
@@ -389,7 +394,8 @@ class WarNewsGenerator:
         try:
             import sqlite3
             from Systems.Functions.db_paths import REAPER_DB_STR
-            conn = sqlite3.connect(REAPER_DB_STR)
+            # Use a short timeout — this is a quick read-only query
+            conn = sqlite3.connect(REAPER_DB_STR, timeout=2)
             rows = conn.execute(
                 """
                 SELECT resource, best_sell_price FROM resource_prices
@@ -398,8 +404,7 @@ class WarNewsGenerator:
             ).fetchall()
             conn.close()
             price_map = {r.lower(): float(p) for r, p in rows if p and float(p) > 0} if rows else _FALLBACK_PRICES
-        except Exception as e:
-            logger.warning(f"Failed to load prices from DB cache: {e}, using fallback prices")
+        except Exception:
             price_map = _FALLBACK_PRICES
         
         resource_value = sum(
@@ -558,16 +563,12 @@ class WarStatsUpdater:
             
             # Increment offensive war count for attacker
             if att_id:
-                asyncio.create_task(
-                    self.global_nations_db.update_war_counts(att_id, off_delta=1)
-                )
+                await self.global_nations_db.update_war_counts(att_id, off_delta=1)
                 result["attacker_updated"] = True
             
             # Increment defensive war count for defender
             if def_id:
-                asyncio.create_task(
-                    self.global_nations_db.update_war_counts(def_id, def_delta=1)
-                )
+                await self.global_nations_db.update_war_counts(def_id, def_delta=1)
                 result["defender_updated"] = True
                 
         except Exception as e:
@@ -611,12 +612,12 @@ class WarStatsUpdater:
                 # Update attacker
                 if att_id:
                     is_attacker_winner = winner_id == att_id
-                    asyncio.create_task(self.global_nations_db.update_war_counts(
+                    await self.global_nations_db.update_war_counts(
                         att_id, 
                         off_delta=-1,
                         won_delta=(1 if is_attacker_winner else 0),
                         lost_delta=(1 if not is_attacker_winner else 0),
-                    ))
+                    )
                     result["win_loss_updates"].append({
                         "nation_id": att_id,
                         "type": "attacker",
@@ -627,12 +628,12 @@ class WarStatsUpdater:
                 # Update defender
                 if def_id:
                     is_defender_winner = winner_id == def_id
-                    asyncio.create_task(self.global_nations_db.update_war_counts(
+                    await self.global_nations_db.update_war_counts(
                         def_id,
                         def_delta=-1,
                         won_delta=(1 if is_defender_winner else 0),
                         lost_delta=(1 if not is_defender_winner else 0),
-                    ))
+                    )
                     result["win_loss_updates"].append({
                         "nation_id": def_id,
                         "type": "defender",
@@ -651,11 +652,11 @@ class WarStatsUpdater:
                 # Peace, expire, or ended — decrement slots only
                 # No wars_lost increment: these are not decisive losses
                 if att_id:
-                    asyncio.create_task(self.global_nations_db.update_war_counts(att_id, off_delta=-1))
+                    await self.global_nations_db.update_war_counts(att_id, off_delta=-1)
                     result["slot_updates"].append({"nation_id": att_id, "type": "attacker", "action": "slot_decrement"})
                 
                 if def_id:
-                    asyncio.create_task(self.global_nations_db.update_war_counts(def_id, def_delta=-1))
+                    await self.global_nations_db.update_war_counts(def_id, def_delta=-1)
                     result["slot_updates"].append({"nation_id": def_id, "type": "defender", "action": "slot_decrement"})
                 
                 # Handle beige for defender on expire

@@ -32,7 +32,7 @@ import sqlite3
 import logging
 import asyncio
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 from .base_db import BaseDB, AsyncMode
 
 logger = logging.getLogger(__name__)
@@ -156,6 +156,16 @@ class HoldingsDB(BaseDB):
                 conn.execute(
                     "UPDATE nations SET confidence='seeded' WHERE confidence IS NULL"
                 )
+                conn.execute(
+                    """
+                    CREATE TABLE IF NOT EXISTS harvester_processed_events (
+                        event_type TEXT NOT NULL,
+                        event_id TEXT NOT NULL,
+                        processed_at TEXT NOT NULL,
+                        PRIMARY KEY (event_type, event_id)
+                    )
+                    """
+                )
                 conn.commit()
         except Exception as e:
             logger.warning(f"HoldingsDB._ensure_extra_columns: {e}")
@@ -264,6 +274,109 @@ class HoldingsDB(BaseDB):
             return await self._run_sync(_work)
         except Exception as e:
             logger.error(f"get_stats: {e}")
+            return {}
+
+    async def claim_processed_event(self, event_type: str, event_id: Any) -> bool:
+        """Atomically claim an event id so separate harvester paths do not double-apply it."""
+        event_id_str = str(event_id)
+        processed_at = self._now()
+
+        def _work():
+            with self._conn() as conn:
+                cur = conn.execute(
+                    """
+                    INSERT OR IGNORE INTO harvester_processed_events
+                    (event_type, event_id, processed_at)
+                    VALUES (?, ?, ?)
+                    """,
+                    (event_type, event_id_str, processed_at),
+                )
+                conn.commit()
+                return cur.rowcount == 1
+
+        try:
+            return await self._run_sync(_work)
+        except Exception as e:
+            logger.error(f"claim_processed_event({event_type}, {event_id_str}): {e}", exc_info=True)
+            return False
+
+    async def is_processed_event(self, event_type: str, event_id: Any) -> bool:
+        """Return True if an event id has already been claimed."""
+        event_id_str = str(event_id)
+
+        def _work():
+            with self._conn() as conn:
+                row = conn.execute(
+                    """
+                    SELECT 1 FROM harvester_processed_events
+                    WHERE event_type = ? AND event_id = ?
+                    LIMIT 1
+                    """,
+                    (event_type, event_id_str),
+                ).fetchone()
+                return row is not None
+
+        try:
+            return await self._run_sync(_work)
+        except Exception as e:
+            logger.error(f"is_processed_event({event_type}, {event_id_str}): {e}", exc_info=True)
+            return False
+
+    async def unclaim_processed_event(self, event_type: str, event_id: Any) -> bool:
+        """Release a processed-event claim after a failed pre-commit mutation."""
+        event_id_str = str(event_id)
+
+        def _work():
+            with self._conn() as conn:
+                cur = conn.execute(
+                    """
+                    DELETE FROM harvester_processed_events
+                    WHERE event_type = ? AND event_id = ?
+                    """,
+                    (event_type, event_id_str),
+                )
+                conn.commit()
+                return cur.rowcount > 0
+
+        try:
+            return await self._run_sync(_work)
+        except Exception as e:
+            logger.error(f"unclaim_processed_event({event_type}, {event_id_str}): {e}", exc_info=True)
+            return False
+
+    async def get_trade_identities(self, nation_ids: List[int]) -> Dict[int, Dict[str, Any]]:
+        """Fetch nation/alliance labels used to enrich primitive trade events."""
+        ids = sorted({int(nid) for nid in nation_ids if nid})
+        if not ids:
+            return {}
+
+        def _work():
+            with self._conn() as conn:
+                placeholders = ",".join("?" * len(ids))
+                rows = conn.execute(
+                    f"""
+                    SELECT id, nation_name, flag, alliance_id, alliance_name, alliance_flag
+                    FROM nations
+                    WHERE id IN ({placeholders})
+                    """,
+                    ids,
+                ).fetchall()
+                return {
+                    int(row["id"]): {
+                        "id": int(row["id"]),
+                        "name": row["nation_name"],
+                        "flag": row["flag"],
+                        "alliance_id": row["alliance_id"],
+                        "alliance_name": row["alliance_name"],
+                        "alliance_flag": row["alliance_flag"],
+                    }
+                    for row in rows
+                }
+
+        try:
+            return await self._run_sync(_work)
+        except Exception as e:
+            logger.error(f"get_trade_identities({ids}): {e}", exc_info=True)
             return {}
 
     async def apply_loot_event(
@@ -483,6 +596,64 @@ class HoldingsDB(BaseDB):
             logger.error(f"apply_turn_revenue({nation_id}): {e}", exc_info=True)
             return False
 
+    async def apply_turn_revenue_bulk(
+        self,
+        updates: List[Dict[str, Any]],
+        chunk_size: int = 1000,
+    ) -> int:
+        """Apply turn revenue updates in short transactions.
+
+        Each update must include nation_id, money_delta, resource_deltas, and
+        turn_date. Chunking keeps turn processing fast while releasing the
+        SQLite writer lock between batches for subscriptions and timed queries.
+        """
+        if not updates:
+            return 0
+
+        chunk_size = max(1, int(chunk_size or 1000))
+        set_parts = [
+            "money=MAX(0, COALESCE(money,0)+?)",
+            *[f"{r}=MAX(0, COALESCE({r},0)+?)" for r in RESOURCE_COLS],
+            "confidence=CASE WHEN confidence='seeded' THEN 'tracked' ELSE confidence END",
+            "last_revenue_date=?",
+            "last_event_date=?",
+        ]
+        sql = f"UPDATE nations SET {', '.join(set_parts)} WHERE id=?"
+
+        def _normalize(item: Dict[str, Any]) -> Tuple[int, Optional[str], float, Dict[str, float], str]:
+            nation_id = int(item["nation_id"])
+            nation_name = item.get("nation_name")
+            money_delta = float(item.get("money_delta") or 0.0)
+            resources = item.get("resource_deltas") or {}
+            turn_date = item.get("turn_date") or self._now()
+            return nation_id, nation_name, money_delta, resources, turn_date
+
+        def _work(chunk: List[Dict[str, Any]]) -> int:
+            with self._conn() as conn:
+                applied = 0
+                for item in chunk:
+                    nation_id, nation_name, money_delta, resources, turn_date = _normalize(item)
+                    self._ensure_row(conn, nation_id, nation_name)
+                    values: List[Any] = [money_delta]
+                    values.extend(float(resources.get(r) or 0.0) for r in RESOURCE_COLS)
+                    values.extend([turn_date, turn_date, nation_id])
+                    conn.execute(sql, values)
+                    applied += 1
+                conn.commit()
+                return applied
+
+        applied_total = 0
+        try:
+            for start in range(0, len(updates), chunk_size):
+                chunk = updates[start:start + chunk_size]
+                async with self._get_lock():
+                    applied_total += await self._run_sync(lambda chunk=chunk: _work(chunk))
+                await asyncio.sleep(0)
+            return applied_total
+        except Exception as e:
+            logger.error(f"apply_turn_revenue_bulk({len(updates)} updates): {e}", exc_info=True)
+            return applied_total
+
     async def deduct_spending(
         self,
         nation_id: int,
@@ -611,7 +782,6 @@ class HoldingsDB(BaseDB):
 
             # ── News: record each unit type purchased ─────────────────────────
             try:
-                import asyncio as _asyncio
                 import PnWHarvester.db.news_writer as _nw
                 _nation_row: Dict[str, Any] = {}
                 try:
@@ -654,7 +824,7 @@ class HoldingsDB(BaseDB):
                     }
                     if _cash_cost < 100_000 and not _res_costs:
                         continue
-                    _asyncio.create_task(_nw.record_military_purchase(
+                    await _nw.record_military_purchase(
                         nation_id=nation_id,
                         nation_name=nation_name,
                         nation_flag=_nation_flag,
@@ -666,7 +836,7 @@ class HoldingsDB(BaseDB):
                         cash_cost=_cash_cost,
                         resource_costs=_res_costs or None,
                         event_date=ev_date,
-                    ))
+                    )
             except Exception as _ne:
                 logger.debug(f"news military_purchase: {_ne}")
 
@@ -741,6 +911,10 @@ class HoldingsDB(BaseDB):
             True if successful, False otherwise
         """
         ev_date = event_date or self._now()
+        resource = str(resource or "").lower()
+        if resource == "credits":
+            resource = "credit"
+        tracked_resource = resource in RESOURCE_COLS
         
         def _work():
             with self._conn() as conn:
@@ -749,20 +923,36 @@ class HoldingsDB(BaseDB):
                 self._ensure_row(conn, seller_id, seller_name)
                 
                 # Update buyer: add resources, subtract money
-                conn.execute(
-                    f"UPDATE nations SET {resource}=COALESCE({resource},0)+?, "
-                    "money=MAX(0, COALESCE(money,0)-?), "
-                    "last_event_date=? WHERE id=?",
-                    (amount, money, ev_date, buyer_id),
-                )
+                if tracked_resource:
+                    conn.execute(
+                        f"UPDATE nations SET {resource}=COALESCE({resource},0)+?, "
+                        "money=MAX(0, COALESCE(money,0)-?), "
+                        "last_event_date=? WHERE id=?",
+                        (amount, money, ev_date, buyer_id),
+                    )
+                else:
+                    conn.execute(
+                        "UPDATE nations SET "
+                        "money=MAX(0, COALESCE(money,0)-?), "
+                        "last_event_date=? WHERE id=?",
+                        (money, ev_date, buyer_id),
+                    )
                 
                 # Update seller: subtract resources, add money
-                conn.execute(
-                    f"UPDATE nations SET {resource}=MAX(0, COALESCE({resource},0)-?), "
-                    "money=COALESCE(money,0)+?, "
-                    "last_event_date=? WHERE id=?",
-                    (amount, money, ev_date, seller_id),
-                )
+                if tracked_resource:
+                    conn.execute(
+                        f"UPDATE nations SET {resource}=MAX(0, COALESCE({resource},0)-?), "
+                        "money=COALESCE(money,0)+?, "
+                        "last_event_date=? WHERE id=?",
+                        (amount, money, ev_date, seller_id),
+                    )
+                else:
+                    conn.execute(
+                        "UPDATE nations SET "
+                        "money=COALESCE(money,0)+?, "
+                        "last_event_date=? WHERE id=?",
+                        (money, ev_date, seller_id),
+                    )
                 
                 conn.commit()
         
@@ -892,7 +1082,7 @@ class HoldingsDB(BaseDB):
                 self._ensure_row(conn, buyer_id, buyer_name)
                 self._ensure_row(conn, seller_id, seller_name)
                 
-                # ── Buyer: ADD money and resources ─────────────────────────────
+                # Buyer gains resources and pays money.
                 buyer_rss_parts = []
                 buyer_rss_vals = []
                 for r in RESOURCE_COLS:
@@ -903,14 +1093,14 @@ class HoldingsDB(BaseDB):
                 buyer_extra = (", " + ", ".join(buyer_rss_parts)) if buyer_rss_parts else ""
                 conn.execute(
                     f"UPDATE nations SET "
-                    f"money=MAX(0, COALESCE(money,0)+?), "
+                    f"money=MAX(0, COALESCE(money,0)-?), "
                     f"confidence=CASE WHEN confidence='seeded' THEN 'tracked' ELSE confidence END, "
                     f"last_event_date=?"
                     f"{buyer_extra} WHERE id=?",
                     [money_amount, trade_date_str] + buyer_rss_vals + [buyer_id],
                 )
                 
-                # ── Seller: DEDUCT money and resources ───────────────────────────
+                # Seller loses resources and receives money.
                 seller_rss_parts = []
                 seller_rss_vals = []
                 for r in RESOURCE_COLS:
@@ -921,7 +1111,7 @@ class HoldingsDB(BaseDB):
                 seller_extra = (", " + ", ".join(seller_rss_parts)) if seller_rss_parts else ""
                 conn.execute(
                     f"UPDATE nations SET "
-                    f"money=MAX(0, COALESCE(money,0)-?), "
+                    f"money=MAX(0, COALESCE(money,0)+?), "
                     f"confidence=CASE WHEN confidence='seeded' THEN 'tracked' ELSE confidence END, "
                     f"last_event_date=?"
                     f"{seller_extra} WHERE id=?",

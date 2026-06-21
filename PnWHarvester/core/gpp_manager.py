@@ -113,6 +113,7 @@ class GPPManager:
         beige_alerts_db=None,
         news_db=None,
         treaties_db=None,
+        tracking_db=None,
         api_key: str = "",
         query_instance=None,
         websocket_manager=None,
@@ -143,6 +144,7 @@ class GPPManager:
         self.beige_alerts_db = beige_alerts_db
         self.news_db = news_db
         self.treaties_db = treaties_db
+        self.tracking_db = tracking_db
         self.api_key = api_key
         self.query_instance = query_instance
         self.websocket_manager = websocket_manager
@@ -180,7 +182,10 @@ class GPPManager:
         import os
         self._max_silence_seconds = float(os.getenv("HARVESTER_MAX_SILENCE", "120"))
         
-        logger.info(f"GPPManager initialized (max_silence={self._max_silence_seconds}s)")
+        # Health check interval - check every 15 seconds for faster failure detection
+        self._health_check_interval = float(os.getenv("HARVESTER_HEALTH_CHECK_INTERVAL", "15"))
+        
+        logger.info(f"GPPManager initialized (max_silence={self._max_silence_seconds}s, health_check_interval={self._health_check_interval}s)")
     
     async def initialize(self):
         """
@@ -284,6 +289,7 @@ class GPPManager:
                 news_component=self._components.get("news"),
                 websocket_manager=self.websocket_manager,
                 api_key=self.api_key,  # Keep for backward compatibility
+                nation_cache=self.nation_cache,
             )
             await nation_component.initialize()
             self._components["nation"] = nation_component
@@ -296,6 +302,7 @@ class GPPManager:
                 holdings_db=self.holdings_db,
                 global_nations_db=self.global_nations_db,
                 global_wars_db=self.global_wars_db,
+                tracking_db=self.tracking_db,
                 websocket_manager=self.websocket_manager,
                 api_key=self.api_key,  # Keep for backward compatibility
                 news_component=self._components.get("news"),
@@ -334,6 +341,7 @@ class GPPManager:
             treaty_component = TreatyComponent(
                 treaties_db=self.treaties_db,
                 news_component=self._components.get("news"),
+                holdings_db=self.holdings_db,
                 websocket_manager=self.websocket_manager,
                 api_key=self.api_key,  # Keep for backward compatibility
             )
@@ -376,20 +384,15 @@ class GPPManager:
         logger.info("Starting GPPManager...")
         self._running = True
         self._start_time = datetime.now(timezone.utc)
-        
-        # Start SharedWebSocketManager
-        if self.websocket_manager:
-            await self.websocket_manager.start()
-            logger.info("SharedWebSocketManager started")
-        
+
         # Start components
         # Subscription components use run_forever() for auto-restart
         # Background loop components (revenue, timed_queries) use _run_loop() for their loops
         # Helper components (beige, news) don't need start methods
         subscription_components = ["nation", "war", "bankrec", "trade", "treaty"]
         background_loop_components = ["revenue", "timed_queries"]
-        
-        for name, component in self._components.items():
+
+        async def _start_component(name: str, component: Any) -> None:
             try:
                 health = self._component_health[name]
                 health.state = ComponentState.STARTING
@@ -431,9 +434,36 @@ class GPPManager:
                 health.health = HealthStatus.UNHEALTHY
                 health.last_error = str(e)
                 health.error_count += 1
+
+        # Helpers are made ready first; they do not open subscription sockets.
+        for name, component in self._components.items():
+            if name not in subscription_components and name not in background_loop_components:
+                await _start_component(name, component)
+
+        # Timed queries must begin before subscription sockets are opened.
+        if "timed_queries" in self._components:
+            await _start_component("timed_queries", self._components["timed_queries"])
+            await asyncio.sleep(0)
+
+        # Start SharedWebSocketManager only after timed queries are running.
+        if self.websocket_manager:
+            await self.websocket_manager.start()
+            logger.info("SharedWebSocketManager started")
+
+        for name in subscription_components:
+            component = self._components.get(name)
+            if component is not None:
+                await _start_component(name, component)
+
+        for name in background_loop_components:
+            if name == "timed_queries":
+                continue
+            component = self._components.get(name)
+            if component is not None:
+                await _start_component(name, component)
         
-        # Start health check loop
-        self._health_check_task = asyncio.create_task(self._health_check_loop())
+        # Health check loop disabled — components run_forever handles reconnection internally
+        self._health_check_task = None
         
         self._update_health_summary()
         logger.info("GPPManager started")
@@ -451,7 +481,7 @@ class GPPManager:
             await self.websocket_manager.stop()
             logger.info("SharedWebSocketManager stopped")
         
-        # Stop health check task
+        # Stop health check task (may be None if disabled)
         if self._health_check_task:
             self._health_check_task.cancel()
             try:
@@ -548,7 +578,7 @@ class GPPManager:
     async def _health_check_loop(self):
         """Background health check loop."""
         # Initial delay to give components time to receive first messages
-        await asyncio.sleep(60)  # 1 minute delay before first health check
+        await asyncio.sleep(15)  # 15 second delay before first health check
         
         while self._running:
             try:
@@ -569,6 +599,25 @@ class GPPManager:
             restart_triggered = False
             try:
                 health = self._component_health[name]
+
+                # Check if component task has died (for subscription and background loop components)
+                if name in self._component_tasks:
+                    task = self._component_tasks[name]
+                    if task and task.done():
+                        if not task.cancelled():
+                            exc = task.exception()
+                            if exc:
+                                logger.error(f"Component {name} task died with exception: {exc}", exc_info=True)
+                            else:
+                                logger.warning(f"Component {name} task completed unexpectedly (no exception)")
+                        else:
+                            logger.info(f"Component {name} task was cancelled")
+                        # Task died - trigger restart if not already stopping/stopped
+                        if health.state in (ComponentState.RUNNING, ComponentState.STARTING):
+                            logger.warning(f"Component {name} task died - triggering restart")
+                            restart_triggered = True
+                            await self._restart_component(name)
+                            continue  # Skip further checks for this component
                 
                 # Get component stats if available
                 if hasattr(component, 'get_component_stats'):
@@ -583,6 +632,30 @@ class GPPManager:
                     # Only check if component has an activity_tracker (subscription-based)
                     if component.running:
                         tracker = component.activity_tracker
+
+                        # SharedWebSocketManager supervises listener tasks.
+                        # Check for inactive subscriptions and force reconnect if needed,
+                        # but still fall through to the activity tracker for stall detection.
+                        ws_manager = getattr(component, "websocket_manager", None)
+                        if ws_manager is not None:
+                            tracked = tracker.get_all_health()
+                            subscriptions = getattr(ws_manager, "subscriptions", {})
+                            inactive = [
+                                sub_name for sub_name in tracked
+                                if (
+                                    sub_name in subscriptions
+                                    and not subscriptions[sub_name].active
+                                    and (
+                                        subscriptions[sub_name].required
+                                        or not subscriptions[sub_name].disabled
+                                    )
+                                )
+                            ]
+                            if inactive:
+                                health.health = HealthStatus.DEGRADED
+                                health.last_error = f"Shared WebSocket inactive: {', '.join(inactive)}"
+                                if hasattr(ws_manager, "force_reconnect"):
+                                    await ws_manager.force_reconnect(health.last_error)
                         
                         # Sync tracker threshold with manager config for subscription components only
                         # Background loop components (timed_queries, revenue) have their own thresholds
@@ -594,8 +667,8 @@ class GPPManager:
                         
                         logger.debug(f"Component {name} unhealthy subscriptions: {unhealthy}")
                         
-                        # Check if all subscriptions have never received messages (normal for infrequent subscriptions)
-                        # If so, don't restart the component
+                        # If all subscriptions have never received messages, give a startup grace period
+                        # before flagging them as unhealthy.
                         all_no_messages = True
                         for sub_health in tracker.get_all_health().values():
                             if sub_health.seconds_since_last_message() is not None:
@@ -603,8 +676,22 @@ class GPPManager:
                                 break
                         
                         if all_no_messages:
-                            logger.debug(f"Component {name}: all subscriptions have never received messages - skipping stall check")
-                            continue
+                            last_start = self._last_restart.get(name) or self._start_time
+                            if last_start:
+                                uptime = (datetime.now(timezone.utc) - last_start).total_seconds()
+                            else:
+                                uptime = 0
+                            if uptime > 300:  # 5 minute grace period
+                                logger.warning(
+                                    f"Component {name}: all subscriptions have never received messages "
+                                    f"after {uptime:.0f}s — may be stalled"
+                                )
+                            else:
+                                logger.debug(
+                                    f"Component {name}: all subscriptions have never received messages "
+                                    f"(within {uptime:.0f}s startup grace period)"
+                                )
+                                continue
                         
                         if unhealthy:
                             # Get detailed stall info for logging
@@ -662,6 +749,7 @@ class GPPManager:
                 if not restart_triggered and health.state == ComponentState.RUNNING:
                     if health.error_count == 0:
                         health.health = HealthStatus.HEALTHY
+                        health.last_error = None
                     elif health.error_count < 5:
                         health.health = HealthStatus.DEGRADED
                     else:
@@ -823,14 +911,11 @@ class GPPManager:
     
     async def get_stats(self) -> GPPManagerStats:
         """
-        Get overall statistics.
+        Get overall statistics from cached state.
         
-        Returns:
-            GPPManagerStats with comprehensive statistics
+        Returns current snapshot without re-running health checks.
+        Health checks run independently via _health_check_loop.
         """
-        # Update component health
-        await self._check_component_health()
-        
         total = len(self._components)
         running = sum(
             1 for h in self._component_health.values()
@@ -899,6 +984,7 @@ def get_gpp_manager(
     beige_alerts_db=None,
     news_db=None,
     treaties_db=None,
+    tracking_db=None,
     api_key: str = "",
     query_instance=None,
     websocket_manager=None,
@@ -934,6 +1020,7 @@ def get_gpp_manager(
             beige_alerts_db=beige_alerts_db,
             news_db=news_db,
             treaties_db=treaties_db,
+            tracking_db=tracking_db,
             api_key=api_key,
             query_instance=query_instance,
             websocket_manager=websocket_manager,

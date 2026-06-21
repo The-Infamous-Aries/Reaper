@@ -184,11 +184,65 @@ def _pick(items: List[str]) -> str:
 
 def _format_dialog(template: str, **kwargs) -> str:
     """Format a dialog template with placeholder substitution."""
+    class _SafeDialogVars(dict):
+        def __missing__(self, key):
+            logger.warning(f"Missing placeholder '{key}' in dialog template: {template}")
+            return "Unknown"
+
+    values = dict(kwargs)
+    values["nation"] = (
+        values.get("nation")
+        or values.get("nation_name")
+        or values.get("attacker")
+        or values.get("attacker_name")
+        or values.get("sender")
+        or values.get("sender_name")
+        or values.get("target")
+        or values.get("target_name")
+        or "Unknown"
+    )
+    values["alliance"] = (
+        values.get("alliance")
+        or values.get("alliance_name")
+        or values.get("att_alliance")
+        or values.get("attacker_alliance")
+        or values.get("attacker_alliance_name")
+        or values.get("sender_alliance")
+        or values.get("sender_alliance_name")
+        or values.get("target_alliance")
+        or values.get("target_alliance_name")
+        or "Unknown"
+    )
+    values["target"] = (
+        values.get("target")
+        or values.get("target_name")
+        or values.get("defender")
+        or values.get("defender_name")
+        or values.get("victim")
+        or values.get("victim_name")
+        or values.get("receiver")
+        or values.get("receiver_name")
+        or values.get("nation")
+        or "Unknown"
+    )
+    values["target_alliance"] = (
+        values.get("target_alliance")
+        or values.get("target_alliance_name")
+        or values.get("def_alliance")
+        or values.get("defender_alliance")
+        or values.get("defender_alliance_name")
+        or values.get("receiver_alliance")
+        or values.get("receiver_alliance_name")
+        or values.get("alliance")
+        or "Unknown"
+    )
     try:
-        return template.format(**kwargs)
+        return template.format_map(_SafeDialogVars(values))
     except KeyError as e:
-        # If a placeholder is missing, return the template as-is
         logger.warning(f"Missing placeholder {e} in dialog template: {template}")
+        return template
+    except Exception as e:
+        logger.warning(f"Failed to format dialog template: {e}; template={template}")
         return template
 
 
@@ -330,10 +384,6 @@ def _nation_with_alliance(nation_id: Optional[int], nation_name: Optional[str],
     n = _nation_token(nation_id, nation_name)
     a = _alliance_token(alliance_id, alliance_name)
     return f"{n} ({a})" if a else n
-
-
-def _is_nw(alliance_id: Optional[int]) -> bool:
-    return bool(alliance_id and int(alliance_id) == NW_ALLIANCE_ID)
 
 
 def _ordinal(n: int) -> str:
@@ -620,7 +670,7 @@ async def record_city_purchase(
     cash_cost: float,
     resource_costs: Optional[Dict[str, float]] = None,
     event_date: Optional[str] = None,
-) -> None:
+) -> bool:
     try:
         # Input validation
         _validate_nation_data(nation_id, nation_name, alliance_id)
@@ -3016,6 +3066,299 @@ async def record_bank_transfer(
 # Alliance join / leave
 # ─────────────────────────────────────────────────────────────────────────────
 
+async def record_nation_deleted(
+    nation_id: int,
+    nation_name: Optional[str],
+    leader_name: Optional[str],
+    nation_flag: Optional[str],
+    alliance_id: Optional[int],
+    alliance_name: Optional[str],
+    alliance_flag: Optional[str],
+    num_cities: Optional[int] = None,
+    score: Optional[float] = None,
+    event_date: Optional[str] = None,
+) -> bool:
+    """
+    Record a nation_deleted news event.
+
+    Called when a nation/delete subscription event is received, meaning the
+    nation has been permanently deleted from the game.  We look up whatever
+    metadata we can (name, alliance, cities, score) in our own DB before the
+    row is removed, so the article is as informative as possible.
+    """
+    try:
+        db = get_news_db()
+        n_label   = _nation_label(nation_name, nation_id)
+        n_tok     = _nation_token(nation_id, nation_name)
+        a_label   = _alliance_label(alliance_name, alliance_id)
+        a_tok     = _alliance_token(alliance_id, alliance_name)
+        was_nw    = _is_nw(alliance_id)
+        is_keeper = _is_keeper(nation_id, nation_name)
+
+        # Build headline
+        if alliance_id and int(alliance_id) != 0:
+            headline = f"{n_label} of {a_label} has been deleted"
+        else:
+            headline = f"{n_label} has been deleted"
+
+        # Context snippets for the body
+        city_str  = f"{num_cities} {'city' if num_cities == 1 else 'cities'}" if num_cities else "an unknown number of cities"
+        score_str = f"{score:,.2f} score" if score else None
+
+        if is_keeper:
+            intro = (
+                f"The Reaper pauses. Flim Flam Fugazies — the Keeper's domain — "
+                f"has been struck from the ledger of Orbis. "
+                f"This is... unexpected. The Reaper notes it with a raised skeletal brow."
+            )
+            flavor = (
+                f"Whether by choice, consequence, or forces beyond mortal understanding, "
+                f"{n_tok} is no more. The Keeper's absence will be felt."
+            )
+        elif was_nw:
+            intro = (
+                f"The Reaper records a loss to the Darkstar. "
+                f"{n_tok}, a member of {a_tok or a_label}, has been deleted from Orbis."
+            )
+            flavor_options = [
+                f"The Watch is diminished. {n_tok} built {city_str} under the dark banner{' with ' + score_str if score_str else ''}. "
+                f"The Reaper logs the departure with solemnity.",
+                f"{n_tok} leaves a void in the Darkstar's ranks. "
+                f"Their {city_str}{' and ' + score_str if score_str else ''} are gone with them. "
+                f"The Watch remembers its fallen.",
+                f"A Darkstar soul returns to the void. {n_tok} built {city_str} before the end came. "
+                f"The Reaper files this entry and moves on — but he does not forget.",
+            ]
+            flavor = _pick(flavor_options)
+        else:
+            intro = f"The Reaper strikes another name from the rolls of Orbis. {n_tok} has been deleted."
+            flavor_options = [
+                f"{n_tok}{(' of ' + a_tok) if a_tok else ''} built {city_str}{' with ' + score_str if score_str else ''} "
+                f"before being wiped from existence. The Reaper records the deletion and turns the page.",
+                f"With {city_str}{' and ' + score_str if score_str else ''}, "
+                f"{n_tok}{(' (' + a_tok + ')') if a_tok else ''} existed. Then didn't. "
+                f"The Reaper notes it matter-of-factly.",
+                f"Another entry closed. {n_tok}{(' of ' + a_tok) if a_tok else ''} is gone — "
+                f"{city_str}{', ' + score_str if score_str else ''}, history. "
+                f"The Reaper files the report and awaits the next.",
+            ]
+            flavor = _pick(flavor_options)
+
+        if leader_name:
+            flavor += f" Leader: {leader_name}."
+
+        body = f"{intro} {flavor}"
+
+        await db.record_event(
+            event_type="nation_deleted",
+            nation_id=nation_id,
+            nation_name=nation_name,
+            nation_flag=nation_flag,
+            alliance_id=alliance_id,
+            alliance_name=alliance_name,
+            alliance_flag=alliance_flag,
+            value=float(score) if score else 0.0,
+            value2=float(num_cities) if num_cities else 0.0,
+            headline=headline,
+            detail={
+                "body": body,
+                "leader_name": leader_name,
+                "num_cities": num_cities,
+                "score": score,
+                "was_nw": was_nw,
+                "alliance_id": alliance_id,
+                "alliance_name": alliance_name,
+            },
+            event_date=event_date or _now_str(),
+            alliance_delta={},
+            nation_delta={},
+        )
+        return True
+    except Exception as e:
+        logger.error(f"NewsWriter.record_nation_deleted: {e}", exc_info=True)
+        return False
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+async def record_city_deleted(
+    city_id: int,
+    city_name: Optional[str],
+    nation_id: Optional[int],
+    nation_name: Optional[str],
+    nation_flag: Optional[str],
+    alliance_id: Optional[int],
+    alliance_name: Optional[str],
+    alliance_flag: Optional[str],
+    old_num_cities: Optional[int] = None,
+    infrastructure: Optional[float] = None,
+    land: Optional[float] = None,
+    event_date: Optional[str] = None,
+) -> bool:
+    """Record a city_deleted news event from city/delete subscriptions."""
+    try:
+        db = get_news_db()
+        c_label = city_name or f"City #{city_id}"
+        n_label = _nation_label(nation_name, nation_id) or "Unknown Nation"
+        n_tok = _nation_token(nation_id, nation_name) if nation_id else n_label
+        a_tok = _alliance_token(alliance_id, alliance_name)
+        was_nw = _is_nw(alliance_id)
+        is_keeper = _is_keeper(nation_id, nation_name)
+
+        new_num_cities = None
+        if old_num_cities is not None:
+            try:
+                new_num_cities = max(0, int(old_num_cities) - 1)
+            except (TypeError, ValueError):
+                new_num_cities = None
+
+        headline = f"{n_label} loses {c_label}" if nation_id else f"{c_label} has been deleted"
+
+        context_parts = []
+        if infrastructure is not None:
+            context_parts.append(f"{float(infrastructure):,.2f} infrastructure")
+        if land is not None:
+            context_parts.append(f"{float(land):,.2f} land")
+        context = ", ".join(context_parts)
+
+        if is_keeper:
+            intro = (
+                f"The Reaper stops mid-entry. {c_label}, a city of {n_tok}, "
+                f"has vanished from the map."
+            )
+            flavor = "The Keeper's ledger has changed, and the ink looks uneasy."
+        elif was_nw:
+            intro = (
+                f"The Darkstar ledger loses a city. {c_label} of {n_tok} "
+                f"has been deleted."
+            )
+            flavor = (
+                f"The Watch is one city lighter"
+                f"{f', now standing at {new_num_cities} cities' if new_num_cities is not None else ''}. "
+                f"The Reaper records the loss with a colder hand than usual."
+            )
+        else:
+            intro = f"{c_label} of {n_tok}{(' (' + a_tok + ')') if a_tok else ''} has been deleted."
+            flavor = _pick([
+                "A little less skyline remains in Orbis. The Reaper updates the map.",
+                "The city is gone, leaving only a row in the records and a mark in the ledger.",
+                "Municipal ambitions have a way of becoming ruins. The Reaper records this one.",
+            ])
+
+        if context:
+            flavor += f" Last known city stats: {context}."
+        if new_num_cities is not None:
+            flavor += f" Nation city count: {old_num_cities} -> {new_num_cities}."
+
+        await db.record_event(
+            event_type="city_deleted",
+            nation_id=nation_id,
+            nation_name=nation_name,
+            nation_flag=nation_flag,
+            alliance_id=alliance_id,
+            alliance_name=alliance_name,
+            alliance_flag=alliance_flag,
+            value=float(infrastructure) if infrastructure is not None else 0.0,
+            value2=float(new_num_cities) if new_num_cities is not None else 0.0,
+            headline=headline,
+            detail={
+                "body": f"{intro} {flavor}",
+                "city_id": city_id,
+                "city_name": city_name,
+                "old_num_cities": old_num_cities,
+                "new_num_cities": new_num_cities,
+                "infrastructure": infrastructure,
+                "land": land,
+                "was_nw": was_nw,
+            },
+            event_date=event_date or _now_str(),
+            alliance_delta={},
+            nation_delta={},
+        )
+        return True
+    except Exception as e:
+        logger.error(f"NewsWriter.record_city_deleted: {e}", exc_info=True)
+        return False
+
+
+async def record_alliance_deleted(
+    alliance_id: int,
+    alliance_name: Optional[str],
+    alliance_flag: Optional[str],
+    member_count: int = 0,
+    city_count: int = 0,
+    score_total: float = 0.0,
+    cleared_nations: int = 0,
+    event_date: Optional[str] = None,
+) -> bool:
+    """Record an alliance_deleted news event from alliance/delete subscriptions."""
+    try:
+        db = get_news_db()
+        a_label = _alliance_label(alliance_name, alliance_id)
+        a_tok = _alliance_token(alliance_id, alliance_name) or a_label
+        was_nw = _is_nw(alliance_id)
+
+        headline = f"{a_label} has been deleted"
+        if was_nw:
+            intro = (
+                "The Reaper's quill scratches hard enough to scar the page. "
+                f"{a_tok}, the Darkstar itself, has been deleted."
+            )
+            flavor = (
+                f"The last local snapshot held {member_count:,} members, "
+                f"{city_count:,} cities, and {score_total:,.2f} total score. "
+                "This is not a normal entry. This is a bell tolling."
+            )
+        else:
+            intro = f"{a_tok} has been deleted from Orbis."
+            flavor = _pick([
+                (
+                    f"At last snapshot it held {member_count:,} members across "
+                    f"{city_count:,} cities. The Reaper closes the file."
+                ),
+                (
+                    f"An alliance name leaves the board. {member_count:,} member rows "
+                    f"were still tied to it locally when the deletion arrived."
+                ),
+                (
+                    f"The political map sheds another banner. Last known score: "
+                    f"{score_total:,.2f}. The ledger moves on."
+                ),
+            ])
+
+        if cleared_nations:
+            flavor += f" Cleared stale alliance data from {cleared_nations:,} nation rows."
+
+        await db.record_event(
+            event_type="alliance_deleted",
+            nation_id=None,
+            nation_name=None,
+            nation_flag=None,
+            alliance_id=alliance_id,
+            alliance_name=alliance_name,
+            alliance_flag=alliance_flag,
+            value=float(score_total or 0.0),
+            value2=float(member_count or 0),
+            headline=headline,
+            detail={
+                "body": f"{intro} {flavor}",
+                "alliance_id": alliance_id,
+                "alliance_name": alliance_name,
+                "member_count": member_count,
+                "city_count": city_count,
+                "score_total": score_total,
+                "cleared_nations": cleared_nations,
+                "was_nw": was_nw,
+            },
+            event_date=event_date or _now_str(),
+            alliance_delta={},
+            nation_delta={},
+        )
+        return True
+    except Exception as e:
+        logger.error(f"NewsWriter.record_alliance_deleted: {e}", exc_info=True)
+        return False
+
+
 async def record_alliance_change(
     nation_id: int,
     nation_name: Optional[str],
@@ -3234,7 +3577,7 @@ async def record_trade_completed(
     resources_traded: Dict[str, float],
     price_per_unit: float,
     event_date: Optional[str] = None,
-) -> None:
+) -> bool:
     """
     Record a completed trade news event.
     
@@ -3328,8 +3671,10 @@ async def record_trade_completed(
             alliance_delta={},
             nation_delta={},
         )
+        return True
     except Exception as e:
         logger.error(f"NewsWriter.record_trade_completed: {e}", exc_info=True)
+        return False
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -3347,7 +3692,7 @@ async def record_treaty_signed(
     alliance2_name: Optional[str],
     alliance2_flag: Optional[str],
     event_date: Optional[str] = None,
-) -> None:
+) -> bool:
     try:
         db = get_news_db()
         a1_label = _alliance_label(alliance1_name, alliance1_id)
@@ -3398,7 +3743,7 @@ async def record_treaty_signed(
             primary_alliance_name = alliance2_name
             primary_alliance_flag = alliance2_flag
 
-        await db.record_event(
+        result = await db.record_event(
             event_type="treaty_signed",
             nation_id=None,
             nation_name=None,
@@ -3428,8 +3773,10 @@ async def record_treaty_signed(
             alliance_delta={},
             nation_delta={},
         )
+        return result
     except Exception as e:
         logger.error(f"NewsWriter.record_treaty_signed: {e}", exc_info=True)
+        return False
 
 
 async def record_treaty_cancelled(
@@ -3442,7 +3789,7 @@ async def record_treaty_cancelled(
     alliance2_name: Optional[str],
     alliance2_flag: Optional[str],
     event_date: Optional[str] = None,
-) -> None:
+) -> bool:
     try:
         db = get_news_db()
         a1_label = _alliance_label(alliance1_name, alliance1_id)
@@ -3481,7 +3828,7 @@ async def record_treaty_cancelled(
             primary_alliance_name = alliance2_name
             primary_alliance_flag = alliance2_flag
 
-        await db.record_event(
+        result = await db.record_event(
             event_type="treaty_cancelled",
             nation_id=None,
             nation_name=None,
@@ -3510,5 +3857,7 @@ async def record_treaty_cancelled(
             alliance_delta={},
             nation_delta={},
         )
+        return result
     except Exception as e:
         logger.error(f"NewsWriter.record_treaty_cancelled: {e}", exc_info=True)
+        return False

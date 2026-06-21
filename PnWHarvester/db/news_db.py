@@ -716,7 +716,7 @@ class NewsDB:
         sec_alliance_name: Optional[str] = None,
         sec_alliance_delta: Optional[Dict[str, Any]] = None,
         sec_nation_delta: Optional[Dict[str, Any]] = None,
-    ) -> None:
+    ) -> bool:
         """
         Write a single event row to all three news DBs simultaneously.
         Primary party (nation_id / alliance_id) is the main subject.
@@ -761,6 +761,7 @@ class NewsDB:
 
             now_str     = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
             detail_json = json.dumps(detail, default=str)
+            success = True
 
             for path in paths:
                 try:
@@ -809,6 +810,8 @@ class NewsDB:
                         conn.commit()
                 except Exception as e:
                     logger.error(f"NewsDB.record_event({path.name}): {e}", exc_info=True)
+                    success = False
+            return success
 
     def checkpoint(self) -> None:
         """

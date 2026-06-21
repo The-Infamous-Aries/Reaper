@@ -530,6 +530,42 @@ class GlobalWarsDB(BaseDB):
                 logger.error(f"get_war_attacks({war_id}): {e}")
                 return []
 
+    async def get_attacks_for_wars(self, war_ids: List[int]) -> Dict[int, List[Dict[str, Any]]]:
+        """Bulk-fetch all attacks for a list of war IDs in a single query."""
+        if not war_ids:
+            return {}
+        async with self._get_lock():
+            try:
+                with self._get_connection() as conn:
+                    cursor = conn.cursor()
+                    placeholders = ','.join('?' * len(war_ids))
+                    cursor.execute(
+                        f'SELECT * FROM war_attacks WHERE war_id IN ({placeholders}) ORDER BY war_id, date',
+                        war_ids,
+                    )
+                    rows = cursor.fetchall()
+                    columns = [desc[0] for desc in cursor.description]
+                    result: Dict[int, List[Dict[str, Any]]] = {wid: [] for wid in war_ids}
+                    for row in rows:
+                        attack = dict(zip(columns, row))
+                        if attack.get('improvements_destroyed'):
+                            try:
+                                attack['improvements_destroyed'] = json.loads(attack['improvements_destroyed'])
+                            except (json.JSONDecodeError, TypeError):
+                                pass
+                        if attack.get('loot_info'):
+                            try:
+                                attack['loot_info'] = json.loads(attack['loot_info'])
+                            except (json.JSONDecodeError, TypeError):
+                                pass
+                        wid = attack.get('war_id')
+                        if wid in result:
+                            result[wid].append(attack)
+                    return result
+            except Exception as e:
+                logger.error(f"Error bulk-fetching attacks for wars: {e}")
+                return {}
+
     async def get_stats(self) -> Dict[str, int]:
         async with self._get_lock():
             try:

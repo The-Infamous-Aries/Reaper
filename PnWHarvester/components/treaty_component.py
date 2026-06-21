@@ -3,7 +3,7 @@ TreatyComponent — GPP component for treaty event processing.
 
 Handles:
 - treaty/create  → save to TreatiesDB + news (treaty signed)
-- treaty/update  → upsert to TreatiesDB (treaty type / URL change, no news)
+- treaty/update  → save to TreatiesDB + news (treaty updated)
 - treaty/delete  → mark inactive in TreatiesDB + news (treaty cancelled)
 
 Monitored by the GPPManager health check (ActivityTracker).
@@ -18,6 +18,9 @@ import pnwkit
 from pnwkit.new import QueryKit
 
 from PnWHarvester.core.activity_tracker import ActivityTracker
+from PnWHarvester.core.pnwkit_compat import close_querykit, patch_pnwkit
+
+patch_pnwkit()
 
 logger = logging.getLogger(__name__)
 
@@ -78,14 +81,35 @@ def _event_date(treaty: Dict[str, Any]) -> Optional[str]:
 class TreatyEventProcessor:
     """Processes treaty/create, treaty/update, treaty/delete events."""
 
-    def __init__(self, treaties_db, news_component=None):
+    def __init__(self, treaties_db, news_component=None, holdings_db=None):
         self.treaties_db = treaties_db
         self.news_component = news_component
+        self.holdings_db = holdings_db
+        self.stats = {
+            "creates_received": 0,
+            "updates_received": 0,
+            "deletes_received": 0,
+            "news_generated": 0,
+            "news_failed": 0,
+            "news_skipped_claimed": 0,
+            "news_skipped_no_component": 0,
+        }
+
+    async def _claim(self, event_type: str, treaty_id: int) -> bool:
+        if not self.holdings_db or not hasattr(self.holdings_db, "claim_processed_event"):
+            return True
+        return await self.holdings_db.claim_processed_event(event_type, treaty_id)
+
+    async def _unclaim(self, event_type: str, treaty_id: int) -> None:
+        if self.holdings_db and hasattr(self.holdings_db, "unclaim_processed_event"):
+            await self.holdings_db.unclaim_processed_event(event_type, treaty_id)
 
     async def process_create(self, event: Any) -> Dict[str, Any]:
+        self.stats["creates_received"] += 1
         treaty = _obj_to_dict(event)
         tid = treaty.get("id")
         if not tid:
+            logger.warning("treaty/create skipped: missing id in event payload %r", treaty)
             return {"processed": 0, "skipped": 1}
 
         af = _get_alliance_fields(treaty)
@@ -93,80 +117,158 @@ class TreatyEventProcessor:
         treaty_url  = treaty.get("treaty_url") or None
         edate       = _event_date(treaty)
 
+        logger.debug(
+            f"treaty/create id={tid} type={treaty_type} "
+            f"a1={af['alliance1_name']}({af['alliance1_id']}) "
+            f"a2={af['alliance2_name']}({af['alliance2_id']})"
+        )
+
         if self.treaties_db:
             await self.treaties_db.save_treaty({**treaty, **af})
 
         if self.news_component:
-            try:
-                from PnWHarvester.db import news_writer as nw
-                await nw.record_treaty_signed(
-                    treaty_id=int(tid),
-                    treaty_type=treaty_type,
-                    treaty_url=treaty_url,
-                    alliance1_id=af["alliance1_id"],
-                    alliance1_name=af["alliance1_name"],
-                    alliance1_flag=af["alliance1_flag"],
-                    alliance2_id=af["alliance2_id"],
-                    alliance2_name=af["alliance2_name"],
-                    alliance2_flag=af["alliance2_flag"],
-                    event_date=edate,
-                )
-            except Exception as e:
-                logger.debug(f"treaty/create news: {e}")
+            claimed = await self._claim("treaty_signed_news_generated", int(tid))
+            if not claimed:
+                self.stats["news_skipped_claimed"] += 1
+                logger.info(f"treaty/create id={tid} news already claimed, skipping")
+            else:
+                try:
+                    from PnWHarvester.db import news_writer as nw
+                    recorded = await nw.record_treaty_signed(
+                        treaty_id=int(tid),
+                        treaty_type=treaty_type,
+                        treaty_url=treaty_url,
+                        alliance1_id=af["alliance1_id"],
+                        alliance1_name=af["alliance1_name"],
+                        alliance1_flag=af["alliance1_flag"],
+                        alliance2_id=af["alliance2_id"],
+                        alliance2_name=af["alliance2_name"],
+                        alliance2_flag=af["alliance2_flag"],
+                        event_date=edate,
+                    )
+                    if recorded:
+                        self.stats["news_generated"] += 1
+                        logger.info(f"treaty/create id={tid} news article generated")
+                    else:
+                        self.stats["news_failed"] += 1
+                        await self._unclaim("treaty_signed_news_generated", int(tid))
+                        logger.error(f"treaty/create id={tid} news recording returned False")
+                except Exception as e:
+                    self.stats["news_failed"] += 1
+                    await self._unclaim("treaty_signed_news_generated", int(tid))
+                    logger.error(f"treaty/create id={tid} news failed: {e}", exc_info=True)
+        else:
+            self.stats["news_skipped_no_component"] += 1
+            logger.warning(f"treaty/create id={tid} news skipped: news_component is None")
 
-        logger.info(
-            f"treaty/create → id={tid} type={treaty_type} "
-            f"{af['alliance1_name']} <-> {af['alliance2_name']}"
-        )
         return {"processed": 1, "skipped": 0}
 
     async def process_update(self, event: Any) -> Dict[str, Any]:
+        self.stats["updates_received"] += 1
         treaty = _obj_to_dict(event)
         tid = treaty.get("id")
         if not tid:
+            logger.warning("treaty/update skipped: missing id in event payload %r", treaty)
             return {"processed": 0, "skipped": 1}
 
         af = _get_alliance_fields(treaty)
+        treaty_type = str(treaty.get("treaty_type") or "Unknown")
+
         if self.treaties_db:
             await self.treaties_db.save_treaty({**treaty, **af})
 
-        logger.debug(f"treaty/update → id={tid}")
+        if self.news_component:
+            claimed = await self._claim("treaty_updated_news_generated", int(tid))
+            if not claimed:
+                self.stats["news_skipped_claimed"] += 1
+                logger.info(f"treaty/update id={tid} news already claimed, skipping")
+            else:
+                try:
+                    from PnWHarvester.db import news_writer as nw
+                    recorded = await nw.record_treaty_signed(
+                        treaty_id=int(tid),
+                        treaty_type=treaty_type,
+                        treaty_url=treaty.get("treaty_url") or None,
+                        alliance1_id=af["alliance1_id"],
+                        alliance1_name=af["alliance1_name"],
+                        alliance1_flag=af["alliance1_flag"],
+                        alliance2_id=af["alliance2_id"],
+                        alliance2_name=af["alliance2_name"],
+                        alliance2_flag=af["alliance2_flag"],
+                        event_date=_event_date(treaty),
+                    )
+                    if recorded:
+                        self.stats["news_generated"] += 1
+                        logger.info(f"treaty/update id={tid} news article generated")
+                    else:
+                        self.stats["news_failed"] += 1
+                        await self._unclaim("treaty_updated_news_generated", int(tid))
+                        logger.error(f"treaty/update id={tid} news recording returned False")
+                except Exception as e:
+                    self.stats["news_failed"] += 1
+                    await self._unclaim("treaty_updated_news_generated", int(tid))
+                    logger.error(f"treaty/update id={tid} news failed: {e}", exc_info=True)
+        else:
+            self.stats["news_skipped_no_component"] += 1
+            logger.warning(f"treaty/update id={tid} news skipped: news_component is None")
+
         return {"processed": 1, "skipped": 0}
 
     async def process_delete(self, event: Any) -> Dict[str, Any]:
+        self.stats["deletes_received"] += 1
         treaty = _obj_to_dict(event)
         tid = treaty.get("id")
         if not tid:
+            logger.warning("treaty/delete skipped: missing id in event payload %r", treaty)
             return {"processed": 0, "skipped": 1}
 
         af = _get_alliance_fields(treaty)
         treaty_type = str(treaty.get("treaty_type") or "Unknown")
         edate       = _event_date(treaty)
 
+        logger.debug(
+            f"treaty/delete id={tid} type={treaty_type} "
+            f"a1={af['alliance1_name']}({af['alliance1_id']}) "
+            f"a2={af['alliance2_name']}({af['alliance2_id']})"
+        )
+
         if self.treaties_db:
             await self.treaties_db.delete_treaty(int(tid))
 
         if self.news_component:
-            try:
-                from PnWHarvester.db import news_writer as nw
-                await nw.record_treaty_cancelled(
-                    treaty_id=int(tid),
-                    treaty_type=treaty_type,
-                    alliance1_id=af["alliance1_id"],
-                    alliance1_name=af["alliance1_name"],
-                    alliance1_flag=af["alliance1_flag"],
-                    alliance2_id=af["alliance2_id"],
-                    alliance2_name=af["alliance2_name"],
-                    alliance2_flag=af["alliance2_flag"],
-                    event_date=edate,
-                )
-            except Exception as e:
-                logger.debug(f"treaty/delete news: {e}")
+            claimed = await self._claim("treaty_cancelled_news_generated", int(tid))
+            if not claimed:
+                self.stats["news_skipped_claimed"] += 1
+                logger.info(f"treaty/delete id={tid} news already claimed, skipping")
+            else:
+                try:
+                    from PnWHarvester.db import news_writer as nw
+                    recorded = await nw.record_treaty_cancelled(
+                        treaty_id=int(tid),
+                        treaty_type=treaty_type,
+                        alliance1_id=af["alliance1_id"],
+                        alliance1_name=af["alliance1_name"],
+                        alliance1_flag=af["alliance1_flag"],
+                        alliance2_id=af["alliance2_id"],
+                        alliance2_name=af["alliance2_name"],
+                        alliance2_flag=af["alliance2_flag"],
+                        event_date=edate,
+                    )
+                    if recorded:
+                        self.stats["news_generated"] += 1
+                        logger.info(f"treaty/delete id={tid} news article generated")
+                    else:
+                        self.stats["news_failed"] += 1
+                        await self._unclaim("treaty_cancelled_news_generated", int(tid))
+                        logger.error(f"treaty/delete id={tid} news recording returned False")
+                except Exception as e:
+                    self.stats["news_failed"] += 1
+                    await self._unclaim("treaty_cancelled_news_generated", int(tid))
+                    logger.error(f"treaty/delete id={tid} news failed: {e}", exc_info=True)
+        else:
+            self.stats["news_skipped_no_component"] += 1
+            logger.warning(f"treaty/delete id={tid} news skipped: news_component is None")
 
-        logger.info(
-            f"treaty/delete → id={tid} type={treaty_type} "
-            f"{af['alliance1_name']} <-> {af['alliance2_name']}"
-        )
         return {"processed": 1, "skipped": 0}
 
 
@@ -182,11 +284,13 @@ class TreatyComponent:
         self,
         treaties_db,
         news_component=None,
+        holdings_db=None,
         websocket_manager=None,
         api_key: str = "",
     ):
         self.treaties_db = treaties_db
         self.news_component = news_component
+        self.holdings_db = holdings_db
         self.websocket_manager = websocket_manager
         self.api_key = api_key
         
@@ -196,11 +300,12 @@ class TreatyComponent:
         else:
             self.kit = QueryKit(api_key)
 
-        self.processor = TreatyEventProcessor(treaties_db, news_component)
+        self.processor = TreatyEventProcessor(treaties_db, news_component, holdings_db)
 
         # Treaties change much less frequently than other game data (nations, wars, etc.)
         # Set a very long silence timeout to prevent unnecessary restarts
         self.activity_tracker = ActivityTracker(max_silence_seconds=86400.0)  # 24 hours
+        self.processor.activity_tracker = self.activity_tracker
 
         self.running = False
         self._tasks: list[asyncio.Task] = []
@@ -216,7 +321,10 @@ class TreatyComponent:
         stats: Dict[str, Any] = {
             "type": "TreatyComponent",
             "running": self.running,
+            "processor_stats": dict(self.processor.stats),
         }
+        if self.activity_tracker:
+            stats["subscription_health"] = self.activity_tracker.to_dict()
         if self.treaties_db:
             stats["db_stats"] = self.treaties_db.get_stats()
         return stats
@@ -310,6 +418,10 @@ class TreatyComponent:
         # Use SharedWebSocketManager if available, otherwise use own QueryKit
         if self.websocket_manager:
             # Register subscriptions with shared manager
+            logger.info("TreatyComponent registering treaty subscriptions with SharedWebSocketManager...")
+            ws_state = getattr(self.websocket_manager, "connection_state", None)
+            logger.info(f"TreatyComponent: websocket_manager state={ws_state}")
+            
             await self.websocket_manager.subscribe(
                 "treaty", "create", {},
                 self.processor.process_create
@@ -322,6 +434,16 @@ class TreatyComponent:
                 "treaty", "delete", {},
                 self.processor.process_delete
             )
+            
+            # Check if subscriptions were registered
+            ws_subs = getattr(self.websocket_manager, "subscriptions", {})
+            for key in ("treaty/create", "treaty/update", "treaty/delete"):
+                sub = ws_subs.get(key)
+                if sub:
+                    logger.info(f"TreatyComponent: {key} subscribed (active={sub.active})")
+                else:
+                    logger.warning(f"TreatyComponent: {key} NOT found in websocket_manager subscriptions!")
+            
             logger.info("TreatyComponent started (using SharedWebSocketManager)")
             
             # Keep running until stopped
@@ -349,40 +471,7 @@ class TreatyComponent:
         logger.info("TreatyComponent stopped")
 
     async def _close_kit_socket(self):
-        if not hasattr(self, "kit") or self.kit is None:
-            return
-
-        socket = getattr(self.kit, "socket", None)
-        if socket is None:
-            return
-
-        tasks_to_cancel = []
-        for attr in ("task", "ping_pong_task", "_heartbeat_task"):
-            t = getattr(socket, attr, None)
-            if t is not None and not t.done():
-                tasks_to_cancel.append(t)
-                t.cancel()
-
-        if tasks_to_cancel:
-            try:
-                await asyncio.gather(*tasks_to_cancel, return_exceptions=True)
-            except Exception as e:
-                logger.warning(f"Error cancelling socket tasks: {e}")
-
-        try:
-            if hasattr(socket, "ws") and socket.ws and not socket.ws.closed:
-                await socket.ws.close()
-        except Exception as e:
-            logger.debug(f"Error closing WebSocket: {e}")
-
-        # Do NOT close kit.aiohttp_session here. pnwkit spawns untracked
-        # handle_socket_close() tasks that hold a reference to the session and
-        # call reconnect() on it. Closing the session races with those tasks
-        # causing RuntimeError('Session is closed'). The session will be
-        # garbage-collected harmlessly once those tasks finish.
-
-        # Clear references
-        self.kit.socket = None
+        await close_querykit(getattr(self, "kit", None))
         self.kit = None
 
     async def run_forever(self):
@@ -390,6 +479,7 @@ class TreatyComponent:
         retry = 0
         base_delay = 10.0
         max_delay  = 300.0
+        actual_delay = base_delay  # ensure defined before first loop iteration
 
         while True:
             try:
@@ -404,17 +494,18 @@ class TreatyComponent:
                         if exc:
                             raise exc
                 retry = 0
+                actual_delay = base_delay
             except asyncio.CancelledError:
                 logger.info("TreatyComponent cancelled")
                 break
             except Exception as e:
-                delay = min(base_delay * (2 ** retry), max_delay)
+                actual_delay = min(base_delay * (2 ** retry), max_delay)
                 retry += 1
                 logger.warning(
                     f"TreatyComponent disconnected ({e}) — "
-                    f"retry {retry}, restarting in {delay:.1f}s"
+                    f"retry {retry}, restarting in {actual_delay:.1f}s"
                 )
             finally:
                 await self.stop()
 
-            await asyncio.sleep(delay if retry > 0 else base_delay)
+            await asyncio.sleep(actual_delay)

@@ -71,13 +71,13 @@ class RevenueProcessor:
                     # row structure: timestamp, global_level, north_america, south_america, europe, africa, asia, australia, antarctica
                     global_rad = row[1] if len(row) > 1 else 0
                     self._radiation_data = {
-                        'na': (row[2] if len(row) > 2 else 0 + global_rad) / -1000,
-                        'sa': (row[3] if len(row) > 3 else 0 + global_rad) / -1000,
-                        'eu': (row[4] if len(row) > 4 else 0 + global_rad) / -1000,
-                        'as': (row[5] if len(row) > 5 else 0 + global_rad) / -1000,
-                        'af': (row[6] if len(row) > 6 else 0 + global_rad) / -1000,
-                        'au': (row[7] if len(row) > 7 else 0 + global_rad) / -1000,
-                        'an': (row[8] if len(row) > 8 else 0 + global_rad) / -1000
+                        'na': ((row[2] if len(row) > 2 else 0) + global_rad) / -1000,
+                        'sa': ((row[3] if len(row) > 3 else 0) + global_rad) / -1000,
+                        'eu': ((row[4] if len(row) > 4 else 0) + global_rad) / -1000,
+                        'as': ((row[5] if len(row) > 5 else 0) + global_rad) / -1000,
+                        'af': ((row[6] if len(row) > 6 else 0) + global_rad) / -1000,
+                        'au': ((row[7] if len(row) > 7 else 0) + global_rad) / -1000,
+                        'an': ((row[8] if len(row) > 8 else 0) + global_rad) / -1000
                     }
                     logger.info("Loaded radiation data")
             except Exception as e:
@@ -313,6 +313,34 @@ class RevenueProcessor:
                 turn_date=datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S"),
             )
 
+    async def apply_turn_revenue_bulk(
+        self,
+        revenue_updates: List[tuple],
+        chunk_size: int = 1000,
+    ) -> int:
+        """Apply all calculated revenue updates through HoldingsDB in chunks."""
+        if not self.holdings_db or not revenue_updates:
+            return 0
+
+        turn_date = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+        payload = []
+        zero_resources = {
+            "coal": 0.0, "oil": 0.0, "uranium": 0.0, "iron": 0.0, "bauxite": 0.0, "lead": 0.0,
+            "gasoline": 0.0, "munitions": 0.0, "steel": 0.0, "aluminum": 0.0, "food": 0.0,
+        }
+        for nation_id, revenue in revenue_updates:
+            try:
+                payload.append({
+                    "nation_id": int(nation_id),
+                    "money_delta": float(revenue.get("total") or 0.0),
+                    "resource_deltas": revenue.get("resources") or zero_resources,
+                    "turn_date": turn_date,
+                })
+            except Exception as e:
+                logger.warning(f"Revenue update normalization failed for nation {nation_id}: {e}")
+
+        return await self.holdings_db.apply_turn_revenue_bulk(payload, chunk_size=chunk_size)
+
 
 class BeigeAlertUpdater:
     """Updates beige alerts based on nation state."""
@@ -501,18 +529,18 @@ class RevenueComponent:
                                     logger.warning(f"Revenue calculation failed for nation {nation_id}: {e}")
                         else:
                             logger.info("Cache not available, pre-loading data...")
-                            # Pre-load all nation data in bulk to reduce DB calls
-                            all_nations = {}
-                            for nation_id in tracked_nations:
-                                nation = await self.global_nations_db.get_nation(nation_id)
-                                if nation:
-                                    all_nations[nation_id] = nation
-                            
-                            # Pre-load all cities in bulk to reduce DB calls
-                            all_cities = {}
-                            for nation_id in tracked_nations:
-                                cities = await self.global_nations_db.get_cities_for_nation(nation_id)
-                                all_cities[nation_id] = cities
+                            # Pre-load all nation/city data in bulk to avoid per-nation DB calls at turn time.
+                            tracked_set = set(tracked_nations)
+                            all_nations = {
+                                int(nation["id"]): nation
+                                for nation in await self.global_nations_db.get_all_nations()
+                                if int(nation.get("id") or 0) in tracked_set
+                            }
+                            all_cities = {
+                                int(nation_id): cities
+                                for nation_id, cities in (await self.global_nations_db.get_all_cities_bulk()).items()
+                                if int(nation_id) in tracked_set
+                            }
                             
                             # Calculate revenue for all nations (CPU-bound, no DB calls)
                             logger.info("Calculating revenue for all nations...")
@@ -534,15 +562,17 @@ class RevenueComponent:
                                     logger.warning(f"Revenue calculation failed for nation {nation_id}: {e}")
                         
                         # Apply all revenue updates in batch
-                        logger.info(f"Applying {len(revenue_updates)} revenue updates...")
-                        for nation_id, revenue in revenue_updates:
-                            try:
-                                await self.revenue_processor.apply_turn_revenue(nation_id, revenue)
-                            except Exception as e:
-                                logger.warning(f"Revenue application failed for nation {nation_id}: {e}")
+                        logger.info(f"Applying {len(revenue_updates)} revenue updates in chunks...")
+                        applied_count = await self.revenue_processor.apply_turn_revenue_bulk(
+                            revenue_updates,
+                            chunk_size=1000,
+                        )
                         
                         elapsed = (datetime.now(timezone.utc) - start_time).total_seconds()
-                        logger.info(f"Turn: revenue applied to {revenue_processed}/{total_nations} tracked nations in {elapsed:.1f}s")
+                        logger.info(
+                            f"Turn: revenue applied to {applied_count}/{total_nations} tracked nations "
+                            f"({revenue_processed} calculated) in {elapsed:.1f}s"
+                        )
                         
                 except Exception as e:
                     logger.error(f"Failed to apply revenue to holdings: {e}", exc_info=True)
@@ -599,6 +629,8 @@ class RevenueComponent:
                 await self._task
             except asyncio.CancelledError:
                 pass
+        # Close the aiosqlite connection opened by RevenueProcessor.initialize()
+        await self.revenue_processor.close()
         logger.info("RevenueComponent stopped")
     
     def _seconds_until_next_turn(self) -> float:

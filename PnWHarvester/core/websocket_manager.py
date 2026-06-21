@@ -13,6 +13,7 @@ Implements industry-best practices for WebSocket reliability:
 
 import asyncio
 import logging
+import os
 import random
 import time
 from collections import deque
@@ -24,6 +25,9 @@ from typing import Any, Callable, Dict, List, Optional, Set
 import aiohttp
 import pnwkit
 from pnwkit.new import QueryKit
+from PnWHarvester.core.pnwkit_compat import close_querykit, patch_pnwkit
+
+patch_pnwkit()
 
 logger = logging.getLogger(__name__)
 
@@ -44,12 +48,23 @@ class SubscriptionInfo:
     action: str
     filters: Dict[str, Any]
     callback: Callable
+    required: bool = True
     active: bool = False
     subscription_obj: Optional[Any] = None
+    disabled: bool = False
+    last_error: Optional[str] = None
+    next_retry_at: float = 0.0
+    event_queue: Optional[asyncio.Queue] = None
+    worker_task: Optional[asyncio.Task] = None
 
 
 class CircuitBreakerError(Exception):
     """Raised when circuit breaker is open."""
+    pass
+
+
+class WebSocketIdleTimeout(ConnectionError):
+    """Raised when an open WebSocket stops delivering events."""
     pass
 
 
@@ -366,6 +381,11 @@ class SharedWebSocketManager:
         # Subscriptions
         self.subscriptions: Dict[str, SubscriptionInfo] = {}
         self._subscription_lock = asyncio.Lock()
+        self._listener_tasks: Dict[str, asyncio.Task] = {}
+        self._subscription_changed = asyncio.Event()
+        self.dispatch_queue_size = int(self._env_float(
+            "HARVESTER_WS_DISPATCH_QUEUE_SIZE", 500.0
+        ))
         
         # Reliability components
         self.circuit_breaker = CircuitBreaker(failure_threshold=5, timeout=300)
@@ -378,9 +398,33 @@ class SharedWebSocketManager:
         self.base_delay = 10
         self.max_delay = 300
         self.retry_count = 0
+        self.idle_reconnect_seconds = self._env_float(
+            "HARVESTER_WS_IDLE_RECONNECT_SECONDS", 60.0
+        )
+        self.initial_idle_reconnect_seconds = self._env_float(
+            "HARVESTER_WS_INITIAL_IDLE_RECONNECT_SECONDS",
+            max(self.idle_reconnect_seconds * 2, 120.0),
+        )
+        self.connected_at: Optional[datetime] = None
+        self.last_event_at: Optional[datetime] = None
+        self._last_forced_reconnect_at: Optional[float] = None
+        self._force_reconnect_requested = False
         
         # Connection task
         self._connection_task: Optional[asyncio.Task] = None
+
+    @staticmethod
+    def _env_float(name: str, default: float) -> float:
+        """Read a positive float from the environment."""
+        raw = os.getenv(name)
+        if raw is None:
+            return default
+        try:
+            value = float(raw)
+            return value if value > 0 else default
+        except ValueError:
+            logger.warning("Invalid %s=%r; using %.1f", name, raw, default)
+            return default
         
     def add_state_listener(self, listener: Callable):
         """Add a listener for connection state changes."""
@@ -432,18 +476,69 @@ class SharedWebSocketManager:
                 await self._connection_task
             except asyncio.CancelledError:
                 pass
+
+        await self._cancel_listener_tasks()
         
-        # Close WebSocket
-        if self.kit:
-            socket = getattr(self.kit, "socket", None)
-            if socket:
-                for attr in ("task", "ping_pong_task", "_heartbeat_task"):
-                    t = getattr(socket, attr, None)
-                    if t and not t.done():
-                        t.cancel()
+        # Close WebSocket and underlying HTTP sessions.
+        await close_querykit(self.kit)
+        self.kit = None
         
         self._set_state(ConnectionState.DISCONNECTED)
         logger.info("SharedWebSocketManager stopped")
+
+    async def force_reconnect(self, reason: str) -> None:
+        """Tear down the current connection so the connection loop rebuilds it."""
+        if not self.running:
+            return
+
+        if self.connection_state != ConnectionState.CONNECTED:
+            logger.debug(
+                "Ignoring force_reconnect (state=%s): %s",
+                self.connection_state.value, reason,
+            )
+            return
+
+        now = time.monotonic()
+        if (
+            self._last_forced_reconnect_at is not None
+            and now - self._last_forced_reconnect_at < 10.0
+        ):
+            logger.debug("Shared WebSocket reconnect already requested recently: %s", reason)
+            return
+        self._last_forced_reconnect_at = now
+
+        logger.warning("Forcing shared WebSocket reconnect: %s", reason)
+        self._force_reconnect_requested = True
+        await self._cancel_listener_tasks()
+        await close_querykit(self.kit)
+        self.kit = None
+        self._subscription_changed.set()
+
+    async def _cancel_listener_tasks(self) -> None:
+        """Cancel tracked listeners and reset subscription runtime state."""
+        tasks = list(self._listener_tasks.values())
+        self._listener_tasks.clear()
+
+        async with self._subscription_lock:
+            tasks.extend(
+                sub_info.worker_task
+                for sub_info in self.subscriptions.values()
+                if sub_info.worker_task is not None
+            )
+            for sub_info in self.subscriptions.values():
+                sub_info.worker_task = None
+                sub_info.event_queue = None
+
+        for task in tasks:
+            if not task.done():
+                task.cancel()
+        if tasks:
+            await asyncio.gather(*tasks, return_exceptions=True)
+
+        async with self._subscription_lock:
+            for sub_info in self.subscriptions.values():
+                sub_info.active = False
+                sub_info.subscription_obj = None
         
     async def _connection_loop(self):
         """Main connection loop with auto-reconnect."""
@@ -479,42 +574,65 @@ class SharedWebSocketManager:
                 
                 await asyncio.sleep(actual_delay)
                 
-    async def _connect(self):
+    async def _connect_legacy_disabled(self):
         """Establish WebSocket connection and start subscriptions."""
         self._set_state(ConnectionState.RECONNECTING if self.retry_count > 0 else ConnectionState.CONNECTING)
         
         try:
             # Close existing connection if any
-            if self.kit:
-                socket = getattr(self.kit, "socket", None)
-                if socket:
-                    for attr in ("task", "ping_pong_task", "_heartbeat_task"):
-                        t = getattr(socket, attr, None)
-                        if t and not t.done():
-                            t.cancel()
-            
+            await self._cancel_listener_tasks()
+            await close_querykit(self.kit)
+            self.kit = QueryKit(self.api_key)
+
             # Start reliability components
-            # await self.heartbeat_monitor.start(self._send_ping)
-            await self.health_prober.start(self._probe_health)
+            if not self.health_prober.running:
+                await self.health_prober.start(self._probe_health)
             
             # Establish all subscriptions
+            listener_tasks = []
             async with self._subscription_lock:
                 for key, sub_info in self.subscriptions.items():
                     if not sub_info.active:
-                        await self._start_subscription(sub_info)
+                        await self._start_subscription_legacy_disabled(
+                            sub_info, listener_tasks
+                        )
             
             self._set_state(ConnectionState.CONNECTED)
             self.circuit_breaker.record_success()
             
-            # Wait for connection to fail (it will raise an exception)
-            await self._wait_for_disconnect()
+            if not listener_tasks:
+                # No subscriptions yet — just wait until stopped
+                while self.running and self.connection_state == ConnectionState.CONNECTED:
+                    await asyncio.sleep(1)
+                return
+            
+            # Wait for the FIRST listener to finish — any disconnect/crash triggers reconnect
+            done, pending = await asyncio.wait(
+                listener_tasks, return_when=asyncio.FIRST_COMPLETED
+            )
+            for t in pending:
+                t.cancel()
+            await asyncio.gather(*pending, return_exceptions=True)
+            # Re-raise the first exception so _connection_loop retries
+            for t in done:
+                exc = t.exception() if not t.cancelled() else None
+                if exc:
+                    raise exc
             
         except Exception as e:
-            logger.error(f"Connection error: {e}", exc_info=True)
+            if isinstance(e, WebSocketIdleTimeout):
+                logger.warning(str(e))
+            else:
+                logger.error(f"Connection error: {e}", exc_info=True)
+            await self._cancel_listener_tasks()
+            await close_querykit(self.kit)
+            self.kit = None
+            if self.running:
+                self._set_state(ConnectionState.DISCONNECTED)
             raise
             
-    async def _start_subscription(self, sub_info: SubscriptionInfo):
-        """Start a single subscription."""
+    async def _start_subscription_legacy_disabled(self, sub_info: SubscriptionInfo, listener_tasks: list):
+        """Start a single subscription and add its listener task to listener_tasks."""
         try:
             subscription = await self.kit.subscribe(
                 sub_info.resource,
@@ -525,14 +643,238 @@ class SharedWebSocketManager:
             sub_info.active = True
             logger.info(f"Subscription active: {sub_info.resource}/{sub_info.action}")
             
-            # Start event listener for this subscription
-            asyncio.create_task(self._listen_to_subscription(sub_info))
+            # Create a tracked listener task so its exceptions surface to _connect
+            task = asyncio.create_task(
+                self._listen_to_subscription(sub_info),
+                name=f"ws_listen_{sub_info.resource}_{sub_info.action}"
+            )
+            listener_tasks.append(task)
             
         except Exception as e:
             logger.error(f"Failed to start subscription {sub_info.resource}/{sub_info.action}: {e}")
             sub_info.active = False
             raise
             
+    async def _connect(self):
+        """Establish WebSocket connection and keep every listener supervised."""
+        self._force_reconnect_requested = False
+        self._set_state(ConnectionState.RECONNECTING if self.retry_count > 0 else ConnectionState.CONNECTING)
+
+        try:
+            await self._cancel_listener_tasks()
+            await close_querykit(self.kit)
+            self.kit = QueryKit(self.api_key)
+
+            if not self.health_prober.running:
+                await self.health_prober.start(self._probe_health)
+
+            self.connected_at = datetime.now(timezone.utc)
+            self.last_event_at = None
+
+            async with self._subscription_lock:
+                for sub_info in self.subscriptions.values():
+                    if not sub_info.active:
+                        await self._start_subscription(sub_info)
+
+            self._set_state(ConnectionState.CONNECTED)
+            self.circuit_breaker.record_success()
+
+            while self.running and self.connection_state == ConnectionState.CONNECTED:
+                if self._force_reconnect_requested:
+                    self._force_reconnect_requested = False
+                    raise ConnectionError("Force reconnect requested")
+                self._raise_if_idle()
+                await self._retry_disabled_optional_subscriptions()
+
+                listener_tasks = {
+                    task for task in self._listener_tasks.values()
+                    if task and not task.done()
+                }
+
+                if not listener_tasks:
+                    try:
+                        await asyncio.wait_for(self._subscription_changed.wait(), timeout=1.0)
+                    except asyncio.TimeoutError:
+                        pass
+                    self._subscription_changed.clear()
+                    continue
+
+                change_task = asyncio.create_task(self._subscription_changed.wait())
+                done, pending = await asyncio.wait(
+                    listener_tasks | {change_task},
+                    return_when=asyncio.FIRST_COMPLETED,
+                    timeout=5.0,
+                )
+
+                if not done:
+                    change_task.cancel()
+                    await asyncio.gather(change_task, return_exceptions=True)
+                    continue
+
+                if change_task in done:
+                    self._subscription_changed.clear()
+                    continue
+
+                change_task.cancel()
+                await asyncio.gather(change_task, return_exceptions=True)
+
+                for task in pending:
+                    task.cancel()
+                await asyncio.gather(*pending, return_exceptions=True)
+
+                async with self._subscription_lock:
+                    for sub_info in self.subscriptions.values():
+                        sub_info.active = False
+                        sub_info.subscription_obj = None
+                self._listener_tasks.clear()
+
+                for task in done:
+                    exc = task.exception() if not task.cancelled() else None
+                    if exc:
+                        raise exc
+                raise ConnectionError("Subscription listener ended")
+
+        except Exception as e:
+            if isinstance(e, WebSocketIdleTimeout):
+                logger.warning(str(e))
+            else:
+                logger.error(f"Connection error: {e}", exc_info=True)
+            await self._cancel_listener_tasks()
+            await close_querykit(self.kit)
+            self.kit = None
+            if self.running:
+                self._set_state(ConnectionState.DISCONNECTED)
+            raise
+
+    def _active_subscription_count(self) -> int:
+        return sum(1 for info in self.subscriptions.values() if info.active)
+
+    def _seconds_since_stream_activity(self) -> Optional[float]:
+        reference = self.last_event_at or self.connected_at
+        if reference is None:
+            return None
+        return (datetime.now(timezone.utc) - reference).total_seconds()
+
+    def _raise_if_idle(self) -> None:
+        """Force reconnect when the shared stream is open but no events arrive."""
+        if self.idle_reconnect_seconds <= 0:
+            return
+        if self._active_subscription_count() == 0:
+            return
+
+        idle_seconds = self._seconds_since_stream_activity()
+        if idle_seconds is None:
+            return
+
+        limit = (
+            self.idle_reconnect_seconds
+            if self.last_event_at is not None
+            else self.initial_idle_reconnect_seconds
+        )
+        if idle_seconds >= limit:
+            source = "last event" if self.last_event_at is not None else "connection start"
+            raise WebSocketIdleTimeout(
+                f"No WebSocket events received for {idle_seconds:.0f}s since {source}; "
+                f"forcing reconnect (limit {limit:.0f}s)"
+            )
+
+    async def _start_subscription(self, sub_info: SubscriptionInfo, *_unused):
+        """Start a single subscription and track its listener task."""
+        key = f"{sub_info.resource}/{sub_info.action}"
+        if sub_info.disabled and not sub_info.required:
+            logger.debug("Skipping disabled optional subscription: %s", key)
+            return False
+        try:
+            subscription = await self.kit.subscribe(
+                sub_info.resource,
+                sub_info.action,
+                sub_info.filters,
+            )
+            sub_info.subscription_obj = subscription
+            sub_info.active = True
+            sub_info.event_queue = asyncio.Queue(maxsize=self.dispatch_queue_size)
+            logger.info(f"Subscription active: {key}")
+
+            task = asyncio.create_task(
+                self._listen_to_subscription(sub_info),
+                name=f"ws_listen_{sub_info.resource}_{sub_info.action}",
+            )
+            self._listener_tasks[key] = task
+            sub_info.worker_task = asyncio.create_task(
+                self._dispatch_subscription_events(sub_info),
+                name=f"ws_dispatch_{sub_info.resource}_{sub_info.action}",
+            )
+            sub_info.disabled = False
+            sub_info.last_error = None
+            sub_info.next_retry_at = 0.0
+            return True
+
+        except (pnwkit.errors.Unauthorized, pnwkit.errors.SubscribeError) as e:
+            sub_info.active = False
+            sub_info.subscription_obj = None
+            sub_info.last_error = f"{type(e).__name__}: {e}"
+            if not sub_info.required:
+                sub_info.disabled = True
+                # Exponential backoff for retries: 5min, 15min, 45min, 2h, 6h, max 24h
+                retry_count = getattr(sub_info, '_retry_count', 0) + 1
+                sub_info._retry_count = retry_count
+                backoff = min(300 * (3 ** (retry_count - 1)), 86400)
+                sub_info.next_retry_at = time.monotonic() + backoff
+                if retry_count <= 3:
+                    logger.warning(
+                        "Optional subscription unavailable (attempt %d/%d), retry in %.1fm: %s (%s)",
+                        retry_count, 6, backoff / 60, key, sub_info.last_error,
+                    )
+                else:
+                    logger.info(
+                        "Optional subscription permanently disabled after %d failures: %s (%s)",
+                        retry_count, key, sub_info.last_error,
+                    )
+                return False
+            logger.error(f"Failed to start required subscription {key}: {e}")
+            raise
+        except Exception as e:
+            sub_info.active = False
+            sub_info.subscription_obj = None
+            sub_info.last_error = f"{type(e).__name__}: {e}"
+            if not sub_info.required:
+                sub_info.disabled = True
+                retry_count = getattr(sub_info, '_retry_count', 0) + 1
+                sub_info._retry_count = retry_count
+                backoff = min(300 * (3 ** (retry_count - 1)), 86400)
+                sub_info.next_retry_at = time.monotonic() + backoff
+                if retry_count <= 3:
+                    logger.warning(
+                        "Optional subscription startup failed (attempt %d/%d), retry in %.1fm: %s (%s)",
+                        retry_count, 6, backoff / 60, key, sub_info.last_error,
+                    )
+                else:
+                    logger.info(
+                        "Optional subscription permanently disabled after %d failures: %s (%s)",
+                        retry_count, key, sub_info.last_error,
+                    )
+                return False
+            logger.error(f"Failed to start subscription {key}: {e}")
+            raise
+
+    async def _retry_disabled_optional_subscriptions(self) -> None:
+        """Retry optional subscriptions that were parked after subscribe/auth failures."""
+        now = time.monotonic()
+        async with self._subscription_lock:
+            for sub_info in self.subscriptions.values():
+                if (
+                    sub_info.required
+                    or sub_info.active
+                    or not sub_info.disabled
+                    or sub_info.next_retry_at > now
+                ):
+                    continue
+
+                key = f"{sub_info.resource}/{sub_info.action}"
+                logger.info("Retrying parked optional subscription: %s", key)
+                sub_info.disabled = False
+                await self._start_subscription(sub_info)
+
     async def _listen_to_subscription(self, sub_info: SubscriptionInfo):
         """Listen to events from a subscription."""
         key = f"{sub_info.resource}/{sub_info.action}"
@@ -543,13 +885,25 @@ class SharedWebSocketManager:
                     break
                     
                 try:
+                    self.last_event_at = datetime.now(timezone.utc)
+
                     # Buffer event for potential replay
                     self.event_buffer.add_event(event, key)
-                    
-                    # Call user callback
-                    await sub_info.callback(event)
+
+                    owner = getattr(sub_info.callback, "__self__", None)
+                    tracker = getattr(owner, "activity_tracker", None)
+                    if tracker:
+                        tracker.record_message(key)
+
+                    if sub_info.event_queue is None:
+                        raise RuntimeError(f"Dispatch queue not initialized for {key}")
+                    await sub_info.event_queue.put(event)
                     
                 except Exception as e:
+                    owner = getattr(sub_info.callback, "__self__", None)
+                    tracker = getattr(owner, "activity_tracker", None)
+                    if tracker:
+                        tracker.record_error(key)
                     logger.error(f"Error processing event from {key}: {e}", exc_info=True)
                     
         except asyncio.CancelledError:
@@ -558,20 +912,42 @@ class SharedWebSocketManager:
             logger.error(f"Subscription error {key}: {e}")
             sub_info.active = False
             raise
-            
-    async def _wait_for_disconnect(self):
-        """Wait for connection to disconnect."""
-        # This is a placeholder - the actual disconnect detection
-        # will come from the subscription listeners raising exceptions
-        while self.running and self.connection_state == ConnectionState.CONNECTED:
-            await asyncio.sleep(1)
+        finally:
+            sub_info.active = False
+            sub_info.subscription_obj = None
+
+    async def _dispatch_subscription_events(self, sub_info: SubscriptionInfo):
+        """Process queued events for one subscription without blocking socket reads."""
+        key = f"{sub_info.resource}/{sub_info.action}"
+
+        try:
+            while self.running:
+                queue = sub_info.event_queue
+                if queue is None:
+                    break
+
+                event = await queue.get()
+                try:
+                    await sub_info.callback(event)
+                except Exception as e:
+                    owner = getattr(sub_info.callback, "__self__", None)
+                    tracker = getattr(owner, "activity_tracker", None)
+                    if tracker:
+                        tracker.record_error(key)
+                    logger.error(f"Error processing event from {key}: {e}", exc_info=True)
+                finally:
+                    queue.task_done()
+
+        except asyncio.CancelledError:
+            logger.info(f"Subscription dispatch cancelled: {key}")
             
     async def subscribe(
         self,
         resource: str,
         action: str,
         filters: Dict[str, Any],
-        callback: Callable
+        callback: Callable,
+        required: bool = True,
     ) -> str:
         """
         Subscribe to a WebSocket event.
@@ -589,7 +965,19 @@ class SharedWebSocketManager:
         
         async with self._subscription_lock:
             if key in self.subscriptions:
-                logger.warning(f"Subscription already exists: {key}")
+                sub_info = self.subscriptions[key]
+                sub_info.filters = filters
+                sub_info.callback = callback
+                sub_info.required = required
+                if required:
+                    sub_info.disabled = False
+                if (
+                    self.connection_state == ConnectionState.CONNECTED
+                    and not sub_info.active
+                ):
+                    await self._start_subscription(sub_info)
+                    self._subscription_changed.set()
+                logger.info(f"Subscription updated: {key}")
                 return key
                 
             sub_info = SubscriptionInfo(
@@ -597,6 +985,7 @@ class SharedWebSocketManager:
                 action=action,
                 filters=filters,
                 callback=callback,
+                required=required,
                 active=False
             )
             
@@ -604,7 +993,9 @@ class SharedWebSocketManager:
             
             # If already connected, start this subscription immediately
             if self.connection_state == ConnectionState.CONNECTED:
-                await self._start_subscription(sub_info)
+                _tasks: list = []
+                await self._start_subscription(sub_info, _tasks)
+                self._subscription_changed.set()
                 
             logger.info(f"Subscription registered: {key}")
             return key
@@ -641,9 +1032,11 @@ class SharedWebSocketManager:
     async def _probe_health(self) -> bool:
         """Probe connection health with a test query."""
         try:
-            # Simple check - if we have an active subscription, assume connection is healthy
-            # The heartbeat monitor will catch actual connection failures
+            self._raise_if_idle()
             return True
+        except WebSocketIdleTimeout as e:
+            logger.warning(f"Health probe failed: {e}")
+            return False
         except Exception as e:
             logger.error(f"Health probe failed: {e}")
             return False
@@ -655,8 +1048,18 @@ class SharedWebSocketManager:
             "circuit_breaker_state": self.circuit_breaker.get_state(),
             "circuit_breaker_failures": self.circuit_breaker.failure_count,
             "retry_count": self.retry_count,
+            "connected_at": self.connected_at.isoformat() if self.connected_at else None,
+            "last_event_at": self.last_event_at.isoformat() if self.last_event_at else None,
+            "seconds_since_stream_activity": self._seconds_since_stream_activity(),
+            "idle_reconnect_seconds": self.idle_reconnect_seconds,
+            "initial_idle_reconnect_seconds": self.initial_idle_reconnect_seconds,
             "subscriptions": {
-                key: {"active": info.active}
+                key: {
+                    "active": info.active,
+                    "required": info.required,
+                    "disabled": info.disabled,
+                    "last_error": info.last_error,
+                }
                 for key, info in self.subscriptions.items()
             },
             # "heartbeat_healthy": self.heartbeat_monitor.is_healthy(),

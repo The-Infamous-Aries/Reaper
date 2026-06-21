@@ -317,28 +317,40 @@ class DatabasePool:
                 
                 # If still no connection, wait for one to become available
                 if conn is None:
-                    # Wait with timeout
-                    waited = 0.0
-                    while conn is None and waited < timeout:
-                        await asyncio.sleep(0.1)
-                        waited += 0.1
-                        
-                        async with self._lock:
-                            for c in self._connections:
-                                if not c.in_use and c.check_health():
-                                    conn = c
-                                    break
+                    # We hit max pool size. Release the outer lock while we wait
+                    # so other coroutines can return connections.
+                    pass
+                else:
+                    # Claim it immediately while we still hold the lock
+                    conn.mark_in_use()
+                    self._stats.active_connections += 1
+                    self._stats.idle_connections -= 1
+                    self._stats.total_acquisitions += 1
+            
+            # Outside the lock: poll until a connection is free or timeout
+            if conn is None:
+                waited = 0.0
+                while conn is None and waited < timeout:
+                    await asyncio.sleep(0.1)
+                    waited += 0.1
                     
-                    if conn is None:
-                        raise asyncio.TimeoutError(
-                            f"No connection available after {timeout}s"
-                        )
+                    async with self._lock:
+                        for c in self._connections:
+                            if not c.in_use and c.check_health():
+                                conn = c
+                                break
                 
-                # Mark as in use
-                conn.mark_in_use()
-                self._stats.active_connections += 1
-                self._stats.idle_connections -= 1
-                self._stats.total_acquisitions += 1
+                if conn is None:
+                    raise asyncio.TimeoutError(
+                        f"No connection available after {timeout}s"
+                    )
+                
+                # Claim the connection under the lock
+                async with self._lock:
+                    conn.mark_in_use()
+                    self._stats.active_connections += 1
+                    self._stats.idle_connections -= 1
+                    self._stats.total_acquisitions += 1
             
             wait_time = time.monotonic() - start_time
             self._stats.total_wait_time += wait_time
