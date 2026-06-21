@@ -90,6 +90,7 @@ def get_nuke_pollution_for_nation(
     has_fallout_shelter: bool = False,
     now: Optional[datetime] = None,
     wars_db_path: str = NUKE_WARS_DB_PATH,
+    preloaded_nuke_data: Optional[dict[int, float]] = None,
 ) -> dict[int, float]:
     """Batch-fetch nuke pollution for all cities of a nation.
 
@@ -108,6 +109,9 @@ def get_nuke_pollution_for_nation(
               Assigns to the city with the most infra (most likely target).
 
     Fallout: 100 turns (50 real days) linear decay (75 turns with Fallout Shelter).
+    
+    Args:
+        preloaded_nuke_data: Pre-loaded nuke pollution data to prevent DB calls
     """
     import sqlite3 as _sqlite3
     if not city_ids:
@@ -116,6 +120,12 @@ def get_nuke_pollution_for_nation(
         now = datetime.now(timezone.utc)
     fallout_turns = NUKE_FALLOUT_TURNS_FS if has_fallout_shelter else NUKE_FALLOUT_TURNS
     result = {cid: 0.0 for cid in city_ids}
+    
+    # Use pre-loaded data if provided to prevent DB calls
+    if preloaded_nuke_data is not None:
+        for cid in city_ids:
+            result[cid] = preloaded_nuke_data.get(cid, 0.0)
+        return result
     try:
         conn = _sqlite3.connect(wars_db_path)
         conn.row_factory = _sqlite3.Row
@@ -1140,6 +1150,7 @@ async def revenue_calc(
         nation_id=nation.get('id', 0),
         city_ids=_city_ids,
         has_fallout_shelter=_has_fs,
+        preloaded_nuke_data={},  # Pass empty dict to prevent DB calls
     )
 
     # Calculate per-city contributions
@@ -1440,6 +1451,7 @@ def revenue_calc_sync(
         nation_id=nation.get('id', 0),
         city_ids=_city_ids,
         has_fallout_shelter=_has_fs,
+        preloaded_nuke_data={},  # Pass empty dict to prevent DB calls
     )
 
     # Calculate per-city contributions
@@ -1654,6 +1666,8 @@ async def calculate_full_revenue_with_query(
     market_prices: Optional[Dict[str, float]] = None,
     game_date: Optional[datetime] = None,
     override_tax_rate: Optional[float] = None,  # 0.0–1.0 decimal, overrides DB bracket lookup
+    radiation_data: Optional[Dict[str, float]] = None,  # Pre-loaded radiation data to prevent DB calls
+    colors_data: Optional[Dict[str, float]] = None,  # Pre-loaded colors data to prevent DB calls
 ) -> Dict[str, Any]:
     """Compatibility wrapper for the revenue calculation system.
     
@@ -1690,48 +1704,56 @@ async def calculate_full_revenue_with_query(
         if game_date is None:
             game_date = datetime.now(timezone.utc)
     
-    # --- Colors: DB first, API fallback ---
+    # --- Colors: Use parameter if provided, DB first, API fallback ---
     colors = {}
-    try:
-        colors_data = await get_latest_game_data("colors")
-        if colors_data:
-            colors = {c['color']: c['turn_bonus'] for c in colors_data}
-    except Exception:
-        if query_instance is None:
-            from .query import create_v3_query_instance
-            query_instance = create_v3_query_instance()
+    if colors_data is not None:
+        # Use provided colors data to prevent DB calls
+        colors = colors_data
+    else:
         try:
-            color_info = await query_instance.get_color_info()
-            if color_info:
-                colors = {c['color']: c['turn_bonus'] for c in color_info}
+            colors_data_db = await get_latest_game_data("colors")
+            if colors_data_db:
+                colors = {c['color']: c['turn_bonus'] for c in colors_data_db}
         except Exception:
-            pass
+            if query_instance is None:
+                from .query import create_v3_query_instance
+                query_instance = create_v3_query_instance()
+            try:
+                color_info = await query_instance.get_color_info()
+                if color_info:
+                    colors = {c['color']: c['turn_bonus'] for c in color_info}
+            except Exception:
+                pass
     
     # --- Treasures: Check nation data first, then skip API call ---
     treasures = []
     # Note: Treasures are now stored with nations in the database, so we don't need to query for them
     # The nation data from the database should already include treasure information if the nation has one
     
-    # --- Radiation: DB first, fallback to defaults ---
+    # --- Radiation: Use parameter if provided, DB first, fallback to defaults ---
     radiation = {'na': 0, 'sa': 0, 'eu': 0, 'as': 0, 'af': 0, 'au': 0, 'an': 0}
-    try:
-        from Systems.Functions.database_manager import get_latest_radiation_data
-        radiation_data = await get_latest_radiation_data()
-        if radiation_data:
-            # Map database keys to expected keys with proper formula (global + regional) / -1000
-            global_rad = radiation_data.get('global', 0)
-            radiation = {
-                'na': (radiation_data.get('north_america', 0) + global_rad) / -1000,
-                'sa': (radiation_data.get('south_america', 0) + global_rad) / -1000,
-                'eu': (radiation_data.get('europe', 0) + global_rad) / -1000,
-                'as': (radiation_data.get('asia', 0) + global_rad) / -1000,
-                'af': (radiation_data.get('africa', 0) + global_rad) / -1000,
-                'au': (radiation_data.get('australia', 0) + global_rad) / -1000,
-                'an': (radiation_data.get('antarctica', 0) + global_rad) / -1000
-            }
-    except Exception as e:
-        # Fallback to default values if database read fails
-        pass
+    if radiation_data is not None:
+        # Use provided radiation data to prevent DB calls
+        radiation = radiation_data
+    else:
+        try:
+            from Systems.Functions.database_manager import get_latest_radiation_data
+            radiation_data_db = await get_latest_radiation_data()
+            if radiation_data_db:
+                # Map database keys to expected keys with proper formula (global + regional) / -1000
+                global_rad = radiation_data_db.get('global', 0)
+                radiation = {
+                    'na': (radiation_data_db.get('north_america', 0) + global_rad) / -1000,
+                    'sa': (radiation_data_db.get('south_america', 0) + global_rad) / -1000,
+                    'eu': (radiation_data_db.get('europe', 0) + global_rad) / -1000,
+                    'as': (radiation_data_db.get('asia', 0) + global_rad) / -1000,
+                    'af': (radiation_data_db.get('africa', 0) + global_rad) / -1000,
+                    'au': (radiation_data_db.get('australia', 0) + global_rad) / -1000,
+                    'an': (radiation_data_db.get('antarctica', 0) + global_rad) / -1000
+                }
+        except Exception as e:
+            # Fallback to default values if database read fails
+            pass
     
     # --- Seasonal modifiers: Calculate from game date ---
     seasonal_mod = {'na': 1, 'sa': 1, 'eu': 1, 'as': 1, 'af': 1, 'au': 1, 'an': 0.5}

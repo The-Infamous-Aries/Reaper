@@ -305,9 +305,12 @@ class V3GraphQuery:
             resp = self._session.post(url, json=payload, headers=headers, timeout=timeout)
             resp.raise_for_status()
         except requests.exceptions.RequestException as e:
+            # Redact API key from error message and exception args
             msg = str(e).replace(self.api_key, "API_KEY_REDACTED")
+            if e.args:
+                e.args = tuple(arg.replace(self.api_key, "API_KEY_REDACTED") if isinstance(arg, str) else arg for arg in e.args)
             self.logger.error(f"Request failed: {msg}")
-            raise Exception(f"API Request Failed: {msg}")
+            raise Exception(f"API Request Failed: {msg}") from None
 
         data = resp.json()
         self.logger.debug(f"Received API response: {json.dumps(data, indent=2)}")
@@ -831,25 +834,18 @@ class V3GraphQuery:
             return None
 
     async def search_alliances(self, text: str, max_results: int = 25) -> Optional[List[Dict[str, Any]]]:
-        """Search alliances by name or acronym."""
+        """Search alliances by name from the local database (GlobalNations.db)."""
         try:
-            escaped = str(text).replace('"', '\\"')
-            query = f"""
-            query {{
-              alliances(search: "{escaped}", first: {max(1, int(max_results))}) {{
-                data {{ id name acronym flag }}
-              }}
-            }}
-            """
-            data = await self._request_with_retries(query, timeout=30)
-            items = (((data or {}).get("data") or {}).get("alliances") or {}).get("data") or []
-            
+            from PnWHarvester.db.global_nations_db import GlobalNationsDB
+            from Systems.Functions.db_paths import GLOBAL_NATIONS_DB
+            global_db = GlobalNationsDB(str(GLOBAL_NATIONS_DB))
+            rows = await global_db.get_distinct_alliances(text)
             return [{
-                "id": item.get("id"),
-                "name": item.get("name"),
-                "acronym": item.get("acronym"),
-                "flag": item.get("flag"),
-            } for item in items[:max_results]]
+                "id": row.get("alliance_id"),
+                "name": row.get("alliance_name"),
+                "acronym": "",
+                "flag": "",
+            } for row in rows[:max_results]]
         except Exception:
             return None
 
@@ -1804,20 +1800,27 @@ class V3GraphQuery:
                 break  # success
             except requests.exceptions.Timeout as e:
                 self._last_request_ts = time.monotonic()
+                # Redact API key from error message and exception args
                 msg = str(e).replace(self.api_key, "API_KEY_REDACTED")
+                if e.args:
+                    e.args = tuple(arg.replace(self.api_key, "API_KEY_REDACTED") if isinstance(arg, str) else arg for arg in e.args)
                 self.logger.warning(f"GraphQL request timed out (attempt {attempt}/{max_attempts}): {msg}")
                 if attempt == max_attempts:
-                    raise Exception(f"API Request Failed after {max_attempts} attempts: {msg}")
+                    raise Exception(f"API Request Failed after {max_attempts} attempts: {msg}") from None
                 await asyncio.sleep(2 ** attempt)  # exponential backoff: 2s, 4s
             except requests.exceptions.RequestException as e:
                 self._last_request_ts = time.monotonic()
+                # Redact API key from error message and exception args
                 msg = str(e).replace(self.api_key, "API_KEY_REDACTED")
+                # Also redact from exception args to prevent leakage in tracebacks
+                if e.args:
+                    e.args = tuple(arg.replace(self.api_key, "API_KEY_REDACTED") if isinstance(arg, str) else arg for arg in e.args)
                 # Retry on connection-level errors (reset, chunked encoding, etc.)
                 # but raise immediately on client errors (4xx) which won't self-heal.
                 is_http_error = isinstance(e, requests.exceptions.HTTPError)
                 if is_http_error or attempt == max_attempts:
                     self.logger.error(f"GraphQL request failed: {msg}")
-                    raise Exception(f"API Request Failed: {msg}")
+                    raise Exception(f"API Request Failed: {msg}") from None
                 self.logger.warning(f"GraphQL request connection error (attempt {attempt}/{max_attempts}): {msg}")
                 await asyncio.sleep(2 ** attempt)
 

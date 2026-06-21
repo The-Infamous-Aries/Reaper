@@ -345,7 +345,7 @@ class Loot(commands.Cog):
                         emoji = emoji_map.get(resource_name.upper()) or '📦'
                         no_ape_amount = no_ape_data['projected_resources'][resource_name]['projected_amount']
                         with_ape_amount = with_ape_data['projected_resources'][resource_name]['projected_amount']
-                        resource_lines.append(f"{emoji} {resource_name[:4].title()}: {no_ape_amount:,.0f} → {with_ape_amount:,.0f}")
+                        resource_lines.append(f"{emoji} {no_ape_amount:,.0f} → {with_ape_amount:,.0f}")
                 
                 # Combine resources into one field
                 if resource_lines:
@@ -400,13 +400,15 @@ class Loot(commands.Cog):
             resources = loot_summary['resources']
             if resources:
                 emoji_map = emoji_mod.resource_codes()
+                resource_lines = []
                 for resource_name, data in resources.items():
                     emoji = emoji_map.get(resource_name.upper()) or '📦'
-                    embed.add_field(
-                        name=f"{emoji} {resource_name.title()}",
-                        value=f"({data['amount']:,.2f}) - (${data['total_value']:,.2f})",
-                        inline=False
-                    )
+                    resource_lines.append(f"{emoji} ({data['amount']:,.2f}) - (${data['total_value']:,.2f})")
+                embed.add_field(
+                    name="Resources Looted",
+                    value="\n".join(resource_lines),
+                    inline=False
+                )
 
             # Add total fields
             embed.add_field(

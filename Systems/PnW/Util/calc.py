@@ -1275,16 +1275,21 @@ class AllianceCalculator:
         aircraft_cap_bonus = air_cap_lvl    * 15
         ship_cap_bonus     = naval_cap_lvl  * 5
 
-        soldier_daily_limit = total_barracks * 1000 
-        tank_daily_limit = total_factories * 50    
-        aircraft_daily_limit = total_hangars * 3   
+        soldier_daily_limit = total_barracks * 1000
+        tank_daily_limit = total_factories * 50
+        aircraft_daily_limit = total_hangars * 3
         ship_daily_limit = total_drydocks * 1
 
-        # Daily purchase limits also scale with capacity upgrades
-        soldier_daily_limit  += soldier_cap_bonus
-        tank_daily_limit     += tank_cap_bonus
-        aircraft_daily_limit += aircraft_cap_bonus
-        ship_daily_limit     += ship_cap_bonus
+        # Daily purchase limits — capacity upgrades only apply if the nation
+        # has at least 1 of the relevant improvement type
+        if total_barracks > 0:
+            soldier_daily_limit += soldier_cap_bonus
+        if total_factories > 0:
+            tank_daily_limit += tank_cap_bonus
+        if total_hangars > 0:
+            aircraft_daily_limit += aircraft_cap_bonus
+        if total_drydocks > 0:
+            ship_daily_limit += ship_cap_bonus
 
         if self.has_project(nation, 'Propaganda Bureau'):
             soldier_daily_limit = int(soldier_daily_limit * 1.10)
@@ -1292,15 +1297,20 @@ class AllianceCalculator:
             aircraft_daily_limit = int(aircraft_daily_limit * 1.10)
             ship_daily_limit = int(ship_daily_limit * 1.10)
 
-        soldier_max_capacity = total_barracks * 3000 
-        tank_max_capacity = total_factories * 250    
-        aircraft_max_capacity = total_hangars * 15  
-        ship_max_capacity = total_drydocks * 5    
+        soldier_max_capacity = total_barracks * 3000
+        tank_max_capacity = total_factories * 250
+        aircraft_max_capacity = total_hangars * 15
+        ship_max_capacity = total_drydocks * 5
 
-        soldier_max_capacity  += soldier_cap_bonus
-        tank_max_capacity     += tank_cap_bonus
-        aircraft_max_capacity += aircraft_cap_bonus
-        ship_max_capacity     += ship_cap_bonus
+        # Max capacity — same improvement-type gating as daily limits
+        if total_barracks > 0:
+            soldier_max_capacity += soldier_cap_bonus
+        if total_factories > 0:
+            tank_max_capacity += tank_cap_bonus
+        if total_hangars > 0:
+            aircraft_max_capacity += aircraft_cap_bonus
+        if total_drydocks > 0:
+            ship_max_capacity += ship_cap_bonus
 
         missile_limit = 0
         nuke_limit = 0
