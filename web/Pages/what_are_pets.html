@@ -47,7 +47,19 @@
       </div>
     </div>
 
-    <!-- CARD 4: XP Casino -->
+    <!-- CARD 4: Dungeon Crawl -->
+    <div class="wap2-toggle-card" data-modal="wap2-modal-dungeon">
+      <div class="wap2-toggle-card-inner">
+        <span class="wap2-toggle-emoji">🗺️</span>
+        <div class="wap2-toggle-info">
+          <span class="wap2-toggle-title">Dungeon Crawl</span>
+          <span class="wap2-toggle-sub">Floors · Rooms · Story · Puzzles · Loot</span>
+        </div>
+        <span class="wap2-toggle-arrow">›</span>
+      </div>
+    </div>
+
+    <!-- CARD 5: XP Casino -->
     <div class="wap2-toggle-card" data-modal="wap2-modal-casino">
       <div class="wap2-toggle-card-inner">
         <span class="wap2-toggle-emoji">🎰</span>
@@ -59,19 +71,19 @@
       </div>
     </div>
 
-    <!-- CARD 5: Daily Checks -->
-    <div class="wap2-toggle-card" data-modal="wap2-modal-daily">
+    <!-- CARD 6: Events -->
+    <div class="wap2-toggle-card" data-modal="wap2-modal-events">
       <div class="wap2-toggle-card-inner">
-        <span class="wap2-toggle-emoji">📅</span>
+        <span class="wap2-toggle-emoji">📣</span>
         <div class="wap2-toggle-info">
-          <span class="wap2-toggle-title">Daily Checks</span>
-          <span class="wap2-toggle-sub">Tasks · Pet Stocks · Item Board</span>
+          <span class="wap2-toggle-title">Events</span>
+          <span class="wap2-toggle-sub">Tasks · Shop · Item Board · Pet Stocks</span>
         </div>
         <span class="wap2-toggle-arrow">›</span>
       </div>
     </div>
 
-    <!-- CARD 6: Viewers -->
+    <!-- CARD 7: Viewers -->
     <div class="wap2-toggle-card" data-modal="wap2-modal-viewers">
       <div class="wap2-toggle-card-inner">
         <span class="wap2-toggle-emoji">👁️</span>
@@ -83,7 +95,7 @@
       </div>
     </div>
 
-    <!-- CARD 7: Tips & Tricks -->
+    <!-- CARD 8: Tips & Tricks -->
     <div class="wap2-toggle-card wap2-toggle-card-tips" data-modal="wap2-modal-tips">
       <div class="wap2-toggle-card-inner">
         <span class="wap2-toggle-emoji">💡</span>
@@ -176,9 +188,9 @@
       <table class="wap2-table">
         <thead><tr><th>Stat</th><th>Full Name</th><th>Role in Combat</th><th>Other Uses</th></tr></thead>
         <tbody>
-          <tr><td><span class="wap2-stat-pill wap2-stat-att">ATT</span></td><td>Attack</td><td>Raw damage output — part of ATK power</td><td>NPC Crusher / PvP Striker abilities</td></tr>
-          <tr><td><span class="wap2-stat-pill wap2-stat-def">DEF</span></td><td>Defense</td><td>Damage reduction — part of DEF power</td><td>NPC Shield / PvP Guard abilities</td></tr>
-          <tr><td><span class="wap2-stat-pill wap2-stat-int">INT</span></td><td>Intelligence</td><td>Tactical defense — part of DEF power</td><td>Boosts XP gains from all 8 activities</td></tr>
+          <tr><td><span class="wap2-stat-pill wap2-stat-att">ATT</span></td><td>Attack</td><td>Raw damage output — part of ATK power</td><td>NPC Crusher / PvP Dominator abilities</td></tr>
+          <tr><td><span class="wap2-stat-pill wap2-stat-def">DEF</span></td><td>Defense</td><td>Damage reduction — part of DEF power</td><td>NPC Guardian / PvP Fortress abilities</td></tr>
+          <tr><td><span class="wap2-stat-pill wap2-stat-int">INT</span></td><td>Intelligence</td><td>Tactical defense — part of DEF power</td><td>Training safety plus XP helpers for active activities</td></tr>
           <tr><td><span class="wap2-stat-pill wap2-stat-dex">DEX</span></td><td>Dexterity</td><td>Speed &amp; precision — part of ATK power</td><td>Race speed, casino loss reduction</td></tr>
           <tr><td><span class="wap2-stat-pill wap2-stat-hap">HAP</span></td><td>Happiness</td><td>Contributes to max HP</td><td>Casino win bonuses, battle health bonus</td></tr>
           <tr><td><span class="wap2-stat-pill wap2-stat-ene">ENE</span></td><td>Energy</td><td>Contributes to max HP and stamina</td><td>Charge limit increase, battle health bonus</td></tr>
@@ -187,35 +199,35 @@
 
       <h4 class="wap2-section-title">Combat Formulas</h4>
       <div class="wap2-tip-box">
-        <strong>ATK Power</strong> = <code>(ATT + DEX) × equipment_multiplier</code><br>
-        <strong>DEF Power</strong> = <code>(DEF + INT) × equipment_multiplier</code><br>
-        <strong>Max HP</strong> = <code>(stat_average + HAP × ENE) × 10</code><br>
-        <em>stat_average = average of all 6 base stats (before equipment)</em>
+        <strong>Effective stat</strong> = <code>base + (equipment_bonus × equipment_multiplier)</code><br>
+        <strong>ATK Power</strong> = <code>ATT + DEX</code> (using effective stats)<br>
+        <strong>DEF Power</strong> = <code>DEF + INT</code> (using effective stats)<br>
+        <strong>Max HP</strong> = <code>(HAP + ENE) × (EquipmentMult × 4)</code> (using effective stats)
       </div>
-      <p>Equipment multipliers apply to ATK and DEF power but <strong>not</strong> directly to HP. HP scales with your raw base stats — so investing in HAP and ENE through potions and training is the best way to increase HP.</p>
+      <p>The equipment multiplier multiplies the <strong>bonus from gear</strong>, not your base stats. HP uses your effective HAP + ENE added together times the equipment multiplier × 4.</p>
 
       <h4 class="wap2-section-title">XP &amp; Leveling</h4>
       <div class="wap2-tip-box">
         <strong>XP to next level</strong> = <code>200 × (1.03 ^ (level − 1))</code><br>
         Each level costs 3% more XP than the previous. There is no level cap.
       </div>
-      <p>XP is earned from: Play, Train, Mission, Quest, NPC Battles, Boss Battles, PvP, Survivor Series, Casino games, and selling Pet Stock tokens. Potions can also directly grant XP.</p>
-      <p>Buying Pet Stock tokens <strong>deducts XP</strong> from your pet — your pet can level <em>down</em> if you spend enough. Selling tokens adds XP back and can trigger level-ups.</p>
+      <p>XP is earned from: Play, Mission, Dungeon Crawl rooms, NPC Battles, Boss Battles, PvP, Survivor Series, Casino games, selling Pet Stock tokens, item overflow, and player market sales. Potions can also directly grant XP. Training changes stats directly and does not award XP.</p>
+      <p>Buying Pet Stock tokens <strong>deducts XP</strong> from your pet — your pet can level <em>down</em> if you spend enough. Selling tokens adds XP back after the stock affinity multiplier is applied in reverse, and can trigger level-ups.</p>
     </div>
 
     <!-- TAB: Abilities -->
     <div class="wap2-tab-panel" id="basics-abilities">
       <h4 class="wap2-section-title">Ability Tree <span class="wap2-note-badge">Endgame Feature</span></h4>
-      <p>Abilities are permanent stat multiplier bonuses unlocked by spending <strong>ability points</strong>. You earn <strong>1 ability point per 500 levels</strong> spent. Each point spent on a branch adds a <strong>+0.1× multiplier</strong> to that stat. Each branch has up to 5 levels (49 abilities total across 6 branches).</p>
+      <p>Abilities are permanent stat multiplier bonuses unlocked by spending <strong>ability points</strong>. You earn <strong>1 ability point per 500 levels</strong> gained. Each point spent on an ability adds a <strong>+0.1× multiplier</strong> to that stat. There are 49 abilities across 6 branches, each with up to 5 levels.</p>
       <div class="wap2-note-box">
         <strong>Full completion</strong> = 245 points = 122,500 levels spent. This is a true endgame grind.
       </div>
       <table class="wap2-table">
         <thead><tr><th>Branch</th><th>Key Abilities Unlocked</th><th>Best For</th></tr></thead>
         <tbody>
-          <tr><td><span class="wap2-stat-pill wap2-stat-att">ATT</span> Branch</td><td>NPC Crusher (bonus vs NPCs), PvP Striker (bonus in PvP), crit chance, crit damage multiplier</td><td>Offensive combat builds</td></tr>
-          <tr><td><span class="wap2-stat-pill wap2-stat-def">DEF</span> Branch</td><td>NPC Shield (damage reduction vs NPCs), PvP Guard (damage reduction in PvP), charge protection (less damage while charging)</td><td>Tanky / defensive builds</td></tr>
-          <tr><td><span class="wap2-stat-pill wap2-stat-int">INT</span> Branch</td><td>XP multipliers for all 8 activities (Play, Train, Mission, Quest, NPC, Boss, PvP, Casino)</td><td>Fastest leveling</td></tr>
+          <tr><td><span class="wap2-stat-pill wap2-stat-att">ATT</span> Branch</td><td>NPC Crusher (bonus vs NPCs), PvP Dominator (bonus in PvP), crit chance, crit damage multiplier</td><td>Offensive combat builds</td></tr>
+          <tr><td><span class="wap2-stat-pill wap2-stat-def">DEF</span> Branch</td><td>NPC Guardian (damage reduction vs NPCs), PvP Fortress (damage reduction in PvP), charge protection (less damage while charging)</td><td>Tanky / defensive builds</td></tr>
+          <tr><td><span class="wap2-stat-pill wap2-stat-int">INT</span> Branch</td><td>Training Scholar, Play XP, Mission XP, combat XP, Survivor XP, and casino XP helpers. The old quest XP path is no longer a player activity.</td><td>Fastest leveling for active systems</td></tr>
           <tr><td><span class="wap2-stat-pill wap2-stat-dex">DEX</span> Branch</td><td>Race speed boost, casino loss reduction</td><td>Casino &amp; racing</td></tr>
           <tr><td><span class="wap2-stat-pill wap2-stat-hap">HAP</span> Branch</td><td>Battle health bonus (more HP in combat), casino win bonuses</td><td>Survivability &amp; casino</td></tr>
           <tr><td><span class="wap2-stat-pill wap2-stat-ene">ENE</span> Branch</td><td>Battle health bonus, charge limit increase (raise max charge beyond 5.0)</td><td>HP &amp; charge builds</td></tr>
@@ -278,7 +290,7 @@
     <!-- TAB: Equipment -->
     <div class="wap2-tab-panel" id="mypet-equipment">
       <h4 class="wap2-section-title">Row 1 — Main Gear Slots</h4>
-      <p>6 main slots, each holding one item. All main gear comes in <strong>11 material variants</strong> that form named sets (e.g. Iron, Elven, Dragon). Equipping all 6 from the same set triggers the set bonus.</p>
+      <p>6 main slots, each holding one item. Helmet, Armor, Boots, Shield, and Weapon come in <strong>11 material variants</strong> that form named sets (e.g. Iron, Elven, Crystal). Matching those 5 set slots triggers the set bonus. Ring is a main slot, but it is not part of the set-match check.</p>
       <table class="wap2-table">
         <thead><tr><th>Slot</th><th>Stats Boosted</th><th>Rarity</th></tr></thead>
         <tbody>
@@ -330,7 +342,7 @@
         <thead><tr><th>Component</th><th>Value</th><th>Condition</th></tr></thead>
         <tbody>
           <tr><td>Slots filled</td><td>+1 per slot</td><td>Each of the 6 main slots that has an item equipped (max +6)</td></tr>
-          <tr><td>Set bonus</td><td>+3</td><td>All 6 main slots filled AND all share the same set material (e.g. all "Iron")</td></tr>
+          <tr><td>Set bonus</td><td>+3</td><td>Helmet, Armor, Boots, Shield, and Weapon are all filled and share the same set material (e.g. all "Iron")</td></tr>
           <tr><td>Ring sub — matching Monsters</td><td>+1</td><td>Both Monster sub-slots have the same monster type</td></tr>
           <tr><td>Ring sub — matching Gems</td><td>+1</td><td>Both Gem sub-slots have the same gem type</td></tr>
           <tr><td>Ring sub — Material equipped</td><td>+1</td><td>A Material is equipped in the Ring sub-slot</td></tr>
@@ -341,7 +353,7 @@
       <h4 class="wap2-section-title">Full Set Doubling</h4>
       <div class="wap2-note-box">
         <strong>Full Set Double:</strong> If ALL of the following are true simultaneously, the entire multiplier is <strong>doubled</strong>:<br>
-        ✅ All 6 main slots filled with the same set<br>
+        ✅ Helmet, Armor, Boots, Shield, and Weapon all match the same set<br>
         ✅ A Ring is equipped<br>
         ✅ Both Monster sub-slots have the same monster<br>
         ✅ Both Gem sub-slots have the same gem<br>
@@ -353,19 +365,20 @@
         <thead><tr><th>Setup</th><th>Multiplier</th></tr></thead>
         <tbody>
           <tr><td>1 item equipped, level 1</td><td>1×</td></tr>
-          <tr><td>All 6 slots, mixed sets, no ring sub-slots, level 1</td><td>6×</td></tr>
-          <tr><td>All 6 slots, matching set, no ring sub-slots, level 1</td><td>9×</td></tr>
-          <tr><td>All 6 slots, matching set, all ring sub-slots filled, level 1</td><td>18×</td></tr>
-          <tr><td>All 6 slots, matching set, all ring sub-slots filled, level 50</td><td>20× (then doubled = <strong>40×</strong>)</td></tr>
-          <tr><td>All 6 slots, matching set, all ring sub-slots filled, level 100</td><td>22× (then doubled = <strong>44×</strong>)</td></tr>
+          <tr><td>All 6 main slots, mixed sets, no ring sub-slots, level 1</td><td>6×</td></tr>
+          <tr><td>All 6 main slots, matched set, no ring sub-slots, level 1</td><td>9×</td></tr>
+          <tr><td>All 6 main slots, matched set, filled ring sub-slots (matching pairs), level 1</td><td>12×</td></tr>
+          <tr><td>Same as above with <strong>Full Set Double</strong> triggered</td><td><strong>24×</strong></td></tr>
+          <tr><td>Same, level 50 (level bonus +1)</td><td>13× → doubled <strong>26×</strong></td></tr>
+          <tr><td>Same, level 100 (level bonus +2)</td><td>14× → doubled <strong>28×</strong></td></tr>
         </tbody>
       </table>
       <div class="wap2-tip-box">
         <strong>Priority order for gearing up:</strong><br>
         1. Fill all 6 main slots (even with mismatched sets) — gets you to 6×<br>
-        2. Match all 6 to the same set — jumps to 9×<br>
-        3. Equip a Ring and fill all sub-slots with matching pairs — reaches 18×<br>
-        4. Trigger the full set double — 36× at level 1, scaling up with levels
+        2. Match Helmet, Armor, Boots, Shield, and Weapon to the same set — jumps to 9×<br>
+        3. Equip a Ring and fill all sub-slots with matching pairs — reaches 12×<br>
+        4. Trigger the Full Set Double — <strong>24×</strong> at level 1, scaling up with levels
       </div>
     </div>
 
@@ -402,7 +415,7 @@
     <!-- TAB: Keys & Chests -->
     <div class="wap2-tab-panel" id="mypet-chests">
       <h4 class="wap2-section-title">Keys</h4>
-      <p>Keys are the primary loot currency. They drop from almost every activity — Play, Train, Mission, Quest, Battles, Casino win streaks, and Tasks. Keys are used to open chests from the <strong>Loot Market tab</strong> on your My Pet page.</p>
+      <p>Keys are the primary loot currency. They drop from Play, Mission, Dungeon Crawl loot, Boss victories, Casino win streaks, and Tasks. Keys are used to open chests from the <strong>Loot Market tab</strong> on your My Pet page.</p>
       <table class="wap2-table">
         <thead><tr><th>Key</th><th>How to Get</th></tr></thead>
         <tbody>
@@ -476,11 +489,11 @@
         <strong>Boss encounter:</strong> 5% chance during Play to trigger a Boss Battle. Bosses reward 5× normal XP + one of each key type on victory.
       </div>
 
-      <h4 class="wap2-section-title">📜 Quest</h4>
-      <p>Pick a location and difficulty to start an AI-generated 5-stage adventure. Each stage presents 3 choices tied to different stat pairs — your stats determine success probability. Stage 4 may contain a mimic chest (a trap disguised as loot). Completing a quest rewards XP and keys based on difficulty and choices made.</p>
+      <h4 class="wap2-section-title">🗺️ Dungeon Crawl</h4>
+      <p>Access the Dungeon Crawler from the main navigation. See the <strong>Dungeon Crawl</strong> section of this guide for full details on rooms, events, and strategy.</p>
 
       <h4 class="wap2-section-title">✏️ Rename</h4>
-      <p>Rename your pet's 3 battle actions: Attack, Defense, and Charge. These are the labels shown during battles. Renaming is required to complete certain daily tasks (e.g. "Pet is tired of [action] — rename it").</p>
+      <p>Rename your pet's 3 battle actions: Attack, Defense, and Charge. These are the labels shown during battles. Renaming is required to complete certain task objectives (e.g. "Pet is tired of [action] — rename it").</p>
 
       <h4 class="wap2-section-title">🌳 Ability Tree</h4>
       <p>Spend ability points on permanent stat multiplier bonuses. See the Basics &amp; Stats → Abilities tab for full details.</p>
@@ -513,7 +526,7 @@
       <div class="wap2-tip-box">
         <strong>ATK Power</strong> = <code>(ATT + DEX) × equipment_multiplier</code><br>
         <strong>DEF Power</strong> = <code>(DEF + INT) × equipment_multiplier</code><br>
-        <strong>Max HP</strong> = <code>(stat_average + HAP × ENE) × 10</code><br>
+        <strong>Max HP</strong> = <code>(HAP + ENE) × (EquipmentMult × 4)</code><br>
         <strong>Type advantage:</strong> +15% damage when your type beats opponent's type<br>
         <strong>Element advantage:</strong> +10% damage when your element is strong against opponent's element
       </div>
@@ -563,9 +576,9 @@
         <li>Higher rarity enemies have more HP and deal more damage, but reward more XP and better loot</li>
         <li>Winning drops items (weapons, gear, potions) and XP</li>
         <li>Losing still awards reduced XP — never a total loss</li>
-        <li>NPC battles count toward the "Win NPC Battle" daily task</li>
+        <li>NPC battles count toward the "Win NPC Battle" task type</li>
         <li>ATT branch abilities (NPC Crusher) give bonus damage specifically vs NPCs</li>
-        <li>DEF branch abilities (NPC Shield) reduce damage taken specifically from NPCs</li>
+        <li>DEF branch abilities (NPC Guardian) reduce damage taken specifically from NPCs</li>
       </ul>
       <div class="wap2-tip-box">
         <strong>NPC strategy:</strong> Use Charge → Attack for burst damage. If the NPC tends to Attack every turn, Defend to parry. Watch your HP — if you're low, Defend to stall and reflect damage.
@@ -578,7 +591,7 @@
         <li>5% chance to trigger automatically during a Play session</li>
         <li>Can also be accessed directly from the battles section</li>
         <li>Reward on victory: <strong>5× normal XP</strong> + one of each key type (Key1, Key2, Key3)</li>
-        <li>Counts toward the "Win Boss Battle" daily task</li>
+        <li>Counts toward the "Win Boss Battle" task type</li>
       </ul>
       <div class="wap2-note-box">
         <strong>Multiplayer Boss Battles:</strong> Multiple players can fight a boss together. Relationship modifiers apply — Best Friends deal +25% damage together, Friends +10%, Foes −15%, Enemies cannot participate in the same boss fight.
@@ -619,7 +632,7 @@
         </tbody>
       </table>
       <div class="wap2-tip-box">
-        <strong>PvP tip:</strong> Mark rivals as Foes or Enemies to deal more damage in PvP. ATT branch abilities (PvP Striker) and DEF branch (PvP Guard) give bonuses specifically in PvP — these are separate from the NPC-specific abilities.
+        <strong>PvP tip:</strong> Mark rivals as Foes or Enemies to deal more damage in PvP. ATT branch abilities (PvP Dominator) and DEF branch (PvP Fortress) give bonuses specifically in PvP — these are separate from the NPC-specific abilities.
       </div>
     </div>
 
@@ -634,7 +647,7 @@
         <li>All standard battle mechanics apply (type/element advantages, relationship modifiers, charge system)</li>
       </ul>
       <div class="wap2-tip-box">
-        <strong>Colosseum strategy:</strong> Since this is ranked play, optimize your build specifically for PvP. Invest in ATT branch (PvP Striker) and DEF branch (PvP Guard) abilities. Mark frequent opponents as Foes or Enemies to deal more damage. A high equipment multiplier with a matching set is essential at higher levels.
+        <strong>Colosseum strategy:</strong> Since this is ranked play, optimize your build specifically for PvP. Invest in ATT branch (PvP Dominator) and DEF branch (PvP Fortress) abilities. Mark frequent opponents as Foes or Enemies to deal more damage. A high equipment multiplier with a matching set is essential at higher levels.
       </div>
     </div>
 
@@ -646,7 +659,7 @@
       <h4 class="wap2-section-title">Survive Score — CRITICAL</h4>
       <div class="wap2-note-box">
         <strong>Survive Score</strong> = <code>level ÷ equipment_multiplier ÷ 10</code><br><br>
-        ⚠️ <strong>UNEQUIP EVERYTHING before joining Survivor Series.</strong> Equipment multipliers <em>divide</em> your score. A full matching set at level 50 gives a 40× multiplier, dropping your score to a tiny fraction of an unequipped pet's score. An unequipped level 50 pet scores 5.0; the same pet with a 40× multiplier scores only 0.125.
+        ⚠️ <strong>UNEQUIP EVERYTHING before joining Survivor Series.</strong> Equipment multipliers <em>divide</em> your score. An unequipped level 50 pet scores 5.0; the same pet with a full 26× multiplier scores only ~0.19.
       </div>
 
       <h4 class="wap2-section-title">How It Works</h4>
@@ -694,7 +707,143 @@
 
 
 <!-- ═══════════════════════════════════════════════════════════════════════ -->
-<!-- MODAL 4: XP Casino -->
+<!-- MODAL 4: Dungeon Crawl -->
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<div class="wap2-modal" id="wap2-modal-dungeon" role="dialog" aria-modal="true" aria-labelledby="wap2-modal-dungeon-title">
+  <div class="wap2-modal-header">
+    <h2 class="wap2-modal-title" id="wap2-modal-dungeon-title">🗺️ Dungeon Crawl</h2>
+    <button class="wap2-modal-close" aria-label="Close">&times;</button>
+  </div>
+  <div class="wap2-modal-tabs" role="tablist">
+    <button class="wap2-tab active" role="tab" data-tab="dungeon-structure">Structure</button>
+    <button class="wap2-tab" role="tab" data-tab="dungeon-events">Room Events</button>
+    <button class="wap2-tab" role="tab" data-tab="dungeon-xp-loot">XP &amp; Loot</button>
+    <button class="wap2-tab" role="tab" data-tab="dungeon-strategy">Strategy</button>
+  </div>
+  <div class="wap2-modal-body">
+
+    <!-- TAB: Structure -->
+    <div class="wap2-tab-panel active" id="dungeon-structure">
+      <h4 class="wap2-section-title">What Replaced Quests</h4>
+      <p>Standalone quests are no longer part of the active My Pet flow. Dungeon Crawl is now the adventure system: it contains story choices plus monsters, puzzles, traps, shrines, merchants, mimics, bosses, and floor loot.</p>
+      <div class="wap2-note-box">
+        <strong>Dungeon types are themes, not combat bonuses.</strong> Camp, Bonfire, Beach, Forest, Hot Air Balloon, Cruiseship, Mountain, Gym, Graveyard, Festival, Glacier, and Pyramids change the story/location flavor. They do not give element-match XP or damage bonuses by themselves.
+      </div>
+
+      <h4 class="wap2-section-title">Floor Layout</h4>
+      <table class="wap2-table">
+        <thead><tr><th>Room</th><th>What Happens</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td>Rooms 1-8</td><td>Weighted random event</td><td>Monster, story, puzzle, trap, shrine, merchant, chest/mimic, or real chest</td></tr>
+          <tr><td>Room 9</td><td>Boss room</td><td>Always a boss with generated lore</td></tr>
+          <tr><td>Room 10</td><td>Floor loot</td><td>Always a scaled chest reward, then a 1-hour floor cooldown</td></tr>
+        </tbody>
+      </table>
+      <p>Dungeon state persists, so you can leave and come back. Solo crawls and parties up to 4 players are supported.</p>
+
+      <h4 class="wap2-section-title">Party Play</h4>
+      <ul class="wap2-list">
+        <li>Party members must be part of the crawl to interact with rooms.</li>
+        <li>Ready/advance flow keeps the party synchronized between rooms.</li>
+        <li>Party average stats are used for monster scaling, so stronger teammates raise the challenge but also help clear fights.</li>
+        <li>Buffs and debuffs from shrines/traps last for a set number of rooms and tick down after rooms complete.</li>
+      </ul>
+    </div>
+
+    <!-- TAB: Room Events -->
+    <div class="wap2-tab-panel" id="dungeon-events">
+      <h4 class="wap2-section-title">Rooms 1-8 Event Weights</h4>
+      <table class="wap2-table">
+        <thead><tr><th>Event</th><th>Chance</th><th>What To Know</th></tr></thead>
+        <tbody>
+          <tr><td>Monster Encounter</td><td>24%</td><td>Choose how to handle the monster; some outcomes can force battle.</td></tr>
+          <tr><td>Story Segment</td><td>20%</td><td>Adventure-style 3-choice skill check using stat pairs.</td></tr>
+          <tr><td>Puzzle</td><td>12%</td><td>3-choice skill check; success gives XP and guaranteed loot.</td></tr>
+          <tr><td>Trap</td><td>10%</td><td>Attempt to escape for XP or risk a debuff/cooldown on failure.</td></tr>
+          <tr><td>Chest/Mimic</td><td>10%</td><td>Disguised chest with a 50% mimic chance.</td></tr>
+          <tr><td>Shrine</td><td>8%</td><td>Applies helpful temporary buffs.</td></tr>
+          <tr><td>Merchant</td><td>6%</td><td>Offers 5 random items priced by rarity.</td></tr>
+          <tr><td>Real Chest 1/2/3/4</td><td>3.5% / 2.5% / 2% / 2%</td><td>Always real, not a mimic.</td></tr>
+        </tbody>
+      </table>
+
+      <h4 class="wap2-section-title">Choice Stat Pairs</h4>
+      <table class="wap2-table">
+        <thead><tr><th>Choice Style</th><th>Stats Used</th><th>Good For</th></tr></thead>
+        <tbody>
+          <tr><td>Physical / Force</td><td><span class="wap2-stat-pill wap2-stat-att">ATT</span> + <span class="wap2-stat-pill wap2-stat-def">DEF</span></td><td>Breaking through, fighting, forcing chests</td></tr>
+          <tr><td>Skillful / Examine</td><td><span class="wap2-stat-pill wap2-stat-dex">DEX</span> + <span class="wap2-stat-pill wap2-stat-int">INT</span></td><td>Puzzles, careful opening, mimic detection</td></tr>
+          <tr><td>Endurance / Wait</td><td><span class="wap2-stat-pill wap2-stat-ene">ENE</span> + <span class="wap2-stat-pill wap2-stat-hap">HAP</span></td><td>Patience, surviving pressure, making mimics retreat</td></tr>
+        </tbody>
+      </table>
+      <div class="wap2-tip-box">
+        <strong>Chest/mimic hint:</strong> Examine gets a bonus on real chests and can double loot on success. Wait is the safest special answer for mimics because a successful wait makes the mimic retreat without battle.
+      </div>
+    </div>
+
+    <!-- TAB: XP & Loot -->
+    <div class="wap2-tab-panel" id="dungeon-xp-loot">
+      <h4 class="wap2-section-title">Dungeon XP Formula</h4>
+      <div class="wap2-tip-box">
+        <strong>Room XP</strong> = <code>(pet_level ÷ equipment_multiplier) × floor × room × room_type_plug</code><br>
+        Minimum reward is 10 XP.
+      </div>
+      <table class="wap2-table">
+        <thead><tr><th>Room Type</th><th>Plug</th><th>Meaning</th></tr></thead>
+        <tbody>
+          <tr><td>Boss</td><td>500</td><td>Highest XP room type</td></tr>
+          <tr><td>Monster, Story, Puzzle</td><td>250</td><td>Major progression events</td></tr>
+          <tr><td>Trap</td><td>100</td><td>XP for successful avoidance</td></tr>
+          <tr><td>Shrine</td><td>50</td><td>Lower XP, useful buffs</td></tr>
+          <tr><td>Chest, Merchant, Floor Loot</td><td>25</td><td>Loot-focused rooms</td></tr>
+        </tbody>
+      </table>
+      <div class="wap2-note-box">
+        <strong>Equipment tradeoff:</strong> equipment helps combat, training, and stat checks, but dungeon XP is divided by the equipment multiplier. For easy non-combat rooms, unequipping can greatly improve XP. For dangerous fights or hard checks, gear may still be worth wearing.
+      </div>
+
+      <h4 class="wap2-section-title">Floor Loot Scaling</h4>
+      <table class="wap2-table">
+        <thead><tr><th>Floor</th><th>Room 10 Reward</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td>Chest 1 ×1</td></tr>
+          <tr><td>2-3</td><td>Chest 2 ×1</td></tr>
+          <tr><td>4-6</td><td>Chest 3 ×1</td></tr>
+          <tr><td>7+</td><td>Chest 4 ×2</td></tr>
+        </tbody>
+      </table>
+      <p>After claiming room 10 floor loot, the floor enters a 1-hour cooldown before advancing to the next floor.</p>
+    </div>
+
+    <!-- TAB: Strategy -->
+    <div class="wap2-tab-panel" id="dungeon-strategy">
+      <h4 class="wap2-section-title">Best Dungeon Habits</h4>
+      <ul class="wap2-list">
+        <li><strong>Swap gear by room.</strong> Wear combat gear for bosses/monster fights and hard checks; consider unequipping for easy story, puzzle, trap, shrine, merchant, and floor-loot XP.</li>
+        <li><strong>Build DEX + INT if you like safer loot.</strong> Examine is strong for real chests and general skill checks, and INT also helps normal Play/Mission XP through abilities.</li>
+        <li><strong>Build ENE + HAP if you hate mimic risk.</strong> The Wait path can reveal mimics and avoid battle when it succeeds, while both stats also improve HP.</li>
+        <li><strong>Build ATT + DEF if you force progress.</strong> Physical choices and combat rooms reward pets that can push through threats directly.</li>
+        <li><strong>Do not assume dungeon type means element bonus.</strong> Dungeon type is flavor; Play locations are where element matching affects XP and key drops.</li>
+        <li><strong>Use floor 7+ as a long-term loot target.</strong> Reaching floor 7 makes room 10 pay Chest 4 twice, which is excellent for targeted gearing.</li>
+      </ul>
+
+      <h4 class="wap2-section-title">Reforge &amp; Stat Building Tie-In</h4>
+      <div class="wap2-tip-box">
+        <strong>Dungeon loot feeds reforging.</strong> Chest-heavy floors and merchants are good ways to collect duplicate gear, gems, monsters, and materials. Reforged or better-stat items become far more valuable once multiplied by a full equipment setup.
+      </div>
+      <ul class="wap2-list">
+        <li>Use high-multiplier gear before Hard training to create huge stat gains.</li>
+        <li>Use low/no gear when the goal is raw dungeon XP or Survivor Series score.</li>
+        <li>For balanced dungeon progress, keep one combat set and one low-multiplier XP setup ready.</li>
+      </ul>
+    </div>
+
+  </div><!-- /wap2-modal-body -->
+</div><!-- /modal dungeon -->
+
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<!-- MODAL 5: XP Casino -->
 <!-- ═══════════════════════════════════════════════════════════════════════ -->
 <div class="wap2-modal" id="wap2-modal-casino" role="dialog" aria-modal="true" aria-labelledby="wap2-modal-casino-title">
   <div class="wap2-modal-header">
@@ -861,7 +1010,7 @@
       <h4 class="wap2-section-title">🎟️ Scratch Cards</h4>
       <p>Buy a card and scratch to reveal symbols. Match symbols to win XP.</p>
       <ul class="wap2-list">
-        <li>1×3 or 3×3 grids depending on card type</li>
+        <li>1×3, 1×4, 1×6, or 3×3 grids depending on card type</li>
         <li>Multi-line wins and bonus badges for special symbol combinations</li>
         <li><strong>Fun Mode</strong> available — no XP changes</li>
       </ul>
@@ -893,125 +1042,129 @@
 
 
 <!-- ═══════════════════════════════════════════════════════════════════════ -->
-<!-- MODAL 5: Daily Checks -->
+<!-- MODAL 5: Events -->
 <!-- ═══════════════════════════════════════════════════════════════════════ -->
-<div class="wap2-modal" id="wap2-modal-daily" role="dialog" aria-modal="true" aria-labelledby="wap2-modal-daily-title">
+<div class="wap2-modal" id="wap2-modal-events" role="dialog" aria-modal="true" aria-labelledby="wap2-modal-events-title">
   <div class="wap2-modal-header">
-    <h2 class="wap2-modal-title" id="wap2-modal-daily-title">📅 Daily Checks</h2>
+    <h2 class="wap2-modal-title" id="wap2-modal-events-title">📣 Events</h2>
     <button class="wap2-modal-close" aria-label="Close">&times;</button>
   </div>
   <div class="wap2-modal-tabs" role="tablist">
-    <button class="wap2-tab active" role="tab" data-tab="daily-tasks">Tasks</button>
-    <button class="wap2-tab" role="tab" data-tab="daily-stocks">Pet Stocks</button>
-    <button class="wap2-tab" role="tab" data-tab="daily-board">Item Board</button>
+    <button class="wap2-tab active" role="tab" data-tab="events-tasks">Tasks</button>
+    <button class="wap2-tab" role="tab" data-tab="events-shop">Shop</button>
+    <button class="wap2-tab" role="tab" data-tab="events-board">Item Board</button>
+    <button class="wap2-tab" role="tab" data-tab="events-stocks">Pet Stocks</button>
   </div>
   <div class="wap2-modal-body">
 
     <!-- TAB: Tasks -->
-    <div class="wap2-tab-panel active" id="daily-tasks">
-      <h4 class="wap2-section-title">Daily Tasks <span class="wap2-note-badge">Tasks page</span></h4>
-      <p>7 task slots total. All tasks reset at <strong>UTC midnight</strong> every day.</p>
+    <div class="wap2-tab-panel active" id="events-tasks">
+      <h4 class="wap2-section-title">Tasks Event <span class="wap2-note-badge">Tasks page</span></h4>
+      <p>Tasks are rotating objectives with daily, weekly, and monthly tracks. You need a pet to receive tasks. Progress is recorded automatically by the matching game/action endpoints.</p>
       <table class="wap2-table">
-        <thead><tr><th>Slot</th><th>Description</th></tr></thead>
+        <thead><tr><th>Track</th><th>Slots</th><th>Reset / Refresh</th><th>Goal</th></tr></thead>
         <tbody>
-          <tr>
-            <td><strong>Slot 0 — Daily Goal</strong></td>
-            <td>Complete 10 daily tasks to earn a chest. Consecutive days upgrade the chest tier (Chest 1 → Chest 2 → Chest 3 → Chest 4). Missing a day resets your streak back to Chest 1.</td>
-          </tr>
-          <tr>
-            <td><strong>Slots 1–6</strong></td>
-            <td>Individual tasks with their own objectives and rewards. Progress is tracked automatically as you play.</td>
-          </tr>
+          <tr><td>Daily</td><td>Slot 0 goal + slots 1-6 tasks</td><td>Regular slots reset at UTC midnight; claimed slots cool down for 3 hours; dismissed slots cool down for 1 hour</td><td>Complete 10 Daily Tasks</td></tr>
+          <tr><td>Weekly</td><td>Slot 10 goal + slots 11-16 tasks</td><td>Resets Sunday 00:00 UTC; claimed slots cool down for 18 hours; dismissed slots cool down for 6 hours</td><td>Complete 10 Weekly Tasks</td></tr>
+          <tr><td>Monthly</td><td>Slot 20 goal + slots 21-26 tasks</td><td>Resets on the 1st of each month at 00:00 UTC; claimed slots cool down for 72 hours; dismissed slots cool down for 24 hours</td><td>Complete 10 Monthly Tasks</td></tr>
         </tbody>
       </table>
 
-      <h4 class="wap2-section-title">Task Types</h4>
-      <p>Tasks are randomly assigned from this pool each day:</p>
-      <ul class="wap2-list">
-        <li>Play, Train, Mission, Win NPC Battle, Complete Quest</li>
-        <li>Post Item to Item Board, Win Boss Battle</li>
-        <li>Rename a battle action, Use Potion, Equip Item, Open Chest</li>
-        <li>Buy/Sell Pet Stock Tokens, Play Slots, Play Keno, Coin Flip</li>
-        <li>Get Horoscope, Race, Join/Survive/Eliminate in Survivor Series</li>
-        <li>Buy Powerball Ticket, Scratch Tickets</li>
-      </ul>
+      <h4 class="wap2-section-title">All Task Types</h4>
+      <p>Daily, weekly, and monthly tasks are all generated from the same action pool. Weekly tasks scale requirements up by 3-10× with caps; monthly tasks scale them up by 15-50× with higher caps.</p>
+      <table class="wap2-table">
+        <thead><tr><th>Category</th><th>Tracked Task Types</th></tr></thead>
+        <tbody>
+          <tr><td>Pet Care</td><td>Play with your pet; Train your pet; Complete missions; Win NPC battles</td></tr>
+          <tr><td>Inventory</td><td>Gift an item; Use potions; Open chests; Equip items; Consume items</td></tr>
+          <tr><td>Boss &amp; Rename</td><td>Win a boss battle; Rename a specific battle action: Attack, Defense, or Charge</td></tr>
+          <tr><td>Market Events</td><td>Buy pet stock tokens; Sell pet stock tokens; Post an item on the Item Board</td></tr>
+          <tr><td>Casino</td><td>Play slots; Play Mega Keno; Flip coins; Buy a Powerball ticket; Scratch tickets; Play Blackjack; Play Hold'em Poker; Roll in Craps; Spin Wheel of Pets; Play Rock Paper Scissors</td></tr>
+          <tr><td>Racing</td><td>Race your pet; Win races</td></tr>
+          <tr><td>Survivor Series</td><td>Join Survivor Series; Eliminate pets in Survive; Survive rounds in Survive</td></tr>
+          <tr><td>Dungeon &amp; Colosseum</td><td>Complete dungeon runs; Win dungeon battles; Enter the Colosseum</td></tr>
+          <tr><td>Astrology</td><td>Get your daily horoscope</td></tr>
+        </tbody>
+      </table>
       <div class="wap2-tip-box">
         <strong>Rename tasks:</strong> "Pet is tired of [action] — rename it." Go to the Rename tab on My Pet page, update that specific battle action label, and save. The task completes automatically.
       </div>
 
       <h4 class="wap2-section-title">Task Rewards</h4>
       <table class="wap2-table">
-        <thead><tr><th>Reward Tier</th><th>Rewards</th></tr></thead>
+        <thead><tr><th>Track</th><th>Regular Task Rewards</th><th>Goal Reward</th></tr></thead>
         <tbody>
-          <tr><td>Low</td><td>1 key</td></tr>
-          <tr><td>Mid</td><td>1–2 keys, rare Chest 1</td></tr>
-          <tr><td>High</td><td>2–3 keys, chance at Chest 2 or 3</td></tr>
-          <tr><td>Top</td><td>2–3 keys or Chest 2/3/4</td></tr>
+          <tr><td>Daily</td><td>1-3 of a random key type: Key1, Key2, or Key3</td><td>Bundle of Key1 + Key2 + Key3, each at <code>5 + 2 × streak</code></td></tr>
+          <tr><td>Weekly</td><td>1-3 of Chest 1 or Chest 2</td><td>Bundle of Chest 1 + Chest 2, each at <code>5 + 2 × streak</code></td></tr>
+          <tr><td>Monthly</td><td>1-3 of Chest 3 or Chest 4</td><td>Bundle of Chest 3 + Chest 4, each at <code>5 + 2 × streak</code></td></tr>
         </tbody>
       </table>
+      <div class="wap2-note-box">
+        <strong>Claiming matters:</strong> task progress completes the task, but rewards are delivered when you claim. Claiming regular tasks also advances the matching daily/weekly/monthly goal.
+      </div>
 
       <h4 class="wap2-section-title">Task Management</h4>
       <ul class="wap2-list">
-        <li>Dismiss any task you don't want — dismissed slots wait for the midnight reset</li>
+        <li>Dismiss tasks you do not want; the slot waits out that track's dismiss cooldown before refreshing.</li>
+        <li>Claim completed regular tasks to deliver rewards and start the completion cooldown for that slot.</li>
+        <li>Daily regular task slots are also wiped at UTC midnight, so every known user gets fresh daily tasks even if they were offline.</li>
         <li><strong>🔔 Bell button:</strong> configure Discord DM pings when task slots refresh — options: Off, Each Slot (ping per slot as it refreshes), All Slots (one ping when all slots are ready)</li>
-        <li>Completing Slot 0 (Daily Goal) requires completing 10 tasks across all slots — plan your day to hit 10</li>
+        <li>Goal slots do not auto-deliver; claim the goal after enough regular task claims have filled it.</li>
       </ul>
     </div>
 
-    <!-- TAB: Pet Stocks -->
-    <div class="wap2-tab-panel" id="daily-stocks">
-      <h4 class="wap2-section-title">📈 Pet Stock Market <span class="wap2-note-badge">Pet Stocks page</span></h4>
-      <p>An XP investment system — buy and sell tokens representing pet types and elements. Prices update every <strong>15 minutes</strong>.</p>
+    <!-- TAB: Shop -->
+    <div class="wap2-tab-panel" id="events-shop">
+      <h4 class="wap2-section-title">🛒 The Reaper's Market <span class="wap2-note-badge">Shop page</span></h4>
+      <p>The Shop is the regular XP market for buying keys, potions, rings, gear, and weapons. It is separate from Dungeon Crawl merchant rooms, which are covered in the Dungeon Crawl section.</p>
       <table class="wap2-table">
-        <thead><tr><th>Token Category</th><th>Tokens Available</th><th>Base Price</th></tr></thead>
+        <thead><tr><th>Shop</th><th>Stock</th><th>Open / Rotation</th></tr></thead>
         <tbody>
-          <tr><td>Type tokens</td><td>Land, Swimming, Flying</td><td>250 XP each</td></tr>
-          <tr><td>Element tokens</td><td>Basic, Fire, Water, Electric, Ice, Plant, Rock, Air, Magic, Holy, Necro, Psychic, Fighting</td><td>500 XP each</td></tr>
+<tr><td>The Ferryman's Toll</td><td>Key1, Key2, Key3</td><td>Always open; key purchase counts reset at UTC midnight</td></tr>
+          <tr><td>Wraith's Wort</td><td>5 seeded potions</td><td>Open on even UTC hours; rotates every hour</td></tr>
+          <tr><td>Crypt Curios</td><td>5 seeded Rings, Monsters, Gems, or Materials</td><td>Open on odd UTC hours; rotates every hour</td></tr>
+          <tr><td>Hollow Outfitter</td><td>5 seeded Boots, Armor, Helmets, or Shields</td><td>Open when UTC hour % 4 is 0 or 1; rotates every 2 hours</td></tr>
+          <tr><td>Grim Arsenal</td><td>5 seeded Swords, Daggers, Katanas, Axes, Hammers, or Bows</td><td>Open when UTC hour % 4 is 2 or 3; rotates every 2 hours</td></tr>
         </tbody>
       </table>
 
-      <h4 class="wap2-section-title">Buying Cost Multipliers</h4>
+      <h4 class="wap2-section-title">Shop Pricing</h4>
       <div class="wap2-note-box">
-        <strong>Buying cost multiplier:</strong><br>
-        Token matches your pet's type/element = <strong>1× price</strong> (no penalty)<br>
-        Token doesn't match (single-element pet) = <strong>2× price</strong><br>
-        Token doesn't match (dual-element pet) = <strong>3× price</strong><br><br>
-        Buying deducts XP directly — your pet <strong>can level DOWN</strong> if you spend enough XP.<br>
-        Selling always at current market price (no multiplier) — adds XP and can trigger level-ups.
+        <strong>Currency:</strong> purchases spend your pet's total spendable XP. Buying can lower your level if the purchase drops total XP below your current level threshold.<br><br>
+        <strong>Key pricing:</strong> each key type has a daily base price and per-user daily multiplier: <code>base_cost × (1 + purchases_today × 0.5)</code>. First buy is 1×, second is 1.5×, third is 2×, and so on until UTC midnight resets today's counts.<br><br>
+        <strong>Other shop pricing:</strong> <code>25 × rarity_base × slot_factor(25-100) × 2</code>. Rarity bases: Common 100, Uncommon 500, Rare 1,000, Epic 2,500, Mythic 5,000, Special 3,000.
       </div>
+      <p>Keys can be bought repeatedly while affordable, with the displayed next price updating after every purchase. Non-key shop items are one purchase per visible slot during that rotation; the page marks them purchased after buying.</p>
 
-      <h4 class="wap2-section-title">Price Dynamics</h4>
+      <h4 class="wap2-section-title">Shop Strategy</h4>
       <ul class="wap2-list">
-        <li><strong>Random drift:</strong> Elements ±20%, Types ±12% per tick</li>
-        <li><strong>Momentum spikes:</strong> 10% chance of an extra ±12% swing</li>
-        <li><strong>Player pressure:</strong> Buy/sell activity from other players moves prices</li>
-        <li><strong>Market events:</strong> Minor events every tick; Major events on ~85% of days; Holiday events on special dates</li>
+<li>Check Crypt Curios when you need Rings, Monsters, Gems, or Materials for multiplier building and sub-slot bonuses.</li>
+        <li>Use Hollow Outfitter and Grim Arsenal to fill missing main slots, complete a matching Helmet/Armor/Boots/Shield/Weapon set, or find high-base items worth reforging.</li>
+        <li>Buy potions when they support your current leveling or stat plan; XP and stat potions scale better when used deliberately.</li>
+        <li>Be careful buying keys repeatedly: the same key gets more expensive each time that day, so later buys are best when you specifically need that chest path.</li>
+        <li>Dungeon merchants may be cheaper when you find them, but the Shop is predictable and lets you target categories on a known UTC schedule.</li>
       </ul>
-
-      <h4 class="wap2-section-title">Tracking Your Portfolio</h4>
-      <ul class="wap2-list">
-        <li>XP spent on purchases</li>
-        <li>XP received from sells</li>
-        <li>Unrealised value of tokens you currently hold</li>
-        <li>Net profit/loss</li>
-      </ul>
-      <div class="wap2-tip-box">
-        <strong>Stock tip:</strong> Always buy tokens that match your pet's type or element — you pay 1× instead of 2–3×. Buying mismatched tokens is rarely worth it unless you expect a very large price increase. Watch for Major market events to time your buys and sells.
-      </div>
     </div>
 
     <!-- TAB: Item Board -->
-    <div class="wap2-tab-panel" id="daily-board">
+    <div class="wap2-tab-panel" id="events-board">
       <h4 class="wap2-section-title">🏪 Item Board / Bazaar</h4>
-      <p>A player-to-player marketplace using XP as currency. Buy and sell items directly with other players in real time.</p>
+      <p>A real-time player marketplace for inventory items. Listings can ask for XP or a trade item, and active listings broadcast to connected Item Board clients over WebSocket.</p>
 
-      <h4 class="wap2-section-title">How It Works</h4>
+      <h4 class="wap2-section-title">Posting Listings</h4>
       <ul class="wap2-list">
-        <li>Post items from your inventory with a price in XP — listing goes live immediately</li>
-        <li>Other players browse and buy in real time; XP transfers instantly</li>
-        <li>Seller receives a <strong>Discord DM notification</strong> when their item sells</li>
-        <li>Posting an item counts toward the "Post an item on the Item Board" daily task</li>
-        <li>No listing fees — you receive the full price you set</li>
+        <li>Choose an item from your inventory and a quantity you actually own.</li>
+        <li>Set either an XP price of at least 1 XP or a trade-item request.</li>
+        <li>The posted quantity is removed/reserved from your inventory by the board listing system.</li>
+        <li>Posting an item records progress for the <strong>Post an item on the Item Board</strong> task type.</li>
+      </ul>
+
+      <h4 class="wap2-section-title">Buying Listings</h4>
+      <ul class="wap2-list">
+        <li>XP purchases transfer XP from buyer to seller through pet XP accounting.</li>
+        <li>Trade listings require the requested item/quantity instead of XP.</li>
+        <li>The seller receives a Discord DM when a listing sells, including item, buyer, XP earned, and level-up info if applicable.</li>
+        <li>Listings disappear after purchase, and all connected boards update immediately.</li>
       </ul>
 
       <h4 class="wap2-section-title">What to Sell</h4>
@@ -1026,8 +1179,59 @@
       </div>
     </div>
 
+    <!-- TAB: Pet Stocks -->
+    <div class="wap2-tab-panel" id="events-stocks">
+      <h4 class="wap2-section-title">📈 Pet Stock Market <span class="wap2-note-badge">Pet Stocks page</span></h4>
+      <p>An XP market event system where you buy and sell tokens representing pet types and elements. Prices update every <strong>15 minutes</strong> and keep up to 7 days of 15-minute history.</p>
+      <table class="wap2-table">
+        <thead><tr><th>Token Category</th><th>Tokens Available</th><th>Base Price</th></tr></thead>
+        <tbody>
+          <tr><td>Type tokens</td><td>Land, Swimming, Flying</td><td>250 XP each</td></tr>
+          <tr><td>Element tokens</td><td>Basic, Fire, Water, Electric, Ice, Plant, Rock, Air, Magic, Holy, Necro, Psychic, Fighting</td><td>500 XP each</td></tr>
+        </tbody>
+      </table>
+
+      <h4 class="wap2-section-title">Affinity Multipliers</h4>
+      <div class="wap2-note-box">
+        <strong>Price multiplier:</strong><br>
+        Token matches your pet's type or either element = <strong>1×</strong><br>
+        Token does not match a single-element pet = <strong>2×</strong><br>
+        Token does not match a dual-element pet = <strong>3×</strong><br><br>
+        Buying spends <code>price × multiplier × quantity</code>. Selling pays <code>price × quantity ÷ multiplier</code>. Matching tokens are therefore best on both entry and exit.
+      </div>
+
+      <h4 class="wap2-section-title">Trading Rules</h4>
+      <ul class="wap2-list">
+        <li>Buying deducts XP from your pet and can cause level-downs.</li>
+        <li>Selling adds XP to your pet and can cause level-ups.</li>
+        <li>You can hold up to <strong>100,000 tokens per token type</strong>.</li>
+        <li>Buy All buys as many of one token as possible up to the cap and your available XP.</li>
+        <li>Buy Max attempts to buy 100,000 of every token type; Sell All and Sell Max liquidate holdings.</li>
+        <li>Buy and sell quantities record task progress by the number of tokens traded.</li>
+      </ul>
+
+      <h4 class="wap2-section-title">Price Dynamics</h4>
+      <ul class="wap2-list">
+        <li><strong>Random drift:</strong> type tokens move slower; element tokens are more volatile.</li>
+        <li><strong>Momentum spikes:</strong> 10% chance of extra volatility on a tick.</li>
+        <li><strong>Circulation pressure:</strong> more tokens held in circulation can push prices upward.</li>
+        <li><strong>Trade pressure:</strong> recent buys push prices up; recent sells push prices down.</li>
+        <li><strong>Events:</strong> holiday events when active, daily major events, and frequent minor events can move prices.</li>
+      </ul>
+
+      <h4 class="wap2-section-title">Tracking Your Portfolio</h4>
+      <ul class="wap2-list">
+        <li>Ledger tracks XP spent on buys and XP received from sells.</li>
+        <li>Portfolio view shows held quantity, current held value, realised profit/loss, and total net value.</li>
+        <li>Current market view shows latest prices, percent change, active events, base prices, and your per-token multiplier.</li>
+      </ul>
+      <div class="wap2-tip-box">
+        <strong>Stock tip:</strong> matching tokens are the efficient trades. A mismatched dual-element token needs a large move just to overcome the 3× buy cost and 1/3× sell payout.
+      </div>
+    </div>
+
   </div><!-- /wap2-modal-body -->
-</div><!-- /modal daily -->
+</div><!-- /modal events -->
 
 
 <!-- ═══════════════════════════════════════════════════════════════════════ -->
@@ -1159,16 +1363,17 @@
     <div class="wap2-tab-panel active" id="tips-leveling">
       <h4 class="wap2-section-title">Fastest Ways to Level Up</h4>
       <div class="wap2-tip-box">
-        <strong>Priority #1 — INT branch abilities.</strong> The INT ability tree gives XP multipliers for all 8 activities. Even 1–2 points in INT abilities noticeably speeds up leveling. This compounds with everything else — invest here first.
+        <strong>Priority #1 — useful INT abilities.</strong> Training Scholar makes training safer, Mission Expert and Playful Learner boost active XP sources, and the combat XP abilities help battle-heavy players. The old quest XP path is no longer a live activity, so prioritize the INT nodes tied to systems you actually use.
       </div>
       <ul class="wap2-list">
-        <li><strong>Play with element match:</strong> Dual-element match gives 15× level XP per play + guaranteed keys. This is the best passive XP source — always play in zones that match your element(s).</li>
+        <li><strong>Play with element match:</strong> Base Play is 5 × level XP; one matching element makes it 10 × level, and two matches make it 15 × level plus guaranteed keys. Always play in zones that match your element(s).</li>
         <li><strong>Boss battles:</strong> 5× normal XP on victory. Fight bosses whenever they trigger during Play. If you can reliably win bosses, seek them out directly.</li>
-        <li><strong>Daily tasks:</strong> Complete all 6 task slots every day. The Slot 0 Daily Goal chest (especially Chest 3/4 after a streak) contains XP potions and gear that accelerates leveling.</li>
+        <li><strong>Tasks:</strong> Complete regular task slots and claim them. Daily tasks give keys, weekly tasks give Chest 1/2, monthly tasks give Chest 3/4, and each track's goal pays a streak-scaled bundle.</li>
         <li><strong>XP Potions:</strong> Use XP Potions at high levels — they give 100× level XP, so a level 100 pet gets 10,000 XP per potion. Save them for when your level is high.</li>
-        <li><strong>Sell Pet Stock tokens:</strong> Selling tokens adds XP. Buy tokens that match your element (1× cost), wait for a price increase, then sell for profit. This is a reliable XP source if you time the market.</li>
+        <li><strong>Pet Stock tokens:</strong> Matching tokens are the efficient trades because buys cost 1× and sells pay full price. Mismatched single/dual-element tokens cost 2×/3× to buy and sell for 1/2× or 1/3× payout.</li>
         <li><strong>Casino:</strong> High-difficulty slots and races can generate massive XP quickly, but carry risk. Use Fun Mode to practice before betting real XP.</li>
-        <li><strong>Hard Missions:</strong> 500+ XP per mission with a 75% Key3 drop. Even at 30% success rate, the XP and keys are worth it at higher levels.</li>
+        <li><strong>Dungeon Crawl:</strong> Deep floors and high-value rooms can pay huge XP, especially if you lower equipment multiplier on non-combat rooms. Bosses and floor 7+ loot are the big long-term prizes.</li>
+        <li><strong>Hard Missions:</strong> 500 base XP before level scaling with a 30% success rate and Key3 chances. Great when you can absorb failures or do not gamble XP.</li>
       </ul>
 
       <h4 class="wap2-section-title">Daily Routine for Maximum XP</h4>
@@ -1176,6 +1381,7 @@
         <li>Complete all 6 daily task slots (aim for 10 total completions for Slot 0)</li>
         <li>Play in element-matching zones until cooldown</li>
         <li>Run Hard Missions for XP + Key3 drops</li>
+        <li>Run Dungeon Crawl rooms, swapping gear based on combat risk vs XP</li>
         <li>Fight any Boss encounters that trigger</li>
         <li>Check Pet Stocks — sell any tokens that are up in value</li>
         <li>Post excess items on the Item Board for XP income</li>
@@ -1188,11 +1394,14 @@
       <div class="wap2-tip-box">
         <strong>The goal:</strong> Maximize your equipment multiplier. Every stat bonus from gear is multiplied by this number — a 40× multiplier makes your gear 40× more effective than a 1× multiplier.
       </div>
+      <div class="wap2-note-box">
+        <strong>Context matters:</strong> a high multiplier is excellent for combat stats and Hard training, but some systems divide by equipment multiplier. Unequip for Survivor Series and consider low/no gear for safe Dungeon Crawl XP rooms.
+      </div>
 
       <h4 class="wap2-section-title">Step-by-Step Gear Priority</h4>
       <ol class="wap2-list">
         <li><strong>Fill all 6 main slots</strong> — even with mismatched sets. 6 slots = 6× multiplier baseline.</li>
-        <li><strong>Match all 6 to the same set</strong> — adds +3 set bonus = 9× multiplier. This is the biggest single jump.</li>
+        <li><strong>Match Helmet, Armor, Boots, Shield, and Weapon to the same set</strong> — adds +3 set bonus = 9× multiplier with a Ring equipped. This is the biggest single jump.</li>
         <li><strong>Equip a Ring</strong> — unlocks sub-slots and adds +1 to multiplier.</li>
         <li><strong>Fill both Monster sub-slots with the same monster</strong> — +1 bonus.</li>
         <li><strong>Fill both Gem sub-slots with the same gem</strong> — +1 bonus.</li>
@@ -1211,15 +1420,16 @@
       <h4 class="wap2-section-title">Stat Allocation Tips</h4>
       <ul class="wap2-list">
         <li><strong>Focus on your pet's specialization stats</strong> (shown in gold) — they get more from training and potions.</li>
-        <li><strong>HAP × ENE drives HP</strong> — both stats multiply together in the HP formula. Doubling both quadruples HP. Use Health Potions to boost these efficiently.</li>
+        <li><strong>HAP + ENE drives HP</strong> — HP = (HAP + ENE) × (EquipMult × 4), so raising both HAP and ENE together with a high equipment multiplier gives the best HP. Use Health Potions to raise HAP and ENE.</li>
         <li><strong>ATT + DEX = ATK power</strong> — for combat, balance these two rather than maxing one.</li>
         <li><strong>DEF + INT = DEF power</strong> — INT also boosts XP gains, making it doubly valuable.</li>
         <li><strong>Training Hard with a high multiplier</strong> is the fastest way to raise stats — ±5 × multiplier per attempt. At 40× multiplier, Hard training swings ±200 stat points.</li>
+        <li><strong>Reforge high-base items first</strong> — reforged bonuses become much stronger when multiplied by matching sets, ring sub-slots, and level bonuses.</li>
       </ul>
 
-      <h4 class="wap2-section-title">Survivor Series — Unequip Everything</h4>
+      <h4 class="wap2-section-title">Unequip for Score-Based XP</h4>
       <div class="wap2-note-box">
-        Survive Score = <code>level ÷ equipment_multiplier ÷ 10</code>. A 40× multiplier cuts your score to 1/40th. <strong>Always unequip all gear before joining Survivor Series.</strong> Re-equip after the match ends.
+        Survivor Score = <code>level ÷ equipment_multiplier ÷ 10</code>, and Dungeon Crawl XP also divides by equipment multiplier. <strong>Always unequip for Survivor Series.</strong> In dungeons, unequip for safe loot/story rooms and re-equip when survival or skill checks matter.
       </div>
     </div>
 
@@ -1237,9 +1447,9 @@
       <table class="wap2-table">
         <thead><tr><th>Mode</th><th>Best Build</th><th>Key Abilities</th></tr></thead>
         <tbody>
-          <tr><td>NPC Battles</td><td>High ATT + DEX, good HP</td><td>ATT branch: NPC Crusher; DEF branch: NPC Shield</td></tr>
+          <tr><td>NPC Battles</td><td>High ATT + DEX, good HP</td><td>ATT branch: NPC Crusher; DEF branch: NPC Guardian</td></tr>
           <tr><td>Boss Battles</td><td>High HP (HAP × ENE), high ATK power</td><td>ENE branch: charge cap increase; HAP branch: battle health bonus</td></tr>
-          <tr><td>PvP / Colosseum</td><td>Balanced ATK + DEF, type/element advantage</td><td>ATT branch: PvP Striker; DEF branch: PvP Guard</td></tr>
+          <tr><td>PvP / Colosseum</td><td>Balanced ATK + DEF, type/element advantage</td><td>ATT branch: PvP Dominator; DEF branch: PvP Fortress</td></tr>
           <tr><td>Survivor Series</td><td>High level, NO equipment</td><td>Any — but unequip everything before joining</td></tr>
         </tbody>
       </table>
@@ -1260,8 +1470,8 @@
         <li><strong>Hard Missions</strong> — 75% chance of Key3 per mission. Even at 30% success rate, the key drop is independent of mission success.</li>
         <li><strong>Boss battles</strong> — guaranteed Key1 + Key2 + Key3 on victory. Fight every boss you encounter.</li>
         <li><strong>Casino win streaks</strong> — reaching 7+ wins in Blackjack, Craps, or Hold'em gives the jackpot (3× of each key). Blackjack with optimal strategy is the most reliable way to build streaks.</li>
-        <li><strong>Daily tasks</strong> — complete all slots every day. High-tier tasks reward Chest 2/3/4 directly.</li>
-        <li><strong>Daily Goal streak</strong> — completing 10 tasks/day for consecutive days upgrades your Slot 0 chest to Chest 4, which gives a guaranteed item of your choice + a bonus item.</li>
+        <li><strong>Daily tasks</strong> — complete all slots every day for steady Key1/Key2/Key3 income.</li>
+        <li><strong>Weekly and monthly tracks</strong> — weekly tasks/goal supply Chest 1/2 bundles, while monthly tasks/goal supply Chest 3/4 bundles. Claim goals after 10 regular task claims on that track.</li>
       </ul>
 
       <h4 class="wap2-section-title">Smart Chest Opening</h4>
@@ -1346,14 +1556,14 @@
         <li><strong>Dual-element pets</strong> have broader coverage — they can get partial bonuses against more opponents. The tradeoff is that full advantage is harder to achieve.</li>
         <li><strong>Best offensive elements:</strong> Fire (beats Ice/Plant/Necro), Electric (beats Water/Plant/Fighting), Holy (beats Necro/Magic/Rock), Psychic (beats Holy/Necro/Magic)</li>
         <li><strong>Element matching for Play:</strong> Your element determines which zones give bonus XP. Dual-element pets can match more zones for more consistent XP bonuses.</li>
-        <li><strong>Element matching for Pet Stocks:</strong> Buying tokens that match your element costs 1× instead of 2–3×. A matching element saves significant XP on stock purchases.</li>
+        <li><strong>Element matching for Pet Stocks:</strong> Matching type/element tokens use the best multiplier: 1× buy cost and full-price sell payout. Mismatches cost 2× or 3× to buy and sell for only 1/2 or 1/3 payout.</li>
         <li><strong>Element matching for Elemental Potions:</strong> Elemental Potions only work if your pet's element matches. Single-element potions give +5 to 3 stats — very strong if you can use them.</li>
       </ul>
 
       <h4 class="wap2-section-title">Making Your Pet Stronger in a Specific Type</h4>
       <ul class="wap2-list">
         <li><strong>For combat strength:</strong> Maximize ATT + DEX (ATK power) and DEF + INT (DEF power) through training and potions. Use a weapon that matches your preferred stat split.</li>
-        <li><strong>For HP/survivability:</strong> Focus on HAP and ENE — they multiply together in the HP formula. A pet with 100 HAP and 100 ENE has far more HP than one with 200 in just one of them.</li>
+        <li><strong>For HP/survivability:</strong> Focus on HAP, ENE, and equipment multiplier — HP = (HAP + ENE) × (EquipMult × 4). A pet with 100 HAP and 100 ENE and 4× multiplier gets 1,600 HP per tick.</li>
         <li><strong>For racing:</strong> Maximize DEX, then ENE and HAP. Invest in DEX branch abilities for the speed boost.</li>
         <li><strong>For casino:</strong> DEX reduces losses (DEX branch), HAP increases wins (HAP branch). Both are worth investing in for a casino-focused build.</li>
         <li><strong>For Survivor Series:</strong> Level is everything — the higher your level, the higher your Survive Score (before equipment divides it). Focus on leveling above all else for Survivor Series.</li>

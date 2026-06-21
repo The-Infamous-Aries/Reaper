@@ -1,123 +1,128 @@
 <link href="/css/homepage.css" rel="stylesheet">
 <div class="container-fluid py-2">
-    <!-- Hero Section (Combined) -->
     <div class="row">
         <div class="col-12">
             <div class="hero-section">
                 <div class="hero-content">
-                    <a href="https://discord.com/oauth2/authorize?client_id=1345073131550801984&permissions=380373429328&integration_type=0&scope=bot+applications.commands" target="_blank" rel="noopener noreferrer" class="hero-avatar-link">
-                        <img src="/static/Images/keeper.png" alt="The Digital Reaper" class="hero-avatar">
-                    </a>
-                    <h1 class="hero-title">The Discord Bot That Collects Souls and Wins Wars</h1>
-                    <p class="hero-subtitle">Politics & War tools, pet battle systems, casino games, astrology, and a news network that reports on 3am war declarations. Join the chaos.</p>
-                    <div class="creator-info">
-                        <p class="aka">"The Infamous Aries" — Cosmic Code Collector</p>
-                        <p class="title">Bot Overlord. Chaos Architect. Professional Soul Harvester.</p>
-                    </div>
+                    <img src="/static/Images/keeper.png" alt="The Digital Reaper" class="hero-avatar">
+                    <h1 class="hero-title" id="hero-rotating-line">The Discord Bot That Collects Souls and Wins Wars</h1>
                 </div>
                 <div class="hero-stats">
                     <div class="stat-item">
-                        <span class="stat-value" id="stat-servers">...</span>
-                        <span class="stat-label">Servers</span>
+                        <span class="stat-label">Soul Harvested</span>
+                        <span class="stat-detail"><span id="stat-servers">...</span> Servers</span>
+                        <span class="stat-detail"><span id="stat-users">...</span> Users</span>
                     </div>
                     <div class="stat-item">
-                        <span class="stat-value" id="stat-users">...</span>
-                        <span class="stat-label">Users</span>
+                        <span class="stat-label">Reaper Gaze</span>
+                        <span class="stat-detail"><span id="stat-alliances">...</span> Alliances</span>
+                        <span class="stat-detail"><span id="stat-nations">...</span> Nations</span>
+                        <span class="stat-detail"><span id="stat-cities">...</span> Cities</span>
                     </div>
                     <div class="stat-item">
-                        <span class="stat-value" id="stat-nations">...</span>
-                        <span class="stat-label">Nations</span>
+                        <span class="stat-label">Digital Companions</span>
+                        <span class="stat-detail"><span id="stat-pets">...</span> Pets</span>
+                        <span class="stat-detail"><span id="stat-items">...</span> Items</span>
                     </div>
-                    <div class="stat-item">
-                        <span class="stat-value" id="stat-pets">...</span>
-                        <span class="stat-label">Pets</span>
-                    </div>
-                </div>
-                <div class="mission-statement">
-                    <h3>Our Mission</h3>
-                    <p>To provide the most comprehensive Discord bot experience spanning Politics & War tools, pet battle systems, astrology, and casino games — all wrapped in gothic aesthetics with a side of chaos and a lot of soul harvesting.</p>
                 </div>
             </div>
         </div>
     </div>
+</div>
 
 <script>
 (function() {
-    // Load bot avatar
-    const botAvatar = document.getElementById('bot-avatar');
-    if (botAvatar) {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 5000);
-        fetch('/api/bot-info', { signal: controller.signal })
-            .then(r => { clearTimeout(timeoutId); if (!r.ok) throw new Error(); return r.json(); })
-            .then(data => {
-                botAvatar.onerror = () => { botAvatar.src = '/static/Images/reaper.png'; botAvatar.onerror = null; };
-                botAvatar.src = (data.avatar_url || '/static/Images/reaper.png') + '?t=' + Date.now();
+    const rotatingTitle = document.getElementById('hero-rotating-line');
+    if (rotatingTitle) {
+        const fallbackLines = [
+            'The Discord Bot That Collects Souls and Wins Wars',
+            'The One Bot To Rule Them All!',
+            'You DO Want To Fear This Reaper!'
+        ];
+        let titleLines = fallbackLines;
+        let titleIndex = 0;
+
+        const setRotatingTitle = () => {
+            if (!titleLines.length) return;
+            titleIndex = (titleIndex + 1) % titleLines.length;
+            rotatingTitle.classList.add('is-changing');
+            window.setTimeout(() => {
+                rotatingTitle.textContent = titleLines[titleIndex];
+                rotatingTitle.classList.remove('is-changing');
+            }, 250);
+        };
+
+        fetch('/data/reaper_taglines.json')
+            .then(r => {
+                if (!r.ok) throw new Error(`HTTP ${r.status}`);
+                return r.json();
             })
-            .catch(() => { clearTimeout(timeoutId); botAvatar.src = '/static/Images/reaper.png'; });
+            .then(lines => {
+                if (!Array.isArray(lines)) return;
+                const cleanLines = lines
+                    .map(line => String(line || '').trim())
+                    .filter(Boolean);
+                if (!cleanLines.length) return;
+                titleLines = cleanLines;
+                titleIndex = titleLines.indexOf(rotatingTitle.textContent.trim());
+                if (titleIndex < 0) titleIndex = 0;
+            })
+            .catch(err => console.warn('Failed to load homepage taglines:', err));
+
+        window.setInterval(setRotatingTitle, 7000);
     }
 
-    // Fetch homepage stats
     fetch('/api/stats')
         .then(r => {
-            console.log('Stats API response status:', r.status);
             if (!r.ok) throw new Error(`HTTP ${r.status}`);
             return r.json();
         })
         .then(data => {
-            console.log('Stats API response data:', data);
-            const serversEl = document.getElementById('stat-servers');
-            const usersEl = document.getElementById('stat-users');
-            const nationsEl = document.getElementById('stat-nations');
-            const petsEl = document.getElementById('stat-pets');
+            const setStat = (id, value) => {
+                const el = document.getElementById(id);
+                if (el) el.textContent = Number(value || 0).toLocaleString();
+            };
 
-            console.log('Element check - servers:', serversEl, 'users:', usersEl, 'nations:', nationsEl, 'pets:', petsEl);
-
-            if (serversEl) serversEl.textContent = Number(data.servers || 0).toLocaleString();
-            if (usersEl) usersEl.textContent = Number(data.users || 0).toLocaleString();
-            if (nationsEl) nationsEl.textContent = Number(data.nations || 0).toLocaleString();
-            if (petsEl) petsEl.textContent = Number(data.pets || 0).toLocaleString();
+            setStat('stat-servers', data.servers);
+            setStat('stat-users', data.users);
+            setStat('stat-alliances', data.alliances);
+            setStat('stat-nations', data.nations);
+            setStat('stat-cities', data.cities);
+            setStat('stat-pets', data.pets);
+            setStat('stat-items', data.items);
         })
         .catch(err => {
             console.error('Failed to fetch stats:', err);
-            // Set default values on error
-            const serversEl = document.getElementById('stat-servers');
-            const usersEl = document.getElementById('stat-users');
-            const nationsEl = document.getElementById('stat-nations');
-            const petsEl = document.getElementById('stat-pets');
-            if (serversEl) serversEl.textContent = '0';
-            if (usersEl) usersEl.textContent = '0';
-            if (nationsEl) nationsEl.textContent = '0';
-            if (petsEl) petsEl.textContent = '0';
+            [
+                'stat-servers',
+                'stat-users',
+                'stat-alliances',
+                'stat-nations',
+                'stat-cities',
+                'stat-pets',
+                'stat-items'
+            ].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.textContent = '0';
+            });
         });
 
-    // Smooth scroll for anchor links
     document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-        anchor.addEventListener('click', function (e) {
+        anchor.addEventListener('click', function(e) {
             const href = this.getAttribute('href');
-            // Skip empty hrefs
             if (href === '#') {
                 e.preventDefault();
                 return;
             }
-            e.preventDefault();
             const target = document.querySelector(href);
             if (target) {
-                target.scrollIntoView({
-                    behavior: 'smooth',
-                    block: 'start'
-                });
+                e.preventDefault();
+                target.scrollIntoView({ behavior: 'smooth', block: 'start' });
             }
         });
     });
 })();
-</script>
-            </div>
-        </div>
-    </div>
 
-<script>
-// ── Flip card toggle ───────────────────────────────────────────────────────
 function loadPage(pageName, scriptPath, scriptType, cssPath) {
     if (typeof navigateTo === 'function' && typeof window.loadPageDirect === 'function') {
         window.loadPageDirect(pageName, scriptPath, scriptType, cssPath);
@@ -149,7 +154,7 @@ function _initFlipCards() {
 
         const front = flipEl.querySelector('.flip-card-front');
         if (front) {
-            front.addEventListener('click', function () {
+            front.addEventListener('click', function() {
                 flipEl.classList.toggle('is-flipped');
                 card.classList.toggle('is-expanded');
             });
@@ -157,7 +162,7 @@ function _initFlipCards() {
 
         const back = flipEl.querySelector('.flip-card-back');
         if (back) {
-            back.addEventListener('click', function (e) {
+            back.addEventListener('click', function(e) {
                 if (e.target.classList.contains('flip-card-back-btn')) return;
                 flipEl.classList.remove('is-flipped');
                 card.classList.remove('is-expanded');
@@ -166,7 +171,7 @@ function _initFlipCards() {
 
         const btn = flipEl.querySelector('.flip-card-back-btn');
         if (btn) {
-            btn.addEventListener('click', function (e) {
+            btn.addEventListener('click', function(e) {
                 e.stopPropagation();
             });
         }

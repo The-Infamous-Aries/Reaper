@@ -25,9 +25,9 @@ Every pet has six core stats that define how it performs in everything from batt
 | <img src="/static/Emojis/Pets/Deco/HAP.png" style="height:16px;vertical-align:middle"> HAP | Happiness | Contributes to max HP |
 | <img src="/static/Emojis/Pets/Deco/ENE.png" style="height:16px;vertical-align:middle"> ENE | Energy | Contributes to max HP and stamina |
 
-**Max HP** is calculated as: `(stat_average + HAP × ENE) × 10`
+**Max HP** is calculated as: `(HAP + ENE) × (EquipmentMult × 4)`
 
-The stat average is the mean of all six stats. HAP and ENE are your primary health stats — they feed into both the average and the multiplicative part of the formula. A pet with HAP 20 and ENE 20 adds 400 to the formula before the ×10 multiplier, making them dramatically tankier than a pet with low HAP/ENE.
+HAP and ENE are your primary health stats — they add together, then multiply by the equipment multiplier × 4. A pet with HAP 20, ENE 20, and 1× equipment multiplier gets 160 HP.
 
 **Combat stats** derived from your base stats:
 - Attack power = <img src="/static/Emojis/Pets/Deco/ATT.png" style="height:14px;vertical-align:middle"> ATT + <img src="/static/Emojis/Pets/Deco/DEX.png" style="height:14px;vertical-align:middle"> DEX
@@ -434,7 +434,7 @@ Slots also have a chance to drop keys on wins: Medium = 5%, Hard = 10%, Very Har
 
 ### Pet Stock Market
 
-The Pet Stock Market is an XP investment system. Buy and sell tokens representing pet types and elements, with prices updating every 15 minutes.
+The Pet Stock Market is an XP investment system. Buy and sell tokens representing pet types and elements, with prices updating every 2 hours.
 
 **Tokens available:**
 - 3 type tokens: <img src="/static/Emojis/Pets/Deco/Land.png" style="height:14px;vertical-align:middle"> Land, <img src="/static/Emojis/Pets/Deco/Swimming.png" style="height:14px;vertical-align:middle"> Swimming, <img src="/static/Emojis/Pets/Deco/Flying.png" style="height:14px;vertical-align:middle"> Flying (base price: 250 XP each)
@@ -449,7 +449,7 @@ Buying deducts XP directly — your pet can level down if you spend enough.
 
 **Selling** always happens at the current market price with no multiplier. Selling adds XP to your pet and can trigger level-ups.
 
-**Price dynamics** update every 15 minutes: random drift (elements ±20%, types ±12%), momentum spikes (10% chance of extra ±12% volatility), buy/sell pressure from other players, and market events (Minor events every tick, Major events on 85% of days, Holiday events on special dates).
+**Price dynamics** update every 2 hours: gentle random drift (elements ±0.6%, types ±0.3%), occasional momentum spikes (5% chance of extra ±3%), minimal buy/sell pressure from other players (takes millions of tokens to have a notable effect), and market events (Minor events on 50% of ticks, Major events on 40% of active ticks, Holiday events on special dates).
 
 Track your P&L from the market page — it shows XP spent, XP received from sells, unrealised value of held tokens, and net profit/loss.
 
@@ -500,7 +500,7 @@ Each task card shows what to do, a progress bar that fills as you complete the r
 
 **Ring sub-slots are powerful but gated.** You need a Ring equipped before you can add Monsters, Gems, or a Material to it. Unequipping the Ring clears all sub-slots back to your inventory, so plan your loadout before swapping rings.
 
-**<img src="/static/Emojis/Pets/Deco/HAP.png" style="height:14px;vertical-align:middle"> HAP and <img src="/static/Emojis/Pets/Deco/ENE.png" style="height:14px;vertical-align:middle"> ENE are your health stats.** If you want a tankier pet that survives longer in battles and Survivor Series, prioritize HAP and ENE. They feed into both the average and the multiplicative part of the HP formula — small increases go a long way.
+**<img src="/static/Emojis/Pets/Deco/HAP.png" style="height:14px;vertical-align:middle"> HAP and <img src="/static/Emojis/Pets/Deco/ENE.png" style="height:14px;vertical-align:middle"> ENE are your health stats.** If you want a tankier pet that survives longer in battles and Survivor Series, prioritize HAP, ENE, and equipment. HP = (HAP + ENE) × (EquipMult × 4), so every point in either stat adds 4× the equipment multiplier to your HP.
 
 **Training is a stat tool, not an XP tool.** Training directly changes a chosen stat — it doesn't award XP. Use it to fine-tune your build. Hard training with a high equipment multiplier can add massive amounts to a stat on a single success (a full matching set at level 50 gives 20× — meaning Hard training adds 100 per success), but failure costs the same amount, so be careful.
 

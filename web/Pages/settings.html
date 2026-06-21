@@ -23,11 +23,17 @@
       <button class="settings-nav-item" data-tab="autofill" onclick="switchTab('autofill')">
         <i class="fas fa-magic"></i> Auto-Fill
       </button>
+      <button class="settings-nav-item" data-tab="audit" onclick="switchTab('audit')">
+        <i class="fas fa-clipboard-check"></i> Audit
+      </button>
       <button class="settings-nav-item" data-tab="notifications" onclick="switchTab('notifications')">
         <i class="fas fa-bell"></i> Notifications
       </button>
       <button class="settings-nav-item" data-tab="privacy" onclick="switchTab('privacy')">
         <i class="fas fa-user-shield"></i> Privacy
+      </button>
+      <button class="settings-nav-item" data-tab="pets" onclick="switchTab('pets')">
+        <i class="fas fa-paw"></i> Pets
       </button>
       <button class="settings-nav-item" data-tab="layout" onclick="switchTab('layout')">
         <i class="fas fa-th-large"></i> Layout
@@ -142,7 +148,17 @@
             </div>
           </div>
           <div class="settings-card-body">
-          <div class="preset-grid">
+            <label class="toggle-item theme-live-preview-row" for="theme-live-preview">
+              <div>
+                <div class="toggle-item-title">Live Preview</div>
+                <div class="toggle-item-desc">Apply preset and custom color changes before saving</div>
+              </div>
+              <span class="stn-toggle">
+                <input type="checkbox" id="theme-live-preview" checked>
+                <span class="stn-toggle-track"></span>
+              </span>
+            </label>
+            <div class="preset-grid">
               <button class="preset-swatch" data-preset="dark" onclick="applyPreset('dark')">
                 <span class="preset-colors">
                   <span style="background:#0a0a0a"></span>
@@ -424,7 +440,7 @@
                   <div class="toggle-item-desc">Pre-fill your nation in the Revenue Optimizer</div>
                 </div>
                 <div class="stn-toggle">
-                  <input type="checkbox" id="auto-fill-nation-revopt">
+                  <input type="checkbox" id="auto-fill-nation-revopt" onchange="syncRevOptNationToggles('auto-fill-nation-revopt')">
                   <span class="stn-toggle-track"></span>
                 </div>
               </label>
@@ -439,6 +455,45 @@
                 </div>
               </label>
             </div>
+          </div>
+        </div>
+
+        <div class="settings-card">
+          <div class="settings-card-header">
+            <i class="fas fa-chart-line settings-card-icon" style="color:var(--gold-primary)"></i>
+            <div>
+              <div class="settings-card-title">Revenue Optimizer Defaults</div>
+              <div class="settings-card-desc">Pre-fill planned Infra, Land, and MMR every time you open the Revenue Optimizer</div>
+            </div>
+          </div>
+          <div class="settings-card-body">
+            <label class="toggle-item revopt-default-toggle">
+              <div class="toggle-item-info">
+                <div class="toggle-item-title">Auto-fill linked nation</div>
+                <div class="toggle-item-desc">Use your linked nation automatically on the Revenue Optimizer page</div>
+              </div>
+              <div class="stn-toggle">
+                <input type="checkbox" id="auto-fill-nation-revopt-inline" onchange="syncRevOptNationToggles('auto-fill-nation-revopt-inline')">
+                <span class="stn-toggle-track"></span>
+              </div>
+            </label>
+            <div class="revopt-default-grid">
+              <label class="revopt-default-field">
+                <span>Desired Infra</span>
+                <input type="number" id="revopt-default-infra" class="stn-input" min="0" step="50" placeholder="e.g. 1500">
+              </label>
+              <label class="revopt-default-field">
+                <span>Desired Land</span>
+                <input type="number" id="revopt-default-land" class="stn-input" min="0" step="100" placeholder="e.g. 2000">
+              </label>
+              <label class="revopt-default-field">
+                <span>Desired MMR</span>
+                <input type="text" id="revopt-default-mmr" class="stn-input" value="0/3/5/0" placeholder="0/3/5/0" inputmode="numeric">
+              </label>
+            </div>
+            <p class="settings-hint" style="margin-top:0.85rem;margin-bottom:0">
+              MMR is Barracks/Factories/Hangars/Drydocks. Caps are 5/5/5/3.
+            </p>
           </div>
         </div>
 
@@ -461,45 +516,68 @@
           </div>
         </div>
 
+        <!-- Home Alliance Card (consolidated) -->
         <div class="settings-card">
           <div class="settings-card-header">
             <i class="fas fa-home settings-card-icon" style="color:var(--gold-primary)"></i>
             <div>
-              <div class="settings-card-title">Compare — Home Alliance</div>
-              <div class="settings-card-desc">Alliances added here are auto-set as the Home Alliance in Comparison</div>
+              <div class="settings-card-title">Home Alliance</div>
+              <div class="settings-card-desc">Set your home alliance and choose which pages auto-fill it</div>
+            </div>
+            <div class="settings-card-status-badge" id="home-alliance-badge">
+              <span class="badge-dot" id="home-alliance-dot" style="background:#636669"></span>
+              <span id="home-alliance-label">Not set</span>
             </div>
           </div>
           <div class="settings-card-body">
             <div class="tag-input-zone">
-              <div class="tag-list" id="compare-home-tags"></div>
+              <div class="tag-list" id="home-alliance-tags"></div>
               <div class="tag-input-wrap">
-                <input type="text" id="add-compare-home-input" class="stn-input" placeholder="Search alliances…" autocomplete="off">
-                <div id="compare-home-dropdown" class="ac-dropdown" style="display:none"></div>
+                <input type="text" id="add-home-alliance-input" class="stn-input" placeholder="Search alliances…" autocomplete="off">
+                <div id="home-alliance-dropdown" class="ac-dropdown" style="display:none"></div>
               </div>
             </div>
-          </div>
-        </div>
-
-        <!-- Watch Home Alliance Card -->
-        <div class="settings-card">
-          <div class="settings-card-header">
-            <i class="fas fa-eye settings-card-icon" style="color:var(--gold-primary)"></i>
-            <div>
-              <div class="settings-card-title">Watch — Home Alliance</div>
-              <div class="settings-card-desc">Your home alliance shown in the War Stats ledger. Defaults to Darkstar (10259) if not set.</div>
-            </div>
-            <div class="settings-card-status-badge" id="watch-alliance-badge">
-              <span class="badge-dot" id="watch-alliance-dot" style="background:#636669"></span>
-              <span id="watch-alliance-label">Default</span>
-            </div>
-          </div>
-          <div class="settings-card-body">
-            <div class="tag-input-zone">
-              <div class="tag-list" id="watch-home-tags"></div>
-              <div class="tag-input-wrap">
-                <input type="text" id="add-watch-home-input" class="stn-input" placeholder="Search alliances…" autocomplete="off">
-                <div id="watch-home-dropdown" class="ac-dropdown" style="display:none"></div>
-              </div>
+            <div class="toggle-list" style="margin-top:1rem">
+              <label class="toggle-item">
+                <div class="toggle-item-info">
+                  <div class="toggle-item-title">Nations</div>
+                  <div class="toggle-item-desc">Auto-fill home alliance in the Nations page</div>
+                </div>
+                <div class="stn-toggle">
+                  <input type="checkbox" id="home-alliance-nations">
+                  <span class="stn-toggle-track"></span>
+                </div>
+              </label>
+              <label class="toggle-item">
+                <div class="toggle-item-info">
+                  <div class="toggle-item-title">Compare</div>
+                  <div class="toggle-item-desc">Auto-fill home alliance in the Comparison tool</div>
+                </div>
+                <div class="stn-toggle">
+                  <input type="checkbox" id="home-alliance-compare">
+                  <span class="stn-toggle-track"></span>
+                </div>
+              </label>
+              <label class="toggle-item">
+                <div class="toggle-item-info">
+                  <div class="toggle-item-title">Destroy</div>
+                  <div class="toggle-item-desc">Auto-fill home alliance in the Destroy tool</div>
+                </div>
+                <div class="stn-toggle">
+                  <input type="checkbox" id="home-alliance-destroy">
+                  <span class="stn-toggle-track"></span>
+                </div>
+              </label>
+              <label class="toggle-item">
+                <div class="toggle-item-info">
+                  <div class="toggle-item-title">Spy Wipe</div>
+                  <div class="toggle-item-desc">Auto-fill home alliance in the Spy Wipe tool</div>
+                </div>
+                <div class="stn-toggle">
+                  <input type="checkbox" id="home-alliance-spywipe">
+                  <span class="stn-toggle-track"></span>
+                </div>
+              </label>
             </div>
           </div>
         </div>
@@ -699,6 +777,195 @@
 
       </section>
 
+      <!-- ════════════════════════════ AUDIT TAB ════════════════════════════ -->
+      <section class="settings-tab" id="tab-audit" style="display:none">
+
+        <div class="settings-card">
+          <div class="settings-card-header">
+            <img src="/static/Emojis/Menu/audit.png" class="settings-card-icon" style="width:22px;height:22px;object-fit:contain" alt="">
+            <div>
+              <div class="settings-card-title">Audit Defaults</div>
+              <div class="settings-card-desc">Set your default color and MMR mode for the Alliance Audit tab on the Nations page</div>
+            </div>
+          </div>
+          <div class="settings-card-body">
+
+            <!-- Default Target Color -->
+            <div class="settings-field-row">
+              <div class="settings-field-label">
+                <img src="/static/Emojis/Colors/lime.png" id="audit-color-preview-icon" style="width:16px;height:16px;object-fit:contain;vertical-align:middle;margin-right:4px" alt="">
+                <strong>Default Target Color</strong>
+                <div class="settings-field-desc">Nations on any color other than this (excluding beige/grey) are flagged in the Color audit.</div>
+              </div>
+              <div class="settings-field-control">
+                <div class="audit-color-grid" id="audit-color-grid"></div>
+              </div>
+            </div>
+
+            <!-- Default MMR Mode -->
+            <div class="settings-field-row" style="margin-top:1.5rem">
+              <div class="settings-field-label">
+                <img src="/static/Emojis/Military/strategy.png" style="width:16px;height:16px;object-fit:contain;vertical-align:middle;margin-right:4px" alt="">
+                <strong>Default MMR Mode</strong>
+                <div class="settings-field-desc">Choose a preset or enter a custom MMR threshold (B/F/H/D, each slot 0–5 except Drydock 0–3).</div>
+              </div>
+              <div class="settings-field-control">
+                <div class="audit-mmr-preset-row">
+                  <button class="audit-mmr-preset-btn" id="mmr-preset-basic" onclick="selectMMRPreset('basic')">
+                    Basic <span class="audit-mmr-preset-val">0/3/5/0</span>
+                  </button>
+                  <button class="audit-mmr-preset-btn" id="mmr-preset-max" onclick="selectMMRPreset('max')">
+                    Max <span class="audit-mmr-preset-val">5/5/5/3</span>
+                  </button>
+                  <button class="audit-mmr-preset-btn" id="mmr-preset-custom" onclick="selectMMRPreset('custom')">
+                    Custom
+                  </button>
+                </div>
+                <div id="audit-mmr-custom-wrap" style="display:none;margin-top:1rem">
+                  <div class="audit-mmr-custom-grid">
+                    <div class="audit-mmr-custom-col">
+                      <label class="audit-mmr-custom-label">
+                        <img src="/static/Emojis/Military/soldier.png" style="width:14px;height:14px;object-fit:contain;vertical-align:middle" alt="">
+                        Barracks <span class="audit-mmr-range">(0–5)</span>
+                      </label>
+                      <div class="audit-mmr-slider-row">
+                        <input type="range" id="mmr-b" min="0" max="5" step="1" value="0" class="audit-mmr-slider" oninput="updateMMRDisplay()">
+                        <span class="audit-mmr-val" id="mmr-b-val">0</span>
+                      </div>
+                    </div>
+                    <div class="audit-mmr-custom-col">
+                      <label class="audit-mmr-custom-label">
+                        <img src="/static/Emojis/Military/tank.png" style="width:14px;height:14px;object-fit:contain;vertical-align:middle" alt="">
+                        Factory <span class="audit-mmr-range">(0–5)</span>
+                      </label>
+                      <div class="audit-mmr-slider-row">
+                        <input type="range" id="mmr-f" min="0" max="5" step="1" value="3" class="audit-mmr-slider" oninput="updateMMRDisplay()">
+                        <span class="audit-mmr-val" id="mmr-f-val">3</span>
+                      </div>
+                    </div>
+                    <div class="audit-mmr-custom-col">
+                      <label class="audit-mmr-custom-label">
+                        <img src="/static/Emojis/Military/jet.png" style="width:14px;height:14px;object-fit:contain;vertical-align:middle" alt="">
+                        Hangar <span class="audit-mmr-range">(0–5)</span>
+                      </label>
+                      <div class="audit-mmr-slider-row">
+                        <input type="range" id="mmr-h" min="0" max="5" step="1" value="5" class="audit-mmr-slider" oninput="updateMMRDisplay()">
+                        <span class="audit-mmr-val" id="mmr-h-val">5</span>
+                      </div>
+                    </div>
+                    <div class="audit-mmr-custom-col">
+                      <label class="audit-mmr-custom-label">
+                        <img src="/static/Emojis/Military/ship.png" style="width:14px;height:14px;object-fit:contain;vertical-align:middle" alt="">
+                        Drydock <span class="audit-mmr-range">(0–3)</span>
+                      </label>
+                      <div class="audit-mmr-slider-row">
+                        <input type="range" id="mmr-d" min="0" max="3" step="1" value="0" class="audit-mmr-slider" oninput="updateMMRDisplay()">
+                        <span class="audit-mmr-val" id="mmr-d-val">0</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="audit-mmr-custom-preview">
+                    Custom MMR: <strong id="audit-mmr-custom-str">0/3/5/0</strong>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <div id="audit-settings-status" class="stn-status-msg" style="display:none"></div>
+        <div class="stn-btn-row">
+          <button class="stn-btn stn-btn-primary" id="save-audit-btn" onclick="saveAuditSettings()">
+            <i class="fas fa-save"></i> Save Audit Settings
+          </button>
+        </div>
+
+      </section>
+
+      <!-- ════════════════════════════════ PETS TAB ═════════════════════════════ -->
+      <section class="settings-tab" id="tab-pets" style="display:none">
+
+        <!-- Badge Card -->
+        <div class="settings-card">
+          <div class="settings-card-header">
+            <i class="fas fa-id-badge settings-card-icon" style="color:var(--gold-primary)"></i>
+            <div>
+              <div class="settings-card-title">Badge</div>
+              <div class="settings-card-desc">Upload a custom image or generate one as your pet's badge</div>
+            </div>
+          </div>
+          <div class="settings-card-body" id="pets-badge-body">
+            <p class="settings-hint">Loading badge data...</p>
+          </div>
+        </div>
+
+        <!-- Rename Card -->
+        <div class="settings-card">
+          <div class="settings-card-header">
+            <i class="fas fa-tag settings-card-icon" style="color:var(--gold-primary)"></i>
+            <div>
+              <div class="settings-card-title">Rename Pet &amp; Battle Actions</div>
+              <div class="settings-card-desc">Change your pet's name and customize its battle cries</div>
+            </div>
+          </div>
+          <div class="settings-card-body">
+            <div class="mb-3">
+              <label class="color-label" style="margin-bottom:.4rem;display:block">Pet Name</label>
+              <input type="text" class="stn-input" id="settings-rename-name" maxlength="32" placeholder="Enter new name" style="max-width:320px">
+              <div class="stn-status-msg" id="settings-rename-name-err" style="display:none;margin-top:6px"></div>
+            </div>
+            <div class="mb-3">
+              <label class="color-label" style="margin-bottom:.4rem;display:block">Battle Actions <small style="color:var(--text-secondary)">(leave blank to keep current)</small></label>
+              <div class="settings-field-row" style="display:flex;gap:12px;flex-wrap:wrap">
+                <div style="flex:1;min-width:140px">
+                  <label style="font-size:0.75rem;color:var(--gold-secondary);display:block;margin-bottom:4px">⚔️ Attack</label>
+                  <input type="text" class="stn-input" id="settings-rename-atk" maxlength="32" placeholder="Attack action" style="width:100%">
+                </div>
+                <div style="flex:1;min-width:140px">
+                  <label style="font-size:0.75rem;color:var(--gold-secondary);display:block;margin-bottom:4px">🛡️ Defense</label>
+                  <input type="text" class="stn-input" id="settings-rename-def" maxlength="32" placeholder="Defense action" style="width:100%">
+                </div>
+                <div style="flex:1;min-width:140px">
+                  <label style="font-size:0.75rem;color:var(--gold-secondary);display:block;margin-bottom:4px">⚡ Charge</label>
+                  <input type="text" class="stn-input" id="settings-rename-chg" maxlength="32" placeholder="Charge action" style="width:100%">
+                </div>
+              </div>
+            </div>
+            <button class="stn-btn stn-btn-primary" onclick="settingsRenamePet()">
+              <i class="fas fa-save"></i> Save Changes
+            </button>
+            <div id="settings-rename-result" class="stn-status-msg" style="display:none;margin-top:10px"></div>
+          </div>
+        </div>
+
+        <!-- Release Pet Card -->
+        <div class="settings-card">
+          <div class="settings-card-header">
+            <i class="fas fa-skull settings-card-icon" style="color:#e74c3c"></i>
+            <div>
+              <div class="settings-card-title">Release Pet</div>
+              <div class="settings-card-desc">Permanently delete your pet and all associated data</div>
+            </div>
+          </div>
+          <div class="settings-card-body">
+            <p class="settings-hint">This will <strong style="color:#e74c3c">permanently delete</strong> <strong id="kill-pet-name-display" style="color:#e74c3c">your pet</strong>. All stats, inventory, and history will be lost.</p>
+            <p class="settings-hint" style="margin-top:.5rem">You will be able to adopt a new pet afterwards.</p>
+            <div style="margin-top:1rem">
+              <label class="color-label" style="margin-bottom:.4rem;display:block">Type pet name to confirm</label>
+              <input type="text" id="kill-pet-confirm-input" class="stn-input" placeholder="Type pet name to confirm" style="max-width:320px">
+            </div>
+            <div style="margin-top:1rem">
+              <button class="stn-btn stn-btn-danger" id="kill-pet-btn" onclick="killPet()">
+                <i class="fas fa-skull"></i> Release Pet
+              </button>
+            </div>
+            <div id="kill-pet-status" class="stn-status-msg" style="display:none"></div>
+          </div>
+        </div>
+
+      </section>
+
       <!-- ════════════════════════════ LAYOUT TAB ═══════════════════════════ -->
       <section class="settings-tab" id="tab-layout" style="display:none">
 
@@ -718,7 +985,7 @@
             <!-- PnW Group -->
             <div class="layout-group-container">
               <div class="layout-group-header">
-                <img src="/static/Emojis/Menu/darkstar.png" alt="PnW" style="width:24px;height:24px;object-fit:contain;margin-right:8px">
+                <img src="/static/Emojis/Menu/alliance.png" alt="PnW" style="width:24px;height:24px;object-fit:contain;margin-right:8px">
                 <span style="font-weight:700;color:var(--text-primary)">Politics & War</span>
               </div>
               <div class="layout-items-grid" id="layout-pnw" data-group="pnw">
@@ -733,6 +1000,17 @@
                 <span style="font-weight:700;color:var(--text-primary)">Pets</span>
               </div>
               <div class="layout-items-grid" id="layout-pets" data-group="pets">
+                <!-- Items populated by JS -->
+              </div>
+            </div>
+
+            <!-- Tools Group -->
+            <div class="layout-group-container">
+              <div class="layout-group-header">
+                <img src="/static/Emojis/Menu/tools.png" alt="Tools" style="width:24px;height:24px;object-fit:contain;margin-right:8px">
+                <span style="font-weight:700;color:var(--text-primary)">Tools</span>
+              </div>
+              <div class="layout-items-grid" id="layout-tools" data-group="tools">
                 <!-- Items populated by JS -->
               </div>
             </div>
@@ -1042,7 +1320,7 @@
 .stn-btn:hover { opacity: .88; transform: translateY(-1px); }
 .stn-btn:active { transform: translateY(0); }
 
-.stn-btn-primary { background: var(--gold-primary, #ffd700); color: #000; }
+.stn-btn-primary { background: var(--gold-primary, #ffd700); color: var(--accent-contrast, #000); }
 .stn-btn-secondary { background: var(--bg-tertiary, #141414); color: var(--text-primary, #f0f0f0); border: 1px solid rgba(255,215,0,.3); }
 .stn-btn-secondary:hover { background: rgba(255,215,0,.1); }
 .stn-btn-danger { background: #e74c3c; color: #fff; }
@@ -1218,6 +1496,10 @@
 
 .toggle-item:hover { border-color: rgba(255,215,0,.2); }
 
+.theme-live-preview-row {
+  margin-bottom: 1rem;
+}
+
 .toggle-item-title {
   font-size: .9rem;
   font-weight: 600;
@@ -1284,6 +1566,27 @@
   flex-wrap: wrap;
   gap: .4rem;
   min-height: 28px;
+}
+
+.revopt-default-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: .85rem;
+}
+.revopt-default-toggle {
+  margin-bottom: 1rem;
+}
+.revopt-default-field {
+  display: flex;
+  flex-direction: column;
+  gap: .35rem;
+}
+.revopt-default-field span {
+  color: var(--text-secondary, #b9bbbe);
+  font-size: .78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .04em;
 }
 
 .stn-tag {
@@ -1568,5 +1871,166 @@
 .stn-btn-secondary:hover {
   background: rgba(150, 150, 150, 0.2);
   border-color: rgba(150, 150, 150, 0.5);
+}
+
+/* ── Audit Settings ──────────────────────────────────────────────────────── */
+.settings-field-row {
+  padding: 1rem 0;
+  border-bottom: 1px solid rgba(255,215,0,.08);
+}
+.settings-field-row:last-child { border-bottom: none; }
+.settings-field-label {
+  margin-bottom: .75rem;
+  font-size: .88rem;
+  color: var(--text-primary, #f0f0f0);
+}
+.settings-field-label strong {
+  display: block;
+  margin-bottom: .25rem;
+  font-size: .95rem;
+}
+.settings-field-desc {
+  font-size: .78rem;
+  color: var(--text-secondary, #b9bbbe);
+  margin-top: .2rem;
+  line-height: 1.4;
+}
+.settings-field-control { width: 100%; }
+
+/* Color chip grid */
+.audit-color-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
+  gap: .5rem;
+  margin-top: .25rem;
+}
+.audit-color-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: .35rem;
+  padding: .55rem .35rem;
+  background: var(--bg-tertiary, #141414);
+  border: 2px solid transparent;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: border-color .15s, transform .1s;
+  font-size: .72rem;
+  color: var(--text-secondary, #b9bbbe);
+  font-weight: 500;
+}
+.audit-color-chip img {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+  pointer-events: none;
+}
+.audit-color-chip:hover {
+  border-color: rgba(255,215,0,.35);
+  color: var(--text-primary, #f0f0f0);
+  transform: translateY(-1px);
+}
+.audit-color-chip.active {
+  border-color: var(--gold-primary, #ffd700);
+  background: rgba(255,215,0,.1);
+  color: var(--gold-primary, #ffd700);
+}
+
+/* MMR preset buttons */
+.audit-mmr-preset-row {
+  display: flex;
+  gap: .6rem;
+  flex-wrap: wrap;
+}
+.audit-mmr-preset-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: .2rem;
+  padding: .65rem 1.2rem;
+  background: var(--bg-tertiary, #141414);
+  border: 2px solid rgba(255,215,0,.2);
+  border-radius: 8px;
+  cursor: pointer;
+  color: var(--text-primary, #f0f0f0);
+  font-size: .88rem;
+  font-weight: 600;
+  transition: border-color .15s, background .15s, transform .1s;
+  min-width: 80px;
+}
+.audit-mmr-preset-btn:hover {
+  border-color: rgba(255,215,0,.5);
+  background: rgba(255,215,0,.07);
+  transform: translateY(-1px);
+}
+.audit-mmr-preset-btn.active {
+  border-color: var(--gold-primary, #ffd700);
+  background: rgba(255,215,0,.12);
+  color: var(--gold-primary, #ffd700);
+}
+.audit-mmr-preset-val {
+  font-size: .72rem;
+  font-family: monospace;
+  opacity: .75;
+  font-weight: 400;
+}
+
+/* Custom MMR builder */
+.audit-mmr-custom-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 1rem;
+  padding: 1rem;
+  background: rgba(255,215,0,.04);
+  border: 1px solid rgba(255,215,0,.12);
+  border-radius: 8px;
+}
+.audit-mmr-custom-col {
+  display: flex;
+  flex-direction: column;
+  gap: .4rem;
+}
+.audit-mmr-custom-label {
+  font-size: .8rem;
+  font-weight: 600;
+  color: var(--text-primary, #f0f0f0);
+}
+.audit-mmr-range {
+  font-size: .7rem;
+  color: var(--text-secondary, #b9bbbe);
+  font-weight: 400;
+}
+.audit-mmr-slider-row {
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+}
+.audit-mmr-slider {
+  flex: 1;
+  accent-color: var(--gold-primary, #ffd700);
+  cursor: pointer;
+  height: 4px;
+}
+.audit-mmr-val {
+  font-size: .9rem;
+  font-weight: 700;
+  color: var(--gold-primary, #ffd700);
+  font-family: monospace;
+  min-width: 1.2rem;
+  text-align: center;
+}
+.audit-mmr-custom-preview {
+  margin-top: .75rem;
+  padding: .6rem 1rem;
+  background: rgba(255,215,0,.07);
+  border-radius: 6px;
+  font-size: .85rem;
+  color: var(--text-secondary, #b9bbbe);
+  text-align: center;
+}
+.audit-mmr-custom-preview strong {
+  color: var(--gold-primary, #ffd700);
+  font-family: monospace;
+  font-size: 1rem;
 }
 </style>

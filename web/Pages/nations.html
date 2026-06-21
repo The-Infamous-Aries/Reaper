@@ -1,6 +1,7 @@
+﻿<meta charset="UTF-8">
 <link rel="stylesheet" href="/css/nations.css">
 <style>
-  /* Alliance selector autocomplete — mirrors comparison page style */
+  /* Alliance selector autocomplete --- mirrors comparison page style */
   .nat-alliance-bar {
     display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;
     padding: 0.75rem 1rem;
@@ -10,6 +11,14 @@
   .nat-alliance-label {
     color: var(--gold-secondary); font-size: 0.78rem; font-weight: 600;
     text-transform: uppercase; letter-spacing: 0.07em; white-space: nowrap;
+  }
+  /* Alliance flag in header */
+  .nat-header-top {
+    display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.25rem;
+  }
+  .nat-alliance-flag {
+    width: 28px; height: 20px; object-fit: contain;
+    border-radius: 2px; box-shadow: 0 2px 6px rgba(0,0,0,0.5);
   }
   .nat-ac-wrap { position: relative; flex: 1; min-width: 220px; max-width: 380px; }
   .nat-ac-input {
@@ -58,14 +67,17 @@
       <span class="nat-alliance-label">Alliance</span>
       <div class="nat-ac-wrap">
         <input type="text" id="nat-alliance-input" class="nat-ac-input"
-               placeholder="Search alliances…" autocomplete="off">
+               placeholder="Search alliances..." autocomplete="off">
         <div class="nat-ac-dropdown" id="nat-alliance-drop"></div>
       </div>
       <div id="nat-alliance-tag"></div>
     </div>
     <div class="card-header">
       <div>
-        <p class="nat-kicker" id="nat-kicker">Darkstar</p>
+        <div class="nat-header-top">
+          <img id="nat-alliance-flag" class="nat-alliance-flag" src="" alt="Alliance flag" onerror="this.style.display='none'">
+          <p class="nat-kicker" id="nat-kicker"></p>
+        </div>
         <p class="nat-title">Alliance Members</p>
       </div>
       <div class="nat-header-right">
@@ -73,13 +85,17 @@
         <div class="nat-view-tabs">
           <button class="nat-view-tab active" id="tab-nations" data-view="nations">
             <img src="/static/Emojis/Activity/total.png" class="nat-icon-sm" alt="">
-            <span id="nat-count">—</span> Nations
+            <span id="nat-count">---</span> Nations
           </button>
           <button class="nat-view-tab" id="tab-overview" data-view="overview">
             📊 Overview
           </button>
+          <button class="nat-view-tab" id="tab-audit" data-view="audit">
+            <img src="/static/Emojis/Menu/audit.png" class="nat-icon-sm" alt="">
+            Audit
+          </button>
         </div>
-        <input type="text" id="nat-search" class="nat-search" placeholder="Search nation or leader…">
+        <input type="text" id="nat-search" class="nat-search" placeholder="Search nation or leader...">
         <button id="nat-refresh" class="btn btn-gold btn-sm">↻ Refresh</button>
       </div>
     </div>
@@ -119,7 +135,7 @@
                   <button class="nat-sort-dir" data-group="units">↓</button>
                 </div>
               </th>
-              <!-- MMR — sortable by deficit from 5/5/5/3 -->
+              <!-- MMR --- sortable by deficit from 5/5/5/3 -->
               <th data-col="city_agg.mmr_deficit">MMR</th>
               <!-- Infra dropdown sort -->
               <th class="nat-dropdown-th" data-group="infra">
@@ -171,7 +187,6 @@
                   <select id="rev-select" class="nat-sort-select">
                     <option value="_rev_mon_net">💰 Net Revenue</option>
                     <option value="_rev_gross">📈 Gross Income</option>
-                    <option value="_rev_tax">🏦 Alliance Tax</option>
                   </select>
                   <button class="nat-sort-dir" data-group="rev">↓</button>
                 </div>
@@ -189,8 +204,210 @@
     <div id="nat-overview-content"></div>
   </div>
 
+  <!-- Audit view -->
+  <div id="view-audit" style="display:none">
+    <div class="audit-shell">
+
+      <!-- Controls -->
+      <div class="card audit-controls">
+        <div class="card-header audit-controls-header">
+          <div class="audit-title-wrap">
+            <img src="/static/Emojis/Menu/audit.png" class="audit-title-icon" alt="">
+            <h3 class="audit-title">Alliance Audit</h3>
+          </div>
+          <div class="audit-controls-row">
+            <label class="audit-mmr-label" for="audit-color-select">
+              <img src="/static/Emojis/Colors/lime.png" class="nat-icon-sm" id="audit-color-icon" alt="Color">
+              Target Color:
+            </label>
+            <select id="audit-color-select" class="audit-select">
+              <option value="aqua">Aqua</option>
+              <option value="black">Black</option>
+              <option value="blue">Blue</option>
+              <option value="brown">Brown</option>
+              <option value="green">Green</option>
+              <option value="lime" selected>Lime</option>
+              <option value="maroon">Maroon</option>
+              <option value="olive">Olive</option>
+              <option value="orange">Orange</option>
+              <option value="pink">Pink</option>
+              <option value="purple">Purple</option>
+              <option value="red">Red</option>
+              <option value="white">White</option>
+              <option value="yellow">Yellow</option>
+            </select>
+            <label class="audit-mmr-label" for="audit-mmr-select">
+              <img src="/static/Emojis/Military/strategy.png" class="nat-icon-sm" alt="MMR">
+              MMR Mode:
+            </label>
+            <select id="audit-mmr-select" class="audit-select">
+              <option value="basic">Basic (0/3/5/0)</option>
+              <option value="max">Max (5/5/5/3)</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Activity Section -->
+      <div class="audit-section" id="audit-section-activity">
+        <button class="audit-section-header" aria-expanded="true" aria-controls="audit-body-activity" type="button">
+          <img src="/static/Emojis/Activity/away.png" class="audit-section-icon" alt="">
+          <span class="audit-section-title">Activity</span>
+          <span class="audit-section-badge" id="audit-badge-activity">---</span>
+          <span class="audit-chevron" aria-hidden="true">▾</span>
+        </button>
+        <div class="audit-section-body" id="audit-body-activity">
+          <div class="audit-subsection">
+            <div class="audit-subsection-header">
+              <img src="/static/Emojis/Activity/14d.png" class="nat-icon-sm" alt="">
+              <span>Inactive 24+ Days</span>
+              <span class="audit-count" id="audit-count-inactive-24plus">0</span>
+            </div>
+            <div id="audit-list-inactive-24plus" class="audit-nation-list"></div>
+          </div>
+          <div class="audit-subsection">
+            <div class="audit-subsection-header">
+              <img src="/static/Emojis/Activity/14d.png" class="nat-icon-sm" alt="">
+              <span>Inactive 14-23 Days</span>
+              <span class="audit-count" id="audit-count-inactive-14-23">0</span>
+            </div>
+            <div id="audit-list-inactive-14-23" class="audit-nation-list"></div>
+          </div>
+          <div class="audit-subsection">
+            <div class="audit-subsection-header">
+              <img src="/static/Emojis/Activity/7d.png" class="nat-icon-sm" alt="">
+              <span>Inactive 7-13 Days</span>
+              <span class="audit-count" id="audit-count-inactive-7-13">0</span>
+            </div>
+            <div id="audit-list-inactive-7-13" class="audit-nation-list"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Color Section -->
+      <div class="audit-section" id="audit-section-color">
+        <button class="audit-section-header" aria-expanded="false" aria-controls="audit-body-color" type="button">
+          <img src="/static/Emojis/Colors/lime.png" class="audit-section-icon" id="audit-color-header-icon" alt="">
+          <span class="audit-section-title">Color</span>
+          <span class="audit-section-badge" id="audit-badge-color">---</span>
+          <span class="audit-chevron" aria-hidden="true">▾</span>
+        </button>
+        <div class="audit-section-body audit-collapsed" id="audit-body-color">
+          <div class="audit-color-info" id="audit-color-info"></div>
+          <div class="audit-subsection">
+            <div class="audit-subsection-header">
+              <img src="/static/Emojis/Colors/red.png" class="nat-icon-sm" alt="">
+              <span>Wrong Color</span>
+              <span class="audit-count" id="audit-count-wrong-color">0</span>
+            </div>
+            <div id="audit-list-wrong-color" class="audit-nation-list"></div>
+          </div>
+          <div class="audit-subsection">
+            <div class="audit-subsection-header">
+              <img src="/static/Emojis/Colors/beige.png" class="nat-icon-sm" alt="">
+              <span>On Beige</span>
+              <span class="audit-count" id="audit-count-beige">0</span>
+            </div>
+            <div id="audit-list-beige" class="audit-nation-list"></div>
+          </div>
+          <div class="audit-subsection">
+            <div class="audit-subsection-header">
+              <img src="/static/Emojis/Colors/gray.png" class="nat-icon-sm" alt="">
+              <span>On Grey</span>
+              <span class="audit-count" id="audit-count-grey">0</span>
+            </div>
+            <div id="audit-list-grey" class="audit-nation-list"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- MMR Section -->
+      <div class="audit-section" id="audit-section-mmr">
+        <button class="audit-section-header" aria-expanded="false" aria-controls="audit-body-mmr" type="button">
+          <img src="/static/Emojis/Military/strategy.png" class="audit-section-icon" alt="">
+          <span class="audit-section-title">MMR Build</span>
+          <span class="audit-section-badge" id="audit-badge-mmr">---</span>
+          <span class="audit-chevron" aria-hidden="true">▾</span>
+        </button>
+        <div class="audit-section-body audit-collapsed" id="audit-body-mmr">
+          <div class="audit-mmr-legend">
+            <span class="audit-mmr-key">
+              <img src="/static/Emojis/Military/soldier.png" class="nat-icon-sm" alt="Barracks">Barracks
+            </span>
+            <span class="audit-mmr-key">
+              <img src="/static/Emojis/Military/tank.png" class="nat-icon-sm" alt="Factory">Factory
+            </span>
+            <span class="audit-mmr-key">
+              <img src="/static/Emojis/Military/jet.png" class="nat-icon-sm" alt="Hangar">Hangar
+            </span>
+            <span class="audit-mmr-key">
+              <img src="/static/Emojis/Military/ship.png" class="nat-icon-sm" alt="Drydock">Drydock
+            </span>
+            <span class="audit-mmr-format">Format: B / F / H / D</span>
+          </div>
+          <div class="audit-subsection">
+            <div class="audit-subsection-header audit-mmr-50">
+              <span class="audit-severity-dot" style="background:#e74c3c"></span>
+              <span>50%+ Below Threshold</span>
+              <span class="audit-count" id="audit-count-mmr-50">0</span>
+            </div>
+            <div id="audit-list-mmr-50" class="audit-nation-list audit-mmr-list"></div>
+          </div>
+          <div class="audit-subsection">
+            <div class="audit-subsection-header audit-mmr-25">
+              <span class="audit-severity-dot" style="background:#e67e22"></span>
+              <span>25-49% Below Threshold</span>
+              <span class="audit-count" id="audit-count-mmr-25">0</span>
+            </div>
+            <div id="audit-list-mmr-25" class="audit-nation-list audit-mmr-list"></div>
+          </div>
+          <div class="audit-subsection">
+            <div class="audit-subsection-header audit-mmr-10">
+              <span class="audit-severity-dot" style="background:#f1c40f"></span>
+              <span>10-24% Below Threshold</span>
+              <span class="audit-count" id="audit-count-mmr-10">0</span>
+            </div>
+            <div id="audit-list-mmr-10" class="audit-nation-list audit-mmr-list"></div>
+          </div>
+          <div class="audit-subsection">
+            <div class="audit-subsection-header audit-mmr-0">
+              <span class="audit-severity-dot" style="background:#2ecc71"></span>
+              <span>0-9% Below Threshold</span>
+              <span class="audit-count" id="audit-count-mmr-0">0</span>
+            </div>
+            <div id="audit-list-mmr-0" class="audit-nation-list audit-mmr-list"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Power Section -->
+      <div class="audit-section" id="audit-section-power">
+        <button class="audit-section-header" aria-expanded="false" aria-controls="audit-body-power" type="button">
+          <img src="/static/Emojis/Resources/uranium.png" class="audit-section-icon" alt="">
+          <span class="audit-section-title">Power</span>
+          <span class="audit-section-badge" id="audit-badge-power">---</span>
+          <span class="audit-chevron" aria-hidden="true">▾</span>
+        </button>
+        <div class="audit-section-body audit-collapsed" id="audit-body-power">
+          <div class="audit-power-rule">
+            <img src="/static/Emojis/Resources/uranium.png" class="nat-icon-sm" alt="">
+            Rule: All cities must use <strong>Nuclear Power Plants only</strong>.
+            Correct count = <code>ceil(infra ÷ 2000)</code> per city.
+            No Coal <img src="/static/Emojis/Resources/coal.png" class="nat-icon-xs" alt="coal">,
+            Oil <img src="/static/Emojis/Resources/oil.png" class="nat-icon-xs" alt="oil">,
+            or Wind <img src="/static/Emojis/Improvements/windmill.png" class="nat-icon-xs" alt="wind"> power.
+            No surplus nuclear plants.
+          </div>
+          <div id="audit-list-power" class="audit-power-list"></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
 </div>
 
+    <script src="/js/access_guard.js"></script>
 <script src="/js/image-utils.js"></script>
 <script>
 (function () {
@@ -201,7 +418,7 @@
   // Format policy enum → Title Case with spaces e.g. TECHNOLOGICAL_ADVANCEMENT → Technological Advancement
   function fmtPolicy(val) {
     const s = cleanEnum(val);
-    if (!s || s === '—') return '—';
+    if (!s || s === '---') return '---';
     return s.replace(/_/g,' ').toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
   }
 
@@ -218,7 +435,7 @@
     MONEYBAGS:'#ffd700', ARCANE:'#da70d6', COVERT:'#aaaaaa', TACTICIAN:'#f4a460',
   };
   function warPolicyBadge(val) {
-    if (!val || val === '—') return '';
+    if (!val || val === '---') return '';
     const raw = cleanEnum(val).toUpperCase();
     const label = fmtPolicy(val);
     const img = WAR_POLICY_IMG[raw];
@@ -240,7 +457,7 @@
     IMPERIALISM:'#cd5c5c', URBANIZATION:'#daa520', RAPID_EXPANSION:'#ff8c00',
   };
   function domPolicyBadge(val) {
-    if (!val || val === '—') return '';
+    if (!val || val === '---') return '';
     const raw = cleanEnum(val).toUpperCase();
     const label = fmtPolicy(val);
     const img = DOM_POLICY_IMG[raw];
@@ -251,7 +468,7 @@
     return `<span class="nat-detail-badge nat-policy-badge" style="background:${css}22;color:${css};border:1px solid ${css};" title="Domestic Policy: ${label}">${icon}${label}</span>`;
   }
   function cleanEnum(val) {
-    if (!val) return '—';
+    if (!val) return '---';
     const s = String(val);
     const dot = s.lastIndexOf('.');
     return dot >= 0 ? s.slice(dot + 1) : s;
@@ -277,7 +494,7 @@
     const style = css
       ? `background:${css}22;color:${css};border:1px solid ${css};`
       : 'background:rgba(255,255,255,0.07);color:rgba(255,255,255,0.6);border:1px solid rgba(255,255,255,0.15);';
-    return `<span class="nat-detail-badge" style="${style}">${color||'—'}</span>`;
+    return `<span class="nat-detail-badge" style="${style}">${color||'---'}</span>`;
   }
 
   // Continent code → full name
@@ -287,7 +504,7 @@
   };
   function continentBadge(cont) {
     const key = (cont||'').toLowerCase();
-    const label = CONTINENT_MAP[key] || cont || '—';
+    const label = CONTINENT_MAP[key] || cont || '---';
     return `<span class="nat-detail-badge">${label}</span>`;
   }
   function statusBadge(n) {
@@ -310,12 +527,14 @@
   let _revCache = {}, _revData = null;
   let _linkedNationId = null;
 
-  // Alliance selector state — default to Darkstar
-  let _selectedAllianceId   = 10259;
-  let _selectedAllianceName = 'Darkstar';
+  const URS_ALLIANCE_ID = 14873;
+  const URS_ALLIANCE_NAME = 'Union of Revolutionary States';
+
+  // Alliance selector state --- defaults to URS
+  let _selectedAllianceId   = URS_ALLIANCE_ID;
+  let _selectedAllianceName = URS_ALLIANCE_NAME;
   let _acCache = null;
   let _acTimer = null;
-
   // Dropdown sort groups: group → current col
   const _dropdowns = {
     units: 'soldiers',
@@ -337,7 +556,7 @@
       })
       .sort((a,b) => {
         let av, bv;
-        // Revenue virtual sort keys — pull from _revCache
+        // Revenue virtual sort keys --- pull from _revCache
         if (_sortCol === '_rev_mon_net') {
           const ra = _revCache[a.id] || {}, rb = _revCache[b.id] || {};
           const prices_a = ra.prices || {}, rsc_a = ra.resources || {};
@@ -349,9 +568,6 @@
         } else if (_sortCol === '_rev_gross') {
           av = (_revCache[a.id]||{}).gross_income || 0;
           bv = (_revCache[b.id]||{}).gross_income || 0;
-        } else if (_sortCol === '_rev_tax') {
-          av = (_revCache[a.id]||{}).alliance_tax || 0;
-          bv = (_revCache[b.id]||{}).alliance_tax || 0;
         } else {
           av = get(a,_sortCol) ?? -Infinity;
           bv = get(b,_sortCol) ?? -Infinity;
@@ -380,12 +596,10 @@
     var rscVal = Object.entries(rsc).reduce(function(s,kv){ return s + (kv[1] * (prices[kv[0]]||0)); }, 0);
     var monNet = (r.turn_revenue||0) + rscVal;
     var gross  = (r.gross_income||0) + (r.color_bonus||0) + rscVal;
-    var tax    = r.alliance_tax||0;
     var nc = monNet >= 0 ? 'nat-rev-pos-strong' : 'nat-rev-neg-strong';
     return '<div class="nat-rev-cell-inner">' +
       '<div class="nat-rev-cell-row"><span class="nat-rev-cell-lbl">Gross</span><span class="nat-rev-cell-val">' + fm(gross) + '</span></div>' +
       '<div class="nat-rev-cell-row"><span class="nat-rev-cell-lbl">Net</span><span class="nat-rev-cell-val">' + fm(monNet) + '</span></div>' +
-      '<div class="nat-rev-cell-row"><span class="nat-rev-cell-lbl">Tax</span><span class="nat-rev-cell-val">' + fm(tax) + '</span></div>' +
       '</div>';
   }
 
@@ -411,7 +625,7 @@
         <td>${fmt(Math.round(n.score||0))}</td>
         <td>${n.num_cities||0}</td>
         <td>${fmt(get(n,_dropdowns.units)||0)}</td>
-        <td class="nat-mmr">${agg.mmr||'—'}</td>
+        <td class="nat-mmr">${agg.mmr||'---'}</td>
         <td>${fmtF(get(n,_dropdowns.infra)||0)}</td>
         <td>${fmtF(get(n,_dropdowns.land)||0)}</td>
         <td>${fmt(get(n,_dropdowns.wars)||0)}</td>
@@ -426,7 +640,7 @@
           <div class="nat-expand-inner" id="nat-expand-${n.id}">
             ${isOpen && _detailCache[n.id]
               ? buildDetailHTML(Object.assign({}, _detailCache[n.id].nation, {active_war_counts: n.active_war_counts}), _detailCache[n.id].cities)
-              : '<div class="nat-loading">Loading…</div>'}
+              : '<div class="nat-loading">Loading...</div>'}
           </div>
         </td>
       </tr>`);
@@ -469,7 +683,7 @@
     document.querySelectorAll('.nat-dropdown-th').forEach(th => {
       const g = th.dataset.group;
       th.classList.toggle('nat-sort-active', _dropdowns[g] === _sortCol ||
-        (g === 'rev' && ['_rev_mon_net','_rev_gross','_rev_tax'].includes(_sortCol) && _dropdowns[g] === _sortCol));
+        (g === 'rev' && ['_rev_mon_net','_rev_gross'].includes(_sortCol) && _dropdowns[g] === _sortCol));
     });
     document.getElementById('nat-sort-summary').textContent =
       `Sorted by ${_sortCol.replace('city_agg.','').replace(/_/g,' ')} ${_sortAsc?'↑':'↓'}`;
@@ -482,33 +696,26 @@
                  bauxite:'Bauxite',gasoline:'Gasoline',munitions:'Munitions',steel:'Steel',aluminum:'Aluminum'};
     const prices  = r.prices    || {};
     const rsc     = r.resources || {};
-    const TAX     = r.alliance_tax_rate  || 0.10;
-    const RTAX    = r.resource_tax_rate  || TAX;
 
     // Per-turn base values
     const gross    = r.gross_income       || 0;
     const colorB   = r.color_bonus        || 0;
     const milUp    = r.military_upkeep    || 0;
-    const impUp    = r.improvement_upkeep || 0;  // city improvements
-    const powUp    = r.power_upkeep       || 0;  // power plants
-    const rssUp    = r.rss_upkeep         || 0;  // resource building upkeep
-    const taxMoney = r.alliance_tax_money != null ? r.alliance_tax_money : (gross + colorB) * TAX;
-    const taxRsc   = r.alliance_tax_resources || 0;
-    const taxTotal = r.alliance_tax       || (taxMoney + taxRsc);
+    const impUp    = r.improvement_upkeep || 0;
+    const powUp    = r.power_upkeep       || 0;
+    const rssUp    = r.rss_upkeep         || 0;
     const netCash  = r.turn_revenue       || 0;
 
     // Resource values per turn
     const rscVal   = Object.entries(rsc).reduce((s,[k,v]) => s + (v * (prices[k]||0)), 0);
-    const monNet   = netCash + rscVal;  // full monetary net per turn
+    const monNet   = netCash + rscVal;
 
-    // Combined improvement upkeep = city improvements + power + resource buildings
     const totalImpUp = impUp + powUp + rssUp;
 
     const $m  = v => { const s=v<0?'-':''; return s+'$'+Math.abs(v).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}); };
     const $n  = (v,d=2) => Number(v||0).toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});
     const cls = v => v >= 0 ? 'nat-rev-pos' : 'nat-rev-neg';
 
-    // Resource rows — only non-zero, showing qty and value
     function rscRows(mult) {
       return Object.entries(RSC).map(([k,label]) => {
         const amt = (rsc[k] || 0) * mult;
@@ -522,14 +729,10 @@
       }).join('');
     }
 
-    // Build one time-period column
     function periodCol(label, mult) {
       const g   = gross   * mult;
       const cb  = colorB  * mult;
       const rv  = rscVal  * mult;
-      const tm  = taxMoney* mult;
-      const tr  = taxRsc  * mult;
-      const tt  = taxTotal* mult;
       const mu  = milUp   * mult;
       const iu  = totalImpUp * mult;
       const nc  = netCash * mult;
@@ -546,14 +749,12 @@
         <div class="nat-rev-row nat-rev-sub-total"><span>Gross Income</span><strong>${$m(g+cb+rv)}</strong></div>
 
         <div class="nat-rev-sub-title" style="margin-top:0.6rem">📉 Expenses</div>
-        <div class="nat-rev-row"><span>Alliance Tax (${(TAX*100).toFixed(0)}% money)</span><strong class="nat-rev-neg">-${$m(tm)}</strong></div>
         <div class="nat-rev-row"><span>Military Upkeep</span><strong class="nat-rev-neg">-${$m(mu)}</strong></div>
         <div class="nat-rev-row"><span>Improvement Upkeep</span><strong class="nat-rev-neg">-${$m(iu)}</strong></div>
-        <div class="nat-rev-row nat-rev-sub-total"><span>Total Expenses</span><strong class="nat-rev-neg">-${$m(tm+mu+iu)}</strong></div>
+        <div class="nat-rev-row nat-rev-sub-total"><span>Total Expenses</span><strong class="nat-rev-neg">-${$m(mu+iu)}</strong></div>
 
         <div class="nat-rev-sub-title" style="margin-top:0.6rem">📊 Net</div>
         <div class="nat-rev-row nat-rev-total"><span>Cash Net</span><strong class="${nc >= 0 ? 'nat-rev-pos-strong' : 'nat-rev-neg-strong'}">${$m(nc)}</strong></div>
-        ${tr > 0 ? `<div class="nat-rev-row nat-rev-info"><span>Resource Tax Value (${(RTAX*100).toFixed(0)}%)</span><span class="nat-rev-info-val">${$m(tr)}</span></div>` : ''}
         <div class="nat-rev-row nat-rev-total"><span>Monetary Net</span><strong class="${mn >= 0 ? 'nat-rev-pos-strong' : 'nat-rev-neg-strong'}">${$m(mn)}</strong></div>
       </div>`;
     }
@@ -567,7 +768,7 @@
   function populateOverviewRevenue() {
     const el = document.getElementById('ov-rev-content');
     if (!el) return;
-    if (!_revData) { el.innerHTML = '<div class="nat-rev-loading">Loading revenue…</div>'; return; }
+    if (!_revData) { el.innerHTML = '<div class="nat-rev-loading">Loading revenue...</div>'; return; }
 
     const nations = _revData.nations || [];
     const count   = nations.length || 1;
@@ -586,14 +787,6 @@
     const totalPowUp    = sum('power_upkeep');
     const totalRssUp    = sum('rss_upkeep');
     
-    // Alliance tax totals - only from nations on purple color (alliance color)
-    const purpleNations = nations.filter(n => (n.color || '').toLowerCase() === 'purple');
-    const sumBlack = k => purpleNations.reduce((s,n)=>s+(n[k]||0),0);
-    const sumBlackRsc = k => purpleNations.reduce((s,n)=>s+((n.resources||{})[k]||0),0);
-    
-    const totalTaxMoney = sumBlack('alliance_tax_money');
-    const totalTaxRsc   = sumBlack('alliance_tax_resources');
-    const totalTax      = sumBlack('alliance_tax');
     const totalNetTurn  = sum('turn_revenue');
     const totalNetDay   = sum('day_revenue');
 
@@ -686,77 +879,12 @@
           <div class="ov-rev-kv ov-rev-kv-total"><span>Total Revenue</span><strong class="nat-rev-pos-strong">${$m((totalGross+totalColorB+totalRscVal)*84)}</strong></div>
         </div>
 
-        <!-- Alliance Tax Turn -->
-        <div class="ov-rev-section ov-rev-section-tax">
-          <div class="ov-rev-section-title">🏦 Alliance Tax Turn (Purple Nations Only)</div>
-          <div class="ov-rev-kv"><span>Money Tax (10%)</span><strong>${$m(totalTaxMoney)}</strong></div>
-          <div class="ov-rev-kv ov-rev-kv-hdr"><span>Resource Tax (10%)</span><strong>${$m(totalTaxRsc)}</strong></div>
-          <div class="ov-rev-rsc-list">${Object.entries(RSC).map(([k,label]) => {
-            const qty = sumBlackRsc(k) * 0.1; // 10% tax rate, only from purple nations
-            if (Math.abs(qty) < 0.001) return '';
-            const val = qty * avgPrice(k);
-            const cls = qty >= 0 ? 'nat-rev-pos' : 'nat-rev-neg';
-            return `<div class="ov-rev-rsc-row">
-              <img src="/static/Emojis/Resources/${k}.png" class="nat-icon-sm" alt="">
-              <span class="ov-rev-rsc-label">${label}</span>
-              <span class="${cls}">${qty>=0?'+':''}${$n(qty)}/t</span>
-              <span class="nat-rev-price">@ ${$n(avgPrice(k))}</span>
-              <span class="${cls}">${$m(val)}/t</span>
-            </div>`;
-          }).join('')||'<span class="nat-rev-loading">No resource data</span>'}</div>
-          <div class="ov-rev-kv ov-rev-kv-total"><span>Total Tax Value</span><strong class="nat-rev-pos-strong">${$m(totalTax)}</strong></div>
-        </div>
-
-        <!-- Alliance Tax Day -->
-        <div class="ov-rev-section ov-rev-section-tax">
-          <div class="ov-rev-section-title">🏦 Alliance Tax Day (Purple Nations Only)</div>
-          <div class="ov-rev-kv"><span>Money Tax (10%)</span><strong>${$m(totalTaxMoney*12)}</strong></div>
-          <div class="ov-rev-kv ov-rev-kv-hdr"><span>Resource Tax (10%)</span><strong>${$m(totalTaxRsc*12)}</strong></div>
-          <div class="ov-rev-rsc-list">${Object.entries(RSC).map(([k,label]) => {
-            const qty = sumBlackRsc(k) * 0.1 * 12; // 10% tax rate * 12 turns per day, only from purple nations
-            if (Math.abs(qty) < 0.001) return '';
-            const val = qty * avgPrice(k);
-            const cls = qty >= 0 ? 'nat-rev-pos' : 'nat-rev-neg';
-            return `<div class="ov-rev-rsc-row">
-              <img src="/static/Emojis/Resources/${k}.png" class="nat-icon-sm" alt="">
-              <span class="ov-rev-rsc-label">${label}</span>
-              <span class="${cls}">${qty>=0?'+':''}${$n(qty)}/day</span>
-              <span class="nat-rev-price">@ ${$n(avgPrice(k))}</span>
-              <span class="${cls}">${$m(val)}/day</span>
-            </div>`;
-          }).join('')||'<span class="nat-rev-loading">No resource data</span>'}</div>
-          <div class="ov-rev-kv ov-rev-kv-total"><span>Total Tax Value</span><strong class="nat-rev-pos-strong">${$m(totalTax*12)}</strong></div>
-        </div>
-
-        <!-- Alliance Tax Week -->
-        <div class="ov-rev-section ov-rev-section-tax">
-          <div class="ov-rev-section-title">🏦 Alliance Tax Week (Purple Nations Only)</div>
-          <div class="ov-rev-kv"><span>Money Tax (10%)</span><strong>${$m(totalTaxMoney*84)}</strong></div>
-          <div class="ov-rev-kv ov-rev-kv-hdr"><span>Resource Tax (10%)</span><strong>${$m(totalTaxRsc*84)}</strong></div>
-          <div class="ov-rev-rsc-list">${Object.entries(RSC).map(([k,label]) => {
-            const qty = sumBlackRsc(k) * 0.1 * 84; // 10% tax rate * 84 turns per week, only from purple nations
-            if (Math.abs(qty) < 0.001) return '';
-            const val = qty * avgPrice(k);
-            const cls = qty >= 0 ? 'nat-rev-pos' : 'nat-rev-neg';
-            return `<div class="ov-rev-rsc-row">
-              <img src="/static/Emojis/Resources/${k}.png" class="nat-icon-sm" alt="">
-              <span class="ov-rev-rsc-label">${label}</span>
-              <span class="${cls}">${qty>=0?'+':''}${$n(qty)}/week</span>
-              <span class="nat-rev-price">@ ${$n(avgPrice(k))}</span>
-              <span class="${cls}">${$m(val)}/week</span>
-            </div>`;
-          }).join('')||'<span class="nat-rev-loading">No resource data</span>'}</div>
-          <div class="ov-rev-kv ov-rev-kv-total"><span>Total Tax Value</span><strong class="nat-rev-pos-strong">${$m(totalTax*84)}</strong></div>
-        </div>
-
       </div>`;
   }
 
   // ── fetch ─────────────────────────────────────────────────────────────────
   async function fetchLinkedNation() {
     try {
-      // Use /api/settings which already has linked_nation_id and respects
-      // the privacy_show_nations_rankings flag — no separate endpoint needed.
       const res = await fetch('/api/settings', { credentials: 'same-origin' });
       if (!res.ok) return;
       const data = await res.json();
@@ -764,10 +892,56 @@
         _linkedNationId = String(data.linked_nation_id);
         if (_nations.length) renderTable();
       }
+      // Set alliance from home alliance settings (with toggle)
+      if (data.home_alliance_nations && data.watch_home_alliance_id) {
+        const newId = parseInt(data.watch_home_alliance_id);
+        if (newId !== _selectedAllianceId) {
+          _selectedAllianceId = newId;
+          _selectedAllianceName = data.watch_home_alliance_name || `Alliance ${data.watch_home_alliance_id}`;
+          _acCache = null;
+          _expandedId = null;
+          const ov = document.getElementById('nat-overview-content');
+          if (ov) ov.innerHTML = '';
+          renderAllianceTag();
+          fetchNations();
+          fetchRevenue();
+        }
+      } else {
+        renderAllianceTag();
+        fetchNations();
+        fetchRevenue();
+      }
+      // Apply saved audit defaults
+      if (data.audit_default_color) {
+        const colorSel = document.getElementById('audit-color-select');
+        if (colorSel) {
+          colorSel.value = data.audit_default_color;
+          const colorIcon = document.getElementById('audit-color-icon');
+          if (colorIcon) colorIcon.src = `/static/Emojis/Colors/${data.audit_default_color}.png`;
+        }
+      }
+      if (data.audit_default_mmr) {
+        const mmrSel = document.getElementById('audit-mmr-select');
+        if (mmrSel) {
+          const mmr = data.audit_default_mmr;
+          if (mmr === 'basic' || mmr === 'max') {
+            mmrSel.value = mmr;
+          } else {
+            // Custom B/F/H/D value --- add as option if not already present
+            let opt = Array.from(mmrSel.options).find(o => o.value === mmr);
+            if (!opt) {
+              opt = new Option(`Custom (${mmr})`, mmr);
+              mmrSel.appendChild(opt);
+            }
+            mmrSel.value = mmr;
+          }
+        }
+      }
     } catch(_) {}
   }
 
   async function fetchRevenue() {
+    if (!_selectedAllianceId) return;
     try {
       const res = await fetch(`/api/watch/revenue?alliance_id=${_selectedAllianceId}`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -786,12 +960,17 @@
 
   async function fetchNations() {
     const status = document.getElementById('nat-status');
+    if (!_selectedAllianceId) {
+      status.style.display = 'none';
+      _nations = [];
+      document.getElementById('nat-count').textContent = '0';
+      renderTable();
+      return;
+    }
     status.style.display = 'block'; status.className = 'nat-status';
-    status.textContent = 'Loading nations…';
+    status.textContent = 'Loading nations...';
     try {
-      const url = _selectedAllianceId === 10259
-        ? '/api/watch/nations'
-        : `/api/watch/nations_by_alliance?alliance_id=${_selectedAllianceId}`;
+      const url = `/api/watch/nations_by_alliance?alliance_id=${_selectedAllianceId}`;
       const res = await fetch(url);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
@@ -806,6 +985,9 @@
       if (_currentView === 'overview') {
         document.getElementById('nat-overview-content').innerHTML = buildOverviewHTML(_nations);
         populateOverviewRevenue();
+      }
+      if (_currentView === 'audit') {
+        await renderAuditView(_nations);
       }
     } catch(e) {
       status.className = 'nat-status nat-status-error';
@@ -936,7 +1118,7 @@
         ${n.flag?`<img src="${window.ImageUtils ? window.ImageUtils.proxyImageUrl(n.flag) : n.flag}" class="nat-detail-flag" alt="">`:''}
         <div>
           <h3 class="nat-detail-name">${pnwLink(n.id, n.nation_name||'Unknown')}</h3>
-          <p class="nat-detail-leader">Leader: ${n.leader_name||'—'}</p>
+          <p class="nat-detail-leader">Leader: ${n.leader_name||'---'}</p>
           <div class="nat-detail-badges">
             ${positionBadge(n.alliance_position)}
             <span class="nat-detail-badge nat-badge-stat" title="Cities">c${n.num_cities||0}</span>
@@ -1029,7 +1211,7 @@
                 : '';
               // Unit section helper: title, icon, daily, current, max
               function unitSection(icon, label, daily, current, max, noMax) {
-                const dailyStr = daily > 0 ? fmt(daily) : '—';
+                const dailyStr = daily > 0 ? fmt(daily) : '---';
                 const maxStr   = noMax ? '∞' : fmt(max);
                 return `<div class="nat-mil-unit-section">
                   <div class="nat-mil-unit-title">
@@ -1101,11 +1283,15 @@
     _currentView = view;
     document.getElementById('view-nations').style.display  = view === 'nations'  ? '' : 'none';
     document.getElementById('view-overview').style.display = view === 'overview' ? '' : 'none';
+    document.getElementById('view-audit').style.display    = view === 'audit'    ? '' : 'none';
     document.getElementById('nat-search').style.display    = view === 'nations'  ? '' : 'none';
     document.querySelectorAll('.nat-view-tab').forEach(t => t.classList.toggle('active', t.dataset.view === view));
     if (view === 'overview' && _nations.length) {
       document.getElementById('nat-overview-content').innerHTML = buildOverviewHTML(_nations);
       populateOverviewRevenue();
+    }
+    if (view === 'audit' && _nations.length) {
+      renderAuditView(_nations);
     }
   }
 
@@ -1276,7 +1462,7 @@
       <!-- Alliance Revenue (moved below Infrastructure and City Distribution) -->
       <div class="ov-card ov-card-full" id="ov-rev-box">
         <div class="ov-card-title">💰 Alliance Revenue</div>
-        <div id="ov-rev-content">Loading…</div>
+        <div id="ov-rev-content">Loading...</div>
       </div>
 
       <!-- Projects (full width) -->
@@ -1286,6 +1472,366 @@
       </div>
 
     </div>`;
+  }
+
+  // ── AUDIT VIEW FUNCTIONS ──────────────────────────────────────────────────
+
+  // Filter active members: exclude applicants and vacation mode
+  function _filterActiveMembers(nations) {
+    return nations.filter(n => {
+      const pos = (n.alliance_position || '').trim().toUpperCase();
+      if (pos === 'APPLICANT') return false;
+      const vm = parseInt(n.vacation_mode_turns || 0);
+      return vm <= 0;
+    });
+  }
+
+  // Calculate days inactive from ISO datetime string
+  function _daysInactive(lastActiveStr) {
+    if (!lastActiveStr) return 999;
+    try {
+      const lastActive = new Date(lastActiveStr);
+      const now = new Date();
+      const diffMs = now - lastActive;
+      return Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    } catch(e) {
+      return 999;
+    }
+  }
+
+  // Audit Activity: bucket by days inactive
+  function _auditActivity(activeMembers) {
+    const bucket24plus = [];
+    const bucket14_23 = [];
+    const bucket7_13 = [];
+
+    for (const n of activeMembers) {
+      const days = _daysInactive(n.last_active);
+      if (days >= 24) bucket24plus.push(n);
+      else if (days >= 14) bucket14_23.push(n);
+      else if (days >= 7) bucket7_13.push(n);
+    }
+
+    return { bucket24plus, bucket14_23, bucket7_13 };
+  }
+
+  // Audit Color: beige/grey/wrong/correct counts
+  function _auditColor(activeMembers, targetColor) {
+    const beige = [];
+    const grey = [];
+    const wrong = [];
+    const correct = [];
+
+    for (const n of activeMembers) {
+      const color = (n.color || '').toLowerCase();
+      if (color === 'beige') beige.push(n);
+      else if (color === 'gray' || color === 'grey') grey.push(n);
+      else if (color !== targetColor.toLowerCase()) wrong.push(n);
+      else correct.push(n);
+    }
+
+    return { beige, grey, wrong, correct, targetColor };
+  }
+
+  // Audit MMR: bucket by % below threshold
+  function _auditMMR(activeMembers, mode) {
+    const EPSILON = 0.05;
+    let thresh;
+
+    if (mode === 'max') {
+      thresh = { barracks: 5.0, factory: 5.0, air: 5.0, drydock: 3.0 };
+    } else {
+      thresh = { barracks: 0.0, factory: 3.0, air: 5.0, drydock: 0.0 };
+    }
+
+    const bucket50plus = [];
+    const bucket25_49 = [];
+    const bucket10_24 = [];
+    const bucket0_9 = [];
+
+    function computeMMRAvgs(n) {
+      // Use city_agg data which has the aggregated MMR values
+      const cityAgg = n.city_agg || {};
+      const num = n.num_cities || cityAgg.city_count || 0;
+      if (!num) return { barracks: 0, factory: 0, air: 0, drydock: 0, num: 0 };
+
+      // Use avg values from city_agg
+      const b = cityAgg.avg_barracks || 0;
+      const f = cityAgg.avg_factories || 0;
+      const a = cityAgg.avg_hangars || 0;
+      const d = cityAgg.avg_drydocks || 0;
+
+      return {
+        barracks: b,
+        factory: f,
+        air: a,
+        drydock: d,
+        num: num,
+        b_total: cityAgg.barracks || 0,
+        f_total: cityAgg.factories || 0,
+        a_total: cityAgg.hangars || 0,
+        d_total: cityAgg.drydocks || 0
+      };
+    }
+
+    function belowThreshold(avg) {
+      const keys = ['barracks', 'factory', 'air', 'drydock'];
+      for (const k of keys) {
+        const t = thresh[k] || 0;
+        const a = avg[k] || 0;
+        if (t > 0 && (a + EPSILON) < t) return true;
+      }
+      return false;
+    }
+
+    function computePercentOff(avg) {
+      const keys = ['barracks', 'factory', 'air', 'drydock'];
+      const totalThr = keys.reduce((s, k) => s + (thresh[k] > 0 ? thresh[k] : 0), 0);
+      if (totalThr <= 0) return 0;
+
+      let deficitSum = 0;
+      for (const k of keys) {
+        const t = thresh[k] || 0;
+        const a = avg[k] || 0;
+        if (t > 0 && (a + EPSILON) < t) {
+          deficitSum += (t - a);
+        }
+      }
+      return Math.max(0, Math.min(100, (deficitSum / totalThr) * 100));
+    }
+
+    for (const n of activeMembers) {
+      const avg = computeMMRAvgs(n);
+      if (avg.num <= 0) continue;
+      if (!belowThreshold(avg)) continue;
+
+      const perc = computePercentOff(avg);
+      const enriched = {
+        ...n,
+        __mmr_avg: avg,
+        __mmr_percent_off: perc,
+        __mmr_str: `${avg.barracks.toFixed(1)}/${avg.factory.toFixed(1)}/${avg.air.toFixed(1)}/${avg.drydock.toFixed(1)}`
+      };
+
+      if (perc >= 50) bucket50plus.push(enriched);
+      else if (perc >= 25) bucket25_49.push(enriched);
+      else if (perc >= 10) bucket10_24.push(enriched);
+      else bucket0_9.push(enriched);
+    }
+
+    return { bucket50plus, bucket25_49, bucket10_24, bucket0_9, mode, thresh };
+  }
+
+  // Audit Power: check nuclear power correctness
+  function _auditPower(activeMembers) {
+    const offenders = [];
+
+    for (const n of activeMembers) {
+      const cities = n.cities || [];
+      if (!cities.length) continue;
+
+      const issues = [];
+      for (const c of cities) {
+        const infra = c.infrastructure || 0;
+        const correctNuclear = Math.ceil(infra / 2000);
+        const nuclear = c.nuclear_power || 0;
+        const coal = c.coal_power || 0;
+        const oil = c.oil_power || 0;
+        const wind = c.wind_power || 0;
+
+        const cityIssues = [];
+        if (coal > 0) cityIssues.push(`${coal} Coal`);
+        if (oil > 0) cityIssues.push(`${oil} Oil`);
+        if (wind > 0) cityIssues.push(`${wind} Wind`);
+        if (nuclear !== correctNuclear) {
+          cityIssues.push(`Has ${nuclear} Nuclear (need ${correctNuclear})`);
+        }
+
+        if (cityIssues.length > 0) {
+          issues.push({ 
+            cityName: c.name || `City ${c.id}`, 
+            problems: cityIssues,
+            infra: infra.toFixed(0)
+          });
+        }
+      }
+
+      if (issues.length > 0) {
+        offenders.push({ nation: n, issues });
+      }
+    }
+
+    return offenders;
+  }
+
+  // Render Activity section
+  function renderActivity(data) {
+    document.getElementById('audit-count-inactive-24plus').textContent = data.bucket24plus.length;
+    document.getElementById('audit-count-inactive-14-23').textContent = data.bucket14_23.length;
+    document.getElementById('audit-count-inactive-7-13').textContent = data.bucket7_13.length;
+
+    const total = data.bucket24plus.length + data.bucket14_23.length + data.bucket7_13.length;
+    document.getElementById('audit-badge-activity').textContent = total;
+
+    function renderList(nations, containerId) {
+      const el = document.getElementById(containerId);
+      if (!nations.length) {
+        el.innerHTML = '<div class="audit-empty">None</div>';
+        return;
+      }
+      const html = nations.map(n => {
+        const days = _daysInactive(n.last_active);
+        return `<a href="https://politicsandwar.com/nation/id=${n.id}" target="_blank" class="audit-nation-link">${n.nation_name || 'Unknown'} (${days}d)</a>`;
+      }).join('');
+      el.innerHTML = html;
+    }
+
+    renderList(data.bucket24plus, 'audit-list-inactive-24plus');
+    renderList(data.bucket14_23, 'audit-list-inactive-14-23');
+    renderList(data.bucket7_13, 'audit-list-inactive-7-13');
+  }
+
+  // Render Color section
+  function renderColor(data) {
+    document.getElementById('audit-count-wrong-color').textContent = data.wrong.length;
+    document.getElementById('audit-count-beige').textContent = data.beige.length;
+    document.getElementById('audit-count-grey').textContent = data.grey.length;
+
+    const total = data.wrong.length;
+    document.getElementById('audit-badge-color').textContent = total;
+
+    // Update header icon to target color
+    const colorIcon = document.getElementById('audit-color-header-icon');
+    colorIcon.src = `/static/Emojis/Colors/${data.targetColor}.png`;
+
+    // Show target color info
+    const infoEl = document.getElementById('audit-color-info');
+    infoEl.innerHTML = `<div style="padding:0.5rem 0.75rem;background:rgba(255,215,0,0.05);border-radius:4px;font-size:0.78rem;color:var(--text-secondary);margin-bottom:0.5rem;">
+      <strong style="color:var(--gold-primary);">Target Color:</strong> ${data.targetColor.charAt(0).toUpperCase() + data.targetColor.slice(1)}
+      <span style="margin-left:1rem;color:var(--text-primary);">${data.correct.length} nations on correct color</span>
+    </div>`;
+
+    function renderList(nations, containerId) {
+      const el = document.getElementById(containerId);
+      if (!nations.length) {
+        el.innerHTML = '<div class="audit-empty">None</div>';
+        return;
+      }
+      const html = nations.map(n => {
+        const color = n.color || 'unknown';
+        return `<a href="https://politicsandwar.com/nation/id=${n.id}" target="_blank" class="audit-nation-link">${n.nation_name || 'Unknown'} (${color})</a>`;
+      }).join('');
+      el.innerHTML = html;
+    }
+
+    renderList(data.wrong, 'audit-list-wrong-color');
+    renderList(data.beige, 'audit-list-beige');
+    renderList(data.grey, 'audit-list-grey');
+  }
+
+  // Render MMR section
+  function renderMMR(data, mode) {
+    document.getElementById('audit-count-mmr-50').textContent = data.bucket50plus.length;
+    document.getElementById('audit-count-mmr-25').textContent = data.bucket25_49.length;
+    document.getElementById('audit-count-mmr-10').textContent = data.bucket10_24.length;
+    document.getElementById('audit-count-mmr-0').textContent = data.bucket0_9.length;
+
+    const total = data.bucket50plus.length + data.bucket25_49.length + data.bucket10_24.length + data.bucket0_9.length;
+    document.getElementById('audit-badge-mmr').textContent = total;
+
+    function renderMMRList(nations, containerId) {
+      const el = document.getElementById(containerId);
+      if (!nations.length) {
+        el.innerHTML = '<div class="audit-empty">None</div>';
+        return;
+      }
+      const html = nations.map(n => {
+        const avg = n.__mmr_avg || {};
+        const perc = n.__mmr_percent_off || 0;
+        const mmrStr = n.__mmr_str || '---';
+        return `<div class="audit-mmr-entry">
+          <a href="https://politicsandwar.com/nation/id=${n.id}" target="_blank" class="audit-nation-link">${n.nation_name || 'Unknown'}</a>
+          <span class="audit-mmr-current">${mmrStr}</span>
+          <span class="audit-mmr-deficit">${perc.toFixed(0)}% below</span>
+        </div>`;
+      }).join('');
+      el.innerHTML = html;
+    }
+
+    renderMMRList(data.bucket50plus, 'audit-list-mmr-50');
+    renderMMRList(data.bucket25_49, 'audit-list-mmr-25');
+    renderMMRList(data.bucket10_24, 'audit-list-mmr-10');
+    renderMMRList(data.bucket0_9, 'audit-list-mmr-0');
+  }
+
+  // Render Power section
+  function renderPower(offenders) {
+    document.getElementById('audit-badge-power').textContent = offenders.length;
+
+    const el = document.getElementById('audit-list-power');
+    if (!offenders.length) {
+      el.innerHTML = '<div class="audit-empty">✅ All nations using power correctly</div>';
+      return;
+    }
+
+    const html = offenders.map(({ nation, issues }) => {
+      const cityList = issues.map(({ cityName, problems, infra }) => {
+        return `<li><strong>${cityName}</strong> (${infra} infra): ${problems.join(', ')}</li>`;
+      }).join('');
+
+      return `<details class="audit-power-nation">
+        <summary>
+          <a href="https://politicsandwar.com/nation/id=${nation.id}" target="_blank" class="audit-nation-link" onclick="event.stopPropagation()">${nation.nation_name || 'Unknown'}</a>
+          <span class="audit-power-issue-count">${issues.length} ${issues.length === 1 ? 'city' : 'cities'} with issues</span>
+        </summary>
+        <ul class="audit-power-city-list">${cityList}</ul>
+      </details>`;
+    }).join('');
+
+    el.innerHTML = html;
+  }
+
+  // Main render function for audit view
+  async function renderAuditView(nations) {
+    const activeMembers = _filterActiveMembers(nations);
+
+    // Activity audit
+    const activityData = _auditActivity(activeMembers);
+    renderActivity(activityData);
+
+    // Color audit
+    const targetColor = document.getElementById('audit-color-select').value;
+    const colorData = _auditColor(activeMembers, targetColor);
+    renderColor(colorData);
+
+    // MMR audit
+    const mmrMode = document.getElementById('audit-mmr-select').value;
+    const mmrData = _auditMMR(activeMembers, mmrMode);
+    renderMMR(mmrData, mmrMode);
+
+    // Power audit - fetch cities for all nations
+    document.getElementById('audit-badge-power').textContent = '⏳';
+    document.getElementById('audit-list-power').innerHTML = '<div class="audit-empty">Loading city data...</div>';
+    
+    try {
+      // Fetch individual cities for each nation
+      const nationsWithCities = await Promise.all(
+        activeMembers.map(async (n) => {
+          try {
+            const res = await fetch(`/api/watch/nations/${n.id}`);
+            const data = await res.json();
+            return { ...n, cities: data.cities || [] };
+          } catch (e) {
+            return { ...n, cities: [] };
+          }
+        })
+      );
+      
+      const powerOffenders = _auditPower(nationsWithCities);
+      renderPower(powerOffenders);
+    } catch (e) {
+      document.getElementById('audit-list-power').innerHTML = '<div class="audit-empty" style="color:#e74c3c;">Failed to load city data</div>';
+    }
   }
 
   // ── init ──────────────────────────────────────────────────────────────────
@@ -1304,7 +1850,22 @@
         document.getElementById('nat-alliance-input').value = '';
         document.getElementById('nat-alliance-input').focus();
         tag.innerHTML = '';
+        // Clear alliance flag
+        const flag = document.getElementById('nat-alliance-flag');
+        if (flag) flag.src = '';
       });
+      
+      // Update alliance flag display
+      const flagEl = document.getElementById('nat-alliance-flag');
+      if (flagEl && _selectedAllianceId) {
+        // Get alliance flag from the API
+        fetchAllianceAC('').then(items => {
+          const alliance = items.find(a => a.id === _selectedAllianceId);
+          if (alliance && alliance.flag) {
+            flagEl.src = window.ImageUtils ? window.ImageUtils.proxyImageUrl(alliance.flag) : alliance.flag;
+          }
+        });
+      }
     }
 
     async function fetchAllianceAC(q) {
@@ -1319,7 +1880,7 @@
       const drop = document.getElementById('nat-alliance-drop');
       if (!items.length) { drop.classList.remove('open'); drop.innerHTML = ''; return; }
       drop.innerHTML = items.map(a =>
-        `<div class="nat-ac-item" data-id="${a.id}" data-name="${(a.name||'').replace(/"/g,'&quot;')}">
+        `<div class="nat-ac-item" data-id="${a.id}" data-name="${(a.name||'').replace(/"/g,'&quot;')}" data-flag="${(a.flag||'').replace(/"/g,'&quot;')}">
           <span>${a.name}</span>
           <span class="nat-ac-count">${a.member_count ? a.member_count + ' members' : 'ID ' + a.id}</span>
         </div>`
@@ -1335,7 +1896,21 @@
           // Update kicker immediately
           const kicker = document.getElementById('nat-kicker');
           if (kicker) kicker.textContent = _selectedAllianceName;
-          // Revenue only available for Darkstar; clear for other alliances
+          // Update alliance flag
+          const flagEl = document.getElementById('nat-alliance-flag');
+          if (flagEl && _selectedAllianceId) {
+            const flag = item.dataset.flag || '';
+            if (flag) {
+              flagEl.src = window.ImageUtils ? window.ImageUtils.proxyImageUrl(flag) : flag;
+            } else {
+              // Try to get flag from autocomplete cache
+              const alliance = (_acCache || []).find(a => a.id === _selectedAllianceId);
+              if (alliance && alliance.flag) {
+                flagEl.src = window.ImageUtils ? window.ImageUtils.proxyImageUrl(alliance.flag) : alliance.flag;
+              }
+            }
+          }
+          // Clear cached revenue data for new alliance
           _revCache = {}; _revData = null;
           fetchNations();
           fetchRevenue();
@@ -1389,21 +1964,52 @@
       }
     });
 
-    // Render the default NW tag on load
-    renderAllianceTag();
-
-    fetchNations();
-    fetchRevenue();
+    // Load from settings first — will trigger fetchNations/fetchRevenue
     fetchLinkedNation();
     document.getElementById('nat-refresh').addEventListener('click', () => { fetchNations(); fetchRevenue(); });
     document.getElementById('nat-search').addEventListener('input', function() { _search=this.value; renderTable(); });
+
+    // Audit section collapse/expand handlers
+    document.querySelectorAll('.audit-section-header').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const section = btn.closest('.audit-section');
+        const body = section.querySelector('.audit-section-body');
+        const isExpanded = btn.getAttribute('aria-expanded') === 'true';
+        
+        btn.setAttribute('aria-expanded', !isExpanded);
+        body.classList.toggle('audit-collapsed');
+      });
+    });
+
+    // Color selector change handler
+    document.getElementById('audit-color-select').addEventListener('change', function() {
+      // Update the color icon
+      const colorIcon = document.getElementById('audit-color-icon');
+      colorIcon.src = `/static/Emojis/Colors/${this.value}.png`;
+      
+      // Re-render color audit if in audit view
+      if (_currentView === 'audit' && _nations.length) {
+        const activeMembers = _filterActiveMembers(_nations);
+        const colorData = _auditColor(activeMembers, this.value);
+        renderColor(colorData);
+      }
+    });
+
+    // MMR mode selector change handler
+    document.getElementById('audit-mmr-select').addEventListener('change', function() {
+      if (_currentView === 'audit' && _nations.length) {
+        const activeMembers = _filterActiveMembers(_nations);
+        const mmrData = _auditMMR(activeMembers, this.value);
+        renderMMR(mmrData, this.value);
+      }
+    });
 
     // View tabs
     document.querySelectorAll('.nat-view-tab').forEach(btn => {
       btn.addEventListener('click', () => switchView(btn.dataset.view));
     });
 
-    // Simple column sort — MMR sorts ascending (0 deficit = full MMR first)
+    // Simple column sort --- MMR sorts ascending (0 deficit = full MMR first)
     document.querySelectorAll('#nat-table th[data-col]').forEach(th => {
       th.addEventListener('click', () => {
         const col = th.dataset.col;

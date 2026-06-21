@@ -1,0 +1,77 @@
+<div class="generator-lab-page" id="generator-lab-page">
+    <section class="generator-lab-hero">
+        <div>
+            <div class="generator-lab-kicker">Random Generator Lab</div>
+            <h1>Generator Lab</h1>
+            <p>Pick a generator, describe the vibe, and let Reaper cook up names, lines, headlines, or pet move sets.</p>
+        </div>
+        <div class="generator-lab-badge" aria-live="polite">
+            <img src="/static/Emojis/Menu/lab.png" alt="Generator Lab">
+            <div>
+                <span>Lab Status</span>
+                <strong id="generator-lab-status">Ready</strong>
+            </div>
+        </div>
+    </section>
+
+    <section class="generator-lab-shell">
+        <form class="generator-lab-controls" id="generator-lab-form">
+            <div class="generator-lab-field">
+                <label for="generator-lab-category">Generator Type</label>
+                <select id="generator-lab-category" name="category">
+                    <option value="discord_username">Discord Username</option>
+                    <option value="pnw_nation_name">PnW Nation Name</option>
+                    <option value="pnw_leader_name">PnW Leader Name</option>
+                    <option value="pets">Pets</option>
+                    <option value="villain_name">Villain Name</option>
+                    <option value="hero_name">Hero Name</option>
+                    <option value="compliment">Compliment</option>
+                    <option value="roast">Roast</option>
+                    <option value="fake_news_headline">Fake News Headline</option>
+                </select>
+            </div>
+
+            <div class="generator-lab-field">
+                <label for="generator-lab-count">How Many</label>
+                <input id="generator-lab-count" name="count" type="number" min="1" max="12" value="6">
+            </div>
+
+            <div class="generator-lab-field generator-lab-description">
+                <label for="generator-lab-description">Description</label>
+                <textarea id="generator-lab-description" name="description" rows="5" maxlength="1200" placeholder="Describe the style, person, alliance, pet, theme, joke, or energy you want the bot to use."></textarea>
+            </div>
+
+            <div class="generator-lab-actions">
+                <button class="generator-lab-primary" id="generator-lab-submit" type="submit">
+                    <i class="fa-solid fa-flask"></i>
+                    Generate
+                </button>
+                <button class="generator-lab-secondary" id="generator-lab-clear" type="button">
+                    <i class="fa-solid fa-eraser"></i>
+                    Clear
+                </button>
+            </div>
+        </form>
+
+        <section class="generator-lab-results" aria-live="polite">
+            <div class="generator-lab-results-header">
+                <div>
+                    <span class="generator-lab-kicker" id="generator-lab-result-type">Awaiting Input</span>
+                    <h2 id="generator-lab-result-title">No results yet</h2>
+                </div>
+                <button class="generator-lab-secondary" id="generator-lab-copy-all" type="button" hidden>
+                    <i class="fa-solid fa-copy"></i>
+                    Copy All
+                </button>
+            </div>
+
+            <div class="generator-lab-empty" id="generator-lab-empty">
+                <img src="/static/Emojis/Menu/lab.png" alt="">
+                <h3>The lab bench is clean.</h3>
+                <p>Choose a generator type, add a description, and generate a batch.</p>
+            </div>
+
+            <div class="generator-lab-grid" id="generator-lab-grid" hidden></div>
+        </section>
+    </section>
+</div>

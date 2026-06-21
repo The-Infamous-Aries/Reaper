@@ -1,0 +1,58 @@
+<link rel="stylesheet" href="/css/shop.css">
+
+<div class="container-fluid" id="shop-root">
+
+    <hr class="sh-divider">
+
+    <!-- Page header -->
+    <div class="row mb-3">
+        <div class="col-12 text-center">
+            <h4 style="font-family:'Orbitron',sans-serif;color:var(--gold-primary);text-shadow:0 0 10px var(--gold-glow);margin:0">
+                🛒 The Reaper's Market
+            </h4>
+            <p style="color:var(--text-secondary);font-size:0.86rem;margin-top:0.3rem">
+                Five shops, each with their own keeper. Spend your pet's XP to buy items. Dungeon merchants are always cheaper — if you can find them.
+            </p>
+        </div>
+    </div>
+
+    <!-- XP Balance bar -->
+    <div class="sh-xp-bar" id="sh-xp-bar">
+        <span class="sh-xp-label">✨ SPENDABLE XP</span>
+        <span class="sh-xp-value" id="sh-xp-value">—</span>
+        <div class="sh-xp-progress-wrap">
+            <div class="sh-xp-progress-fill" id="sh-xp-progress" style="width:0%"></div>
+        </div>
+        <span style="font-size:0.72rem;color:var(--text-secondary)" id="sh-xp-next-label"></span>
+        <span class="sh-xp-pet-name" id="sh-pet-name"></span>
+    </div>
+
+    <!-- Loading state -->
+    <div class="sh-loading" id="sh-loading">
+        <div class="spinner-border" role="status"></div>
+        <p style="margin-top:0.8rem">Loading shops…</p>
+    </div>
+
+    <!-- Main content (hidden until loaded) -->
+    <div id="sh-main" style="display:none">
+
+        <!-- Shop tabs -->
+        <div class="sh-tabs" id="sh-tabs">
+            <!-- Populated by JS -->
+        </div>
+
+        <!-- Shop panels -->
+        <div id="sh-panels">
+            <!-- Populated by JS -->
+        </div>
+
+    </div>
+
+    <hr class="sh-divider">
+
+</div>
+
+<!-- Toast -->
+<div id="sh-toast"></div>
+
+<script src="/js/shop.js"></script>

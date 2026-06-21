@@ -25,6 +25,9 @@
                  autocomplete="off">
           <div id="ro-dropdown" class="ro-ac-dropdown" style="display:none;"></div>
         </div>
+        <input type="number" id="ro-infra" class="ro-small-input" min="0" step="50" placeholder="Infra">
+        <input type="number" id="ro-land" class="ro-small-input" min="0" step="100" placeholder="Land">
+        <input type="text" id="ro-mmr" class="ro-small-input ro-mmr-input" value="0/3/5/0" placeholder="MMR">
         <button id="ro-run" class="btn btn-gold btn-sm">Analyze</button>
         <button id="ro-refresh" class="btn btn-sm"
                 style="background:rgba(255,215,0,0.08);border:1px solid rgba(255,215,0,0.3);color:var(--gold-secondary);font-size:0.75rem;"
@@ -38,29 +41,47 @@
 
 </div>
 
+    <script src="/js/access_guard.js"></script>
 <script src="/js/image-utils.js"></script>
 <script>
 // ── Auto-fill Integration ───────────────────────────────────────────────────
 async function loadAutoFillSettings() {
   try {
-    const response = await fetch('/api/settings');
+    const response = await fetch('/api/settings', { credentials: 'same-origin' });
     if (!response.ok) return;
     const settings = await response.json();
+    const enabled = settings.auto_fill_nation_revopt === 1 || settings.auto_fill_nation_revopt === '1' || settings.auto_fill_nation_revopt === true;
     
     // Auto-fill linked nation if enabled
-    if (settings.auto_fill_nation_revopt === 1 && settings.linked_nation_id) {
+    if (enabled && settings.linked_nation_id) {
       const queryInput = document.getElementById('ro-query');
       if (queryInput) {
         queryInput.value = settings.linked_nation_id;
       }
+    }
+    const infraInput = document.getElementById('ro-infra');
+    const landInput = document.getElementById('ro-land');
+    const mmrInput = document.getElementById('ro-mmr');
+    if (infraInput && Number(settings.revopt_default_infra || 0) > 0) {
+      infraInput.value = settings.revopt_default_infra;
+    }
+    if (landInput && Number(settings.revopt_default_land || 0) > 0) {
+      landInput.value = settings.revopt_default_land;
+    }
+    if (mmrInput && settings.revopt_default_mmr) {
+      mmrInput.value = settings.revopt_default_mmr;
     }
   } catch (e) {
     console.debug('Failed to load auto-fill settings:', e);
   }
 }
 
-// Load auto-fill settings on page load
-document.addEventListener('DOMContentLoaded', loadAutoFillSettings);
+// Dashboard pages are injected after DOMContentLoaded, so run immediately too.
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', loadAutoFillSettings);
+} else {
+  loadAutoFillSettings();
+}
 
 // ── Main Script ─────────────────────────────────────────────────────────────
 (function () {
@@ -72,6 +93,16 @@ document.addEventListener('DOMContentLoaded', loadAutoFillSettings);
     if (v == null) return '—';
     const s = v >= 0 ? '+' : '';
     return `${s}${fmt(v)}/day`;
+  };
+  const fmtSigned = v => {
+    if (v == null) return '—';
+    const n = Number(v || 0);
+    return `${n >= 0 ? '+' : ''}${fmt(n)}`;
+  };
+  const fmtMoney = v => {
+    const n = Number(v || 0);
+    const s = n < 0 ? '-' : '';
+    return `${s}$${Math.abs(n).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
   };
   const fmtC = v => {
     if (!v || v <= 0) return 'free';
@@ -94,12 +125,16 @@ document.addEventListener('DOMContentLoaded', loadAutoFillSettings);
     infrastructure: '<span class="ro-type-badge ro-type-infra">Infra</span>',
     land:        '<span class="ro-type-badge ro-type-land">Land</span>',
     rebuild:     '<span class="ro-type-badge ro-type-rebuild">Rebuild</span>',
+    power:      '<span class="ro-type-badge ro-type-power">Power</span>',
+    swap_build: '<span class="ro-type-badge ro-type-swap">Swap</span>',
+    slot_conflict: '<span class="ro-type-badge ro-type-rebuild">Slots</span>',
   };
 
   // ── State ──────────────────────────────────────────────────────────────────
   let _type = 'auto';
   let _lastQuery = '';
   let _expanded = new Set();
+  let _nationResults = new Map();
 
   // ── EP Nations Autocomplete ────────────────────────────────────────────────
   let _epNations = null;
@@ -231,9 +266,21 @@ document.addEventListener('DOMContentLoaded', loadAutoFillSettings);
   function run(refresh) {
     const q = $('ro-query').value.trim();
     if (!q) return;
+    const infra = Number($('ro-infra')?.value || 0);
+    const land = Number($('ro-land')?.value || 0);
+    const mmr = ($('ro-mmr')?.value || '').trim();
+    const mmrOk = /^([0-5])\/([0-5])\/([0-5])\/([0-3])$/.test(mmr);
+    if (mmr && !mmrOk) {
+      showStatus('MMR must be B/F/H/D with caps 5/5/5/3, for example 2/3/5/1.', true);
+      return;
+    }
     _lastQuery = q;
     _expanded.clear();
-    fetch(`/api/revopt/analyze?query=${encodeURIComponent(q)}&type=${_type}&refresh=${refresh}`)
+    const params = new URLSearchParams({query: q, type: _type, refresh: String(refresh)});
+    if (infra > 0) params.set('desired_infra', String(infra));
+    if (land > 0) params.set('desired_land', String(land));
+    if (mmr) params.set('desired_mmr', mmr);
+    fetch(`/api/revopt/analyze?${params.toString()}`)
       .then(r => r.json())
       .then(render)
       .catch(err => showStatus('Error: ' + err.message, true));
@@ -254,6 +301,7 @@ document.addEventListener('DOMContentLoaded', loadAutoFillSettings);
     $('ro-status').style.display = 'none';
     const out = $('ro-output');
     out.style.display = 'block';
+    _nationResults = new Map((data.nations || []).map(n => [String(n.nation_id), n]));
 
     if (data.type === 'alliance') {
       out.innerHTML = renderAlliance(data);
@@ -261,6 +309,7 @@ document.addEventListener('DOMContentLoaded', loadAutoFillSettings);
       out.innerHTML = renderSingleNation(data.nations[0], data.prices);
     }
     attachExpandHandlers();
+    attachSavePlanHandlers();
   }
 
   // ── Alliance view ──────────────────────────────────────────────────────────
@@ -307,6 +356,7 @@ document.addEventListener('DOMContentLoaded', loadAutoFillSettings);
           <div>
             <div class="ro-nation-name">${esc(n.nation_name)}</div>
             <div class="ro-nation-leader">${esc(n.leader_name || '')}</div>
+            <div class="ro-policy-row">${warPolicyBadge(n.war_policy)}${domPolicyBadge(n.domestic_policy)}</div>
           </div>
           <div class="ro-nation-cities">${n.num_cities} cities</div>
           <div class="ro-nation-rev-summary">
@@ -331,6 +381,7 @@ document.addEventListener('DOMContentLoaded', loadAutoFillSettings);
         <div>
           <div class="ro-single-name">${esc(n.nation_name)}</div>
           <div class="ro-single-leader">${esc(n.leader_name || '')}</div>
+          <div class="ro-policy-row">${warPolicyBadge(n.war_policy)}${domPolicyBadge(n.domestic_policy)}</div>
         </div>
         <div class="ro-rev-row" style="margin:0;margin-left:auto;">
           <span class="ro-rev-badge cash">${fmt(n.current_net*12)}/day cash</span>
@@ -346,8 +397,16 @@ document.addEventListener('DOMContentLoaded', loadAutoFillSettings);
   // ── Nation detail (shared by both views) ───────────────────────────────────
   function renderNationDetail(n, prices) {
     let html = '';
+    const target = n.target_settings || {};
+    if (target.desired_infra || target.desired_land || target.desired_mmr) {
+      html += `<div class="ro-target-strip">
+        <span>${emojiImg('/static/Emojis/Calc/infra.png', 'ro-inline-icon')} Planned Infra: <strong>${target.desired_infra ? fmtF(target.desired_infra,0) : 'current'}</strong></span>
+        <span>${emojiImg('/static/Emojis/Calc/land.png', 'ro-inline-icon')} Planned Land: <strong>${target.desired_land ? fmtF(target.desired_land,0) : 'current'}</strong></span>
+        <span>${emojiImg('/static/Emojis/Military/strategy.png', 'ro-inline-icon')} MMR: ${mmrChips(target.desired_mmr)}</span>
+      </div>`;
+    }
 
-    html += `<div class="ro-section-label">🏙️ City Health</div><div class="ro-city-grid">`;
+    html += `<div class="ro-section-label">${emojiImg('/static/Emojis/Calc/city.png', 'ro-section-icon')} City Health</div><div class="ro-city-grid">`;
     for (const ca of (n.city_analyses || [])) {
       const s = ca.stats || {};
       const slotPct = s.slots_total > 0 ? (s.slots_used / s.slots_total * 100) : 0;
@@ -358,8 +417,8 @@ document.addEventListener('DOMContentLoaded', loadAutoFillSettings);
         <div class="ro-city-card">
           <div class="ro-city-name">${esc(ca.name)}</div>
           <div class="ro-city-stats">
-            <span class="ro-city-stat">Infra <span>${fmtF(ca.infra,0)}</span></span>
-            <span class="ro-city-stat">Land <span>${fmtF(ca.land,0)}</span></span>
+            <span class="ro-city-stat">${emojiImg('/static/Emojis/Calc/infra.png', 'ro-inline-icon')} Infra <span>${fmtF(ca.infra,0)}</span></span>
+            <span class="ro-city-stat">${emojiImg('/static/Emojis/Calc/land.png', 'ro-inline-icon')} Land <span>${fmtF(ca.land,0)}</span></span>
             <span class="ro-city-stat">Pop <span>${fmt(s.population)}</span></span>
             <span class="ro-city-stat">Com <span>${fmtF(s.commerce,0)}/${n.max_commerce||100}</span></span>
             <span class="ro-city-stat ${crimeWarn}">Crime <span>${fmtF(s.crime,1)}%</span></span>
@@ -374,28 +433,24 @@ document.addEventListener('DOMContentLoaded', loadAutoFillSettings);
     }
     html += '</div>';
 
-    const topSugg = (n.top_suggestions || []).slice(0, 15);
-    if (topSugg.length > 0) {
-      html += `<div class="ro-section-label">🏆 Top Revenue Actions</div>`;
-      html += renderSuggTable(topSugg);
-    }
-
     const citiesWithSugg = (n.city_analyses || []).filter(ca => ca.suggestions?.length > 0);
     if (citiesWithSugg.length > 0) {
-      html += `<div class="ro-section-label">🏗️ Per-City Breakdown</div>`;
+      html += `<div class="ro-section-label">${emojiImg('/static/Emojis/Watcher/improvement.png', 'ro-section-icon')} Final City Updates</div>`;
       for (const ca of citiesWithSugg) {
         html += `<div style="margin-bottom:0.6rem;">
           <div style="font-size:0.78rem;font-weight:700;color:var(--gold-secondary);margin-bottom:0.2rem;">
-            ${esc(ca.name)} — ${fmtF(ca.infra,0)} infra | ${fmtF(ca.land,0)} land | Slots ${ca.stats?.slots_used}/${ca.stats?.slots_total}
+            ${esc(ca.name)} - ${emojiImg('/static/Emojis/Calc/infra.png', 'ro-inline-icon')} ${fmtF(ca.infra,0)} infra | ${emojiImg('/static/Emojis/Calc/land.png', 'ro-inline-icon')} ${fmtF(ca.land,0)} land | Slots ${ca.stats?.slots_used}/${ca.stats?.slots_total}
           </div>`;
-        html += renderSuggTable(ca.suggestions.slice(0, 8));
+        html += `<div class="ro-subsection-note">One recommended update for this city</div>`;
+        html += renderSuggTable(ca.suggestions.slice(0, 1));
+        html += renderCityCostDetails(ca.suggestions[0]);
         html += '</div>';
       }
     }
 
     const projPos = (n.project_suggestions || []).filter(p => p.gain_per_day > 0);
     if (projPos.length > 0) {
-      html += `<div class="ro-section-label">🔬 Project Suggestions</div>`;
+      html += `<div class="ro-section-label">${emojiImg('/static/Emojis/Calc/project.png', 'ro-section-icon')} Project Suggestions</div>`;
       html += `<div style="font-size:0.72rem;color:var(--text-secondary);margin-bottom:0.35rem;">Revenue-positive projects — buy these first</div>`;
       html += `<div class="ro-proj-grid">`;
       for (const p of projPos.slice(0, 12)) {
@@ -411,73 +466,148 @@ document.addEventListener('DOMContentLoaded', loadAutoFillSettings);
       html += '</div>';
     }
 
-    const freePot = (n.top_suggestions || []).filter(s => !s.cost || s.cost === 0)
-                      .slice(0,10).reduce((s,x) => s + (x.gain_per_day||0), 0);
-    const allPot  = (n.top_suggestions || []).slice(0,15).reduce((s,x) => s + (x.gain_per_day||0), 0);
-    const bestProj = projPos[0];
-
-    html += `
-      <div class="ro-summary-bar">
-        <div class="ro-summary-item">
-          <span class="ro-summary-label">Current Revenue</span>
-          <span class="ro-summary-value">${fmt(n.current_net*12)}</span>
-        </div>
-        <div class="ro-summary-item">
-          <span class="ro-summary-label">With Resources</span>
-          <span class="ro-summary-value">${fmt(n.current_monetary*12)}</span>
-        </div>
-        ${freePot > 0 ? `
-        <div class="ro-summary-item">
-          <span class="ro-summary-label">Free-slot potential</span>
-          <span class="ro-summary-value green">+${fmt(freePot)}/day</span>
-        </div>` : ''}
-        ${allPot > 0 ? `
-        <div class="ro-summary-item">
-          <span class="ro-summary-label">Max potential (top 15)</span>
-          <span class="ro-summary-value green">+${fmt(allPot)}/day</span>
-        </div>` : ''}
-        ${bestProj ? `
-        <div class="ro-summary-item">
-          <span class="ro-summary-label">Best project</span>
-          <span class="ro-summary-value" style="font-size:0.78rem;">${esc(bestProj.project)}</span>
-        </div>` : ''}
-      </div>`;
+    html += renderTotalCostSection(n.total_update_cost);
+    html += renderRevenuePreview(n, prices);
+    html += renderSavePlanSection(n);
 
     return html;
+  }
+
+  function renderSavePlanSection(n) {
+    const plan = n.build_plan || {};
+    const cityCount = (plan.existing_cities || []).length;
+    if (!cityCount) {
+      return `<div class="ro-save-plan-panel muted">
+        <div>
+          <strong>No optimizer plan to save</strong>
+          <span>The optimizer did not produce complete city targets for this nation.</span>
+        </div>
+      </div>`;
+    }
+    return `<div class="ro-save-plan-panel">
+      <div>
+        <strong>Save this optimizer build to My Nation</strong>
+        <span>${cityCount} city targets with full infra, land, and final improvement counts.</span>
+      </div>
+      <button class="btn btn-gold btn-sm ro-save-plan-btn" data-nation-id="${esc(n.nation_id)}">
+        Save Plan
+      </button>
+    </div>`;
+  }
+
+  function attachSavePlanHandlers() {
+    document.querySelectorAll('.ro-save-plan-btn').forEach(btn => {
+      btn.addEventListener('click', ev => {
+        ev.stopPropagation();
+        saveOptimizerPlan(btn.dataset.nationId, btn);
+      });
+    });
+  }
+
+  async function saveOptimizerPlan(nationId, btn) {
+    const n = _nationResults.get(String(nationId));
+    if (!n || !n.build_plan) {
+      showStatus('No optimizer plan is available to save for this nation.', true);
+      return;
+    }
+
+    const originalText = btn ? btn.textContent : '';
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = 'Saving...';
+    }
+
+    try {
+      let planName = `Rev Optimizer - ${n.nation_name || n.nation_id}`;
+      let projects = [];
+      try {
+        const existing = await fetch(`/api/mynation/plan/${encodeURIComponent(n.nation_id)}`, {
+          credentials: 'same-origin',
+        });
+        if (existing.ok) {
+          const existingData = await existing.json();
+          if (existingData.plan) {
+            planName = existingData.plan.plan_name || planName;
+            projects = existingData.plan.plan_data?.projects || [];
+          }
+        }
+      } catch (_) {
+        projects = [];
+      }
+
+      const planData = {
+        ...n.build_plan,
+        projects,
+      };
+
+      const response = await fetch('/api/mynation/plan', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        credentials: 'same-origin',
+        body: JSON.stringify({
+          nation_id: Number(n.nation_id),
+          plan_name: planName,
+          plan_data: planData,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({detail: 'Save failed'}));
+        throw new Error(error.detail || 'Save failed');
+      }
+
+      showStatus('Saved optimizer plan to My Nation. Open My Nation > Build Plan to edit projects or city targets.', false);
+    } catch (err) {
+      showStatus('Save Plan failed: ' + err.message, true);
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = originalText || 'Save Plan';
+      }
+    }
   }
 
   // ── Suggestion table renderer ──────────────────────────────────────────────
   function renderSuggTable(suggs) {
     if (!suggs || suggs.length === 0) return '<p style="font-size:0.78rem;color:var(--text-secondary);">No suggestions — fully optimized.</p>';
-    let html = `
+    let html = `<div class="ro-table-wrap">
       <table class="ro-sugg-table">
         <thead>
           <tr>
-            <th>Type</th><th>City</th><th>Action</th><th>Gain/day</th><th>Cost</th><th>Details</th>
+            <th>Type</th><th>City</th><th>Action</th><th>Gain/day</th><th>Details</th>
           </tr>
         </thead>
         <tbody>`;
     for (const s of suggs) {
       const badge   = TYPE_BADGE[s.type] || `<span class="ro-type-badge">${esc(s.type)}</span>`;
       const gainCls = (s.gain_per_day || 0) >= 0 ? 'ro-gain-pos' : 'ro-gain-neg';
-      const addStr  = s.add > 1 ? `×${s.add}` : '+1';
-      const impName = IMP_DISPLAY[s.improvement] || s.improvement || '';
-      const actionStr = s.type === 'rebuild'
-        ? `${addStr} <strong>${esc(impName)}</strong> (rebuild)`
-        : `${addStr} <strong>${esc(impName)}</strong>`;
+      let actionStr = '';
+      if (s.type === 'swap_build') {
+        actionStr = `<strong>${esc(s.title || 'Optimized swap')}</strong><div class="ro-swap-mini"><span class="ro-remove-label">Remove</span>${fmtDiff(s.remove, 'remove')}<br><span class="ro-add-label">Add</span>${fmtDiff(s.add, 'add')}</div>`;
+      } else if (s.type === 'slot_conflict') {
+        actionStr = `${emojiImg('/static/Emojis/Calc/infra.png', 'ro-action-icon')}<strong>Need more infra/slots</strong>`;
+      } else if (s.type === 'power') {
+        actionStr = `${impChip('nuclear_power', s.add || 0)}<strong>Use correct nuclear power</strong>`;
+      } else {
+        const addStr  = s.add > 1 ? `×${s.add}` : '+1';
+        const impName = IMP_DISPLAY[s.improvement] || s.improvement || '';
+        const chip = s.improvement ? impChip(s.improvement, s.add || 1) : '';
+        actionStr = s.type === 'rebuild'
+          ? `${chip}<span>${addStr} <strong>${esc(impName)}</strong> (rebuild)</span>`
+          : `${chip}<span>${addStr} <strong>${esc(impName)}</strong></span>`;
+      }
       const payStr  = fmtP(s.payoff_days, s.gain_per_day);
-      const costStr = s.cost > 0 ? `<span class="ro-cost">${fmtC(s.cost)}</span>` : '<span class="ro-cost">free</span>';
+      const details = `<div>${esc(s.reason || '')}</div>${cityStatDeltaLine(s)}${resourceDeltaLine(s.resource_deltas_day)}`;
       html += `
         <tr>
           <td>${badge}</td>
           <td style="white-space:nowrap;">${esc(s.city || '')}</td>
-          <td style="white-space:nowrap;">${actionStr}</td>
+          <td class="ro-action-cell">${actionStr}</td>
           <td class="${gainCls}" style="white-space:nowrap;">${fmtG(s.gain_per_day)}${payStr}</td>
-          <td>${costStr}</td>
-          <td class="ro-reason">${esc(s.reason || '')}</td>
+          <td class="ro-reason">${details}</td>
         </tr>`;
     }
-    html += '</tbody></table>';
+    html += '</tbody></table></div>';
     return html;
   }
 
@@ -500,7 +630,347 @@ document.addEventListener('DOMContentLoaded', loadAutoFillSettings);
     oil_refinery:'Oil Refinery', steel_mill:'Steel Mill',
     aluminum_refinery:'Aluminum Refinery', munitions_factory:'Munitions Factory',
     farm:'Farm', infrastructure:'Infrastructure', land:'Land',
+    coal_power:'Coal Power', oil_power:'Oil Power', nuclear_power:'Nuclear Power',
+    wind_power:'Wind Power', barracks:'Barracks', factory:'Factory',
+    hangar:'Hangar', drydock:'Drydock',
   };
+
+  const IMP_ICON = {
+    coal_power:'/static/Emojis/Resources/coal.png',
+    oil_power:'/static/Emojis/Resources/oil.png',
+    nuclear_power:'/static/Emojis/Resources/uranium.png',
+    wind_power:'/static/Emojis/Improvements/windmill.png',
+    coal_mine:'/static/Emojis/Resources/coal.png',
+    oil_well:'/static/Emojis/Resources/oil.png',
+    uranium_mine:'/static/Emojis/Resources/uranium.png',
+    iron_mine:'/static/Emojis/Resources/iron.png',
+    bauxite_mine:'/static/Emojis/Resources/bauxite.png',
+    lead_mine:'/static/Emojis/Resources/lead.png',
+    farm:'/static/Emojis/Resources/food.png',
+    oil_refinery:'/static/Emojis/Resources/gasoline.png',
+    aluminum_refinery:'/static/Emojis/Resources/aluminum.png',
+    steel_mill:'/static/Emojis/Resources/steel.png',
+    munitions_factory:'/static/Emojis/Resources/munitions.png',
+    police_station:'/static/Emojis/Improvements/police.png',
+    hospital:'/static/Emojis/Improvements/hospital.png',
+    recycling_center:'/static/Emojis/Improvements/recycle.png',
+    subway:'/static/Emojis/Improvements/subway.png',
+    supermarket:'/static/Emojis/Improvements/supermarket.png',
+    bank:'/static/Emojis/Improvements/bank.png',
+    shopping_mall:'/static/Emojis/Improvements/market.png',
+    stadium:'/static/Emojis/Improvements/stadium.png',
+    barracks:'/static/Emojis/Military/soldier.png',
+    factory:'/static/Emojis/Military/tank.png',
+    hangar:'/static/Emojis/Military/jet.png',
+    drydock:'/static/Emojis/Military/ship.png',
+  };
+
+  const RESOURCE_ICON = {
+    coal:'/static/Emojis/Resources/coal.png',
+    oil:'/static/Emojis/Resources/oil.png',
+    uranium:'/static/Emojis/Resources/uranium.png',
+    lead:'/static/Emojis/Resources/lead.png',
+    iron:'/static/Emojis/Resources/iron.png',
+    bauxite:'/static/Emojis/Resources/bauxite.png',
+    gasoline:'/static/Emojis/Resources/gasoline.png',
+    munitions:'/static/Emojis/Resources/munitions.png',
+    steel:'/static/Emojis/Resources/steel.png',
+    aluminum:'/static/Emojis/Resources/aluminum.png',
+    food:'/static/Emojis/Resources/food.png',
+  };
+
+  const MMR_KEYS = [
+    ['barracks', '/static/Emojis/Military/soldier.png', 'Barracks'],
+    ['factory', '/static/Emojis/Military/tank.png', 'Factories'],
+    ['hangar', '/static/Emojis/Military/jet.png', 'Hangars'],
+    ['drydock', '/static/Emojis/Military/ship.png', 'Drydocks'],
+  ];
+
+  function emojiImg(src, cls='ro-chip-icon', alt='') {
+    return `<img src="${src}" class="${cls}" alt="${esc(alt)}">`;
+  }
+
+  function impChip(key, count=0, mode='neutral') {
+    const icon = IMP_ICON[key];
+    const label = IMP_DISPLAY[key] || key || '';
+    const qty = Number(count || 0);
+    return `<span class="ro-imp-chip ${mode}" title="${esc(label)}">${icon ? emojiImg(icon, 'ro-chip-icon', label) : ''}${qty ? `<strong>${qty}</strong>` : ''}<span>${esc(label)}</span></span>`;
+  }
+
+  function fmtDiff(obj, mode='neutral') {
+    if (!obj || Object.keys(obj).length === 0) return 'none';
+    return Object.entries(obj)
+      .filter(([,v]) => Number(v) > 0)
+      .map(([k,v]) => impChip(k, v, mode))
+      .join(' ') || 'none';
+  }
+
+  function resourceDeltaLine(obj) {
+    if (!obj || Object.keys(obj).length === 0) return '';
+    const chips = Object.entries(obj)
+      .filter(([,v]) => Math.abs(Number(v || 0)) >= 0.01)
+      .map(([k,v]) => {
+        const num = Number(v || 0);
+        const cls = num >= 0 ? 'gain' : 'loss';
+        const icon = RESOURCE_ICON[k] ? emojiImg(RESOURCE_ICON[k], 'ro-chip-icon', k) : '';
+        return `<span class="ro-resource-delta ${cls}">${icon}${num >= 0 ? '+' : ''}${fmtF(num, 1)} ${esc(k)}</span>`;
+      }).join(' ');
+    return chips ? `<div class="ro-resource-line">${chips}</div>` : '';
+  }
+
+  function resourceCostChips(resources) {
+    if (!resources || Object.keys(resources).length === 0) return '';
+    return Object.entries(resources)
+      .filter(([,qty]) => Math.abs(Number(qty || 0)) >= 0.001)
+      .map(([k,qty]) => {
+        const icon = RESOURCE_ICON[k] ? emojiImg(RESOURCE_ICON[k], 'ro-chip-icon', k) : '';
+        return `<span class="ro-resource-delta loss">${icon}${fmtF(qty, qty >= 10 ? 0 : 2)} ${esc(k)}</span>`;
+      }).join(' ');
+  }
+
+  function renderCostLine(line) {
+    if (!line) return '';
+    const type = line.type || 'cost';
+    const label = line.label || line.key || type;
+    const qty = line.count ? ` x${fmt(line.count)}` : '';
+    const range = (line.from != null && line.to != null) ? ` (${fmtF(line.from,0)}->${fmtF(line.to,0)})` : '';
+    const resources = resourceCostChips(line.resources);
+    return `<div class="ro-cost-line">
+      <div><strong>${esc(label)}${esc(qty)}</strong><span>${esc(range)}</span></div>
+      <div class="ro-cost-values">
+        <span>${fmtMoney(line.cash || 0)}</span>
+        ${resources ? `<div class="ro-cost-resources">${resources}</div>` : ''}
+      </div>
+    </div>`;
+  }
+
+  function renderCostBreakdown(bd, compact=false) {
+    if (!bd || Number(bd.total || 0) <= 0) {
+      return compact ? '<div class="ro-cost-empty">No purchase cost.</div>' : '';
+    }
+    const resources = resourceCostChips(bd.resources);
+    return `<div class="ro-cost-breakdown">
+      <div class="ro-cost-totals">
+        <div><span>Total</span><strong>${fmtMoney(bd.total)}</strong></div>
+        <div><span>Cash</span><strong>${fmtMoney(bd.cash)}</strong></div>
+        <div><span>Infra</span><strong>${fmtMoney(bd.infra_cash)}</strong></div>
+        <div><span>Land</span><strong>${fmtMoney(bd.land_cash)}</strong></div>
+        <div><span>Improvements</span><strong>${fmtMoney((bd.improvement_cash || 0) + (bd.improvement_resource_value || 0))}</strong></div>
+      </div>
+      ${resources ? `<div class="ro-cost-resource-row"><span>Resources needed</span><div>${resources}</div></div>` : ''}
+      ${compact ? '' : `<div class="ro-cost-lines">${(bd.lines || []).map(renderCostLine).join('')}</div>`}
+    </div>`;
+  }
+
+  function renderCityCostDetails(s) {
+    if (!s) return '';
+    return `<details class="ro-cost-details">
+      <summary>Cost details: ${fmtMoney(s.cost || 0)}</summary>
+      ${renderCostBreakdown(s.cost_breakdown, false) || '<div class="ro-cost-empty">No purchase cost.</div>'}
+    </details>${renderResourceFlowDetails(s)}`;
+  }
+
+  function renderResourceFlowDetails(s) {
+    const before = s.before_resource_flows_day || {};
+    const after = s.after_resource_flows_day || {};
+    const keys = Array.from(new Set([...Object.keys(before), ...Object.keys(after)]));
+    if (!keys.length) return '';
+    const projects = (s.active_resource_projects || []).length
+      ? `<div class="ro-resource-projects"><strong>Active project modifiers:</strong> ${esc(s.active_resource_projects.join(', '))}</div>`
+      : `<div class="ro-resource-projects"><strong>Active project modifiers:</strong> none</div>`;
+    const rows = keys.sort().map(k => {
+      const b = before[k] || {};
+      const a = after[k] || {};
+      const icon = RESOURCE_ICON[k] ? emojiImg(RESOURCE_ICON[k], 'ro-chip-icon', k) : '';
+      return `<tr>
+        <td>${icon}${esc(k)}</td>
+        <td>${fmtF(b.produced || 0, 2)}</td>
+        <td>${fmtF(b.consumed || 0, 2)}</td>
+        <td class="${Number(b.net || 0) >= 0 ? 'gain' : 'loss'}">${fmtSigned(b.net || 0)}</td>
+        <td>${fmtF(a.produced || 0, 2)}</td>
+        <td>${fmtF(a.consumed || 0, 2)}</td>
+        <td class="${Number(a.net || 0) >= 0 ? 'gain' : 'loss'}">${fmtSigned(a.net || 0)}</td>
+      </tr>`;
+    }).join('');
+    return `<details class="ro-resource-audit">
+      <summary>Resource production and consumption audit</summary>
+      ${projects}
+      <div class="ro-table-wrap">
+        <table class="ro-resource-audit-table">
+          <thead>
+            <tr>
+              <th>Resource</th>
+              <th>Before prod/day</th>
+              <th>Before used/day</th>
+              <th>Before net/day</th>
+              <th>After prod/day</th>
+              <th>After used/day</th>
+              <th>After net/day</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    </details>`;
+  }
+
+  function renderTotalCostSection(bd) {
+    return `<div class="ro-section-label">${emojiImg('/static/Emojis/Menu/revenue.png', 'ro-section-icon')} Total Update Cost</div>
+      ${renderCostBreakdown(bd, true) || '<div class="ro-cost-empty">No purchase cost for the final updates.</div>'}`;
+  }
+
+  function normalizeRevenueForPreview(raw, fallbackCashTurn, prices) {
+    raw = raw || {};
+    const resources = {};
+    for (const k of Object.keys(RESOURCE_ICON)) resources[k] = Number(raw[k] || 0);
+    const rscVal = Object.entries(resources).reduce((s,[k,v]) => s + v * Number((prices || {})[k] || 0), 0);
+    const netCash = Number(raw.net_cash_num ?? fallbackCashTurn ?? 0);
+    return {
+      gross: Number(raw.gross_money_income ?? raw.gross_income ?? netCash),
+      colorBonus: Number(raw.color_bonus_turn || 0),
+      militaryUpkeep: Number(raw.military_upkeep_turn || 0),
+      improvementUpkeep: Number(raw.improvement_upkeep_turn || 0),
+      powerUpkeep: Number(raw.power_upkeep_turn || 0),
+      rssUpkeep: Number(raw.rss_upkeep_turn || 0),
+      netCash,
+      monetaryNet: Number(raw.monetary_net_num ?? (netCash + rscVal)),
+      resources,
+      resourceValue: rscVal,
+    };
+  }
+
+  function renderDayRevenueBox(title, raw, fallbackCashTurn, prices) {
+    const rev = normalizeRevenueForPreview(raw, fallbackCashTurn, prices);
+    const mult = 12;
+    const totalImpUp = (rev.improvementUpkeep + rev.powerUpkeep + rev.rssUpkeep) * mult;
+    const resourceRows = Object.entries(rev.resources).map(([k,v]) => {
+      const amt = v * mult;
+      if (Math.abs(amt) < 0.001) return '';
+      const val = amt * Number((prices || {})[k] || 0);
+      const cls = amt >= 0 ? 'mn-positive' : 'mn-negative';
+      const icon = RESOURCE_ICON[k] ? emojiImg(RESOURCE_ICON[k], 'mn-icon-sm', k) : '';
+      return `<div class="mn-rev-rsc-inline">
+        ${icon}<span class="mn-rev-rsc-label">${esc(k)}</span>
+        <span class="${cls}">${amt >= 0 ? '+' : ''}${fmtF(amt, 2)} <span class="mn-rev-price">(${fmtMoney(val)})</span></span>
+      </div>`;
+    }).join('');
+    return `<div class="mn-rev-col">
+      <div class="mn-rev-col-title">${esc(title)}</div>
+      <div class="mn-rev-sub-title">💰 Income</div>
+      <div class="mn-rev-row"><span>National Tax</span><strong>${fmtMoney(rev.gross * mult)}</strong></div>
+      <div class="mn-rev-row"><span>Color Bonus</span><strong>${fmtMoney(rev.colorBonus * mult)}</strong></div>
+      <div class="mn-rev-row mn-rev-row-hdr"><span>Resources</span><strong>${fmtMoney(rev.resourceValue * mult)}</strong></div>
+      <div class="mn-rev-rsc-list">${resourceRows}</div>
+      <div class="mn-rev-row mn-rev-sub-total"><span>Gross Income</span><strong>${fmtMoney((rev.gross + rev.colorBonus + rev.resourceValue) * mult)}</strong></div>
+      <div class="mn-rev-sub-title" style="margin-top:0.6rem">📉 Expenses</div>
+      <div class="mn-rev-row"><span>Military Upkeep</span><strong class="mn-negative">-${fmtMoney(rev.militaryUpkeep * mult)}</strong></div>
+      <div class="mn-rev-row"><span>Improvement Upkeep</span><strong class="mn-negative">-${fmtMoney(totalImpUp)}</strong></div>
+      <div class="mn-rev-row mn-rev-sub-total"><span>Total Expenses</span><strong class="mn-negative">-${fmtMoney((rev.militaryUpkeep * mult) + totalImpUp)}</strong></div>
+      <div class="mn-rev-sub-title" style="margin-top:0.6rem">📊 Net</div>
+      <div class="mn-rev-row mn-rev-total"><span>Cash Net</span><strong class="${rev.netCash >= 0 ? 'mn-positive' : 'mn-negative'}">${fmtMoney(rev.netCash * mult)}</strong></div>
+      <div class="mn-rev-row mn-rev-total"><span>Monetary Net</span><strong class="${rev.monetaryNet >= 0 ? 'mn-positive' : 'mn-negative'}">${fmtMoney(rev.monetaryNet * mult)}</strong></div>
+    </div>`;
+  }
+
+  function renderRevenuePreview(n, prices) {
+    const before = n.before_revenue_full && Object.keys(n.before_revenue_full).length ? n.before_revenue_full : {
+      net_cash_num: n.current_net,
+      monetary_net_num: n.current_monetary,
+      gross_money_income: n.current_net,
+    };
+    const after = n.after_revenue_full && Object.keys(n.after_revenue_full).length ? n.after_revenue_full : {
+      net_cash_num: n.optimized_net ?? n.current_net,
+      monetary_net_num: n.optimized_monetary ?? n.current_monetary,
+      gross_money_income: n.optimized_net ?? n.current_net,
+    };
+    return `<div class="ro-section-label">${emojiImg('/static/Emojis/Menu/revenue.png', 'ro-section-icon')} Day Revenue Preview</div>
+      <div class="mn-rev-grid ro-rev-preview-grid">
+        ${renderDayRevenueBox('Before Updates', before, n.current_net, prices)}
+        ${renderDayRevenueBox('After Updates', after, n.optimized_net ?? n.current_net, prices)}
+      </div>`;
+  }
+
+  function cityStatDeltaLine(s) {
+    const defs = [
+      ['Commerce', 'before_commerce', 'after_commerce', '', 0],
+      ['Raw commerce', 'before_raw_commerce', 'after_raw_commerce', '', 0],
+      ['Pollution', 'before_pollution', 'after_pollution', '', 0],
+      ['Crime', 'before_crime', 'after_crime', '%', 2],
+      ['Disease', 'before_disease', 'after_disease', '%', 2],
+      ['Population', 'before_population', 'after_population', '', 0],
+    ];
+    const chips = defs.map(([label, beforeKey, afterKey, suffix, digits]) => {
+      const before = Number(s[beforeKey]);
+      const after = Number(s[afterKey]);
+      if (!Number.isFinite(before) || !Number.isFinite(after)) return '';
+      const cls = after > before ? 'gain' : after < before ? 'loss' : 'neutral';
+      const value = `${fmtF(before, digits)}${suffix}->${fmtF(after, digits)}${suffix}`;
+      return `<span class="ro-stat-delta ${cls}"><strong>${esc(label)}</strong> ${esc(value)}</span>`;
+    }).filter(Boolean).join(' ');
+    return chips ? `<div class="ro-stat-line">${chips}</div>` : '';
+  }
+
+  function mmrChips(mmr) {
+    if (!mmr) return '<strong>current</strong>';
+    const parts = String(mmr).split('/');
+    return `<span class="ro-mmr-chipset">${MMR_KEYS.map(([,icon,label], i) =>
+      `<span class="ro-mmr-chip" title="${label}">${emojiImg(icon, 'ro-chip-icon', label)}<strong>${esc(parts[i] ?? '0')}</strong><span>${label}</span></span>`
+    ).join('')}</span>`;
+  }
+
+  function cleanEnum(val) {
+    if (!val) return '';
+    const s = String(val);
+    const dot = s.lastIndexOf('.');
+    return dot >= 0 ? s.slice(dot + 1) : s;
+  }
+
+  function fmtPolicy(val) {
+    const s = cleanEnum(val);
+    if (!s) return '';
+    return s.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
+  }
+
+  const WAR_POLICY_IMG = {
+    ATTRITION:'attrition', TURTLE:'turtle', BLITZKRIEG:'blitzkrieg',
+    FORTRESS:'fortress', PIRATE:'pirate', GUARDIAN:'guardian',
+    MONEYBAGS:'moneybags', ARCANE:'arcane', COVERT:'covert', TACTICIAN:'tactician',
+  };
+  const WAR_POLICY_COLORS = {
+    ATTRITION:'#e05555', TURTLE:'#6495ed', BLITZKRIEG:'#ff8c00',
+    FORTRESS:'#9370db', PIRATE:'#20b2aa', GUARDIAN:'#3cb371',
+    MONEYBAGS:'#ffd700', ARCANE:'#da70d6', COVERT:'#aaaaaa', TACTICIAN:'#f4a460',
+  };
+  const DOM_POLICY_IMG = {
+    MANIFEST_DESTINY:'manifestdestiny', OPEN_MARKETS:'openmarkets',
+    TECHNOLOGICAL_ADVANCEMENT:'techadvancement', IMPERIALISM:'imperialism',
+    URBANIZATION:'urbanization', RAPID_EXPANSION:'rapidexpansion',
+  };
+  const DOM_POLICY_COLORS = {
+    MANIFEST_DESTINY:'#8fbc8f', OPEN_MARKETS:'#87ceeb', TECHNOLOGICAL_ADVANCEMENT:'#9370db',
+    IMPERIALISM:'#cd5c5c', URBANIZATION:'#daa520', RAPID_EXPANSION:'#ff8c00',
+  };
+
+  function policyBadge(val, type) {
+    const raw = cleanEnum(val).toUpperCase();
+    if (!raw) return '';
+    const label = fmtPolicy(val);
+    const imgMap = type === 'war' ? WAR_POLICY_IMG : DOM_POLICY_IMG;
+    const colorMap = type === 'war' ? WAR_POLICY_COLORS : DOM_POLICY_COLORS;
+    const folder = type === 'war' ? 'War' : 'Domestic';
+    const img = imgMap[raw];
+    const css = colorMap[raw] || 'rgba(255,255,255,0.55)';
+    const icon = img ? `<img src="/static/Emojis/${folder}/${img}.png" class="ro-policy-icon" alt="">` : '';
+    return `<span class="ro-policy-badge" style="background:${css}22;color:${css};border-color:${css};" title="${type === 'war' ? 'War' : 'Domestic'} Policy: ${esc(label)}">${icon}${esc(label)}</span>`;
+  }
+
+  function warPolicyBadge(val) {
+    return policyBadge(val, 'war');
+  }
+
+  function domPolicyBadge(val) {
+    return policyBadge(val, 'domestic');
+  }
 
 })();
 </script>

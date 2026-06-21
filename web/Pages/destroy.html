@@ -1,0 +1,447 @@
+<link rel="stylesheet" href="/css/destroy.css">
+
+<div class="destroy-shell">
+  <div class="card destroy-controls">
+    <div class="card-header destroy-header">
+      <div class="destroy-title-wrap">
+        <p class="destroy-kicker">Politics &amp; War</p>
+        <h2 class="destroy-title"><img src="/static/Emojis/Menu/destroy.png" alt="">Destroy</h2>
+      </div>
+      <div class="destroy-options">
+        <label class="destroy-check"><input type="checkbox" id="destroy-exclude"> Exclude low-value picks</label>
+      </div>
+    </div>
+
+    <div class="card-body destroy-form">
+      <div class="destroy-field">
+        <label>Target(s)</label>
+        <div class="destroy-target-row">
+          <div class="destroy-segments" id="destroy-target-type">
+            <button type="button" class="active" data-type="nation">Nation</button>
+            <button type="button" data-type="alliance">Alliance</button>
+          </div>
+          <div class="destroy-ac-wrap">
+            <input id="destroy-target" class="destroy-input" autocomplete="off" placeholder="Nation or alliance name / ID">
+            <div id="destroy-target-drop" class="destroy-ac-dropdown" style="display:none;"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="destroy-field">
+        <label>Attackers</label>
+        <div class="destroy-tag-input">
+          <div id="destroy-attacker-tags" class="destroy-tags"></div>
+          <input id="destroy-attacker-input" class="destroy-input" autocomplete="off" placeholder="Type alliance name or ID">
+          <div id="destroy-attacker-drop" class="destroy-tag-drop"></div>
+        </div>
+      </div>
+
+      <div class="destroy-actions">
+        <button id="destroy-run" class="btn btn-gold btn-sm">Analyze</button>
+        <button id="destroy-clear" class="btn btn-sm destroy-ghost">Clear</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="destroy-status" class="destroy-status" style="display:none;"></div>
+  <div id="destroy-results" class="destroy-results" style="display:none;"></div>
+</div>
+
+<script src="/js/access_guard.js"></script>
+<script>
+(function() {
+  const instance = (window.__destroyPageInstance = (window.__destroyPageInstance || 0) + 1);
+  const state = {
+    targetType: 'nation',
+    targetAc: null,
+    targetIdx: -1,
+    attackerTags: [],
+    attackerIdx: -1,
+    attackerTimer: null,
+  };
+
+  const $ = id => document.getElementById(id);
+  const fmt = n => Number(n || 0).toLocaleString();
+  const fmt1 = n => Number(n || 0).toLocaleString(undefined, { maximumFractionDigits: 1 });
+  const pnw = (id, text) => `<a class="destroy-link" href="https://politicsandwar.com/nation/id=${id}" target="_blank">${escapeHtml(text || 'Unknown')}</a>`;
+  const E = {
+    soldier: '<img src="/static/Emojis/Military/soldier.png" class="destroy-unit-icon" alt="Soldiers">',
+    tank: '<img src="/static/Emojis/Military/tank.png" class="destroy-unit-icon" alt="Tanks">',
+    jet: '<img src="/static/Emojis/Military/jet.png" class="destroy-unit-icon" alt="Aircraft">',
+    ship: '<img src="/static/Emojis/Military/ship.png" class="destroy-unit-icon" alt="Ships">',
+    spy: '<img src="/static/Emojis/Military/spy.png" class="destroy-unit-icon" alt="Spies">',
+    missile: '<img src="/static/Emojis/Military/missile.png" class="destroy-unit-icon" alt="Missiles">',
+    nuke: '<img src="/static/Emojis/Military/bomb.png" class="destroy-unit-icon" alt="Nukes">',
+  };
+
+  function escapeHtml(value) {
+    return String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+
+  function setStatus(message, isError) {
+    const el = $('destroy-status');
+    if (!message) { el.style.display = 'none'; return; }
+    el.textContent = message;
+    el.className = 'destroy-status' + (isError ? ' destroy-status-error' : '');
+    el.style.display = 'block';
+  }
+
+  function slotBadge(current, max, open, type) {
+    const cls = open <= 0 ? 'full' : open === max ? 'open' : 'partial';
+    return `<span class="destroy-slot ${cls}" title="${open} ${type} slots open">${current}/${max}</span>`;
+  }
+
+  function slotPlanBadge(current, max, open, planned, after, type) {
+    const plannedText = Number(planned || 0) > 0 ? ` +${fmt(planned)} plan -> ${fmt(after)}` : '';
+    return `${slotBadge(current, max, open, type)}<small class="destroy-slot-plan">${fmt(open)} open${plannedText}</small>`;
+  }
+
+  function unitBlock(n, options = {}) {
+    const limits = n.purchase_limits || {};
+    return `<div class="destroy-unit-lines">
+      <div><strong>Current</strong> - ${E.soldier} ${fmt(n.soldiers)} | ${E.tank} ${fmt(n.tanks)} | ${E.jet} ${fmt(n.aircraft)} | ${E.ship} ${fmt(n.ships)} | ${E.spy} ${fmt(n.spies)} | ${E.missile} ${fmt(n.missiles)} | ${E.nuke} ${fmt(n.nukes)}</div>
+      <div><strong>Daily</strong> - ${E.soldier} ${fmt(limits.soldiers_daily)} | ${E.tank} ${fmt(limits.tanks_daily)} | ${E.jet} ${fmt(limits.aircraft_daily)} | ${E.ship} ${fmt(limits.ships_daily)} | ${E.spy} ${fmt(limits.spies_daily)} | ${E.missile} ${fmt(limits.missiles_daily)} | ${E.nuke} ${fmt(limits.nukes_daily)}</div>
+    </div>`;
+  }
+
+  function nationMeta(n, slotType) {
+    const slot = slotType === 'off'
+      ? slotPlanBadge(n.offensive_slots_current, n.offensive_slots_max, n.offensive_slots_open, n.planned_attacks, n.offensive_slots_after_plan, 'offensive')
+      : slotPlanBadge(n.defensive_slots_current, 3, n.defensive_slots_open, n.planned_defenses, n.defensive_slots_after_plan, 'defensive');
+    return `<div class="destroy-meta-line">
+      <span>Score ${fmt1(n.score)}</span>
+      <span>c${fmt(n.cities)}</span>
+      <span>${slot}</span>
+      <span>Avg Infra ${fmt1(n.avg_infra)}</span>
+    </div>`;
+  }
+
+  function lastActive(seconds) {
+    if (seconds === null || seconds === undefined) return 'unknown';
+    const s = Number(seconds);
+    if (s < 60) return 'now';
+    if (s < 3600) return Math.floor(s / 60) + 'm';
+    if (s < 86400) return Math.floor(s / 3600) + 'h';
+    return Math.floor(s / 86400) + 'd';
+  }
+
+  function weaponChip(w) {
+    const weapon = w?.optimal_weapon || 'ground';
+    if (weapon === 'ground') return '';
+    const cls = weapon === 'nuke' ? 'nuke' : weapon === 'missile' ? 'missile' : 'ground';
+    const extra = weapon === 'missile'
+      ? `${w.missile_efficiency || 0}x`
+      : weapon === 'nuke' ? `${w.nuke_efficiency || 0}x` : 'ground';
+    return `<span class="destroy-weapon ${cls}">${weapon.toUpperCase()} ${extra}</span>`;
+  }
+
+  function renderTags() {
+    const box = $('destroy-attacker-tags');
+    box.innerHTML = state.attackerTags.map((t, i) =>
+      `<span class="destroy-tag">${escapeHtml(t.name)}<button type="button" data-i="${i}" title="Remove">x</button></span>`
+    ).join('');
+    box.querySelectorAll('button').forEach(btn => btn.addEventListener('click', () => {
+      state.attackerTags.splice(Number(btn.dataset.i), 1);
+      renderTags();
+    }));
+  }
+
+  async function fetchAttackerAlliances(q) {
+    try {
+      const res = await fetch('/api/pnw/alliances?q=' + encodeURIComponent(q || ''));
+      if (!res.ok) return [];
+      return await res.json();
+    } catch (e) {
+      return [];
+    }
+  }
+
+  function closeAttackerDrop() {
+    const drop = $('destroy-attacker-drop');
+    drop.classList.remove('open');
+    drop.innerHTML = '';
+  }
+
+  function openAttackerDrop(items) {
+    const drop = $('destroy-attacker-drop');
+    if (!items.length) { closeAttackerDrop(); return; }
+    drop.innerHTML = items.slice(0, 20).map(a =>
+      `<div class="destroy-tag-item" data-id="${a.id}" data-name="${escapeHtml(a.name)}">
+        <span>${escapeHtml(a.name)}</span><small>${a.member_count ? fmt(a.member_count) + ' members' : 'ID ' + a.id}</small>
+      </div>`
+    ).join('');
+    drop.querySelectorAll('.destroy-tag-item').forEach(item => {
+      item.addEventListener('mousedown', ev => {
+        ev.preventDefault();
+        const entry = { id: Number(item.dataset.id), name: item.dataset.name };
+        if (!state.attackerTags.some(t => t.id === entry.id)) state.attackerTags.push(entry);
+        $('destroy-attacker-input').value = '';
+        renderTags();
+        closeAttackerDrop();
+      });
+    });
+    drop.classList.add('open');
+  }
+
+  async function loadTargetAc() {
+    if (state.targetAc) return state.targetAc;
+    try {
+      const res = await fetch('/api/destroy/ac_data');
+      state.targetAc = await res.json();
+    } catch (e) {
+      state.targetAc = { nations: [], alliances: [] };
+    }
+    return state.targetAc;
+  }
+
+  function positionTargetDrop() {
+    const input = $('destroy-target');
+    const drop = $('destroy-target-drop');
+    if (!input || !drop || drop.style.display === 'none') return;
+    const rect = input.getBoundingClientRect();
+    drop.style.top = (rect.bottom + 4) + 'px';
+    drop.style.left = rect.left + 'px';
+    drop.style.width = rect.width + 'px';
+  }
+
+  function buildTargetDrop(value) {
+    const drop = $('destroy-target-drop');
+    const low = (value || '').toLowerCase().trim();
+    const items = [];
+    for (const a of state.targetAc?.alliances || []) {
+      const name = (a.alliance_name || '').toLowerCase();
+      if (!low || name.includes(low) || String(a.alliance_id).includes(low)) {
+        items.push({ type: 'alliance', label: 'Alliance: ' + a.alliance_name, value: a.alliance_name });
+      }
+      if (items.length >= 6) break;
+    }
+    for (const n of state.targetAc?.nations || []) {
+      const name = (n.nation_name || '').toLowerCase();
+      const leader = (n.leader_name || '').toLowerCase();
+      if (!low || name.includes(low) || leader.includes(low) || String(n.id).includes(low)) {
+        items.push({ type: 'nation', label: 'Nation: ' + n.nation_name + (n.leader_name ? ' (' + n.leader_name + ')' : ''), value: n.nation_name });
+      }
+      if (items.length >= 18) break;
+    }
+    if (!items.length) { drop.style.display = 'none'; return; }
+    drop.innerHTML = items.map((item, i) =>
+      `<div class="destroy-ac-item ${item.type === 'alliance' ? 'alliance' : ''}" data-i="${i}">${escapeHtml(item.label)}</div>`
+    ).join('');
+    drop.querySelectorAll('.destroy-ac-item').forEach(el => {
+      el.addEventListener('mousedown', ev => {
+        ev.preventDefault();
+        const item = items[Number(el.dataset.i)];
+        $('destroy-target').value = item.value;
+        setTargetType(item.type);
+        drop.style.display = 'none';
+      });
+    });
+    drop.style.display = 'block';
+    positionTargetDrop();
+  }
+
+  function setTargetType(type) {
+    state.targetType = type;
+    document.querySelectorAll('#destroy-target-type button').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.type === type);
+    });
+    $('destroy-target').placeholder = type === 'nation' ? 'Nation name or ID' : 'Alliance name or ID';
+  }
+
+  async function runDestroy() {
+    const target = $('destroy-target').value.trim();
+    if (!target) { setStatus('Choose a target nation or alliance.', true); return; }
+    if (!state.attackerTags.length) { setStatus('Add at least one attacker alliance.', true); return; }
+
+    const params = new URLSearchParams({
+      target_type: state.targetType,
+      target,
+      attackers: state.attackerTags.map(t => t.id).join(','),
+      exclude_unoptimal: $('destroy-exclude').checked ? 'true' : 'false',
+    });
+
+    setStatus('Finding optimal attackers...');
+    $('destroy-results').style.display = 'none';
+    try {
+      const res = await fetch('/api/destroy/analyze?' + params.toString());
+      const data = await res.json();
+      if (!res.ok || data.error) throw new Error(data.error || 'Request failed');
+      renderResults(data);
+      setStatus('');
+    } catch (e) {
+      setStatus(e.message || 'Analyze failed.', true);
+    }
+  }
+
+  function renderSummary(data) {
+    const attackerNames = (data.attacker_alliances || []).map(a => escapeHtml(a.name)).join(', ');
+    const modeText = data.mode === 'alliance'
+      ? `${fmt(data.assignment_count)} assignments / ${fmt(data.candidate_count)} candidates`
+      : `${fmt(data.attackers?.length || 0)} attackers / ${fmt(data.total_found)} in range`;
+    return `<div class="destroy-summary">
+      <div><span>Mode</span><strong>${data.mode === 'alliance' ? 'Alliance Target' : 'Nation Target'}</strong></div>
+      <div><span>Attackers</span><strong>${attackerNames || 'None'}</strong></div>
+      <div><span>Pool</span><strong>${fmt(data.attacker_pool_count)} nations</strong></div>
+      <div><span>Result</span><strong>${modeText}</strong></div>
+    </div>`;
+  }
+
+  function renderNationMode(data) {
+    const target = data.target;
+    const rows = (data.attackers || []).map((a, i) => `<tr>
+      <td>${i + 1}</td>
+      <td>${pnw(a.nation_id, a.nation_name)}<small>${escapeHtml(a.alliance_name || '')}</small>${nationMeta(a, 'off')}</td>
+      <td>${unitBlock(a)}</td>
+      <td>${fmt1(a.avg_infra)}</td>
+      <td>${lastActive(a.last_active_seconds)}</td>
+    </tr>`).join('');
+
+    return `<div class="destroy-panel">
+      <div class="destroy-panel-head">
+        <div>
+          <h3>${pnw(target.nation_id, target.nation_name)}</h3>
+          ${nationMeta(target, 'def')}
+        </div>
+        ${weaponChip(data.weapon_analysis)}
+      </div>
+      <div class="destroy-target-units">
+        <div>
+          <span class="destroy-section-label">Target units</span>
+          ${unitBlock(target)}
+        </div>
+      </div>
+      <div class="destroy-table-wrap">
+        <table class="destroy-table">
+          <thead><tr><th>#</th><th>Attacker</th><th>Units</th><th>Avg Infra</th><th>Active</th></tr></thead>
+          <tbody>${rows || '<tr><td colspan="5">No attackers available for the current target slots and range.</td></tr>'}</tbody>
+        </table>
+      </div>
+    </div>`;
+  }
+
+  function renderAllianceMode(data) {
+    const plans = data.attacker_plans || [];
+    const rows = plans.map((plan, i) => {
+      const a = plan.attacker;
+      const targets = (plan.targets || []).map((x, j) => {
+        const t = x.target;
+        return `<div class="destroy-target-row-card">
+          <div class="destroy-target-index">${j + 1}</div>
+          <div class="destroy-target-main">
+            <div class="destroy-target-name">${pnw(t.nation_id, t.nation_name)} ${weaponChip(x.weapon_analysis)}</div>
+            ${nationMeta(t, 'def')}
+            ${unitBlock(t)}
+          </div>
+        </div>`;
+      }).join('');
+      return `<section class="destroy-attacker-plan">
+        <div class="destroy-plan-head">
+          <div>
+            <span class="destroy-plan-index">#${i + 1}</span>
+            ${pnw(a.nation_id, a.nation_name)}
+            <small>${escapeHtml(a.alliance_name || '')}</small>
+          </div>
+          <div class="destroy-plan-stats">
+            <span>${fmt(plan.assigned_count)} targets</span>
+            ${slotPlanBadge(a.offensive_slots_current, a.offensive_slots_max, a.offensive_slots_open, a.planned_attacks, a.offensive_slots_after_plan, 'offensive')}
+          </div>
+        </div>
+        <div class="destroy-plan-body">
+          <div class="destroy-plan-attacker">
+            <span class="destroy-section-label">Attacker units</span>
+            ${unitBlock(a)}
+          </div>
+          <div class="destroy-plan-targets">
+            ${targets}
+          </div>
+        </div>
+      </section>`;
+    }).join('');
+    return `<div class="destroy-panel">
+      <div class="destroy-panel-head">
+        <div>
+          <h3>${escapeHtml(data.target_alliance?.name || 'Target Alliance')}</h3>
+          <p>${fmt(data.target_count)} targets with open defensive slots | ${fmt(data.assignment_count)} planned attacks</p>
+        </div>
+      </div>
+      <div class="destroy-plan-list">${rows || '<div class="destroy-empty">No valid assignments found.</div>'}</div>
+    </div>`;
+  }
+
+  function renderResults(data) {
+    const el = $('destroy-results');
+    el.innerHTML = renderSummary(data) + (data.mode === 'alliance' ? renderAllianceMode(data) : renderNationMode(data));
+    el.style.display = 'grid';
+  }
+
+  async function loadHomeAlliance() {
+    try {
+      const res = await fetch('/api/settings');
+      if (!res.ok) return;
+      const s = await res.json();
+      if (s.home_alliance_destroy && s.watch_home_alliance_id) {
+        state.attackerTags = [{ id: s.watch_home_alliance_id, name: s.watch_home_alliance_name || `Alliance ${s.watch_home_alliance_id}` }];
+        renderTags();
+      }
+    } catch (_) {}
+  }
+
+  function initDestroy() {
+    if (instance !== window.__destroyPageInstance) return;
+    const root = document.querySelector('.destroy-shell');
+    if (!root || root.dataset.destroyBound === '1') return;
+    root.dataset.destroyBound = '1';
+
+    loadHomeAlliance();
+    renderTags();
+    document.querySelectorAll('#destroy-target-type button').forEach(btn => {
+      btn.addEventListener('click', () => setTargetType(btn.dataset.type));
+    });
+    $('destroy-run').addEventListener('click', runDestroy);
+    $('destroy-clear').addEventListener('click', () => {
+      $('destroy-target').value = '';
+      loadHomeAlliance();
+      $('destroy-results').style.display = 'none';
+      setStatus('');
+    });
+
+    const targetInput = $('destroy-target');
+    const targetDrop = $('destroy-target-drop');
+    targetInput.addEventListener('focus', async () => { await loadTargetAc(); buildTargetDrop(targetInput.value); });
+    targetInput.addEventListener('input', async () => { await loadTargetAc(); buildTargetDrop(targetInput.value); });
+    targetInput.addEventListener('keydown', e => { if (e.key === 'Enter') { targetDrop.style.display = 'none'; runDestroy(); } });
+    window.addEventListener('scroll', positionTargetDrop, true);
+    window.addEventListener('resize', positionTargetDrop);
+
+    const attackerInput = $('destroy-attacker-input');
+    attackerInput.addEventListener('input', () => {
+      clearTimeout(state.attackerTimer);
+      const q = attackerInput.value.trim();
+      state.attackerTimer = setTimeout(async () => openAttackerDrop(await fetchAttackerAlliances(q)), 180);
+    });
+    attackerInput.addEventListener('focus', async () => openAttackerDrop(await fetchAttackerAlliances(attackerInput.value.trim())));
+    attackerInput.addEventListener('keydown', e => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        const first = document.querySelector('#destroy-attacker-drop .destroy-tag-item');
+        if (first) first.dispatchEvent(new MouseEvent('mousedown'));
+        else runDestroy();
+      }
+      if (e.key === 'Escape') closeAttackerDrop();
+    });
+    root.addEventListener('click', ev => {
+      if (!targetInput.contains(ev.target) && !targetDrop.contains(ev.target)) targetDrop.style.display = 'none';
+      if (!attackerInput.contains(ev.target) && !$('destroy-attacker-drop').contains(ev.target)) closeAttackerDrop();
+    });
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initDestroy);
+  else initDestroy();
+  document.addEventListener('dashboardPageLoaded', ev => {
+    if (instance !== window.__destroyPageInstance) return;
+    if (!ev.detail || ev.detail.page !== 'destroy.html') return;
+    state.targetAc = null;
+    initDestroy();
+  });
+})();
+</script>

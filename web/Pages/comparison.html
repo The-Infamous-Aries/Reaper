@@ -80,26 +80,20 @@
   </div>
 </div>
 
+<script src="/js/access_guard.js"></script>
 <script>
-// ── Auto-fill Integration ───────────────────────────────────────────────────
-async function loadAutoFillSettings() {
+  // ── Auto-fill / Home Alliance Integration ──────────────────────────────────
+async function loadHomeAlliance() {
   try {
     const response = await fetch('/api/settings');
     if (!response.ok) return;
     const settings = await response.json();
-    
-    if (settings.auto_fill_alliances_compare_home) {
-      const alliances = JSON.parse(settings.auto_fill_alliances_compare_home);
-      if (alliances && alliances.length > 0) {
-        // Add to Home Alliance input
-        const homeInput = document.getElementById('cmp-home');
-        const homeTags = document.getElementById('cmp-home-tags');
-        if (homeInput && homeTags) {
-          alliances.forEach(alliance => {
-            addTag('cmp-home', alliance, homeTags);
-          });
-        }
-      }
+
+    // Auto-fill home alliance if toggle is enabled
+    if (settings.home_alliance_compare && settings.watch_home_alliance_id) {
+      _sides.home.tags = [{ id: settings.watch_home_alliance_id, name: settings.watch_home_alliance_name || `Alliance ${settings.watch_home_alliance_id}` }];
+      _renderTags('home');
+      return;
     }
   } catch (e) {
     console.debug('Failed to load auto-fill settings:', e);
@@ -449,8 +443,7 @@ document.addEventListener('DOMContentLoaded', loadAutoFillSettings);
     away: { tags: [], inputId: 'cmp-away', dropId: 'cmp-away-drop', tagsId: 'cmp-away-tags' },
   };
 
-  // Pre-seed Home with Darkstar
-  _sides.home.tags.push({ id: 10259, name: 'Darkstar' });
+  // Home alliance seeded in loadHomeAlliance (via /api/settings)
 
   let _acCache = null;
   let _acTimer  = null;
@@ -600,8 +593,10 @@ document.addEventListener('DOMContentLoaded', loadAutoFillSettings);
   document.addEventListener('dashboardPageLoaded', function(e) {
     if (e.detail.page !== 'comparison.html') return;
 
-    // Render initial tags
-    _renderTags('home');
+    // Load home alliance from settings (async)
+    loadHomeAlliance();
+
+    // Render initial tags (away starts empty)
     _renderTags('away');
 
     // Wire up autocomplete

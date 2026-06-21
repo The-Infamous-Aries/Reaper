@@ -134,6 +134,7 @@
               <th data-col="nation_name">Nation</th>
               <th data-col="score">Score ↓</th>
               <th data-col="num_cities">Cities</th>
+              <th data-col="defensive_wars_count">Def. Wars</th>
               <th data-col="beige_turns">Beige</th>
               <th data-col="war_policy">Policy</th>
               <th data-col="alliance_name">Alliance</th>
@@ -152,6 +153,7 @@
 
 </div>
 
+<script src="/js/access_guard.js"></script>
 <script>
 (function () {
   // ── Helpers ────────────────────────────────────────────────────────────────
@@ -791,6 +793,7 @@
         </td>
         <td>${fmt(Math.round(n.score || 0))}</td>
         <td>${n.num_cities || 0}</td>
+        <td><span class="raids-badge" title="${n.defensive_war_slots_open ?? Math.max(0, 3 - (n.defensive_wars_count || 0))} defensive slots open">${n.defensive_wars_count || 0}/3</span></td>
         <td>${isBeige ? `<span class="raids-badge badge-beige">${n.beige_turns}t</span>` : '—'}</td>
         <td>${warPolicyBadge(n.war_policy)}</td>
         <td style="font-size:0.75rem;">${n.alliance_name || 'None'}</td>
@@ -819,7 +822,7 @@
     }
 
     const tbody = $('raids-tbody');
-    tbody.innerHTML = rows.join('') || '<tr><td colspan="11" class="raids-empty">No results.</td></tr>';
+    tbody.innerHTML = rows.join('') || '<tr><td colspan="12" class="raids-empty">No results.</td></tr>';
 
     // Row expand/collapse — click anywhere on the row except the bell
     tbody.querySelectorAll('.raids-row').forEach(tr => {

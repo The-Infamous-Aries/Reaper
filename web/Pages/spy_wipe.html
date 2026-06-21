@@ -1,0 +1,501 @@
+<link rel="stylesheet" href="/css/main.css">
+<link rel="stylesheet" href="/css/spy_wipe.css">
+
+<div class="sw-shell">
+  <div class="sw-panel sw-controls">
+    <div class="sw-head">
+      <div>
+        <p class="sw-kicker">Politics &amp; War</p>
+        <h1 class="sw-title"><img src="/static/Emojis/Menu/spywipe.png" alt=""> Spy Wipe Planner</h1>
+      </div>
+      <div class="sw-chip">Assassinate Spies</div>
+    </div>
+
+    <div class="sw-grid">
+      <div class="sw-field">
+        <label>Attackers</label>
+        <div class="sw-ac-wrap">
+          <input id="sw-attacker-input" class="sw-input" type="text" autocomplete="off" placeholder="Alliance name or ID">
+          <div id="sw-attacker-drop" class="sw-ac-drop"></div>
+        </div>
+        <div id="sw-attacker-tags" class="sw-tags"></div>
+      </div>
+
+      <div class="sw-field">
+        <label>Target</label>
+        <div class="sw-target-row">
+          <div class="sw-segment">
+            <button class="active" data-target-type="nation">Nation</button>
+            <button data-target-type="alliance">Alliance</button>
+          </div>
+          <div class="sw-ac-wrap sw-target-wrap">
+            <input id="sw-target-input" class="sw-input" type="text" autocomplete="off" placeholder="Nation name or ID">
+            <div id="sw-target-drop" class="sw-ac-drop"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="sw-field sw-caps">
+        <label>Daily Caps</label>
+        <div class="sw-cap-row">
+          <div>
+            <span>Attacker ops</span>
+            <input id="sw-attacker-cap" class="sw-small-input" type="number" min="1" max="2" value="2">
+          </div>
+          <div>
+            <span>Target hits</span>
+            <input id="sw-target-cap" class="sw-small-input" type="number" min="1" max="4" value="3">
+          </div>
+          <button id="sw-run" class="btn btn-gold">Plan</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="sw-status" class="sw-status" style="display:none"></div>
+
+  <div id="sw-results" class="sw-results" style="display:none">
+    <div id="sw-summary" class="sw-summary"></div>
+
+    <div class="sw-panel">
+      <div class="sw-panel-head">
+        <h2>Assignments</h2>
+        <span id="sw-assignment-count"></span>
+      </div>
+      <div class="sw-table-wrap">
+        <table class="sw-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Target</th>
+              <th>Target Policy</th>
+              <th>Spies</th>
+              <th>Safety</th>
+              <th>Odds</th>
+              <th>Exp Kills</th>
+              <th>Kill on Success</th>
+              <th>Target Spies</th>
+            </tr>
+          </thead>
+          <tbody id="sw-assignments"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="sw-two-col">
+      <div class="sw-panel">
+        <div class="sw-panel-head">
+          <h2>Target Coverage</h2>
+          <span id="sw-target-count"></span>
+        </div>
+        <div class="sw-table-wrap">
+          <table class="sw-table sw-compact-table">
+            <thead>
+              <tr>
+                <th>Target</th>
+                <th>Policy</th>
+                <th>Hits</th>
+                <th>Start</th>
+                <th>Expected Kills</th>
+                <th>Remaining</th>
+              </tr>
+            </thead>
+            <tbody id="sw-targets"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="sw-panel">
+        <div class="sw-panel-head">
+          <h2>Attacker Usage</h2>
+          <span id="sw-attacker-count"></span>
+        </div>
+        <div class="sw-table-wrap">
+          <table class="sw-table sw-compact-table">
+            <thead>
+              <tr>
+                <th>Attacker</th>
+                <th>Policy</th>
+                <th>Ops</th>
+                <th>Spies</th>
+              </tr>
+            </thead>
+            <tbody id="sw-attackers"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="/js/access_guard.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  const state = {
+    attackers: [],
+    targetType: 'nation',
+    acData: null,
+    allianceIndex: -1,
+    targetIndex: -1
+  };
+
+  const $ = id => document.getElementById(id);
+  const fmt = n => Number(n || 0).toLocaleString(undefined, { maximumFractionDigits: 2 });
+  const pct = n => Number(n || 0).toFixed(1) + '%';
+  const SPY_ICON = '<img src="/static/Emojis/Military/spy.png" class="sw-spy-icon" alt="Spies">';
+  const WAR_POLICY_IMG = {
+    ATTRITION: 'attrition', TURTLE: 'turtle', BLITZKRIEG: 'blitzkrieg',
+    FORTRESS: 'fortress', PIRATE: 'pirate', GUARDIAN: 'guardian',
+    MONEYBAGS: 'moneybags', ARCANE: 'arcane', COVERT: 'covert', TACTICIAN: 'tactician'
+  };
+  const WAR_POLICY_COLORS = {
+    ATTRITION: '#e05555', TURTLE: '#6495ed', BLITZKRIEG: '#ff8c00',
+    FORTRESS: '#9370db', PIRATE: '#20b2aa', GUARDIAN: '#3cb371',
+    MONEYBAGS: '#ffd700', ARCANE: '#da70d6', COVERT: '#aaaaaa', TACTICIAN: '#f4a460'
+  };
+
+  function escapeHtml(value) {
+    return String(value == null ? '' : value).replace(/[&<>"']/g, ch => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    }[ch]));
+  }
+
+  function cleanEnum(value) {
+    return String(value || '').replace(/^"+|"+$/g, '').trim();
+  }
+
+  function fmtPolicy(value) {
+    const clean = cleanEnum(value);
+    if (!clean) return 'None';
+    return clean.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
+  }
+
+  function warPolicyBadge(value) {
+    const raw = cleanEnum(value).toUpperCase();
+    if (!raw) return '<span class="sw-policy-empty">None</span>';
+    const label = fmtPolicy(raw);
+    const img = WAR_POLICY_IMG[raw];
+    const css = WAR_POLICY_COLORS[raw] || 'rgba(255,255,255,0.5)';
+    const icon = img ? `<img src="/static/Emojis/War/${img}.png" class="sw-policy-icon" alt="">` : '';
+    return `<span class="sw-policy-badge" style="background:${css}22;color:${css};border-color:${css};" title="War Policy: ${escapeHtml(label)}">${icon}${escapeHtml(label)}</span>`;
+  }
+
+  function spyCount(value) {
+    return `<span class="sw-spy-count">${SPY_ICON}<span>${fmt(value)}</span></span>`;
+  }
+
+  function nationLink(nation) {
+    const label = `${nation.leader_name ? escapeHtml(nation.leader_name) + ' of ' : ''}${escapeHtml(nation.nation_name)}`;
+    return `<a class="sw-link" href="https://politicsandwar.com/nation/id=${nation.id}" target="_blank">${label}</a>
+      <span class="sw-sub">${escapeHtml(nation.alliance_name || '')} - ${fmt(nation.score)} score</span>`;
+  }
+
+  function showStatus(message, error) {
+    const el = $('sw-status');
+    if (!message) {
+      el.style.display = 'none';
+      return;
+    }
+    el.className = 'sw-status' + (error ? ' sw-status-error' : '');
+    el.innerHTML = message;
+    el.style.display = '';
+  }
+
+  function setTargetType(type) {
+    state.targetType = type;
+    document.querySelectorAll('.sw-segment button').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.targetType === type);
+    });
+    $('sw-target-input').value = '';
+    $('sw-target-input').dataset.value = '';
+    $('sw-target-input').placeholder = type === 'nation' ? 'Nation name or ID' : 'Alliance name or ID';
+    hideDrop('sw-target-drop');
+  }
+
+  function addAttacker(label, value) {
+    const cleanLabel = String(label || value || '').trim();
+    const cleanValue = String(value || label || '').trim();
+    if (!cleanValue) return;
+    if (state.attackers.some(a => a.value.toLowerCase() === cleanValue.toLowerCase())) return;
+    state.attackers.push({ label: cleanLabel, value: cleanValue });
+    renderAttackerTags();
+  }
+
+  function removeAttacker(value) {
+    state.attackers = state.attackers.filter(a => a.value !== value);
+    renderAttackerTags();
+  }
+
+  function renderAttackerTags() {
+    $('sw-attacker-tags').innerHTML = state.attackers.map(a => `
+      <span class="sw-tag">
+        <span>${escapeHtml(a.label)}</span>
+        <button type="button" data-remove="${escapeHtml(a.value)}" title="Remove">x</button>
+      </span>
+    `).join('');
+    $('sw-attacker-tags').querySelectorAll('button[data-remove]').forEach(btn => {
+      btn.addEventListener('click', () => removeAttacker(btn.dataset.remove));
+    });
+  }
+
+  function hideDrop(id) {
+    const el = $(id);
+    el.classList.remove('open');
+    el.innerHTML = '';
+  }
+
+  function renderDrop(id, items, onPick) {
+    const drop = $(id);
+    if (!items.length) {
+      hideDrop(id);
+      return;
+    }
+    drop.innerHTML = items.map((item, idx) => `
+      <div class="sw-ac-item" data-idx="${idx}">
+        <span>${escapeHtml(item.label)}</span>
+        <small>${escapeHtml(item.meta || '')}</small>
+      </div>
+    `).join('');
+    drop.classList.add('open');
+    drop.querySelectorAll('.sw-ac-item').forEach(el => {
+      el.addEventListener('mousedown', ev => {
+        ev.preventDefault();
+        onPick(items[Number(el.dataset.idx)]);
+        hideDrop(id);
+      });
+    });
+  }
+
+  async function searchAlliances(query) {
+    const r = await fetch('/api/pnw/alliances?q=' + encodeURIComponent(query || ''));
+    if (!r.ok) return [];
+    const data = await r.json();
+    return data.slice(0, 25).map(a => ({
+      label: a.name || `Alliance ${a.id}`,
+      value: String(a.id),
+      meta: `${a.member_count || 0} members`
+    }));
+  }
+
+  async function loadTargetAcData() {
+    if (state.acData) return state.acData;
+    const r = await fetch('/api/weapons/ac_data');
+    if (!r.ok) throw new Error('Autocomplete data unavailable');
+    state.acData = await r.json();
+    return state.acData;
+  }
+
+  async function searchTargets(query) {
+    const data = await loadTargetAcData();
+    const q = String(query || '').trim().toLowerCase();
+    if (state.targetType === 'nation') {
+      return (data.nations || [])
+        .filter(n => {
+          const name = String(n.nation_name || '').toLowerCase();
+          const leader = String(n.leader_name || '').toLowerCase();
+          const id = String(n.id || '');
+          return !q || name.includes(q) || leader.includes(q) || id.includes(q);
+        })
+        .slice(0, 25)
+        .map(n => ({
+          label: n.nation_name || `Nation ${n.id}`,
+          value: String(n.id),
+          meta: n.leader_name || ''
+        }));
+    }
+    return (data.alliances || [])
+      .filter(a => {
+        const name = String(a.alliance_name || '').toLowerCase();
+        const id = String(a.alliance_id || '');
+        return !q || name.includes(q) || id.includes(q);
+      })
+      .slice(0, 25)
+      .map(a => ({
+        label: a.alliance_name || `Alliance ${a.alliance_id}`,
+        value: String(a.alliance_id),
+        meta: `ID ${a.alliance_id}`
+      }));
+  }
+
+  function setupAutocomplete() {
+    const attInput = $('sw-attacker-input');
+    attInput.addEventListener('input', async () => {
+      const items = await searchAlliances(attInput.value);
+      renderDrop('sw-attacker-drop', items, item => {
+        addAttacker(item.label, item.value);
+        attInput.value = '';
+      });
+    });
+    attInput.addEventListener('keydown', e => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        const text = attInput.value.trim();
+        if (text) addAttacker(text, text);
+        attInput.value = '';
+        hideDrop('sw-attacker-drop');
+      }
+      if (e.key === 'Escape') hideDrop('sw-attacker-drop');
+    });
+
+    const targetInput = $('sw-target-input');
+    targetInput.addEventListener('input', async () => {
+      targetInput.dataset.value = '';
+      const items = await searchTargets(targetInput.value);
+      renderDrop('sw-target-drop', items, item => {
+        targetInput.value = item.label;
+        targetInput.dataset.value = item.value;
+      });
+    });
+    targetInput.addEventListener('keydown', e => {
+      if (e.key === 'Enter' && $('sw-target-drop').classList.contains('open')) {
+        e.preventDefault();
+        hideDrop('sw-target-drop');
+      }
+      if (e.key === 'Escape') hideDrop('sw-target-drop');
+    });
+    document.addEventListener('click', e => {
+      if (!e.target.closest('.sw-ac-wrap')) {
+        hideDrop('sw-attacker-drop');
+        hideDrop('sw-target-drop');
+      }
+    });
+  }
+
+  async function loadAutoFillSettings() {
+    try {
+      const r = await fetch('/api/settings');
+      if (!r.ok) return;
+      const settings = await r.json();
+      if (settings.home_alliance_spywipe && settings.watch_home_alliance_id) {
+        addAttacker(settings.watch_home_alliance_name || `Alliance ${settings.watch_home_alliance_id}`, settings.watch_home_alliance_id);
+      }
+    } catch (e) {
+      console.debug('[spy_wipe] autofill skipped', e);
+    }
+  }
+
+  async function runPlan() {
+    const targetInput = $('sw-target-input');
+    const target = (targetInput.dataset.value || targetInput.value || '').trim();
+    if (!state.attackers.length) {
+      showStatus('Select at least one attacker alliance.', true);
+      return;
+    }
+    if (!target) {
+      showStatus('Select a target.', true);
+      return;
+    }
+
+    showStatus('<span class="sw-spinner"></span>Building optimal spy assignments...', false);
+    $('sw-results').style.display = 'none';
+    try {
+      const r = await fetch('/api/spy-wipe/plan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          attacker_alliances: state.attackers.map(a => a.value),
+          target_type: state.targetType,
+          target,
+          attacker_daily_cap: Number($('sw-attacker-cap').value || 2),
+          target_daily_cap: Number($('sw-target-cap').value || 3)
+        })
+      });
+      const data = await r.json();
+      if (!r.ok || data.error) throw new Error(data.error || `HTTP ${r.status}`);
+      renderResults(data);
+      showStatus('', false);
+    } catch (e) {
+      showStatus(escapeHtml(e.message || 'Planner failed.'), true);
+    }
+  }
+
+  function metric(label, value, sub) {
+    return `<div class="sw-metric"><span>${label}</span><strong>${value}</strong><small>${sub || ''}</small></div>`;
+  }
+
+  function renderResults(data) {
+    const s = data.summary || {};
+    $('sw-summary').innerHTML = [
+      metric('Planned Ops', fmt(s.planned_ops), `${fmt(s.attackers_used)} attackers used`),
+      metric('Expected Kills', spyCount(s.total_expected_kills), `${fmt(s.total_success_kills)} on-success total`),
+      metric('Targets Hit', fmt(s.targets_hit), `${fmt(s.targets_eligible)} eligible targets`),
+      metric('Caps', `${s.attacker_daily_cap} / ${s.target_daily_cap}`, 'attacker ops / target hits')
+    ].join('');
+
+    const assignments = data.assignments || [];
+    $('sw-assignment-count').textContent = `${assignments.length} ops`;
+    const groups = new Map();
+    assignments.forEach(a => {
+      const key = String(a.attacker.id);
+      if (!groups.has(key)) groups.set(key, { attacker: a.attacker, ops: [] });
+      groups.get(key).ops.push(a);
+    });
+    $('sw-assignments').innerHTML = Array.from(groups.values()).map(group => `
+      <tr class="sw-attacker-row">
+        <td colspan="9">
+          <div class="sw-attacker-line">
+            <div>${nationLink(group.attacker)}</div>
+            <div class="sw-attacker-meta">
+              ${warPolicyBadge(group.attacker.war_policy)}
+              ${spyCount(group.attacker.spies)}
+              <span>${fmt(group.ops.length)} ops</span>
+            </div>
+          </div>
+        </td>
+      </tr>
+      ${group.ops.map(a => `
+      <tr>
+        <td>${a.order}</td>
+        <td>${nationLink(a.target)}</td>
+        <td>${warPolicyBadge(a.target.war_policy)}</td>
+        <td><strong>${spyCount(a.spies_to_use)}</strong></td>
+        <td><span class="sw-safety sw-safety-${a.safety_level}">${escapeHtml(a.safety_name)}</span></td>
+        <td><span class="${a.odds >= 95 ? 'sw-good' : a.odds >= 75 ? 'sw-warn' : 'sw-bad'}">${pct(a.odds)}</span></td>
+        <td><strong>${spyCount(a.expected_kills)}</strong></td>
+        <td>${spyCount(a.success_kills)}</td>
+        <td>${spyCount(a.target_spies_before)} -> ${spyCount(a.target_spies_after)}</td>
+      </tr>
+      `).join('')}
+    `).join('') || '<tr><td colspan="9" class="sw-empty">No valid spy assignments found.</td></tr>';
+
+    const targets = (data.targets || []).filter(t => t.ops_received > 0 || t.spies > 0);
+    $('sw-target-count').textContent = `${fmt((data.summary || {}).targets_hit)} hit`;
+    $('sw-targets').innerHTML = targets.map(t => `
+      <tr>
+        <td>${nationLink(t)}</td>
+        <td>${warPolicyBadge(t.war_policy)}</td>
+        <td>${fmt(t.ops_received)}</td>
+        <td>${spyCount(t.spies)}</td>
+        <td><strong>${spyCount(t.expected_kills_received || 0)}</strong></td>
+        <td>${spyCount(t.remaining_spies)}</td>
+      </tr>
+    `).join('') || '<tr><td colspan="6" class="sw-empty">No eligible targets.</td></tr>';
+
+    const attackers = (data.attackers || []).filter(a => a.ops_sent > 0);
+    $('sw-attacker-count').textContent = `${fmt((data.summary || {}).attackers_used)} used`;
+    $('sw-attackers').innerHTML = attackers.map(a => `
+      <tr>
+        <td>${nationLink(a)}</td>
+        <td>${warPolicyBadge(a.war_policy)}</td>
+        <td>${fmt(a.ops_sent)}</td>
+        <td>${spyCount(a.spies)}</td>
+      </tr>
+    `).join('') || '<tr><td colspan="4" class="sw-empty">No attackers used.</td></tr>';
+
+    $('sw-results').style.display = '';
+  }
+
+  function init() {
+    document.querySelectorAll('.sw-segment button').forEach(btn => {
+      btn.addEventListener('click', () => setTargetType(btn.dataset.targetType));
+    });
+    $('sw-run').addEventListener('click', runPlan);
+    setupAutocomplete();
+    loadAutoFillSettings();
+  }
+
+  init();
+})();
+</script>

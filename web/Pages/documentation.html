@@ -1,0 +1,134 @@
+<link rel="stylesheet" href="/css/documentation.css">
+
+<!-- Documentation Content Display -->
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="documentation-viewer">
+                <div class="doc-content" id="doc-content">
+                    <div class="loading-spinner">
+                        <i class="fa-solid fa-spinner fa-spin"></i> Loading documentation...
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script>
+    document.addEventListener('dashboardPageLoaded', function(event) {
+        if (event.detail.page !== 'documentation.html') {
+            return;
+        }
+
+        console.log("Documentation page script executing...");
+
+        // Wait for marked library to load
+        function initializeDocumentation() {
+            if (typeof marked === 'undefined') {
+                console.log("Waiting for marked library to load...");
+                setTimeout(initializeDocumentation, 100);
+                return;
+            }
+
+            console.log("Marked library loaded, initializing documentation...");
+
+            let documentCache = {};
+
+            // Initialize marked options
+            marked.setOptions({
+                gfm: true,
+                breaks: true,
+                headerIds: true,
+                mangle: false
+            });
+
+        // Load a specific document
+        async function loadDocument(docId) {
+            const content = document.getElementById('doc-content');
+            
+            // Show loading state
+            content.innerHTML = '<div class="loading-spinner"><i class="fa-solid fa-spinner fa-spin"></i> Loading documentation...</div>';
+            
+            try {
+                // Check cache first
+                let markdown;
+                
+                if (documentCache[docId]) {
+                    markdown = documentCache[docId].content;
+                } else {
+                    const response = await fetch(`/api/documentation/${docId}`);
+                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                    
+                    markdown = await response.text();
+                    
+                    // Cache the document
+                    documentCache[docId] = { content: markdown };
+                }
+                
+                // Parse markdown to HTML
+                let html = marked.parse(markdown);
+                
+                // Process custom doc-link anchors for internal navigation
+                html = html.replace(/href="#doc-link:([^#"]+)(#[^"]+)?"/g, (match, targetDoc, section) => {
+                    const sectionPart = section || '';
+                    return `href="#" data-doc-link="${targetDoc}" data-doc-section="${sectionPart.substring(1)}"`;
+                });
+                
+                // Render content
+                content.innerHTML = html;
+                
+                // Setup internal link handlers
+                setupInternalLinks();
+                
+                // Smooth scroll to top
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+                
+            } catch (error) {
+                console.error("Error loading document:", error);
+                content.innerHTML = `
+                    <div class="error-message">
+                        <i class="fa-solid fa-exclamation-triangle"></i>
+                        <h3>Error Loading Document</h3>
+                        <p>${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        // Setup handlers for internal documentation links
+        function setupInternalLinks() {
+            const links = document.querySelectorAll('a[data-doc-link]');
+            links.forEach(link => {
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const targetDoc = link.dataset.docLink;
+                    const targetSection = link.dataset.docSection;
+                    
+                    loadDocument(targetDoc).then(() => {
+                        if (targetSection) {
+                            // Scroll to the section after loading
+                            setTimeout(() => {
+                                const section = document.getElementById(targetSection);
+                                if (section) {
+                                    section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                                }
+                            }, 100);
+                        }
+                    });
+                });
+            });
+        }
+
+        // Make loadDocument available globally
+        window.loadDocument = loadDocument;
+
+        // Load README by default
+        loadDocument('README');
+        }
+
+        // Start initialization
+        initializeDocumentation();
+    });
+</script>

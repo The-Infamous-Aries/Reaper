@@ -1,0 +1,33 @@
+<div class="fortune-page" id="fortune-page">
+    <section class="fortune-stage" aria-live="polite">
+        <div class="fortune-copy">
+            <span class="fortune-kicker">Fortune Cookie</span>
+            <h1>Crack open your next bad idea.</h1>
+            <p id="fortune-status">Choose a fortune type, then open the cookie.</p>
+        </div>
+
+        <div class="fortune-cookie-wrap">
+            <button class="fortune-cookie" id="fortune-cookie" type="button" aria-label="Open fortune cookie">
+                <span class="cookie-shadow"></span>
+                <span class="cookie-half cookie-left"></span>
+                <span class="cookie-half cookie-right"></span>
+                <span class="cookie-bridge"></span>
+                <span class="cookie-crack"></span>
+                <span class="cookie-crumb crumb-one"></span>
+                <span class="cookie-crumb crumb-two"></span>
+                <span class="cookie-crumb crumb-three"></span>
+                <span class="fortune-slip" id="fortune-slip">
+                    <span id="fortune-text">Tap the cookie.</span>
+                </span>
+            </button>
+            <button class="fortune-reset" id="fortune-reset" type="button">
+                <i class="fa-solid fa-rotate-right"></i>
+                New Cookie
+            </button>
+        </div>
+    </section>
+
+    <section class="fortune-controls" aria-label="Fortune types">
+        <div class="fortune-type-grid" id="fortune-type-grid"></div>
+    </section>
+</div>

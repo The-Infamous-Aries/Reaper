@@ -30,13 +30,41 @@
                     </div>
                     <div class="dungeon-card-body">
                         <p class="text-center mb-4" style="color:var(--text-secondary)">
-                            Embark on a procedurally generated dungeon adventure! Solo or team up with 2-4 players.
+                            Embark on a procedurally generated dungeon adventure! Choose your dungeon type and begin your solo quest.
                         </p>
                         
-                        <!-- Create Buttons -->
+                        <!-- Dungeon Type Selector -->
+                        <div class="mb-4">
+                            <label for="dungeon-type-select" class="form-label" style="color:var(--gold-primary);font-weight:600;">Choose Dungeon Type:</label>
+                            <select class="form-select dungeon-type-selector" id="dungeon-type-select" style="background-color:rgba(0,0,0,0.3);border:1px solid var(--gold-primary);color:var(--text-primary);">
+                                <option value="Camp" data-emoji="/static/Emojis/Pets/Deco/camping.png">Camp - Wilderness Adventure</option>
+                                <option value="Bonfire" data-emoji="/static/Emojis/Pets/Deco/bonfire.png">Bonfire - Campfire Tales</option>
+                                <option value="Beach" data-emoji="/static/Emojis/Pets/Deco/beach.png">Beach - Coastal Quest</option>
+                                <option value="Forest" data-emoji="/static/Emojis/Pets/Deco/forest.png">Forest - Woodland Journey</option>
+                                <option value="Hot Air Balloon" data-emoji="/static/Emojis/Pets/Deco/hotairballoon.png">Hot Air Balloon - Sky Voyage</option>
+                                <option value="Cruiseship" data-emoji="/static/Emojis/Pets/Deco/cruiseship.png">Cruiseship - Ocean Voyage</option>
+                                <option value="Mountain" data-emoji="/static/Emojis/Pets/Deco/mountain.png">Mountain - Alpine Challenge</option>
+                                <option value="Gym" data-emoji="/static/Emojis/Pets/Deco/gym.png">Gym - Training Grounds</option>
+                                <option value="Graveyard" data-emoji="/static/Emojis/Pets/Deco/graveyard.png">Graveyard - Haunted Paths</option>
+                                <option value="Festival" data-emoji="/static/Emojis/Pets/Deco/festival.png">Festival - Carnival Adventure</option>
+                                <option value="Glacier" data-emoji="/static/Emojis/Pets/Deco/glacier.png">Glacier - Frozen Expanse</option>
+                                <option value="Pyramids" data-emoji="/static/Emojis/Pets/Deco/pyramids.png">Pyramids - Ancient Ruins</option>
+                            </select>
+                            
+                            <!-- Display selected dungeon type emoji -->
+                            <div id="selected-dungeon-type-display" class="mt-2 text-center" style="display:none;">
+                                <img id="selected-dungeon-emoji" src="" alt="" style="width:48px;height:48px;">
+                                <p class="text-muted mt-1 mb-0"><small id="selected-dungeon-name"></small></p>
+                            </div>
+                            
+                            <small class="form-text text-muted mt-2 d-block">
+                                <em>Dungeon types are thematic only and don't provide gameplay bonuses</em>
+                            </small>
+                        </div>
+                        
+                        <!-- Create Button (Solo Only) -->
                         <div class="mb-4 text-center">
-                            <button class="btn-dungeon-primary me-2" id="create-solo-btn">Solo Adventure</button>
-                            <button class="btn-dungeon-secondary" id="create-party-btn">Create Party</button>
+                            <button class="btn-dungeon-primary btn-lg" id="create-solo-btn">🗡️ Start Solo Adventure</button>
                         </div>
                     </div>
                 </div>
@@ -56,15 +84,89 @@
                 <!-- How to Play -->
                 <div class="dungeon-info-box mt-3">
                     <h6>📖 How to Play</h6>
-                    <ul>
-                        <li>Each floor has 10 rooms with random events</li>
-                        <li>⚔️ <strong>Monsters:</strong> Battle NPC enemies — defeat them to loot their Monster item</li>
-                        <li>📦 <strong>Chests:</strong> Everyone gets unique loot based on chest tier</li>
-                        <li>🪤 <strong>Traps:</strong> Negative stat effects for the whole party (duration shown in rooms)</li>
-                        <li>⛩️ <strong>Shrines:</strong> Positive stat buffs for matching pets (duration shown in rooms)</li>
-                        <li>👹 <strong>Boss (Room 9):</strong> Tough boss fight — rewards Keys + XP, no Monster loot</li>
-                        <li>🎁 <strong>Reward (Room 10):</strong> Always a guaranteed chest for the whole party</li>
-                        <li>All party members must click "Continue" to progress</li>
+                    <ul style="list-style:none;padding-left:0;">
+                        <li class="mb-2"><strong>🗺️ Dungeon Structure:</strong> Each floor has 10 rooms with random events. Room 9 is always a Boss, Room 10 is Floor Loot.</li>
+                        <li class="mb-3"><strong>🎭 Dungeon Types:</strong> Choose from 12 themed locations — these are thematic only and don't provide gameplay bonuses.
+                            <div class="mt-2 d-flex flex-wrap gap-2 justify-content-center" style="background:rgba(0,0,0,0.2);padding:10px;border-radius:8px;">
+                                <img src="/static/Emojis/Pets/Deco/camping.png" style="width:32px;height:32px;" title="Camp">
+                                <img src="/static/Emojis/Pets/Deco/bonfire.png" style="width:32px;height:32px;" title="Bonfire">
+                                <img src="/static/Emojis/Pets/Deco/beach.png" style="width:32px;height:32px;" title="Beach">
+                                <img src="/static/Emojis/Pets/Deco/forest.png" style="width:32px;height:32px;" title="Forest">
+                                <img src="/static/Emojis/Pets/Deco/hotairballoon.png" style="width:32px;height:32px;" title="Hot Air Balloon">
+                                <img src="/static/Emojis/Pets/Deco/cruiseship.png" style="width:32px;height:32px;" title="Cruiseship">
+                                <img src="/static/Emojis/Pets/Deco/mountain.png" style="width:32px;height:32px;" title="Mountain">
+                                <img src="/static/Emojis/Pets/Deco/gym.png" style="width:32px;height:32px;" title="Gym">
+                                <img src="/static/Emojis/Pets/Deco/graveyard.png" style="width:32px;height:32px;" title="Graveyard">
+                                <img src="/static/Emojis/Pets/Deco/festival.png" style="width:32px;height:32px;" title="Festival">
+                                <img src="/static/Emojis/Pets/Deco/glacier.png" style="width:32px;height:32px;" title="Glacier">
+                                <img src="/static/Emojis/Pets/Deco/pyramids.png" style="width:32px;height:32px;" title="Pyramids">
+                            </div>
+                        </li>
+                        <li class="mb-3"><strong>Event Types You'll Encounter:</strong>
+                            <div class="mt-2" style="background:rgba(0,0,0,0.2);padding:10px;border-radius:8px;">
+                                <div class="row g-2">
+                                    <div class="col-md-6">
+                                        <div class="d-flex align-items-center gap-2">
+                                            <img src="/static/Emojis/Crawl/enemy.png" style="width:24px;height:24px;">
+                                            <span><strong>Monster</strong> - Battle enemies</span>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="d-flex align-items-center gap-2">
+                                            <img src="/static/Emojis/Crawl/story.png" style="width:24px;height:24px;">
+                                            <span><strong>Story</strong> - Narrative choices</span>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="d-flex align-items-center gap-2">
+                                            <img src="/static/Emojis/Crawl/puzzle.png" style="width:24px;height:24px;">
+                                            <span><strong>Puzzle</strong> - Solve challenges</span>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="d-flex align-items-center gap-2">
+                                            <img src="/static/Emojis/Crawl/merchant.png" style="width:24px;height:24px;">
+                                            <span><strong>Merchant</strong> - Buy items</span>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="d-flex align-items-center gap-2">
+                                            <img src="/static/Emojis/Pets/Equipment/chest1.png" style="width:24px;height:24px;">
+                                            <span><strong>Chest</strong> - Free loot</span>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="d-flex align-items-center gap-2">
+                                            <img src="/static/Emojis/Crawl/trap.png" style="width:24px;height:24px;">
+                                            <span><strong>Trap</strong> - Escape or endure</span>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="d-flex align-items-center gap-2">
+                                            <img src="/static/Emojis/Crawl/shrine.png" style="width:24px;height:24px;">
+                                            <span><strong>Shrine</strong> - Get buffs</span>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="d-flex align-items-center gap-2">
+                                            <img src="/static/Emojis/Crawl/boss.png" style="width:24px;height:24px;">
+                                            <span><strong>Boss</strong> - Room 9 fight</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </li>
+                        <li class="mb-2"><img src="/static/Emojis/Crawl/enemy.png" style="width:20px;height:20px;vertical-align:middle;"> <strong>Monster Encounters:</strong> Fight, Scare, or Flee from enemies. Battles drop Monster items and XP.</li>
+                        <li class="mb-2"><img src="/static/Emojis/Crawl/story.png" style="width:20px;height:20px;vertical-align:middle;"> <strong>Story Segments:</strong> AI-generated narrative challenges with 3 skill-based choices testing different stat combinations.</li>
+                        <li class="mb-2"><img src="/static/Emojis/Crawl/puzzle.png" style="width:20px;height:20px;vertical-align:middle;"> <strong>Puzzles:</strong> Solve environmental puzzles using your pet's INT, DEX, and ENE stats.</li>
+                        <li class="mb-2"><img src="/static/Emojis/Crawl/merchant.png" style="width:20px;height:20px;vertical-align:middle;"> <strong>Merchant:</strong> Buy ANY pet item using your accumulated XP as currency. XP persists across the dungeon.</li>
+                        <li class="mb-2"><img src="/static/Emojis/Pets/Equipment/chest1.png" style="width:20px;height:20px;vertical-align:middle;"> <strong>Chests/Mimics:</strong> Carefully approach chests or fight them. Mimics disguise as chests but drop double loot when defeated!</li>
+                        <li class="mb-2"><img src="/static/Emojis/Crawl/trap.png" style="width:20px;height:20px;vertical-align:middle;"> <strong>Traps:</strong> Escape using stats or accept damage. Failed escapes give 1-hour cooldowns before retry.</li>
+                        <li class="mb-2"><img src="/static/Emojis/Crawl/shrine.png" style="width:20px;height:20px;vertical-align:middle;"> <strong>Shrines:</strong> Gain positive buffs (ATT/DEF/DEX/INT boost). Works for all pets regardless of element/type.</li>
+                        <li class="mb-2"><img src="/static/Emojis/Crawl/boss.png" style="width:20px;height:20px;vertical-align:middle;"> <strong>Boss (Room 9):</strong> Powerful boss with AI-generated lore. Drops Keys only (no chests).</li>
+                        <li class="mb-2"><img src="/static/Emojis/Pets/Equipment/chest3.png" style="width:20px;height:20px;vertical-align:middle;"> <strong>Floor Loot (Room 10):</strong> Guaranteed scaled loot chest. Claiming it gives 1-hour cooldown before accessing the next floor.</li>
+                        <li class="mb-2"><strong>⏰ Cooldowns:</strong> Failed rooms require 1-hour wait before retry. Completing Room 10 gives 1-hour floor cooldown.</li>
+                        <li class="mb-2"><strong>💰 XP System:</strong> Earn XP from completing rooms (based on floor, room, event type). Spend it at Merchants or keep accumulating!</li>
                     </ul>
                 </div>
             </div>
@@ -113,16 +215,37 @@
                     </div>
                 </div>
                 
-                <!-- Right: Party & Buffs -->
+                <!-- Right: Pet Status & Effects -->
                 <div class="col-lg-3">
-                    <!-- Party Status -->
+                    <!-- Pet Status & XP -->
                     <div class="dungeon-card mb-3">
                         <div class="dungeon-card-header">
-                            <h5>👥 Party</h5>
+                            <h5>🐾 Your Pet</h5>
                         </div>
                         <div class="dungeon-card-body">
-                            <div id="party-list">
-                                <!-- Party members -->
+                            <div id="pet-status">
+                                <!-- Pet info -->
+                            </div>
+                            <div class="mt-3" id="xp-balance-display" style="display:none;">
+                                <div class="p-2" style="background:rgba(255,215,0,0.1);border-radius:8px;border:1px solid var(--gold-primary);">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <span style="color:var(--gold-primary);font-weight:600;">💰 XP Balance:</span>
+                                        <span id="current-xp-balance" style="color:var(--gold-primary);font-size:1.1em;font-weight:700;">0</span>
+                                    </div>
+                                    <small class="text-muted d-block mt-1">Used for Merchant purchases</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Event History -->
+                    <div class="dungeon-card mb-3">
+                        <div class="dungeon-card-header">
+                            <h5>📜 Recent Events</h5>
+                        </div>
+                        <div class="dungeon-card-body">
+                            <div id="event-history-list">
+                                <p class="text-muted">No events yet</p>
                             </div>
                         </div>
                     </div>
@@ -144,33 +267,6 @@
     </div>
     
     <!-- Modals -->
-    <!-- Party Creation Modal -->
-    <div class="modal fade" id="partyModal" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Create Party Dungeon</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <p>Invite players to your dungeon party (max 4 total including you):</p>
-                    <div id="party-invite-list">
-                        <div class="party-invite-input mb-2">
-                            <label>Player 2 Discord ID:</label>
-                            <input type="text" class="form-control party-member-input" placeholder="Enter Discord User ID">
-                        </div>
-                    </div>
-                    <button class="btn-dungeon-secondary btn-sm mt-2" id="add-invite-btn">+ Add Another Player</button>
-                    <p class="text-muted mt-3"><small>Note: Players must have pets to join the dungeon.</small></p>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn-dungeon-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="button" class="btn-dungeon-primary" id="start-party-dungeon-btn">Start Dungeon</button>
-                </div>
-            </div>
-        </div>
-    </div>
-    
     <!-- Battle Modal -->
     <div class="modal fade" id="battleModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
         <div class="modal-dialog modal-xl">

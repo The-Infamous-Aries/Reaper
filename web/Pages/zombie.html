@@ -1,0 +1,77 @@
+<link rel="stylesheet" href="/css/zombie.css?v=20260608-theme">
+
+<div class="zombie-root" id="zombie-root">
+    <header class="zombie-topbar">
+        <div class="zombie-title-wrap">
+            <img class="zombie-menu-icon" src="/static/Emojis/Menu/zombie.png" alt="Zombie">
+            <div>
+                <h4>Zombie Survival</h4>
+                <div class="zombie-subline" id="zombie-status-line">Syncing Discord session...</div>
+            </div>
+        </div>
+        <div class="zombie-user-pill" id="zombie-user-pill"></div>
+    </header>
+
+    <section class="zombie-login" id="zombie-login" hidden>
+        <img src="/static/Emojis/Menu/discord.png" alt="Discord">
+        <div>
+            <h5>Discord sync required</h5>
+            <p>Zombie Survival uses your Discord session for character stats, voting, and admin controls.</p>
+        </div>
+        <a class="zombie-btn zombie-btn-primary" href="/api/discord/login">Login</a>
+    </section>
+
+    <section class="zombie-admin" id="zombie-admin" hidden>
+        <div class="zombie-admin-status">
+            <span class="zombie-live-dot"></span>
+            <span id="zombie-admin-text">Admin controls</span>
+        </div>
+        <div class="zombie-admin-actions">
+            <input id="zombie-channel-input" inputmode="numeric" placeholder="Discord channel ID">
+            <button class="zombie-btn zombie-btn-primary" id="zombie-start-btn" type="button">Start</button>
+            <button class="zombie-btn zombie-btn-danger" id="zombie-stop-btn" type="button">Stop</button>
+        </div>
+    </section>
+
+    <main class="zombie-grid">
+        <section class="zombie-scene">
+            <div class="zombie-scene-head">
+                <div>
+                    <span class="zombie-kicker" id="zombie-round-label">Round --</span>
+                    <h5>Current Story</h5>
+                </div>
+                <div class="zombie-timer" id="zombie-timer">--:--</div>
+            </div>
+            <p id="zombie-story">Loading the active Discord game...</p>
+            <div class="zombie-meta-row">
+                <span id="zombie-channel-label">Channel: --</span>
+                <span id="zombie-vote-label">Votes: --</span>
+            </div>
+        </section>
+
+        <aside class="zombie-character" id="zombie-character">
+            <div class="zombie-empty-panel">Your survivor appears here once you join or vote.</div>
+        </aside>
+    </main>
+
+    <section class="zombie-choices" id="zombie-choices"></section>
+
+    <section class="zombie-lower-grid">
+        <div class="zombie-panel">
+            <div class="zombie-panel-head">
+                <h5>Survivors</h5>
+                <span id="zombie-survivor-count">0</span>
+            </div>
+            <div class="zombie-survivors" id="zombie-survivors"></div>
+        </div>
+
+        <div class="zombie-panel">
+            <div class="zombie-panel-head">
+                <h5>Recent Outcomes</h5>
+            </div>
+            <div class="zombie-history" id="zombie-history"></div>
+        </div>
+    </section>
+
+    <div class="zombie-toast" id="zombie-toast" hidden></div>
+</div>

@@ -5,12 +5,11 @@
   <div class="tasks-header-box">
     <div class="tasks-header-inner">
       <div class="tasks-title-row">
-        <h2 class="tasks-title">🗡️ Daily Tasks</h2>
+        <h2 class="tasks-title">🗡️ Tasks</h2>
         <button class="tasks-dm-btn" id="tasks-dm-btn" title="DM Notification Settings">
           <i class="fas fa-bell"></i>
         </button>
       </div>
-      <p class="tasks-subtitle">All tasks are daily and reset at midnight UTC. Complete 10 tasks to claim your Daily Goal reward. You have 6 active slots — each slot refreshes automatically after you claim its reward (4h cooldown) or dismiss it (1h cooldown).</p>
     </div>
   </div>
 
@@ -38,12 +37,73 @@
     <p>Something went wrong loading your tasks.</p>
   </div>
 
-  <!-- Daily Goal -->
-  <div id="tasks-goal-container" style="display:none" class="tasks-goal-section"></div>
+  <!-- Tab bar + tab content (hidden until data loads) -->
+  <div id="tasks-tabbed" style="display:none">
 
-  <!-- Regular task cards grid (slots 1-6) -->
-  <div class="tasks-grid-label" id="tasks-grid-label" style="display:none">Daily Tasks — complete 10 total to claim the goal</div>
-  <div id="tasks-grid" class="tasks-grid" style="display:none"></div>
+    <!-- Tabs -->
+    <div class="tasks-tabs">
+      <button class="tasks-tab active" data-tab="daily">
+        🗡️ Daily
+        <span class="tasks-tab-badge" id="tab-badge-daily" style="display:none"></span>
+      </button>
+      <button class="tasks-tab" data-tab="weekly">
+        ⚔️ Weekly
+        <span class="tasks-tab-badge tasks-tab-badge--purple" id="tab-badge-weekly" style="display:none"></span>
+      </button>
+      <button class="tasks-tab" data-tab="monthly">
+        🏅 Monthly
+        <span class="tasks-tab-badge tasks-tab-badge--orange" id="tab-badge-monthly" style="display:none"></span>
+      </button>
+    </div>
+
+    <div class="tasks-all-columns">
+      <!-- ── DAILY TAB ── -->
+      <div id="tab-daily" class="tasks-tab-panel tasks-lane tasks-lane-daily">
+        <div class="tasks-lane-header">
+          <div>
+            <span class="tasks-lane-kicker">Daily</span>
+            <h3>Daily Goal Track</h3>
+          </div>
+          <span class="tasks-lane-target">10 claims</span>
+        </div>
+        <p class="tasks-tab-desc">Resets midnight UTC · 6 slots</p>
+        <div id="tasks-goal-container" class="tasks-goal-section"></div>
+        <div class="tasks-grid-label">Daily Task Slots</div>
+        <div id="tasks-grid" class="tasks-grid"></div>
+      </div>
+
+      <!-- ── WEEKLY TAB ── -->
+      <div id="tab-weekly" class="tasks-tab-panel tasks-lane tasks-lane-weekly">
+        <div class="tasks-lane-header">
+          <div>
+            <span class="tasks-lane-kicker">Weekly</span>
+            <h3>Weekly Goal Track</h3>
+          </div>
+          <span class="tasks-lane-target">10 claims</span>
+        </div>
+        <p class="tasks-tab-desc">Resets Sunday midnight UTC · 6 slots</p>
+        <div id="tasks-weekly-goal-container" class="tasks-goal-section"></div>
+        <div class="tasks-grid-label">Weekly Task Slots</div>
+        <div id="tasks-weekly-grid" class="tasks-grid"></div>
+      </div>
+
+      <!-- ── MONTHLY TAB ── -->
+      <div id="tab-monthly" class="tasks-tab-panel tasks-lane tasks-lane-monthly">
+        <div class="tasks-lane-header">
+          <div>
+            <span class="tasks-lane-kicker">Monthly</span>
+            <h3>Monthly Goal Track</h3>
+          </div>
+          <span class="tasks-lane-target">10 claims</span>
+        </div>
+        <p class="tasks-tab-desc">Resets 1st of each month UTC · 6 slots</p>
+        <div id="tasks-monthly-goal-container" class="tasks-goal-section"></div>
+        <div class="tasks-grid-label">Monthly Task Slots</div>
+        <div id="tasks-monthly-grid" class="tasks-grid"></div>
+      </div>
+    </div>
+
+  </div><!-- /tasks-tabbed -->
 
   <!-- DM Settings Modal -->
   <div id="tasks-dm-modal" class="tasks-modal-overlay" style="display:none">
@@ -78,16 +138,30 @@
     </div>
   </div>
 
-</div>
+</div><!-- /tasks-page -->
 
 <script>
 (function () {
-  var _slots = [];
-  var _prefs = { dm_enabled: false, dm_mode: 'all' };
-  var _refreshTimer = null;
-  var _goalResetTimer = null;
-  var _claiming = {};  // slot -> true while claim in flight
+  'use strict';
 
+  // ── Shared state ────────────────────────────────────────────────────────────
+  var _slots        = [];   // daily  (slot 0 = goal, 1-6 = tasks)
+  var _weeklySlots  = [];   // weekly (slot 10 = goal, 11-16 = tasks)
+  var _monthlySlots = [];   // monthly (slot 20 = goal, 21-26 = tasks)
+  var _prefs        = { dm_enabled: false, dm_mode: 'all' };
+
+  var _refreshTimer      = null;
+  var _goalResetTimer    = null;
+  var _weeklyResetTimer  = null;
+  var _monthlyResetTimer = null;
+
+  var _claiming        = {};
+  var _claimingWeekly  = {};
+  var _claimingMonthly = {};
+
+  var _activeTab = 'daily';
+
+  // ── Reward assets ───────────────────────────────────────────────────────────
   var REWARD_IMG = {
     Key1:   '/static/Emojis/Pets/Equipment/Key1.png',
     Key2:   '/static/Emojis/Pets/Equipment/Key2.png',
@@ -97,14 +171,21 @@
     chest3: '/static/Emojis/Pets/Equipment/chest3.png',
     chest4: '/static/Emojis/Pets/Equipment/chest4.png',
   };
-  var REWARD_LABELS = { Key1:'Key 1', Key2:'Key 2', Key3:'Key 3', chest1:'Chest 1', chest2:'Chest 2', chest3:'Chest 3', chest4:'Chest 4' };
+  var REWARD_LABELS = {
+    Key1:'Key 1', Key2:'Key 2', Key3:'Key 3',
+    chest1:'Chest 1', chest2:'Chest 2', chest3:'Chest 3', chest4:'Chest 4'
+  };
 
+  // ── Helpers ─────────────────────────────────────────────────────────────────
   function rewardHtml(reward) {
     if (!reward) return '';
-    var img   = REWARD_IMG[reward.item] ? '<img src="' + REWARD_IMG[reward.item] + '" style="width:20px;height:20px;object-fit:contain;vertical-align:middle;margin-right:4px">' : '';
-    var label = REWARD_LABELS[reward.item] || reward.item;
-    var count = reward.count > 1 ? ' \xd7' + reward.count : '';
-    return '<span class="task-reward">' + img + count + ' ' + label + '</span>';
+    var items = reward.type === 'bundle' ? (reward.items || []) : [reward];
+    return items.map(function(item) {
+      var img   = REWARD_IMG[item.item] ? '<img src="' + REWARD_IMG[item.item] + '" style="width:20px;height:20px;object-fit:contain;vertical-align:middle;margin-right:4px">' : '';
+      var label = REWARD_LABELS[item.item] || item.item;
+      var count = item.count > 1 ? ' \xd7' + item.count : '';
+      return '<span class="task-reward">' + img + count + ' ' + label + '</span>';
+    }).join(' ');
   }
 
   function fmtSeconds(s) {
@@ -115,50 +196,183 @@
     return sec + 's';
   }
 
+  function fmtLong(s) {
+    s = Math.max(0, Math.floor(s));
+    var d = Math.floor(s / 86400), h = Math.floor((s % 86400) / 3600), m = Math.floor((s % 3600) / 60);
+    if (d > 0) return d + 'd ' + h + 'h';
+    if (h > 0) return h + 'h ' + m + 'm';
+    return m + 'm';
+  }
+
   function escHtml(str) {
     return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   }
+
+  // ── Tab switching ───────────────────────────────────────────────────────────
+  function updateLayout() {
+    var isDesktop = window.innerWidth >= 992;
+    document.querySelectorAll('.tasks-tab-panel').forEach(function(panel) {
+      if (isDesktop) {
+        panel.style.display = '';
+      } else {
+        panel.style.display = panel.id === 'tab-' + _activeTab ? '' : 'none';
+      }
+    });
+  }
+
+  function switchTab(name) {
+    _activeTab = name;
+    document.querySelectorAll('.tasks-tab').forEach(function(btn) {
+      btn.classList.toggle('active', btn.dataset.tab === name);
+    });
+    updateLayout();
+  }
+
+  window.addEventListener('resize', updateLayout);
+
+  document.querySelectorAll('.tasks-tab').forEach(function(btn) {
+    btn.addEventListener('click', function() { switchTab(btn.dataset.tab); });
+  });
+
+  // ── Generic goal card builder ───────────────────────────────────────────────
+  function buildGoalCard(task, resets, opts) {
+    // opts: { badgeText, badgeClass, titleText, timerClass, claimBtnId, timerSelector, streakMeta }
+    var streak = (task && task.meta && task.meta[opts.streakMeta]) ? task.meta[opts.streakMeta] : 0;
+    var pct    = (task && task.required > 0) ? Math.round((task.progress / task.required) * 100) : 0;
+    var streakHtml = streak > 0
+      ? '<span class="goal-streak">\uD83D\uDD25 ' + streak + ' ' + opts.streakUnit + ' streak</span>'
+      : '<span class="goal-streak goal-streak-new">\u2728 Start your streak today</span>';
+
+    var reward   = task && task.reward;
+    var rewardPreview = reward ? rewardHtml(reward) : '\uD83D\uDCE6 Chest';
+
+    var timerSpan = '<span class="' + opts.timerSelector + '" data-until="' + resets + '"></span>';
+    var claimDisabled = !task || !task.completed || task.reward_delivered;
+    var claimText = !task || !task.completed
+      ? 'Goal Locked'
+      : (task.reward_delivered ? 'Reward Collected' : 'Claim Goal Reward');
+    var claimIcon = !task || !task.completed ? '\uD83D\uDD12' : (task.reward_delivered ? '\u2713' : '\uD83C\uDFC6');
+    var claimButton =
+      '<button class="task-claim-goal-btn ' + (opts.claimBtnClass || '') + '" id="' + opts.claimBtnId + '"'
+      + (claimDisabled ? ' disabled aria-disabled="true"' : '')
+      + '>' + claimIcon + ' ' + claimText + '</button>';
+
+    var bodyHtml = '';
+    if (!task) {
+      bodyHtml = '<div class="task-cooldown-display"><span>Loading\u2026</span></div>';
+    } else if (task.completed && task.reward_delivered) {
+      bodyHtml =
+        '<div class="task-progress-wrap"><div class="task-progress-bar-bg"><div class="task-progress-bar-fill goal-bar-fill" data-pct="100" style="width:100%"></div></div>'
+        + '<div class="task-progress-text">' + task.required + ' / ' + task.required + ' tasks claimed</div></div>'
+        + '<div class="task-complete-badge"><i class="fas fa-check-circle"></i> Goal complete \u2014 reward collected!</div>'
+        + claimButton
+        + '<div class="goal-reset-row">Resets in ' + timerSpan + '</div>';
+    } else if (task.completed && !task.reward_delivered) {
+      bodyHtml =
+        '<div class="task-progress-wrap"><div class="task-progress-bar-bg"><div class="task-progress-bar-fill goal-bar-fill" data-pct="100" style="width:100%"></div></div>'
+        + '<div class="task-progress-text">' + task.required + ' / ' + task.required + ' tasks claimed</div></div>'
+        + claimButton
+        + '<div class="goal-reset-row">Resets in ' + timerSpan + '</div>';
+    } else {
+      bodyHtml =
+        '<div class="task-progress-wrap"><div class="task-progress-bar-bg"><div class="task-progress-bar-fill goal-bar-fill" data-pct="' + pct + '" style="width:' + pct + '%"></div></div>'
+        + '<div class="task-progress-text">' + task.progress + ' / ' + task.required + ' tasks claimed</div></div>'
+        + claimButton
+        + '<div class="goal-reset-row">Resets in ' + timerSpan + '</div>';
+    }
+
+    var goalClass = 'goal-card ' + (opts.cardClass || '');
+    if (task && task.completed && task.reward_delivered) goalClass += ' completed';
+    else if (task && task.completed) goalClass += ' goal-ready';
+
+    return '<div class="' + goalClass + '">'
+      + '<div class="goal-card-header"><span class="goal-badge ' + (opts.badgeClass || '') + '">' + opts.badgeText + '</span>' + streakHtml + '</div>'
+      + '<div class="goal-title">' + opts.titleText + '</div>'
+      + '<div class="goal-reward-preview">Reward: ' + rewardPreview + '</div>'
+      + bodyHtml
+      + '</div>';
+  }
+
+  // ── Generic task card builder ───────────────────────────────────────────────
+  function buildTaskCard(s, claimClass, dismissable) {
+    var idx  = s.slot;
+    var card = document.createElement('div');
+    card.className = 'task-card' + (claimClass ? ' ' + claimClass + '-card' : '');
+    card.dataset.slot = idx;
+
+    if (s.on_cooldown) {
+      card.classList.add('on-cooldown');
+      card.innerHTML = '<div class="task-cooldown-display">'
+        + '<i class="fas fa-hourglass-half" style="font-size:1.4rem;opacity:0.5;"></i>'
+        + '<span class="task-cooldown-timer" data-until="' + s.cooldown_until + '" data-slot="' + idx + '">' + fmtSeconds(s.seconds_remaining) + '</span>'
+        + '<span class="task-cooldown-label">New task arriving soon</span></div>';
+      return card;
+    }
+
+    if (!s.task || s.task.dismissed) {
+      card.classList.add('on-cooldown');
+      card.innerHTML = '<div class="task-cooldown-display">'
+        + '<i class="fas fa-hourglass-half" style="font-size:1.4rem;opacity:0.5;"></i>'
+        + '<span class="task-cooldown-timer">\u2014</span>'
+        + '<span class="task-cooldown-label">Loading\u2026</span></div>';
+      return card;
+    }
+
+    var task  = s.task;
+    var pct   = task.required > 0 ? Math.round((task.progress / task.required) * 100) : 0;
+    var label = escHtml(task.label.replace(/\s*\(today\)/gi, ''));
+    var dismissCooldownLabel = claimClass === 'weekly' ? '6h' : (claimClass === 'monthly' ? '24h' : '1h');
+
+    if (task.completed && task.reward_claimed) {
+      card.classList.add('on-cooldown');
+      card.innerHTML = '<div class="task-cooldown-display">'
+        + '<i class="fas fa-check-circle" style="font-size:1.4rem;color:#50c850;opacity:0.7;"></i>'
+        + (s.cooldown_until
+            ? '<span class="task-cooldown-timer" data-until="' + s.cooldown_until + '" data-slot="' + idx + '">' + fmtSeconds(s.seconds_remaining) + '</span>'
+            : '<span class="task-cooldown-timer">\u2014</span>')
+        + '<span class="task-cooldown-label">Reward collected \u2014 new task arriving</span></div>';
+    } else if (task.completed && !task.reward_claimed) {
+      card.classList.add('claim-ready');
+      card.innerHTML =
+        '<div class="task-label">' + label + '</div>'
+        + '<div class="task-progress-wrap"><div class="task-progress-bar-bg"><div class="task-progress-bar-fill" data-pct="100" style="width:100%"></div></div>'
+        + '<div class="task-progress-text">' + task.required + ' / ' + task.required + '</div></div>'
+        + '<div class="task-reward-row">' + rewardHtml(task.reward) + '</div>'
+        + '<button class="task-claim-btn' + (claimClass ? ' ' + claimClass + '-claim-btn' : '') + '" data-slot="' + idx + '">\uD83C\uDF81 Claim Reward</button>';
+    } else {
+      card.innerHTML =
+        '<div class="task-label">' + label + '</div>'
+        + '<div class="task-progress-wrap"><div class="task-progress-bar-bg"><div class="task-progress-bar-fill" data-pct="' + pct + '" style="width:' + pct + '%"></div></div>'
+        + '<div class="task-progress-text">' + task.progress + ' / ' + task.required + '</div></div>'
+        + '<div class="task-reward-row">' + rewardHtml(task.reward)
+        + (dismissable ? '<button class="task-dismiss-btn ' + claimClass + '-dismiss-btn" data-slot="' + idx + '" title="Dismiss (' + dismissCooldownLabel + ' cooldown)">\u274C</button>' : '')
+        + '</div>';
+    }
+    return card;
+  }
+
+  // ════════════════════════════════════════════════════════════════════════════
+  // DAILY
+  // ════════════════════════════════════════════════════════════════════════════
 
   function renderGoal(goalSlot) {
     var container = document.getElementById('tasks-goal-container');
     if (!container) return;
     var task   = goalSlot.task;
     var resets = goalSlot.resets_at || 0;
-    var streak = (task && task.meta && task.meta.streak) ? task.meta.streak : 0;
-    var pct    = (task && task.required > 0) ? Math.round((task.progress / task.required) * 100) : 0;
-    var streakHtml = streak > 0
-      ? '<span class="goal-streak">🔥 ' + streak + '-day streak</span>'
-      : '<span class="goal-streak goal-streak-new">✨ Start your streak today</span>';
-    var chestName = (task && task.reward && REWARD_LABELS[task.reward.item]) || 'Chest';
-    var chestIcon = (task && task.reward && REWARD_IMG[task.reward.item])
-      ? '<img src="' + REWARD_IMG[task.reward.item] + '" style="width:20px;height:20px;object-fit:contain;vertical-align:middle">'
-      : '📦';
-    var bodyHtml = '';
-    if (!task || task.dismissed) {
-      bodyHtml = '<div class="task-cooldown-display"><i class="fas fa-hourglass-half"></i><span>Loading\u2026</span></div>';
-    } else if (task.completed && task.reward_delivered) {
-      // Fully claimed
-      bodyHtml = '<div class="task-progress-wrap"><div class="task-progress-bar-bg"><div class="task-progress-bar-fill goal-bar-fill" data-pct="100" style="width:100%"></div></div><div class="task-progress-text">' + task.required + ' / ' + task.required + ' tasks claimed</div></div>'
-        + rewardHtml(task.reward)
-        + '<div class="task-complete-badge"><i class="fas fa-check-circle"></i> Goal complete \u2014 ' + chestIcon + ' ' + chestName + ' collected!</div>'
-        + '<div class="goal-reset-row">Resets in <span class="goal-reset-timer" data-until="' + resets + '"></span></div>';
-    } else if (task.completed && !task.reward_delivered) {
-      // Complete — waiting for claim
-      bodyHtml = '<div class="task-progress-wrap"><div class="task-progress-bar-bg"><div class="task-progress-bar-fill goal-bar-fill" data-pct="100" style="width:100%"></div></div><div class="task-progress-text">' + task.required + ' / ' + task.required + ' tasks claimed</div></div>'
-        + rewardHtml(task.reward)
-        + '<button class="task-claim-goal-btn" id="claim-goal-btn">🏆 Claim Daily Goal Reward</button>'
-        + '<div class="goal-reset-row">Resets in <span class="goal-reset-timer" data-until="' + resets + '"></span></div>';
-    } else {
-      bodyHtml = '<div class="task-progress-wrap"><div class="task-progress-bar-bg"><div class="task-progress-bar-fill goal-bar-fill" data-pct="' + pct + '" style="width:' + pct + '%"></div></div><div class="task-progress-text">' + task.progress + ' / ' + task.required + ' tasks claimed</div></div>'
-        + rewardHtml(task.reward)
-        + '<div class="goal-reset-row">Resets in <span class="goal-reset-timer" data-until="' + resets + '"></span></div>';
-    }
-    var goalClass = 'goal-card';
-    if (task && task.completed && task.reward_delivered) goalClass += ' completed';
-    else if (task && task.completed) goalClass += ' goal-ready';
-    container.innerHTML = '<div class="' + goalClass + '"><div class="goal-card-header"><span class="goal-badge">DAILY GOAL</span>' + streakHtml + '</div><div class="goal-title">🏆 Complete 10 Daily Tasks</div><div class="goal-reward-preview">Today\'s reward: ' + chestIcon + ' <strong>' + chestName + '</strong></div>' + bodyHtml + '</div>';
-    var claimGoalBtn = document.getElementById('claim-goal-btn');
-    if (claimGoalBtn) claimGoalBtn.addEventListener('click', claimGoal);
+    container.innerHTML = buildGoalCard(task, resets, {
+      badgeText:     'DAILY GOAL',
+      badgeClass:    '',
+      cardClass:     '',
+      titleText:     '\uD83C\uDFC6 Complete 10 Daily Tasks',
+      timerSelector: 'goal-reset-timer',
+      claimBtnId:    'claim-goal-btn',
+      claimBtnClass: '',
+      streakMeta:    'streak',
+      streakUnit:    'day',
+    });
+    var btn = document.getElementById('claim-goal-btn');
+    if (btn) btn.addEventListener('click', claimGoal);
     startGoalCountdown();
   }
 
@@ -166,38 +380,8 @@
     var grid = document.getElementById('tasks-grid');
     if (!grid) return;
     grid.innerHTML = '';
-    var regular = _slots.slice(1);
-    regular.forEach(function(s) {
-      var idx  = s.slot;
-      var card = document.createElement('div');
-      card.className = 'task-card';
-      card.dataset.slot = idx;
-      if (s.on_cooldown) {
-        card.classList.add('on-cooldown');
-        card.innerHTML = '<div class="task-cooldown-display"><i class="fas fa-hourglass-half" style="font-size:1.4rem;opacity:0.5;"></i><span class="task-cooldown-timer" data-until="' + s.cooldown_until + '" data-slot="' + idx + '">' + fmtSeconds(s.seconds_remaining) + '</span><span class="task-cooldown-label">New task arriving soon</span></div>';
-      } else if (!s.task || s.task.dismissed) {
-        card.classList.add('on-cooldown');
-        card.innerHTML = '<div class="task-cooldown-display"><i class="fas fa-hourglass-half" style="font-size:1.4rem;opacity:0.5;"></i><span class="task-cooldown-timer">\u2014</span><span class="task-cooldown-label">Loading\u2026</span></div>';
-      } else {
-        var task = s.task;
-        var pct  = task.required > 0 ? Math.round((task.progress / task.required) * 100) : 0;
-        // Strip "(today)" from label
-        var label = escHtml(task.label.replace(/\s*\(today\)/gi, ''));
-        if (task.completed && task.reward_claimed) {
-          card.classList.add('on-cooldown');
-          card.innerHTML = '<div class="task-cooldown-display"><i class="fas fa-check-circle" style="font-size:1.4rem;color:#50c850;opacity:0.7;"></i><span class="task-cooldown-timer" data-until="' + s.cooldown_until + '" data-slot="' + idx + '">' + fmtSeconds(s.seconds_remaining) + '</span><span class="task-cooldown-label">Reward collected \u2014 new task arriving</span></div>';
-        } else if (task.completed && !task.reward_claimed) {
-          card.classList.add('claim-ready');
-          card.innerHTML = '<div class="task-label">' + label + '</div>'
-            + '<div class="task-progress-wrap"><div class="task-progress-bar-bg"><div class="task-progress-bar-fill" data-pct="100" style="width:100%"></div></div><div class="task-progress-text">' + task.required + ' / ' + task.required + '</div></div>'
-            + '<div class="task-reward-row">' + rewardHtml(task.reward) + '</div>'
-            + '<button class="task-claim-btn" data-slot="' + idx + '">\uD83C\uDF81 Claim Reward</button>';
-        } else {
-          card.innerHTML = '<div class="task-label">' + label + '</div>'
-            + '<div class="task-progress-wrap"><div class="task-progress-bar-bg"><div class="task-progress-bar-fill" data-pct="' + pct + '" style="width:' + pct + '%"></div></div><div class="task-progress-text">' + task.progress + ' / ' + task.required + '</div></div>'
-            + '<div class="task-reward-row">' + rewardHtml(task.reward) + '<button class="task-dismiss-btn" data-slot="' + idx + '" title="Dismiss (1h cooldown)">\u274C</button></div>';
-        }
-      }
+    _slots.slice(1).forEach(function(s) {
+      var card = buildTaskCard(s, '', true);
       grid.appendChild(card);
     });
     grid.querySelectorAll('.task-claim-btn').forEach(function(btn) {
@@ -207,58 +391,72 @@
       btn.addEventListener('click', function() { dismissTask(parseInt(btn.dataset.slot)); });
     });
     startCountdowns();
+    updateTabBadge('daily', _slots.slice(1));
   }
 
-  // ── Claim task ─────────────────────────────────────────────────────────────
+  function loadTasks() {
+    var loadingMsg = document.getElementById('tasks-loading');
+    if (loadingMsg) loadingMsg.style.display = '';
+    hideTabbed();
+    fetch('/api/tasks', { credentials: 'include' })
+      .then(function(r) { if (r.status === 401) { showMsg('login'); return null; } return r.json(); })
+      .then(function(data) {
+        if (!data) return;
+        if (data.error === 'no_pet') { showMsg('nopet'); return; }
+        if (data.error)              { showMsg('login'); return; }
+        _slots = data.slots || [];
+        _prefs = data.prefs || { dm_enabled: false, dm_mode: 'all' };
+        if (loadingMsg) loadingMsg.style.display = 'none';
+        showTabbed();
+        if (_slots[0]) renderGoal(_slots[0]);
+        renderSlots();
+      })
+      .catch(function(err) { showMsg('error', err.message); });
+  }
+
   function claimTask(slot) {
     if (_claiming[slot]) return;
     _claiming[slot] = true;
     var btn = document.querySelector('.task-claim-btn[data-slot="' + slot + '"]');
     if (btn) { btn.disabled = true; btn.textContent = 'Claiming\u2026'; }
-    fetch('/api/tasks/claim', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ slot: slot }),
-    })
+    fetch('/api/tasks/claim', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({slot:slot}) })
       .then(function(r) { return r.json(); })
       .then(function(data) {
         _claiming[slot] = false;
-        if (data.slots) {
-          _slots = data.slots;
-          if (_slots[0]) renderGoal(_slots[0]);
-          renderSlots();
-          updateNavBadge();
-        } else {
-          if (btn) { btn.disabled = false; btn.textContent = '🎁 Claim Reward'; }
-        }
+        if (data.slots) { _slots = data.slots; if (_slots[0]) renderGoal(_slots[0]); renderSlots(); }
+        else if (btn) { btn.disabled = false; btn.textContent = '\uD83C\uDF81 Claim Reward'; }
       })
-      .catch(function(e) {
-        _claiming[slot] = false;
-        console.error('claimTask error', e);
-        if (btn) { btn.disabled = false; btn.textContent = '🎁 Claim Reward'; }
-      });
+      .catch(function(e) { _claiming[slot] = false; if (btn) { btn.disabled = false; btn.textContent = '\uD83C\uDF81 Claim Reward'; } });
   }
 
-  // ── Claim daily goal ───────────────────────────────────────────────────────
   function claimGoal() {
     var btn = document.getElementById('claim-goal-btn');
     if (btn) { btn.disabled = true; btn.textContent = 'Claiming\u2026'; }
-    fetch('/api/tasks/claim-goal', { method: 'POST', headers: { 'Content-Type': 'application/json' } })
+    fetch('/api/tasks/claim-goal', { method:'POST', headers:{'Content-Type':'application/json'} })
       .then(function(r) { return r.json(); })
       .then(function(data) {
-        if (data.slots) {
-          _slots = data.slots;
-          if (_slots[0]) renderGoal(_slots[0]);
-          renderSlots();
-          updateNavBadge();
-        } else {
-          if (btn) { btn.disabled = false; btn.textContent = '🏆 Claim Daily Goal Reward'; }
-        }
+        if (data.slots) { _slots = data.slots; if (_slots[0]) renderGoal(_slots[0]); renderSlots(); }
+        else if (btn) { btn.disabled = false; btn.textContent = '\uD83C\uDFC6 Claim Goal Reward'; }
       })
-      .catch(function(e) {
-        console.error('claimGoal error', e);
-        if (btn) { btn.disabled = false; btn.textContent = '🏆 Claim Daily Goal Reward'; }
-      });
+      .catch(function() { if (btn) { btn.disabled = false; btn.textContent = '\uD83C\uDFC6 Claim Goal Reward'; } });
+  }
+
+  function dismissTask(slot) {
+    fetch('/api/tasks/dismiss', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({slot:slot}) })
+      .then(function(r) { return r.json(); })
+      .then(function(data) { if (data.slots) { _slots = data.slots; if (_slots[0]) renderGoal(_slots[0]); renderSlots(); } });
+  }
+
+  function dismissWeeklyTask(slot) {
+    fetch('/api/tasks/dismiss-weekly', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({slot:slot}) })
+      .then(function(r) { return r.json(); })
+      .then(function(data) { if (data.slots) { _weeklySlots = data.slots; if (_weeklySlots[0]) renderWeeklyGoal(_weeklySlots[0]); renderWeeklySlots(); } });
+  }
+
+  function dismissMonthlyTask(slot) {
+    fetch('/api/tasks/dismiss-monthly', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({slot:slot}) })
+      .then(function(r) { return r.json(); })
+      .then(function(data) { if (data.slots) { _monthlySlots = data.slots; if (_monthlySlots[0]) renderMonthlyGoal(_monthlySlots[0]); renderMonthlySlots(); } });
   }
 
   function startCountdowns() {
@@ -266,10 +464,14 @@
     _refreshTimer = setInterval(function() {
       var now = Date.now() / 1000;
       document.querySelectorAll('.task-cooldown-timer[data-until]').forEach(function(el) {
-        var until = parseFloat(el.dataset.until);
-        var rem   = Math.max(0, until - now);
+        var rem = Math.max(0, parseFloat(el.dataset.until) - now);
         el.textContent = fmtSeconds(rem);
-        if (rem <= 0) { clearInterval(_refreshTimer); loadTasks(); }
+        if (rem <= 0) {
+          clearInterval(_refreshTimer);
+          if (el.closest('#tab-daily')) loadTasks();
+          if (el.closest('#tab-weekly')) loadWeeklyTasks();
+          if (el.closest('#tab-monthly')) loadMonthlyTasks();
+        }
       });
     }, 1000);
   }
@@ -278,87 +480,259 @@
     if (_goalResetTimer) clearInterval(_goalResetTimer);
     _goalResetTimer = setInterval(function() {
       var now = Date.now() / 1000;
-      document.querySelectorAll('.goal-reset-timer[data-until]').forEach(function(el) {
-        var until = parseFloat(el.dataset.until);
-        var rem   = Math.max(0, until - now);
+      document.querySelectorAll('#tab-daily .goal-reset-timer[data-until]').forEach(function(el) {
+        var rem = Math.max(0, parseFloat(el.dataset.until) - now);
         el.textContent = fmtSeconds(rem);
         if (rem <= 0) { clearInterval(_goalResetTimer); loadTasks(); }
       });
     }, 1000);
   }
 
-  function loadTasks() {
-    var loadingMsg    = document.getElementById('tasks-loading');
-    var loginMsg      = document.getElementById('tasks-login-msg');
-    var nopetMsg      = document.getElementById('tasks-nopet-msg');
-    var errorMsg      = document.getElementById('tasks-error-msg');
-    var goalContainer = document.getElementById('tasks-goal-container');
-    var gridLabel     = document.getElementById('tasks-grid-label');
-    var grid          = document.getElementById('tasks-grid');
-    if (loadingMsg)    loadingMsg.style.display    = '';
-    if (loginMsg)      loginMsg.style.display      = 'none';
-    if (nopetMsg)      nopetMsg.style.display      = 'none';
-    if (errorMsg)      errorMsg.style.display      = 'none';
-    if (goalContainer) goalContainer.style.display = 'none';
-    if (gridLabel)     gridLabel.style.display     = 'none';
-    if (grid)          grid.style.display          = 'none';
-    fetch('/api/tasks', { credentials: 'include' })
-      .then(function(r) { if (r.status === 401) { showLoginMsg(); return null; } return r.json(); })
-      .then(function(data) {
-        if (!data) return;
-        if (data.error === 'no_pet') { showNoPetMsg(); return; }
-        if (data.error)              { showLoginMsg(); return; }
-        _slots = data.slots || [];
-        _prefs = data.prefs || { dm_enabled: false, dm_mode: 'all' };
-        if (loadingMsg)    loadingMsg.style.display    = 'none';
-        if (goalContainer) goalContainer.style.display = '';
-        if (gridLabel)     gridLabel.style.display     = '';
-        if (grid)          grid.style.display          = '';
-        if (_slots[0]) renderGoal(_slots[0]);
-        renderSlots();
-        updateNavBadge();
-      })
-      .catch(function(err) { showErrorMsg(err.message || 'Unknown error loading tasks.'); });
+  // ════════════════════════════════════════════════════════════════════════════
+  // WEEKLY
+  // ════════════════════════════════════════════════════════════════════════════
+
+  function renderWeeklyGoal(goalSlot) {
+    var container = document.getElementById('tasks-weekly-goal-container');
+    if (!container || !goalSlot) return;
+    container.innerHTML = buildGoalCard(goalSlot.task, goalSlot.resets_at || 0, {
+      badgeText:     'WEEKLY GOAL',
+      badgeClass:    'weekly-badge',
+      cardClass:     'weekly-goal-card',
+      titleText:     '\u2694\uFE0F Complete 10 Weekly Tasks',
+      timerSelector: 'weekly-reset-timer',
+      claimBtnId:    'claim-weekly-goal-btn',
+      claimBtnClass: 'weekly-claim-goal-btn',
+      streakMeta:    'weekly_streak',
+      streakUnit:    'week',
+    });
+    var btn = document.getElementById('claim-weekly-goal-btn');
+    if (btn) btn.addEventListener('click', claimWeeklyGoal);
+    startWeeklyCountdown();
   }
 
-  function dismissTask(slot) {
-    fetch('/api/tasks/dismiss', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({slot:slot}) })
+  function renderWeeklySlots() {
+    var grid = document.getElementById('tasks-weekly-grid');
+    if (!grid) return;
+    grid.innerHTML = '';
+    _weeklySlots.slice(1).forEach(function(s) {
+      var card = buildTaskCard(s, 'weekly', true);
+      grid.appendChild(card);
+    });
+    grid.querySelectorAll('.weekly-claim-btn').forEach(function(btn) {
+      btn.addEventListener('click', function() { claimWeeklyTask(parseInt(btn.dataset.slot)); });
+    });
+    grid.querySelectorAll('.weekly-dismiss-btn').forEach(function(btn) {
+      btn.addEventListener('click', function() { dismissWeeklyTask(parseInt(btn.dataset.slot)); });
+    });
+    startCountdowns();
+    updateTabBadge('weekly', _weeklySlots.slice(1));
+  }
+
+  function loadWeeklyTasks() {
+    fetch('/api/tasks/weekly', { credentials: 'include' })
+      .then(function(r) { if (!r.ok) return null; return r.json(); })
+      .then(function(data) {
+        if (!data || data.error) return;
+        _weeklySlots = data.weekly || [];
+        renderWeeklyGoal(_weeklySlots[0]);
+        renderWeeklySlots();
+      })
+      .catch(function(e) { console.error('[tasks] weekly load error:', e); });
+  }
+
+  function claimWeeklyTask(slot) {
+    if (_claimingWeekly[slot]) return;
+    _claimingWeekly[slot] = true;
+    var btn = document.querySelector('.weekly-claim-btn[data-slot="' + slot + '"]');
+    if (btn) { btn.disabled = true; btn.textContent = 'Claiming\u2026'; }
+    fetch('/api/tasks/weekly/claim', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({slot:slot}) })
       .then(function(r) { return r.json(); })
       .then(function(data) {
-        if (data.slots) { _slots = data.slots; if (_slots[0]) renderGoal(_slots[0]); renderSlots(); updateNavBadge(); }
+        _claimingWeekly[slot] = false;
+        if (data.weekly) { _weeklySlots = data.weekly; renderWeeklyGoal(_weeklySlots[0]); renderWeeklySlots(); }
+        else if (btn) { btn.disabled = false; btn.textContent = '\uD83C\uDF81 Claim Reward'; }
       })
-      .catch(function(e) { console.error('dismissTask error', e); });
+      .catch(function() { _claimingWeekly[slot] = false; if (btn) { btn.disabled = false; btn.textContent = '\uD83C\uDF81 Claim Reward'; } });
   }
 
-  function updateNavBadge() {
-    var badge = document.getElementById('tasks-nav-badge');
+  function claimWeeklyGoal() {
+    var btn = document.getElementById('claim-weekly-goal-btn');
+    if (btn) { btn.disabled = true; btn.textContent = 'Claiming\u2026'; }
+    fetch('/api/tasks/weekly/claim-goal', { method:'POST', headers:{'Content-Type':'application/json'} })
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        if (data.weekly) { _weeklySlots = data.weekly; renderWeeklyGoal(_weeklySlots[0]); renderWeeklySlots(); }
+        else if (btn) { btn.disabled = false; btn.textContent = '\uD83C\uDFC6 Claim Goal Reward'; }
+      })
+      .catch(function() { if (btn) { btn.disabled = false; btn.textContent = '\uD83C\uDFC6 Claim Goal Reward'; } });
+  }
+
+  function startWeeklyCountdown() {
+    if (_weeklyResetTimer) clearInterval(_weeklyResetTimer);
+    _weeklyResetTimer = setInterval(function() {
+      var now = Date.now() / 1000;
+      document.querySelectorAll('.weekly-reset-timer[data-until]').forEach(function(el) {
+        var rem = Math.max(0, parseFloat(el.dataset.until) - now);
+        el.textContent = fmtLong(rem);
+        if (rem <= 0) { clearInterval(_weeklyResetTimer); loadWeeklyTasks(); }
+      });
+    }, 30000);
+    // Immediate tick
+    document.querySelectorAll('.weekly-reset-timer[data-until]').forEach(function(el) {
+      el.textContent = fmtLong(Math.max(0, parseFloat(el.dataset.until) - Date.now() / 1000));
+    });
+  }
+
+  // ════════════════════════════════════════════════════════════════════════════
+  // MONTHLY
+  // ════════════════════════════════════════════════════════════════════════════
+
+  function renderMonthlyGoal(goalSlot) {
+    var container = document.getElementById('tasks-monthly-goal-container');
+    if (!container || !goalSlot) return;
+    container.innerHTML = buildGoalCard(goalSlot.task, goalSlot.resets_at || 0, {
+      badgeText:     'MONTHLY GOAL',
+      badgeClass:    'monthly-badge',
+      cardClass:     'monthly-goal-card',
+      titleText:     '\uD83C\uDFC5 Complete 10 Monthly Tasks',
+      timerSelector: 'monthly-reset-timer',
+      claimBtnId:    'claim-monthly-goal-btn',
+      claimBtnClass: 'monthly-claim-goal-btn',
+      streakMeta:    'monthly_streak',
+      streakUnit:    'month',
+    });
+    var btn = document.getElementById('claim-monthly-goal-btn');
+    if (btn) btn.addEventListener('click', claimMonthlyGoal);
+    startMonthlyCountdown();
+  }
+
+  function renderMonthlySlots() {
+    var grid = document.getElementById('tasks-monthly-grid');
+    if (!grid) return;
+    grid.innerHTML = '';
+    _monthlySlots.slice(1).forEach(function(s) {
+      var card = buildTaskCard(s, 'monthly', true);
+      grid.appendChild(card);
+    });
+    grid.querySelectorAll('.monthly-claim-btn').forEach(function(btn) {
+      btn.addEventListener('click', function() { claimMonthlyTask(parseInt(btn.dataset.slot)); });
+    });
+    grid.querySelectorAll('.monthly-dismiss-btn').forEach(function(btn) {
+      btn.addEventListener('click', function() { dismissMonthlyTask(parseInt(btn.dataset.slot)); });
+    });
+    startCountdowns();
+    updateTabBadge('monthly', _monthlySlots.slice(1));
+  }
+
+  function loadMonthlyTasks() {
+    fetch('/api/tasks/monthly', { credentials: 'include' })
+      .then(function(r) { if (!r.ok) return null; return r.json(); })
+      .then(function(data) {
+        if (!data || data.error) return;
+        _monthlySlots = data.monthly || [];
+        renderMonthlyGoal(_monthlySlots[0]);
+        renderMonthlySlots();
+      })
+      .catch(function(e) { console.error('[tasks] monthly load error:', e); });
+  }
+
+  function claimMonthlyTask(slot) {
+    if (_claimingMonthly[slot]) return;
+    _claimingMonthly[slot] = true;
+    var btn = document.querySelector('.monthly-claim-btn[data-slot="' + slot + '"]');
+    if (btn) { btn.disabled = true; btn.textContent = 'Claiming\u2026'; }
+    fetch('/api/tasks/monthly/claim', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({slot:slot}) })
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        _claimingMonthly[slot] = false;
+        if (data.monthly) { _monthlySlots = data.monthly; renderMonthlyGoal(_monthlySlots[0]); renderMonthlySlots(); }
+        else if (btn) { btn.disabled = false; btn.textContent = '\uD83C\uDF81 Claim Reward'; }
+      })
+      .catch(function() { _claimingMonthly[slot] = false; if (btn) { btn.disabled = false; btn.textContent = '\uD83C\uDF81 Claim Reward'; } });
+  }
+
+  function claimMonthlyGoal() {
+    var btn = document.getElementById('claim-monthly-goal-btn');
+    if (btn) { btn.disabled = true; btn.textContent = 'Claiming\u2026'; }
+    fetch('/api/tasks/monthly/claim-goal', { method:'POST', headers:{'Content-Type':'application/json'} })
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        if (data.monthly) { _monthlySlots = data.monthly; renderMonthlyGoal(_monthlySlots[0]); renderMonthlySlots(); }
+        else if (btn) { btn.disabled = false; btn.textContent = '\uD83C\uDFC6 Claim Goal Reward'; }
+      })
+      .catch(function() { if (btn) { btn.disabled = false; btn.textContent = '\uD83C\uDFC6 Claim Goal Reward'; } });
+  }
+
+  function startMonthlyCountdown() {
+    if (_monthlyResetTimer) clearInterval(_monthlyResetTimer);
+    _monthlyResetTimer = setInterval(function() {
+      var now = Date.now() / 1000;
+      document.querySelectorAll('.monthly-reset-timer[data-until]').forEach(function(el) {
+        var rem = Math.max(0, parseFloat(el.dataset.until) - now);
+        el.textContent = fmtLong(rem);
+        if (rem <= 0) { clearInterval(_monthlyResetTimer); loadMonthlyTasks(); }
+      });
+    }, 60000);
+    document.querySelectorAll('.monthly-reset-timer[data-until]').forEach(function(el) {
+      el.textContent = fmtLong(Math.max(0, parseFloat(el.dataset.until) - Date.now() / 1000));
+    });
+  }
+
+  // ════════════════════════════════════════════════════════════════════════════
+  // UI state helpers
+  // ════════════════════════════════════════════════════════════════════════════
+
+  function hideTabbed() {
+    var t = document.getElementById('tasks-tabbed');
+    if (t) t.style.display = 'none';
+  }
+
+  function showTabbed() {
+    var t = document.getElementById('tasks-tabbed');
+    if (t) t.style.display = '';
+  }
+
+  function showMsg(type, msg) {
+    var loadingMsg = document.getElementById('tasks-loading');
+    if (loadingMsg) loadingMsg.style.display = 'none';
+    hideTabbed();
+    var ids = {
+      login:  'tasks-login-msg',
+      nopet:  'tasks-nopet-msg',
+      error:  'tasks-error-msg',
+    };
+    ['login','nopet','error'].forEach(function(k) {
+      var el = document.getElementById(ids[k]);
+      if (el) el.style.display = k === type ? '' : 'none';
+    });
+    if (type === 'error' && msg) {
+      var el = document.getElementById('tasks-error-msg');
+      if (el) { var p = el.querySelector('p'); if (p) p.textContent = msg; }
+    }
+  }
+
+  function updateTabBadge(tab, slots) {
+    var badge = document.getElementById('tab-badge-' + tab);
     if (!badge) return;
-    // Count tasks that are in-progress OR ready to claim (not yet claimed, not on cooldown)
-    var active = _slots.slice(1).filter(function(s) {
-      return !s.on_cooldown && s.task && !s.task.dismissed && !(s.task.completed && s.task.reward_claimed);
-    }).length;
-    if (active > 0) { badge.textContent = active; badge.style.display = ''; }
+    var count;
+    if (tab === 'daily') {
+      count = slots.filter(function(s) {
+        return !s.on_cooldown && s.task && !s.task.dismissed && !(s.task.completed && s.task.reward_claimed);
+      }).length;
+    } else {
+      // weekly / monthly: count ready-to-claim only
+      count = slots.filter(function(s) {
+        return s.task && s.task.completed && !s.task.reward_claimed;
+      }).length;
+    }
+    if (count > 0) { badge.textContent = count; badge.style.display = ''; }
     else { badge.style.display = 'none'; }
   }
 
-  function showLoginMsg() {
-    var ids = ['tasks-loading','tasks-nopet-msg','tasks-error-msg','tasks-goal-container','tasks-grid-label','tasks-grid'];
-    ids.forEach(function(id) { var e = document.getElementById(id); if (e) e.style.display = 'none'; });
-    var e = document.getElementById('tasks-login-msg'); if (e) e.style.display = '';
-  }
-
-  function showNoPetMsg() {
-    var ids = ['tasks-loading','tasks-login-msg','tasks-error-msg','tasks-goal-container','tasks-grid-label','tasks-grid'];
-    ids.forEach(function(id) { var e = document.getElementById(id); if (e) e.style.display = 'none'; });
-    var e = document.getElementById('tasks-nopet-msg'); if (e) e.style.display = '';
-  }
-
-  function showErrorMsg(msg) {
-    var ids = ['tasks-loading','tasks-login-msg','tasks-nopet-msg','tasks-goal-container','tasks-grid-label','tasks-grid'];
-    ids.forEach(function(id) { var e = document.getElementById(id); if (e) e.style.display = 'none'; });
-    var e = document.getElementById('tasks-error-msg');
-    if (e) { var p = e.querySelector('p'); if (p) p.textContent = msg; e.style.display = ''; }
-  }
+  // ════════════════════════════════════════════════════════════════════════════
+  // DM modal
+  // ════════════════════════════════════════════════════════════════════════════
 
   function openDmModal() {
     var modal = document.getElementById('tasks-dm-modal'); if (!modal) return;
@@ -369,32 +743,36 @@
     modal.style.display = 'flex';
   }
 
-  function closeDmModal() { var m = document.getElementById('tasks-dm-modal'); if (m) m.style.display = 'none'; }
+  function closeDmModal() {
+    var m = document.getElementById('tasks-dm-modal'); if (m) m.style.display = 'none';
+  }
 
   function saveDmPrefs() {
     var enabled = document.getElementById('dm-enabled-toggle').checked;
     var mode    = document.getElementById('dm-mode-each').checked ? 'each' : 'all';
-    fetch('/api/tasks/dm-prefs', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({dm_enabled:enabled, dm_mode:mode}) })
+    fetch('/api/tasks/dm-prefs', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({dm_enabled:enabled, dm_mode:mode}) })
       .then(function(r) { return r.json(); })
-      .then(function(data) { if (data.success) { _prefs.dm_enabled = data.dm_enabled; _prefs.dm_mode = data.dm_mode; closeDmModal(); } })
-      .catch(function(e) { console.error('saveDmPrefs error', e); });
+      .then(function(data) { if (data.success) { _prefs.dm_enabled = data.dm_enabled; _prefs.dm_mode = data.dm_mode; closeDmModal(); } });
   }
 
-  // Wire up DM modal buttons
-  var dmBtn     = document.getElementById('tasks-dm-btn');
-  var dmClose   = document.getElementById('tasks-dm-close');
-  var dmSave    = document.getElementById('tasks-dm-save');
-  var dmToggle  = document.getElementById('dm-enabled-toggle');
-  var dmOverlay = document.getElementById('tasks-dm-modal');
-  if (dmBtn)     dmBtn.addEventListener('click', openDmModal);
-  if (dmClose)   dmClose.addEventListener('click', closeDmModal);
-  if (dmSave)    dmSave.addEventListener('click', saveDmPrefs);
-  if (dmOverlay) dmOverlay.addEventListener('click', function(e) { if (e.target === dmOverlay) closeDmModal(); });
-  if (dmToggle)  dmToggle.addEventListener('change', function() {
+  var dmBtn    = document.getElementById('tasks-dm-btn');
+  var dmClose  = document.getElementById('tasks-dm-close');
+  var dmSave   = document.getElementById('tasks-dm-save');
+  var dmToggle = document.getElementById('dm-enabled-toggle');
+  var dmModal  = document.getElementById('tasks-dm-modal');
+  if (dmBtn)    dmBtn.addEventListener('click', openDmModal);
+  if (dmClose)  dmClose.addEventListener('click', closeDmModal);
+  if (dmSave)   dmSave.addEventListener('click', saveDmPrefs);
+  if (dmModal)  dmModal.addEventListener('click', function(e) { if (e.target === dmModal) closeDmModal(); });
+  if (dmToggle) dmToggle.addEventListener('change', function() {
     document.getElementById('dm-mode-section').style.display = dmToggle.checked ? '' : 'none';
   });
 
-  // Load tasks immediately
+  // ── Boot ────────────────────────────────────────────────────────────────────
   loadTasks();
+  loadWeeklyTasks();
+  loadMonthlyTasks();
+  updateLayout();
+
 })();
 </script>

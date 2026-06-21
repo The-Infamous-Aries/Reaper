@@ -1,4 +1,4 @@
-<link rel="stylesheet" href="/css/library.css">
+﻿<link rel="stylesheet" href="/css/library.css">
 <br>
 <!-- Seal Icons Container -->
 <div class="container-fluid mb-4">
@@ -31,7 +31,7 @@
                 <div class="large-scroll-container" id="large-scroll-container">
                     <div class="large-scroll" id="large-scroll">
                         <div class="large-scroll-header">
-                            <h2 class="large-scroll-title">📜 Ancient Knowledge</h2>
+                            <h2 class="large-scroll-title">ðŸ“œ Ancient Knowledge</h2>
                             <div class="large-scroll-seal"><i class="fa-solid fa-scroll"></i></div>
                         </div>
                         <div class="large-scroll-content" id="large-scroll-content">
@@ -52,6 +52,7 @@
     </div>
 </div>
 
+    <script src="/js/access_guard.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <script>
     document.addEventListener('dashboardPageLoaded', function(event) {
@@ -110,7 +111,7 @@
                 `;
                 
                 largeScrollContent.innerHTML = parsedContent + officialSection;
-                document.querySelector('.large-scroll-title').textContent = `📜 ${docName}`;
+                document.querySelector('.large-scroll-title').textContent = `ðŸ“œ ${docName}`;
                 
             } catch (error) {
                 largeScrollContent.innerHTML = `<div class="error"><h3><i class="fa-solid fa-exclamation-triangle"></i> Error</h3><p>${error.message}</p></div>`;

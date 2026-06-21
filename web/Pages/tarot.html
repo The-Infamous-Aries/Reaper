@@ -1,97 +1,53 @@
-<br>
-<div class="container-fluid">
-    <div class="row">
-        <div class="col-12">
-            <div class="card mb-4">
-                <div class="card-header text-center">
-                    <h3>🔮 Mystical Tarot Reading</h3>
-                    <p class="mb-0">Let the universe reveal its secrets through the cards</p>
-                </div>
-                <div class="card-body">
-                    <!-- Dealer Section -->
-                    <div class="dealer-section text-center mb-4">
-                        <div class="dealer-avatar-container">
-                            <div class="floating-skull" id="floating-skull">
-                                <img id="skull-image" src="" alt="skull" style="width:80px;height:80px;object-fit:contain;display:none;">
-                            </div>
-                            <div id="dealer-speech" class="dealer-speech-bubble d-none">
-                                <div class="speech-content"></div>
-                                <div class="speech-arrow"></div>
-                            </div>
-                        </div>
-                        <div id="dealer-status" class="dealer-status mt-2">
-                            <span class="status-text">Ready to reveal your destiny...</span>
-                        </div>
-                    </div>
-
-                    <!-- Reading Selection -->
-                    <div id="reading-selection" class="reading-selection">
-                        <h4 class="text-center mb-4">Choose Your Reading</h4>
-                        <div class="row justify-content-center">
-                            <div class="col-md-4 mb-3">
-                                <div class="thought-bubble" data-spread="1 Card">
-                                    <div class="bubble-content">
-                                        <h5>🌟 Single Card</h5>
-                                        <p class="small">Quick insight into your current situation</p>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-4 mb-3">
-                                <div class="thought-bubble" data-spread="3 Card (Past/Present/Future)">
-                                    <div class="bubble-content">
-                                        <h5>⚡ Past, Present & Future</h5>
-                                        <p class="small">Journey through time's three realms</p>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-4 mb-3">
-                                <div class="thought-bubble" data-spread="5 Card (Traditional)">
-                                    <div class="bubble-content">
-                                        <h5>🌙 Complete Reading</h5>
-                                        <p class="small">Deep dive into your spiritual path</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Card Dealing Area -->
-                    <div id="card-table" class="card-table d-none">
-                        <div class="table-felt">
-                            <div id="card-slots" class="card-slots">
-                                <!-- Cards will be dealt here dynamically -->
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Results Area -->
-                    <div id="reading-results" class="reading-results d-none">
-                        <div class="summary-section">
-                            <div class="ai-summary-card">
-                                <div class="summary-header">
-                                    <div id="summary-avatar" class="summary-avatar"></div>
-                                    <div class="summary-title">
-                                        <h5>The Universe Speaks</h5>
-                                        <small>AI-Generated Reading</small>
-                                    </div>
-                                </div>
-                                <div id="ai-summary-content" class="summary-content">
-                                    <!-- AI summary will appear here -->
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="restart-section text-center mt-4">
-                            <p class="mb-3">Would you like another reading?</p>
-                            <button id="restart-reading" class="btn btn-primary btn-lg">
-                                <i class="fas fa-redo"></i> New Reading
-                            </button>
-                        </div>
-                    </div>
-                </div>
+<div class="tarot-page" id="tarot-page">
+    <section class="tarot-hero">
+        <div class="tarot-hero-copy">
+            <div class="tarot-kicker">Reaper's Oracle</div>
+            <h1>Tarot Reading</h1>
+            <p>The deck is shuffled from the same cards, images, spreads, reversals, meanings, and fortunes used by the Discord command.</p>
+        </div>
+        <div class="tarot-dealer" aria-live="polite">
+            <img id="tarot-dealer-skull" src="/static/Emojis/Skulls/1.png" alt="Tarot Dealer">
+            <div>
+                <span>Tarot Dealer</span>
+                <strong id="tarot-dealer-state">Awaiting the cut</strong>
             </div>
         </div>
-    </div>
-</div>
+    </section>
 
-<!-- CSS and JS are loaded by dashboard.js via data-css/data-script on the nav link -->
+    <section class="tarot-controls" aria-label="Tarot controls">
+        <div class="tarot-spread-tabs" role="tablist" aria-label="Spread">
+            <button class="tarot-spread active" type="button" data-spread="1 Card">1 Card</button>
+            <button class="tarot-spread" type="button" data-spread="3 Card (Past/Present/Future)">Past Present Future</button>
+            <button class="tarot-spread" type="button" data-spread="5 Card (Traditional)">Traditional 5</button>
+        </div>
+        <button class="tarot-draw-btn" id="tarot-draw-btn" type="button">
+            <i class="fa-solid fa-skull"></i>
+            Draw Reading
+        </button>
+    </section>
+
+    <section class="tarot-reading-shell" id="tarot-reading-shell">
+        <div class="tarot-empty" id="tarot-empty">
+            <div class="tarot-deck-stack" aria-hidden="true">
+                <span></span><span></span><span></span>
+            </div>
+            <h2>The table is ready.</h2>
+            <p>Select a spread and draw.</p>
+        </div>
+
+        <div class="tarot-reading" id="tarot-reading" hidden>
+            <div class="tarot-reading-header">
+                <div>
+                    <span class="tarot-kicker">Spread</span>
+                    <h2 id="tarot-reading-title">1 Card Reading</h2>
+                </div>
+                <div class="tarot-energy" id="tarot-energy" hidden></div>
+            </div>
+            <div class="tarot-card-grid" id="tarot-card-grid"></div>
+            <article class="tarot-summary" id="tarot-summary" hidden>
+                <span class="tarot-kicker">Oracle Summary</span>
+                <p id="tarot-summary-text"></p>
+            </article>
+        </div>
+    </section>
+</div>
