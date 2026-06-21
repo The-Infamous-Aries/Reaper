@@ -22,6 +22,7 @@
   - [Astrology](#astrology)
   - [Fun](#fun)
   - [Casino (PnWCasino)](#casino-pnwcasino)
+  - [PnW Utility](#pnw-utility)
 - [Background Tasks](#background-tasks)
 - [Database Structure](#database-structure)
 - [Dependencies](#dependencies)
@@ -190,6 +191,8 @@ Administrative commands gated by specific user IDs hardcoded in `config.py`.
 | `/shutdown` | Gracefully shut down the bot | `ARIES_USER_ID` only |
 | `/usage` | Paginated view of bot statistics: servers, users with data files, and installed users. Supports remove/leave actions. | `ADMIN_USER_ID` only |
 | `/servers` | Lists all servers the bot is currently in with member counts | `ADMIN_USER_ID` only |
+| `/invite` | Get the link to invite The Reaper to another server | Everyone |
+| `/leave_server` | Force the bot to leave one or more servers | `ARIES_USER_ID` only |
 
 ---
 
@@ -234,13 +237,13 @@ General-purpose utility commands available to all users.
 
 | Command | Description |
 |:---|:---|
-| `/revenue <query_type> <query_value> [alliance_color] [tax_rate]` | Full per-turn and per-day revenue breakdown for a nation or alliance. Shows gross income, color bonus, military upkeep, improvement upkeep, power upkeep, resource upkeep, net cash per turn/day, per-resource production with monetary value, and total monetary net. For Darkstar nations reads from `GlobalNations.db`; other alliances fall back to the PnW API. Optional `tax_rate` override (0–100) and `alliance_color` for alliance tax calculations. |
+| `/revenue <query_type> <query_value> [alliance_color] [tax_rate]` (alias: `/rev`) | Full per-turn and per-day revenue breakdown for a nation or alliance. Shows gross income, color bonus, military upkeep, improvement upkeep, power upkeep, resource upkeep, net cash per turn/day, per-resource production with monetary value, and total monetary net. For Darkstar nations reads from `GlobalNations.db`; other alliances fall back to the PnW API. Optional `tax_rate` override (0–100) and `alliance_color` for alliance tax calculations. |
 
 #### Revenue Optimizer (`rev_optimizer.py`)
 
 | Command | Description |
 |:---|:---|
-| `/rev_optimizer <query_type> <query_value> [tax_rate]` | Full economic optimization analysis for a nation or every nation in an alliance. Generates ranked improvement suggestions (civil, resource, rebuild), infrastructure targets with ROI gating, land suggestions, and project recommendations. Results sorted by daily monetary gain. |
+| `/revoptimize <query_type> <query_value> [tax_rate]` (aliases: `/revopt`, `/revincrease`, `/revup`) | Full economic optimization analysis for a nation or every nation in an alliance. Generates ranked improvement suggestions (civil, resource, rebuild), infrastructure targets with ROI gating, land suggestions, and project recommendations. Results sorted by daily monetary gain. |
 
 #### Resource Price Alerts (`rss_alerts.py`)
 
@@ -393,6 +396,14 @@ General-purpose utility commands available to all users.
 |:---|:---|
 | `/spy_chance <attacker> <defender> <espionage_type> [desired_outcome]` | Calculates espionage operation odds and optimal spy allocation. `espionage_type`: Gather Intelligence, Assassinate Spies, Terrorize Civilians, Sabotage Soldiers/Tanks/Aircraft/Ships/Missiles/Nukes. `desired_outcome`: Least Cost & Best Odds (target 99%) or Most Destruction (target 95%, with potential damage simulation). Shows spy counts, war policies, satellite projects, and per-safety-level odds. |
 
+#### Track (`track.py`)
+
+| Command | Description |
+|:---|:---|
+| `/track <alliance_or_nation>` | Track an alliance or nation for full war data. Monitored entities appear in `/wars` and `/rankings`. |
+| `/untrack <alliance_or_nation>` | Stop tracking an alliance or nation |
+| `/tracked` | List all currently tracked alliances and nations |
+
 ---
 
 ### Other — PnW Miscellaneous
@@ -451,11 +462,25 @@ Persistent views are registered with `bot.add_view()` and restored automatically
 |:---|:---|
 | `/info` | Posts the welcome embed with Membership and Embassy buttons in the designated info channel |
 | `/verify <action>` | Run inside a ticket channel to Accept or Reject. **Accept → Membership**: assigns Member role, moves channel to accepted members category. **Accept → Embassy**: creates/finds a Discord role named after the alliance, assigns that role + Diplomat role, moves channel to accepted embassies category. **Reject**: notifies applicant, waits 5 seconds, deletes channel and DB record. |
+| `/close_ticket` | Request closure of your own ticket |
 | `/delete_ticket <ticket>` | Deletes any ticket by name (autocomplete from all tickets in DB). Deletes the Discord channel if it exists and removes the DB record. |
 | `/resort_members` | Re-queries the PnW API for every open membership ticket and renames channels to `c{current_cities}-{nation-name}`. |
-| `/ticket_role add <role> [label]` | Adds a Discord role that will automatically get read/write access on all new ticket channels. |
-| `/ticket_role remove <role>` | Removes a role from the ticket access list. |
-| `/ticket_role list` | Shows all configured ticket roles with their labels. |
+| `/link_ticket <user> <nation> <type>` | Manually link a Discord user to a nation and create a ticket |
+| `/make_categories <sort>` | Create pending/accepted category structure for tickets. `sort`: Score, City Count, Farm/Raider, or None. |
+| `/join_message_config <style> [message]` | Configure the welcome message for new server members. `style`: Original or Custom. |
+| `/view_config` | View the current ticket configuration for this server |
+| `/ticket_info <ticket>` | View details of any ticket including who resolved it |
+| `/ticket_admin_grant <user>` | Aries: grant TICKETS_ADMIN access to a user |
+| `/ticket_admin_revoke <user>` | Aries: revoke TICKETS_ADMIN access from a user |
+| `/ticket_add add <role>` | Add a role that gets read/write access on all new ticket channels |
+| `/ticket_add remove <role>` | Remove a role from the ticket channel access list |
+| `/ticket_add list` | List all roles added to new ticket channels |
+| `/ticket_roles make` | Create Applicant, Member, Diplomat, Raider & Farmer roles |
+| `/ticket_roles link <role> <type>` | Link an existing Discord role to the ticket system |
+| `/ticket_roles list` | Show currently linked ticket roles |
+| `/ticket_audit set <channel>` | Set the channel where ticket actions are logged |
+| `/ticket_audit remove` | Remove the audit log channel |
+| `/ticket_audit view` | Show the current audit log channel |
 
 **Welcome message:** When a new member joins the server, the bot automatically sends a welcome embed in the info channel mentioning the new member.
 
@@ -471,6 +496,8 @@ Persistent views are registered with `bot.add_view()` and restored automatically
 |:---|:---|
 | `/tarot [spread]` | Professional tarot card reading. Spread options: **1 Card** (single draw with direct message), **3 Card Past/Present/Future**, **5 Card Traditional** (core theme, obstacle, advice, hidden influence, likely outcome). Cards are randomly drawn from all 78, randomly assigned upright or reversed orientation. Card images loaded from `Systems/Astrology/Tarot/cards/`, resized, rotated if reversed, and stitched into a composite PNG. Paginated embed: **Cards** view (image + per-card breakdown with position, name, orientation, meanings, fortune line) and **Summary** view (AI-generated narrative from Groq). If Groq is unavailable, all card details still show. |
 | `/zodiac <month> <day> <year>` | Triple-zodiac personality profile from a birthday. Three-page interactive embed: **Western** (sun sign with element, modality, planet, traits, lucky numbers/colors/gems, compatibility, daily horoscope from Aztro API with Groq/local fallback), **Eastern** (Chinese zodiac animal based on exact Chinese New Year dates 1900–2027, with polarity, element, trine, lucky info, compatibility), **Spirit Animal** (Primal Astrology combination of Western + Chinese — 144 possible unique animals). All zodiac data from local JSON files in `Systems/Astrology/Zodiac/`. |
+| `/horoscope <sign>` | Get the daily horoscope for a zodiac sign |
+| `/astrology <month> <day> <year>` | Show your zodiac sign info based on your birthday |
 
 ---
 
@@ -496,12 +523,19 @@ Persistent views are registered with `bot.add_view()` and restored automatically
 | Command | Description |
 |:---|:---|
 | `/range [rounds]` | Sniper training reaction game. Available rounds: 5, 15, 25, 50, 100. After a 3-second countdown, each round shows 5 buttons — one target (🎯) among misses (🔴). Player has 1.2 seconds per round. Wrong button or timeout = miss. Results show accuracy, visual bar, rank from Blindfolded Intern to Deliverer of Death, and personal best. Stats persisted across sessions. |
+| `/rangestats` | View your shooting range statistics and personal bests |
 
 #### Tic Tac Toe (`fun_system.py`)
 
 | Command | Description |
 |:---|:---|
 | `/tictactoe [rival] [ai] [series] [difficulty]` | Tic Tac Toe with optional AI opponent. Difficulties: Novice (random), Competent (checks win/block before random), Expert (minimax, optimal). Series: best of 1, 3, or 5. Both players choose their emoji via modal. Displays a live 3×3 button grid. |
+
+#### Coin Flip (`fun_system.py`)
+
+| Command | Description |
+|:---|:---|
+| `/coin [style]` | Flip a coin with custom styles |
 
 #### Roast & Compliment (`goodevil.py`)
 
@@ -522,24 +556,59 @@ Persistent views are registered with `bot.add_view()` and restored automatically
 |:---|:---|
 | `/walktru` | Text-based adventure with 6 storylines, each with its own mechanics: Horror Sanitarium (Fear 0–100), 1920s Gangster (Heat 0–100), Knight's Quest (Honor 0–150), Robot Factory Escape (Power 0–100), Western Frontier (Health 0–100), Wizard's Apprentice (Mana 0–150). Each stage has numbered choice buttons with success probabilities. Mechanic value changes on success/failure with a visual progress bar. |
 
+#### Would You Rather (`would_you_rather.py`)
+
+| Command | Description |
+|:---|:---|
+| `/would_you_rather` | Vote on today's synced Would You Rather question |
+
 #### Zombie Survival (`zombie.py`)
 
 | Command | Description |
 |:---|:---|
-| `/zombie_survival` | Starts or continues an ongoing AI-driven zombie survival game in a channel. Each round the Groq AI generates a story event with exactly 4 choices and base success probabilities. Players vote via A/B/C/D buttons. Resolves every 2 hours. Success odds = base + vote multiplier (2–5% per voter on winning choice) + random luck (±15%). Survivor stats: HP, stamina, morale, revolver ammo, rifle ammo. Deceased survivors marked with strikethrough. Game-over on full wipe. |
-| `/zombie_character` | Shows your personal survivor card (HP, stamina, morale, ammo, melee weapon). Ephemeral. |
+| `/zombie_survival` | Starts or continues an ongoing AI-driven zombie survival game in a channel. Each round generates exactly 4 structured choices with base odds, attempt costs, success/failure outcomes, and exact stat/resource deltas. Players vote via A/B/C/D buttons. Resolves every 2 hours. Success odds = base + vote multiplier (2–5% per voter on winning choice) + current survivor readiness + random luck (±15%). Survivor stats: HP, stamina, morale, revolver ammo, rifle ammo, melee weapon, and melee condition. Deceased survivors marked with strikethrough. Game-over on full wipe. |
+| `/zombie_stop` | End the current Zombie Survival game immediately |
+| `/zombie_admin_grant <user>` | Aries only: grant a user zombie admin access |
+| `/zombie_admin_revoke <user>` | Aries only: revoke a user's zombie admin access |
+| `/zombie_character` | Shows your personal survivor card (HP, stamina, morale, ammo, melee weapon, melee condition). Ephemeral. |
 
 #### Troll (`troll.py`)
 
-Passive troll functionality (message reactions/responses).
-
----
+| Command | Description |
+|:---|:---|
+| `/troll <user> [count]` | Send themed troll messages to a user (up to 5 at once) |
 
 ### Casino (PnWCasino)
 
 **File:** `Systems/PnWCasino/casino_cog.py` — loaded as `Systems.PnWCasino.casino_cog`
 
 The PnWCasino cog bridges Discord and the web-based casino. Casino games (Blackjack, Hold'em, Craps, Races, Minigames, Slots, Powerball, Wheel, Scratch, Keno) run primarily through the browser interface at the configured domain. The Discord cog handles any Discord-side interactions. See `Systems/PnWCasino/README.md` for details.
+
+| Command | Description |
+|:---|:---|
+| `/casino` | Open the casino web interface |
+| `/casino_link <nation_id>` | Link your PnW nation to the casino |
+| `/casino_balance` | Check your casino balance |
+| `/casino_stats` | View your gambling statistics |
+
+---
+
+### PnW Utility
+
+**Files:** `Systems/PnW/Util/reaper_verify.py`, `Systems/PnW/Util/self_verify.py`
+
+Nation verification and alliance access management commands.
+
+| Command | Description |
+|:---|:---|
+| `/self_verify <nation_id>` | Verify your PnW nation ownership via an in-game message |
+| `/reaper_verify <nation_id_or_link>` | Link your Discord account to your PnW nation for Reaper reminders |
+| `/reaper_verify_others <user> <nation_id_or_link>` | Admin: link a Discord user to a PnW nation |
+| `/pnw_admin_grant <user>` | Aries: grant PnW admin access for verification commands |
+| `/pnw_admin_revoke <user>` | Aries: revoke PnW admin access for verification commands |
+| `/alliance_access grant <alliance_id>` | Aries: approve an alliance for protected web page access |
+| `/alliance_access revoke <alliance_id>` | Aries: revoke a previously approved alliance |
+| `/alliance_access list` | List all alliances approved for website access |
 
 ---
 

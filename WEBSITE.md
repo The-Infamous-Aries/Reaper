@@ -909,7 +909,6 @@ Routes include pet creation, stat retrieval, XP/leveling, equipment management, 
 | `/mynation/plan/{nation_id}` | GET | Get plan with progress and costs |
 | `/mynation/plan` | POST | Create or update plan |
 | `/mynation/plan/{nation_id}` | DELETE | Delete plan |
-| `/mynation/plan/preview` | POST | Compute simulated nation preview after plan completion |
 
 ---
 
@@ -1034,7 +1033,6 @@ web/
 ├── api/                     Backend API modules
 │   └── pets/                Pets sub-helpers (gpp_helpers.py)
 ├── components/              Shared HTML components
-│   └── battle_settings_modal.html
 ├── docs/                    Documentation served by documentation_api.py
 │   ├── README.md
 │   ├── REAPER.md

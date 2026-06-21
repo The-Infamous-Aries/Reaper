@@ -66,7 +66,7 @@ Key traits:
 
 ### Prerequisites
 
-- Python 3.11+ (the venv auto-re-launch guard at the top of `harvester.py` handles this)
+- Python 3.12+ (the venv auto-re-launch guard at the top of `harvester.py` handles this)
 - PnW API v3 key with WebSocket access
 
 ### Setup
@@ -255,16 +255,20 @@ Subscribes to nation, city, account, and alliance events.
 |:---|:---|
 | `nation/update` | Any nation stat change (military, beige, activity, alliance, etc.) |
 | `nation/create` | New nation registered |
+| `nation/delete` | Nation deleted from the game |
 | `city/update` | City infrastructure, land, or improvement change |
 | `city/create` | New city purchased |
+| `city/delete` | City deleted from a nation |
 | `account/update` | Player last_active or discord_id change |
 | `alliance/update` | Alliance name or flag change |
 | `alliance/create` | New alliance formed |
+| `alliance/delete` | Alliance deleted from the game |
 
 **Sub-components:**
 
 - **NationEventProcessor** — Upserts nation to `GlobalNations.db`. On updates, strips resource/military columns (those are owned by `HoldingsDB`). Maintains in-memory set of Darkstar nation IDs (`_nw_nation_ids`) for fast membership checks. Detects alliance changes and fires `record_alliance_change` news.
-- **CityEventProcessor** — Upserts city to `GlobalNations.db`. On `city/create`, increments `num_cities` on the parent nation row.
+- **CityEventProcessor** — Upserts city to `GlobalNations.db`. On `city/create`, increments `num_cities` on the parent nation row. On `city/delete`, removes the city, decrements `num_cities`, updates cache, and records `city_deleted` news.
+- **Alliance delete handling** — On `alliance/delete`, clears stale alliance fields from affected nation rows, updates cache, and records `alliance_deleted` news.
 - **AccountEventProcessor** — Patches `last_active` and `discord_id` fields on the nation row.
 - **SpendingDetector** — Triggered by both nation and city events. On `nation/update`: detects project purchases (using `turns_since_last_project` reset), military unit changes, deducts costs from `HoldingsDB`, fires news. On `city/update`: detects infra, land, and improvement purchases, deducts costs. On `city/create`: calculates and deducts city purchase cost.
 - **BeigeEarlyExitDetector** — After processing `nation/update`, checks if the nation just left beige. If active alerts exist, enqueues early-exit notifications and deletes the alert rows.
@@ -332,7 +336,7 @@ Generates news via `news_writer.record_bank_transfer` (for regular transfers) an
 
 **File:** `components/trade_component.py`
 
-**Subscription:** `trade/update` with filter `buy_or_sell=1` — only fires for **completed marketplace transactions** (actual buys/sells), not for posted trade offers.
+**Subscription:** `trade/update` — receives trade row updates and processes only rows with `accepted` / `date_accepted` as completed marketplace transactions.
 
 Calls `holdings_db.apply_trade_completion()` to deduct money from buyer and resources from seller (or vice versa). Generates news via `TradeNewsGenerator`.
 
@@ -406,7 +410,7 @@ Background loop component. Fires every **15 minutes** (configurable via `interva
 3. **Completed trades** — `fetch_completed_trades(minutes_back=15)`:
    - GraphQL query for recently accepted trades filtered by `date_accepted >= cutoff`.
    - Deduplicates via `_last_trade_id` watermark.
-   - Calls `holdings_db.apply_trade()` per trade.
+   - Calls `holdings_db.apply_trade_completion()` per trade.
    - Calls `TradeNewsGenerator.generate_trade_completed_news()` per trade.
 
 **Database written:** `reaper.db` (prices, game data, radiation), `GlobalNations.db` (via `HoldingsDB` for trade holdings)
@@ -857,5 +861,5 @@ aiosqlite
 The full Reaper project dependencies (including `aiohttp`, `pydantic`, etc.) are in `requirements.txt` at the project root. The harvester's own requirements are minimal — `pnwkit` for WebSocket subscriptions, `python-dotenv` for `.env` loading, and `aiosqlite` for async DB operations in certain components.
 
 System requirements:
-- Python 3.11+
+- Python 3.12+
 - SQLite 3.35+ (WAL mode, `TRUNCATE` checkpoint)
