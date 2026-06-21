@@ -15,7 +15,7 @@ JSON_PATH = "Systems/Astrology/Tarot/tarot-images.json"
 IMAGE_DIR = "Systems/Astrology/Tarot/cards/"
 
 # --- Import API Key from Config ---
-from Systems.Functions.config import GROQ_API_KEY
+from Systems.Functions.local_ai import chat_complete
 
 async def draw_tarot(spread: str = "1 Card"):
     """Draws tarot cards and returns the reading data."""
@@ -222,38 +222,15 @@ async def generate_tarot_summary(spread_type: str, cards: list, positions: list,
         """
     
     try:
-        if not GROQ_API_KEY:
-            print("GROQ_API_KEY missing; skipping AI summary generation.")
-            return "Unable to generate AI-powered summary at this time. Please try again later."
-            
-        timeout = aiohttp.ClientTimeout(total=120)
-        async with aiohttp.ClientSession(timeout=timeout) as session:
-            url = "https://api.groq.com/openai/v1/chat/completions"
-            headers = {
-                "Authorization": f"Bearer {GROQ_API_KEY}",
-                "Content-Type": "application/json",
-            }
-            payload = {
-                "model": "llama-3.1-8b-instant",
-                "messages": [
-                    {"role": "system", "content": "You are a wise and intuitive tarot reader. Provide profound, insightful, and personalized messages from the universe based on the cards drawn. Keep responses concise and directly related to the card energies."},
-                    {"role": "user", "content": prompt}
-                ],
-                "temperature": 0.7,
-                "max_tokens": 300,
-                "top_p": 0.9,
-            }
-            async with session.post(url, headers=headers, json=payload) as resp:
-                if resp.status == 200:
-                    data = await resp.json()
-                    try:
-                        summary = data["choices"][0]["message"]["content"].strip()
-                        return summary
-                    except Exception:
-                        return "Unable to generate AI-powered summary at this time. Please try again later."
-                else:
-                    print(f"Groq API error: {resp.status}")
-                    return "Unable to generate AI-powered summary at this time. Please try again later."
+        summary = await chat_complete(
+            messages=[{"role": "user", "content": prompt}],
+            system="You are a wise and intuitive tarot reader. Provide profound, insightful, and personalized messages from the universe based on the cards drawn. Keep responses concise and directly related to the card energies.",
+            temperature=0.7,
+            max_tokens=300,
+        )
+        if summary:
+            return summary
+        return "Unable to generate AI-powered summary at this time. Please try again later."
     except Exception as e:
         print(f"Error generating AI summary: {e}")
         return "Unable to generate AI-powered summary at this time. Please try again later."
