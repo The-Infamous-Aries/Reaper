@@ -17,6 +17,28 @@ router = APIRouter()
 import Systems.Functions.pet_stock_engine as pet_stock_engine_module
 
 
+async def _record_stock_task_progress(user_id: str, action: str, amount: int) -> None:
+    """Record stock task progress without letting task errors break trades."""
+    try:
+        amount = int(amount)
+    except (TypeError, ValueError):
+        amount = 0
+    if amount <= 0:
+        return
+
+    try:
+        from web.api.tasks_api import record_action_by
+        await record_action_by(user_id, action, amount)
+    except Exception:
+        logger.debug(
+            "stock task progress update failed for %s/%s/%s",
+            user_id,
+            action,
+            amount,
+            exc_info=True,
+        )
+
+
 @router.get("/pet-stock/market")
 async def get_market(request: Request):
     """Return current market state."""
@@ -104,11 +126,7 @@ async def buy_token(request: Request):
     result = await pet_stock_engine_module.buy_token(user_id, token, quantity, pet_data)
     status = 200 if result.get("ok") else 400
     if result.get("ok"):
-        try:
-            from web.api.tasks_api import tasks_db as _tasks_db
-            await _tasks_db.update_progress_by(user_id, "buy_token", quantity)
-        except Exception:
-            pass
+        await _record_stock_task_progress(user_id, "buy_token", quantity)
 
         # ── GPP: emit event + animation (Observer pattern + Component pattern) ─────────
         queue = EventQueue()
@@ -143,11 +161,7 @@ async def sell_token(request: Request):
     result = await pet_stock_engine_module.sell_token(user_id, token, quantity, pet_data)
     status = 200 if result.get("ok") else 400
     if result.get("ok"):
-        try:
-            from web.api.tasks_api import tasks_db as _tasks_db
-            await _tasks_db.update_progress_by(user_id, "sell_token", quantity)
-        except Exception:
-            pass
+        await _record_stock_task_progress(user_id, "sell_token", quantity)
 
         # ── GPP: emit event + animation (Observer pattern + Component pattern) ─────────
         queue = EventQueue()
@@ -182,20 +196,18 @@ async def buy_all_token(request: Request):
         logger.error(f"buy_all_token: User {user_id} has no pet")
         return JSONResponse(content={"error": "You don't have a pet"}, status_code=400)
 
+    before_qty = int((await pet_stock_engine_module.get_user_holdings(user_id)).get(token, 0))
     logger.info(f"buy_all_token: Calling pet_stock_engine_module.buy_all_token for user {user_id}, token '{token}'")
     result = await pet_stock_engine_module.buy_all_token(user_id, token, pet_data)
     logger.info(f"buy_all_token: Engine result: {result}")
     status = 200 if result.get("ok") else 400
     if result.get("ok"):
-        try:
-            from web.api.tasks_api import tasks_db as _tasks_db
-            await _tasks_db.update_progress_by(user_id, "buy_token", result.get("new_qty", 0))
-        except Exception:
-            pass
+        bought_qty = max(0, int(result.get("new_qty", 0)) - before_qty)
+        await _record_stock_task_progress(user_id, "buy_token", bought_qty)
 
         # ── GPP: emit event + animation (Observer pattern + Component pattern) ─────────
         queue = EventQueue()
-        queue.push("pet_stock_buy_all", {"user_id": user_id, "token": token, "quantity": result.get("new_qty", 0)})
+        queue.push("pet_stock_buy_all", {"user_id": user_id, "token": token, "quantity": bought_qty})
         await queue.flush()
 
         animation = AnimationComponent.for_ui_update("stock_buy_all", 400)
@@ -220,11 +232,7 @@ async def buy_max_all_tokens(request: Request):
     result = await pet_stock_engine_module.buy_max_all_tokens(user_id, pet_data)
     status = 200 if result.get("ok") else 400
     if result.get("ok"):
-        try:
-            from web.api.tasks_api import tasks_db as _tasks_db
-            await _tasks_db.update_progress_by(user_id, "buy_token", result.get("total_bought", 0))
-        except Exception:
-            pass
+        await _record_stock_task_progress(user_id, "buy_token", result.get("total_bought", 0))
 
         # ── GPP: emit event + animation (Observer pattern + Component pattern) ─────────
         queue = EventQueue()
@@ -253,11 +261,7 @@ async def sell_max_all_tokens(request: Request):
     result = await pet_stock_engine_module.sell_max_all_tokens(user_id, pet_data)
     status = 200 if result.get("ok") else 400
     if result.get("ok"):
-        try:
-            from web.api.tasks_api import tasks_db as _tasks_db
-            await _tasks_db.update_progress_by(user_id, "sell_token", result.get("total_payout", 0))
-        except Exception:
-            pass
+        await _record_stock_task_progress(user_id, "sell_token", result.get("total_sold", 0))
 
         # ── GPP: emit event + animation (Observer pattern + Component pattern) ─────────
         queue = EventQueue()
@@ -289,18 +293,15 @@ async def sell_all_token(request: Request):
     if not pet_data:
         return JSONResponse(content={"error": "You don't have a pet"}, status_code=400)
 
+    before_qty = int((await pet_stock_engine_module.get_user_holdings(user_id)).get(token, 0))
     result = await pet_stock_engine_module.sell_all_token(user_id, token, pet_data)
     status = 200 if result.get("ok") else 400
     if result.get("ok"):
-        try:
-            from web.api.tasks_api import tasks_db as _tasks_db
-            await _tasks_db.update_progress_by(user_id, "sell_token", result.get("payout", 0))
-        except Exception:
-            pass
+        await _record_stock_task_progress(user_id, "sell_token", before_qty)
 
         # ── GPP: emit event + animation (Observer pattern + Component pattern) ─────────
         queue = EventQueue()
-        queue.push("pet_stock_sell_all", {"user_id": user_id, "token": token, "payout": result.get("payout", 0)})
+        queue.push("pet_stock_sell_all", {"user_id": user_id, "token": token, "quantity": before_qty, "payout": result.get("payout", 0)})
         await queue.flush()
 
         animation = AnimationComponent.for_ui_update("stock_sell_all", 400)

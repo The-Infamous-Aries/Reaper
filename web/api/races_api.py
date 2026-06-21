@@ -432,7 +432,13 @@ async def races_cashout(request: Request):
         queue.push("races_cashout", {"user_id": user_id, "cashed_xp": pending_xp, "cashed_keys": len(pending_keys)})
         await queue.flush()
 
-        animation = AnimationComponent.for_loot({"xp": pending_xp, "keys": pending_keys}, 600)
+        # Build items list for animation
+        items = []
+        if pending_xp > 0:
+            items.append({"name": f"{pending_xp} XP", "rarity": "Common"})
+        for key in pending_keys:
+            items.append({"name": key, "rarity": "Uncommon"})
+        animation = AnimationComponent.for_loot(items)
 
         return JSONResponse({
             "ok":          True,

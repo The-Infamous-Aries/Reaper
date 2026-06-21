@@ -1146,12 +1146,21 @@ async def link_nation(request: Request):
         raise HTTPException(status_code=400, detail="nation_id must be numeric.")
     nation_name = str(body.get("nation_name", "")).strip()
     flag = str(body.get("flag", "")).strip()
+    alliance_id = body.get("alliance_id")
+    alliance_name = body.get("alliance_name", "").strip()
+    alliance_flag = body.get("alliance_flag", "").strip()
     request.session["linked_nation"] = {
         "nation_id": nation_id,
         "nation_name": nation_name,
         "flag": flag,
     }
-    return JSONResponse({"ok": True, "nation_id": nation_id, "nation_name": nation_name, "flag": flag})
+    if alliance_id:
+        request.session["linked_alliance"] = {
+            "alliance_id": alliance_id,
+            "alliance_name": alliance_name,
+            "alliance_flag": alliance_flag,
+        }
+    return JSONResponse({"ok": True, "nation_id": nation_id, "nation_name": nation_name, "flag": flag, "alliance_id": alliance_id, "alliance_name": alliance_name, "alliance_flag": alliance_flag})
 
 @router.get("/discord/linked-nation")
 async def get_linked_nation(request: Request):
@@ -1160,22 +1169,28 @@ async def get_linked_nation(request: Request):
     if not nation:
         return JSONResponse({"linked": False})
 
-    # Fetch fresh flag from GlobalNations.db to get latest updates
+    # Fetch fresh flag and alliance info from GlobalNations.db
     nation_id = nation.get("nation_id")
+    alliance_id = None
+    alliance_name = None
+    alliance_flag = None
     if nation_id and nation_id.isdigit():
         try:
             from PnWHarvester.db.global_nations_db import GlobalNationsDB
             from Systems.Functions.db_paths import GLOBAL_NATIONS_DB_STR
             gdb = GlobalNationsDB(GLOBAL_NATIONS_DB_STR)
             db_nation = await gdb.get_nation(int(nation_id))
-            if db_nation and db_nation.get("flag"):
-                nation["flag"] = db_nation["flag"]
-                # Update session with fresh flag
-                request.session["linked_nation"] = nation
+            if db_nation:
+                if db_nation.get("flag"):
+                    nation["flag"] = db_nation["flag"]
+                    request.session["linked_nation"] = nation
+                alliance_id = db_nation.get("alliance_id")
+                alliance_name = db_nation.get("alliance_name")
+                alliance_flag = db_nation.get("alliance_flag")
         except Exception as e:
-            logger.warning(f"Failed to fetch fresh flag from GlobalNations.db: {e}")
+            logger.warning(f"Failed to fetch from GlobalNations.db: {e}")
 
-    return JSONResponse({"linked": True, **nation})
+    return JSONResponse({"linked": True, **nation, "alliance_id": alliance_id, "alliance_name": alliance_name, "alliance_flag": alliance_flag})
 
 @router.delete("/discord/link-nation")
 async def unlink_nation(request: Request):
@@ -1201,12 +1216,21 @@ async def link_nation(request: Request):
         raise HTTPException(status_code=400, detail="nation_id must be numeric.")
     nation_name = str(body.get("nation_name", "")).strip()
     flag = str(body.get("flag", "")).strip()
+    alliance_id = body.get("alliance_id")
+    alliance_name = body.get("alliance_name", "").strip()
+    alliance_flag = body.get("alliance_flag", "").strip()
     request.session["linked_nation"] = {
         "nation_id": nation_id,
         "nation_name": nation_name,
         "flag": flag,
     }
-    return JSONResponse({"ok": True, "nation_id": nation_id, "nation_name": nation_name, "flag": flag})
+    if alliance_id:
+        request.session["linked_alliance"] = {
+            "alliance_id": alliance_id,
+            "alliance_name": alliance_name,
+            "alliance_flag": alliance_flag,
+        }
+    return JSONResponse({"ok": True, "nation_id": nation_id, "nation_name": nation_name, "flag": flag, "alliance_id": alliance_id, "alliance_name": alliance_name, "alliance_flag": alliance_flag})
 
 @router.get("/discord/linked-nation")
 async def get_linked_nation(request: Request):
@@ -1215,22 +1239,28 @@ async def get_linked_nation(request: Request):
     if not nation:
         return JSONResponse({"linked": False})
 
-    # Fetch fresh flag from GlobalNations.db to get latest updates
+    # Fetch fresh flag and alliance info from GlobalNations.db
     nation_id = nation.get("nation_id")
+    alliance_id = None
+    alliance_name = None
+    alliance_flag = None
     if nation_id and nation_id.isdigit():
         try:
             from PnWHarvester.db.global_nations_db import GlobalNationsDB
             from Systems.Functions.db_paths import GLOBAL_NATIONS_DB_STR
             gdb = GlobalNationsDB(GLOBAL_NATIONS_DB_STR)
             db_nation = await gdb.get_nation(int(nation_id))
-            if db_nation and db_nation.get("flag"):
-                nation["flag"] = db_nation["flag"]
-                # Update session with fresh flag
-                request.session["linked_nation"] = nation
+            if db_nation:
+                if db_nation.get("flag"):
+                    nation["flag"] = db_nation["flag"]
+                    request.session["linked_nation"] = nation
+                alliance_id = db_nation.get("alliance_id")
+                alliance_name = db_nation.get("alliance_name")
+                alliance_flag = db_nation.get("alliance_flag")
         except Exception as e:
-            logger.warning(f"Failed to fetch fresh flag from GlobalNations.db: {e}")
+            logger.warning(f"Failed to fetch from GlobalNations.db: {e}")
 
-    return JSONResponse({"linked": True, **nation})
+    return JSONResponse({"linked": True, **nation, "alliance_id": alliance_id, "alliance_name": alliance_name, "alliance_flag": alliance_flag})
 
 @router.delete("/discord/link-nation")
 async def unlink_nation(request: Request):

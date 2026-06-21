@@ -32,10 +32,10 @@ def _ep(name: str) -> str:
         "knights","necromancer","tank","jet","ship","rps","rock_1","paper","scissor",
     }
     _GEMS = {
-        "Ember Heart","Mint Gaze","Emerald Soul","Forest Eye","Solar Sphere","Sky Spire",
-        "Zephyr Shard","Azure Apex","Magma Diamond","Prismatic Flux","Frost Shard","Ember Cube",
-        "Jade Slab","Flux Diamond","Moon Quartz","Fury Rose","Solar Core","Void Spark",
-        "Gilded Prism","Ocean Tear",
+        "EmberHeart","MintGaze","EmeraldSoul","ForestEye","SolarSphere","SkySpire",
+        "ZephyrShard","AzureApex","MagmaDiamond","PrismaticFlux","FrostShard","EmberCube",
+        "JadeSlab","FluxDiamond","MoonQuartz","FuryRose","SolarCore","VoidSpark",
+        "GildedPrism","OceanTear",
     }
     _MATERIALS = {
         "Dirt","Sand","Leaf","Stone","Bone","Fabric","Leather","Glass","Wood","Brick",
@@ -90,6 +90,27 @@ def _ep(name: str) -> str:
     _MILITARY = {"soldier","missile","bomb","spy","fortification","peace_1","strategy","wars"}
     if name in _MILITARY:
         return f"/static/Emojis/Military/{name}.png"
+
+    # Equipment set-based items (Card 6 & 7): "Wood Boots" -> Boots/Boots_Wood.png
+    _equip_suffixes = {
+        "Boots":   ("Boots",   "Boots"),
+        "Helmet":  ("Helmets", "Helmet"),
+        "Armor":   ("Armor",   "Armor"),
+        "Shield":  ("Shield",  "Shield"),
+        "Dagger":  ("Dagger",  "Dagger"),
+        "Sword":   ("Sword",   "Sword"),
+        "Katana":  ("Katana",  "Katana"),
+        "Axe":     ("Axe",     "Axe"),
+        "Hammer":  ("Hammers", "Hammer"),
+        "Bow":     ("Bows",    "Bow"),
+    }
+    for suffix, (directory, prefix) in _equip_suffixes.items():
+        if name.endswith(" " + suffix):
+            if name == "Elven Katana":
+                return "/static/Emojis/Pets/Equipment/Katana/Elven_Katana.png"
+            set_part = name[:-(len(suffix) + 1)].replace(" ", "")
+            return f"/static/Emojis/Pets/Equipment/{directory}/{prefix}_{set_part}.png"
+
     # Deco (elements, stats, types)
     return f"/static/Emojis/Pets/Deco/{name}.png"
 
@@ -128,10 +149,10 @@ CARD5_MONSTERS  = ["Dwep","Krep","Bood","Lozd","Yoa","Nad","Ztuk","Gufi","Rowr",
                    "Bliz","Smuj","Dvod","Neri","Fwit","Plat","Mok","Jlum","Itle"]
 CARD5_MATERIALS = ["Dirt","Sand","Leaf","Stone","Bone","Fabric","Leather","Glass","Wood",
                    "Brick","Gold","Steel","plutonium","Smart","Laser"]
-CARD5_GEMS      = ["Ember Heart","Mint Gaze","Emerald Soul","Forest Eye","Solar Sphere",
-                   "Sky Spire","Zephyr Shard","Azure Apex","Magma Diamond","Prismatic Flux",
-                   "Frost Shard","Ember Cube","Jade Slab","Flux Diamond","Moon Quartz",
-                   "Fury Rose","Solar Core","Void Spark","Gilded Prism","Ocean Tear"]
+CARD5_GEMS      = ["EmberHeart","MintGaze","EmeraldSoul","ForestEye","SolarSphere",
+                   "SkySpire","ZephyrShard","AzureApex","MagmaDiamond","PrismaticFlux",
+                   "FrostShard","EmberCube","JadeSlab","FluxDiamond","MoonQuartz",
+                   "FuryRose","SolarCore","VoidSpark","GildedPrism","OceanTear"]
 CARD5_HATS      = ["boater","aviator","ushanka","bearskin","turban","bowler","beret",
                    "nursing","gat","peaked","stovepipe","capotain","keffiyeh","mortarboard",
                    "fool","safety","pith","toque","rice","beanie","santa","ballcap","fez",
@@ -523,12 +544,208 @@ def _scratch_card5(bet: int) -> Dict[str, Any]:
     }
 
 
+# ── Set-based equipment helpers (Card 6 & 7) ────────────────────────────────
+
+_SETS = ["Wood", "Rusty Iron", "Stone", "Iron", "Nature", "Elven", "Steel",
+         "Crystal", "Volcanic", "Advanced", "SciFi"]
+
+def _eq_name(set_name: str, equip_type: str) -> str:
+    """Generate display name for an equipment item by set + type.
+    e.g. ("Wood", "Boots") -> "Wood Boots"
+         ("Nature", "Bow") -> "Natural Bow"
+    """
+    if set_name == "Nature" and equip_type in ("Bow", "Dagger"):
+        return f"Natural {equip_type}"
+    return f"{set_name} {equip_type}"
+
+
+def _get_set(name: str) -> str:
+    """Extract the material set from an equipment display name.
+    "Wood Boots" -> "Wood", "Rusty Iron Boots" -> "Rusty Iron"
+    """
+    for t in ("Helmet", "Armor", "Boots", "Shield",
+              "Dagger", "Sword", "Katana", "Axe", "Hammer", "Bow"):
+        if name.endswith(" " + t):
+            return name[:-(len(t) + 1)]
+    return name
+
+
+def _scratch_card6(bet: int) -> Dict[str, Any]:
+    """
+    Defense Scratchoff — 1×4 row: Helmet, Armor, Boots, Shield.
+    Match by set (material). 3+ match: 4×, 4 match: 20×.
+    """
+    types = ["Helmet", "Armor", "Boots", "Shield"]
+
+    target = random.choice(_SETS)
+
+    # Determine how many slots match the target set
+    roll = random.random()
+    if roll < 0.03:
+        # All 4 match
+        symbols = [_eq_name(target, t) for t in types]
+        best_count = 4
+    elif roll < 0.18:
+        # Exactly 3 match
+        match_idx = random.sample(range(4), 3)
+        symbols = []
+        for i, t in enumerate(types):
+            if i in match_idx:
+                symbols.append(_eq_name(target, t))
+            else:
+                other = random.choice([s for s in _SETS if s != target])
+                symbols.append(_eq_name(other, t))
+        best_count = 3
+    else:
+        # 0-2 match — no payout.  Generate with low odds of accidental 3+
+        symbols = []
+        for t in types:
+            if random.random() < 0.15:
+                symbols.append(_eq_name(target, t))
+            else:
+                other = random.choice([s for s in _SETS if s != target])
+                symbols.append(_eq_name(other, t))
+        # Count actual matches
+        set_counts: Dict[str, int] = {}
+        for s in symbols:
+            ss = _get_set(s)
+            set_counts[ss] = set_counts.get(ss, 0) + 1
+        best_count = max(set_counts.values())
+
+    # Shuffle so matching items are spaced
+    random.shuffle(symbols)
+
+    # Re-count after shuffle
+    set_counts: Dict[str, int] = {}
+    for s in symbols:
+        ss = _get_set(s)
+        set_counts[ss] = set_counts.get(ss, 0) + 1
+    best_set = max(set_counts, key=lambda k: set_counts[k])
+    best_count = set_counts[best_set]
+
+    if best_count >= 4:
+        mult = 20.0
+        result = "FULL DEFENSE SET! All 4 armor pieces match! 20× XP!"
+    elif best_count >= 3:
+        mult = 4.0
+        result = f"Partial set! {best_count} of 4 matching — 4× XP!"
+    else:
+        mult = 0.0
+        result = "No matching set. Better luck next time!"
+
+    winnings = int(bet * mult)
+    win_indices = [i for i, s in enumerate(symbols) if _get_set(s) == best_set] if best_count >= 3 else []
+
+    return {
+        "symbols":     [{"name": s, "path": _ep(s)} for s in symbols],
+        "grid_type":   "1x4",
+        "match":       best_count,
+        "multiplier":  mult,
+        "winnings":    winnings,
+        "result":      result,
+        "win_lines":   [win_indices] if win_indices else [],
+        "match_set":   best_set if best_count >= 3 else None,
+    }
+
+
+def _scratch_card7(bet: int) -> Dict[str, Any]:
+    """
+    Offense Scratchoff — 1×6 row: Dagger, Sword, Katana, Axe, Hammer, Bow.
+    Match by set (material). 4-5 match: 6×, 6 match: 50×.
+    """
+    types = ["Dagger", "Sword", "Katana", "Axe", "Hammer", "Bow"]
+
+    target = random.choice(_SETS)
+
+    roll = random.random()
+    if roll < 0.015:
+        # All 6 match
+        symbols = [_eq_name(target, t) for t in types]
+        best_count = 6
+    elif roll < 0.08:
+        # 5 match
+        match_idx = random.sample(range(6), 5)
+        symbols = []
+        for i, t in enumerate(types):
+            if i in match_idx:
+                symbols.append(_eq_name(target, t))
+            else:
+                other = random.choice([s for s in _SETS if s != target])
+                symbols.append(_eq_name(other, t))
+        best_count = 5
+    elif roll < 0.22:
+        # 4 match
+        match_idx = random.sample(range(6), 4)
+        symbols = []
+        for i, t in enumerate(types):
+            if i in match_idx:
+                symbols.append(_eq_name(target, t))
+            else:
+                other = random.choice([s for s in _SETS if s != target])
+                symbols.append(_eq_name(other, t))
+        best_count = 4
+    else:
+        # 0-3 match
+        symbols = []
+        for t in types:
+            if random.random() < 0.12:
+                symbols.append(_eq_name(target, t))
+            else:
+                other = random.choice([s for s in _SETS if s != target])
+                symbols.append(_eq_name(other, t))
+        set_counts: Dict[str, int] = {}
+        for s in symbols:
+            ss = _get_set(s)
+            set_counts[ss] = set_counts.get(ss, 0) + 1
+        best_count = max(set_counts.values())
+
+    # Shuffle
+    random.shuffle(symbols)
+
+    # Re-count
+    set_counts: Dict[str, int] = {}
+    for s in symbols:
+        ss = _get_set(s)
+        set_counts[ss] = set_counts.get(ss, 0) + 1
+    best_set = max(set_counts, key=lambda k: set_counts[k])
+    best_count = set_counts[best_set]
+
+    if best_count >= 6:
+        mult = 50.0
+        result = "FULL WEAPON RACK! All 6 weapons match! 50× XP!"
+    elif best_count >= 5:
+        mult = 6.0
+        result = f"Strong arsenal! {best_count} of 6 matching — 6× XP!"
+    elif best_count >= 4:
+        mult = 6.0
+        result = f"Weapon set! {best_count} of 6 matching — 6× XP!"
+    else:
+        mult = 0.0
+        result = "No matching weapon set. Better luck next time!"
+
+    winnings = int(bet * mult)
+    win_indices = [i for i, s in enumerate(symbols) if _get_set(s) == best_set] if best_count >= 4 else []
+
+    return {
+        "symbols":     [{"name": s, "path": _ep(s)} for s in symbols],
+        "grid_type":   "1x6",
+        "match":       best_count,
+        "multiplier":  mult,
+        "winnings":    winnings,
+        "result":      result,
+        "win_lines":   [win_indices] if win_indices else [],
+        "match_set":   best_set if best_count >= 4 else None,
+    }
+
+
 _CARD_FUNCS = {
     1: _scratch_card1,
     2: _scratch_card2,
     3: _scratch_card3,
     4: _scratch_card4,
     5: _scratch_card5,
+    6: _scratch_card6,
+    7: _scratch_card7,
 }
 
 CARD_INFO = {
@@ -580,6 +797,24 @@ CARD_INFO = {
         "type_three_mult": 8.0,
         "bonus_mult": 75.0,
     },
+    6: {
+        "name": "Defense Scratch",
+        "icon": "🛡️",
+        "desc": "11 Armor Sets — Helmet, Armor, Boots, Shield · 3 match: 4× · 4 match: 20×",
+        "pool_size": len(_SETS),
+        "grid": "1×4",
+        "four_mult": 20.0,
+        "three_mult": 4.0,
+    },
+    7: {
+        "name": "Offense Scratch",
+        "icon": "⚔️",
+        "desc": "11 Weapon Sets — 6 weapon types · 4+ match: 6× · 6 match: 50×",
+        "pool_size": len(_SETS),
+        "grid": "1×6",
+        "six_mult": 50.0,
+        "four_mult": 6.0,
+    },
 }
 
 
@@ -605,8 +840,8 @@ async def play_scratch(request: Request):
         bet_amount = int(data.get("bet_amount", 0))
         fun_mode = bool(data.get("fun_mode", False))
 
-        if card_type not in range(1, 6):
-            return JSONResponse(content={"error": "Invalid card type (1-5)"}, status_code=400)
+        if card_type not in range(1, 8):
+            return JSONResponse(content={"error": "Invalid card type (1-7)"}, status_code=400)
 
         async with _get_user_lock(user_id):
             return await _play_scratch_inner(user_id, card_type, bet_amount, fun_mode)

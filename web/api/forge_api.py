@@ -56,16 +56,16 @@ def _consolidate(inventory: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """Merge duplicate stacks into single entries.
 
     Reforged items are kept separate from plain items, and different reforge
-    levels are kept separate from each other.  The key is therefore:
-        (name, type, reforged_flag, reforge_level)
-    so that e.g. 3× plain "Jlum" and 1× reforged Lv.1 "Jlum" remain two
-    distinct stacks rather than being collapsed into one.
+    levels are kept separate from each other.  The key is:
+        (name, type, rarity, reforged_flag, reforge_level)
+    Matching the identity key used by the main inventory consolidation so that
+    e.g. 3× plain "Jlum" and 1× reforged Lv.1 "Jlum" remain distinct stacks.
     """
     merged: Dict[tuple, Dict[str, Any]] = {}
     for item in inventory:
         reforged = bool(item.get("reforged", False))
         rl = int(item.get("reforge_level", 0)) if reforged else 0
-        key = (item.get("name", ""), item.get("type", ""), reforged, rl)
+        key = (item.get("name", ""), item.get("type", ""), item.get("rarity", "Common"), reforged, rl)
         if key in merged:
             merged[key]["count"] = merged[key].get("count", 1) + item.get("count", 1)
         else:

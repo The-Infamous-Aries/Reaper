@@ -6,24 +6,43 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 import logging
 import json
+import re
 import time
+import random
+from pathlib import Path
 from typing import Dict, List, Optional
 from Systems.Pets.PetGames.dungeon_crawl import (
     DungeonCrawl, 
     EVENT_MONSTER, EVENT_BOSS, EVENT_CHEST, EVENT_TRAP, EVENT_SHRINE,
     EVENT_CHEST1, EVENT_CHEST2, EVENT_CHEST3, EVENT_CHEST4,
-    CHEST_EVENT_MAP, TRAP_EFFECTS, SHRINE_EFFECTS,
+    EVENT_MONSTER_ENCOUNTER, EVENT_STORY_SEGMENT, EVENT_PUZZLE, 
+    EVENT_MERCHANT, EVENT_CHEST_MIMIC, EVENT_FLOOR_LOOT,
+    DUNGEON_TYPES,
+    CHEST_EVENT_MAP, 
     TRAP_EFFECTS_GENERIC, TRAP_EFFECTS_ELEMENTAL, TRAP_EFFECTS_TYPE,
     SHRINE_EFFECTS_GENERIC, SHRINE_EFFECTS_ELEMENTAL, SHRINE_EFFECTS_TYPE,
-    CHEST_TYPES, _resolve_emoji
+    CHEST_TYPES,
+    _e
 )
 from Systems.Functions.user_data_manager import user_data_manager
 from Systems.Pets.Logic.event_bus import EventQueue
 from Systems.Pets.Logic.pet_components import AnimationComponent
+from Systems.Pets.Logic.pet_brain import DamageCalculator, StatsCalculator
 from web.api.pets.gpp_helpers import _invalidate_stats_cache
 
 logger = logging.getLogger("dungeon_api")
 router = APIRouter()
+
+# ── Pet badge helpers ─────────────────────────────────────────────────────────
+DUNGEON_PROJECT_ROOT = Path(__file__).resolve().parents[2]
+DUNGEON_BADGE_STATIC_ROOT = DUNGEON_PROJECT_ROOT / "web" / "static" / "pet_badges"
+
+def _dungeon_selected_badge_url(user_id: str) -> str:
+    safe_user_id = re.sub(r"[^0-9A-Za-z_-]", "", str(user_id))
+    selected = DUNGEON_BADGE_STATIC_ROOT / safe_user_id / "selected.png"
+    if not selected.exists():
+        return ""
+    return f"/static/pet_badges/{safe_user_id}/selected.png?v={int(selected.stat().st_mtime)}"
 
 # ── Per-user locks ────────────────────────────────────────────────────────────
 # Active dungeon instances (in-memory cache)
@@ -38,6 +57,7 @@ BATTLE_TIMEOUT = 300  # 5 minutes
 
 class CreateDungeonRequest(BaseModel):
     party_members: List[int] = []
+    dungeon_type: str = "Camp"  # Default to Camp
 
 class StartBattleRequest(BaseModel):
     is_boss: bool = False
@@ -52,6 +72,24 @@ class CompleteBattleRequest(BaseModel):
     victory: bool
     monster_name: Optional[str] = None
     is_boss: bool = False
+
+class MonsterActionRequest(BaseModel):
+    action: str  # "fight", "scare", "flee"
+
+class StoryChoiceRequest(BaseModel):
+    choice: int  # 1, 2, or 3
+
+class PuzzleAttemptRequest(BaseModel):
+    choice: int  # 1, 2, or 3
+
+class MerchantPurchaseRequest(BaseModel):
+    item_index: int  # 0-4
+
+class ChestMimicApproachRequest(BaseModel):
+    approach: int  # 1, 2, or 3
+
+class TrapChoiceRequest(BaseModel):
+    choice: str  # "attempt" or "accept"
 
 
 def get_user_id_from_session(request: Request) -> Optional[int]:
@@ -120,10 +158,13 @@ async def create_dungeon(request: Request, body: CreateDungeonRequest):
 
         # Add creator to party
         party_members_list = [user_id] + body.party_members
+        
+        # Validate dungeon type
+        dungeon_type = body.dungeon_type if body.dungeon_type in DUNGEON_TYPES else "Camp"
 
         # Create dungeon
         dungeon = DungeonCrawl(user_id)
-        dungeon_id = await dungeon.create_dungeon(party_members_list)
+        dungeon_id = await dungeon.create_dungeon(party_members_list, dungeon_type)
 
         # Cache dungeon instance
         active_dungeons[dungeon_id] = dungeon
@@ -200,6 +241,29 @@ async def get_active_dungeons(request: Request):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.get('/dungeon/types')
+async def get_dungeon_types(request: Request):
+    """Get list of available dungeon types"""
+    try:
+        from Systems.Pets.PetGames.dungeon_crawl import DUNGEON_TYPES, DUNGEON_TYPE_ELEMENT
+        
+        types_list = []
+        for dungeon_type in DUNGEON_TYPES:
+            types_list.append({
+                'name': dungeon_type,
+                'element': DUNGEON_TYPE_ELEMENT.get(dungeon_type, 'Basic')
+            })
+        
+        return JSONResponse({
+            'success': True,
+            'dungeon_types': types_list
+        })
+    
+    except Exception as e:
+        logger.error(f"Error getting dungeon types: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.get('/dungeon/{dungeon_id}')
 async def get_dungeon(dungeon_id: str, request: Request):
     """Get dungeon state"""
@@ -224,6 +288,19 @@ async def get_dungeon(dungeon_id: str, request: Request):
         # Get current room data
         room_data = dungeon.get_current_room_data()
         
+        # Calculate XP balance (cumulative XP earned from all sources)
+        pet = await user_data_manager.get_pet_data_async(str(user_id))
+        xp_balance = 0
+        if pet:
+            # XP balance is total XP earned in dungeon
+            xp_balance = pet.get('xp', 0)
+        
+        # Get floor cooldown status
+        floor_cooldown_data = await dungeon.check_floor_cooldown()
+        
+        # Get event history
+        event_history = dungeon.dungeon_state.get('event_history', [])
+        
         # Room data already has event-specific info from generation
         # No need to re-randomize
                 
@@ -236,7 +313,10 @@ async def get_dungeon(dungeon_id: str, request: Request):
             'dungeon_state': dungeon.dungeon_state,
             'party_buffs': dungeon.party_buffs,
             'current_room_data': room_data,
-            'ready_users': list(dungeon.ready_users)
+            'ready_users': list(dungeon.ready_users),
+            'xp_balance': xp_balance,
+            'floor_cooldown_until': floor_cooldown_data.get('cooldown_until'),
+            'event_history': event_history
         })
         
     except HTTPException:
@@ -368,12 +448,11 @@ async def start_battle(dungeon_id: str, request: Request, body: StartBattleReque
 
             # Get charge abilities
             starting_charge = 0
-            charge_limit = 8
+            charge_limit = 5  # base max charge (DamageCalculator.BASE_MAX_CHARGE_MULTIPLIER)
             try:
-                from Systems.Pets.Logic.ability_tree import get_starting_charge_bonus, get_ability_effect
+                from Systems.Pets.Logic.ability_tree import get_starting_charge_bonus
                 starting_charge = int(get_starting_charge_bonus(pet))
-                charge_limit_bonus = int(get_ability_effect(pet, "charge_limit_bonus"))
-                charge_limit = 8 + charge_limit_bonus
+                charge_limit = int(DamageCalculator.get_max_charge(pet))  # base 5 + charge_limit_bonus
             except Exception:
                 pass
 
@@ -415,6 +494,8 @@ async def start_battle(dungeon_id: str, request: Request, body: StartBattleReque
             except Exception:
                 pass
 
+            member_badge_url = _dungeon_selected_badge_url(str(member_id)) or None
+
             party_data.append({
                 'user_id': str(member_id),
                 'pet': {
@@ -428,12 +509,13 @@ async def start_battle(dungeon_id: str, request: Request, body: StartBattleReque
                     'element2': modified_pet.get('element2'),
                     'category': modified_pet.get('category', 'Land'),
                     'species': modified_pet.get('species'),
+                    'badge_url': member_badge_url,
                     'equipment': _equip_items(modified_pet),
                     'action_labels': action_labels,
                     'equipped_skills': equipped_skills_display,
                     'skill_cooldown': 0,  # starts ready
                 },
-                'pet_data': modified_pet,
+                'pet_data': {**modified_pet, 'badge_url': member_badge_url},
                 'buffs': active_buffs,
                 'charge': starting_charge,
                 'charge_limit': charge_limit
@@ -640,6 +722,8 @@ async def process_battle_turn(battle: Dict) -> Dict:
     party_charges = battle.get('party_charges', {})
     monster_charge = float(battle.get('monster_charge', 1.0))
     skill_states  = battle.get('skill_states', {})
+    # Use 'boss' battle_type for boss rooms so att_boss_damage / def_boss_defense apply
+    _battle_type  = 'boss' if battle.get('is_boss') else 'npc'
 
     # Ensure monster has a persistent active_effects list
     if 'active_effects' not in monster:
@@ -716,7 +800,7 @@ async def process_battle_turn(battle: Dict) -> Dict:
                     state['charge_limit'] = charge_limit
                     state['max_charge_limit'] = charge_limit
                     result = apply_skill(skill_id, state, monster,
-                                        battle_type='npc', slot_index=slot_idx)
+                                        battle_type=_battle_type, slot_index=slot_idx)
                     if result['ok']:
                         hp_delta_target = result.get('hp_delta_target', 0)
                         hp_delta_user   = result.get('hp_delta_user', 0)
@@ -763,7 +847,7 @@ async def process_battle_turn(battle: Dict) -> Dict:
                 attacker_species=pet.get('species'),
                 attacker_pet_data=pet_data,
                 use_scaling=False,
-                battle_type='npc',
+                battle_type=_battle_type,
             )
             damage = battle_result['final_damage']
             monster['health'] = max(0, monster['health'] - damage)
@@ -800,15 +884,15 @@ async def process_battle_turn(battle: Dict) -> Dict:
                 attacker_species=pet.get('species'),
                 attacker_pet_data=pet_data,
                 use_scaling=False,
-                battle_type='npc',
+                battle_type=_battle_type,
             )
             # Charge is NOT reset or built on defend — it persists unchanged
             turn_log.append({'actor': pet['name'], 'action': 'defend',
                              'message': f"{pet['name']} takes a defensive stance!"})
 
         elif action == 'charge':
-            # Use the same progression as arena: get_next_charge_multiplier
-            new_charge = min(charge_limit, DamageCalculator.get_next_charge_multiplier(current_charge))
+            # Use the same progression as arena: get_next_charge_multiplier with pet_data so charge_limit_bonus applies
+            new_charge = min(charge_limit, DamageCalculator.get_next_charge_multiplier(current_charge, pet_data))
             party_charges[uid] = new_charge
             turn_log.append({'actor': pet['name'], 'action': 'charge',
                              'message': f"{pet['name']} charges up! (×{new_charge:.0f})"})
@@ -868,7 +952,7 @@ async def process_battle_turn(battle: Dict) -> Dict:
             defender_current_hp=target_pet['health'],
             defender_max_hp=target_pet['max_health'],
             use_scaling=False,
-            battle_type='npc',
+            battle_type=_battle_type,
         )
         damage = battle_result['final_damage']
 
@@ -906,7 +990,7 @@ async def process_battle_turn(battle: Dict) -> Dict:
         })
     elif monster_action == 'charge':
         # Monster charges using the same progression as arena
-        monster_charge = min(8.0, DamageCalculator.get_next_charge_multiplier(monster_charge))
+        monster_charge = DamageCalculator.get_next_charge_multiplier(monster_charge)  # capped by get_max_charge internally
         turn_log.append({'actor': monster['name'], 'action': 'charge',
                          'message': f"{monster['name']} charges! (×{monster_charge:.0f})"})
     # stun_skip: monster does nothing this turn (already logged above)
@@ -1019,7 +1103,20 @@ async def complete_battle(
         queue.push("dungeon_battle_complete", {"user_id": user_id, "dungeon_id": dungeon_id, "victory": victory, "is_boss": is_boss})
         await queue.flush()
 
-        animation = AnimationComponent.for_loot(loot_by_user, 800)
+        # Convert loot items to animation format (add rarity based on type)
+        animation_items = []
+        for user_loot in loot_by_user.values():
+            for item in user_loot:
+                rarity = "Rare" if item.get('type') == 'Key' else "Common"
+                animation_items.append({"name": item['name'], "rarity": rarity})
+        animation = AnimationComponent.for_loot(animation_items)
+
+        # Task tracking — dungeon_win (counts every won battle)
+        try:
+            from web.api.tasks_api import record_action as _task_record
+            await _task_record(str(user_id), "dungeon_win")
+        except Exception:
+            pass
 
         return JSONResponse({
             'success': True,
@@ -1139,7 +1236,9 @@ async def trigger_trap(dungeon_id: str, request: Request):
             # Fallback: 50/50 generic vs elemental+type (same logic as _generate_floor)
             _pool = (TRAP_EFFECTS_GENERIC if random.random() < 0.5
                      else TRAP_EFFECTS_ELEMENTAL + TRAP_EFFECTS_TYPE)
-            trap = _resolve_emoji(random.choice(_pool))
+            trap = random.choice(_pool)
+            if "emoji_key" in trap:
+                trap["emoji"] = _e(trap["emoji_key"])
         
         # Apply trap effect to party (async — respects element/type filters)
         await dungeon.apply_trap_effect_async(trap)
@@ -1210,7 +1309,9 @@ async def activate_shrine(dungeon_id: str, request: Request):
             # Fallback: 50/50 generic vs elemental+type (same logic as _generate_floor)
             _pool = (SHRINE_EFFECTS_GENERIC if random.random() < 0.5
                      else SHRINE_EFFECTS_ELEMENTAL + SHRINE_EFFECTS_TYPE)
-            shrine = _resolve_emoji(random.choice(_pool))
+            shrine = random.choice(_pool)
+            if "emoji_key" in shrine:
+                shrine["emoji"] = _e(shrine["emoji_key"])
         
         # Apply shrine effect to party (async — respects element/type filters)
         await dungeon.apply_shrine_effect_async(shrine)
@@ -1252,3 +1353,529 @@ async def activate_shrine(dungeon_id: str, request: Request):
     except Exception as e:
         logger.error(f"Error activating shrine: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# NEW ENDPOINTS FOR DUNGEON QUEST MERGE
+# ══════════════════════════════════════════════════════════════════════════════
+
+@router.post('/dungeon/{dungeon_id}/monster/action')
+async def handle_monster_action(dungeon_id: str, request: Request, body: MonsterActionRequest):
+    """Handle monster encounter action (Fight/Scare/Flee)"""
+    try:
+        user_id = get_user_id_from_session(request)
+        if not user_id:
+            raise HTTPException(status_code=401, detail='Not authenticated')
+        
+        dungeon = await get_dungeon_instance(dungeon_id, user_id)
+        
+        # Verify user is in party
+        if str(user_id) not in [str(m) for m in dungeon.party_members]:
+            raise HTTPException(status_code=403, detail='Not in this dungeon party')
+        
+        # Check cooldown
+        cooldown_status = await dungeon.check_room_cooldown()
+        if cooldown_status["on_cooldown"]:
+            return JSONResponse({
+                'success': False,
+                'error': 'Room is on cooldown',
+                'cooldown_until': cooldown_status["cooldown_until"],
+                'time_remaining': cooldown_status["time_remaining"]
+            })
+        
+        # Handle action
+        result = await dungeon.handle_monster_encounter_action(user_id, body.action.lower())
+        
+        # If not forced battle, complete room
+        if not result.get("forced_battle", False) and result.get("success", False):
+            # Award XP
+            if result["xp_reward"] > 0:
+                from Systems.Pets.Logic.pet_brain import LootCalculator
+                await LootCalculator.apply_xp_change(user_id, result["xp_reward"])
+            
+            # Mark room complete
+            await dungeon.complete_room()
+        
+        # Save dungeon
+        await dungeon.save_dungeon()
+        
+        # ── GPP: emit event + animation ─────────
+        queue = EventQueue()
+        queue.push("dungeon_monster_action", {
+            "user_id": user_id,
+            "dungeon_id": dungeon_id,
+            "action": body.action,
+            "success": result.get("success", False)
+        })
+        await queue.flush()
+        
+        animation = AnimationComponent.for_ui_update("monster_encounter", 600)
+        
+        return JSONResponse({
+            **result,
+            'animation': animation
+        })
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error handling monster action: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post('/dungeon/{dungeon_id}/story/choice')
+async def handle_story_choice(dungeon_id: str, request: Request, body: StoryChoiceRequest):
+    """Handle story segment choice"""
+    try:
+        user_id = get_user_id_from_session(request)
+        if not user_id:
+            raise HTTPException(status_code=401, detail='Not authenticated')
+        
+        dungeon = await get_dungeon_instance(dungeon_id, user_id)
+        
+        # Verify user is in party
+        if str(user_id) not in [str(m) for m in dungeon.party_members]:
+            raise HTTPException(status_code=403, detail='Not in this dungeon party')
+        
+        # Check cooldown
+        cooldown_status = await dungeon.check_room_cooldown()
+        if cooldown_status["on_cooldown"]:
+            return JSONResponse({
+                'success': False,
+                'error': 'Room is on cooldown',
+                'cooldown_until': cooldown_status["cooldown_until"],
+                'time_remaining': cooldown_status["time_remaining"]
+            })
+        
+        # Handle choice
+        result = await dungeon.handle_story_segment_choice(user_id, body.choice)
+        
+        # If successful, award XP and loot
+        if result.get("success", False):
+            from Systems.Pets.Logic.pet_brain import LootCalculator
+            
+            if result["xp_reward"] > 0:
+                await LootCalculator.apply_xp_change(user_id, result["xp_reward"])
+            
+            # Add loot to inventory
+            for item in result.get("loot", []):
+                await LootCalculator.add_item_to_inventory(user_id, item)
+            
+            # Mark room complete
+            await dungeon.complete_room()
+        
+        # Save dungeon
+        await dungeon.save_dungeon()
+        
+        # ── GPP: emit event + animation ─────────
+        queue = EventQueue()
+        queue.push("dungeon_story_choice", {
+            "user_id": user_id,
+            "dungeon_id": dungeon_id,
+            "choice": body.choice,
+            "success": result.get("success", False)
+        })
+        await queue.flush()
+        
+        animation = AnimationComponent.for_ui_update("story_segment", 700)
+        
+        return JSONResponse({
+            **result,
+            'animation': animation
+        })
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error handling story choice: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post('/dungeon/{dungeon_id}/puzzle/attempt')
+async def handle_puzzle_attempt(dungeon_id: str, request: Request, body: PuzzleAttemptRequest):
+    """Handle puzzle attempt"""
+    try:
+        user_id = get_user_id_from_session(request)
+        if not user_id:
+            raise HTTPException(status_code=401, detail='Not authenticated')
+        
+        dungeon = await get_dungeon_instance(dungeon_id, user_id)
+        
+        # Verify user is in party
+        if str(user_id) not in [str(m) for m in dungeon.party_members]:
+            raise HTTPException(status_code=403, detail='Not in this dungeon party')
+        
+        # Handle attempt
+        result = await dungeon.handle_puzzle_attempt(user_id, body.choice)
+        
+        # If successful, award XP and loot
+        if result.get("success", False):
+            from Systems.Pets.Logic.pet_brain import LootCalculator
+            
+            if result["xp_reward"] > 0:
+                await LootCalculator.apply_xp_change(user_id, result["xp_reward"])
+            
+            # Add loot to inventory
+            for item in result.get("loot", []):
+                await LootCalculator.add_item_to_inventory(user_id, item)
+            
+            # Mark room complete
+            await dungeon.complete_room()
+        
+        # Save dungeon
+        await dungeon.save_dungeon()
+        
+        # ── GPP: emit event + animation ─────────
+        queue = EventQueue()
+        queue.push("dungeon_puzzle_attempt", {
+            "user_id": user_id,
+            "dungeon_id": dungeon_id,
+            "choice": body.choice,
+            "success": result.get("success", False)
+        })
+        await queue.flush()
+        
+        animation = AnimationComponent.for_ui_update("puzzle_solve", 600)
+        
+        return JSONResponse({
+            **result,
+            'animation': animation
+        })
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error handling puzzle attempt: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post('/dungeon/{dungeon_id}/merchant/purchase')
+async def handle_merchant_purchase(dungeon_id: str, request: Request, body: MerchantPurchaseRequest):
+    """Handle merchant item purchase"""
+    try:
+        user_id = get_user_id_from_session(request)
+        if not user_id:
+            raise HTTPException(status_code=401, detail='Not authenticated')
+        
+        dungeon = await get_dungeon_instance(dungeon_id, user_id)
+        
+        # Verify user is in party
+        if str(user_id) not in [str(m) for m in dungeon.party_members]:
+            raise HTTPException(status_code=403, detail='Not in this dungeon party')
+        
+        # Handle purchase
+        result = await dungeon.handle_merchant_purchase(user_id, body.item_index)
+        
+        # Save dungeon (merchant stock updated)
+        await dungeon.save_dungeon()
+        
+        # ── GPP: emit event + animation ─────────
+        queue = EventQueue()
+        queue.push("dungeon_merchant_purchase", {
+            "user_id": user_id,
+            "dungeon_id": dungeon_id,
+            "item_index": body.item_index,
+            "success": result.get("success", False)
+        })
+        await queue.flush()
+        
+        animation = AnimationComponent.for_ui_update("merchant_trade", 500)
+        
+        return JSONResponse({
+            **result,
+            'animation': animation
+        })
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error handling merchant purchase: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post('/dungeon/{dungeon_id}/chest_mimic/approach')
+async def handle_chest_mimic_approach(dungeon_id: str, request: Request, body: ChestMimicApproachRequest):
+    """Handle chest/mimic approach"""
+    try:
+        user_id = get_user_id_from_session(request)
+        if not user_id:
+            raise HTTPException(status_code=401, detail='Not authenticated')
+        
+        dungeon = await get_dungeon_instance(dungeon_id, user_id)
+        
+        # Verify user is in party
+        if str(user_id) not in [str(m) for m in dungeon.party_members]:
+            raise HTTPException(status_code=403, detail='Not in this dungeon party')
+        
+        # Check cooldown
+        cooldown_status = await dungeon.check_room_cooldown()
+        if cooldown_status["on_cooldown"]:
+            return JSONResponse({
+                'success': False,
+                'error': 'Room is on cooldown',
+                'cooldown_until': cooldown_status["cooldown_until"],
+                'time_remaining': cooldown_status["time_remaining"]
+            })
+        
+        # Handle approach
+        result = await dungeon.handle_chest_mimic_approach(user_id, body.approach)
+        
+        # If not forced battle and successful, award XP and loot
+        if not result.get("forced_battle", False) and result.get("success", False):
+            from Systems.Pets.Logic.pet_brain import LootCalculator
+            
+            if result["xp_reward"] > 0:
+                await LootCalculator.apply_xp_change(user_id, result["xp_reward"])
+            
+            # Add loot to inventory
+            for item in result.get("loot", []):
+                await LootCalculator.add_item_to_inventory(user_id, item)
+            
+            # Mark room complete
+            await dungeon.complete_room()
+        
+        # Save dungeon
+        await dungeon.save_dungeon()
+        
+        # ── GPP: emit event + animation ─────────
+        queue = EventQueue()
+        queue.push("dungeon_chest_mimic", {
+            "user_id": user_id,
+            "dungeon_id": dungeon_id,
+            "approach": body.approach,
+            "is_mimic": result.get("is_mimic", False)
+        })
+        await queue.flush()
+        
+        animation = AnimationComponent.for_ui_update("chest_open" if not result.get("is_mimic") else "mimic_reveal", 600)
+        
+        return JSONResponse({
+            **result,
+            'animation': animation
+        })
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error handling chest/mimic approach: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post('/dungeon/{dungeon_id}/trap/choice')
+async def handle_trap_choice(dungeon_id: str, request: Request, body: TrapChoiceRequest):
+    """Handle trap escape attempt or acceptance"""
+    try:
+        user_id = get_user_id_from_session(request)
+        if not user_id:
+            raise HTTPException(status_code=401, detail='Not authenticated')
+        
+        dungeon = await get_dungeon_instance(dungeon_id, user_id)
+        
+        # Verify user is in party
+        if str(user_id) not in [str(m) for m in dungeon.party_members]:
+            raise HTTPException(status_code=403, detail='Not in this dungeon party')
+        
+        # Handle choice
+        result = await dungeon.handle_trap_choice(user_id, body.choice.lower())
+        
+        # If successful, award XP
+        if result.get("success", False):
+            from Systems.Pets.Logic.pet_brain import LootCalculator
+            
+            if result["xp_reward"] > 0:
+                await LootCalculator.apply_xp_change(user_id, result["xp_reward"])
+            
+            # Mark room complete
+            await dungeon.complete_room()
+        
+        # Save dungeon
+        await dungeon.save_dungeon()
+        
+        # ── GPP: emit event + animation ─────────
+        queue = EventQueue()
+        queue.push("dungeon_trap_choice", {
+            "user_id": user_id,
+            "dungeon_id": dungeon_id,
+            "choice": body.choice,
+            "success": result.get("success", False)
+        })
+        await queue.flush()
+        
+        animation = AnimationComponent.for_ui_update("trap_trigger", 500)
+        
+        return JSONResponse({
+            **result,
+            'animation': animation
+        })
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error handling trap choice: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post('/dungeon/{dungeon_id}/floor_loot/claim')
+async def claim_floor_loot(dungeon_id: str, request: Request):
+    """Claim floor loot (room 10)"""
+    try:
+        user_id = get_user_id_from_session(request)
+        if not user_id:
+            raise HTTPException(status_code=401, detail='Not authenticated')
+        
+        dungeon = await get_dungeon_instance(dungeon_id, user_id)
+        
+        # Verify user is in party
+        if str(user_id) not in [str(m) for m in dungeon.party_members]:
+            raise HTTPException(status_code=403, detail='Not in this dungeon party')
+        
+        # Verify room 10
+        room_data = dungeon.get_current_room_data()
+        if not room_data or room_data.get("event_type") != EVENT_FLOOR_LOOT:
+            raise HTTPException(status_code=400, detail='Not on floor loot room')
+        
+        # Get pet for XP calculation
+        pet = await user_data_manager.get_pet_data_async(str(user_id))
+        if not pet:
+            raise HTTPException(status_code=400, detail='Pet not found')
+        
+        # Award XP
+        xp_reward = dungeon.calculate_xp_reward(pet, EVENT_FLOOR_LOOT, dungeon.current_room)
+        from Systems.Pets.Logic.pet_brain import LootCalculator
+        await LootCalculator.apply_xp_change(user_id, xp_reward)
+        
+        # Generate loot based on chest data in room
+        chest_type = {
+            "name": room_data.get("chest_type", "Chest 1"),
+            "emoji": room_data.get("chest_emoji", "chest1"),
+            "rarity_pool": room_data.get("chest_rarity_pool", ["Common", "Uncommon"]),
+            "count": room_data.get("chest_count", 1)
+        }
+        
+        loot = await dungeon.generate_chest_loot(chest_type, user_id)
+        
+        # Add loot to inventory
+        for item in loot:
+            await LootCalculator.add_item_to_inventory(user_id, item)
+        
+        # Mark room complete (sets floor cooldown)
+        await dungeon.complete_room()
+        
+        # Check floor cooldown
+        floor_cooldown = await dungeon.check_floor_cooldown()
+        
+        # Save dungeon
+        await dungeon.save_dungeon()
+        
+        # ── GPP: emit event + animation ─────────
+        queue = EventQueue()
+        queue.push("dungeon_floor_loot_claimed", {
+            "user_id": user_id,
+            "dungeon_id": dungeon_id,
+            "floor": dungeon.current_floor - 1  # Floor was advanced
+        })
+        await queue.flush()
+        
+        animation = AnimationComponent.for_ui_update("floor_complete", 800)
+        
+        return JSONResponse({
+            'success': True,
+            'xp_reward': xp_reward,
+            'loot': loot,
+            'floor_cooldown': floor_cooldown,
+            'animation': animation
+        })
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error claiming floor loot: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get('/dungeon/{dungeon_id}/cooldown/check')
+async def check_cooldowns(dungeon_id: str, request: Request):
+    """Check active cooldowns (room and floor)"""
+    try:
+        user_id = get_user_id_from_session(request)
+        if not user_id:
+            raise HTTPException(status_code=401, detail='Not authenticated')
+        
+        dungeon = await get_dungeon_instance(dungeon_id, user_id)
+        
+        # Verify user is in party
+        if str(user_id) not in [str(m) for m in dungeon.party_members]:
+            raise HTTPException(status_code=403, detail='Not in this dungeon party')
+        
+        # Check room cooldown
+        room_cooldown = await dungeon.check_room_cooldown()
+        
+        # Check floor cooldown
+        floor_cooldown = await dungeon.check_floor_cooldown()
+        
+        return JSONResponse({
+            'success': True,
+            'room_cooldown': room_cooldown,
+            'floor_cooldown': floor_cooldown
+        })
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error checking cooldowns: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post('/dungeon/{dungeon_id}/advance_floor')
+async def advance_floor(dungeon_id: str, request: Request):
+    """Advance to next floor (after room 10 + cooldown expired)"""
+    try:
+        user_id = get_user_id_from_session(request)
+        if not user_id:
+            raise HTTPException(status_code=401, detail='Not authenticated')
+        
+        dungeon = await get_dungeon_instance(dungeon_id, user_id)
+        
+        # Verify user is in party
+        if str(user_id) not in [str(m) for m in dungeon.party_members]:
+            raise HTTPException(status_code=403, detail='Not in this dungeon party')
+        
+        # Attempt to advance
+        result = await dungeon.advance_to_next_floor()
+        
+        if result["success"]:
+            # Save dungeon
+            await dungeon.save_dungeon()
+
+            # Task tracking — dungeon_run (each completed floor = 1 run)
+            try:
+                from web.api.tasks_api import record_action as _task_record
+                await _task_record(str(user_id), "dungeon_run")
+            except Exception:
+                pass
+
+            # ── GPP: emit event + animation ─────────
+            queue = EventQueue()
+            queue.push("dungeon_floor_advanced", {
+                "user_id": user_id,
+                "dungeon_id": dungeon_id,
+                "new_floor": result["new_floor"]
+            })
+            await queue.flush()
+            
+            animation = AnimationComponent.for_ui_update("floor_advance", 900)
+            
+            return JSONResponse({
+                **result,
+                'animation': animation
+            })
+        else:
+            return JSONResponse(result)
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error advancing floor: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+

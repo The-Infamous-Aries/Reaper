@@ -9,7 +9,9 @@ import json
 import logging
 import os
 import random
+import re
 import time
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Set
 
 from fastapi import APIRouter, Body, HTTPException, Request, WebSocket, WebSocketDisconnect
@@ -22,6 +24,17 @@ from web.api.pets.gpp_helpers import _invalidate_stats_cache
 
 logger = logging.getLogger("arena_api")
 router = APIRouter()
+
+# ── Pet badge helpers ─────────────────────────────────────────────────────────
+ARENA_PROJECT_ROOT = Path(__file__).resolve().parents[2]
+ARENA_BADGE_STATIC_ROOT = ARENA_PROJECT_ROOT / "web" / "static" / "pet_badges"
+
+def _arena_selected_badge_url(user_id: str) -> str:
+    safe_user_id = re.sub(r"[^0-9A-Za-z_-]", "", str(user_id))
+    selected = ARENA_BADGE_STATIC_ROOT / safe_user_id / "selected.png"
+    if not selected.exists():
+        return ""
+    return f"/static/pet_badges/{safe_user_id}/selected.png?v={int(selected.stat().st_mtime)}"
 
 # ── Arena state ───────────────────────────────────────────────────────────────
 # 12 rooms total
@@ -417,12 +430,22 @@ async def arena_boss_start(request: Request, data: Dict[str, Any] = Body(...)):
 
     # Load all player pets
     from Systems.Pets.Logic.pet_brain import StatsCalculator, DamageCalculator
+    from Systems.Pets.Logic.ability_tree import get_ability_effect, get_starting_charge_bonus
+    from Systems.Pets.Logic.battle_skills import (
+        init_battle_skill_state, get_max_skill_slots, SKILL_BY_ID
+    )
     import os as _os
 
     player_states: List[Dict[str, Any]] = []
     avg_atk = 0
     avg_def = 0
     avg_hp  = 0
+
+    # Store per-player skill state server-side so it survives across turns
+    # (same pattern as _arena_battle_sessions in pets_api.py)
+    if not hasattr(arena_boss_start, "_boss_skill_sessions"):
+        arena_boss_start._boss_skill_sessions = {}
+    boss_skill_sessions: Dict[str, Any] = {}
 
     for occ in room.occupants:
         uid = occ["user_id"]
@@ -439,15 +462,63 @@ async def arena_boss_start(request: Request, data: Dict[str, Any] = Body(...)):
         p_spec = str(pet.get("species", "")).strip()
         action_labels = DamageCalculator.get_action_labels(p_type, p_elem, p_spec, custom_labels=pet.get("action_labels", {}))
 
+        # Apply ability-tree bonuses (same as NPC battle)
+        health_bonus = get_ability_effect(pet, "battle_health_bonus")
+        if health_bonus > 0:
+            p_hp = int(p_hp * (1.0 + health_bonus))
+
+        p_charge_limit = int(DamageCalculator.get_max_charge(pet))  # base 5 + charge_limit_bonus
+
+        p_starting_charge = 1.0 + int(get_starting_charge_bonus(pet))
+        p_starting_charge = min(p_starting_charge, float(p_charge_limit))
+
+        # Initialise server-side skill state for this player
+        skill_state: Dict[str, Any] = {
+            "pet": pet,
+            "total_attack": p_atk,
+            "max_hp": p_hp,
+            "active_effects": [],
+            "skill_cooldowns": {},
+            "equipped_skills": [],
+        }
+        init_battle_skill_state(skill_state)
+
+        # Build equipped-skills display list for the frontend
+        max_slots = get_max_skill_slots(pet)
+        equipped_ids = skill_state.get("equipped_skills", [])
+        equipped_skills_display: List[Any] = []
+        for slot_idx in range(max_slots):
+            sid = equipped_ids[slot_idx] if slot_idx < len(equipped_ids) else None
+            sk = SKILL_BY_ID.get(sid) if sid else None
+            if sk:
+                equipped_skills_display.append({
+                    "id": sid,
+                    "name": sk["name"],
+                    "description": sk["description"],
+                    "element": sk.get("element", ""),
+                    "unlocked": True,
+                })
+            else:
+                equipped_skills_display.append(None)
+
+        # Store skill state keyed by uid so arena_boss_action can retrieve it
+        boss_skill_sessions[uid] = {
+            "skill_state": skill_state,
+            "p_charge_limit": p_charge_limit,
+        }
+
         avg_atk += p_atk
         avg_def += p_def
         avg_hp  += p_hp
+
+        player_badge_url = _arena_selected_badge_url(uid) or None
 
         player_states.append({
             "user_id":   uid,
             "username":  occ["username"],
             "name":      pet.get("name", occ["username"]),
             "species":   p_spec,
+            "badge_url": player_badge_url,
             "element":   p_elem,
             "element2":  p_elem2 or "",
             "type":      p_type,
@@ -455,12 +526,16 @@ async def arena_boss_start(request: Request, data: Dict[str, Any] = Body(...)):
             "defense":   p_def,
             "max_hp":    p_hp,
             "cur_hp":    p_hp,
-            "charge":    1.0,
+            "charge":    p_starting_charge,
+            "charge_limit": p_charge_limit,
             "last_action": None,
             "alive":     True,
             "action_labels": action_labels,
-            "pending_action": None,   # set each turn by the player
-            "relationship_multiplier": relationship_multipliers.get(uid, 1.0),  # Add relationship multiplier
+            "pending_action": None,
+            "relationship_multiplier": relationship_multipliers.get(uid, 1.0),
+            "pet_data": pet,
+            "equipped_skills": equipped_skills_display,
+            "skill_cooldowns": {str(k): v for k, v in skill_state.get("skill_cooldowns", {}).items()},
         })
 
     n = len(room.occupants)
@@ -510,6 +585,7 @@ async def arena_boss_start(request: Request, data: Dict[str, Any] = Body(...)):
         "defense":   boss_def,
         "max_hp":    boss_hp,
         "cur_hp":    boss_hp,
+        "prev_hp":   boss_hp,
         "charge":    1.0,
         "last_action": None,
     }
@@ -524,6 +600,7 @@ async def arena_boss_start(request: Request, data: Dict[str, Any] = Body(...)):
         "log":          [f"⚔️ Boss Battle begins! {n} heroes vs {boss_name}"],
         "pending_actions": {},   # user_id -> action
         "started_at":   time.time(),
+        "skill_sessions": boss_skill_sessions,  # server-side skill state per player
     }
     _boss_battles[room_id] = battle_state
 
@@ -578,7 +655,7 @@ async def arena_boss_action(request: Request, data: Dict[str, Any] = Body(...)):
     action   = (data.get("action") or "attack").lower()
     defend_target = str(data.get("defend_target") or user_id)  # who to shield
 
-    if action not in ("attack", "defend", "charge"):
+    if action not in ("attack", "defend", "charge", "skill"):
         action = "attack"
 
     if room_id not in _boss_battles:
@@ -596,13 +673,30 @@ async def arena_boss_action(request: Request, data: Dict[str, Any] = Body(...)):
         return JSONResponse({"battle": battle, "resolved": False, "error": "You are eliminated"})
 
     # Record action
+    slot_index = int(data.get("slot_index", 0))
     battle["pending_actions"][user_id] = {
         "action": action,
+        "slot_index": slot_index,
         "defend_target": defend_target,
     }
 
-    # Check if all alive players have submitted
+    # ── NPC players auto-submit random actions ────────────────────────────────
     alive_players = [p for p in battle["players"] if p["alive"]]
+    for p in alive_players:
+        npc_uid = p["user_id"]
+        if npc_uid.startswith("npc_") and npc_uid not in battle["pending_actions"]:
+            # Pick a weighted random action: mostly attack/charge, rarely defend
+            npc_act = random.choices(
+                ["attack", "charge", "defend"],
+                weights=[60, 25, 15],
+                k=1,
+            )[0]
+            # NPC defends itself (only self-targeting makes sense for NPCs)
+            battle["pending_actions"][npc_uid] = {
+                "action": npc_act,
+                "defend_target": npc_uid,
+            }
+
     all_submitted = all(p["user_id"] in battle["pending_actions"] for p in alive_players)
 
     if not all_submitted:
@@ -616,9 +710,41 @@ async def arena_boss_action(request: Request, data: Dict[str, Any] = Body(...)):
 
     # ── All players submitted — resolve the turn ──────────────────────────────
     from Systems.Pets.Logic.pet_brain import DamageCalculator, NPCBrain, LootCalculator
+    from Systems.Pets.Logic.battle_skills import (
+        apply_skill, tick_battle_effects,
+        is_stunned, consume_stun,
+        get_atk_multiplier, get_def_multiplier, get_damage_reduction,
+        absorb_damage_through_shield, get_reflect_value,
+        can_use_skill, SKILL_BY_ID, SKILL_COOLDOWN_TURNS,
+    )
 
     battle["turn"] += 1
     turn_log: List[str] = [f"━━━ Turn {battle['turn']} ━━━"]
+
+    # Retrieve the server-side skill sessions for this battle
+    skill_sessions: Dict[str, Any] = battle.get("skill_sessions", {})
+
+    # ── Tick active effects (DoT/HoT/stun/shield/buff/debuff) for all players ──
+    # Also decrement per-slot skill cooldowns (done inside tick_battle_effects)
+    for p in battle["players"]:
+        if not p["alive"]:
+            continue
+        uid = p["user_id"]
+        ss = skill_sessions.get(uid, {}).get("skill_state")
+        if not ss:
+            continue
+        # Sync current HP/ATK into skill state so heal caps and DoT scale correctly
+        ss["max_hp"] = p["max_hp"]
+        ss["total_attack"] = p["attack"]
+        # Tick effects (DoT, HoT, shields expire, buff/debuff expire)
+        net_delta, tick_lines = tick_battle_effects(ss, p["attack"])
+        if net_delta != 0:
+            p["cur_hp"] = max(0, min(p["max_hp"], p["cur_hp"] + net_delta))
+        for line in tick_lines:
+            turn_log.append(f"  {line}")
+        # Sync updated cooldowns back to the player state so the frontend sees them
+        p["skill_cooldowns"] = {str(k): v for k, v in ss.get("skill_cooldowns", {}).items()}
+
     boss = battle["boss"]
 
     # ── Boss AI decides action ────────────────────────────────────────────────
@@ -659,17 +785,113 @@ async def arena_boss_action(request: Request, data: Dict[str, Any] = Body(...)):
         p_action_data = battle["pending_actions"].get(uid, {"action": "attack", "defend_target": uid})
         p_action = p_action_data["action"]
 
-        # Charge accumulation for player
+        # ── Stun check: stunned players are forced to defend ──────────────────
+        ss_for_stun = skill_sessions.get(uid, {}).get("skill_state")
+        if ss_for_stun and is_stunned(ss_for_stun):
+            consume_stun(ss_for_stun)
+            p_action = "defend"
+            turn_log.append(f"💫 {player['name']} is stunned and cannot act!")
+
+        # Charge accumulation for player — pass pet_data so charge_limit_bonus applies
         if p_action == "charge":
-            player["charge"] = DamageCalculator.get_next_charge_multiplier(player["charge"])
+            p_pet_data = skill_sessions.get(uid, {}).get("skill_state", {}).get("pet")
+            player["charge"] = DamageCalculator.get_next_charge_multiplier(player["charge"], p_pet_data)
             turn_log.append(f"⚡ {player['name']} charges up! (x{player['charge']:.0f})")
             player["last_action"] = "charge"
             continue
 
+        # Player uses skill
+        if p_action == "skill":
+            slot_index = p_action_data.get("slot_index", 0)
+            ss = skill_sessions.get(uid, {}).get("skill_state")
+            skill_used = False
+            if ss:
+                equipped_ids = ss.get("equipped_skills", [])
+                if slot_index < len(equipped_ids) and can_use_skill(ss, slot_index):
+                    skill_id = equipped_ids[slot_index]
+                    sk = SKILL_BY_ID.get(skill_id)
+                    if sk:
+                        sk_name = sk["name"]
+                        turn_log.append(f"✨ {player['name']} uses {sk_name}!")
+                        # Inject charge so charge_boost can read/update it
+                        ss["charge"] = player.get("charge", 1.0)
+                        ss["charge_limit"] = float(
+                            skill_sessions.get(uid, {}).get("p_charge_limit", 5.0)
+                        )
+                        ss["max_charge_limit"] = ss["charge_limit"]
+                        # Boss is the target — wrap its mutable HP in a proxy dict
+                        boss_proxy: Dict[str, Any] = {
+                            "element": boss.get("element", "basic"),
+                            "active_effects": boss.setdefault("active_effects", []),
+                            "max_hp": boss["max_hp"],
+                            "total_attack": boss.get("attack", 1),
+                        }
+                        result = apply_skill(
+                            skill_id,
+                            ss,
+                            boss_proxy,
+                            battle_type="boss",
+                            slot_index=slot_index,
+                        )
+                        if result["ok"]:
+                            skill_hp_delta_p = result.get("hp_delta_user", 0)
+                            skill_hp_delta_e = result.get("hp_delta_target", 0)
+                            # Apply damage to boss
+                            if skill_hp_delta_e < 0:
+                                boss["cur_hp"] = max(0, boss["cur_hp"] + skill_hp_delta_e)
+                                total_player_dmg += abs(skill_hp_delta_e)
+                            # Apply heal/lifesteal to player
+                            if skill_hp_delta_p > 0:
+                                player["cur_hp"] = min(player["max_hp"], player["cur_hp"] + skill_hp_delta_p)
+                            elif skill_hp_delta_p < 0:
+                                player["cur_hp"] = max(0, player["cur_hp"] + skill_hp_delta_p)
+                            # Sync charge_boost result
+                            if "_charge_boost_result" in ss:
+                                player["charge"] = float(ss.pop("_charge_boost_result"))
+                            turn_log.append(f"  {result.get('message', sk_name + ' used!')}")
+                            skill_used = True
+                        else:
+                            turn_log.append(f"  ❌ {result.get('message', 'Skill failed')}")
+                        # Sync updated cooldowns to player state for frontend
+                        player["skill_cooldowns"] = {
+                            str(k): v for k, v in ss.get("skill_cooldowns", {}).items()
+                        }
+                    else:
+                        turn_log.append(f"✨ {player['name']} tries to use a skill but nothing happens!")
+                else:
+                    turn_log.append(f"⏳ {player['name']}'s skill is on cooldown — attacking instead!")
+                    p_action = "attack"
+            else:
+                turn_log.append(f"✨ {player['name']} tries to use a skill but nothing happens!")
+
+            if not skill_used and p_action == "skill":
+                # Fallthrough: skill failed/empty — treat as no-op
+                player["charge"] = 1.0
+                player["last_action"] = "skill"
+                player["last_combat"] = {"action": "skill", "dmg_dealt": 0, "parry_dealt": 0}
+                continue
+
+            if skill_used:
+                player["charge"] = 1.0
+                player["last_action"] = "skill"
+                player["last_combat"] = {"action": "skill", "dmg_dealt": abs(skill_hp_delta_e), "parry_dealt": 0}
+                continue
+
         # Player attacks boss (always targets boss)
         if p_action in ("attack", "defend"):
+            # Construct minimal boss pet_data for ability tree checks
+            boss_pet_data: Dict[str, Any] = {
+                "level": 1,
+                "category": boss["type"],
+                "element": boss["element"],
+                "species": boss.get("species", ""),
+            }
+            player_pet_data = player.get("pet_data")
+            # Apply ATK multiplier from active skill buffs/debuffs
+            p_ss = skill_sessions.get(uid, {}).get("skill_state")
+            effective_p_atk = int(player["attack"] * (get_atk_multiplier(p_ss) if p_ss else 1.0))
             p_result = DamageCalculator.calculate_battle_action(
-                attacker_attack=player["attack"],
+                attacker_attack=effective_p_atk,
                 target_defense=boss["defense"],
                 charge_multiplier=player["charge"] if p_action == "attack" else 1.0,
                 target_charge_multiplier=boss["charge"] if boss_action == "defend" else 1.0,
@@ -681,6 +903,9 @@ async def arena_boss_action(request: Request, data: Dict[str, Any] = Body(...)):
                 defender_type=boss["type"],
                 defender_element=boss["element"],
                 attacker_species=player["species"],
+                attacker_pet_data=player_pet_data,
+                attacker_user_id=uid,
+                battle_type="boss",
             )
             p_dmg   = p_result["final_damage"]
             p_parry = p_result["parry_damage"]  # boss defended → parry back at player
@@ -696,7 +921,8 @@ async def arena_boss_action(request: Request, data: Dict[str, Any] = Body(...)):
                     eff  = " 🔥 Super effective!" if mult > 1.05 else (" 💨 Not very effective..." if mult < 0.95 else "")
                     ctag = f" [x{player['charge']:.0f}]" if player["charge"] > 1.0 else ""
                     rel_tag = f" [+{int((relationship_mult-1)*100)}%]" if relationship_mult > 1.0 else (f" [{int((relationship_mult-1)*100)}%]" if relationship_mult < 1.0 else "")
-                    turn_log.append(f"⚔️ {player['name']}{ctag}{rel_tag} → {p_dmg} dmg to {boss['name']}{eff}")
+                    crit_tag = " ⚡CRITICAL!" if p_result.get("is_critical") else ""
+                    turn_log.append(f"⚔️ {player['name']}{ctag}{crit_tag}{rel_tag} → {p_dmg} dmg to {boss['name']}{eff}")
                     total_player_dmg += p_dmg
                 else:
                     turn_log.append(f"⚔️ {player['name']} attacks → blocked by {boss['name']}!")
@@ -719,7 +945,12 @@ async def arena_boss_action(request: Request, data: Dict[str, Any] = Body(...)):
                 "parry_dealt": p_parry,
                 "charge_used": p_result.get("charge_used", False),
                 "attack_roll": p_result.get("attack_roll"),
+                "defense_roll": p_result.get("defense_roll"),
+                "attack_result": p_result.get("attack_result", ""),
+                "defense_result": p_result.get("defense_result", ""),
                 "type_elem_mult": round(p_result.get("type_element_bonus_mult_attack", 1.0), 2),
+                "is_critical": p_result.get("is_critical", False),
+                "critical_multiplier": p_result.get("critical_multiplier", 1.0),
             }
 
     # Apply player damage to boss
@@ -783,9 +1014,17 @@ async def arena_boss_action(request: Request, data: Dict[str, Any] = Body(...)):
         eff_uid = effective_target["user_id"]
         eff_pd  = player_defenses[eff_uid]
 
+        # Construct minimal boss pet_data for ability tree checks
+        boss_pet_data: Dict[str, Any] = {
+            "level": 1,
+            "category": boss["type"],
+            "element": boss["element"],
+            "species": boss.get("species", ""),
+        }
+        eff_defender_pet_data = effective_target.get("pet_data")
         boss_result = DamageCalculator.calculate_battle_action(
             attacker_attack=boss["attack"],
-            target_defense=effective_target["defense"],
+            target_defense=int(effective_target["defense"] * (get_def_multiplier(skill_sessions.get(eff_uid, {}).get("skill_state")) if skill_sessions.get(eff_uid, {}).get("skill_state") else 1.0)),
             charge_multiplier=boss_charge_used,
             target_charge_multiplier=effective_target["charge"],
             attacker_action_type="attack",
@@ -796,21 +1035,43 @@ async def arena_boss_action(request: Request, data: Dict[str, Any] = Body(...)):
             defender_element=effective_target["element"],
             defender_element2=effective_target.get("element2") or None,
             defender_species=effective_target["species"],
+            attacker_pet_data=boss_pet_data,
+            defender_pet_data=eff_defender_pet_data,
+            defender_current_hp=effective_target["cur_hp"],
+            defender_max_hp=effective_target["max_hp"],
+            battle_type="boss",
         )
         boss_dmg   = boss_result["final_damage"]
         boss_parry = boss_result["parry_damage"]
 
+        # Apply active skill effects on the effective target (damage reduction, shield, reflect)
+        eff_ss = skill_sessions.get(eff_uid, {}).get("skill_state")
+        if eff_ss and boss_dmg > 0:
+            dr = get_damage_reduction(eff_ss)
+            if dr > 0:
+                boss_dmg = max(1, int(boss_dmg * (1.0 - dr)))
+            boss_dmg, _absorbed, shield_log = absorb_damage_through_shield(eff_ss, boss_dmg)
+            for sl in shield_log:
+                turn_log.append(f"  {sl}")
+            reflect_frac = get_reflect_value(eff_ss)
+            if reflect_frac > 0 and boss_dmg > 0:
+                reflect_dmg = max(1, int(boss_dmg * reflect_frac))
+                boss["cur_hp"] = max(0, boss["cur_hp"] - reflect_dmg)
+                turn_log.append(f"🪞 {effective_target['name']} reflects {reflect_dmg} damage back!")
+
         # Apply damage to the effective target
+        boss_is_crit = boss_result.get("is_critical", False)
         if boss_dmg > 0:
             effective_target["cur_hp"] = max(0, effective_target["cur_hp"] - boss_dmg)
             ctag = f" [x{boss_charge_used:.0f}]" if boss_charge_used > 1.0 else ""
+            crit_tag = " ⚡CRITICAL!" if boss_is_crit else ""
             if defender_for_target:
                 turn_log.append(
-                    f"💥 {boss['name']}{ctag} targets {target_player['name']} "
+                    f"💥 {boss['name']}{ctag}{crit_tag} targets {target_player['name']} "
                     f"but {effective_target['name']} intercepts → {boss_dmg} dmg!"
                 )
             else:
-                turn_log.append(f"💥 {boss['name']}{ctag} attacks {effective_target['name']} → {boss_dmg} dmg!")
+                turn_log.append(f"💥 {boss['name']}{ctag}{crit_tag} attacks {effective_target['name']} → {boss_dmg} dmg!")
         elif eff_pd["action"] == "defend":
             turn_log.append(f"🛡️ {effective_target['name']} fully blocks {boss['name']}'s attack!")
         else:
@@ -831,6 +1092,9 @@ async def arena_boss_action(request: Request, data: Dict[str, Any] = Body(...)):
             "parry_taken": boss_parry,
             "charge_used": boss_charge_used,
             "attack_roll": boss_result.get("attack_roll"),
+            "defense_roll": boss_result.get("defense_roll"),
+            "is_critical": boss_is_crit,
+            "critical_multiplier": boss_result.get("critical_multiplier", 1.0),
         }
 
         # Mark eliminated players
@@ -978,3 +1242,374 @@ async def unified_ws(websocket: WebSocket):
                 }))
     except WebSocketDisconnect:
         _unified_manager.disconnect(websocket)
+
+
+# ── REST: Boss invite — list candidates ──────────────────────────────────────
+@router.get("/arena/battle/boss/invite-candidates")
+async def arena_boss_invite_candidates(request: Request, room_id: int):
+    """
+    Return a list of users (with pets) who can be invited to the boss room.
+    Excludes: the requester, anyone already in the room, and anyone who is
+    an enemy of ANY current room member (we check mutual enemy relationships).
+    """
+    user = request.session.get("discord_user")
+    if not user:
+        raise HTTPException(status_code=401, detail="Not logged in")
+
+    requester_id = str(user["id"])
+
+    if room_id not in _rooms:
+        raise HTTPException(status_code=400, detail="Invalid room")
+
+    room = _rooms[room_id]
+    room_member_ids = {o["user_id"] for o in room.occupants}
+
+    # Collect all user IDs who have pets (pets_db helper)
+    try:
+        from Systems.Functions.pets_db import pets_db as _pets_db
+        all_pet_user_ids: List[str] = await _pets_db.get_user_ids_with_pets()
+    except Exception as e:
+        logger.error(f"Could not load pet user IDs: {e}")
+        all_pet_user_ids = []
+
+    # Build set of enemy user IDs — anyone who is an enemy with ANY room member
+    from Systems.Pets.PetGames.pvp_system import can_battle_boss_together
+    enemy_set: set = set()
+    try:
+        from Systems.Functions.pets_db import pets_db as _pets_db
+        for member_id in room_member_ids:
+            # get_user_relationships returns {target_user_id: relationship_type}
+            rels: Dict[str, str] = await _pets_db.get_user_relationships(member_id)
+            for target_uid, rel_type in rels.items():
+                if rel_type == "enemy":
+                    enemy_set.add(str(target_uid))
+        # Also check if any candidate has marked a room member as enemy (reverse direction)
+        for candidate_id in all_pet_user_ids:
+            if candidate_id in room_member_ids or candidate_id == requester_id:
+                continue
+            for member_id in room_member_ids:
+                r1, r2 = await _pets_db.get_mutual_relationship(candidate_id, member_id)
+                if r1 == "enemy" or r2 == "enemy":
+                    enemy_set.add(candidate_id)
+    except Exception as e:
+        logger.warning(f"Relationship check error in invite-candidates: {e}")
+
+    # Fetch Discord usernames for candidates via bot
+    try:
+        from Systems.Functions.web_server import get_bot_instance
+        bot = get_bot_instance()
+    except Exception:
+        bot = None
+
+    candidates = []
+    for uid in all_pet_user_ids:
+        # Skip room members, NPC IDs, enemies, and requester
+        if uid in room_member_ids:
+            continue
+        if uid == requester_id:
+            continue
+        if uid in enemy_set:
+            continue
+        if uid.startswith("npc_"):
+            continue
+
+        # Fetch pet name
+        try:
+            pet = await user_data_manager.get_pet_data_async(uid)
+            pet_name = pet.get("name", "Unknown") if pet else "Unknown"
+            pet_level = int(pet.get("level", 1)) if pet else 1
+        except Exception:
+            pet_name = "Unknown"
+            pet_level = 1
+
+        # Fetch Discord username
+        username = uid
+        avatar_url = ""
+        try:
+            if bot:
+                discord_user = bot.get_user(int(uid)) or await bot.fetch_user(int(uid))
+                if discord_user:
+                    username = discord_user.display_name or discord_user.name
+                    avatar_hash = discord_user.avatar.key if discord_user.avatar else None
+                    if avatar_hash:
+                        from Systems.Functions.discord_utils import get_discord_avatar_url
+                        avatar_url = get_discord_avatar_url(uid, avatar_hash, size=64)
+        except Exception:
+            pass
+
+        candidates.append({
+            "user_id":   uid,
+            "username":  username,
+            "avatar":    avatar_url,
+            "pet_name":  pet_name,
+            "pet_level": pet_level,
+        })
+        if len(candidates) >= 50:  # Cap at 50 to keep the payload small
+            break
+
+    return JSONResponse({"candidates": candidates})
+
+
+# ── REST: Boss invite — send DM ───────────────────────────────────────────────
+@router.post("/arena/battle/boss/invite")
+async def arena_boss_invite(request: Request, data: Dict[str, Any] = Body(...)):
+    """
+    Send a Discord DM to `target_user_id` inviting them to join the boss room.
+    Validates they are not an enemy of any current room member before sending.
+    """
+    import discord as _discord
+
+    user = request.session.get("discord_user")
+    if not user:
+        raise HTTPException(status_code=401, detail="Not logged in")
+
+    inviter_id    = str(user["id"])
+    inviter_name  = user.get("username", "A player")
+    target_id     = str(data.get("target_user_id", ""))
+    room_id       = int(data.get("room_id", 0))
+
+    if not target_id:
+        raise HTTPException(status_code=400, detail="No target user specified")
+    if room_id not in _rooms:
+        raise HTTPException(status_code=400, detail="Invalid room")
+
+    room = _rooms[room_id]
+    if len(room.occupants) >= BOSS_MAX_PLAYERS:
+        raise HTTPException(status_code=400, detail="Room is already full")
+
+    # Enemy check: target must not be an enemy of any current member
+    room_member_ids = [o["user_id"] for o in room.occupants]
+    try:
+        from Systems.Functions.pets_db import pets_db as _pets_db
+        for member_id in room_member_ids:
+            r1, r2 = await _pets_db.get_mutual_relationship(target_id, member_id)
+            if r1 == "enemy" or r2 == "enemy":
+                raise HTTPException(
+                    status_code=400,
+                    detail="Cannot invite — this player has an enemy relationship with someone in the room."
+                )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.warning(f"Relationship check failed during invite: {e}")
+
+    # Verify target has a pet
+    target_pet = await user_data_manager.get_pet_data_async(target_id)
+    if not target_pet:
+        raise HTTPException(status_code=400, detail="That player doesn't have a pet yet.")
+
+    # Send the DM
+    try:
+        from Systems.Functions.web_server import get_bot_instance
+        bot = get_bot_instance()
+        if not bot:
+            raise HTTPException(status_code=503, detail="Bot is unavailable — cannot send DM.")
+
+        target_discord = bot.get_user(int(target_id)) or await bot.fetch_user(int(target_id))
+        if not target_discord:
+            raise HTTPException(status_code=404, detail="Could not find that Discord user.")
+
+        arena_url = f"https://reaper.qzz.io/Pages/arena.html"
+        room_num  = room_id + 1
+
+        embed = _discord.Embed(
+            title="👹 Boss Battle Invitation!",
+            description=(
+                f"**{inviter_name}** is inviting you to join a Boss Battle!\n\n"
+                f"🏟️ **Room:** #{room_num}\n"
+                f"👥 **Players already waiting:** {len(room.occupants)} / {BOSS_MAX_PLAYERS}\n\n"
+                f"Click the link below to join, then select **Boss** mode and join Room #{room_num}."
+            ),
+            color=0xFF6B35,
+        )
+        embed.add_field(
+            name="⚔️ Join the battle",
+            value=f"[Open Arena →]({arena_url})",
+            inline=False,
+        )
+        embed.set_footer(text="Reaper Bot • Boss Arena")
+
+        await target_discord.send(embed=embed)
+    except _discord.Forbidden:
+        raise HTTPException(
+            status_code=400,
+            detail="That player has DMs disabled — they cannot receive the invite."
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Boss invite DM error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to send invite: {e}")
+
+    return JSONResponse({"success": True, "message": f"Invite sent to {target_discord.display_name}!"})
+
+
+# ── REST: Boss — add NPC pet to room ─────────────────────────────────────────
+@router.post("/arena/battle/boss/add_npc")
+async def arena_boss_add_npc(request: Request, data: Dict[str, Any] = Body(...)):
+    """
+    Add an AI-controlled NPC pet to the boss waiting room.
+    Stats are scaled to match the current room's average player stats so the
+    NPC contributes meaningfully without distorting the boss difficulty.
+    The NPC is added as a room occupant and auto-acts each turn in the battle.
+    """
+    user = request.session.get("discord_user")
+    if not user:
+        raise HTTPException(status_code=401, detail="Not logged in")
+
+    requester_id = str(user["id"])
+    room_id      = int(data.get("room_id", 0))
+
+    if room_id not in _rooms:
+        raise HTTPException(status_code=400, detail="Invalid room")
+
+    room = _rooms[room_id]
+    if not room.has_user(requester_id):
+        raise HTTPException(status_code=400, detail="You are not in this room")
+    if room.state not in ("boss_waiting", "boss_battle"):
+        raise HTTPException(status_code=400, detail="Room is not in boss waiting mode")
+    if len(room.occupants) >= BOSS_MAX_PLAYERS:
+        raise HTTPException(status_code=400, detail=f"Room is full ({BOSS_MAX_PLAYERS} max)")
+
+    # Count how many NPC slots are already taken
+    npc_count = sum(1 for o in room.occupants if o["user_id"].startswith("npc_"))
+    npc_uid   = f"npc_{room_id}_{npc_count}"
+
+    # ── Generate NPC pet stats scaled to room average ─────────────────────────
+    from Systems.Pets.Logic.pet_brain import StatsCalculator, DamageCalculator
+    from Systems.Functions.optimal_file_manager import OptimalFileManager
+
+    total_atk, total_def, total_hp, human_count = 0, 0, 0, 0
+    for occ in room.occupants:
+        if occ["user_id"].startswith("npc_"):
+            continue
+        try:
+            pet = await user_data_manager.get_pet_data_async(occ["user_id"])
+            if pet:
+                stats = StatsCalculator.calculate_pet_stats(pet)
+                total_atk += int(stats.get("attack", 10))
+                total_def += int(stats.get("defense", 5))
+                total_hp  += int(stats.get("max_health", 500))
+                human_count += 1
+        except Exception:
+            pass
+
+    if human_count == 0:
+        # Fallback defaults if no human stats available
+        avg_atk, avg_def, avg_hp = 20, 10, 500
+    else:
+        avg_atk = total_atk // human_count
+        avg_def = total_def // human_count
+        avg_hp  = total_hp  // human_count
+
+    # NPC stats: 85-115% of human avg with small random variance
+    npc_atk = max(5,  int(avg_atk * random.uniform(0.85, 1.15)))
+    npc_def = max(3,  int(avg_def * random.uniform(0.85, 1.15)))
+    npc_hp  = max(50, int(avg_hp  * random.uniform(0.90, 1.10)))
+
+    # Pick random element and type
+    all_elements = list(DamageCalculator.ELEMENT_EFFECTIVENESS.keys())
+    all_types    = ["land", "flying", "swimming"]
+    npc_element  = random.choice(all_elements)
+    npc_type     = random.choice(all_types)
+
+    # Pick random species from info.json
+    npc_species = ""
+    npc_name    = f"AI Companion {npc_count + 1}"
+    try:
+        _ofm  = OptimalFileManager()
+        _info = _ofm.get_data("info")
+        _base = _ofm.get_data("base")
+        species_list = list(_info.get("Pets", {}).keys())
+        if species_list:
+            npc_species = random.choice(species_list)
+        adj  = random.choice(_base.get("element_bases", {}).get(npc_element, ["Brave"]))
+        noun = random.choice(_base.get("category_bases", {}).get(npc_type, ["Companion"]))
+        npc_name = f"{adj} {noun}"
+    except Exception:
+        pass
+
+    # Build a minimal pet_data dict the battle system can use
+    # Compute average level from human occupants
+    avg_level = 1
+    try:
+        level_sum, level_cnt = 0, 0
+        for occ in room.occupants:
+            if not occ["user_id"].startswith("npc_"):
+                occ_pet = await user_data_manager.get_pet_data_async(occ["user_id"])
+                if occ_pet:
+                    level_sum += int(occ_pet.get("level", 1))
+                    level_cnt += 1
+        if level_cnt:
+            avg_level = max(1, level_sum // level_cnt)
+    except Exception:
+        pass
+
+    npc_pet_data: Dict[str, Any] = {
+        "name":     npc_name,
+        "species":  npc_species,
+        "category": npc_type,
+        "element":  npc_element,
+        "element2": "",
+        "level":    avg_level,
+        "attack":    npc_atk,
+        "defense":   npc_def,
+        "max_health": npc_hp,
+        "health":    npc_hp,
+        "is_npc":    True,
+    }
+
+    action_labels = DamageCalculator.get_action_labels(npc_type, npc_element, npc_species)
+
+    # Add NPC as a room occupant (no avatar — use element image)
+    npc_occupant = {
+        "user_id":      npc_uid,
+        "username":     npc_name,
+        "avatar":       f"/static/Emojis/Pets/Deco/{npc_element.title()}.png",
+        "status":       "idle",
+        "pet_name":     npc_name,
+        "pet_species":  npc_species,
+        "mode":         "boss",
+        "is_npc":       True,
+    }
+    room.add_user(npc_occupant)
+    room.updated_at = time.time()
+
+    # If a battle is already live, inject the NPC into the battle state too
+    if room_id in _boss_battles:
+        battle = _boss_battles[room_id]
+        npc_player_state: Dict[str, Any] = {
+            "user_id":    npc_uid,
+            "username":   npc_name,
+            "name":       npc_name,
+            "species":    npc_species,
+            "badge_url":  None,
+            "element":    npc_element,
+            "element2":   "",
+            "type":       npc_type,
+            "attack":     npc_atk,
+            "defense":    npc_def,
+            "max_hp":     npc_hp,
+            "cur_hp":     npc_hp,
+            "charge":     1.0,
+            "last_action": None,
+            "alive":      True,
+            "action_labels": action_labels,
+            "pending_action": None,
+            "relationship_multiplier": 1.0,
+            "pet_data":   npc_pet_data,
+            "is_npc":     True,
+        }
+        battle["players"].append(npc_player_state)
+
+    await _broadcast_rooms()
+
+    return JSONResponse({
+        "success":    True,
+        "npc_user_id": npc_uid,
+        "npc_name":   npc_name,
+        "npc_stats":  {"attack": npc_atk, "defense": npc_def, "hp": npc_hp},
+        "element":    npc_element,
+        "type":       npc_type,
+        "species":    npc_species,
+    })

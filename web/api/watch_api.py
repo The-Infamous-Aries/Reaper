@@ -12,12 +12,14 @@ import aiosqlite
 
 from Systems.Functions.irs_wars_db import IRSWarsDB
 from Systems.Functions.db_paths import IRS_WARS_DB_STR as WATCH_DB_PATH
+from Systems.Functions.tracking_db import TrackingDB, get_tracking_db
+from Systems.Functions.nation_emoji_store import get_alliance_emoji
 from Systems.PnW.Util.war_calc import get_resource_prices, calculate_unit_cost, calculate_war_costs
 from Systems.PnW.MA.war_net_bd import WarsNetBD
 
 router = APIRouter()
 logger = logging.getLogger("Reaper.WebServer.WatchAPI")
-WATCH_ALLIANCE_ID = 10259
+WATCH_ALLIANCE_ID = 14873  # Union of Revolutionary States
 LOOT_RESOURCES = ("coal", "oil", "uranium", "iron", "bauxite", "lead", "gasoline", "munitions", "steel", "aluminum", "food")
 
 # ── Module-level singletons ───────────────────────────────────────────────────
@@ -49,6 +51,74 @@ def _get_global_wars_db():
         from Systems.Functions.db_paths import GLOBAL_WARS_DB_STR
         _global_wars_db = GlobalWarsDB(GLOBAL_WARS_DB_STR)
     return _global_wars_db
+
+_tracking_db_instance: TrackingDB | None = None
+
+def _get_tracking_db() -> TrackingDB:
+    global _tracking_db_instance
+    if _tracking_db_instance is None:
+        _tracking_db_instance = get_tracking_db()
+    return _tracking_db_instance
+
+async def _get_user_alliance_info(request: Request, alliance_id: int | None = None) -> tuple[int, str]:
+    """Return (alliance_id, alliance_name) for the user's current alliance.
+
+    Priority:
+      1. Explicit ``alliance_id`` parameter (passed from frontend settings).
+      2. Session ``linked_alliance`` (set when user links a nation).
+      3. Session ``linked_nation`` → look up current alliance in GlobalNations.db.
+      4. Fallback to ``WATCH_ALLIANCE_ID`` (Darkstar).
+    """
+    # 1. Explicit alliance_id from frontend (watch_home_alliance_id)
+    if alliance_id is not None:
+        try:
+            from PnWHarvester.db.global_nations_db import GlobalNationsDB
+            from Systems.Functions.db_paths import GLOBAL_NATIONS_DB_STR
+            gdb = GlobalNationsDB(GLOBAL_NATIONS_DB_STR)
+            snap = await gdb.get_alliance_snapshot(alliance_id)
+            name = (snap or {}).get("alliance_name")
+            if name:
+                return int(alliance_id), name
+            return int(alliance_id), f"Alliance {alliance_id}"
+        except Exception as e:
+            logger.debug(f"_get_user_alliance_info explicit lookup failed: {e}")
+            return int(alliance_id), f"Alliance {alliance_id}"
+
+    # 2. Session linked_alliance
+    try:
+        linked_alliance = request.session.get("linked_alliance")
+    except Exception:
+        linked_alliance = None
+    if linked_alliance:
+        aid = linked_alliance.get("alliance_id")
+        aname = linked_alliance.get("alliance_name")
+        if aid:
+            return int(aid), aname or f"Alliance {aid}"
+
+    # 3. Session linked_nation → DB lookup
+    try:
+        linked_nation = request.session.get("linked_nation")
+    except Exception:
+        linked_nation = None
+    if linked_nation:
+        nid = linked_nation.get("nation_id")
+        if nid and str(nid).isdigit():
+            try:
+                from PnWHarvester.db.global_nations_db import GlobalNationsDB
+                from Systems.Functions.db_paths import GLOBAL_NATIONS_DB_STR
+                gdb = GlobalNationsDB(GLOBAL_NATIONS_DB_STR)
+                db_nation = await gdb.get_nation(int(nid))
+                if db_nation:
+                    aid = db_nation.get("alliance_id")
+                    aname = db_nation.get("alliance_name")
+                    if aid:
+                        return int(aid), aname or f"Alliance {aid}"
+            except Exception as e:
+                logger.debug(f"_get_user_alliance_info DB lookup failed: {e}")
+
+    # 4. Hard fallback
+    return WATCH_ALLIANCE_ID, "Union of Revolutionary States"
+
 
 # ── Simple TTL response cache ─────────────────────────────────────────────────
 # Keyed by (start_date_iso, end_date_iso).  Entries expire after CACHE_TTL_SECS.
@@ -192,6 +262,7 @@ def _build_watch_response(
     nations: Dict[Any, Dict[str, Any]],
     error: str | None = None,
     resource_prices: Dict[str, Any] | None = None,
+    alliance_name: str = "Darkstar",
 ) -> Dict[str, Any]:
     normalized_nations: Dict[str, Dict[str, Any]] = {}
     buy_prices = (resource_prices or {}).get("buy", {})
@@ -396,8 +467,10 @@ def _build_watch_response(
                 total_loot_resources[res]["amount"] += _as_number(rdata.get("amount"))
                 total_loot_resources[res]["value"]  += _as_number(rdata.get("value"))
 
+        alliance_emoji = get_alliance_emoji(alliance_name)
         response["totals"] = {
-            "name": "Darkstar",
+            "name": alliance_name,
+            "alliance_emoji": alliance_emoji,
             "gross_cost":         total_gross,
             "net_damage":         total_net,
             "total_gains":        total_gains,
@@ -511,7 +584,7 @@ def _normalize_attack(attack: Dict[str, Any], war: Dict[str, Any]) -> Dict[str, 
     return normalized
 
 
-async def _attach_war_attacks(db: IRSWarsDB, wars: list[Dict[str, Any]]) -> list[Dict[str, Any]]:
+async def _attach_war_attacks(db: Any, wars: list[Dict[str, Any]]) -> list[Dict[str, Any]]:
     """Bulk-fetch all attacks in a single query instead of one query per war."""
     war_ids = [war["id"] for war in wars]
     attacks_by_war = await db.get_attacks_for_wars(war_ids)
@@ -523,15 +596,54 @@ async def _attach_war_attacks(db: IRSWarsDB, wars: list[Dict[str, Any]]) -> list
         for war in wars
     ]
 
-@router.get("/watch/wars")
-async def get_watch_wars_data(request: Request, start_date: str | None = None, end_date: str | None = None, force_refresh: bool = False, alliance_id: int = WATCH_ALLIANCE_ID):
-    try:
-        db = _get_watch_db()
-        bounds = await db.get_alliance_war_date_bounds(alliance_id)
+async def _fetch_wars_for_alliance(db: Any, alliance_id: int, start_date, end_date) -> list[Dict[str, Any]]:
+    """Fetch wars for an alliance from either IRSWarsDB or GlobalWarsDB."""
+    if hasattr(db, "get_all_wars_for_alliance_in_range"):
+        return await db.get_all_wars_for_alliance_in_range(
+            alliance_id, start_date=start_date, end_date=end_date,
+        )
+    return await db.get_wars_by_alliance_in_range(
+        alliance_id, role="either", start_date=start_date, end_date=end_date,
+    )
 
-        if not bounds:
+
+async def _fetch_date_bounds_for_alliance(db: Any, alliance_id: int) -> dict | None:
+    """Get available date bounds for an alliance from either DB type."""
+    if hasattr(db, "get_alliance_war_date_bounds"):
+        return await db.get_alliance_war_date_bounds(alliance_id)
+    # GlobalWarsDB — query directly
+    try:
+        def _query():
+            import sqlite3 as _sq
+            with _sq.connect(db.db_path) as conn:
+                row = conn.execute(
+                    "SELECT MIN(date(substr(date,1,10))) AS min_date, "
+                    "MAX(date(substr(date,1,10))) AS max_date FROM wars "
+                    "WHERE att_alliance_id = ? OR def_alliance_id = ?",
+                    (alliance_id, alliance_id),
+                ).fetchone()
+            return {"min_date": row[0], "max_date": row[1]} if row and row[0] else None
+        return await asyncio.to_thread(_query)
+    except Exception as e:
+        logger.error(f"date bounds query error for {alliance_id}: {e}")
+        return None
+
+
+@router.get("/watch/wars")
+async def get_watch_wars_data(request: Request, start_date: str | None = None, end_date: str | None = None, force_refresh: bool = False, alliance_id: int | None = None):
+    try:
+        alliance_id, alliance_name = await _get_user_alliance_info(request, alliance_id=alliance_id)
+
+        # Determine which DB to use
+        tracked_ids = await _get_tracking_db().get_tracked_alliance_ids()
+        use_irswars = alliance_id in tracked_ids
+        db = _get_watch_db() if use_irswars else _get_global_wars_db()
+
+        bounds = await _fetch_date_bounds_for_alliance(db, alliance_id)
+
+        if not bounds or not bounds.get("min_date"):
             return {
-                **_build_watch_response({}, "No Darkstar wars were found in the local database."),
+                **_build_watch_response({}, f"No {alliance_name} wars were found in the database.", alliance_name=alliance_name),
                 "meta": {
                     "available_start_date": None,
                     "available_end_date": None,
@@ -553,7 +665,7 @@ async def get_watch_wars_data(request: Request, start_date: str | None = None, e
             )
         except ValueError:
             return {
-                **_build_watch_response({}, "The selected Watch date range is invalid."),
+                **_build_watch_response({}, "The selected date range is invalid.", alliance_name=alliance_name),
                 "meta": {
                     "available_start_date": available_start.isoformat(),
                     "available_end_date": available_end.isoformat(),
@@ -563,7 +675,6 @@ async def get_watch_wars_data(request: Request, start_date: str | None = None, e
                 },
             }
 
-        # Check cache before doing any heavy work
         cache_key = (str(alliance_id), selected_start.isoformat(), selected_end.isoformat())
         if force_refresh:
             invalidate_wars_cache()
@@ -572,12 +683,7 @@ async def get_watch_wars_data(request: Request, start_date: str | None = None, e
             logger.debug("watch/wars cache hit for %s – %s", selected_start, selected_end)
             return cached
 
-        # Single query for both attacker + defender roles (avoids duplicate round-trip)
-        unique_wars = await db.get_all_wars_for_alliance_in_range(
-            alliance_id,
-            start_date=selected_start,
-            end_date=selected_end,
-        )
+        unique_wars = await _fetch_wars_for_alliance(db, alliance_id, selected_start, selected_end)
 
         response_meta = {
             "available_start_date": available_start.isoformat(),
@@ -589,28 +695,24 @@ async def get_watch_wars_data(request: Request, start_date: str | None = None, e
 
         if not unique_wars:
             return {
-                **_build_watch_response({}, "No Darkstar wars were found in the selected date range."),
+                **_build_watch_response({}, f"No {alliance_name} wars were found in the selected date range.", alliance_name=alliance_name),
                 "meta": response_meta,
             }
 
-        # Fetch prices
         try:
             resource_prices = await get_resource_prices()
         except Exception as price_error:
             logger.error("Error fetching resource prices for watch page: %s", price_error, exc_info=True)
             return {
-                **_build_watch_response({}, "Darkstar war data is unavailable right now because resource pricing could not be loaded."),
+                **_build_watch_response({}, f"{alliance_name} war data is unavailable because resource pricing could not be loaded.", alliance_name=alliance_name),
                 "meta": response_meta,
             }
 
-        # Bulk-fetch all attacks in one query
         unique_wars = await _attach_war_attacks(db, unique_wars)
 
-        # 2. Get the breakdown from the "correct" logic in WarsNetBD
         war_net_bd_cog = WarsNetBD(bot=None)
         nation_breakdown = await war_net_bd_cog._get_nation_breakdown(unique_wars, str(alliance_id), False, resource_prices)
 
-        # Enrich any placeholder names ("Nation <id>") with real names from GlobalNations.db
         placeholder_ids = [
             int(nid) for nid, nd in nation_breakdown.items()
             if (nd.get("name") or "").startswith("Nation ")
@@ -625,13 +727,11 @@ async def get_watch_wars_data(request: Request, start_date: str | None = None, e
             except Exception as _name_err:
                 logger.debug("Could not enrich nation names: %s", _name_err)
 
-        # Attach the raw wars list to each nation so _build_watch_response can build wars_with
         for nation_id, nation_data in nation_breakdown.items():
             nation_wars = [
                 w for w in unique_wars
                 if str(w.get("att_id")) == str(nation_id) or str(w.get("def_id")) == str(nation_id)
             ]
-            # Compute per-opponent stats
             opp_stats: Dict[str, Any] = {}
             opp_names: Dict[str, str] = {}
             for w in nation_wars:
@@ -650,19 +750,17 @@ async def get_watch_wars_data(request: Request, start_date: str | None = None, e
             for opp_id, opp_wars in opp_stats.items():
                 try:
                     c = await calculate_war_costs(opp_wars, resource_prices, team1_id_set={int(nation_id)})
-                    t1 = c.get("team1", {})  # alliance nation's costs/gains
-                    t2 = c.get("team2", {})  # opponent's costs/gains
+                    t1 = c.get("team1", {})
+                    t2 = c.get("team2", {})
                     sp = resource_prices.get("sell", {})
                     bp = resource_prices.get("buy", {})
 
-                    # What WE (alliance nation) looted FROM the opponent
                     we_looted_cash = _as_number(t1.get("loot_received"))
                     we_looted_res: Dict[str, Any] = {}
                     for res, val in t1.get("resource_loot", {}).items():
                         price = sp.get(res, 0)
                         we_looted_res[res] = {"amount": val / price if price else 0, "value": val}
 
-                    # What THEY (opponent) looted FROM us
                     they_looted_cash = _as_number(t2.get("loot_received"))
                     they_looted_res: Dict[str, Any] = {}
                     for res, val in t2.get("resource_loot", {}).items():
@@ -670,15 +768,11 @@ async def get_watch_wars_data(request: Request, start_date: str | None = None, e
                         they_looted_res[res] = {"amount": val / price if price else 0, "value": val}
                     they_looted_total = they_looted_cash + sum(t2.get("resource_loot", {}).values())
 
-                    # Opponent's actual stats (t2 perspective)
                     opp_gross = _as_number(t2.get("gross"))
                     opp_gas_u = _as_number(t2.get("consumption", {}).get("gasoline"))
                     opp_mun_u = _as_number(t2.get("consumption", {}).get("munitions"))
                     opp_salvage = (t2.get("salvage", {}).get("aluminum", 0) * bp.get("aluminum", 0) +
                                    t2.get("salvage", {}).get("steel", 0) * bp.get("steel", 0))
-                    # Opponent net = their gross cost - what they looted from us - their salvage
-                    # Positive = they spent more than they gained = good for us
-                    # Negative = they looted more than they spent = bad for us
                     opp_net = opp_gross - they_looted_total - opp_salvage
 
                     off_count = sum(1 for w in opp_wars if str(w.get("att_id")) == str(nation_id))
@@ -690,7 +784,7 @@ async def get_watch_wars_data(request: Request, start_date: str | None = None, e
                         "gross_cost": opp_gross,
                         "net_damage": opp_net,
                         "total_gains": they_looted_total,
-                        "damages": _as_number(t1.get("gross")),  # damage they dealt to us = our gross cost
+                        "damages": _as_number(t1.get("gross")),
                         "soldiers_lost": t2.get("units", {}).get("soldiers", {}).get("lost", 0),
                         "tanks_lost": t2.get("units", {}).get("tanks", {}).get("lost", 0),
                         "aircraft_lost": t2.get("units", {}).get("aircraft", {}).get("lost", 0),
@@ -714,12 +808,10 @@ async def get_watch_wars_data(request: Request, start_date: str | None = None, e
                         "ships_lost_cost": t2.get("units", {}).get("ships", {}).get("cost", 0),
                         "missiles_lost_cost": t2.get("units", {}).get("missiles", {}).get("cost", 0),
                         "nukes_lost_cost": t2.get("units", {}).get("nukes", {}).get("cost", 0),
-                        # loot_breakdown = what THEY looted from us (shown in gains cell, red = bad for us)
                         "loot_breakdown": {
                             "cash": they_looted_cash,
                             "resources": they_looted_res,
                         },
-                        # opp_loot_breakdown = what WE looted from them (shown in gains cell, green = good for us)
                         "opp_loot_breakdown": {
                             "cash": we_looted_cash,
                             "resources": we_looted_res,
@@ -733,15 +825,10 @@ async def get_watch_wars_data(request: Request, start_date: str | None = None, e
             nation_data["_per_opp"] = per_opp
 
         result = {
-            **_build_watch_response(nation_breakdown, resource_prices=resource_prices),
+            **_build_watch_response(nation_breakdown, resource_prices=resource_prices, alliance_name=alliance_name),
             "meta": response_meta,
         }
         _cache_set(cache_key, result)
-        # Privacy: strip per-nation rows for users who opted out.
-        # privacy_show_watch_nations   → hides from War Stats / All Nations tab
-        # privacy_show_nations_leaderboard → hides from War Leaderboard cards
-        # Both flags use the same data source; apply union of both hidden sets.
-        # Totals in 'totals' key are never modified.
         hidden_watch, hidden_lb = await asyncio.gather(
             _get_privacy_hidden_nation_ids('privacy_show_watch_nations'),
             _get_privacy_hidden_nation_ids('privacy_show_nations_leaderboard'),
@@ -751,8 +838,9 @@ async def get_watch_wars_data(request: Request, start_date: str | None = None, e
 
     except Exception as e:
         logger.error(f"Error getting war data: {e}", exc_info=True)
+        _, alliance_name = await _get_user_alliance_info(request, alliance_id=alliance_id)
         return {
-            **_build_watch_response({}, "Failed to retrieve Darkstar war data."),
+            **_build_watch_response({}, f"Failed to retrieve {alliance_name} war data.", alliance_name=alliance_name),
             "meta": {
                 "available_start_date": None,
                 "available_end_date": None,
@@ -764,17 +852,19 @@ async def get_watch_wars_data(request: Request, start_date: str | None = None, e
 
 
 @router.get("/watch/wars/all-nations")
-async def get_watch_wars_all_nations(request: Request, start_date: str | None = None, end_date: str | None = None):
-    """Return war stats for NW nations covering ALL their wars (not just NW-tagged wars)."""
+async def get_watch_wars_all_nations(request: Request, start_date: str | None = None, end_date: str | None = None, alliance_id: int | None = None):
+    """Return war stats for user's alliance covering ALL their wars (not just alliance-tagged wars)."""
     try:
-        # ── Load NW nation IDs from GlobalNations.db ──────────────────────────
-        nations_db = _get_global_nations_db()
-        nw_nations = await nations_db.get_nations_by_alliance(WATCH_ALLIANCE_ID)
-        nw_nation_ids = [int(n["id"]) for n in nw_nations if n.get("id")]
+        alliance_id, alliance_name = await _get_user_alliance_info(request, alliance_id=alliance_id)
 
-        if not nw_nation_ids:
+        # Load user's alliance nation IDs from GlobalNations.db
+        nations_db = _get_global_nations_db()
+        alliance_nations = await nations_db.get_nations_by_alliance(alliance_id)
+        nation_ids = [int(n["id"]) for n in alliance_nations if n.get("id")]
+
+        if not nation_ids:
             return {
-                **_build_watch_response({}, "No Darkstar nations found in the database."),
+                **_build_watch_response({}, f"No {alliance_name} nations found in the database.", alliance_name=alliance_name),
                 "meta": {
                     "available_start_date": None,
                     "available_end_date": None,
@@ -784,12 +874,20 @@ async def get_watch_wars_all_nations(request: Request, start_date: str | None = 
                 },
             }
 
-        db = _get_watch_db()
-        bounds = await db.get_wars_for_nations_date_bounds(nw_nation_ids)
+        # Determine which DB to use
+        tracked_ids = await _get_tracking_db().get_tracked_alliance_ids()
+        use_irswars = alliance_id in tracked_ids
+        db = _get_watch_db() if use_irswars else _get_global_wars_db()
 
-        if not bounds:
+        # Get date bounds from the appropriate DB
+        if hasattr(db, "get_wars_for_nations_date_bounds"):
+            bounds = await db.get_wars_for_nations_date_bounds(nation_ids)
+        else:
+            bounds = await _fetch_date_bounds_for_alliance(db, alliance_id)
+
+        if not bounds or not bounds.get("min_date"):
             return {
-                **_build_watch_response({}, "No wars were found for NW nations in the local database."),
+                **_build_watch_response({}, f"No wars were found for {alliance_name} nations in the database.", alliance_name=alliance_name),
                 "meta": {
                     "available_start_date": None,
                     "available_end_date": None,
@@ -811,7 +909,7 @@ async def get_watch_wars_all_nations(request: Request, start_date: str | None = 
             )
         except ValueError:
             return {
-                **_build_watch_response({}, "The selected date range is invalid."),
+                **_build_watch_response({}, "The selected date range is invalid.", alliance_name=alliance_name),
                 "meta": {
                     "available_start_date": available_start.isoformat(),
                     "available_end_date": available_end.isoformat(),
@@ -821,18 +919,19 @@ async def get_watch_wars_all_nations(request: Request, start_date: str | None = 
                 },
             }
 
-        cache_key = ("all_nations", selected_start.isoformat(), selected_end.isoformat())
+        cache_key = ("all_nations", str(alliance_id), selected_start.isoformat(), selected_end.isoformat())
         cached = _cache_get(cache_key)
         if cached is not None:
             logger.debug("watch/wars/all-nations cache hit for %s – %s", selected_start, selected_end)
             return cached
 
-        # Fetch all wars involving any NW nation (regardless of alliance tag)
-        unique_wars = await db.get_wars_for_nations_in_range(
-            nw_nation_ids,
-            start_date=selected_start,
-            end_date=selected_end,
-        )
+        # Fetch all wars involving any user's alliance nation
+        if hasattr(db, "get_wars_for_nations_in_range"):
+            unique_wars = await db.get_wars_for_nations_in_range(
+                nation_ids, start_date=selected_start, end_date=selected_end,
+            )
+        else:
+            unique_wars = await _fetch_wars_for_alliance(db, alliance_id, selected_start, selected_end)
 
         response_meta = {
             "available_start_date": available_start.isoformat(),
@@ -844,7 +943,7 @@ async def get_watch_wars_all_nations(request: Request, start_date: str | None = 
 
         if not unique_wars:
             return {
-                **_build_watch_response({}, "No wars were found for NW nations in the selected date range."),
+                **_build_watch_response({}, f"No wars were found for {alliance_name} nations in the selected date range.", alliance_name=alliance_name),
                 "meta": response_meta,
             }
 
@@ -853,35 +952,31 @@ async def get_watch_wars_all_nations(request: Request, start_date: str | None = 
         except Exception as price_error:
             logger.error("Error fetching resource prices for all-nations watch: %s", price_error, exc_info=True)
             return {
-                **_build_watch_response({}, "War data is unavailable because resource pricing could not be loaded."),
+                **_build_watch_response({}, "War data is unavailable because resource pricing could not be loaded.", alliance_name=alliance_name),
                 "meta": response_meta,
             }
 
         unique_wars = await _attach_war_attacks(db, unique_wars)
 
-        # _get_nation_breakdown discovers nations by matching att/def_alliance_id.
-        # Wars fought outside NW won't have that tag, so we patch a sentinel alliance
-        # ID onto each war side that belongs to a NW nation, then strip it after.
-        NW_SENTINEL = str(WATCH_ALLIANCE_ID)
-        nw_nation_id_strs = {str(nid) for nid in nw_nation_ids}
+        # Patch sentinel alliance ID onto each war side that belongs to the user's alliance
+        nation_id_strs = {str(nid) for nid in nation_ids}
 
         patched_wars = []
         for w in unique_wars:
             pw = dict(w)
-            if str(pw.get("att_id")) in nw_nation_id_strs:
-                pw["att_alliance_id"] = WATCH_ALLIANCE_ID
-            if str(pw.get("def_id")) in nw_nation_id_strs:
-                pw["def_alliance_id"] = WATCH_ALLIANCE_ID
+            if str(pw.get("att_id")) in nation_id_strs:
+                pw["att_alliance_id"] = alliance_id
+            if str(pw.get("def_id")) in nation_id_strs:
+                pw["def_alliance_id"] = alliance_id
             patched_wars.append(pw)
 
-        # Build breakdown treating NW as the alliance (so costs/gains are from NW perspective)
         war_net_bd_cog = WarsNetBD(bot=None)
         nation_breakdown = await war_net_bd_cog._get_nation_breakdown(
-            patched_wars, str(WATCH_ALLIANCE_ID), False, resource_prices
+            patched_wars, str(alliance_id), False, resource_prices
         )
 
-        # Only keep rows for NW nations (filter out opponents that slipped in)
-        nation_breakdown = {k: v for k, v in nation_breakdown.items() if str(k) in nw_nation_id_strs}
+        # Only keep rows for user's alliance nations
+        nation_breakdown = {k: v for k, v in nation_breakdown.items() if str(k) in nation_id_strs}
 
         for nation_id, nation_data in nation_breakdown.items():
             nation_wars = [
@@ -971,18 +1066,18 @@ async def get_watch_wars_all_nations(request: Request, start_date: str | None = 
             nation_data["_per_opp"] = per_opp
 
         result = {
-            **_build_watch_response(nation_breakdown, resource_prices=resource_prices),
+            **_build_watch_response(nation_breakdown, resource_prices=resource_prices, alliance_name=alliance_name),
             "meta": response_meta,
         }
         _cache_set(cache_key, result)
-        # Privacy: strip per-nation rows for users who opted out of Watch display.
         hidden = await _get_privacy_hidden_nation_ids('privacy_show_watch_nations')
         return _apply_privacy_filter(result, hidden)
 
     except Exception as e:
         logger.error(f"Error getting all-nations war data: {e}", exc_info=True)
+        _, alliance_name = await _get_user_alliance_info(request)
         return {
-            **_build_watch_response({}, "Failed to retrieve war data."),
+            **_build_watch_response({}, f"Failed to retrieve {alliance_name} war data.", alliance_name=alliance_name),
             "meta": {
                 "available_start_date": None,
                 "available_end_date": None,
@@ -1278,18 +1373,22 @@ async def get_available_periods(request: Request):
     Each entry is tagged with `is_current` so the frontend can highlight the
     current week/month without doing its own timezone-sensitive date math.
     """
-    db = _get_watch_db()
     try:
+        alliance_id, alliance_name = await _get_user_alliance_info(request)
+        tracked_ids = await _get_tracking_db().get_tracked_alliance_ids()
+        use_irswars = alliance_id in tracked_ids
+        db_path = _get_watch_db().db_path if use_irswars else _get_global_wars_db().db_path
+
         import calendar
         from datetime import date as _date, timedelta
 
         def _fetch_dates():
             import sqlite3 as _sq
-            with _sq.connect(db.db_path) as conn:
+            with _sq.connect(db_path) as conn:
                 return [r[0] for r in conn.execute(
                     "SELECT DISTINCT date(substr(date, 1, 10)) AS d FROM wars "
                     "WHERE att_alliance_id = ? OR def_alliance_id = ? ORDER BY d ASC",
-                    (WATCH_ALLIANCE_ID, WATCH_ALLIANCE_ID),
+                    (alliance_id, alliance_id),
                 ).fetchall() if r[0]]
         all_dates = await asyncio.to_thread(_fetch_dates)
 
@@ -1449,10 +1548,7 @@ async def get_nations_by_alliance(request: Request, alliance_id: int):
         db = _get_global_nations_db()
         nations = await db.get_nations_by_alliance(alliance_id)
         db_path = db.db_path
-        if alliance_id == WATCH_ALLIANCE_ID:
-            alliance_name = "Darkstar"
-        else:
-            alliance_name = (nations[0].get("alliance_name") or f"Alliance {alliance_id}") if nations else f"Alliance {alliance_id}"
+        alliance_name = (nations[0].get("alliance_name") or f"Alliance {alliance_id}") if nations else f"Alliance {alliance_id}"
 
         if not nations:
             return {"nations": [], "count": 0, "alliance_name": alliance_name}
@@ -1514,11 +1610,11 @@ async def get_nations_by_alliance(request: Request, alliance_id: int):
 
 
 @router.get("/watch/nations")
-async def get_watch_nations(request: Request):
-    """Return all Darkstar nations from GlobalNations.db with their city aggregates."""
+async def get_watch_nations(request: Request, alliance_id: int = WATCH_ALLIANCE_ID):
+    """Return all nations for the given alliance from GlobalNations.db with city aggregates."""
     try:
         db = _get_global_nations_db()
-        nations = await db.get_nations_by_alliance(WATCH_ALLIANCE_ID)
+        nations = await db.get_nations_by_alliance(alliance_id)
 
         if not nations:
             return {"nations": [], "count": 0}
@@ -1659,7 +1755,7 @@ async def get_watch_nation_detail(request: Request, nation_id: int):
 async def get_watch_revenue(request: Request, alliance_id: int = WATCH_ALLIANCE_ID):
     """Calculate and return revenue for nations in the given alliance.
 
-    Defaults to Darkstar (WATCH_ALLIANCE_ID) when no alliance_id is supplied.
+    Uses WATCH_ALLIANCE_ID as fallback when no alliance_id is supplied.
     Uses revenue_calc_sync (pure CPU) via asyncio.to_thread so the event loop
     stays responsive.  Cities are loaded in a single bulk query instead of one
     per nation.  Results are cached per alliance for the current PnW turn (2-hour window).
@@ -1766,8 +1862,6 @@ async def get_watch_revenue(request: Request, alliance_id: int = WATCH_ALLIANCE_
         elif month in (12, 1, 2):
             seasonal_mod.update({'na': 0.8, 'as': 0.8, 'eu': 0.8, 'sa': 1.2, 'af': 1.2, 'au': 1.2})
 
-        TAX_RATE = 0.10
-
         # ── Per-nation calculation (batched CPU work in thread pool) ────────────
         # Running one thread per nation is extremely slow for 15k+ nations due to
         # task-scheduling overhead and GIL contention.  Instead we split nations
@@ -1809,7 +1903,6 @@ async def get_watch_revenue(request: Request, alliance_id: int = WATCH_ALLIANCE_
 
             gross_income  = rev.get('net_cash_num', 0)
             total_mon     = rev.get('monetary_net_num', 0)
-            alliance_tax  = max(0.0, gross_income * TAX_RATE)
             turn_revenue  = gross_income
             day_revenue   = turn_revenue * 12
 
@@ -1825,13 +1918,10 @@ async def get_watch_revenue(request: Request, alliance_id: int = WATCH_ALLIANCE_
                 'day_revenue':          day_revenue,
                 'gross_income':         gross_income,
                 'total_monetary_value': total_mon,
-                'net_after_tax':        gross_income - alliance_tax,
                 'military_upkeep':      rev.get('military_upkeep_turn', 0),
                 'improvement_upkeep':   rev.get('improvement_upkeep_turn', 0),
                 'power_upkeep':         rev.get('power_upkeep_turn', 0),
                 'rss_upkeep':           rev.get('rss_upkeep_turn', 0),
-                'alliance_tax':         alliance_tax,
-                'alliance_tax_rate':    TAX_RATE,
                 'at_war':               at_war,
                 'color_bonus':          color_bonus,
                 'population':           rev.get('nationpop', 0),

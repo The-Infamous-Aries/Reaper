@@ -56,11 +56,19 @@ class SettingsUpdateRequest(BaseModel):
     auto_fill_nation_raids: Optional[int] = None
     auto_fill_nation_revopt: Optional[int] = None
     auto_fill_nation_calc: Optional[int] = None
+    revopt_default_infra: Optional[float] = None
+    revopt_default_land: Optional[float] = None
+    revopt_default_mmr: Optional[str] = None
     auto_fill_alliances_raids_exclude: Optional[str] = None
     auto_fill_alliances_compare_home: Optional[str] = None
-    # Watch page home alliance
+    # Home alliance (one source of truth for all pages)
     watch_home_alliance_id: Optional[int] = None
     watch_home_alliance_name: Optional[str] = None
+    # Page toggles for auto-filling the home alliance
+    home_alliance_nations: Optional[int] = None
+    home_alliance_compare: Optional[int] = None
+    home_alliance_destroy: Optional[int] = None
+    home_alliance_spywipe: Optional[int] = None
     # Privacy toggles (1 = visible/default, 0 = hidden)
     privacy_show_pet_leaderboard: Optional[int] = None
     privacy_show_nations_leaderboard: Optional[int] = None
@@ -70,6 +78,9 @@ class SettingsUpdateRequest(BaseModel):
     language: Optional[str] = None
     # Menu layout customization (JSON string of page order)
     menu_layout: Optional[str] = None
+    # Audit defaults
+    audit_default_color: Optional[str] = None
+    audit_default_mmr: Optional[str] = None
 
 
 _VALID_LOCALES = {'en', 'es', 'fr', 'de', 'pt', 'zh', 'ja', 'ko', 'ru', 'ar'}
@@ -104,6 +115,20 @@ async def get_settings(request: Request):
         settings["linked_nation_name"] = session_nation.get("nation_name")
         settings["linked_nation_leader"] = session_nation.get("leader_name", "")
         settings["linked_nation_flag"] = session_nation.get("flag", "")
+        # Also get the alliance info from the nation
+        nation_id = session_nation.get("nation_id")
+        if nation_id:
+            try:
+                from PnWHarvester.db.global_nations_db import GlobalNationsDB
+                from Systems.Functions.db_paths import GLOBAL_NATIONS_DB_STR
+                gdb = GlobalNationsDB(GLOBAL_NATIONS_DB_STR)
+                nation = await gdb.get_nation(int(nation_id))
+                if nation:
+                    settings["linked_alliance_id"] = nation.get("alliance_id")
+                    settings["linked_alliance_name"] = nation.get("alliance_name")
+                    logger.info(f"Added alliance info from nation")
+            except Exception as e:
+                logger.warning(f"Could not fetch alliance info: {e}")
         logger.info(f"Merged session nation into settings")
     
     # Add Discord user info to response
@@ -138,9 +163,10 @@ async def update_settings(request: Request, data: SettingsUpdateRequest):
         'theme_gold_primary', 'theme_gold_secondary',
         'theme_text_primary', 'theme_text_secondary'
     ]
+    import re as _re
     for field in color_fields:
         if field in body:
-            if not body[field].startswith('#') or len(body[field]) != 7:
+            if not _re.fullmatch(r"#[0-9A-Fa-f]{6}", body[field]):
                 raise HTTPException(status_code=400, detail=f"Invalid color format for {field}")
     
     # Validate JSON arrays
@@ -182,6 +208,35 @@ async def update_settings(request: Request, data: SettingsUpdateRequest):
         if field in body and body[field] not in (0, 1):
             raise HTTPException(status_code=400, detail=f"{field} must be 0 or 1")
 
+    # Validate audit defaults
+    _VALID_AUDIT_COLORS = {
+        'aqua','black','blue','brown','green','lime','maroon',
+        'olive','orange','pink','purple','red','white','yellow',
+    }
+    if 'audit_default_color' in body:
+        if body['audit_default_color'] not in _VALID_AUDIT_COLORS:
+            raise HTTPException(status_code=400, detail=f"Invalid audit color: {body['audit_default_color']}")
+    if 'audit_default_mmr' in body:
+        mmr_val = body['audit_default_mmr']
+        if mmr_val not in ('basic', 'max'):
+            # Must be custom format B/F/H/D with correct ranges
+            import re as _re
+            m = _re.fullmatch(r'([0-5])/([0-5])/([0-5])/([0-3])', mmr_val)
+            if not m:
+                raise HTTPException(status_code=400, detail="audit_default_mmr must be 'basic', 'max', or B/F/H/D (e.g. 3/5/5/2)")
+
+    # Validate Revenue Optimizer defaults
+    for field in ('revopt_default_infra', 'revopt_default_land'):
+        if field in body and body[field] is not None:
+            if body[field] < 0:
+                raise HTTPException(status_code=400, detail=f"{field} must be 0 or greater")
+    if 'revopt_default_mmr' in body:
+        mmr_val = (body['revopt_default_mmr'] or '').strip()
+        import re as _re
+        if not _re.fullmatch(r'([0-5])/([0-5])/([0-5])/([0-3])', mmr_val):
+            raise HTTPException(status_code=400, detail="revopt_default_mmr must be B/F/H/D with caps 5/5/5/3, e.g. 0/3/5/0")
+        body['revopt_default_mmr'] = mmr_val
+
     success = await pets_db.update_user_settings(user_id, body)
     if not success:
         raise HTTPException(status_code=500, detail="Failed to update settings")
@@ -221,12 +276,20 @@ async def persist_link_nation(request: Request):
         "flag": nation.get("flag", "")
     }
     
-    # Persist to database
+    # Get alliance info from the nation
+    alliance_id = nation.get("alliance_id")
+    alliance_name = nation.get("alliance_name")
+    
+    # Persist to database (include alliance info and set watch home alliance)
     await pets_db.update_user_settings(user_id, {
         "linked_nation_id": nation_id,
         "linked_nation_name": nation.get("nation_name", ""),
         "linked_nation_leader": nation.get("leader_name", ""),
-        "linked_nation_flag": nation.get("flag", "")
+        "linked_nation_flag": nation.get("flag", ""),
+        "linked_alliance_id": alliance_id,
+        "linked_alliance_name": alliance_name,
+        "watch_home_alliance_id": alliance_id,
+        "watch_home_alliance_name": alliance_name
     })
     
     return JSONResponse(content={
@@ -234,7 +297,9 @@ async def persist_link_nation(request: Request):
         "nation_id": nation_id,
         "nation_name": nation.get("nation_name", ""),
         "leader_name": nation.get("leader_name", ""),
-        "flag": nation.get("flag", "")
+        "flag": nation.get("flag", ""),
+        "alliance_id": alliance_id,
+        "alliance_name": alliance_name
     })
 
 

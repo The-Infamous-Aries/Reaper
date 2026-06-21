@@ -70,6 +70,30 @@ POT_NO_WINNER_MULT = 2.5   # multiplier applied to pot when no MEGA/TIER1 winner
 TICKET_BASE_MULT = 500     # base multiplier: level × equip_mult × 500
 EM_SURCHARGE = 1.5         # ticket costs 50 % more when EM is included
 
+# Hard cap to prevent integer overflow in the SQLite INTEGER column (max 8-byte signed = ~9.2e18).
+# We cap at 999.999 trillion XP so the number is always representable and human-readable.
+POT_MAX = 999_999_999_999_999
+
+# ── Ticket-count → win-probability schedule ──────────────────────────────────
+# Each entry: (min_tickets, chance_of_any_win, chance_of_major_win)
+#   any_win   = probability (0–1) that we force at least one synthetic winner
+#               from a random tier (TIER3 / TIER3_EM / TIER2 / TIER2_EM / TIER1)
+#   major_win = probability (0–1) that we specifically force a MEGA/TIER1 winner
+# These are checked ONLY if no real matches exist for that tier yet.
+# The schedule is applied AFTER scoring real tickets; it can add forced winners
+# on top of—or instead of—the normal no-match rollover.
+_WIN_SCHEDULE: List[Tuple[int, float, float]] = [
+    # (min_tickets, p_any_win, p_major_win)
+    (60,  0.95, 0.55),   # 60+ tickets: near-certain any-tier win, >50% major
+    (50,  0.90, 0.40),   # 50+ tickets: 90% any-tier, 40% major
+    (40,  0.80, 0.25),   # 40+ tickets
+    (30,  0.65, 0.15),   # 30+ tickets
+    (20,  0.50, 0.08),   # 20+ tickets
+    (10,  0.30, 0.04),   # 10+ tickets
+    (5,   0.15, 0.01),   # 5+ tickets: 15% any-tier, 1% major
+    # below 5 tickets: no forced wins
+]
+
 # Pot-percentage payouts for all tiers (no hardcoded XP amounts)
 TIER3_POT_SHARE    = 0.01   # 3 pets match (no EM)   → 1% of pot
 TIER3_EM_POT_SHARE = 0.02   # 3 pets + EM match      → 2% of pot
@@ -197,6 +221,7 @@ async def _get_or_create_pot(draw_date: str) -> Dict[str, Any]:
         ) as cur:
             prev = await cur.fetchone()
         seed = int(prev["pot_after"]) if prev else POT_SEED
+        seed = _cap_pot(seed)
 
         await db.execute(
             "INSERT INTO pb_pot(draw_date, pot_xp, drawn) VALUES(?,?,0)",
@@ -207,12 +232,18 @@ async def _get_or_create_pot(draw_date: str) -> Dict[str, Any]:
 
 
 async def _add_to_pot(draw_date: str, amount: int):
+    """Add *amount* to the pot, hard-capping at POT_MAX."""
     async with aiosqlite.connect(DB_PATH) as db:
         await db.execute(
-            "UPDATE pb_pot SET pot_xp = pot_xp + ? WHERE draw_date=?",
-            (amount, draw_date)
+            "UPDATE pb_pot SET pot_xp = MIN(pot_xp + ?, ?) WHERE draw_date=?",
+            (amount, POT_MAX, draw_date)
         )
         await db.commit()
+
+
+def _cap_pot(value: int) -> int:
+    """Clamp a pot value to [0, POT_MAX]."""
+    return max(0, min(int(value), POT_MAX))
 
 
 async def _get_tickets_for_draw(draw_date: str) -> List[Dict[str, Any]]:
@@ -341,9 +372,9 @@ async def update_current_pot_for_multiplier():
                     break
             
             if not had_major_winners:
-                # No major winners in recent draws, apply multiplier
+                # No major winners in recent draws, apply multiplier (capped)
                 old_pot = current_pot["pot_xp"]
-                new_pot = int(old_pot * POT_NO_WINNER_MULT)
+                new_pot = _cap_pot(int(old_pot * POT_NO_WINNER_MULT))
                 
                 await db.execute(
                     "UPDATE pb_pot SET pot_xp=? WHERE draw_date=?",
@@ -366,6 +397,17 @@ async def run_daily_draw(draw_date: Optional[str] = None) -> Dict[str, Any]:
     Execute the daily Powerball draw for draw_date (defaults to today UTC).
     Called by the midnight scheduler.  Safe to call multiple times — skips if
     already drawn.
+
+    Win-probability scaling
+    -----------------------
+    After scoring real tickets we check _WIN_SCHEDULE.  If the ticket count
+    meets a threshold and the RNG fires, we inject synthetic forced winners so
+    high-participation days always produce some kind of payout:
+      • p_any_win   → force a random lower-tier winner (TIER3→TIER1)
+      • p_major_win → force a MEGA winner (full jackpot)
+    Forced winners are picked randomly from real ticket holders who didn't
+    already win that tier or better.  If everyone already won we skip forcing.
+    The pot is always hard-capped at POT_MAX after every mutation.
     """
     await _ensure_db()
     if draw_date is None:
@@ -379,40 +421,103 @@ async def run_daily_draw(draw_date: Optional[str] = None) -> Dict[str, Any]:
     # Draw 5 pets (without replacement) and 1 element
     drawn_pets = random.sample(ALL_PETS, 5)
     drawn_elem = random.choice(ALL_ELEMENTS)
-    pot_before = pot["pot_xp"]
+    pot_before = _cap_pot(pot["pot_xp"])  # always work with capped value
 
     tickets = await _get_tickets_for_draw(draw_date)
+    ticket_count = len(tickets)
     winners: List[Dict[str, Any]] = []
     pot_after = pot_before
 
-    # Score every ticket
+    # ── Score every real ticket ───────────────────────────────────────────────
     scored = []
     for t in tickets:
         score = _score_ticket(t["pets"], t["element"], drawn_pets, drawn_elem)
         if score["tier"] != "NONE":
             scored.append({**t, **score})
 
-    # Calculate payouts — all tiers come from pot percentage
+    # ── Ticket-count forced-win injection ─────────────────────────────────────
+    # Determine which probability thresholds apply for today's participation.
+    p_any_win = 0.0
+    p_major_win = 0.0
+    for min_t, p_any, p_major in _WIN_SCHEDULE:
+        if ticket_count >= min_t:
+            p_any_win = p_any
+            p_major_win = p_major
+            break
+
+    if ticket_count > 0 and (p_any_win > 0 or p_major_win > 0):
+        existing_tiers = {s["tier"] for s in scored}
+        winners_set = {s["user_id"] for s in scored}
+        non_winners = [t for t in tickets if t["user_id"] not in winners_set]
+
+        # 1) Check for forced MAJOR win (MEGA jackpot)
+        forced_major = False
+        if p_major_win > 0 and random.random() < p_major_win:
+            if "MEGA" not in existing_tiers and "TIER1" not in existing_tiers:
+                candidates = non_winners if non_winners else tickets
+                lucky = random.choice(candidates)
+                scored.append({
+                    "user_id": lucky["user_id"],
+                    "pets": lucky["pets"],
+                    "element": lucky["element"],
+                    "pet_matches": 5,
+                    "em_match": True,
+                    "tier": "MEGA",
+                    "forced": True,
+                })
+                forced_major = True
+                logger.info(
+                    f"Powerball: forced MEGA winner {lucky['user_id']} "
+                    f"(ticket_count={ticket_count}, p_major={p_major_win:.2f})"
+                )
+
+        # 2) Check for forced ANY-tier win (only if major didn't fire and no high tiers exist)
+        if not forced_major and p_any_win > 0 and random.random() < p_any_win:
+            if not existing_tiers.intersection({"MEGA", "TIER1", "TIER2_EM", "TIER2"}):
+                # Weight tier pool by participation level
+                if ticket_count >= 40:
+                    forced_tier_pool = ["TIER3_EM", "TIER2", "TIER2", "TIER2_EM", "TIER1", "TIER1"]
+                elif ticket_count >= 20:
+                    forced_tier_pool = ["TIER3", "TIER3_EM", "TIER2", "TIER2", "TIER2_EM"]
+                else:
+                    forced_tier_pool = ["TIER3", "TIER3", "TIER3_EM", "TIER2", "TIER2_EM", "TIER1"]
+                force_tier = random.choice(forced_tier_pool)
+                candidates = non_winners if non_winners else tickets
+                lucky = random.choice(candidates)
+                scored.append({
+                    "user_id": lucky["user_id"],
+                    "pets": lucky["pets"],
+                    "element": lucky["element"],
+                    "pet_matches": {"TIER3": 3, "TIER3_EM": 3, "TIER2": 4, "TIER2_EM": 4, "TIER1": 5}.get(force_tier, 3),
+                    "em_match": force_tier.endswith("_EM"),
+                    "tier": force_tier,
+                    "forced": True,
+                })
+                logger.info(
+                    f"Powerball: forced {force_tier} winner {lucky['user_id']} "
+                    f"(ticket_count={ticket_count}, p_any={p_any_win:.2f})"
+                )
+
+    # ── Calculate payouts ─────────────────────────────────────────────────────
     mega_winners  = [s for s in scored if s["tier"] == "MEGA"]
     tier1_winners = [s for s in scored if s["tier"] == "TIER1"]
 
-    # Determine pot payouts for top tiers
     if mega_winners:
         # Split full pot among MEGA winners
         share = pot_before // len(mega_winners)
         for w in mega_winners:
             w["payout"] = share
-        pot_after = POT_SEED   # reset to seed
+        pot_after = _cap_pot(POT_SEED)   # reset to seed
     elif tier1_winners:
         # Split 25% of pot among TIER1 winners
         tier1_pool = int(pot_before * TIER1_POT_SHARE)
         share = tier1_pool // len(tier1_winners)
         for w in tier1_winners:
             w["payout"] = share
-        pot_after = pot_before - tier1_pool
+        pot_after = _cap_pot(pot_before - tier1_pool)
     else:
-        # No MEGA or TIER1 winners — pot grows 2.5x
-        pot_after = int(pot_before * POT_NO_WINNER_MULT)
+        # No MEGA or TIER1 winners — pot grows 2.5x, capped
+        pot_after = _cap_pot(int(pot_before * POT_NO_WINNER_MULT))
         logger.info(f"Powerball: No major winners, pot grows from {pot_before:,} to {pot_after:,} XP (2.5x multiplier)")
 
     # Pot-percentage payouts for lower tiers (each winner gets their own share of the pot)
@@ -426,7 +531,7 @@ async def run_daily_draw(draw_date: Optional[str] = None) -> Dict[str, Any]:
         if s["tier"] in POT_PCT:
             s["payout"] = max(1, int(pot_before * POT_PCT[s["tier"]]))
 
-    # Deliver payouts
+    # ── Deliver payouts ───────────────────────────────────────────────────────
     for s in scored:
         payout = s.get("payout", 0)
         if payout > 0:
@@ -445,26 +550,28 @@ async def run_daily_draw(draw_date: Optional[str] = None) -> Dict[str, Any]:
             "pet_matches": s["pet_matches"],
             "em_match":   s["em_match"],
             "payout":     payout,
+            "forced":     s.get("forced", False),
         })
 
     draw_result = {
-        "draw_date":    draw_date,
-        "drawn_pets":   drawn_pets,
+        "draw_date":     draw_date,
+        "drawn_pets":    drawn_pets,
         "drawn_element": drawn_elem,
-        "pot_before":   pot_before,
-        "pot_after":    pot_after,
-        "winner_count": len(winners),
-        "winners":      winners,
-        "drawn_at":     datetime.now(timezone.utc).isoformat(),
+        "pot_before":    pot_before,
+        "pot_after":     pot_after,
+        "winner_count":  len(winners),
+        "winners":       winners,
+        "ticket_count":  ticket_count,
+        "drawn_at":      datetime.now(timezone.utc).isoformat(),
     }
 
-    # Persist
+    # ── Persist ───────────────────────────────────────────────────────────────
     async with aiosqlite.connect(DB_PATH) as db:
         await db.execute(
             "UPDATE pb_pot SET pot_xp=?, drawn=1, draw_result=? WHERE draw_date=?",
             (pot_after, json.dumps(draw_result), draw_date)
         )
-        # Ensure tomorrow's pot row exists with the rolled-over amount
+        # Ensure tomorrow's pot row exists with the rolled-over amount (capped)
         tomorrow = _next_draw_date(draw_date)
         await db.execute(
             "INSERT OR IGNORE INTO pb_pot(draw_date, pot_xp, drawn) VALUES(?,?,0)",
@@ -483,7 +590,7 @@ async def run_daily_draw(draw_date: Optional[str] = None) -> Dict[str, Any]:
 
     logger.info(
         f"Powerball draw {draw_date}: pets={drawn_pets} elem={drawn_elem} "
-        f"pot={pot_before}→{pot_after} winners={len(winners)}"
+        f"pot={pot_before:,}→{pot_after:,} winners={len(winners)} tickets={ticket_count}"
     )
     return draw_result
 
@@ -656,7 +763,7 @@ async def buy_ticket(request: Request):
         # Deduct XP
         await LootCalculator.apply_xp_change(int(user_id), -cost, source="powerball_ticket")
 
-        # Add 100% to pot (house matches ticket cost 1-for-1)
+        # Add 100% to pot (house matches ticket cost 1-for-1), capped at POT_MAX
         pot_contrib = int(cost * POT_TICKET_SHARE)
         await _add_to_pot(draw_date, pot_contrib)
 

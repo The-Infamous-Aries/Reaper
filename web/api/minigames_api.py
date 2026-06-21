@@ -230,8 +230,14 @@ async def rps_play(request: Request):
 
     animation = AnimationComponent.for_ui_update("rps_play", 400, {"result": result, "player_choice": choice, "ai_choice": ai_choice})
 
+    # Task tracking — rps (counts every round, win or lose)
+    try:
+        from web.api.tasks_api import record_action as _task_record
+        await _task_record(user_id, "rps")
+    except Exception:
+        pass
+
     return JSONResponse({
-        "result":       result,
         "player_choice": choice,
         "player_name":  player_data["name"],
         "player_img":   player_data["img"],

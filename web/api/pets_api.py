@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Request, Body
+from fastapi import APIRouter, HTTPException, Request, Body, UploadFile, File
 from Systems.Functions.user_data_manager import user_data_manager
 from Systems.Pets.Logic.pet_brain import StatsCalculator, LootCalculator
 from Systems.Pets.Logic.ability_tree import (
@@ -19,19 +19,176 @@ from Systems.Pets.Logic.pet_object_pool import stats_cache
 # ─────────────────────────────────────────────────────────────────────────────
 from fastapi.responses import JSONResponse
 import asyncio
+import base64
+import io
 import json
 import os
 import logging
 import re
+import time
+import uuid
+from pathlib import Path
 from typing import Dict, Any
 from datetime import datetime
+from PIL import Image
 from Systems.Functions import cooldown_db
+from Systems.Pets.Logic.pet_badge import (
+    build_pet_prompt,
+    build_pet_prompt_identity,
+    generate_pet_badge_image,
+)
 
 logger = logging.getLogger(__name__)
 
 project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 router = APIRouter()
+
+BADGE_STATIC_ROOT = Path(project_root) / "web" / "static" / "pet_badges"
+LEGACY_BADGE_ROOT = Path(project_root) / "Systems" / "Data" / "Badges"
+BADGE_CACHE_TTL_SECS = 30 * 60
+MAX_BADGE_UPLOAD_BYTES = 5 * 1024 * 1024
+ALLOWED_BADGE_MIME = {"image/jpeg", "image/png", "image/webp"}
+_BADGE_CANDIDATE_CACHE: dict[str, dict[str, dict[str, Any]]] = {}
+
+
+def _badge_user_dir(user_id: str) -> Path:
+    safe_user_id = re.sub(r"[^0-9A-Za-z_-]", "", str(user_id))
+    return BADGE_STATIC_ROOT / safe_user_id
+
+
+def _badge_url(user_id: str, filename: str) -> str:
+    safe_user_id = re.sub(r"[^0-9A-Za-z_-]", "", str(user_id))
+    return f"/static/pet_badges/{safe_user_id}/{filename}?v={int(time.time())}"
+
+
+def _selected_badge_url(user_id: str) -> str:
+    selected = _badge_user_dir(user_id) / "selected.png"
+    if not selected.exists():
+        return ""
+    safe_user_id = re.sub(r"[^0-9A-Za-z_-]", "", str(user_id))
+    return f"/static/pet_badges/{safe_user_id}/selected.png?v={int(selected.stat().st_mtime)}"
+
+
+def _candidate_badges(user_id: str) -> list[dict]:
+    _prune_badge_cache()
+    user_cache = _BADGE_CANDIDATE_CACHE.get(str(user_id), {})
+    choices = sorted(user_cache.values(), key=lambda item: item["created_at"], reverse=True)
+    return [{"id": item["id"], "url": item["data_url"]} for item in choices[:16]]
+
+
+def _prune_badge_cache() -> None:
+    now = time.time()
+    for user_id in list(_BADGE_CANDIDATE_CACHE.keys()):
+        user_cache = _BADGE_CANDIDATE_CACHE[user_id]
+        for badge_id in list(user_cache.keys()):
+            if now - float(user_cache[badge_id].get("created_at", 0)) > BADGE_CACHE_TTL_SECS:
+                user_cache.pop(badge_id, None)
+        if not user_cache:
+            _BADGE_CANDIDATE_CACHE.pop(user_id, None)
+
+
+def _cache_badge_candidate(user_id: str, image) -> dict:
+    _prune_badge_cache()
+    badge_id = f"candidate_{uuid.uuid4().hex}.png"
+    buffer = io.BytesIO()
+    image.save(buffer, format="PNG")
+    png_bytes = buffer.getvalue()
+    data_url = "data:image/png;base64," + base64.b64encode(png_bytes).decode("ascii")
+    user_cache = _BADGE_CANDIDATE_CACHE.setdefault(str(user_id), {})
+    user_cache[badge_id] = {
+        "id": badge_id,
+        "bytes": png_bytes,
+        "data_url": data_url,
+        "created_at": time.time(),
+    }
+    if len(user_cache) > 16:
+        oldest = sorted(user_cache.values(), key=lambda item: item["created_at"])[:-16]
+        for item in oldest:
+            user_cache.pop(item["id"], None)
+    return {"id": badge_id, "url": data_url}
+
+
+def _default_badge_prompt(pet: dict) -> str:
+    return build_pet_prompt(pet)[0]
+
+
+async def _enrich_user_pet(user_id: str, pet: dict) -> dict:
+    enriched = _enrich_pet(pet)
+    selected_url = _selected_badge_url(user_id)
+    if selected_url:
+        enriched["badge_url"] = selected_url
+        enriched.setdefault("badge", {})
+        enriched["badge"]["selected_url"] = selected_url
+    return enriched
+
+
+async def _persist_selected_badge(user_id: str, png_bytes: bytes) -> str:
+    user_dir = _badge_user_dir(user_id)
+    user_dir.mkdir(parents=True, exist_ok=True)
+    target = user_dir / "selected.png"
+    await asyncio.to_thread(target.write_bytes, png_bytes)
+
+    legacy_dir = LEGACY_BADGE_ROOT
+    legacy_dir.mkdir(parents=True, exist_ok=True)
+    legacy_target = legacy_dir / f"{user_id}_badge.png"
+    try:
+        await asyncio.to_thread(legacy_target.write_bytes, png_bytes)
+    except Exception:
+        logger.debug("Legacy badge copy failed for %s", legacy_target, exc_info=True)
+
+    return str(target)
+
+
+async def _clear_selected_badge(user_id: str) -> None:
+    user_dir = _badge_user_dir(user_id)
+    for target in (user_dir / "selected.png", LEGACY_BADGE_ROOT / f"{user_id}_badge.png"):
+        try:
+            if target.exists():
+                await asyncio.to_thread(target.unlink)
+        except OSError:
+            logger.debug("Badge cleanup failed for %s", target, exc_info=True)
+
+
+def _detect_badge_image_type(data: bytes) -> str | None:
+    if len(data) < 12:
+        return None
+    header = data[:12]
+    if header[:3] == b"\xff\xd8\xff":
+        return "image/jpeg"
+    if header[:8] == b"\x89PNG\r\n\x1a\n":
+        return "image/png"
+    if header[:4] == b"RIFF" and header[8:12] == b"WEBP":
+        return "image/webp"
+    return None
+
+
+async def _uploaded_badge_to_png_bytes(file: UploadFile) -> bytes:
+    content_type = (file.content_type or "").lower().split(";", 1)[0].strip()
+    if content_type not in ALLOWED_BADGE_MIME:
+        raise HTTPException(status_code=400, detail="Only JPEG, PNG and WebP images are allowed.")
+
+    data = await file.read()
+    if len(data) > MAX_BADGE_UPLOAD_BYTES:
+        raise HTTPException(status_code=413, detail="Image exceeds the 5 MB limit.")
+
+    detected = _detect_badge_image_type(data)
+    if detected is None:
+        raise HTTPException(status_code=400, detail="File does not appear to be a valid image.")
+
+    try:
+        image = Image.open(io.BytesIO(data)).convert("RGBA")
+        image.thumbnail((512, 512), Image.Resampling.LANCZOS)
+        canvas = Image.new("RGBA", (512, 512), (0, 0, 0, 0))
+        x = (512 - image.width) // 2
+        y = (512 - image.height) // 2
+        canvas.alpha_composite(image, (x, y))
+        buffer = io.BytesIO()
+        canvas.save(buffer, format="PNG")
+        return buffer.getvalue()
+    except Exception as exc:
+        logger.warning("Uploaded badge image could not be processed: %s", exc)
+        raise HTTPException(status_code=400, detail="Could not process that image.")
 
 # ── Arena NPC battle skill sessions (server-side state between turns) ─────────
 # Keyed by user_id. Cleared when a new battle starts or the battle ends.
@@ -92,6 +249,16 @@ def _invalidate_stats_cache(pet: dict) -> None:
     user_id = str(pet.get("id") or "")
     if user_id:
         stats_cache.invalidate(user_id)
+
+
+def _track(user: dict, action: str, *, detail: str = "") -> None:
+    """Log a user activity event for audit/informational purposes."""
+    uid      = user.get("id", "?") if user else "?"
+    username = user.get("username", "?") if user else "?"
+    msg = f"[activity] user={username}({uid}) | {action}"
+    if detail:
+        msg += f" | {detail}"
+    logger.info(msg)
 
 
 def _load_json(path: str) -> Any:
@@ -155,7 +322,7 @@ async def get_my_pet(request: Request):
             raise HTTPException(status_code=404, detail="No pet found")
         
         # Enrich with computed stats and XP info
-        enriched_pet = _enrich_pet(pet)
+        enriched_pet = await _enrich_user_pet(user_id, pet)
         return JSONResponse(content=enriched_pet)
     except HTTPException:
         raise
@@ -232,10 +399,185 @@ async def get_user_pet(request: Request):
             # 204 = no content / no pet — JS checks for this
             return JSONResponse(content={"has_pet": False}, status_code=200)
 
-        return JSONResponse(content={"has_pet": True, **_enrich_pet(pet_data)})
+        return JSONResponse(content={"has_pet": True, **(await _enrich_user_pet(user_id, pet_data))})
     except Exception as e:
         logger.error(f"get_user_pet error: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to fetch user pet data")
+
+
+@router.get("/pets/badges")
+async def get_pet_badges(request: Request):
+    user = request.session.get("discord_user")
+    if not user:
+        return JSONResponse(content={"error": "Not logged in"}, status_code=401)
+
+    user_id = str(user.get("id") or "")
+    if not user_id:
+        return JSONResponse(content={"error": "User ID not found in session"}, status_code=401)
+
+    pet_data = await user_data_manager.get_pet_data_async(user_id)
+    if not pet_data:
+        return JSONResponse(content={"ok": True, "has_pet": False, "selected": "", "badges": []})
+
+    return JSONResponse(content={
+        "ok": True,
+        "has_pet": True,
+        "selected": _selected_badge_url(user_id),
+        "badges": _candidate_badges(user_id),
+        "default_prompt": _default_badge_prompt(pet_data),
+        "pet": await _enrich_user_pet(user_id, pet_data),
+    })
+
+
+@router.post("/pets/badges/generate")
+async def generate_pet_badges(request: Request, data: dict = Body(default=None)):
+    user = request.session.get("discord_user")
+    if not user:
+        return JSONResponse(content={"error": "Not logged in"}, status_code=401)
+
+    user_id = str(user.get("id") or "")
+    if not user_id:
+        return JSONResponse(content={"error": "User ID not found in session"}, status_code=401)
+
+    pet = await user_data_manager.get_pet_data_async(user_id)
+    if not pet:
+        raise HTTPException(status_code=404, detail="No pet found")
+
+    try:
+        count = int((data or {}).get("count", 4))
+    except (TypeError, ValueError):
+        count = 4
+    if count < 1 or count > 4:
+        raise HTTPException(status_code=400, detail="Badge count must be between 1 and 4")
+
+    user_prompt = str((data or {}).get("prompt") or "").strip()
+    if len(user_prompt) > 3500:
+        raise HTTPException(status_code=400, detail="Badge prompt is too long")
+
+    required_identity = build_pet_prompt_identity(pet)
+    if user_prompt:
+        normalized_prompt = user_prompt.lower()
+        for line in required_identity.splitlines():
+            if line.lower() not in normalized_prompt:
+                user_prompt = f"{required_identity}\n\n{user_prompt}"
+                break
+
+    generated = []
+    for _ in range(count):
+        image, _ = await generate_pet_badge_image(pet, user_id, user_prompt)
+        generated.append(_cache_badge_candidate(user_id, image))
+
+    return JSONResponse(content={
+        "ok": True,
+        "badges": generated,
+        "selected": _selected_badge_url(user_id),
+        "default_prompt": _default_badge_prompt(pet),
+        "pet": await _enrich_user_pet(user_id, pet),
+    })
+
+
+@router.post("/pets/badges/save")
+async def save_pet_badge(request: Request, data: dict = Body(...)):
+    user = request.session.get("discord_user")
+    if not user:
+        return JSONResponse(content={"error": "Not logged in"}, status_code=401)
+
+    user_id = str(user.get("id") or "")
+    if not user_id:
+        return JSONResponse(content={"error": "User ID not found in session"}, status_code=401)
+
+    badge_id = str((data or {}).get("id") or (data or {}).get("badge_id") or "").strip()
+    if not badge_id:
+        raise HTTPException(status_code=400, detail="Badge id is required")
+    if "/" in badge_id or "\\" in badge_id or ".." in badge_id:
+        raise HTTPException(status_code=400, detail="Invalid badge id")
+
+    _prune_badge_cache()
+    cached_badge = _BADGE_CANDIDATE_CACHE.get(user_id, {}).get(badge_id)
+    if not cached_badge:
+        raise HTTPException(status_code=404, detail="Badge image not found")
+
+    await _persist_selected_badge(user_id, cached_badge["bytes"])
+
+    pet = await user_data_manager.get_pet_data_async(user_id)
+    if not pet:
+        raise HTTPException(status_code=404, detail="No pet found")
+
+    pet["badge"] = {
+        "id": badge_id,
+        "selected_url": _selected_badge_url(user_id),
+        "updated_at": int(time.time()),
+    }
+    pet["badge_url"] = _selected_badge_url(user_id)
+    await user_data_manager.save_pet_data(user_id, pet.get("name", "Pet"), pet)
+
+    return JSONResponse(content={
+        "ok": True,
+        "selected": _selected_badge_url(user_id),
+        "pet": await _enrich_user_pet(user_id, pet),
+    })
+
+
+@router.post("/pets/badges/upload")
+async def upload_pet_badge(request: Request, file: UploadFile = File(...)):
+    user = request.session.get("discord_user")
+    if not user:
+        return JSONResponse(content={"error": "Not logged in"}, status_code=401)
+
+    user_id = str(user.get("id") or "")
+    if not user_id:
+        return JSONResponse(content={"error": "User ID not found in session"}, status_code=401)
+
+    pet = await user_data_manager.get_pet_data_async(user_id)
+    if not pet:
+        raise HTTPException(status_code=404, detail="No pet found")
+
+    png_bytes = await _uploaded_badge_to_png_bytes(file)
+    await _persist_selected_badge(user_id, png_bytes)
+
+    pet["badge"] = {
+        "id": "uploaded",
+        "selected_url": _selected_badge_url(user_id),
+        "source": "upload",
+        "updated_at": int(time.time()),
+    }
+    pet["badge_url"] = _selected_badge_url(user_id)
+    await user_data_manager.save_pet_data(user_id, pet.get("name", "Pet"), pet)
+
+    return JSONResponse(content={
+        "ok": True,
+        "selected": _selected_badge_url(user_id),
+        "pet": await _enrich_user_pet(user_id, pet),
+    })
+
+
+@router.delete("/pets/badges")
+async def delete_pet_badges(request: Request):
+    user = request.session.get("discord_user")
+    if not user:
+        return JSONResponse(content={"error": "Not logged in"}, status_code=401)
+
+    user_id = str(user.get("id") or "")
+    if not user_id:
+        return JSONResponse(content={"error": "User ID not found in session"}, status_code=401)
+
+    pet = await user_data_manager.get_pet_data_async(user_id)
+    if not pet:
+        raise HTTPException(status_code=404, detail="No pet found")
+
+    await _clear_selected_badge(user_id)
+    _BADGE_CANDIDATE_CACHE.pop(user_id, None)
+
+    pet.pop("badge_url", None)
+    pet.pop("badge", None)
+    await user_data_manager.save_pet_data(user_id, pet.get("name", "Pet"), pet)
+
+    return JSONResponse(content={
+        "ok": True,
+        "selected": "",
+        "badges": [],
+        "pet": await _enrich_user_pet(user_id, pet),
+    })
 
 
 @router.get("/pets/all")
@@ -519,45 +861,58 @@ async def train_pet(request: Request, data: Dict[str, Any] = Body(...)):
         equip_mult = max(1, equip_mult)
         change_amount = stat_mult * equip_mult
 
+        # ── Ability: Training Scholar (int_train_xp) ──────────────────────────
+        # On success: adds bonus stat points gained.
+        # On failure: blocks that many points from being lost.
+        from Systems.Pets.Logic.ability_tree import get_ability_effect as _get_ability_effect
+        train_bonus = int(_get_ability_effect(pet, "train_bonus"))
+
         import random
         success = random.random() < success_chance
 
         current_val = int(pet.get(stat, 0))
         if success:
-            pet[stat] = current_val + change_amount
+            total_gain = change_amount + train_bonus
+            pet[stat] = current_val + total_gain
+            bonus_str = f" (+{train_bonus} Training Scholar bonus)" if train_bonus else ""
             outcome = (
-                f"💪 Training successful! {stat} increased by +{change_amount} "
-                f"({stat_mult} × {equip_mult}x equipment multiplier)."
+                f"💪 Training successful! **{stat}** increased by **+{total_gain}**"
+                f" ({stat_mult} × {equip_mult}x equipment{bonus_str}).\n"
+                f"**{stat}**: {current_val} → {pet[stat]}"
             )
+            actual_delta = total_gain
         else:
-            new_val = max(1, current_val - change_amount)
+            effective_loss = max(0, change_amount - train_bonus)
+            new_val = max(1, current_val - effective_loss)
             actual_loss = current_val - new_val
             pet[stat] = new_val
+            block_str = f" (Training Scholar blocked {train_bonus})" if train_bonus else ""
             outcome = (
-                f"😓 Training failed. {stat} decreased by -{actual_loss} "
-                f"({stat_mult} × {equip_mult}x equipment multiplier)."
+                f"😓 Training failed. **{stat}** decreased by **-{actual_loss}**"
+                f" ({stat_mult} × {equip_mult}x equipment{block_str}).\n"
+                f"**{stat}**: {current_val} → {pet[stat]}"
             )
+            actual_delta = -actual_loss
 
         await user_data_manager.save_pet_data(user_id, pet.get("name", "Pet"), pet)
         await _aset_cooldown("train", user_id)
 
         # ── GPP: emit event via EventBus (Observer pattern) ───────────────────
         queue = EventQueue()
-        queue.push("pet_trained", {"user_id": user_id, "stat": stat, "delta": change_amount if success else -actual_loss})
+        queue.push("pet_trained", {"user_id": user_id, "stat": stat, "delta": actual_delta})
         await queue.flush()
 
         # ── GPP: invalidate stats cache (Object Pool pattern) ─────────────────
         _invalidate_stats_cache(pet)
 
         # ── GPP: build animation metadata (Component pattern) ─────────────────
-        delta = change_amount if success else -actual_loss
-        animation = AnimationComponent.for_train(stat, success, delta)
+        animation = AnimationComponent.for_train(stat, success, actual_delta)
 
         result = {
             "success": success,
             "outcome": outcome,
             "stat": stat,
-            "change": change_amount if success else -actual_loss,
+            "change": actual_delta,
             "new_value": int(pet.get(stat, 0)),
             "animation": animation,
         }
@@ -614,6 +969,13 @@ async def run_mission(request: Request, data: Dict[str, Any] = Body(...)):
 
         if random.random() < success_chance:
             scaled_xp = _level_scaled_xp(base_xp_map[difficulty], pet_level)
+
+            # ── Ability: Mission Expert (int_mission_xp) — xp_multiplier ─────
+            from Systems.Pets.Logic.ability_tree import get_ability_effect as _get_ability_effect
+            mission_xp_mult = _get_ability_effect(pet, "xp_multiplier", source="mission")
+            if mission_xp_mult != 1.0:
+                scaled_xp = int(scaled_xp * mission_xp_mult)
+
             xp = scaled_xp + gamble_xp
             outcome_lines.append(f"✅ Mission successful! Gained {xp} XP (Lv.{pet_level} bonus applied).")
 
@@ -706,6 +1068,12 @@ async def play_pet(request: Request, data: Dict[str, Any] = Body(...)):
         level          = int(pet.get("level", 1))
 
         xp, key_names = LootCalculator.calculate_play_loot(pet_e1, pet_e2, place_specials, level)
+
+        # ── Ability: Playful Learner (int_play_xp) — xp_multiplier for play ──
+        from Systems.Pets.Logic.ability_tree import get_ability_effect as _get_ability_effect
+        play_xp_mult = _get_ability_effect(pet, "xp_multiplier", source="play")
+        if play_xp_mult != 1.0:
+            xp = int(xp * play_xp_mult)
 
         outcome_lines = [f"🎮 {pet['name']} played at {location}!"]
 
@@ -1470,6 +1838,10 @@ async def equip_item(request: Request, data: Dict[str, Any] = Body(...)):
         if not item_name or not item_type:
             raise HTTPException(status_code=400, detail="item name and type required")
 
+        # Reforged identity — default to matching plain items if not specified
+        item_reforged = bool(data.get("reforged", False))
+        item_reforge_level = int(data.get("reforge_level", 0))
+
         from Systems.Pets.Logic.pet_brain import LootCalculator
 
         # Map item type to the correct equip_items kwarg
@@ -1491,6 +1863,10 @@ async def equip_item(request: Request, data: Dict[str, Any] = Body(...)):
             kwargs = type_map[item_type]
         else:
             raise HTTPException(status_code=400, detail=f"Cannot equip item type: {item_type}")
+
+        # Pass reforged identity so the correct stack is used
+        kwargs["reforged"] = item_reforged
+        kwargs["reforge_level"] = item_reforge_level
 
         success, msg = await LootCalculator.equip_items(
             user_id, user.get("username", "Unknown"), **kwargs
@@ -1630,6 +2006,11 @@ async def consume_item(request: Request, data: Dict[str, Any] = Body(...)):
         if not item_name:
             raise HTTPException(status_code=400, detail="Item name required.")
 
+        # Full identity for matching — default to name+type only if not specified
+        item_type = (data.get("type") or "").strip() or None
+        item_reforged = bool(data.get("reforged", False))
+        item_reforge_level = int(data.get("reforge_level", 0)) if item_reforged else 0
+
         pet = await user_data_manager.get_pet_data_async(user_id)
         if not pet:
             raise HTTPException(status_code=404, detail="No pet found.")
@@ -1637,9 +2018,18 @@ async def consume_item(request: Request, data: Dict[str, Any] = Body(...)):
         inventory = pet.get("inventory", [])
         pet_level = int(pet.get("level", 1))
 
-        # Find the item in inventory
-        idx = next((i for i, it in enumerate(inventory)
-                    if isinstance(it, dict) and it.get("name", "").lower() == item_name.lower()), None)
+        # Find the item using full identity key so reforged/plain stacks are never confused
+        idx = None
+        for i, it in enumerate(inventory):
+            if isinstance(it, dict) and it.get("name", "").lower() == item_name.lower():
+                if item_type and it.get("type", "") != item_type:
+                    continue
+                if bool(it.get("reforged", False)) != item_reforged:
+                    continue
+                if item_reforged and int(it.get("reforge_level", 0)) != item_reforge_level:
+                    continue
+                idx = i
+                break
         if idx is None:
             raise HTTPException(status_code=404, detail=f"{item_name} not found in inventory.")
 
@@ -1826,7 +2216,7 @@ async def battle_npc_start(request: Request, data: Dict[str, Any] = Body(...)):
             hp_raw = hostile_pet_override
             e_atk  = max(1, int(hp_raw.get("ATT", p_atk * 0.8)))
             e_def  = max(1, int(hp_raw.get("DEF", p_def * 0.8)))
-            e_hp   = max(50, int((hp_raw.get("HAP", 50) + hp_raw.get("ENE", 50)) * 3))
+            e_hp   = max(50, int((hp_raw.get("HAP", 50) + hp_raw.get("ENE", 50)) * (hp_raw.get("equipment_multiplier", 1) * 4)))
             e_type = str(hp_raw.get("category", "land")).lower()
             e_elem = str(hp_raw.get("element", "basic")).lower()
             e_species = str(hp_raw.get("species", "Creature"))
@@ -1915,8 +2305,8 @@ async def battle_npc_start(request: Request, data: Dict[str, Any] = Body(...)):
             p_hp = int(p_hp * (1.0 + health_bonus))
 
         # Apply charge_limit_bonus (ENE branch)
-        charge_limit_bonus_val = int(get_ability_effect(pet, "charge_limit_bonus"))
-        p_charge_limit = 8 + charge_limit_bonus_val  # dungeon default is 8
+        charge_limit_val = int(get_ability_effect(pet, "charge_limit_bonus"))
+        p_charge_limit = int(DamageCalculator.get_max_charge(pet))  # base 5 + bonus
 
         # Apply starting_charge_bonus (ENE branch — Charged + Overcharged)
         p_starting_charge = 1.0 + int(get_starting_charge_bonus(pet))
@@ -1975,6 +2365,9 @@ async def battle_npc_start(request: Request, data: Dict[str, Any] = Body(...)):
         # ── GPP: build animation metadata (Component pattern) ─────────────
         animation = AnimationComponent.for_ui_update("battle_start", 800)
 
+        # Determine if the player has a pet badge to display
+        player_badge_url = _selected_badge_url(user_id)
+
         return JSONResponse(content={
             "success": True,
             "difficulty": difficulty,
@@ -1988,6 +2381,7 @@ async def battle_npc_start(request: Request, data: Dict[str, Any] = Body(...)):
                 "element": p_elem,
                 "element2": p_elem2 or "",
                 "species": p_spec,
+                "badge_url": player_badge_url or None,
                 "charge": p_starting_charge,
                 "charge_limit": p_charge_limit,
                 "last_action": None,
@@ -2122,8 +2516,8 @@ async def battle_npc_turn(request: Request, data: Dict[str, Any] = Body(...)):
                 skill_id = equipped[slot_index]
                 # Inject charge so charge_boost can read it
                 skill_state["charge"] = p_charge
-                skill_state["charge_limit"] = float(session.get("p_charge_limit", 8.0))
-                skill_state["max_charge_limit"] = float(session.get("p_charge_limit", 8.0))
+                skill_state["charge_limit"] = float(session.get("p_charge_limit", 5.0))
+                skill_state["max_charge_limit"] = float(session.get("p_charge_limit", 5.0))
                 result = apply_skill(skill_id, skill_state, enemy_skill_state,
                                      battle_type="npc", slot_index=slot_index)
                 if result["ok"]:
@@ -2167,8 +2561,9 @@ async def battle_npc_turn(request: Request, data: Dict[str, Any] = Body(...)):
             e_action = npc_brain.decide_action(monster_state, player_state_for_brain).get("action", "attack")
 
         # ── Charge accumulation ───────────────────────────────────────────────
+        p_pet_data_for_charge = session.get("skill_state", {}).get("pet") if session else None
         if p_action == "charge":
-            p_charge = DamageCalculator.get_next_charge_multiplier(p_charge)
+            p_charge = DamageCalculator.get_next_charge_multiplier(p_charge, p_pet_data_for_charge)
         if e_action == "charge":
             e_charge = DamageCalculator.get_next_charge_multiplier(e_charge)
 
@@ -2191,7 +2586,7 @@ async def battle_npc_turn(request: Request, data: Dict[str, Any] = Body(...)):
                 defender_type=e_type, defender_element=e_elem,
                 attacker_species=p_spec,
                 attacker_pet_data=p_pet_data,
-                battle_type=difficulty,
+                battle_type="npc",
             )
             p_dmg_dealt = p_result["final_damage"]
             p_parry     = p_result["parry_damage"]
@@ -2212,7 +2607,7 @@ async def battle_npc_turn(request: Request, data: Dict[str, Any] = Body(...)):
                 defender_pet_data=p_pet_data,
                 defender_current_hp=cur_p_hp,
                 defender_max_hp=p_hp,
-                battle_type=difficulty,
+                battle_type="npc",
             )
             e_dmg_dealt = e_result["final_damage"]
             e_parry     = e_result["parry_damage"]
@@ -2250,11 +2645,15 @@ async def battle_npc_turn(request: Request, data: Dict[str, Any] = Body(...)):
         e_charge_used = float(data.get("enemy", {}).get("charge", 1.0))
 
         # ── Build combat dict ─────────────────────────────────────────────────
+        p_is_critical = p_result.get("is_critical", False) if p_action in ("attack", "defend") else False
+        e_is_critical = e_result.get("is_critical", False) if e_action in ("attack", "defend") else False
         combat = {
             "p_action": p_action,
             "p_action_label": p_action_label,
             "p_dmg": p_dmg_dealt,
             "p_parry": p_parry,
+            "p_is_critical": p_is_critical,
+            "p_critical_mult": p_result.get("critical_multiplier", 1.0) if p_is_critical else 1.0,
             "p_charge_mult": p_charge_used if p_action == "attack" else (p_charge if p_action == "charge" else (p_charge_used if p_action == "defend" else 1.0)),
             "p_attack_roll": p_result.get("attack_roll"),
             "p_attack_result": p_result.get("attack_result", ""),
@@ -2266,6 +2665,8 @@ async def battle_npc_turn(request: Request, data: Dict[str, Any] = Body(...)):
             "e_action": e_action,
             "e_dmg": e_dmg_dealt,
             "e_parry": e_parry,
+            "e_is_critical": e_is_critical,
+            "e_critical_mult": e_result.get("critical_multiplier", 1.0) if e_is_critical else 1.0,
             "e_charge_mult": e_charge_used if e_action == "attack" else (e_charge if e_action == "charge" else (e_charge_used if e_action == "defend" else 1.0)),
             "e_attack_roll": e_result.get("attack_roll"),
             "e_attack_result": e_result.get("attack_result", ""),
@@ -2313,6 +2714,21 @@ async def battle_npc_turn(request: Request, data: Dict[str, Any] = Body(...)):
 
         over = cur_p_hp <= 0 or cur_e_hp <= 0
         player_won = cur_p_hp > 0 and cur_e_hp <= 0
+
+        # ── Live spectator log ─────────────────────────────────────────────────
+        room_id = data.get("room_id")
+        if room_id is not None:
+            try:
+                from web.api.arena_api import _rooms, ArenaRoom
+                rid = int(room_id)
+                if rid in _rooms:
+                    room = _rooms[rid]
+                    # Keep last 10 log lines for spectators
+                    log_entry = f"[T{turn_num}] {lines[-1] if lines else '...'}"
+                    room.battle_log = (room.battle_log or [])[-9:] + [log_entry]
+                    room.updated_at = time.time()
+            except Exception:
+                pass
 
         # Clean up session on battle end
         if over:
@@ -2412,6 +2828,245 @@ async def battle_npc_turn(request: Request, data: Dict[str, Any] = Body(...)):
     except Exception as e:
         logger.error(f"battle_npc_turn error: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Battle turn failed.")
+
+
+# ── Tournament turn helper ────────────────────────────────────────────────────
+async def _run_tournament_turn(user_id: str, session_key: str, data: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Process one battle turn for a tournament match.
+    Works exactly like battle_npc_turn but uses a custom session_key
+    so multiple simultaneous tournament matches don't collide.
+    """
+    from Systems.Pets.Logic.pet_brain import DamageCalculator, LootCalculator, NPCBrain
+    from Systems.Pets.Logic.battle_skills import (
+        apply_skill, tick_battle_effects, tick_monster_effects,
+        is_stunned, consume_stun,
+        get_atk_multiplier, get_def_multiplier, get_damage_reduction,
+        absorb_damage_through_shield, get_reflect_value, can_use_skill,
+        SKILL_BY_ID,
+    )
+
+    p_action   = (data.get("action") or "attack").lower()
+    slot_index = int(data.get("slot_index", 0))
+    if p_action not in ("attack","defend","charge","skill"):
+        p_action = "attack"
+
+    ps         = data["player"]
+    es         = data["enemy"]
+    turn_num   = int(data.get("turn", 0)) + 1
+    difficulty = "average"
+
+    p_atk    = int(ps["attack"]);  p_def  = int(ps["defense"])
+    p_type   = str(ps.get("type","land")); p_elem = str(ps.get("element","basic"))
+    p_elem2  = str(ps.get("element2") or "") or None
+    p_spec   = str(ps.get("species",""))
+    p_hp     = int(ps["max_hp"]);  cur_p_hp = int(ps["cur_hp"])
+    p_charge = float(ps.get("charge",1.0))
+
+    e_atk    = int(es["attack"]);  e_def  = int(es["defense"])
+    e_type   = str(es.get("type","land")); e_elem = str(es.get("element","basic"))
+    e_hp     = int(es["max_hp"]);  cur_e_hp = int(es["cur_hp"])
+    e_charge = float(es.get("charge",1.0)); e_last = es.get("last_action")
+    enemy_name = str(es.get("name","Enemy")); pet_name = str(ps.get("name","Your Pet"))
+
+    session         = _arena_battle_sessions.get(session_key, {})
+    skill_state     = session.get("skill_state", {})
+    enemy_skill_state = session.get("enemy_skill_state",
+                                    {"element": e_elem, "active_effects": [], "max_hp": e_hp})
+
+    skill_state["max_hp"]       = p_hp
+    skill_state["total_attack"] = p_atk
+    enemy_skill_state["max_hp"] = e_hp
+    enemy_skill_state["element"] = e_elem
+
+    extra_lines: list = []
+
+    # Tick active effects
+    if skill_state:
+        p_net, p_ticks = tick_battle_effects(skill_state, p_atk)
+        if p_net != 0:
+            cur_p_hp = max(0, min(p_hp, cur_p_hp + p_net))
+        extra_lines.extend(p_ticks)
+
+    e_net, e_ticks = tick_monster_effects(enemy_skill_state)
+    if e_net != 0:
+        cur_e_hp = max(0, cur_e_hp + e_net)
+    extra_lines.extend(e_ticks)
+
+    # Stun check
+    if skill_state and is_stunned(skill_state):
+        consume_stun(skill_state)
+        p_action = "defend"
+        extra_lines.append(f"💫 {pet_name} is stunned!")
+
+    p_atk_mult = get_atk_multiplier(skill_state) if skill_state else 1.0
+    p_def_mult = get_def_multiplier(skill_state) if skill_state else 1.0
+    e_atk_mult = get_atk_multiplier(enemy_skill_state)
+    e_def_mult = get_def_multiplier(enemy_skill_state)
+    effective_p_atk = int(p_atk * p_atk_mult)
+    effective_e_atk = int(e_atk * e_atk_mult)
+    effective_e_def = int(e_def * e_def_mult)
+
+    skill_hp_p = 0; skill_hp_e = 0; skill_used = False
+    if p_action == "skill" and skill_state:
+        equipped = skill_state.get("equipped_skills", [])
+        if slot_index < len(equipped) and can_use_skill(skill_state, slot_index):
+            sid = equipped[slot_index]
+            skill_state["charge"]          = p_charge
+            skill_state["charge_limit"]    = float(session.get("p_charge_limit", 5.0))
+            skill_state["max_charge_limit"] = skill_state["charge_limit"]
+            res = apply_skill(sid, skill_state, enemy_skill_state, battle_type="pvp", slot_index=slot_index)
+            if res["ok"]:
+                skill_hp_p = res.get("hp_delta_user", 0)
+                skill_hp_e = res.get("hp_delta_target", 0)
+                if skill_hp_e < 0: cur_e_hp = max(0, cur_e_hp + skill_hp_e)
+                if skill_hp_p > 0: cur_p_hp = min(p_hp, cur_p_hp + skill_hp_p)
+                elif skill_hp_p < 0: cur_p_hp = max(0, cur_p_hp + skill_hp_p)
+                if "_charge_boost_result" in skill_state:
+                    p_charge = float(skill_state.pop("_charge_boost_result"))
+                extra_lines.append(f"✨ {res.get('message', sid)}")
+                skill_used = True
+            else:
+                extra_lines.append(f"❌ {res.get('message','Skill failed')}")
+        if not skill_used:
+            p_action = "attack"
+            extra_lines.append("⏳ Skill on cooldown — attacking instead!")
+
+    # NPC / stun check on enemy
+    e_stunned = is_stunned(enemy_skill_state)
+    if e_stunned:
+        consume_stun(enemy_skill_state)
+        e_action = "defend"
+        extra_lines.append(f"💫 {enemy_name} is stunned!")
+    else:
+        npc_brain = NPCBrain()
+        ms = {
+            "hp": cur_e_hp, "max_hp": e_hp, "prev_hp": cur_e_hp,
+            "charge_multiplier": e_charge, "last_action": e_last,
+            "attack_stat": float(e_atk), "defense_stat": float(e_def), "seed": turn_num,
+        }
+        e_action = npc_brain.decide_action(ms, [{"alive": cur_p_hp > 0, "hp": cur_p_hp,
+                                                   "max_hp": p_hp, "charging": p_action=="charge"}]).get("action","attack")
+
+    p_pet_data = session.get("skill_state",{}).get("pet") if session else None
+    if p_action == "charge":
+        p_charge = DamageCalculator.get_next_charge_multiplier(p_charge, p_pet_data)
+    if e_action == "charge":
+        e_charge = DamageCalculator.get_next_charge_multiplier(e_charge)
+
+    p_dmg = e_dmg = p_parry = e_parry = 0
+    if p_action != "skill":
+        pr = DamageCalculator.calculate_battle_action(
+            attacker_attack=effective_p_atk, target_defense=effective_e_def,
+            charge_multiplier=p_charge if p_action in ("attack","defend") else 1.0,
+            target_charge_multiplier=e_charge if e_action == "defend" else 1.0,
+            attacker_action_type=p_action, target_action_type=e_action,
+            attacker_type=p_type, attacker_element=p_elem, attacker_element2=p_elem2,
+            defender_type=e_type, defender_element=e_elem,
+            attacker_species=p_spec, attacker_pet_data=p_pet_data, battle_type="pvp",
+        )
+        p_dmg   = pr["final_damage"]; p_parry = pr["parry_damage"]
+    else:
+        pr = {"attack_roll":None,"attack_result":"","parry_damage":0,
+              "type_element_bonus_mult_attack":1.0,"final_attack":0,"final_defense":0,
+              "is_critical":False,"critical_multiplier":1.0}
+
+    er = DamageCalculator.calculate_battle_action(
+        attacker_attack=effective_e_atk, target_defense=int(p_def * p_def_mult),
+        charge_multiplier=e_charge if e_action in ("attack","defend") else 1.0,
+        target_charge_multiplier=p_charge if p_action == "defend" else 1.0,
+        attacker_action_type=e_action, target_action_type=p_action,
+        attacker_type=e_type, attacker_element=e_elem,
+        defender_type=p_type, defender_element=p_elem, defender_element2=p_elem2,
+        defender_species=p_spec, defender_pet_data=p_pet_data,
+        defender_current_hp=cur_p_hp, defender_max_hp=p_hp, battle_type="pvp",
+    )
+    e_dmg = er["final_damage"]; e_parry = er["parry_damage"]
+
+    if p_action == "defend" and e_action == "defend":
+        p_dmg = e_dmg = p_parry = e_parry = 0
+
+    if e_dmg > 0 and skill_state:
+        dr = get_damage_reduction(skill_state)
+        e_dmg = max(1, int(e_dmg * (1.0 - dr))) if dr > 0 else e_dmg
+        e_dmg, _, sl = absorb_damage_through_shield(skill_state, e_dmg)
+        extra_lines.extend(sl)
+        rf = get_reflect_value(skill_state)
+        if rf > 0 and e_dmg > 0:
+            rdmg = max(1, int(e_dmg * rf))
+            cur_e_hp = max(0, cur_e_hp - rdmg)
+            extra_lines.append(f"🔄 {pet_name} reflects {rdmg}!")
+
+    cur_e_hp = max(0, cur_e_hp - p_dmg - e_parry)
+    cur_p_hp = max(0, cur_p_hp - e_dmg - p_parry)
+    if p_action in ("attack","defend"): p_charge = 1.0
+    if e_action in ("attack","defend"): e_charge = 1.0
+
+    action_labels = data.get("action_labels", {})
+    p_label = action_labels.get(p_action, p_action.title())
+
+    lines: list = list(extra_lines)
+    if p_action == "charge":
+        lines.append(f"⚡ {pet_name} charges! (x{p_charge:.0f})")
+    elif p_action == "skill":
+        pass
+    elif p_dmg > 0:
+        mult = pr.get("type_element_bonus_mult_attack",1.0)
+        bonus = " 🔥 Super!" if mult > 1.0 else (" 💨 Weak…" if mult < 1.0 else "")
+        ctag  = f" [x{float(ps.get('charge',1.0)):.0f}]" if float(ps.get('charge',1.0)) > 1.0 else ""
+        lines.append(f"⚔️ {pet_name} {p_label}{ctag} → {p_dmg} dmg{bonus}")
+    elif p_action == "defend":
+        lines.append(f"🛡️ {pet_name} defends" + (f" — parries {e_parry}!" if e_parry else "."))
+
+    if e_action == "charge":
+        lines.append(f"⚡ {enemy_name} charges! (x{e_charge:.0f})")
+    elif e_dmg > 0:
+        lines.append(f"💥 {enemy_name} → {e_dmg} dmg")
+    elif e_action == "defend":
+        lines.append(f"🛡️ {enemy_name} defends" + (f" — parries {p_parry}!" if p_parry else "."))
+
+    over       = cur_p_hp <= 0 or cur_e_hp <= 0
+    player_won = cur_p_hp > 0 and cur_e_hp <= 0
+
+    loot_result = None
+    if over:
+        _arena_battle_sessions.pop(session_key, None)
+        player_pet_obj = session.get("skill_state",{}).get("pet")
+        if player_pet_obj:
+            loot_result = await LootCalculator.calculate_loot(
+                user_id=int(user_id), pet_data=player_pet_obj, source="pvp_battle",
+                difficulty="average", winner_level=int(player_pet_obj.get("level",1)),
+                is_winner=player_won,
+            )
+            await user_data_manager.update_pet_battle_stats(
+                user_id, "pvp",
+                wins=1 if player_won else 0, losses=0 if player_won else 1,
+                xp_earned=loot_result["xp_gained"], damage_dealt=0, damage_taken=0,
+            )
+
+    skill_cds = {str(k):v for k,v in skill_state.get("skill_cooldowns",{}).items()} if skill_state else {}
+
+    return {
+        "success": True, "turn": turn_num, "lines": lines,
+        "combat": {
+            "p_action": p_action, "p_dmg": p_dmg, "p_parry": p_parry,
+            "p_is_critical": pr.get("is_critical",False),
+            "p_charge_mult": float(ps.get("charge",1.0)),
+            "p_charge_after": p_charge,
+            "e_action": e_action, "e_dmg": e_dmg, "e_parry": e_parry,
+            "e_is_critical": er.get("is_critical",False),
+            "e_charge_mult": float(es.get("charge",1.0)),
+            "e_charge_after": e_charge,
+            "both_defend": p_action=="defend" and e_action=="defend",
+        },
+        "player": {**ps, "cur_hp": cur_p_hp, "charge": p_charge,
+                   "last_action": p_action, "skill_cooldowns": skill_cds},
+        "enemy":  {**es, "cur_hp": cur_e_hp, "charge": e_charge, "last_action": e_action},
+        "over": over, "won": player_won if over else None,
+        "xp_gained":   (loot_result or {}).get("xp_gained", 0),
+        "messages":    (loot_result or {}).get("messages", []),
+        "skill_cooldowns": skill_cds,
+    }
 
 # ── NPC Battle (legacy full-simulation) ──────────────────────────────────────
 
@@ -2798,6 +3453,8 @@ async def _run_npc_battle_sim(user_id: str, difficulty: str) -> dict:
             attacker_action_type=p_action, target_action_type=e_action,
             attacker_type=p_type, attacker_element=p_elem, attacker_element2=p_elem2,
             defender_type=e_type, defender_element=e_elem, attacker_species=p_spec,
+            attacker_pet_data=pet, attacker_user_id=str(user_id),
+            battle_type="npc",
         )
         e_result = DamageCalculator.calculate_battle_action(
             attacker_attack=e_atk, target_defense=p_def,
@@ -2806,6 +3463,9 @@ async def _run_npc_battle_sim(user_id: str, difficulty: str) -> dict:
             attacker_action_type=e_action, target_action_type=p_action,
             attacker_type=e_type, attacker_element=e_elem,
             defender_type=p_type, defender_element=p_elem, defender_element2=p_elem2, defender_species=p_spec,
+            defender_pet_data=pet, defender_user_id=str(user_id),
+            defender_current_hp=cur_p_hp, defender_max_hp=p_hp,
+            battle_type="npc",
         )
 
         p_dmg_dealt = p_result["final_damage"]
@@ -2820,19 +3480,25 @@ async def _run_npc_battle_sim(user_id: str, difficulty: str) -> dict:
         e_last_action = e_action
 
         p_action_label = action_labels.get(p_action, p_action.title())
+        p_crit_tag = " ⚡CRITICAL!" if p_result.get("is_critical") else ""
+        e_crit_tag = " ⚡CRITICAL!" if e_result.get("is_critical") else ""
         turn_lines = []
         if p_dmg_dealt > 0:
             mult = p_result.get("type_element_bonus_mult_attack", 1.0)
             bonus = " 🔥" if mult > 1.0 else (" 💨" if mult < 1.0 else "")
-            turn_lines.append(f"⚔️ {pet['name']} {p_action_label} → {p_dmg_dealt} dmg{bonus}")
+            ct = f" [x{p_charge:.0f}]" if p_action == "attack" and p_charge > 1.0 else ""
+            turn_lines.append(f"⚔️ {pet['name']} {p_action_label}{ct}{p_crit_tag} → {p_dmg_dealt} dmg{bonus}")
         elif p_action == "defend":
-            turn_lines.append(f"🛡️ {pet['name']} defends" + (f" — parries {e_parry}!" if e_parry else ""))
+            dt = f" [def roll: {p_result.get('defense_roll', '?')}]" if p_result.get("defense_roll") else ""
+            turn_lines.append(f"🛡️ {pet['name']} defends{dt}" + (f" — parries {e_parry}!" if e_parry else ""))
         elif p_action == "charge":
             turn_lines.append(f"⚡ {pet['name']} charges (x{p_charge:.0f})")
         if e_dmg_dealt > 0:
-            turn_lines.append(f"💥 {enemy_name} attacks → {e_dmg_dealt} dmg")
+            ct = f" [x{e_charge:.0f}]" if e_action == "attack" and e_charge > 1.0 else ""
+            turn_lines.append(f"💥 {enemy_name} attacks{ct}{e_crit_tag} → {e_dmg_dealt} dmg")
         elif e_action == "defend":
-            turn_lines.append(f"🛡️ {enemy_name} defends" + (f" — parries {p_parry}!" if p_parry else ""))
+            dt = f" [def roll: {e_result.get('defense_roll', '?')}]" if e_result.get("defense_roll") else ""
+            turn_lines.append(f"🛡️ {enemy_name} defends{dt}" + (f" — parries {p_parry}!" if p_parry else ""))
         elif e_action == "charge":
             turn_lines.append(f"⚡ {enemy_name} charges (x{e_charge:.0f})")
 
@@ -2841,6 +3507,13 @@ async def _run_npc_battle_sim(user_id: str, difficulty: str) -> dict:
             "player_hp": cur_p_hp, "player_max_hp": p_hp,
             "enemy_hp": cur_e_hp,  "enemy_max_hp": e_hp,
             "player_action": p_action, "enemy_action": e_action,
+            "player_dmg": p_dmg_dealt, "enemy_dmg": e_dmg_dealt,
+            "player_parry": p_parry, "enemy_parry": e_parry,
+            "player_charge": p_charge, "enemy_charge": e_charge,
+            "player_crit": p_result.get("is_critical", False),
+            "enemy_crit": e_result.get("is_critical", False),
+            "player_type_elem": round(p_result.get("type_element_bonus_mult_attack", 1.0), 2),
+            "enemy_type_elem": round(e_result.get("type_element_bonus_mult_attack", 1.0), 2),
         })
         if cur_p_hp <= 0 or cur_e_hp <= 0:
             break
@@ -2874,14 +3547,18 @@ async def _run_npc_battle_sim(user_id: str, difficulty: str) -> dict:
 
 
 async def _run_pvp_battle_sim(user_id: str, challenger_id: str) -> dict:
-    """Simple PvP simulation between two users' pets."""
+    """PvP simulation between two users' pets with relationship multipliers and proper battle logic."""
     import random as _random
     from Systems.Pets.Logic.pet_brain import StatsCalculator, DamageCalculator, LootCalculator
+    from Systems.Pets.PetGames.pvp_system import get_relationship_multipliers
 
     pet_a = await user_data_manager.get_pet_data_async(user_id)
     pet_b = await user_data_manager.get_pet_data_async(challenger_id)
     if not pet_a or not pet_b:
         raise ValueError("One or both users have no pet")
+
+    # Get relationship multipliers for PvP
+    rel_mult_a, rel_mult_b = await get_relationship_multipliers(user_id, challenger_id)
 
     def _stats(pet):
         s = StatsCalculator.calculate_pet_stats(pet)
@@ -2909,6 +3586,10 @@ async def _run_pvp_battle_sim(user_id: str, challenger_id: str) -> dict:
         if act_a == "charge": charge_a = DamageCalculator.get_next_charge_multiplier(charge_a)
         if act_b == "charge": charge_b = DamageCalculator.get_next_charge_multiplier(charge_b)
 
+        # Apply charging vulnerability: target takes 1.25x damage when charging
+        vuln_a = 1.25 if act_a == "charge" else 1.0
+        vuln_b = 1.25 if act_b == "charge" else 1.0
+
         r_a = DamageCalculator.calculate_battle_action(
             attacker_attack=sa["atk"], target_defense=sb["def"],
             charge_multiplier=charge_a if act_a == "attack" else 1.0,
@@ -2917,6 +3598,10 @@ async def _run_pvp_battle_sim(user_id: str, challenger_id: str) -> dict:
             attacker_type=sa["type"], attacker_element=sa["elem"], attacker_element2=sa["elem2"],
             defender_type=sb["type"], defender_element=sb["elem"], defender_element2=sb["elem2"],
             attacker_species=sa["spec"],
+            attacker_pet_data=pet_a, defender_pet_data=pet_b,
+            attacker_user_id=str(user_id), defender_user_id=str(challenger_id),
+            defender_current_hp=hp_b, defender_max_hp=sb["hp"],
+            battle_type="pvp",
         )
         r_b = DamageCalculator.calculate_battle_action(
             attacker_attack=sb["atk"], target_defense=sa["def"],
@@ -2926,17 +3611,81 @@ async def _run_pvp_battle_sim(user_id: str, challenger_id: str) -> dict:
             attacker_type=sb["type"], attacker_element=sb["elem"], attacker_element2=sb["elem2"],
             defender_type=sa["type"], defender_element=sa["elem"], defender_element2=sa["elem2"],
             attacker_species=sb["spec"],
+            attacker_pet_data=pet_b, defender_pet_data=pet_a,
+            attacker_user_id=str(challenger_id), defender_user_id=str(user_id),
+            defender_current_hp=hp_a, defender_max_hp=sa["hp"],
+            battle_type="pvp",
         )
 
-        hp_b = max(0, hp_b - r_a["final_damage"] - r_b["parry_damage"])
-        hp_a = max(0, hp_a - r_b["final_damage"] - r_a["parry_damage"])
+        # Apply relationship multipliers AND charging vulnerability to damage
+        dmg_a = int(r_a["final_damage"] * rel_mult_a * vuln_b)
+        dmg_b = int(r_b["final_damage"] * rel_mult_b * vuln_a)
+        parry_a = int(r_a["parry_damage"] * rel_mult_a)
+        parry_b = int(r_b["parry_damage"] * rel_mult_b)
+
+        hp_b = max(0, hp_b - dmg_a - parry_b)
+        hp_a = max(0, hp_a - dmg_b - parry_a)
         if act_a == "attack": charge_a = 1.0
         if act_b == "attack": charge_b = 1.0
 
         lines = []
-        if r_a["final_damage"] > 0: lines.append(f"⚔️ {pet_a['name']} → {r_a['final_damage']} dmg")
-        if r_b["final_damage"] > 0: lines.append(f"⚔️ {pet_b['name']} → {r_b['final_damage']} dmg")
-        turns.append({"turn": turn_num, "lines": lines, "hp_a": hp_a, "hp_b": hp_b})
+        # Build combat data for frontend rendering
+        def _action_text(name, action, result, dmg, charge, parry, vuln):
+            parts = []
+            if action == "charge":
+                parts.append(f"⚡ {name} charges (x{charge:.0f})")
+            elif action == "defend":
+                parts.append(f"🛡️ {name} defends")
+            elif action == "attack":
+                a = []
+                a.append(f"⚔️ {name} attacks")
+                if result.get("is_critical"):
+                    a.append("⚡CRITICAL!")
+                if charge > 1:
+                    a.append(f"(x{charge:.0f})")
+                a.append(f"→ {dmg} dmg")
+                if dmg > 0:
+                    te = result.get("type_element_bonus_mult_attack", 1.0)
+                    if te > 1.05:
+                        a.append("(super effective)")
+                    elif te < 0.95:
+                        a.append("(not very effective)")
+                    a.append(f"[x{result.get('critical_multiplier',1):.1f}]" if result.get("is_critical") else "")
+                if parry > 0:
+                    a.append(f"parried {parry}")
+                parts.append(" ".join(filter(None, a)))
+            return " ".join(parts)
+
+        ta = _action_text(pet_a['name'], act_a, r_a, dmg_a, charge_a, parry_a, vuln_a)
+        tb = _action_text(pet_b['name'], act_b, r_b, dmg_b, charge_b, parry_b, vuln_b)
+        if ta:
+            # Add relationship multiplier if relevant
+            rel_tag = f" (rel x{rel_mult_a:.1f})" if rel_mult_a != 1.0 else ""
+            lines.append(f"{ta}{rel_tag}")
+        if tb:
+            rel_tag = f" (rel x{rel_mult_b:.1f})" if rel_mult_b != 1.0 else ""
+            lines.append(f"{tb}{rel_tag}")
+
+        # Attack rolls for info
+        if act_a == "attack":
+            ar = r_a.get("attack_roll")
+            if ar: lines.append(f"  [atk roll: {ar}]")
+        if act_b == "attack":
+            ar = r_b.get("attack_roll")
+            if ar: lines.append(f"  [atk roll: {ar}]")
+
+        turns.append({
+            "turn": turn_num,
+            "lines": lines,
+            "hp_a": hp_a, "hp_b": hp_b,
+            "p_action": act_a, "e_action": act_b,
+            "p_dmg": dmg_a, "e_dmg": dmg_b,
+            "p_charge": charge_a, "e_charge": charge_b,
+            "p_parry": parry_a, "e_parry": parry_b,
+            "p_crit": r_a.get("is_critical", False), "e_crit": r_b.get("is_critical", False),
+            "p_type_elem": round(r_a.get("type_element_bonus_mult_attack", 1.0), 2),
+            "e_type_elem": round(r_b.get("type_element_bonus_mult_attack", 1.0), 2),
+        })
         log.extend(lines)
         if hp_a <= 0 or hp_b <= 0:
             break
@@ -2949,12 +3698,18 @@ async def _run_pvp_battle_sim(user_id: str, challenger_id: str) -> dict:
     win_loot  = await LootCalculator.calculate_loot(int(winner_id), winner_pet, "pvp_battle", "normal", int(winner_pet.get("level",1)), int(loser_pet.get("level",1)), True)
     loss_loot = await LootCalculator.calculate_loot(int(loser_id),  loser_pet,  "pvp_battle", "normal", int(winner_pet.get("level",1)), int(loser_pet.get("level",1)), False)
 
+    # Save battle stats for both players
+    await user_data_manager.update_pet_battle_stats(winner_id, "pvp", wins=1, losses=0, xp_earned=win_loot["xp_gained"], damage_dealt=0, damage_taken=0)
+    await user_data_manager.update_pet_battle_stats(loser_id, "pvp", wins=0, losses=1, xp_earned=loss_loot["xp_gained"], damage_dealt=0, damage_taken=0)
+
     log.append(f"🏆 {winner_pet['name']} wins! +{win_loot['xp_gained']} XP")
     log.append(f"💀 {loser_pet['name']} defeated. +{loss_loot['xp_gained']} XP")
 
     return {
         "winner_id": winner_id, "loser_id": loser_id,
         "winner_name": winner_pet["name"], "loser_name": loser_pet["name"],
+        "player_name": pet_a["name"], "enemy_name": pet_b["name"],
+        "start_hp_a": sa["hp"], "start_hp_b": sb["hp"],
         "turns": turns, "log": log,
         "winner_xp": win_loot["xp_gained"], "loser_xp": loss_loot["xp_gained"],
         "level_change": win_loot.get("level_change"),

@@ -5,6 +5,8 @@ Returns all users who have pets for the Pet Connector card grid.
 from __future__ import annotations
 
 import logging
+import re
+from pathlib import Path
 from typing import Any, Dict, List
 
 from fastapi import APIRouter, HTTPException, Request
@@ -20,6 +22,9 @@ from web.api.pets.gpp_helpers import _invalidate_stats_cache
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+BADGE_STATIC_ROOT = PROJECT_ROOT / "web" / "static" / "pet_badges"
 
 
 class RelationshipRequest(BaseModel):
@@ -66,6 +71,14 @@ def _enrich_pet(pet: dict) -> dict:
         }
     except Exception:
         return pet
+
+
+def _selected_badge_url(user_id: str) -> str:
+    safe_user_id = re.sub(r"[^0-9A-Za-z_-]", "", str(user_id))
+    selected = BADGE_STATIC_ROOT / safe_user_id / "selected.png"
+    if not selected.exists():
+        return ""
+    return f"/static/pet_badges/{safe_user_id}/selected.png?v={int(selected.stat().st_mtime)}"
 
 
 def _current_user_id(request: Request) -> str | None:
@@ -152,6 +165,11 @@ async def world_pets(request: Request):
 
             uid_str = str(uid)
             pet = _enrich_pet(dict(pet_raw))
+            selected_badge_url = _selected_badge_url(uid_str)
+            if selected_badge_url:
+                pet["badge_url"] = selected_badge_url
+                pet.setdefault("badge", {})
+                pet["badge"]["selected_url"] = selected_badge_url
 
             # Build Discord avatar URL — prefer pet-stored hash, then users table, then bot cache, then default
             avatar_hash = (

@@ -564,6 +564,28 @@ EQUIPMENT_FILENAME_MAP = {
     'Santa Hat': 'santa',
     'Service Cap': 'service',
     'Sorcerer Hat': 'sorcerer',
+    # Gems (display "Ember Heart" -> file "EmberHeart.png")
+    'Ember Heart': 'EmberHeart',
+    'Mint Gaze': 'MintGaze',
+    'Emerald Soul': 'EmeraldSoul',
+    'Forest Eye': 'ForestEye',
+    'Solar Sphere': 'SolarSphere',
+    'Sky Spire': 'SkySpire',
+    'Zephyr Shard': 'ZephyrShard',
+    'Azure Apex': 'AzureApex',
+    'Magma Diamond': 'MagmaDiamond',
+    'Prismatic Flux': 'PrismaticFlux',
+    'Frost Shard': 'FrostShard',
+    'Ember Cube': 'EmberCube',
+    'Jade Slab': 'JadeSlab',
+    'Flux Diamond': 'FluxDiamond',
+    'Moon Quartz': 'MoonQuartz',
+    'Fury Rose': 'FuryRose',
+    'Solar Core': 'SolarCore',
+    'Void Spark': 'VoidSpark',
+    'Gilded Prism': 'GildedPrism',
+    'Ocean Tear': 'OceanTear',
+    # Potions
     'ATT Potion': 'att_potion',
     'DEF Potion': 'def_potion',
     'DEX Potion': 'dex_potion',
@@ -592,7 +614,168 @@ EQUIPMENT_FILENAME_MAP = {
     'Health Potion': 'health_potion',
     'Lesser Health Potion': 'lesser_health_potion',
     'XP Potion': 'xp_potion',
-    'Lesser XP Potion': 'lesser_xp_potion'
+    'Lesser XP Potion': 'lesser_xp_potion',
+    # Boots
+    'Wood Boots': 'Boots_Wood',
+    'Rusty Iron Boots': 'Boots_RustyIron',
+    'Stone Boots': 'Boots_Stone',
+    'Iron Boots': 'Boots_Iron',
+    'Nature Boots': 'Boots_Nature',
+    'Elven Boots': 'Boots_Elven',
+    'Steel Boots': 'Boots_Steel',
+    'Crystal Boots': 'Boots_Crystal',
+    'Volcanic Boots': 'Boots_Volcanic',
+    'Advanced Boots': 'Boots_Advanced',
+    'SciFi Boots': 'Boots_SciFi',
+    # Helmets
+    'Wood Helmet': 'Helmet_Wood',
+    'Rusty Iron Helmet': 'Helmet_RustyIron',
+    'Stone Helmet': 'Helmet_Stone',
+    'Iron Helmet': 'Helmet_Iron',
+    'Nature Helmet': 'Helmet_Nature',
+    'Elven Helmet': 'Helmet_Elven',
+    'Steel Helmet': 'Helmet_Steel',
+    'Crystal Helmet': 'Helmet_Crystal',
+    'Volcanic Helmet': 'Helmet_Volcanic',
+    'Advanced Helmet': 'Helmet_Advanced',
+    'SciFi Helmet': 'Helmet_SciFi',
+    # Armor
+    'Wood Armor': 'Armor_Wood',
+    'Rusty Iron Armor': 'Armor_RustyIron',
+    'Stone Armor': 'Armor_Stone',
+    'Iron Armor': 'Armor_Iron',
+    'Nature Armor': 'Armor_Nature',
+    'Elven Armor': 'Armor_Elven',
+    'Steel Armor': 'Armor_Steel',
+    'Crystal Armor': 'Armor_Crystal',
+    'Volcanic Armor': 'Armor_Volcanic',
+    'Advanced Armor': 'Armor_Advanced',
+    'SciFi Armor': 'Armor_SciFi',
+    # Shields
+    'Wood Shield': 'Shield_Wood',
+    'Rusty Iron Shield': 'Shield_RustyIron',
+    'Stone Shield': 'Shield_Stone',
+    'Iron Shield': 'Shield_Iron',
+    'Nature Shield': 'Shield_Nature',
+    'Elven Shield': 'Shield_Elven',
+    'Steel Shield': 'Shield_Steel',
+    'Crystal Shield': 'Shield_Crystal',
+    'Volcanic Shield': 'Shield_Volcanic',
+    'Advanced Shield': 'Shield_Advanced',
+    'SciFi Shield': 'Shield_SciFi',
+    # Rings (display "Skull Claw" -> file "SkullClaw.png" - just remove spaces)
+    'Skull Claw': 'SkullClaw',
+    'Bleed Heart': 'BleedHeart',
+    'Crimson Crown': 'CrimsonCrown',
+    'Star Sigil': 'StarSigil',
+    'Scorch Plate': 'ScorchPlate',
+    'Rune Copper': 'RuneCopper',
+    'Iron Band': 'IronBand',
+    'Frost Compass': 'FrostCompass',
+    'Deathwood Band': 'DeathwoodBand',
+    'Blood Cross': 'BloodCross',
+    'Venom Drop': 'VenomDrop',
+    'Amber Fang': 'AmberFang',
+    'Thorn Shield': 'ThornShield',
+    'Thorne Amethyst': 'ThorneAmethyst',
+    'War Mark': 'WarMark',
+    'Verdant Band': 'VerdantBand',
+    'Spike Band': 'SpikeBand',
+    'Magma Band': 'MagmaBand',
+    'Crimson Lacquer': 'CrimsonLacquer',
+    'Crusader Band': 'CrusaderBand',
+    'Venom Orb': 'VenomOrb',
+    'Molten Core': 'MoltenCore',
+    'Silver Talon': 'SilverTalon',
+    'Iron Sigil': 'IronSigil',
+    'Rust Band': 'RustBand',
+    'Rune Blade': 'RuneBlade',
+    'Ancient Script': 'AncientScript',
+    'Ember Rune': 'EmberRune',
+    'Void Socket': 'VoidSocket',
+    'Lava Eye': 'LavaEye',
+    'Rune Arrow': 'RuneArrow',
+    'Ruby Inferno': 'RubyInferno',
+    'Volcanic Gem': 'VolcanicGem',
+    'Toxic Plate': 'ToxicPlate',
+    'Ember Inlay': 'EmberInlay',
+    'Demon Skull': 'DemonSkull',
+    'Wood Emerald': 'WoodEmerald',
+    'Lazuli Sun': 'LazuliSun',
+    'Sapphire Fang': 'SapphireFang',
+    'Frost Star': 'FrostStar',
+    # Swords
+    'Wood Sword': 'Sword_Wood',
+    'Rusty Iron Sword': 'Sword_RustyIron',
+    'Stone Sword': 'Sword_Stone',
+    'Iron Sword': 'Sword_Iron',
+    'Nature Sword': 'Sword_Nature',
+    'Elven Sword': 'Sword_Elven',
+    'Steel Sword': 'Sword_Steel',
+    'Crystal Sword': 'Sword_Crystal',
+    'Volcanic Sword': 'Sword_Volcanic',
+    'Advanced Sword': 'Sword_Advanced',
+    'SciFi Sword': 'Sword_SciFi',
+    # Katanas
+    'Wood Katana': 'Katana_Wood',
+    'Rusty Iron Katana': 'Katana_RustyIron',
+    'Stone Katana': 'Katana_Stone',
+    'Iron Katana': 'Katana_Iron',
+    'Nature Katana': 'Katana_Nature',
+    'Elven Katana': 'Elven_Katana',
+    'Steel Katana': 'Katana_Steel',
+    'Crystal Katana': 'Katana_Crystal',
+    'Volcanic Katana': 'Katana_Volcanic',
+    'Advanced Katana': 'Katana_Advanced',
+    'SciFi Katana': 'Katana_SciFi',
+    # Daggers
+    'Wood Dagger': 'Dagger_Wood',
+    'Rusty Iron Dagger': 'Dagger_RustyIron',
+    'Stone Dagger': 'Dagger_Stone',
+    'Iron Dagger': 'Dagger_Iron',
+    'Natural Dagger': 'Dagger_Natural',
+    'Elven Dagger': 'Dagger_Elven',
+    'Steel Dagger': 'Dagger_Steel',
+    'Crystal Dagger': 'Dagger_Crystal',
+    'Volcanic Dagger': 'Dagger_Volcanic',
+    'Advanced Dagger': 'Dagger_Advanced',
+    'SciFi Dagger': 'Dagger_SciFi',
+    # Bows
+    'Wood Bow': 'Bow_Wood',
+    'Rusty Iron Bow': 'Bow_RustyIron',
+    'Stone Bow': 'Bow_Stone',
+    'Iron Bow': 'Bow_Iron',
+    'Natural Bow': 'Bow_Natural',
+    'Elven Bow': 'Bow_Elven',
+    'Steel Bow': 'Bow_Steel',
+    'Crystal Bow': 'Bow_Crystal',
+    'Volcanic Bow': 'Bow_Volcanic',
+    'Advanced Bow': 'Bow_Advanced',
+    'SciFi Bow': 'Bow_SciFi',
+    # Axes
+    'Wood Axe': 'Axe_Wood',
+    'Rusty Iron Axe': 'Axe_RustyIron',
+    'Stone Axe': 'Axe_Stone',
+    'Iron Axe': 'Axe_Iron',
+    'Nature Axe': 'Axe_Nature',
+    'Elven Axe': 'Axe_Elven',
+    'Steel Axe': 'Axe_Steel',
+    'Crystal Axe': 'Axe_Crystal',
+    'Volcanic Axe': 'Axe_Volcanic',
+    'Advanced Axe': 'Axe_Advanced',
+    'SciFi Axe': 'Axe_SciFi',
+    # Hammers
+    'Wood Hammer': 'Hammer_Wood',
+    'Rusty Iron Hammer': 'Hammer_RustyIron',
+    'Stone Hammer': 'Hammer_Stone',
+    'Iron Hammer': 'Hammer_Iron',
+    'Nature Hammer': 'Hammer_Nature',
+    'Elven Hammer': 'Hammer_Elven',
+    'Steel Hammer': 'Hammer_Steel',
+    'Crystal Hammer': 'Hammer_Crystal',
+    'Volcanic Hammer': 'Hammer_Volcanic',
+    'Advanced Hammer': 'Hammer_Advanced',
+    'SciFi Hammer': 'Hammer_SciFi',
 }
 
 # Elements - From Deco folder
@@ -614,6 +797,77 @@ WHEEL_UNITS: List[str] = [
 # Resources - PnW Resources (using available PnW resource emojis)
 WHEEL_RESOURCES: List[str] = [
     'Aluminum','Bauxite','Coal','Credit','Food','Gasoline','Iron','Lead','Munitions','Oil','Steel','Uranium'
+]
+
+# Boots - From equipment.json
+WHEEL_BOOTS: List[str] = [
+    'Wood Boots','Rusty Iron Boots','Stone Boots','Iron Boots','Nature Boots',
+    'Elven Boots','Steel Boots','Crystal Boots','Volcanic Boots','Advanced Boots','SciFi Boots'
+]
+
+# Helmets - From equipment.json
+WHEEL_HELMETS: List[str] = [
+    'Wood Helmet','Rusty Iron Helmet','Stone Helmet','Iron Helmet','Nature Helmet',
+    'Elven Helmet','Steel Helmet','Crystal Helmet','Volcanic Helmet','Advanced Helmet','SciFi Helmet'
+]
+
+# Armor - From equipment.json
+WHEEL_ARMOR: List[str] = [
+    'Wood Armor','Rusty Iron Armor','Stone Armor','Iron Armor','Nature Armor',
+    'Elven Armor','Steel Armor','Crystal Armor','Volcanic Armor','Advanced Armor','SciFi Armor'
+]
+
+# Shields - From equipment.json
+WHEEL_SHIELDS: List[str] = [
+    'Wood Shield','Rusty Iron Shield','Stone Shield','Iron Shield','Nature Shield',
+    'Elven Shield','Steel Shield','Crystal Shield','Volcanic Shield','Advanced Shield','SciFi Shield'
+]
+
+# Rings - From equipment.json
+WHEEL_RINGS: List[str] = [
+    'Skull Claw','Bleed Heart','Crimson Crown','Star Sigil','Scorch Plate','Rune Copper',
+    'Iron Band','Frost Compass','Deathwood Band','Blood Cross','Venom Drop','Amber Fang',
+    'Thorn Shield','Thorne Amethyst','War Mark','Verdant Band','Spike Band','Magma Band',
+    'Crimson Lacquer','Crusader Band','Venom Orb','Molten Core','Silver Talon','Iron Sigil',
+    'Rust Band','Rune Blade','Ancient Script','Ember Rune','Void Socket','Lava Eye',
+    'Rune Arrow','Ruby Inferno','Volcanic Gem','Toxic Plate','Ember Inlay','Demon Skull',
+    'Wood Emerald','Lazuli Sun','Sapphire Fang','Frost Star'
+]
+
+# Swords - From equipment.json
+WHEEL_SWORDS: List[str] = [
+    'Wood Sword','Rusty Iron Sword','Stone Sword','Iron Sword','Nature Sword',
+    'Elven Sword','Steel Sword','Crystal Sword','Volcanic Sword','Advanced Sword','SciFi Sword'
+]
+
+# Katanas - From equipment.json
+WHEEL_KATANAS: List[str] = [
+    'Wood Katana','Rusty Iron Katana','Stone Katana','Iron Katana','Nature Katana',
+    'Elven Katana','Steel Katana','Crystal Katana','Volcanic Katana','Advanced Katana','SciFi Katana'
+]
+
+# Daggers - From equipment.json
+WHEEL_DAGGERS: List[str] = [
+    'Wood Dagger','Rusty Iron Dagger','Stone Dagger','Iron Dagger','Natural Dagger',
+    'Elven Dagger','Steel Dagger','Crystal Dagger','Volcanic Dagger','Advanced Dagger','SciFi Dagger'
+]
+
+# Bows - From equipment.json
+WHEEL_BOWS: List[str] = [
+    'Wood Bow','Rusty Iron Bow','Stone Bow','Iron Bow','Natural Bow',
+    'Elven Bow','Steel Bow','Crystal Bow','Volcanic Bow','Advanced Bow','SciFi Bow'
+]
+
+# Axes - From equipment.json
+WHEEL_AXES: List[str] = [
+    'Wood Axe','Rusty Iron Axe','Stone Axe','Iron Axe','Nature Axe',
+    'Elven Axe','Steel Axe','Crystal Axe','Volcanic Axe','Advanced Axe','SciFi Axe'
+]
+
+# Hammers - From equipment.json
+WHEEL_HAMMERS: List[str] = [
+    'Wood Hammer','Rusty Iron Hammer','Stone Hammer','Iron Hammer','Nature Hammer',
+    'Elven Hammer','Steel Hammer','Crystal Hammer','Volcanic Hammer','Advanced Hammer','SciFi Hammer'
 ]
 
 # Mode configuration
@@ -687,6 +941,83 @@ WHEEL_MODES = {
         'title': 'Wheel of Resources',
         'subtitle': 'Trade resources · Place your bet · Spin to win',
         'description': f'{len(WHEEL_RESOURCES)} resources · equal odds · 5% house edge'
+    },
+    'boots': {
+        'items': WHEEL_BOOTS,
+        'path_template': '/static/Emojis/Pets/Equipment/Boots/{}.png',
+        'title': 'Wheel of Boots',
+        'subtitle': 'Step into fortune · Place your bet · Spin to win',
+        'description': f'{len(WHEEL_BOOTS)} boots · equal odds · 5% house edge'
+    },
+    'helmets': {
+        'items': WHEEL_HELMETS,
+        'path_template': '/static/Emojis/Pets/Equipment/Helmets/{}.png',
+        'title': 'Wheel of Helmets',
+        'subtitle': 'Protect your head · Place your bet · Spin to win',
+        'description': f'{len(WHEEL_HELMETS)} helmets · equal odds · 5% house edge'
+    },
+    'armor': {
+        'items': WHEEL_ARMOR,
+        'path_template': '/static/Emojis/Pets/Equipment/Armor/{}.png',
+        'title': 'Wheel of Armor',
+        'subtitle': 'Suit up · Place your bet · Spin to win',
+        'description': f'{len(WHEEL_ARMOR)} armor sets · equal odds · 5% house edge'
+    },
+    'shields': {
+        'items': WHEEL_SHIELDS,
+        'path_template': '/static/Emojis/Pets/Equipment/Shield/{}.png',
+        'title': 'Wheel of Shields',
+        'subtitle': 'Raise your guard · Place your bet · Spin to win',
+        'description': f'{len(WHEEL_SHIELDS)} shields · equal odds · 5% house edge'
+    },
+    'rings': {
+        'items': WHEEL_RINGS,
+        'path_template': '/static/Emojis/Pets/Equipment/Rings/{}.png',
+        'title': 'Wheel of Rings',
+        'subtitle': 'Fortune favours the bold · Place your bet · Spin to win',
+        'description': f'{len(WHEEL_RINGS)} rings · equal odds · 5% house edge'
+    },
+    'swords': {
+        'items': WHEEL_SWORDS,
+        'path_template': '/static/Emojis/Pets/Equipment/Sword/{}.png',
+        'title': 'Wheel of Swords',
+        'subtitle': 'Strike true · Place your bet · Spin to win',
+        'description': f'{len(WHEEL_SWORDS)} swords · equal odds · 5% house edge'
+    },
+    'katanas': {
+        'items': WHEEL_KATANAS,
+        'path_template': '/static/Emojis/Pets/Equipment/Katana/{}.png',
+        'title': 'Wheel of Katanas',
+        'subtitle': 'Slice through luck · Place your bet · Spin to win',
+        'description': f'{len(WHEEL_KATANAS)} katanas · equal odds · 5% house edge'
+    },
+    'daggers': {
+        'items': WHEEL_DAGGERS,
+        'path_template': '/static/Emojis/Pets/Equipment/Dagger/{}.png',
+        'title': 'Wheel of Daggers',
+        'subtitle': 'Strike from the shadows · Place your bet · Spin to win',
+        'description': f'{len(WHEEL_DAGGERS)} daggers · equal odds · 5% house edge'
+    },
+    'bows': {
+        'items': WHEEL_BOWS,
+        'path_template': '/static/Emojis/Pets/Equipment/Bows/{}.png',
+        'title': 'Wheel of Bows',
+        'subtitle': 'Take aim · Place your bet · Spin to win',
+        'description': f'{len(WHEEL_BOWS)} bows · equal odds · 5% house edge'
+    },
+    'axes': {
+        'items': WHEEL_AXES,
+        'path_template': '/static/Emojis/Pets/Equipment/Axe/{}.png',
+        'title': 'Wheel of Axes',
+        'subtitle': 'Chop to the chase · Place your bet · Spin to win',
+        'description': f'{len(WHEEL_AXES)} axes · equal odds · 5% house edge'
+    },
+    'hammers': {
+        'items': WHEEL_HAMMERS,
+        'path_template': '/static/Emojis/Pets/Equipment/Hammers/{}.png',
+        'title': 'Wheel of Hammers',
+        'subtitle': 'Forge your destiny · Place your bet · Spin to win',
+        'description': f'{len(WHEEL_HAMMERS)} hammers · equal odds · 5% house edge'
     }
 }
 
@@ -915,6 +1246,13 @@ async def _spin_wheel_inner(user_id: str, bet_amount: int, chosen_item: str, mod
             extra_data={"own_pet_jackpots": 1 if own_pet_bonus else 0}
         )
 
+    # Task tracking — wheel_of_pets
+    try:
+        from web.api.tasks_api import record_action as _task_record
+        await _task_record(user_id, "wheel_of_pets")
+    except Exception:
+        pass
+
     if won and own_pet_bonus:
         result_text = f"⭐ OWN PET JACKPOT! {winner} landed — 2× bonus!"
     elif won:
@@ -969,6 +1307,13 @@ async def create_blackjack_game(request: Request):
         
         mock_member = MockMember(user_id)
         
+        # Task tracking
+        try:
+            from web.api.tasks_api import record_action as _task_record
+            await _task_record(user_id, "blackjack")
+        except Exception:
+            pass
+
         # For web-based blackjack, we'll return game state instead of creating Discord session
         return JSONResponse(content={
             'game_id': f"bj_{user_id}_{random.randint(1000, 9999)}",
@@ -989,6 +1334,14 @@ async def create_holdem_game(request: Request):
         data = await request.json()
         user_id = data.get('user_id')
         
+        # Task tracking
+        if user_id:
+            try:
+                from web.api.tasks_api import record_action as _task_record
+                await _task_record(str(user_id), "holdem")
+            except Exception:
+                pass
+
         return JSONResponse(content={
             'game_id': f"holdem_{user_id}_{random.randint(1000, 9999)}",
             'status': 'created'
@@ -1007,6 +1360,14 @@ async def create_craps_game(request: Request):
         user_id = data.get('user_id')
         betting_mode = data.get('betting_mode', True)
         
+        # Task tracking
+        if user_id:
+            try:
+                from web.api.tasks_api import record_action as _task_record
+                await _task_record(str(user_id), "craps")
+            except Exception:
+                pass
+
         return JSONResponse(content={
             'game_id': f"craps_{user_id}_{random.randint(1000, 9999)}",
             'betting_mode': betting_mode,

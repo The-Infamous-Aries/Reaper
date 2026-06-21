@@ -914,7 +914,7 @@ def _get_goal_by_id_sync(mdb, goal_id: int) -> Optional[Dict[str, Any]]:
 _WAR_STATS_CACHE_TTL = 600  # seconds
 _war_stats_cache: Dict[int, Tuple[float, Any]] = {}
 
-DARKSTAR_ALLIANCE_ID = 10259
+DARKSTAR_ALLIANCE_ID = 14873  # Union of Revolutionary States
 
 _LOOT_RESOURCES = (
     "coal", "oil", "uranium", "iron", "bauxite", "lead",
@@ -1660,6 +1660,17 @@ async def get_nation_awards(request: Request, nation_id: int) -> JSONResponse:
         return JSONResponse({"awards": [], "total_count": 0, "nation_name": nation_name})
 
     # ── build Sun–Sat week and calendar-month period buckets ──────────────────
+    # Only include COMPLETED periods — skip the current (ongoing) week and month
+    # so awards are not shown for a period that is still in progress.
+    today = _date.today()
+
+    # Current week start (Sunday)
+    _cur_dsun = (today.weekday() + 1) % 7
+    current_week_sun = today - _timedelta(days=_cur_dsun)
+
+    # Current month start
+    current_month_key = today.strftime("%Y-%m")
+
     seen_weeks: Dict[str, Dict[str, str]] = {}
     seen_months: Dict[str, Dict[str, str]] = {}
 
@@ -1669,11 +1680,13 @@ async def get_nation_awards(request: Request, nation_id: int) -> JSONResponse:
         week_sun = d - _timedelta(days=dsun)
         week_sat = week_sun + _timedelta(days=6)
         wk = week_sun.isoformat()
-        if wk not in seen_weeks:
+        # Skip the current (ongoing) week
+        if week_sun < current_week_sun and wk not in seen_weeks:
             seen_weeks[wk] = {"start": wk, "end": week_sat.isoformat()}
 
         mk = d.strftime("%Y-%m")
-        if mk not in seen_months:
+        # Skip the current (ongoing) month
+        if mk != current_month_key and mk not in seen_months:
             y, m = int(mk[:4]), int(mk[5:7])
             last_day = _calendar.monthrange(y, m)[1]
             seen_months[mk] = {
@@ -1694,7 +1707,10 @@ async def get_nation_awards(request: Request, nation_id: int) -> JSONResponse:
         raise HTTPException(status_code=503, detail="Resource prices unavailable, cannot compute awards.")
 
     # ── per-category award accumulators ──────────────────────────────────────
-    awards_data: Dict[str, Dict[int, int]] = {
+    weekly_data:  Dict[str, Dict[int, int]] = {
+        cat["id"]: {1: 0, 2: 0, 3: 0} for cat in LEADERBOARD_CATEGORIES
+    }
+    monthly_data: Dict[str, Dict[int, int]] = {
         cat["id"]: {1: 0, 2: 0, 3: 0} for cat in LEADERBOARD_CATEGORIES
     }
 
@@ -1745,13 +1761,14 @@ async def get_nation_awards(request: Request, nation_id: int) -> JSONResponse:
                 continue
 
             # 6. Check every category — find our nation by name (case-insensitive)
+            bucket = weekly_data if period["type"] == "week" else monthly_data
             for cat in LEADERBOARD_CATEGORIES:
                 ranked = _rank_nations_for_category(nations, cat)
                 for group in ranked:
                     rank = group["rank"]
                     for n in group["nations"]:
                         if (n.get("name") or "").strip().lower() == nation_name_lower:
-                            awards_data[cat["id"]][rank] += 1
+                            bucket[cat["id"]][rank] += 1
                             break   # found in this group, move to next group
 
         except Exception as e:
@@ -1762,30 +1779,36 @@ async def get_nation_awards(request: Request, nation_id: int) -> JSONResponse:
             continue
 
     # ── build response (only categories with at least one award) ─────────────
-    awards_list: List[Dict[str, Any]] = []
-    total_awards = 0
+    def _build_awards_list(data: Dict[str, Dict[int, int]]) -> tuple[List[Dict[str, Any]], int]:
+        lst: List[Dict[str, Any]] = []
+        total = 0
+        for cat in LEADERBOARD_CATEGORIES:
+            counts = data[cat["id"]]
+            cat_total = counts[1] + counts[2] + counts[3]
+            if cat_total == 0:
+                continue
+            lst.append({
+                "category_id":    cat["id"],
+                "category_label": cat["label"],
+                "prefix":         cat["prefix"],
+                "first":          counts[1],
+                "second":         counts[2],
+                "third":          counts[3],
+                "total":          cat_total,
+            })
+            total += cat_total
+        lst.sort(key=lambda x: x["total"], reverse=True)
+        return lst, total
 
-    for cat in LEADERBOARD_CATEGORIES:
-        counts = awards_data[cat["id"]]
-        cat_total = counts[1] + counts[2] + counts[3]
-        if cat_total == 0:
-            continue
-        awards_list.append({
-            "category_id":    cat["id"],
-            "category_label": cat["label"],
-            "prefix":         cat["prefix"],
-            "first":          counts[1],
-            "second":         counts[2],
-            "third":          counts[3],
-            "total":          cat_total,
-        })
-        total_awards += cat_total
-
-    awards_list.sort(key=lambda x: x["total"], reverse=True)
+    weekly_list,  weekly_total  = _build_awards_list(weekly_data)
+    monthly_list, monthly_total = _build_awards_list(monthly_data)
 
     return JSONResponse({
-        "awards":       awards_list,
-        "total_count":  total_awards,
-        "nation_id":    nation_id,
-        "nation_name":  nation_name,
+        "weekly_awards":   weekly_list,
+        "weekly_total":    weekly_total,
+        "monthly_awards":  monthly_list,
+        "monthly_total":   monthly_total,
+        "total_count":     weekly_total + monthly_total,
+        "nation_id":       nation_id,
+        "nation_name":     nation_name,
     })

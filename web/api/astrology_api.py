@@ -1,5 +1,6 @@
 # Standard Library Imports
 import logging
+import random
 import re
 from datetime import date
 from typing import Any, Dict, List, Optional
@@ -20,6 +21,10 @@ class AstrologyRequest(BaseModel):
     day: int
     year: int
 
+class TarotRequest(BaseModel):
+    spread: str = "1 Card"
+    include_summary: bool = True
+
 # --- Helper Functions ---
 
 import json
@@ -27,6 +32,36 @@ from pathlib import Path
 
 # Cache for astrology data
 _astrology_cache = {}
+
+TAROT_BASE_PATH = Path(__file__).parent.parent.parent / "Systems" / "Astrology" / "Tarot"
+TAROT_JSON_PATH = TAROT_BASE_PATH / "tarot-images.json"
+TAROT_IMAGE_URL_BASE = "/Systems/Astrology/Tarot/cards"
+SKULL_URL_BASE = "/static/Emojis/Skulls"
+
+TAROT_SPREAD_CONFIG = {
+    "1 Card": [("The Message", "The universe tells you...")],
+    "3 Card (Past/Present/Future)": [
+        ("Past", "The foundation of this situation is..."),
+        ("Present", "Where you currently stand..."),
+        ("Future", "The path ahead reveals..."),
+    ],
+    "5 Card (Traditional)": [
+        ("Theme", "The core energy of your inquiry..."),
+        ("Obstacle", "What blocks or challenges you..."),
+        ("Advice", "The universe suggests you..."),
+        ("Hidden Influence", "Underlying forces at play..."),
+        ("Outcome", "If you stay on this path, the destination is..."),
+    ],
+}
+
+TAROT_ENERGY_FALLBACKS = {
+    "major": "Karmic Shift: Major life changes and spiritual lessons are at play.",
+    "wands": "Fire Dominant: High passion, action, and ambition drive this situation.",
+    "cups": "Water Dominant: Emotions, intuition, and relationships are leading your path.",
+    "swords": "Air Dominant: Mental conflict, logic, and critical decisions are heavily featured.",
+    "pentacles": "Earth Dominant: Focus is on material wealth, career, and physical foundations.",
+    "balanced": "Balanced Energy: A mix of emotional, physical, and mental forces are at play.",
+}
 
 async def _get_astrology_json_data(filename: str) -> List[Dict[str, Any]]:
     """Load astrology JSON data with caching."""
@@ -51,6 +86,97 @@ async def _get_astrology_json_data(filename: str) -> List[Dict[str, Any]]:
     except Exception as e:
         logger.error(f"Error loading astrology data from {filename}: {e}")
         return []
+
+async def _get_tarot_deck() -> List[Dict[str, Any]]:
+    """Load the Discord tarot deck JSON with caching."""
+    cache_key = "tarot_deck"
+    if cache_key in _astrology_cache:
+        return _astrology_cache[cache_key]
+
+    if not TAROT_JSON_PATH.exists():
+        logger.error(f"Tarot data file not found at {TAROT_JSON_PATH}")
+        return []
+
+    try:
+        with open(TAROT_JSON_PATH, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        deck = data.get("cards", [])
+        _astrology_cache[cache_key] = deck
+        return deck
+    except Exception as e:
+        logger.error(f"Error loading tarot data: {e}", exc_info=True)
+        return []
+
+def _card_image_url(card: Dict[str, Any]) -> str:
+    return f"{TAROT_IMAGE_URL_BASE}/{card.get('img', '')}"
+
+def _random_tarot_skull() -> str:
+    return f"{SKULL_URL_BASE}/{random.randint(1, 16)}.png"
+
+def _dominant_tarot_energy(drawn_cards: List[Dict[str, Any]]) -> str:
+    suits = {"wands": 0, "cups": 0, "swords": 0, "pentacles": 0, "major": 0}
+    for card in drawn_cards:
+        if card.get("arcana", "").lower().startswith("major"):
+            suits["major"] += 1
+            continue
+        suit = card.get("suit", "").lower()
+        if suit in suits:
+            suits[suit] += 1
+
+    threshold = len(drawn_cards) // 2 + 1
+    for key, count in suits.items():
+        if count >= threshold:
+            return TAROT_ENERGY_FALLBACKS[key]
+    return TAROT_ENERGY_FALLBACKS["balanced"]
+
+def _fallback_tarot_summary(spread: str, cards_info: List[Dict[str, Any]], dominant_energy: Optional[str]) -> str:
+    lead = "The cards point to a single clear message." if spread == "1 Card" else "The cards form a connected path."
+    names = ", ".join(card["name_with_orientation"] for card in cards_info)
+    energy = f" {dominant_energy}" if dominant_energy else ""
+    return f"{lead} {names} asks you to notice the pattern beneath the surface and choose your next step with intention.{energy}"
+
+async def _generate_tarot_web_summary(
+    spread: str,
+    cards_info: List[Dict[str, Any]],
+    dominant_energy: Optional[str],
+) -> str:
+    """Generate the same style of concise tarot summary as the Discord command."""
+    try:
+        from Systems.Functions.local_ai import chat_complete
+    except Exception as e:
+        logger.warning(f"Tarot summary AI import failed: {e}")
+        return _fallback_tarot_summary(spread, cards_info, dominant_energy)
+
+    card_lines = "\n".join(
+        f"{card['position_name']}: {card['name_with_orientation']} - {', '.join(card['meaning'][:3])}. Fortune: {card['fortune']}"
+        for card in cards_info
+    )
+
+    if spread == "1 Card":
+        target = "Keep the response under 150 words."
+    elif spread == "3 Card (Past/Present/Future)":
+        target = "Explain the past, present, and future connection. Keep the response under 250 words."
+    else:
+        target = "Cover theme, obstacle, advice, hidden influence, and outcome. Keep the response under 300 words."
+
+    prompt = (
+        f"You are reading a {spread} tarot spread for a seeker.\n\n"
+        f"Cards:\n{card_lines}\n\n"
+        f"Reading atmosphere: {dominant_energy or 'None'}\n"
+        f"{target}"
+    )
+
+    try:
+        summary = await chat_complete(
+            messages=[{"role": "user", "content": prompt}],
+            system="You are a wise and intuitive tarot reader. Provide insightful, concise guidance based only on the cards drawn.",
+            temperature=0.7,
+            max_tokens=300,
+        )
+        return summary or _fallback_tarot_summary(spread, cards_info, dominant_energy)
+    except Exception as e:
+        logger.warning(f"Tarot summary generation failed: {e}", exc_info=True)
+        return _fallback_tarot_summary(spread, cards_info, dominant_energy)
 
 def _zodiac_for_date(bday: date) -> str:
     """Return the zodiac sign name for given date (month/day boundaries)."""
@@ -370,6 +496,98 @@ async def horoscope_proxy(request: Request, sign: str, day: str = "today"):
     except Exception as e:
         logger.error(f"Error in horoscope proxy endpoint: {e}", exc_info=True)
         return JSONResponse(content={"error": "Internal server error in proxy."}, status_code=500)
+
+@router.get("/astrology/tarot/deck")
+async def get_tarot_deck():
+    """Return tarot deck metadata from the same JSON used by the Discord command."""
+    deck = await _get_tarot_deck()
+    if not deck:
+        return JSONResponse(content={"error": "Tarot deck is unavailable."}, status_code=500)
+
+    cards = []
+    for card in deck:
+        cards.append({
+            "name": card.get("name"),
+            "number": card.get("number"),
+            "arcana": card.get("arcana"),
+            "suit": card.get("suit"),
+            "keywords": card.get("keywords", []),
+            "image": _card_image_url(card),
+        })
+
+    return JSONResponse(content={
+        "description": "tarot cards and basic information about them, as well as references to corresponding scans",
+        "spreads": list(TAROT_SPREAD_CONFIG.keys()),
+        "cards": cards,
+    })
+
+@router.post("/astrology/tarot/reading")
+async def get_tarot_reading(request: TarotRequest):
+    """Draw a tarot spread using the same spread/card/orientation logic as Discord."""
+    spread = request.spread
+    if spread not in TAROT_SPREAD_CONFIG:
+        return JSONResponse(
+            content={"error": f"Invalid spread. Valid spreads: {', '.join(TAROT_SPREAD_CONFIG.keys())}"},
+            status_code=400,
+        )
+
+    deck = await _get_tarot_deck()
+    if not deck:
+        return JSONResponse(content={"error": "Tarot deck is unavailable."}, status_code=500)
+
+    positions = TAROT_SPREAD_CONFIG[spread]
+    drawn_cards = random.sample(deck, len(positions))
+    cards_info = []
+
+    for index, card in enumerate(drawn_cards):
+        position_name, transition = positions[index]
+        is_reversed = random.choice([True, False])
+        orientation = "Reversed" if is_reversed else "Upright"
+        meaning = card.get("meanings", {}).get("shadow" if is_reversed else "light", [])
+        fortune = random.choice(card.get("fortune_telling", ["The path asks for careful attention."]))
+        is_major = card.get("arcana", "").lower().startswith("major")
+
+        cards_info.append({
+            "position_num": index + 1,
+            "position_name": position_name,
+            "transition": transition,
+            "name": card.get("name"),
+            "name_with_orientation": f"{card.get('name')} ({orientation})",
+            "orientation": orientation,
+            "reversed": is_reversed,
+            "is_major": is_major,
+            "arcana": card.get("arcana"),
+            "suit": card.get("suit"),
+            "number": card.get("number"),
+            "keywords": card.get("keywords", []),
+            "meaning": meaning,
+            "meaning_preview": meaning[:3],
+            "fortune": fortune,
+            "image": _card_image_url(card),
+            "archetype": card.get("Archetype"),
+            "hebrew_alphabet": card.get("Hebrew Alphabet"),
+            "numerology": card.get("Numerology"),
+            "elemental": card.get("Elemental"),
+            "mythical_spiritual": card.get("Mythical/Spiritual"),
+            "questions": card.get("Questions to Ask", []),
+        })
+
+    dominant_energy = _dominant_tarot_energy(drawn_cards) if len(drawn_cards) > 1 else None
+    ai_summary = None
+    if request.include_summary:
+        ai_summary = await _generate_tarot_web_summary(spread, cards_info, dominant_energy)
+
+    return JSONResponse(content={
+        "spread": spread,
+        "positions": [{"name": pos[0], "transition": pos[1]} for pos in positions],
+        "cards_info": cards_info,
+        "dominant_energy": dominant_energy,
+        "ai_summary": ai_summary,
+        "dealer": {
+            "name": "Tarot Dealer",
+            "skull": _random_tarot_skull(),
+        },
+    })
 
 
 @router.post("/astrology/signs")

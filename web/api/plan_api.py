@@ -137,11 +137,45 @@ async def get_plan(request: Request, nation_id: int) -> JSONResponse:
         plan["plan_data"], nation, cities, progress, top_20_avg
     )
     
+    # Fetch current resource sell prices so the frontend can show actual dollar totals
+    sell_prices: Dict[str, float] = {}
+    try:
+        from Systems.Functions.database_manager import get_latest_resource_prices
+        price_data = await get_latest_resource_prices()
+        if price_data:
+            sell_prices = {
+                resource.lower(): float(info.get("sell", 0) or 0)
+                for resource, info in price_data.items()
+            }
+    except Exception as _pe:
+        logger.warning(f"Could not fetch resource prices for plan: {_pe}")
+
+    # Per-project cost breakdown so the viewer can show costs on each project line
+    project_costs = _compute_per_project_costs(plan["plan_data"], nation)
+
+    # Per-city cost breakdown so the viewer can show each city's total cost
+    city_costs = _compute_per_city_costs(plan["plan_data"], nation, cities, top_20_avg)
+
+    # All-policy total costs: same as total_costs but projects are computed with
+    # all applicable policies active (Technological Advancement + BDA + GSA).
+    # Cities/infra/land already always apply policy discounts in the cost functions.
+    all_policy_total_costs = _compute_all_policy_total_costs(
+        plan["plan_data"], nation, cities, top_20_avg, total_costs
+    )
+    all_policy_remaining_costs = _compute_all_policy_total_costs(
+        plan["plan_data"], nation, cities, top_20_avg, remaining_costs
+    )
+
     return JSONResponse({
         "plan": plan,
         "progress": progress,
         "total_costs": total_costs,
         "remaining_costs": remaining_costs,
+        "all_policy_total_costs": all_policy_total_costs,
+        "all_policy_remaining_costs": all_policy_remaining_costs,
+        "sell_prices": sell_prices,
+        "project_costs": project_costs,
+        "city_costs": city_costs,
     })
 
 
@@ -201,39 +235,7 @@ async def delete_plan(request: Request, nation_id: int) -> JSONResponse:
     return JSONResponse({"success": success})
 
 
-# ── POST Preview ──────────────────────────────────────────────────────────────
 
-@router.post("/mynation/plan/preview")
-async def preview_plan(request: Request, body: Dict[str, Any]) -> JSONResponse:
-    """
-    Compute a preview of what the nation will look like after plan completion.
-    Returns simulated revenue, military caps, and city summary.
-    """
-    nation_id = body.get("nation_id")
-    if not isinstance(nation_id, int) or nation_id <= 0:
-        raise HTTPException(status_code=422, detail="nation_id must be a positive integer.")
-    
-    await _require_own_nation(request, nation_id)
-    
-    plan_data = body.get("plan_data")
-    if not isinstance(plan_data, dict):
-        raise HTTPException(status_code=422, detail="plan_data must be an object.")
-    
-    # Load current nation state
-    gdb = _get_global_nations_db()
-    nation = await gdb.get_nation(nation_id)
-    if not nation:
-        raise HTTPException(status_code=404, detail="Nation not found.")
-    
-    cities = await gdb.get_cities_for_nation(nation_id)
-    
-    # Apply plan to create simulated state
-    simulated_nation, simulated_cities = _apply_plan_to_nation(plan_data, nation, cities)
-    
-    # Compute preview
-    preview = await _compute_preview(simulated_nation, simulated_cities)
-    
-    return JSONResponse(preview)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -373,7 +375,7 @@ def _compute_progress(
         for imp_col, target_count in city_plan.get("target_improvements", {}).items():
             step_count += 1
             current_count = int(city.get(imp_col, 0))
-            imp_done = current_count >= target_count
+            imp_done = current_count == target_count
             city_progress["steps"]["improvements"][imp_col] = imp_done
             if imp_done:
                 completed_count += 1
@@ -441,13 +443,13 @@ def _compute_total_costs(
         result = city_purchase_cost(city_number, top_20_avg, nation)
         _add_cost(costs, result["final_cost"], "new_cities", "cash")
         
-        # Infrastructure (from 10 to target)
+        # Infrastructure — new city starts with 10 infra, buy delta to target
         target_infra = city_plan.get("infra", 10)
         if target_infra > 10:
             result = infra_purchase_cost(10.0, target_infra - 10.0, nation)
             _add_cost(costs, result["final_cost"], "new_cities", "cash")
         
-        # Land (from 250 to target)
+        # Land — new city starts with 250 land, buy delta to target
         target_land = city_plan.get("land", 250)
         if target_land > 250:
             result = land_purchase_cost(250.0, target_land - 250.0, nation)
@@ -574,16 +576,16 @@ def _compute_remaining_costs(
             result = city_purchase_cost(city_number, top_20_avg, nation)
             _add_cost(costs, result["final_cost"], "new_cities", "cash")
         
-        # Infrastructure (if not done)
+        # Infrastructure (if not done) — new city starts with 10 infra
         if not city_progress["steps"].get("infra_done"):
             target_infra = city_plan.get("infra", 10)
-            # If city not purchased, cost from 10; else from current
+            # If city already purchased, cost from current infra; else from 10
             if city_progress["steps"].get("city_purchased") and city_progress["matched_city_id"]:
                 cities_sorted = sorted(cities, key=lambda c: c.get("date", "") or "")
                 target_city_number = starting_cities + slot
                 if len(cities_sorted) >= target_city_number:
                     matched_city = cities_sorted[target_city_number - 1]
-                    current_infra = float(matched_city.get("infrastructure", 0))
+                    current_infra = float(matched_city.get("infrastructure", 10))
                 else:
                     current_infra = 10.0
             else:
@@ -593,16 +595,16 @@ def _compute_remaining_costs(
                 result = infra_purchase_cost(current_infra, target_infra - current_infra, nation)
                 _add_cost(costs, result["final_cost"], "new_cities", "cash")
         
-        # Land (if not done)
+        # Land (if not done) — new city starts with 250 land
         if not city_progress["steps"].get("land_done"):
             target_land = city_plan.get("land", 250)
-            # Similar logic as infra
+            # If city already purchased, cost from current land; else from 250
             if city_progress["steps"].get("city_purchased") and city_progress["matched_city_id"]:
                 cities_sorted = sorted(cities, key=lambda c: c.get("date", "") or "")
                 target_city_number = starting_cities + slot
                 if len(cities_sorted) >= target_city_number:
                     matched_city = cities_sorted[target_city_number - 1]
-                    current_land = float(matched_city.get("land", 0))
+                    current_land = float(matched_city.get("land", 250))
                 else:
                     current_land = 250.0
             else:
@@ -719,6 +721,236 @@ def _compute_remaining_costs(
     _cleanup_zero_costs(costs)
     
     return costs
+
+
+def _compute_per_project_costs(
+    plan_data: Dict[str, Any],
+    nation: Dict[str, Any],
+) -> List[Dict[str, Any]]:
+    """
+    Return a list of {db_col, name, costs, all_policy_costs} for each project in the plan,
+    including projects the nation already owns (marked is_owned=True).
+    costs = actual cost with nation's current policy.
+    all_policy_costs = cost as if ALL applicable policies/projects are active
+                       (Technological Advancement + BDA + GSA), regardless of what
+                       the nation currently has. Always shown in the plan UI.
+    """
+    # Build a "max-discount" nation clone for the all_policy calculation:
+    # Technological Advancement policy + BDA + GSA all active.
+    max_discount_nation = dict(nation)
+    max_discount_nation["domestic_policy"] = "TECHNOLOGICAL_ADVANCEMENT"
+    max_discount_nation["bureau_of_domestic_affairs"] = True
+    max_discount_nation["government_support_agency"] = True
+
+    results = []
+    for project_col in plan_data.get("projects", []):
+        is_owned = bool(nation.get(project_col))
+        display_name = _PROJECT_DB_COL_TO_DISPLAY.get(project_col, project_col.replace("_", " ").title())
+        costs: Dict[str, float] = {}
+        all_policy_costs: Dict[str, float] = {}
+        if not is_owned:
+            # Actual cost (respects nation's real policy)
+            result = project_build_cost(display_name, nation)
+            if result:
+                for resource, amount in result.get("final_costs", {}).items():
+                    key = "cash" if resource == "money" else resource.lower()
+                    costs[key] = float(amount)
+            # Max-discount cost (all policies active)
+            result_mp = project_build_cost(display_name, max_discount_nation)
+            if result_mp:
+                for resource, amount in result_mp.get("final_costs", {}).items():
+                    key = "cash" if resource == "money" else resource.lower()
+                    all_policy_costs[key] = float(amount)
+        results.append({
+            "db_col": project_col,
+            "name": display_name,
+            "is_owned": is_owned,
+            "costs": costs,
+            "all_policy_costs": all_policy_costs,
+        })
+    return results
+
+
+def _compute_per_city_costs(
+    plan_data: Dict[str, Any],
+    nation: Dict[str, Any],
+    cities: List[Dict[str, Any]],
+    top_20_avg: float,
+) -> Dict[str, Any]:
+    """
+    Return per-city cost totals with per-substep breakdowns:
+      new_cities: list of {slot, city_number, label, costs, substep_costs}
+      existing_cities: list of {city_id, city_name, costs, substep_costs}
+    Each costs dict has {cash: float, resource: float, ...}.
+    substep_costs has {city_purchase, infra, land, improvements} each as a costs dict.
+    """
+    starting_cities = nation.get("num_cities", 0)
+    new_city_costs = []
+    existing_city_costs = []
+
+    for city_plan in plan_data.get("new_cities", []):
+        slot = city_plan["slot"]
+        city_number = starting_cities + slot
+        costs: Dict[str, float] = {"cash": 0.0}
+        substep_costs: Dict[str, Dict[str, float]] = {
+            "city_purchase": {},
+            "infra": {},
+            "land": {},
+            "improvements": {},
+        }
+
+        # City purchase
+        r = city_purchase_cost(city_number, top_20_avg, nation)
+        city_pur_cash = r["final_cost"]
+        costs["cash"] += city_pur_cash
+        substep_costs["city_purchase"] = {"cash": city_pur_cash}
+
+        # Infra — new city starts with 10 infra, buy delta to target
+        target_infra = city_plan.get("infra", 10)
+        if target_infra > 10:
+            r = infra_purchase_cost(10.0, target_infra - 10.0, nation)
+            infra_cash = r["final_cost"]
+            costs["cash"] += infra_cash
+            substep_costs["infra"] = {"cash": infra_cash}
+
+        # Land — new city starts with 250 land, buy delta to target
+        target_land = city_plan.get("land", 250)
+        if target_land > 250:
+            r = land_purchase_cost(250.0, target_land - 250.0, nation)
+            land_cash = r["final_cost"]
+            costs["cash"] += land_cash
+            substep_costs["land"] = {"cash": land_cash}
+
+        # Improvements
+        imp_costs: Dict[str, float] = {}
+        for imp_col, count in city_plan.get("improvements", {}).items():
+            if count > 0:
+                unit_cash = IMPROVEMENT_CASH_COSTS.get(imp_col, 0)
+                imp_costs["cash"] = imp_costs.get("cash", 0.0) + unit_cash * count
+                costs["cash"] += unit_cash * count
+                for resource, per_unit in IMPROVEMENT_RESOURCE_COSTS.get(imp_col, {}).items():
+                    imp_costs[resource] = imp_costs.get(resource, 0.0) + per_unit * count
+                    costs[resource] = costs.get(resource, 0.0) + per_unit * count
+        substep_costs["improvements"] = {k: v for k, v in imp_costs.items() if v > 0}
+
+        # Strip zeros
+        costs = {k: v for k, v in costs.items() if v > 0}
+        new_city_costs.append({
+            "slot": slot,
+            "city_number": city_number,
+            "label": city_plan.get("label", f"City {city_number}"),
+            "costs": costs,
+            "substep_costs": substep_costs,
+        })
+
+    for city_plan in plan_data.get("existing_cities", []):
+        city_id = city_plan.get("city_id")
+        if not city_id:
+            continue
+        city = next((c for c in cities if c.get("id") == city_id), None)
+        if not city:
+            continue
+        costs: Dict[str, float] = {"cash": 0.0}
+        substep_costs: Dict[str, Dict[str, float]] = {
+            "infra": {},
+            "land": {},
+            "improvements": {},
+        }
+
+        # Infra delta
+        target_infra = city_plan.get("target_infra")
+        if target_infra is not None:
+            current_infra = float(city.get("infrastructure", 0))
+            if target_infra > current_infra:
+                r = infra_purchase_cost(current_infra, target_infra - current_infra, nation)
+                infra_cash = r["final_cost"]
+                costs["cash"] += infra_cash
+                substep_costs["infra"] = {"cash": infra_cash}
+
+        # Land delta
+        target_land = city_plan.get("target_land")
+        if target_land is not None:
+            current_land = float(city.get("land", 0))
+            if target_land > current_land:
+                r = land_purchase_cost(current_land, target_land - current_land, nation)
+                land_cash = r["final_cost"]
+                costs["cash"] += land_cash
+                substep_costs["land"] = {"cash": land_cash}
+
+        # Improvement deltas
+        imp_costs: Dict[str, float] = {}
+        for imp_col, target_count in city_plan.get("target_improvements", {}).items():
+            current_count = int(city.get(imp_col, 0))
+            if target_count > current_count:
+                delta = target_count - current_count
+                unit_cash = IMPROVEMENT_CASH_COSTS.get(imp_col, 0)
+                imp_costs["cash"] = imp_costs.get("cash", 0.0) + unit_cash * delta
+                costs["cash"] += unit_cash * delta
+                for resource, per_unit in IMPROVEMENT_RESOURCE_COSTS.get(imp_col, {}).items():
+                    imp_costs[resource] = imp_costs.get(resource, 0.0) + per_unit * delta
+                    costs[resource] = costs.get(resource, 0.0) + per_unit * delta
+        substep_costs["improvements"] = {k: v for k, v in imp_costs.items() if v > 0}
+
+        costs = {k: v for k, v in costs.items() if v > 0}
+        existing_city_costs.append({
+            "city_id": city_id,
+            "city_name": city_plan.get("city_name", city.get("name", f"City {city_id}")),
+            "costs": costs,
+            "substep_costs": substep_costs,
+        })
+
+    return {
+        "new_cities": new_city_costs,
+        "existing_cities": existing_city_costs,
+    }
+
+
+def _compute_all_policy_total_costs(
+    plan_data: Dict[str, Any],
+    nation: Dict[str, Any],
+    cities: List[Dict[str, Any]],
+    top_20_avg: float,
+    total_costs: Dict[str, Any],
+) -> Dict[str, Any]:
+    """
+    Return total costs where projects are computed as if ALL applicable policies
+    are active (Technological Advancement + BDA + GSA), regardless of what the
+    nation currently has.  City/infra/land costs are unchanged (those functions
+    already always apply their policy discounts).
+    """
+    import copy
+
+    # Start from a copy of total_costs so city/infra/land numbers are preserved.
+    result = copy.deepcopy(total_costs)
+
+    # Build a max-discount nation for project cost recalculation.
+    max_nation = dict(nation)
+    max_nation["domestic_policy"] = "TECHNOLOGICAL_ADVANCEMENT"
+    max_nation["bureau_of_domestic_affairs"] = True
+    max_nation["government_support_agency"] = True
+
+    # Replace the projects portion of the totals.
+    # First subtract the original project costs from total/section.
+    orig_proj = total_costs["by_section"].get("projects", {})
+    for resource, amount in orig_proj.items():
+        result["total"][resource] = result["total"].get(resource, 0.0) - amount
+        result["by_section"]["projects"][resource] = 0.0
+
+    # Recompute project costs with max-discount nation.
+    for project_col in plan_data.get("projects", []):
+        if nation.get(project_col):
+            continue  # Already owned — no cost
+        display_name = _PROJECT_DB_COL_TO_DISPLAY.get(project_col)
+        if not display_name:
+            continue
+        proj_result = project_build_cost(display_name, max_nation)
+        if proj_result:
+            for resource, amount in proj_result.get("final_costs", {}).items():
+                r_key = "cash" if resource == "money" else resource.lower()
+                _add_cost(result, float(amount), "projects", r_key)
+
+    _cleanup_zero_costs(result)
+    return result
 
 
 def _add_cost(
@@ -842,10 +1074,10 @@ def _validate_plan_data(
                 )
             
             current_infra = float(city.get("infrastructure", 0))
-            if target_infra <= current_infra:
+            if target_infra < current_infra:
                 raise HTTPException(
                     status_code=422,
-                    detail=f"City {city.get('name')}: target infra ({target_infra}) must be greater than current ({current_infra:.2f})"
+                    detail=f"City {city.get('name')}: target infra ({target_infra}) cannot be below current ({current_infra:.2f})"
                 )
         
         # Validate land
@@ -858,10 +1090,10 @@ def _validate_plan_data(
                 )
             
             current_land = float(city.get("land", 0))
-            if target_land <= current_land:
+            if target_land < current_land:
                 raise HTTPException(
                     status_code=422,
-                    detail=f"City {city.get('name')}: target land ({target_land}) must be greater than current ({current_land:.2f})"
+                    detail=f"City {city.get('name')}: target land ({target_land}) cannot be below current ({current_land:.2f})"
                 )
         
         # Validate improvements
@@ -886,12 +1118,9 @@ def _validate_plan_data(
                     detail=f"Unknown improvement: {imp_col}"
                 )
             
-            current_count = int(city.get(imp_col, 0))
-            if target_count <= current_count:
-                raise HTTPException(
-                    status_code=422,
-                    detail=f"City {city.get('name')}: target {imp_col} count ({target_count}) must be greater than current ({current_count})"
-                )
+            # Existing-city improvement plans are final targets, not only
+            # additions. This allows optimizer plans and manual edits to
+            # remove, keep, or add improvements in one saved plan.
         
         # Validate slot limits (with improvements)
         if target_improvements:
@@ -948,451 +1177,4 @@ def _validate_plan_data(
         )
 
 
-# ── Preview Simulation ────────────────────────────────────────────────────────
 
-def _apply_plan_to_nation(
-    plan_data: Dict[str, Any],
-    nation: Dict[str, Any],
-    cities: List[Dict[str, Any]],
-) -> tuple[Dict[str, Any], List[Dict[str, Any]]]:
-    """
-    Apply plan to nation/cities to create simulated future state.
-    Returns (simulated_nation, simulated_cities).
-    """
-    import copy
-    
-    # Deep copy to avoid mutating originals
-    sim_nation = copy.deepcopy(nation)
-    sim_cities = copy.deepcopy(cities)
-    
-    # Apply existing city upgrades
-    for city_plan in plan_data.get("existing_cities", []):
-        city_id = city_plan.get("city_id")
-        if not city_id:
-            continue
-        
-        # Find city in simulated list
-        city = next((c for c in sim_cities if c.get("id") == city_id), None)
-        if not city:
-            continue
-        
-        # Apply infra upgrade
-        if city_plan.get("target_infra") is not None:
-            city["infrastructure"] = city_plan["target_infra"]
-        
-        # Apply land upgrade
-        if city_plan.get("target_land") is not None:
-            city["land"] = city_plan["target_land"]
-        
-        # Apply improvement upgrades
-        for imp_col, target_count in city_plan.get("target_improvements", {}).items():
-            city[imp_col] = target_count
-    
-    # Add new cities
-    starting_cities = nation.get("num_cities", 0)
-    for city_plan in plan_data.get("new_cities", []):
-        slot = city_plan["slot"]
-        new_city = {
-            "id": 900000 + starting_cities + slot,  # Fake ID
-            "name": f"City {starting_cities + slot}",
-            "nation_id": nation.get("id"),
-            "date": "2026-01-01T00:00:00Z",  # Placeholder
-            "infrastructure": city_plan.get("infra", 10),
-            "land": city_plan.get("land", 250),
-            "powered": True,  # Assume powered for preview
-            "oil_power": 0,
-            "wind_power": 0,
-            "coal_power": 0,
-            "nuclear_power": 0,
-            "coal_mine": 0,
-            "oil_well": 0,
-            "uranium_mine": 0,
-            "bauxite_mine": 0,
-            "iron_mine": 0,
-            "lead_mine": 0,
-            "farm": 0,
-            "police_station": 0,
-            "hospital": 0,
-            "recycling_center": 0,
-            "subway": 0,
-            "supermarket": 0,
-            "bank": 0,
-            "shopping_mall": 0,
-            "stadium": 0,
-            "barracks": 0,
-            "factory": 0,
-            "hangar": 0,
-            "drydock": 0,
-            "oil_refinery": 0,
-            "aluminum_refinery": 0,
-            "steel_mill": 0,
-            "munitions_factory": 0,
-        }
-        
-        # Apply improvements
-        for imp_col, count in city_plan.get("improvements", {}).items():
-            new_city[imp_col] = count
-        
-        sim_cities.append(new_city)
-    
-    # Update city count
-    sim_nation["num_cities"] = len(sim_cities)
-    
-    # Apply projects
-    for project_col in plan_data.get("projects", []):
-        sim_nation[project_col] = True
-    
-    return sim_nation, sim_cities
-
-
-async def _compute_preview(
-    simulated_nation: Dict[str, Any],
-    simulated_cities: List[Dict[str, Any]],
-) -> Dict[str, Any]:
-    """
-    Compute preview of simulated nation state.
-    Returns revenue, military caps, city summary, and warnings.
-    """
-    from Systems.PnW.Util.rev_correct import revenue_calc_sync
-    from Systems.Functions.database_manager import (
-        get_latest_resource_prices,
-        get_latest_game_info,
-        get_latest_radiation_data,
-    )
-    
-    # Gather game context
-    price_data, game_info, radiation_data = await asyncio.gather(
-        get_latest_resource_prices(),
-        get_latest_game_info(),
-        get_latest_radiation_data(),
-        return_exceptions=True,
-    )
-    
-    if isinstance(price_data, Exception) or not price_data:
-        price_data = {}
-    if isinstance(game_info, Exception):
-        game_info = None
-    if isinstance(radiation_data, Exception):
-        radiation_data = None
-    
-    # Build revenue inputs
-    market_prices = {r: p["sell"] for r, p in price_data.items()} if price_data else {}
-    
-    # Get colors data for revenue calc
-    from Systems.Functions.database_manager import get_latest_game_data
-    colors_data = await get_latest_game_data("colors")
-    colors_for_calc = {
-        c["color"]: float(c.get("turn_bonus", 0)) for c in colors_data
-    } if colors_data else {}
-    
-    radiation = _build_radiation(radiation_data)
-    seasonal_mod = _build_seasonal_mod(game_info)
-    
-    is_war = (
-        (simulated_nation.get("offensive_wars_count") or 0) > 0
-        or (simulated_nation.get("defensive_wars_count") or 0) > 0
-    )
-    
-    # Attach cities to nation for revenue calc
-    nation_with_cities = {**simulated_nation, "cities": simulated_cities}
-    
-    # Run revenue calculation
-    revenue_result = {}
-    try:
-        rev = await asyncio.to_thread(
-            revenue_calc_sync,
-            nation=nation_with_cities,
-            radiation=radiation,
-            treasures=[],
-            prices=market_prices,
-            colors=colors_for_calc,
-            seasonal_mod=seasonal_mod,
-            is_war=is_war,
-        )
-        if rev:
-            revenue_result = {
-                "gross_income": rev.get("gross_money_income", 0.0),
-                "net_cash_turn": rev.get("net_cash_num", 0.0),
-                "net_cash_day": rev.get("net_cash_num", 0.0) * 12,
-                "net_cash_week": rev.get("net_cash_num", 0.0) * 84,
-                "resources": {
-                    "food": rev.get("food", 0.0),
-                    "coal": rev.get("coal", 0.0),
-                    "oil": rev.get("oil", 0.0),
-                    "uranium": rev.get("uranium", 0.0),
-                    "lead": rev.get("lead", 0.0),
-                    "iron": rev.get("iron", 0.0),
-                    "bauxite": rev.get("bauxite", 0.0),
-                    "gasoline": rev.get("gasoline", 0.0),
-                    "munitions": rev.get("munitions", 0.0),
-                    "steel": rev.get("steel", 0.0),
-                    "aluminum": rev.get("aluminum", 0.0),
-                },
-            }
-    except Exception as e:
-        logger.error(f"Revenue calc failed for preview: {e}", exc_info=True)
-        revenue_result = {"error": "Revenue calculation failed"}
-    
-    # Compute military caps
-    military_caps = _compute_military_caps(simulated_nation, simulated_cities)
-    
-    # Compute city summary
-    city_summary = _compute_city_summary(simulated_cities)
-    
-    # Generate warnings
-    warnings = _generate_warnings(simulated_cities)
-    
-    return {
-        "revenue": revenue_result,
-        "military_caps": military_caps,
-        "city_summary": city_summary,
-        "warnings": warnings,
-    }
-
-
-def _build_radiation(radiation_data: Optional[Dict[str, float]]) -> Dict[str, float]:
-    """Build radiation dict from database data."""
-    if not radiation_data:
-        return {"na": 0, "sa": 0, "eu": 0, "as": 0, "af": 0, "au": 0, "an": 0}
-    global_rad = radiation_data.get("global", 0)
-    return {
-        "na": (radiation_data.get("north_america", 0) + global_rad) / -1000,
-        "sa": (radiation_data.get("south_america", 0) + global_rad) / -1000,
-        "eu": (radiation_data.get("europe", 0) + global_rad) / -1000,
-        "as": (radiation_data.get("asia", 0) + global_rad) / -1000,
-        "af": (radiation_data.get("africa", 0) + global_rad) / -1000,
-        "au": (radiation_data.get("australia", 0) + global_rad) / -1000,
-        "an": (radiation_data.get("antarctica", 0) + global_rad) / -1000,
-    }
-
-
-def _build_seasonal_mod(game_info: Optional[Dict[str, Any]]) -> Dict[str, float]:
-    """Build seasonal modifier dict from game_info."""
-    seasonal_mod = {
-        "na": 1, "sa": 1, "eu": 1, "as": 1, "af": 1, "au": 1, "an": 0.5,
-    }
-    if not game_info:
-        return seasonal_mod
-    game_date_str = game_info.get("game_date")
-    if not game_date_str:
-        return seasonal_mod
-    try:
-        from datetime import datetime
-        parsed = datetime.fromisoformat(str(game_date_str).replace("Z", "+00:00"))
-        month = parsed.month
-    except Exception:
-        return seasonal_mod
-    if month in (6, 7, 8):
-        seasonal_mod.update({"na": 1.2, "as": 1.2, "eu": 1.2, "sa": 0.8, "af": 0.8, "au": 0.8})
-    elif month in (12, 1, 2):
-        seasonal_mod.update({"na": 0.8, "as": 0.8, "eu": 0.8, "sa": 1.2, "af": 1.2, "au": 1.2})
-    return seasonal_mod
-
-
-def _compute_military_caps(nation: Dict[str, Any], cities: List[Dict[str, Any]]) -> Dict[str, Any]:
-    """
-    Compute military unit caps based on nation projects and city buildings.
-    Returns max units and daily buy limits.
-    """
-    import math
-    
-    num_cities = len(cities)
-    
-    # Count military buildings across all cities
-    total_barracks = sum(int(c.get("barracks", 0)) for c in cities)
-    total_factories = sum(int(c.get("factory", 0)) for c in cities)
-    total_hangars = sum(int(c.get("hangar", 0)) for c in cities)
-    total_drydocks = sum(int(c.get("drydock", 0)) for c in cities)
-    
-    # Base caps from cities
-    base_soldier_cap = num_cities * 15000
-    base_tank_cap = num_cities * 250
-    base_aircraft_cap = num_cities * 15
-    base_ship_cap = num_cities * 5
-    
-    # Building multipliers
-    barracks_multi = 1 + (total_barracks * 0.05)
-    factory_multi = 1 + (total_factories * 0.05)
-    hangar_multi = 1 + (total_hangars * 0.05)
-    drydock_multi = 1 + (total_drydocks * 0.05)
-    
-    # Project bonuses
-    if nation.get("vital_defense_system"):
-        barracks_multi += 0.25
-        factory_multi += 0.25
-    
-    if nation.get("military_research_center"):
-        hangar_multi += 0.25
-        drydock_multi += 0.25
-    
-    # Apply multipliers
-    max_soldiers = int(base_soldier_cap * barracks_multi)
-    max_tanks = int(base_tank_cap * factory_multi)
-    max_aircraft = int(base_aircraft_cap * hangar_multi)
-    max_ships = int(base_ship_cap * drydock_multi)
-    
-    # Daily buy limits
-    soldiers_per_day = int(max_soldiers * 0.05)
-    tanks_per_day = int(max_tanks * 0.10)
-    aircraft_per_day = int(max_aircraft * 0.10)
-    ships_per_day = max(1, int(max_ships * 0.02))
-    
-    # Missiles and nukes
-    missiles_per_day = 1 if nation.get("missile_launch_pad") else 0
-    if nation.get("space_program"):
-        missiles_per_day += 1
-    
-    nukes_per_day = 1 if nation.get("nuclear_research_facility") else 0
-    
-    # Max missiles/nukes (based on projects)
-    max_missiles = 0
-    if nation.get("missile_launch_pad"):
-        max_missiles = 25
-    if nation.get("space_program"):
-        max_missiles += 25
-    
-    max_nukes = 0
-    if nation.get("nuclear_research_facility"):
-        max_nukes = 15
-    if nation.get("nuclear_launch_facility"):
-        max_nukes += 15
-    
-    # Spies
-    base_spy_cap = 50
-    if nation.get("central_intelligence_agency"):
-        base_spy_cap += 10
-    if nation.get("spy_satellite"):
-        base_spy_cap += 10
-    max_spies = base_spy_cap + (num_cities * 1)
-    spies_per_day = max(1, int(max_spies * 0.04))
-    
-    return {
-        "max_soldiers": max_soldiers,
-        "soldiers_per_day": soldiers_per_day,
-        "max_tanks": max_tanks,
-        "tanks_per_day": tanks_per_day,
-        "max_aircraft": max_aircraft,
-        "aircraft_per_day": aircraft_per_day,
-        "max_ships": max_ships,
-        "ships_per_day": ships_per_day,
-        "missiles_per_day": missiles_per_day,
-        "max_missiles": max_missiles,
-        "nukes_per_day": nukes_per_day,
-        "max_nukes": max_nukes,
-        "max_spies": max_spies,
-        "spies_per_day": spies_per_day,
-    }
-
-
-def _compute_city_summary(cities: List[Dict[str, Any]]) -> Dict[str, Any]:
-    """Compute summary statistics for cities."""
-    if not cities:
-        return {
-            "num_cities": 0,
-            "avg_infra": 0,
-            "avg_land": 0,
-            "all_powered": True,
-            "all_within_slots": True,
-            "mmr": "0/0/0/0",
-        }
-    
-    total_infra = sum(float(c.get("infrastructure", 0)) for c in cities)
-    total_land = sum(float(c.get("land", 0)) for c in cities)
-    avg_infra = total_infra / len(cities)
-    avg_land = total_land / len(cities)
-    
-    # Power check
-    all_powered = True
-    for city in cities:
-        infra = float(city.get("infrastructure", 0))
-        powered_needs = (infra / 100)
-        wind = int(city.get("wind_power", 0))
-        nuclear = int(city.get("nuclear_power", 0))
-        oil = int(city.get("oil_power", 0))
-        coal = int(city.get("coal_power", 0))
-        power_produced = (wind * 250) + (nuclear * 2000) + (oil * 500) + (coal * 500)
-        if power_produced < powered_needs:
-            all_powered = False
-            break
-    
-    # Slot check
-    all_within_slots = True
-    for city in cities:
-        infra = float(city.get("infrastructure", 0))
-        max_slots = min(int(infra // 50), 50)
-        
-        # Count improvements
-        improvement_cols = [
-            "coal_mine", "oil_well", "uranium_mine", "lead_mine", "iron_mine",
-            "bauxite_mine", "farm", "coal_power", "oil_power", "nuclear_power",
-            "wind_power", "oil_refinery", "aluminum_refinery", "steel_mill",
-            "munitions_factory", "factory", "police_station", "hospital",
-            "recycling_center", "subway", "supermarket", "bank", "shopping_mall",
-            "stadium", "barracks", "hangar", "drydock",
-        ]
-        total_improvements = sum(int(city.get(col, 0)) for col in improvement_cols)
-        
-        if total_improvements > max_slots:
-            all_within_slots = False
-            break
-    
-    # MMR (Military buildings per city)
-    total_barracks = sum(int(c.get("barracks", 0)) for c in cities)
-    total_factories = sum(int(c.get("factory", 0)) for c in cities)
-    total_hangars = sum(int(c.get("hangar", 0)) for c in cities)
-    total_drydocks = sum(int(c.get("drydock", 0)) for c in cities)
-    
-    mmr_barracks = round(total_barracks / len(cities), 1)
-    mmr_factories = round(total_factories / len(cities), 1)
-    mmr_hangars = round(total_hangars / len(cities), 1)
-    mmr_drydocks = round(total_drydocks / len(cities), 1)
-    
-    return {
-        "num_cities": len(cities),
-        "avg_infra": round(avg_infra, 2),
-        "avg_land": round(avg_land, 2),
-        "all_powered": all_powered,
-        "all_within_slots": all_within_slots,
-        "mmr": f"{mmr_barracks}/{mmr_factories}/{mmr_hangars}/{mmr_drydocks}",
-    }
-
-
-def _generate_warnings(cities: List[Dict[str, Any]]) -> List[str]:
-    """Generate warnings for potential issues in the plan."""
-    warnings = []
-    
-    for city in cities:
-        city_name = city.get("name", f"City {city.get('id')}")
-        infra = float(city.get("infrastructure", 0))
-        
-        # Power warning
-        powered_needs = (infra / 100)
-        wind = int(city.get("wind_power", 0))
-        nuclear = int(city.get("nuclear_power", 0))
-        oil = int(city.get("oil_power", 0))
-        coal = int(city.get("coal_power", 0))
-        power_produced = (wind * 250) + (nuclear * 2000) + (oil * 500) + (coal * 500)
-        
-        if power_produced < powered_needs:
-            warnings.append(
-                f"{city_name}: Not powered (produces {int(power_produced)} but needs {int(powered_needs)})"
-            )
-        
-        # Slot warning
-        max_slots = min(int(infra // 50), 50)
-        improvement_cols = [
-            "coal_mine", "oil_well", "uranium_mine", "lead_mine", "iron_mine",
-            "bauxite_mine", "farm", "coal_power", "oil_power", "nuclear_power",
-            "wind_power", "oil_refinery", "aluminum_refinery", "steel_mill",
-            "munitions_factory", "factory", "police_station", "hospital",
-            "recycling_center", "subway", "supermarket", "bank", "shopping_mall",
-            "stadium", "barracks", "hangar", "drydock",
-        ]
-        total_improvements = sum(int(city.get(col, 0)) for col in improvement_cols)
-        
-        if total_improvements > max_slots:
-            warnings.append(
-                f"{city_name}: {total_improvements} improvements but only {max_slots} slots (need {total_improvements * 50} infra)"
-            )
-    
-    return warnings

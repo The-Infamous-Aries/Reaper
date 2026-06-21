@@ -5,6 +5,7 @@ Provides homepage statistics and creator information for the dashboard.
 
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import JSONResponse
+import json
 import logging
 import aiosqlite
 import os
@@ -27,8 +28,11 @@ async def get_stats():
     stats = {
         "servers": 0,
         "users": 0,
+        "alliances": 0,
         "nations": 0,
-        "pets": 0
+        "cities": 0,
+        "pets": 0,
+        "items": 0
     }
 
     try:
@@ -58,17 +62,34 @@ async def get_stats():
         else:
             logger.warning("Bot instance is None, returning 0 for Discord stats")
 
-        # Get nation count from GlobalNations.db
+        # Get alliance, nation, and city counts from GlobalNations.db
         try:
             nations_db_path = os.path.join(os.getcwd(), "Databases", "PnW", "GlobalNations.db")
             logger.info(f"Checking for nations DB at: {nations_db_path}")
             if os.path.exists(nations_db_path):
                 async with aiosqlite.connect(nations_db_path) as db:
-                    async with db.execute("SELECT COUNT(*) FROM nations") as cur:
+                    async with db.execute(
+                        "SELECT COUNT(DISTINCT alliance_id) FROM nations "
+                        "WHERE alliance_id IS NOT NULL AND alliance_id != 0"
+                    ) as cur:
                         result = await cur.fetchone()
                         if result:
-                            stats["nations"] = result[0]
-                            logger.info(f"Nations count: {stats['nations']}")
+                            stats["alliances"] = result[0] or 0
+                    async with db.execute(
+                        "SELECT COUNT(*) FROM nations "
+                        "WHERE nation_name IS NOT NULL AND nation_name != ''"
+                    ) as cur:
+                        result = await cur.fetchone()
+                        if result:
+                            stats["nations"] = result[0] or 0
+                    async with db.execute("SELECT COUNT(*) FROM cities") as cur:
+                        result = await cur.fetchone()
+                        if result:
+                            stats["cities"] = result[0] or 0
+                    logger.info(
+                        f"PnW stats: {stats['alliances']} alliances, "
+                        f"{stats['nations']} nations, {stats['cities']} cities"
+                    )
             else:
                 logger.warning(f"Nations DB not found at {nations_db_path}")
                 # Try to use the news database for nation count as fallback
@@ -84,24 +105,43 @@ async def get_stats():
         except Exception as e:
             logger.warning(f"Failed to get nation count: {e}", exc_info=True)
 
-        # Get pet count from Pets database
+        # Get pet and inventory item counts from Pets database
         try:
             from Systems.Functions.pets_db import pets_db
             all_pets = await pets_db.get_all_pet_data()
             stats["pets"] = len(all_pets) if all_pets else 0
-            logger.info(f"Pet count: {stats['pets']}")
+            stats["items"] = _count_inventory_items(all_pets)
+            logger.info(f"Pet stats: {stats['pets']} pets, {stats['items']} inventory items")
         except Exception as e:
             logger.warning(f"Failed to get pet count: {e}", exc_info=True)
             # Try fallback method
             try:
-                pets_db_path = os.path.join(os.getcwd(), "Databases", "Pets", "absorb.db")
+                pets_db_path = os.path.join(os.getcwd(), "Databases", "Pets", "pets.db")
                 if os.path.exists(pets_db_path):
                     async with aiosqlite.connect(pets_db_path) as db:
-                        async with db.execute("SELECT COUNT(*) FROM pets") as cur:
-                            result = await cur.fetchone()
-                            if result:
-                                stats["pets"] = result[0]
-                                logger.info(f"Pet count from absorb DB: {stats['pets']}")
+                        async with db.execute("SELECT pet_data FROM pets") as cur:
+                            rows = await cur.fetchall()
+                            pet_payloads = {}
+                            for index, row in enumerate(rows):
+                                try:
+                                    pet_payloads[str(index)] = json.loads(row[0])
+                                except Exception:
+                                    continue
+                            stats["pets"] = len(pet_payloads)
+                            stats["items"] = _count_inventory_items(pet_payloads)
+                            logger.info(
+                                f"Pet stats from fallback DB: "
+                                f"{stats['pets']} pets, {stats['items']} inventory items"
+                            )
+                else:
+                    legacy_pets_db_path = os.path.join(os.getcwd(), "Databases", "Pets", "absorb.db")
+                    if os.path.exists(legacy_pets_db_path):
+                        async with aiosqlite.connect(legacy_pets_db_path) as db:
+                            async with db.execute("SELECT COUNT(*) FROM pets") as cur:
+                                result = await cur.fetchone()
+                                if result:
+                                    stats["pets"] = result[0]
+                                    logger.info(f"Pet count from legacy absorb DB: {stats['pets']}")
             except Exception as e2:
                 logger.warning(f"Failed to get pet count from fallback: {e2}")
 
@@ -113,14 +153,37 @@ async def get_stats():
         # Return default stats even on error to ensure frontend always gets something
         return JSONResponse(content=stats, status_code=200)
 
+
+def _count_inventory_items(all_pets):
+    """Count every item quantity across all pet inventories."""
+    total = 0
+    if not all_pets:
+        return total
+
+    for pet in all_pets.values():
+        if not isinstance(pet, dict):
+            continue
+        inventory = pet.get("inventory") or []
+        if not isinstance(inventory, list):
+            continue
+
+        for item in inventory:
+            if not isinstance(item, dict):
+                continue
+            try:
+                total += max(0, int(item.get("count", 1) or 1))
+            except (TypeError, ValueError):
+                total += 1
+
+    return total
+
+
 @router.get("/creator")
 async def get_creator():
     """Get creator information for the homepage."""
     try:
         creator_data = {
             "name": "The Digital Reaper",
-            "aka": "The Infamous Aries",
-            "title": "Bot Overlord. Chaos Architect. Professional Soul Harvester.",
             "avatar": "/static/Images/keeper.png",
             "github": "https://github.com/The-Infamous-Aries/Reaper",
             "pnw_nation": "https://politicsandwar.com/nation/id=680891",

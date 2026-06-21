@@ -18,6 +18,7 @@ from starlette.requests import Request
 from Systems.Functions.db_paths import (
     ALERTS_DB_STR as ALERTS_DB,
     GLOBAL_NATIONS_DB_STR,
+    GLOBAL_WARS_DB_STR,
     HOLDINGS_DB_STR,
 )
 
@@ -38,6 +39,7 @@ def _current_user_id(request: Request) -> str | None:
 WAR_RANGE_MIN   = 0.75
 WAR_RANGE_MAX   = 2.5
 INACTIVITY_DAYS = 7
+DEFENSIVE_WAR_SLOT_LIMIT = 3
 
 # Import shared loot constants from beige_alerts_db so harvester + reaper +
 # web all use the same values without a cross-layer dependency.
@@ -305,6 +307,35 @@ async def _fetch_all_nations_local(
         return []
 
 
+async def _get_active_war_counts() -> Dict[int, Dict[str, int]]:
+    """
+    Return live active war slot counts from GlobalWars.db.
+
+    GlobalNations.defensive_wars_count is a snapshot/event-maintained fallback;
+    the active wars table is the source of truth for raid slot availability.
+    """
+    try:
+        from PnWHarvester.db.global_wars_db import GlobalWarsDB
+
+        wars_db = GlobalWarsDB(GLOBAL_WARS_DB_STR)
+        return await wars_db.get_active_war_counts()
+    except Exception as e:
+        logger.warning(f"Could not fetch active war counts from GlobalWars.db: {e}")
+        return {}
+
+
+def _active_defensive_wars(nation: Dict[str, Any], war_counts: Dict[int, Dict[str, int]]) -> int:
+    try:
+        nation_id = int(nation.get("id") or 0)
+    except (TypeError, ValueError):
+        nation_id = 0
+
+    if nation_id and nation_id in war_counts:
+        return int(war_counts[nation_id].get("def") or 0)
+
+    return int(nation.get("defensive_wars_count", 0) or 0)
+
+
 # ── DB helpers for beige alerts ───────────────────────────────────────────────
 
 # ── Beige DB helpers — thin wrappers around the shared module ─────────────────
@@ -425,6 +456,7 @@ async def raids_search(
         min_loot_val = _parse_loot_str(min_loot)
         prices       = await _get_prices()
         all_nations  = await _fetch_all_nations_local(min_score, max_score)
+        active_war_counts = await _get_active_war_counts()
 
         # Parse excluded alliances — lowercase set for O(1) lookup
         excluded_alliance_names: set = set()
@@ -459,8 +491,9 @@ async def raids_search(
             if not beige and (n.get("beige_turns", 0) or 0) > 0:
                 continue
 
-            def_wars = int(n.get("defensive_wars_count", 0) or 0)
-            if def_wars >= 3:
+            def_wars = _active_defensive_wars(n, active_war_counts)
+            n["active_defensive_wars_count"] = def_wars
+            if def_wars >= DEFENSIVE_WAR_SLOT_LIMIT:
                 continue
             # Filter by max defensive war count when requested
             if active_wars is not None and def_wars > active_wars:
@@ -528,6 +561,11 @@ async def raids_search(
                 "missiles":      n.get("missiles", 0),
                 "nukes":         n.get("nukes", 0),
                 "beige_turns":   n.get("beige_turns", 0),
+                "defensive_wars_count": n.get("active_defensive_wars_count", 0),
+                "defensive_war_slots_open": max(
+                    0,
+                    DEFENSIVE_WAR_SLOT_LIMIT - int(n.get("active_defensive_wars_count", 0) or 0),
+                ),
                 "war_policy":    n.get("war_policy"),
                 "alliance_name": (n.get("alliance") or {}).get("name") or n.get("alliance_name") or "None",
                 "alliance_id":   (n.get("alliance") or {}).get("id") or n.get("alliance_id"),

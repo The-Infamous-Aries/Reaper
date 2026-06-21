@@ -15,7 +15,9 @@ import json
 import logging
 import math
 import random
+import re
 import time
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 import aiosqlite
@@ -30,6 +32,17 @@ from web.api.pets.gpp_helpers import _invalidate_stats_cache
 
 logger = logging.getLogger("colosseum_api")
 router = APIRouter()
+
+# ── Pet badge helpers ─────────────────────────────────────────────────────────
+COLO_PROJECT_ROOT = Path(__file__).resolve().parents[2]
+COLO_BADGE_STATIC_ROOT = COLO_PROJECT_ROOT / "web" / "static" / "pet_badges"
+
+def _colo_selected_badge_url(user_id: str) -> str:
+    safe_user_id = re.sub(r"[^0-9A-Za-z_-]", "", str(user_id))
+    selected = COLO_BADGE_STATIC_ROOT / safe_user_id / "selected.png"
+    if not selected.exists():
+        return ""
+    return f"/static/pet_badges/{safe_user_id}/selected.png?v={int(selected.stat().st_mtime)}"
 
 # ── Constants ─────────────────────────────────────────────────────────────────
 BATTLE_INTERVAL_SECS = 3600   # 1 hour between rounds
@@ -326,9 +339,9 @@ async def _simulate_colosseum_battle(
 
         # ── Charge accumulation ───────────────────────────────────────────────
         if act_a == "charge":
-            fa["charge"] = DamageCalculator.get_next_charge_multiplier(fa["charge"])
+            fa["charge"] = DamageCalculator.get_next_charge_multiplier(fa["charge"], fa["pet_data"])
         if act_b == "charge":
-            fb["charge"] = DamageCalculator.get_next_charge_multiplier(fb["charge"])
+            fb["charge"] = DamageCalculator.get_next_charge_multiplier(fb["charge"], fb["pet_data"])
 
         # ── Damage calculation ────────────────────────────────────────────────
         r_a = DamageCalculator.calculate_battle_action(
@@ -846,6 +859,13 @@ async def colosseum_join(request: Request) -> JSONResponse:
 
     animation = AnimationComponent.for_ui_update("colosseum_join", 400)
 
+    # Task tracking — colosseum (fires each time the user joins/rejoins)
+    try:
+        from web.api.tasks_api import record_action as _task_record
+        await _task_record(user_id, "colosseum")
+    except Exception:
+        pass
+
     logger.info("[Colosseum] %s joined", user_id)
     return JSONResponse({"success": True, "message": "You have entered the Colosseum!", "animation": animation})
 
@@ -908,6 +928,8 @@ async def colosseum_state(request: Request) -> JSONResponse:
 
     if user_id:
         my_data = await _get_member(user_id)
+        if my_data:
+            my_data["badge_url"] = _colo_selected_badge_url(user_id) or None
         # Always fetch lifetime stats from pets DB so they show even after leaving
         try:
             pet = await user_data_manager.get_pet_data_async(user_id)
@@ -921,6 +943,10 @@ async def colosseum_state(request: Request) -> JSONResponse:
                 }
         except Exception:
             pass
+
+    # Enrich each member with badge_url
+    for m in members:
+        m["badge_url"] = _colo_selected_badge_url(m["user_id"]) or None
 
     # Next battle countdown
     try:
@@ -1026,7 +1052,15 @@ async def colosseum_claim(request: Request) -> JSONResponse:
     queue.push("colosseum_claim", {"user_id": user_id, "xp_claimed": pending_xp, "keys_claimed": len(keys_claimed), "potions_claimed": len(potions_claimed)})
     await queue.flush()
 
-    animation = AnimationComponent.for_loot({"xp": pending_xp, "keys": keys_claimed, "potions": potions_claimed}, 600)
+    # Build items list for animation
+    items = []
+    if pending_xp > 0:
+        items.append({"name": f"{pending_xp} XP", "rarity": "Common"})
+    for key in keys_claimed:
+        items.append({"name": key, "rarity": "Uncommon"})
+    for potion in potions_claimed:
+        items.append({"name": potion, "rarity": "Rare"})
+    animation = AnimationComponent.for_loot(items)
 
     return JSONResponse({
         "success":         True,

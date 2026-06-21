@@ -8,8 +8,16 @@ import re
 router = APIRouter()
 logger = logging.getLogger("Reaper.DocumentationAPI")
 
-# Calculate the root directory for file lookups
-root_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+# Calculate the docs directory - web/docs folder
+# __file__ is at: web/api/documentation_api.py
+# We want: web/docs
+api_dir = os.path.dirname(os.path.abspath(__file__))  # web/api
+web_dir = os.path.dirname(api_dir)  # web
+docs_dir = os.path.join(web_dir, "docs")  # web/docs
+
+# Log the docs directory on module load
+logger.info(f"Documentation API initialized. Docs directory: {docs_dir}")
+logger.info(f"Docs directory exists: {os.path.exists(docs_dir)}")
 
 # Document mapping with metadata
 DOCUMENTATION_FILES = {
@@ -36,46 +44,61 @@ DOCUMENTATION_FILES = {
         "file": "WEBSITE.md",
         "icon": "fa-globe",
         "description": "Web interface and API documentation"
+    },
+    "LICENSE": {
+        "title": "License",
+        "file": "LICENSE.md",
+        "icon": "fa-scale-balanced",
+        "description": "MIT License, third-party attributions, and privacy information"
     }
 }
 
-@router.get("/documentation/list")
+@router.get("/list")
 async def list_documents():
     """Get list of available documentation files."""
     try:
         docs_list = []
         for doc_id, doc_info in DOCUMENTATION_FILES.items():
-            file_path = os.path.join(root_dir, doc_info["file"])
+            file_path = os.path.join(docs_dir, doc_info["file"])
             exists = os.path.exists(file_path)
             docs_list.append({
                 "id": doc_id,
                 "title": doc_info["title"],
                 "icon": doc_info["icon"],
                 "description": doc_info["description"],
-                "available": exists
+                "available": exists,
+                "path": file_path  # Include path for debugging
             })
-        return JSONResponse(content={"documents": docs_list})
+        return JSONResponse(content={"documents": docs_list, "docs_dir": docs_dir})
     except Exception as e:
         logger.error(f"Error listing documents: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Error listing documents: {str(e)}")
 
-@router.get("/documentation/{doc_id}")
+@router.get("/{doc_id}")
 async def get_documentation(doc_id: str):
     """Get a documentation file by its ID."""
     try:
         # Validate document ID
         if doc_id not in DOCUMENTATION_FILES:
             logger.warning(f"Invalid document ID requested: {doc_id}")
-            raise HTTPException(status_code=404, detail="Document not found.")
+            raise HTTPException(status_code=404, detail=f"Document not found. Valid IDs: {', '.join(DOCUMENTATION_FILES.keys())}")
         
         doc_info = DOCUMENTATION_FILES[doc_id]
-        file_path = os.path.join(root_dir, doc_info["file"])
+        file_path = os.path.join(docs_dir, doc_info["file"])
         
+        logger.info(f"Docs directory: {docs_dir}")
         logger.info(f"Looking for document at: {file_path}")
+        logger.info(f"File exists: {os.path.exists(file_path)}")
 
         if not os.path.exists(file_path):
             logger.warning(f"Document file not found: {file_path}")
-            raise HTTPException(status_code=404, detail=f"Document file '{doc_info['file']}' not found.")
+            # List files in docs_dir for debugging
+            try:
+                files_in_docs = os.listdir(docs_dir)
+                logger.info(f"Files in docs directory: {files_in_docs}")
+            except Exception as e:
+                logger.error(f"Could not list docs directory: {e}")
+            raise HTTPException(status_code=404, detail=f"Document file '{doc_info['file']}' not found at {file_path}")
 
         # Read the file content
         content = await asyncio.to_thread(lambda: open(file_path, "r", encoding="utf-8").read())
@@ -126,7 +149,7 @@ async def get_documentation(doc_id: str):
         logger.error(f"Error serving documentation: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Error serving documentation: {str(e)}")
 
-@router.get("/documentation/search")
+@router.get("/search")
 async def search_documentation(query: str):
     """Search across all documentation files."""
     try:
@@ -137,7 +160,7 @@ async def search_documentation(query: str):
         query_lower = query.lower()
         
         for doc_id, doc_info in DOCUMENTATION_FILES.items():
-            file_path = os.path.join(root_dir, doc_info["file"])
+            file_path = os.path.join(docs_dir, doc_info["file"])
             
             if not os.path.exists(file_path):
                 continue

@@ -12,7 +12,13 @@ from typing import Any, Dict, Optional
 from fastapi import APIRouter, Body, HTTPException, Request
 from fastapi.responses import JSONResponse
 
-from Systems.Functions.tasks_db import tasks_db
+from Systems.Functions.tasks_db import (
+    COMPLETION_COOLDOWN_HOURS,
+    DISMISS_COOLDOWN_HOURS,
+    MONTHLY_SLOTS,
+    WEEKLY_SLOTS,
+    tasks_db,
+)
 from Systems.Functions.user_data_manager import user_data_manager
 from Systems.Pets.Logic.event_bus import EventQueue
 from Systems.Pets.Logic.pet_components import AnimationComponent
@@ -20,6 +26,26 @@ from web.api.pets.gpp_helpers import _invalidate_stats_cache
 
 logger = logging.getLogger("tasks_api")
 router = APIRouter()
+
+
+def _hours_to_seconds(hours: int) -> int:
+    return hours * 3600
+
+
+def _apply_cooldown_seconds(slots: list[Dict[str, Any]], now: float) -> None:
+    for slot in slots:
+        if slot.get("on_cooldown"):
+            slot["seconds_remaining"] = max(0, int(slot.get("cooldown_until", 0) - now))
+        else:
+            slot["seconds_remaining"] = 0
+
+
+def _reward_animation_items(reward: Dict[str, Any], rarity: str) -> list[Dict[str, str]]:
+    reward_items = reward.get("items", []) if reward.get("type") == "bundle" else [reward]
+    return [
+        {"name": str(item.get("item", item.get("name", "Reward"))), "rarity": rarity}
+        for item in reward_items
+    ]
 
 
 def _get_bot():
@@ -127,6 +153,24 @@ async def midnight_reset_loop():
             logger.info("midnight_reset_loop: UTC midnight reached — resetting all users")
             await tasks_db.midnight_reset_all_users()
 
+            # ── Weekly task reset (Sundays only) ──────────────────────────
+            try:
+                now_dt_after = datetime.now(timezone.utc)
+                if now_dt_after.weekday() == 6:  # Sunday (weekday 6 = Sunday)
+                    await tasks_db.weekly_reset_all_users()
+                    logger.info("midnight_reset_loop: Weekly task reset complete (Sunday)")
+            except Exception as we:
+                logger.error(f"midnight_reset_loop: weekly reset failed: {we}", exc_info=True)
+
+            # ── Monthly task reset (1st of each month only) ───────────────
+            try:
+                now_dt_after = datetime.now(timezone.utc)
+                if now_dt_after.day == 1:
+                    await tasks_db.monthly_reset_all_users()
+                    logger.info("midnight_reset_loop: Monthly task reset complete (1st of month)")
+            except Exception as me:
+                logger.error(f"midnight_reset_loop: monthly reset failed: {me}", exc_info=True)
+
             # ── Pet Powerball daily draw ──────────────────────────────────
             try:
                 from web.api.powerball_api import run_daily_draw
@@ -216,16 +260,11 @@ async def dismiss_task(request: Request, data: Dict[str, Any] = Body(...)):
 
     try:
         await tasks_db.dismiss_task(user_id, slot)
-        # Schedule DM notification after 1h cooldown expires
-        asyncio.create_task(_delayed_notify(user_id, slot, 3600))
+        # Schedule DM notification after the dismissal cooldown expires.
+        asyncio.create_task(_delayed_notify(user_id, slot, _hours_to_seconds(DISMISS_COOLDOWN_HOURS["daily"])))
         # Return full slot list including goal
         slots = await tasks_db.get_slots(user_id)
-        now = time.time()
-        for s in slots:
-            if s.get("on_cooldown"):
-                s["seconds_remaining"] = max(0, int(s["cooldown_until"] - now))
-            else:
-                s["seconds_remaining"] = 0
+        _apply_cooldown_seconds(slots, time.time())
 
         # ── GPP: emit event + animation (Observer pattern + Component pattern) ─────────
         queue = EventQueue()
@@ -238,6 +277,58 @@ async def dismiss_task(request: Request, data: Dict[str, Any] = Body(...)):
     except Exception as e:
         logger.error(f"dismiss_task error: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to dismiss task.")
+
+
+@router.post("/tasks/dismiss-weekly")
+async def dismiss_weekly_task(request: Request, data: Dict[str, Any] = Body(...)):
+    user = request.session.get("discord_user")
+    if not user:
+        return JSONResponse({"error": "Not logged in"}, status_code=401)
+    user_id = user.get("id")
+    if not user_id:
+        return JSONResponse({"error": "User ID not found in session"}, status_code=401)
+    user_id = str(user_id)
+
+    slot = int(data.get("slot", -1))
+    if not (11 <= slot < 11 + WEEKLY_SLOTS):
+        raise HTTPException(status_code=400, detail="Invalid weekly task slot.")
+
+    try:
+        await tasks_db.dismiss_weekly_task(user_id, slot)
+        # Return full slot list
+        slots = await tasks_db.get_weekly_slots(user_id)
+        _apply_cooldown_seconds(slots, time.time())
+        
+        return JSONResponse({"success": True, "slots": slots})
+    except Exception as e:
+        logger.error(f"dismiss_weekly_task error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to dismiss weekly task.")
+
+
+@router.post("/tasks/dismiss-monthly")
+async def dismiss_monthly_task(request: Request, data: Dict[str, Any] = Body(...)):
+    user = request.session.get("discord_user")
+    if not user:
+        return JSONResponse({"error": "Not logged in"}, status_code=401)
+    user_id = user.get("id")
+    if not user_id:
+        return JSONResponse({"error": "User ID not found in session"}, status_code=401)
+    user_id = str(user_id)
+
+    slot = int(data.get("slot", -1))
+    if not (21 <= slot < 21 + MONTHLY_SLOTS):
+        raise HTTPException(status_code=400, detail="Invalid monthly task slot.")
+
+    try:
+        await tasks_db.dismiss_monthly_task(user_id, slot)
+        # Return full slot list
+        slots = await tasks_db.get_monthly_slots(user_id)
+        _apply_cooldown_seconds(slots, time.time())
+
+        return JSONResponse({"success": True, "slots": slots})
+    except Exception as e:
+        logger.error(f"dismiss_monthly_task error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to dismiss monthly task.")
 
 
 async def _delayed_notify(user_id: str, slot: int, delay: float):
@@ -304,9 +395,7 @@ async def debug_session(request: Request):
 async def record_action(user_id: str, action: str, meta: Optional[Dict] = None, won: bool = True):
     """
     Called by game endpoints after a successful action.
-    Increments progress on matching tasks. Tasks that reach their required count
-    are marked completed but rewards are NOT delivered — the user must visit the
-    Tasks page and click Claim.
+    Increments progress on daily, weekly, and monthly matching tasks.
     """
     try:
         if action in ("battle_npc", "boss") and not won:
@@ -314,8 +403,45 @@ async def record_action(user_id: str, action: str, meta: Optional[Dict] = None, 
 
         await tasks_db.update_progress(user_id, action, meta)
 
+        try:
+            await tasks_db.update_weekly_progress(user_id, action, meta)
+        except Exception as we:
+            logger.debug(f"weekly progress update error for {user_id}/{action}: {we}")
+
+        try:
+            await tasks_db.update_monthly_progress(user_id, action, meta)
+        except Exception as me:
+            logger.debug(f"monthly progress update error for {user_id}/{action}: {me}")
+
     except Exception as e:
         logger.error(f"record_action error for {user_id}/{action}: {e}", exc_info=True)
+
+
+async def record_action_by(user_id: str, action: str, amount: int, meta: Optional[Dict] = None, won: bool = True):
+    """
+    Called by endpoints where one action can count multiple units.
+    Increments daily, weekly, and monthly matching tasks by the provided amount.
+    """
+    try:
+        if amount <= 0:
+            return
+        if action in ("battle_npc", "boss") and not won:
+            return
+
+        await tasks_db.update_progress_by(user_id, action, amount)
+
+        try:
+            await tasks_db.update_weekly_progress_by(user_id, action, amount, meta)
+        except Exception as we:
+            logger.debug(f"weekly progress-by update error for {user_id}/{action}: {we}")
+
+        try:
+            await tasks_db.update_monthly_progress_by(user_id, action, amount, meta)
+        except Exception as me:
+            logger.debug(f"monthly progress-by update error for {user_id}/{action}: {me}")
+
+    except Exception as e:
+        logger.error(f"record_action_by error for {user_id}/{action}/{amount}: {e}", exc_info=True)
 
 
 async def _check_and_deliver_daily_goal(user_id: str, completed_slots: list):
@@ -350,7 +476,7 @@ async def claim_task(request: Request, data: Dict[str, Any] = Body(...)):
         logger.info(f"Task claimed for {user_id} slot {slot}: {reward_msg}")
 
         # Schedule DM when the slot refreshes after cooldown
-        asyncio.create_task(_delayed_notify(user_id, slot, 4 * 3600))
+        asyncio.create_task(_delayed_notify(user_id, slot, _hours_to_seconds(COMPLETION_COOLDOWN_HOURS["daily"])))
 
         # Check if daily goal just completed so we can notify
         goal_data = await tasks_db.get_task_for_slot(user_id, 0)
@@ -362,19 +488,14 @@ async def claim_task(request: Request, data: Dict[str, Any] = Body(...)):
 
         # Return updated slots
         slots = await tasks_db.get_slots(user_id)
-        now = time.time()
-        for s in slots:
-            if s.get("on_cooldown"):
-                s["seconds_remaining"] = max(0, int(s["cooldown_until"] - now))
-            else:
-                s["seconds_remaining"] = 0
+        _apply_cooldown_seconds(slots, time.time())
 
         # ── GPP: emit event + animation (Observer pattern + Component pattern) ─────────
         queue = EventQueue()
         queue.push("tasks_claim", {"user_id": user_id, "slot": slot, "reward": reward})
         await queue.flush()
 
-        animation = AnimationComponent.for_loot({"reward": reward}, 500)
+        animation = AnimationComponent.for_loot(_reward_animation_items(reward, "Common"))
 
         return JSONResponse({
             "success": True,
@@ -387,6 +508,176 @@ async def claim_task(request: Request, data: Dict[str, Any] = Body(...)):
     except Exception as e:
         logger.error(f"claim_task error for {user_id} slot {slot}: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to claim task.")
+
+
+@router.get("/tasks/weekly")
+async def get_weekly_tasks(request: Request):
+    """Return the user's weekly tasks (slots 10-13)."""
+    user = request.session.get("discord_user")
+    if not user:
+        return JSONResponse({"error": "Not logged in"}, status_code=401)
+    user_id = str(user.get("id", ""))
+    if not user_id:
+        return JSONResponse({"error": "User ID not found"}, status_code=401)
+    try:
+        pet = await user_data_manager.get_pet_data_async(user_id)
+        if not pet:
+            return JSONResponse({"error": "no_pet"}, status_code=200)
+        weekly = await tasks_db.get_weekly_slots(user_id)
+        _apply_cooldown_seconds(weekly, time.time())
+        return JSONResponse({"weekly": weekly})
+    except Exception as e:
+        logger.error(f"get_weekly_tasks error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to load weekly tasks.")
+
+
+@router.post("/tasks/weekly/claim")
+async def claim_weekly_task(request: Request, data: Dict[str, Any] = Body(...)):
+    """Claim a completed weekly task reward (slot 11-13)."""
+    user = request.session.get("discord_user")
+    if not user:
+        return JSONResponse({"error": "Not logged in"}, status_code=401)
+    user_id = str(user.get("id", ""))
+    slot = int(data.get("slot", -1))
+    if not (11 <= slot < 11 + WEEKLY_SLOTS):
+        raise HTTPException(status_code=400, detail="Invalid weekly slot.")
+    try:
+        reward = await tasks_db.claim_weekly_task(user_id, slot)
+        if reward is None:
+            return JSONResponse({"error": "Not claimable"}, status_code=400)
+        reward_msg = await tasks_db.deliver_reward(user_id, reward)
+        logger.info(f"Weekly task claimed for {user_id} slot {slot}: {reward_msg}")
+        weekly = await tasks_db.get_weekly_slots(user_id)
+        _apply_cooldown_seconds(weekly, time.time())
+
+        queue = EventQueue()
+        queue.push("weekly_task_claim", {"user_id": user_id, "slot": slot, "reward": reward})
+        await queue.flush()
+        animation = AnimationComponent.for_loot(_reward_animation_items(reward, "Uncommon"))
+
+        return JSONResponse({
+            "success": True, "reward": reward, "reward_msg": reward_msg,
+            "weekly": weekly, "animation": animation
+        })
+    except Exception as e:
+        logger.error(f"claim_weekly_task error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to claim weekly task.")
+
+
+@router.post("/tasks/weekly/claim-goal")
+async def claim_weekly_goal(request: Request):
+    """Claim the weekly goal reward once all 3 weekly tasks are claimed."""
+    user = request.session.get("discord_user")
+    if not user:
+        return JSONResponse({"error": "Not logged in"}, status_code=401)
+    user_id = str(user.get("id", ""))
+    try:
+        reward = await tasks_db.claim_weekly_goal(user_id)
+        if reward is None:
+            return JSONResponse({"error": "Not claimable"}, status_code=400)
+        reward_msg = await tasks_db.deliver_reward(user_id, reward)
+        logger.info(f"Weekly goal claimed for {user_id}: {reward_msg}")
+        weekly = await tasks_db.get_weekly_slots(user_id)
+        _apply_cooldown_seconds(weekly, time.time())
+
+        queue = EventQueue()
+        queue.push("weekly_goal_claim", {"user_id": user_id, "reward": reward})
+        await queue.flush()
+        animation = AnimationComponent.for_loot(_reward_animation_items(reward, "Rare"))
+
+        return JSONResponse({
+            "success": True, "reward": reward, "reward_msg": reward_msg,
+            "weekly": weekly, "animation": animation
+        })
+    except Exception as e:
+        logger.error(f"claim_weekly_goal error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to claim weekly goal.")
+
+
+# ── Monthly task endpoints ────────────────────────────────────────────────────
+
+@router.get("/tasks/monthly")
+async def get_monthly_tasks(request: Request):
+    """Return the user's monthly tasks (slots 20-26)."""
+    user = request.session.get("discord_user")
+    if not user:
+        return JSONResponse({"error": "Not logged in"}, status_code=401)
+    user_id = str(user.get("id", ""))
+    if not user_id:
+        return JSONResponse({"error": "User ID not found"}, status_code=401)
+    try:
+        pet = await user_data_manager.get_pet_data_async(user_id)
+        if not pet:
+            return JSONResponse({"error": "no_pet"}, status_code=200)
+        monthly = await tasks_db.get_monthly_slots(user_id)
+        _apply_cooldown_seconds(monthly, time.time())
+        return JSONResponse({"monthly": monthly})
+    except Exception as e:
+        logger.error(f"get_monthly_tasks error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to load monthly tasks.")
+
+
+@router.post("/tasks/monthly/claim")
+async def claim_monthly_task(request: Request, data: Dict[str, Any] = Body(...)):
+    """Claim a completed monthly task reward (slots 21-26)."""
+    user = request.session.get("discord_user")
+    if not user:
+        return JSONResponse({"error": "Not logged in"}, status_code=401)
+    user_id = str(user.get("id", ""))
+    slot = int(data.get("slot", -1))
+    if not (21 <= slot < 21 + MONTHLY_SLOTS):
+        raise HTTPException(status_code=400, detail="Invalid monthly slot.")
+    try:
+        reward = await tasks_db.claim_monthly_task(user_id, slot)
+        if reward is None:
+            return JSONResponse({"error": "Not claimable"}, status_code=400)
+        reward_msg = await tasks_db.deliver_reward(user_id, reward)
+        logger.info(f"Monthly task claimed for {user_id} slot {slot}: {reward_msg}")
+        monthly = await tasks_db.get_monthly_slots(user_id)
+        _apply_cooldown_seconds(monthly, time.time())
+
+        queue = EventQueue()
+        queue.push("monthly_task_claim", {"user_id": user_id, "slot": slot, "reward": reward})
+        await queue.flush()
+        animation = AnimationComponent.for_loot(_reward_animation_items(reward, "Uncommon"))
+
+        return JSONResponse({
+            "success": True, "reward": reward, "reward_msg": reward_msg,
+            "monthly": monthly, "animation": animation
+        })
+    except Exception as e:
+        logger.error(f"claim_monthly_task error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to claim monthly task.")
+
+
+@router.post("/tasks/monthly/claim-goal")
+async def claim_monthly_goal(request: Request):
+    """Claim the monthly goal reward once all 10 monthly tasks are claimed."""
+    user = request.session.get("discord_user")
+    if not user:
+        return JSONResponse({"error": "Not logged in"}, status_code=401)
+    user_id = str(user.get("id", ""))
+    try:
+        reward = await tasks_db.claim_monthly_goal(user_id)
+        if reward is None:
+            return JSONResponse({"error": "Not claimable"}, status_code=400)
+        reward_msg = await tasks_db.deliver_reward(user_id, reward)
+        logger.info(f"Monthly goal claimed for {user_id}: {reward_msg}")
+        monthly = await tasks_db.get_monthly_slots(user_id)
+        _apply_cooldown_seconds(monthly, time.time())
+
+        queue = EventQueue()
+        queue.push("monthly_goal_claim", {"user_id": user_id, "reward": reward})
+        await queue.flush()
+        animation = AnimationComponent.for_loot(_reward_animation_items(reward, "Rare"))
+
+        return JSONResponse({
+            "success": True, "reward": reward, "reward_msg": reward_msg,
+            "monthly": monthly, "animation": animation
+        })
+    except Exception as e:
+        logger.error(f"claim_monthly_goal error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to claim monthly goal.")
 
 
 @router.post("/tasks/claim-goal")
@@ -422,7 +713,7 @@ async def claim_daily_goal(request: Request):
         queue.push("tasks_claim_goal", {"user_id": user_id, "reward": reward})
         await queue.flush()
 
-        animation = AnimationComponent.for_loot({"reward": reward}, 600)
+        animation = AnimationComponent.for_loot(_reward_animation_items(reward, "Uncommon"))
 
         return JSONResponse({
             "success": True,

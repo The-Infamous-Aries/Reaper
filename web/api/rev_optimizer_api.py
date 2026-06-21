@@ -21,8 +21,17 @@ from Systems.Functions.database_manager import (
 
 router = APIRouter()
 logger = logging.getLogger("Reaper.WebServer.RevOptimizerAPI")
-WATCH_ALLIANCE_ID = 10259
-EP_KEYWORDS = {"darkstar", "ds", str(WATCH_ALLIANCE_ID)}
+WATCH_ALLIANCE_ID = 14873  # Union of Revolutionary States
+EP_KEYWORDS = {"urs", "union of revolutionary states", str(WATCH_ALLIANCE_ID)}
+PLAN_IMPROVEMENTS = (
+    "coal_power", "oil_power", "nuclear_power", "wind_power",
+    "coal_mine", "oil_well", "uranium_mine", "bauxite_mine",
+    "iron_mine", "lead_mine", "farm",
+    "oil_refinery", "aluminum_refinery", "steel_mill", "munitions_factory",
+    "police_station", "hospital", "recycling_center", "subway",
+    "supermarket", "bank", "shopping_mall", "stadium",
+    "barracks", "factory", "hangar", "drydock",
+)
 
 
 def _clean(v):
@@ -32,8 +41,83 @@ def _clean(v):
     return v
 
 
+def _clean_deep(v):
+    v = _clean(v)
+    if isinstance(v, dict):
+        return {k: _clean_deep(val) for k, val in v.items()}
+    if isinstance(v, list):
+        return [_clean_deep(x) for x in v]
+    return v
+
+
 def _clean_suggestion(s: dict) -> dict:
-    return {k: _clean(v) for k, v in s.items()}
+    return _clean_deep(s)
+
+
+def _revenue_preview_payload(rev: dict) -> dict:
+    """Keep only the revenue fields the optimizer preview renders."""
+    keys = (
+        'net_cash_num', 'monetary_net_num', 'gross_money_income',
+        'gross_income', 'color_bonus_turn', 'military_upkeep_turn',
+        'improvement_upkeep_turn', 'power_upkeep_turn', 'rss_upkeep_turn',
+        'food', 'coal', 'oil', 'uranium', 'lead', 'iron', 'bauxite',
+        'gasoline', 'munitions', 'steel', 'aluminum',
+    )
+    return _clean_deep({k: rev.get(k, 0) for k in keys})
+
+
+def _city_id(city: dict) -> Optional[int]:
+    raw = city.get("id") or city.get("city_id")
+    try:
+        return int(raw)
+    except Exception:
+        return None
+
+
+def _build_plan_payload(nation: dict, result: dict) -> dict:
+    """Build a My Nation plan from the optimizer's complete final city targets."""
+    source_cities = nation.get("cities") or []
+    existing_cities = []
+
+    for ca in result.get("city_analyses", []):
+        final = next((
+            s for s in ca.get("suggestions", [])
+            if s.get("scenario") == "final_city_update" and s.get("final_counts")
+        ), None)
+        if not final:
+            continue
+
+        idx = final.get("city_idx")
+        if not isinstance(idx, int) or idx < 0 or idx >= len(source_cities):
+            continue
+
+        city = source_cities[idx]
+        city_id = _city_id(city)
+        if not city_id:
+            continue
+
+        final_counts = final.get("final_counts") or {}
+        target_improvements = {}
+        for imp in PLAN_IMPROVEMENTS:
+            target_count = int(final_counts.get(imp, 0) or 0)
+            current_count = int(city.get(imp, 0) or 0)
+            if target_count > 0 or current_count > 0:
+                target_improvements[imp] = target_count
+
+        existing_cities.append({
+            "city_id": city_id,
+            "city_name": city.get("name") or ca.get("name") or f"City {idx + 1}",
+            "target_infra": float(ca.get("infra", city.get("infrastructure", 0)) or 0),
+            "target_land": float(ca.get("land", city.get("land", 0)) or 0),
+            "target_improvements": target_improvements,
+        })
+
+    return {
+        "new_cities": [],
+        "existing_cities": existing_cities,
+        "projects": [],
+        "source": "rev_optimizer",
+    }
 
 
 async def _load_game_context() -> dict:
@@ -89,6 +173,7 @@ def _serialize_result(nation: dict, result: dict, prices: dict) -> dict:
             'land':  ca['land'],
             'stats': {k: _clean(v) for k, v in ca['stats'].items()},
             'suggestions': [_clean_suggestion(s) for s in ca['suggestions']],
+            'build_scenarios': [_clean_suggestion(s) for s in ca.get('build_scenarios', [])],
         })
 
     return {
@@ -96,11 +181,23 @@ def _serialize_result(nation: dict, result: dict, prices: dict) -> dict:
         'nation_name':      nation.get('nation_name', 'Unknown'),
         'leader_name':      nation.get('leader_name', ''),
         'flag':             nation.get('flag', ''),
+        'war_policy':       nation.get('war_policy', ''),
+        'domestic_policy':  nation.get('domestic_policy', ''),
         'num_cities':       nation.get('num_cities', 0),
         'current_net':      _clean(result.get('current_net', 0)),
         'current_monetary': _clean(result.get('current_monetary', 0)),
+        'optimized_net':    _clean(result.get('optimized_net', result.get('current_net', 0))),
+        'optimized_monetary': _clean(result.get('optimized_monetary', result.get('current_monetary', 0))),
+        'optimized_net_gain_day': _clean(result.get('optimized_net_gain_day', 0)),
+        'optimized_monetary_gain_day': _clean(result.get('optimized_monetary_gain_day', 0)),
+        'optimized_updates_applied': result.get('optimized_updates_applied', 0),
+        'before_revenue_full': _revenue_preview_payload(result.get('before_revenue_full', {})),
+        'after_revenue_full': _revenue_preview_payload(result.get('after_revenue_full', {})),
+        'total_update_cost': _clean_deep(result.get('total_update_cost', {})),
+        'build_plan':       _clean_deep(_build_plan_payload(nation, result)),
         'max_commerce':     modifiers.get('max_commerce', 100),
         'city_analyses':    city_analyses,
+        'target_settings':  result.get('target_settings', {}),
         'project_suggestions': [_clean_suggestion(p) for p in result.get('project_suggestions', [])],
         'top_suggestions':  [_clean_suggestion(s) for s in result.get('top_suggestions', [])[:20]],
         'prices':           prices,
@@ -114,7 +211,7 @@ def _global_db() -> GlobalNationsDB:
 async def _get_nation_with_cities(query: str, query_instance) -> Optional[dict]:
     """
     Fetch nation + cities, checking GlobalNations.db first (single source of truth
-    for all nations including Darkstar), then falling back to the live PnW API.
+    for all nations including URS), then falling back to the live PnW API.
     """
     clean = query.strip()
 
@@ -143,7 +240,16 @@ async def _get_nation_with_cities(query: str, query_instance) -> Optional[dict]:
         return None
 
 
-def _run_analyze_revenue(nation: dict, prices: dict, colors: dict, seasonal_mod: dict, radiation: dict) -> dict:
+def _run_analyze_revenue(
+    nation: dict,
+    prices: dict,
+    colors: dict,
+    seasonal_mod: dict,
+    radiation: dict,
+    desired_infra: Optional[float] = None,
+    desired_land: Optional[float] = None,
+    desired_mmr: Optional[str] = None,
+) -> dict:
     """Synchronous wrapper — runs in a thread to avoid blocking the event loop."""
     return analyze_revenue(
         nation=nation,
@@ -152,12 +258,15 @@ def _run_analyze_revenue(nation: dict, prices: dict, colors: dict, seasonal_mod:
         seasonal_mod=seasonal_mod,
         radiation=radiation,
         treasures=[],
+        desired_infra=desired_infra,
+        desired_land=desired_land,
+        desired_mmr=desired_mmr,
     )
 
 
 @router.get("/revopt/ep_nations")
 async def get_ep_nations():
-    """Return a lightweight list of Darkstar nations for the frontend dropdown."""
+    """Return a lightweight list of URS nations for the frontend dropdown."""
     try:
         db = _global_db()
         nations = await db.get_nations_by_alliance(WATCH_ALLIANCE_ID)
@@ -175,6 +284,9 @@ async def rev_opt_analyze(
     query: str = Query(..., description="Nation name/ID or alliance name/ID"),
     type: str = Query("auto", description="'nation', 'alliance', or 'auto'"),
     refresh: bool = Query(False),
+    desired_infra: Optional[float] = Query(None, ge=0, description="Planned infra per city"),
+    desired_land: Optional[float] = Query(None, ge=0, description="Planned land per city"),
+    desired_mmr: Optional[str] = Query(None, description="Planned B/F/H/D MMR, e.g. 2/3/5/1"),
 ):
     """
     Run the full revenue optimizer for a nation or every nation in an alliance.
@@ -253,7 +365,8 @@ async def rev_opt_analyze(
                 try:
                     result = await asyncio.to_thread(
                         _run_analyze_revenue, nation, prices,
-                        ctx['colors'], ctx['seasonal_mod'], ctx['radiation']
+                        ctx['colors'], ctx['seasonal_mod'], ctx['radiation'],
+                        desired_infra, desired_land, desired_mmr
                     )
                     return _serialize_result(nation, result, prices)
                 except Exception as e:
@@ -274,7 +387,8 @@ async def rev_opt_analyze(
 
         result = await asyncio.to_thread(
             _run_analyze_revenue, nation, prices,
-            ctx['colors'], ctx['seasonal_mod'], ctx['radiation']
+            ctx['colors'], ctx['seasonal_mod'], ctx['radiation'],
+            desired_infra, desired_land, desired_mmr
         )
         serialized = _serialize_result(nation, result, prices)
         return {'type': 'nation', 'query': query, 'nations': [serialized], 'prices': prices}
