@@ -1,0 +1,8 @@
+{
+  "quizzes": [
+    "alliance_role.json",
+    "pnw_play_type.json",
+    "hero_or_villain.json",
+    "pet_match.json"
+  ]
+}

@@ -7,7 +7,7 @@ const $ = id => document.getElementById(id);
 // ── State ─────────────────────────────────────────────────────────────────────
 let _xp        = 0;
 let _funMode   = false;
-let _cardType  = null;   // 1-5
+let _cardType  = null;   // 1-7
 let _bet       = 0;
 let _playing   = false;
 let _result    = null;   // last API result
@@ -88,24 +88,40 @@ function renderCardGrid() {
     const grid = $('sc-card-grid');
     if (!grid) return;
     grid.innerHTML = '';
-    const CARD_COLORS = ['#e74c3c','#e67e22','#f1c40f','#2ecc71','#9b59b6'];
-    for (let i = 1; i <= 5; i++) {
+    const CARD_COLORS = ['#e74c3c','#e67e22','#f1c40f','#2ecc71','#9b59b6','#1abc9c','#e84393'];
+    for (let i = 1; i <= 7; i++) {
         const info = _cardInfo[i] || {};
         const btn = document.createElement('button');
         btn.className = 'sc-card-btn';
         btn.dataset.card = i;
-        btn.style.setProperty('--card-accent', CARD_COLORS[i-1]);
+        btn.style.setProperty('--card-accent', CARD_COLORS[i-1] || '#888');
+        let payoutHTML = '';
+        if (i <= 4) {
+            payoutHTML = `
+            <div class="sc-payout-row"><span>2 match</span><span>${info.two_mult || ''}×</span></div>
+            <div class="sc-payout-row"><span>3 match</span><span>${info.three_mult || ''}×</span></div>`;
+        } else if (i === 5) {
+            payoutHTML = `
+            <div class="sc-payout-row"><span>2 match</span><span>${info.two_mult || ''}×</span></div>
+            <div class="sc-payout-row"><span>3 match</span><span>${info.three_mult || ''}×</span></div>
+            <div class="sc-payout-row" style="opacity:0.75"><span>Type 2</span><span>${info.type_two_mult || 4}×</span></div>
+            <div class="sc-payout-row" style="opacity:0.75"><span>Type 3</span><span>${info.type_three_mult || 8}×</span></div>
+            <div class="sc-payout-row"><span>Same-type ×2</span><span>${info.bonus_mult || 75}×</span></div>`;
+        } else if (i === 6) {
+            payoutHTML = `
+            <div class="sc-payout-row"><span>3 match</span><span>${info.three_mult || 4}×</span></div>
+            <div class="sc-payout-row"><span>4 match</span><span>${info.four_mult || 20}×</span></div>`;
+        } else if (i === 7) {
+            payoutHTML = `
+            <div class="sc-payout-row"><span>4+ match</span><span>${info.four_mult || 6}×</span></div>
+            <div class="sc-payout-row"><span>6 match</span><span>${info.six_mult || 50}×</span></div>`;
+        }
         btn.innerHTML = `
             <div class="sc-card-icon">${info.icon || '🎟️'}</div>
             <div class="sc-card-name">Card ${i}: ${info.name || ''}</div>
             <div class="sc-card-desc">${info.desc || ''}</div>
             <div class="sc-card-grid-badge">${info.grid || ''} Grid</div>
-            <div class="sc-payout-row"><span>2 match</span><span>${info.two_mult || ''}×</span></div>
-            <div class="sc-payout-row"><span>3 match</span><span>${info.three_mult || ''}×</span></div>
-            ${i === 5 ? `
-            <div class="sc-payout-row" style="opacity:0.75"><span>Type 2 match</span><span>${info.type_two_mult || 4}×</span></div>
-            <div class="sc-payout-row" style="opacity:0.75"><span>Type 3 match</span><span>${info.type_three_mult || 8}×</span></div>
-            <div class="sc-payout-row"><span>Same-type ×2</span><span>${info.bonus_mult || 75}×</span></div>` : ''}
+            ${payoutHTML}
         `;
         grid.appendChild(btn);
     }
@@ -216,21 +232,27 @@ function showRevealPanel() {
     if (betEl) betEl.textContent = _funMode ? 'Fun' : _bet.toLocaleString();
 
     // Show correct grid
-    const is3x3 = _result.grid_type === '3x3';
-    $('sc-grid-1x3').style.display = is3x3 ? 'none' : '';
-    $('sc-grid-3x3').style.display = is3x3 ? '' : 'none';
+    const gtype = _result.grid_type || '1x3';
+    ['sc-grid-1x3','sc-grid-3x3','sc-grid-1x4','sc-grid-1x6'].forEach(id => {
+        const el = $(id);
+        if (el) el.style.display = 'none';
+    });
+    const gridMap = { '1x3': 'sc-grid-1x3', '3x3': 'sc-grid-3x3', '1x4': 'sc-grid-1x4', '1x6': 'sc-grid-1x6' };
+    const gridEl = $(gridMap[gtype] || 'sc-grid-1x3');
+    if (gridEl) gridEl.style.display = '';
 
     // Populate cell images (hidden behind covers)
     const symbols = _result.symbols || [];
-    const gridEl = is3x3 ? $('sc-grid-3x3') : $('sc-grid-1x3');
-    const cells = gridEl.querySelectorAll('.sc-cell');
-    cells.forEach((cell, i) => {
-        cell.classList.remove('revealed', 'win-cell');
-        const inner = cell.querySelector('.sc-cell-inner');
-        if (inner && symbols[i]) {
-            inner.innerHTML = `<img src="${symbols[i].path}" alt="${symbols[i].name}" title="${symbols[i].name}">`;
-        }
-    });
+    if (gridEl) {
+        const cells = gridEl.querySelectorAll('.sc-cell');
+        cells.forEach((cell, i) => {
+            cell.classList.remove('revealed', 'win-cell');
+            const inner = cell.querySelector('.sc-cell-inner');
+            if (inner && symbols[i]) {
+                inner.innerHTML = `<img src="${symbols[i].path}" alt="${symbols[i].name}" title="${symbols[i].name}">`;
+            }
+        });
+    }
 
     // Hide result until all revealed
     $('sc-result-area').style.display = 'none';
@@ -238,13 +260,18 @@ function showRevealPanel() {
     $('sc-reveal-all-btn').style.display = '';
 }
 
+function getGridEl() {
+    const gtype = _result.grid_type || '1x3';
+    const map = { '1x3': 'sc-grid-1x3', '3x3': 'sc-grid-3x3', '1x4': 'sc-grid-1x4', '1x6': 'sc-grid-1x6' };
+    return $(map[gtype]);
+}
+
 function scratchCell(idx) {
     if (!_result) return;
     if (_revealed[idx]) return;
     _revealed[idx] = true;
 
-    const is3x3 = _result.grid_type === '3x3';
-    const gridEl = is3x3 ? $('sc-grid-3x3') : $('sc-grid-1x3');
+    const gridEl = getGridEl();
     const cells = gridEl.querySelectorAll('.sc-cell');
     if (cells[idx]) cells[idx].classList.add('revealed');
 
@@ -256,8 +283,7 @@ function scratchCell(idx) {
 
 function revealAll() {
     if (!_result) return;
-    const is3x3 = _result.grid_type === '3x3';
-    const gridEl = is3x3 ? $('sc-grid-3x3') : $('sc-grid-1x3');
+    const gridEl = getGridEl();
     const cells = gridEl.querySelectorAll('.sc-cell');
     let delay = 0;
     cells.forEach((cell, i) => {
@@ -340,23 +366,11 @@ function showResult() {
 
 function highlightWinCells() {
     if (!_result || _result.match === 0) return;
-    const is3x3 = _result.grid_type === '3x3';
-    const gridEl = is3x3 ? $('sc-grid-3x3') : $('sc-grid-1x3');
+    const gridEl = getGridEl();
     const cells = gridEl.querySelectorAll('.sc-cell');
+    const gtype = _result.grid_type || '1x3';
 
-    if (!is3x3) {
-        // 1×3: all 3 cells win if match >= 2
-        // For 2-match: highlight the two matching cells
-        const symbols = _result.symbols || [];
-        const names = symbols.map(s => s.name);
-        // Find the most common symbol
-        const counts = {};
-        names.forEach(n => counts[n] = (counts[n] || 0) + 1);
-        const winSym = Object.entries(counts).sort((a,b) => b[1]-a[1])[0][0];
-        names.forEach((n, i) => {
-            if (n === winSym) cells[i] && cells[i].classList.add('win-cell');
-        });
-    } else {
+    if (gtype === '3x3') {
         // 3×3: highlight cells in winning lines
         const winLineIndices = _result.win_lines || [];
         const winCellSet = new Set();
@@ -367,6 +381,24 @@ function highlightWinCells() {
         winCellSet.forEach(ci => {
             cells[ci] && cells[ci].classList.add('win-cell');
         });
+    } else if (gtype === '1x3') {
+        // 1×3: all 3 cells win if match >= 2
+        const symbols = _result.symbols || [];
+        const names = symbols.map(s => s.name);
+        const counts = {};
+        names.forEach(n => counts[n] = (counts[n] || 0) + 1);
+        const winSym = Object.entries(counts).sort((a,b) => b[1]-a[1])[0][0];
+        names.forEach((n, i) => {
+            if (n === winSym) cells[i] && cells[i].classList.add('win-cell');
+        });
+    } else {
+        // 1×4 / 1×6: use win_lines cell indices from API
+        const winIdx = _result.win_lines && _result.win_lines[0];
+        if (winIdx) {
+            winIdx.forEach(i => {
+                cells[i] && cells[i].classList.add('win-cell');
+            });
+        }
     }
 }
 

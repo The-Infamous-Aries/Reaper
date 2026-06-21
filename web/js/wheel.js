@@ -384,7 +384,18 @@ function updateSidebar() {
         'elements': 'Click a segment to harness your element',
         'stats': 'Click a segment to boost your stat',
         'units': 'Click a segment to deploy your unit',
-        'resources': 'Click a segment to trade your resource'
+        'resources': 'Click a segment to trade your resource',
+        'boots': 'Click a segment to pick your boots',
+        'helmets': 'Click a segment to pick your helmet',
+        'armor': 'Click a segment to pick your armor',
+        'shields': 'Click a segment to pick your shield',
+        'rings': 'Click a segment to pick your ring',
+        'swords': 'Click a segment to pick your sword',
+        'katanas': 'Click a segment to pick your katana',
+        'daggers': 'Click a segment to pick your dagger',
+        'bows': 'Click a segment to pick your bow',
+        'axes': 'Click a segment to pick your axe',
+        'hammers': 'Click a segment to pick your hammer'
     };
     
     if (lbl) lbl.textContent = modeLabels[_currentMode] || 'Click a segment to make your choice';

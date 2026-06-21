@@ -1,371 +1,164 @@
-class TarotReading {
-    constructor() {
-        this.currentSpread = null;
-        this.cards = [];
-        this.tarotData = null;
-        this.isDealing = false;
-        this.dealerMessages = {
-            start: "The universe whispers... let me reveal your path.",
-            dealing: "Feel the energy of each card as it falls...",
-            summary: "The cosmos has spoken. Listen carefully to this wisdom."
-        };
+(function () {
+    const root = document.getElementById('tarot-page');
+    if (!root) return;
 
-        this.groqApiKey = window.botInfo?.groq_api_key || '';
-        this.groqApiAvailable = window.botInfo?.groq_api_available || false;
+    const spreadButtons = Array.from(root.querySelectorAll('.tarot-spread'));
+    const drawButton = document.getElementById('tarot-draw-btn');
+    const emptyState = document.getElementById('tarot-empty');
+    const reading = document.getElementById('tarot-reading');
+    const readingTitle = document.getElementById('tarot-reading-title');
+    const energyBox = document.getElementById('tarot-energy');
+    const cardGrid = document.getElementById('tarot-card-grid');
+    const summaryBox = document.getElementById('tarot-summary');
+    const summaryText = document.getElementById('tarot-summary-text');
+    const dealerSkull = document.getElementById('tarot-dealer-skull');
+    const dealerState = document.getElementById('tarot-dealer-state');
 
-        this.init();
+    let selectedSpread = '1 Card';
+    let isDrawing = false;
+
+    function escapeHtml(value) {
+        return String(value ?? '').replace(/[&<>"']/g, char => ({
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#39;',
+        }[char]));
     }
 
-    async init() {
-        // Set up event listeners immediately so clicks are never missed
-        this.setRandomSkull();
-        this.setupEventListeners();
-
-        // Fetch bot info and tarot data in the background
-        try {
-            const res = await fetch('/api/bot-info');
-            if (res.ok) {
-                const info = await res.json();
-                window.botInfo = info;
-                this.groqApiKey = info.groq_api_key || '';
-                this.groqApiAvailable = info.groq_api_available || false;
-            }
-        } catch (_) {}
-
-        await this.loadTarotData();
+    function setLoading(loading) {
+        isDrawing = loading;
+        drawButton.disabled = loading;
+        spreadButtons.forEach(button => { button.disabled = loading; });
+        drawButton.innerHTML = loading
+            ? '<i class="fa-solid fa-spinner fa-spin"></i> Reading'
+            : '<i class="fa-solid fa-skull"></i> Draw Reading';
+        dealerState.textContent = loading ? 'Shuffling the bones' : 'The cards have spoken';
     }
 
-    setRandomSkull() {
-        const skullIndex = Math.floor(Math.random() * 16) + 1;
-        const skullUrl = `/static/Emojis/Skulls/${skullIndex}.png`;
-
-        const skullImage = document.getElementById('skull-image');
-        if (skullImage) {
-            skullImage.style.display = 'none';
-            skullImage.onload = () => { skullImage.style.display = ''; };
-            skullImage.onerror = () => {
-                skullImage.src = `/static/Emojis/Skulls/1.png`;
-                skullImage.style.display = '';
-            };
-            skullImage.src = skullUrl;
-        }
-
-        const summaryAvatar = document.getElementById('summary-avatar');
-        if (summaryAvatar) {
-            summaryAvatar.style.backgroundImage = `url('${skullUrl}')`;
-            summaryAvatar.style.backgroundSize = 'cover';
-            summaryAvatar.style.backgroundPosition = 'center';
-        }
-    }
-
-    setupEventListeners() {
-        const bubbles = document.querySelectorAll('.thought-bubble');
-        if (!bubbles.length) {
-            console.warn('[TarotReading] No .thought-bubble elements found in DOM');
-        }
-        bubbles.forEach(bubble => {
-            bubble.addEventListener('click', (e) => {
-                e.stopPropagation();
-                if (this.isDealing) return;
-                const spread = bubble.dataset.spread;
-                if (!spread) return;
-                document.querySelectorAll('.thought-bubble').forEach(b => b.classList.remove('selected'));
-                bubble.classList.add('selected');
-                this.startReading(spread);
-            });
+    function setSpread(spread) {
+        selectedSpread = spread;
+        spreadButtons.forEach(button => {
+            button.classList.toggle('active', button.dataset.spread === spread);
         });
-
-        const restartBtn = document.getElementById('restart-reading');
-        if (restartBtn) {
-            restartBtn.addEventListener('click', () => this.restartReading());
-        }
     }
 
-    async loadTarotData() {
-        try {
-            const response = await fetch('/Systems/Astrology/Tarot/tarot-images.json');
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
-            const data = await response.json();
-            this.tarotData = {};
-            data.cards.forEach(card => {
-                const key = card.img.replace('.jpg', '');
-                this.tarotData[key] = card;
-            });
-        } catch (error) {
-            console.error('Error loading tarot data:', error);
-            this.tarotData = {};
-        }
+    function renderKeywords(keywords) {
+        if (!Array.isArray(keywords) || !keywords.length) return '';
+        return `<div class="tarot-keywords">${keywords.slice(0, 4).map(k => `<span>${escapeHtml(k)}</span>`).join('')}</div>`;
     }
 
-    async startReading(spread) {
-        this.currentSpread = spread;
-        this.isDealing = true;
-
-        document.getElementById('reading-selection').classList.add('d-none');
-        document.getElementById('card-table').classList.remove('d-none');
-        document.getElementById('reading-results').classList.add('d-none');
-
-        this.showDealerMessage(this.dealerMessages.start);
-
-        // If tarot data hasn't loaded yet, wait up to 5 seconds
-        if (!this.tarotData || Object.keys(this.tarotData).length === 0) {
-            this.showDealerMessage('Loading the cards from the cosmos...');
-            await this.loadTarotData();
-        }
-
-        if (!this.tarotData || Object.keys(this.tarotData).length === 0) {
-            document.getElementById('card-table').classList.add('d-none');
-            document.getElementById('reading-selection').classList.remove('d-none');
-            this.showDealerMessage('The cards are unavailable. Please try again.');
-            this.isDealing = false;
-            return;
-        }
-
-        await this.delay(1500);
-        await this.dealCards();
-    }
-
-    async dealCards() {
-        const cardCount = this.getCardCountForSpread(this.currentSpread);
-        const cardSlots = document.getElementById('card-slots');
-
-        // Fisher-Yates shuffle for unbiased randomness
-        const cardKeys = Object.keys(this.tarotData);
-        for (let i = cardKeys.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [cardKeys[i], cardKeys[j]] = [cardKeys[j], cardKeys[i]];
-        }
-        this.shuffledDeck = cardKeys;
-
-        const positions = this.getPositionsForSpread(this.currentSpread);
-
-        // Create slots
-        cardSlots.innerHTML = '';
-        for (let i = 0; i < cardCount; i++) {
-            const slot = document.createElement('div');
-            slot.className = 'card-slot';
-            slot.id = `slot-${i}`;
-            // Position label above the slot
-            const label = document.createElement('div');
-            label.className = 'card-position-label';
-            label.textContent = positions[i];
-            slot.appendChild(label);
-            cardSlots.appendChild(slot);
-        }
-
-        // Deal cards one by one
-        this.cards = [];
-        for (let i = 0; i < cardCount; i++) {
-            await this.dealSingleCard(i, positions[i]);
-            await this.delay(2500);
-        }
-
-        await this.delay(800);
-        await this.generateSummary();
-    }
-
-    async dealSingleCard(index, position) {
-        const slot = document.getElementById(`slot-${index}`);
-        const cardKey = this.shuffledDeck.pop();
-        const cardData = this.tarotData[cardKey];
-
-        if (!cardData) {
-            console.error('No card data for:', cardKey);
-            return;
-        }
-
-        const isReversed = Math.random() < 0.3; // 30% chance reversed
-        const meanings = isReversed ? cardData.meanings.shadow : cardData.meanings.light;
-        const meaning = Array.isArray(meanings) ? meanings.slice(0, 3).join(', ') : (meanings || 'Unknown');
-        const displayName = cardData.name + (isReversed ? ' (Reversed)' : '');
-        const isMajor = cardData.arcana === 'Major Arcana';
-
-        const enhancedCardData = {
-            ...cardData,
-            name: displayName,
-            isReversed,
-            meaning,
-            imageKey: cardKey,
-            position
-        };
-
-        this.cards.push(enhancedCardData);
-        this.showDealerMessage(`${cardData.name}${isReversed ? ' — Reversed' : ''}: ${meaning.split(',')[0]}`);
-
-        const card = document.createElement('div');
-        card.className = 'tarot-card dealing' + (isReversed ? ' reversed' : '') + (isMajor ? ' major-arcana' : '');
-
-        const cardImageUrl = `/Systems/Astrology/Tarot/cards/${cardKey}.jpg`;
-        card.innerHTML = `
-            <div class="card-front">
-                <img src="${cardImageUrl}" alt="${cardData.name}" class="card-image"
-                     onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                <div class="card-image-fallback" style="display:none">${cardData.name.charAt(0)}</div>
-                <div class="card-name">${displayName}</div>
-                ${isReversed ? '<div class="card-reversed-indicator">↓ REVERSED</div>' : ''}
+    function renderQuestions(questions) {
+        if (!Array.isArray(questions) || !questions.length) return '';
+        return `
+            <div class="tarot-questions">
+                <h4>Questions to Ask</h4>
+                ${questions.slice(0, 3).map(q => `<p>${escapeHtml(q)}</p>`).join('')}
             </div>
         `;
-
-        slot.appendChild(card);
-
-        // Remove dealing class after animation completes so reversed transform sticks
-        card.addEventListener('animationend', () => {
-            card.classList.remove('dealing');
-        }, { once: true });
-
-        await this.delay(1200);
     }
 
-    async generateSummary() {
-        this.showDealerMessage(this.dealerMessages.summary);
+    function renderCard(card) {
+        const reversedClass = card.reversed ? ' reversed' : '';
+        const majorMark = card.is_major ? '<span class="tarot-major-mark">Major</span>' : '';
+        const meaning = (card.meaning_preview || card.meaning || []).slice(0, 3).map(item => `<li>${escapeHtml(item)}</li>`).join('');
+        const lore = [
+            card.archetype ? `<span><b>Archetype</b>${escapeHtml(card.archetype)}</span>` : '',
+            card.elemental ? `<span><b>Elemental</b>${escapeHtml(card.elemental)}</span>` : '',
+            card.numerology ? `<span><b>Numerology</b>${escapeHtml(card.numerology)}</span>` : '',
+        ].filter(Boolean).join('');
 
-        const summaryContent = document.getElementById('ai-summary-content');
-        summaryContent.innerHTML = `
-            <div class="text-center py-3">
-                <div class="spinner-border" style="color:var(--gold-primary)">
-                    <span class="visually-hidden">Loading...</span>
+        return `
+            <article class="tarot-card-panel">
+                <div class="tarot-position">
+                    <span>${escapeHtml(card.position_num)}</span>
+                    <div>
+                        <strong>${escapeHtml(card.position_name)}</strong>
+                        <em>${escapeHtml(card.transition)}</em>
+                    </div>
                 </div>
-                <p class="mt-2" style="color:var(--text-secondary)">The universe is channeling wisdom...</p>
-            </div>`;
-
-        const summary = await this.generateAISummary();
-        summaryContent.innerHTML = this.formatAISummary(summary);
-
-        await this.delay(1000);
-
-        const results = document.getElementById('reading-results');
-        results.classList.remove('d-none');
-        results.classList.add('fade-in');
-
-        this.hideDealerMessage();
-        this.isDealing = false;
+                <div class="tarot-card-body">
+                    <div class="tarot-card-art${reversedClass}">
+                        <img src="${escapeHtml(card.image)}" alt="${escapeHtml(card.name)}">
+                    </div>
+                    <div class="tarot-card-read">
+                        <div class="tarot-card-title">
+                            <div>
+                                <h3>${escapeHtml(card.name)}</h3>
+                                <p>${escapeHtml(card.orientation)} · ${escapeHtml(card.arcana || card.suit || 'Tarot')}</p>
+                            </div>
+                            ${majorMark}
+                        </div>
+                        ${renderKeywords(card.keywords)}
+                        <ul class="tarot-meaning">${meaning}</ul>
+                        <blockquote>${escapeHtml(card.fortune)}</blockquote>
+                        ${lore ? `<div class="tarot-lore">${lore}</div>` : ''}
+                        ${renderQuestions(card.questions)}
+                    </div>
+                </div>
+            </article>
+        `;
     }
 
-    async generateAISummary() {
-        try {
-            const cardPayload = this.cards.map(card => ({
-                name: card.name,
-                position: card.position,
-                meaning: card.meaning,
-                isReversed: card.isReversed,
-                imageKey: card.imageKey
-            }));
+    function renderReading(data) {
+        if (data.dealer && data.dealer.skull) {
+            dealerSkull.src = data.dealer.skull;
+        }
 
-            const response = await fetch('/api/tarot/reading', {
+        emptyState.hidden = true;
+        reading.hidden = false;
+        readingTitle.textContent = `${data.spread} Reading`;
+        cardGrid.innerHTML = (data.cards_info || []).map(renderCard).join('');
+
+        if (data.dominant_energy) {
+            energyBox.hidden = false;
+            energyBox.textContent = data.dominant_energy;
+        } else {
+            energyBox.hidden = true;
+            energyBox.textContent = '';
+        }
+
+        if (data.ai_summary) {
+            summaryBox.hidden = false;
+            summaryText.textContent = data.ai_summary;
+        } else {
+            summaryBox.hidden = true;
+            summaryText.textContent = '';
+        }
+    }
+
+    async function drawReading() {
+        if (isDrawing) return;
+        setLoading(true);
+
+        try {
+            const response = await fetch('/api/astrology/tarot/reading', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    spread: this.currentSpread,
-                    cards: cardPayload
-                })
+                body: JSON.stringify({ spread: selectedSpread, include_summary: true }),
             });
-
-            if (response.ok) {
-                const data = await response.json();
-                if (data.summary) return data.summary;
-            } else {
-                console.error('Tarot API error:', response.status);
-            }
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || 'Tarot reading failed.');
+            renderReading(data);
         } catch (error) {
-            console.error('AI summary error:', error);
-        }
-
-        return this.generateBasicSummary();
-    }
-
-    generateBasicSummary() {
-        const positions = this.getPositionsForSpread(this.currentSpread);
-        let summary = `**Your ${this.currentSpread} Reading**\n\n`;
-
-        this.cards.forEach((card, index) => {
-            summary += `**${positions[index]}: ${card.name}**\n${card.meaning}\n\n`;
-        });
-
-        return summary;
-    }
-
-    formatAISummary(summary) {
-        const html = summary
-            .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-            .replace(/\n\n/g, '</p><p>')
-            .replace(/\n/g, '<br>');
-        return `<div class="ai-summary-text"><p>${html}</p></div>`;
-    }
-
-    restartReading() {
-        this.currentSpread = null;
-        this.cards = [];
-        this.isDealing = false;
-
-        document.querySelectorAll('.thought-bubble').forEach(b => b.classList.remove('selected'));
-        document.getElementById('reading-selection').classList.remove('d-none');
-        document.getElementById('card-table').classList.add('d-none');
-        document.getElementById('reading-results').classList.add('d-none');
-
-        this.hideDealerMessage();
-        this.setRandomSkull();
-    }
-
-    showDealerMessage(message) {
-        const speechBubble = document.getElementById('dealer-speech');
-        if (!speechBubble) return;
-        const speechContent = speechBubble.querySelector('.speech-content');
-        if (speechContent) {
-            speechContent.textContent = message;
-            speechBubble.classList.remove('d-none');
+            dealerState.textContent = 'The veil resisted';
+            cardGrid.innerHTML = '';
+            emptyState.hidden = false;
+            reading.hidden = true;
+            emptyState.innerHTML = `
+                <div class="tarot-error"><i class="fa-solid fa-triangle-exclamation"></i></div>
+                <h2>Reading failed.</h2>
+                <p>${escapeHtml(error.message)}</p>
+            `;
+        } finally {
+            setLoading(false);
         }
     }
 
-    hideDealerMessage() {
-        const speechBubble = document.getElementById('dealer-speech');
-        if (speechBubble) speechBubble.classList.add('d-none');
-    }
-
-    getPositionsForSpread(spread) {
-        const config = {
-            "1 Card": ["The Message"],
-            "3 Card (Past/Present/Future)": ["Past", "Present", "Future"],
-            "5 Card (Traditional)": ["Theme", "Obstacle", "Advice", "Hidden Influence", "Outcome"]
-        };
-        return config[spread] || ["Card"];
-    }
-
-    getCardCountForSpread(spread) {
-        if (spread.includes('1 Card')) return 1;
-        if (spread.includes('3 Card')) return 3;
-        if (spread.includes('5 Card')) return 5;
-        return 1;
-    }
-
-    delay(ms) {
-        return new Promise(resolve => setTimeout(resolve, ms));
-    }
-}
-
-// Initialize when the dashboard loads this page.
-// Use a named handler so we can remove any previously registered copy before
-// adding a new one — prevents stacking duplicate listeners across page visits.
-function _tarotPageLoadedHandler(event) {
-    if (event.detail && event.detail.page === 'tarot.html') {
-        // Destroy any previous instance so its state doesn't bleed in
-        if (window.tarotInstance) {
-            window.tarotInstance = null;
-        }
-        window.tarotInstance = new TarotReading();
-    }
-}
-
-// Remove any stale listener from a previous script load, then re-register
-document.removeEventListener('dashboardPageLoaded', _tarotPageLoadedHandler);
-document.addEventListener('dashboardPageLoaded', _tarotPageLoadedHandler);
-
-// Handle direct page load (no dashboard wrapper)
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => {
-        if (document.getElementById('reading-selection')) {
-            window.tarotInstance = new TarotReading();
-        }
+    spreadButtons.forEach(button => {
+        button.addEventListener('click', () => setSpread(button.dataset.spread));
     });
-} else if (document.getElementById('reading-selection')) {
-    window.tarotInstance = new TarotReading();
-}
+
+    drawButton.addEventListener('click', drawReading);
+})();

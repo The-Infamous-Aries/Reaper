@@ -1,0 +1,2007 @@
+{
+  "id": "lucky_numbers",
+  "label": "Lucky Numbers",
+  "icon": "🎲",
+  "entries": [
+    {
+      "id": "lucky_numbers_001",
+      "text": "Your lucky numbers are {n1} - {n2} - {n3} - {n4} - {n5} - {n6}. Bonus number: {bonus}. No rerolls, no promises. Open-count charm."
+    },
+    {
+      "id": "lucky_numbers_002",
+      "text": "The cookie draw gives {numbers}. Bonus crumb: {bonus}. No rerolls, no promises. Open-count charm."
+    },
+    {
+      "id": "lucky_numbers_003",
+      "text": "Fate pulled {n1}, {n2}, {n3}, {n4}, {n5}, and {n6}; keep {bonus} in your pocket. No rerolls, no promises. Open-count charm."
+    },
+    {
+      "id": "lucky_numbers_004",
+      "text": "Today's random draw is {numbers}, with {bonus} watching from the edge. No rerolls, no promises. Open-count charm."
+    },
+    {
+      "id": "lucky_numbers_005",
+      "text": "The lucky line reads {numbers}. If the napkin asks, the bonus is {bonus}. No rerolls, no promises. Open-count charm."
+    },
+    {
+      "id": "lucky_numbers_006",
+      "text": "Your lucky numbers are {n1} - {n2} - {n3} - {n4} - {n5} - {n6}. Bonus number: {bonus}. This is a fresh draw, not a recycled prophecy. Open-count charm."
+    },
+    {
+      "id": "lucky_numbers_007",
+      "text": "The cookie draw gives {numbers}. Bonus crumb: {bonus}. This is a fresh draw, not a recycled prophecy. Open-count charm."
+    },
+    {
+      "id": "lucky_numbers_008",
+      "text": "Fate pulled {n1}, {n2}, {n3}, {n4}, {n5}, and {n6}; keep {bonus} in your pocket. This is a fresh draw, not a recycled prophecy. Open-count charm."
+    },
+    {
+      "id": "lucky_numbers_009",
+      "text": "Today's random draw is {numbers}, with {bonus} watching from the edge. This is a fresh draw, not a recycled prophecy. Open-count charm."
+    },
+    {
+      "id": "lucky_numbers_010",
+      "text": "The lucky line reads {numbers}. If the napkin asks, the bonus is {bonus}. This is a fresh draw, not a recycled prophecy. Open-count charm."
+    },
+    {
+      "id": "lucky_numbers_011",
+      "text": "Your lucky numbers are {n1} - {n2} - {n3} - {n4} - {n5} - {n6}. Bonus number: {bonus}. The cookie has spoken in integers. Open-count charm."
+    },
+    {
+      "id": "lucky_numbers_012",
+      "text": "The cookie draw gives {numbers}. Bonus crumb: {bonus}. The cookie has spoken in integers. Open-count charm."
+    },
+    {
+      "id": "lucky_numbers_013",
+      "text": "Fate pulled {n1}, {n2}, {n3}, {n4}, {n5}, and {n6}; keep {bonus} in your pocket. The cookie has spoken in integers. Open-count charm."
+    },
+    {
+      "id": "lucky_numbers_014",
+      "text": "Today's random draw is {numbers}, with {bonus} watching from the edge. The cookie has spoken in integers. Open-count charm."
+    },
+    {
+      "id": "lucky_numbers_015",
+      "text": "The lucky line reads {numbers}. If the napkin asks, the bonus is {bonus}. The cookie has spoken in integers. Open-count charm."
+    },
+    {
+      "id": "lucky_numbers_016",
+      "text": "Your lucky numbers are {n1} - {n2} - {n3} - {n4} - {n5} - {n6}. Bonus number: {bonus}. Use responsibly, which is to say dramatically. Open-count charm."
+    },
+    {
+      "id": "lucky_numbers_017",
+      "text": "The cookie draw gives {numbers}. Bonus crumb: {bonus}. Use responsibly, which is to say dramatically. Open-count charm."
+    },
+    {
+      "id": "lucky_numbers_018",
+      "text": "Fate pulled {n1}, {n2}, {n3}, {n4}, {n5}, and {n6}; keep {bonus} in your pocket. Use responsibly, which is to say dramatically. Open-count charm."
+    },
+    {
+      "id": "lucky_numbers_019",
+      "text": "Today's random draw is {numbers}, with {bonus} watching from the edge. Use responsibly, which is to say dramatically. Open-count charm."
+    },
+    {
+      "id": "lucky_numbers_020",
+      "text": "The lucky line reads {numbers}. If the napkin asks, the bonus is {bonus}. Use responsibly, which is to say dramatically. Open-count charm."
+    },
+    {
+      "id": "lucky_numbers_021",
+      "text": "Your lucky numbers are {n1} - {n2} - {n3} - {n4} - {n5} - {n6}. Bonus number: {bonus}. The crumbs refuse to explain the math. Open-count charm."
+    },
+    {
+      "id": "lucky_numbers_022",
+      "text": "The cookie draw gives {numbers}. Bonus crumb: {bonus}. The crumbs refuse to explain the math. Open-count charm."
+    },
+    {
+      "id": "lucky_numbers_023",
+      "text": "Fate pulled {n1}, {n2}, {n3}, {n4}, {n5}, and {n6}; keep {bonus} in your pocket. The crumbs refuse to explain the math. Open-count charm."
+    },
+    {
+      "id": "lucky_numbers_024",
+      "text": "Today's random draw is {numbers}, with {bonus} watching from the edge. The crumbs refuse to explain the math. Open-count charm."
+    },
+    {
+      "id": "lucky_numbers_025",
+      "text": "The lucky line reads {numbers}. If the napkin asks, the bonus is {bonus}. The crumbs refuse to explain the math. Open-count charm."
+    },
+    {
+      "id": "lucky_numbers_026",
+      "text": "Your lucky numbers are {n1} - {n2} - {n3} - {n4} - {n5} - {n6}. Bonus number: {bonus}. Fortune accepts no liability. Open-count charm."
+    },
+    {
+      "id": "lucky_numbers_027",
+      "text": "The cookie draw gives {numbers}. Bonus crumb: {bonus}. Fortune accepts no liability. Open-count charm."
+    },
+    {
+      "id": "lucky_numbers_028",
+      "text": "Fate pulled {n1}, {n2}, {n3}, {n4}, {n5}, and {n6}; keep {bonus} in your pocket. Fortune accepts no liability. Open-count charm."
+    },
+    {
+      "id": "lucky_numbers_029",
+      "text": "Today's random draw is {numbers}, with {bonus} watching from the edge. Fortune accepts no liability. Open-count charm."
+    },
+    {
+      "id": "lucky_numbers_030",
+      "text": "The lucky line reads {numbers}. If the napkin asks, the bonus is {bonus}. Fortune accepts no liability. Open-count charm."
+    },
+    {
+      "id": "lucky_numbers_031",
+      "text": "Your lucky numbers are {n1} - {n2} - {n3} - {n4} - {n5} - {n6}. Bonus number: {bonus}. The wrapper recommends confidence. Open-count charm."
+    },
+    {
+      "id": "lucky_numbers_032",
+      "text": "The cookie draw gives {numbers}. Bonus crumb: {bonus}. The wrapper recommends confidence. Open-count charm."
+    },
+    {
+      "id": "lucky_numbers_033",
+      "text": "Fate pulled {n1}, {n2}, {n3}, {n4}, {n5}, and {n6}; keep {bonus} in your pocket. The wrapper recommends confidence. Open-count charm."
+    },
+    {
+      "id": "lucky_numbers_034",
+      "text": "Today's random draw is {numbers}, with {bonus} watching from the edge. The wrapper recommends confidence. Open-count charm."
+    },
+    {
+      "id": "lucky_numbers_035",
+      "text": "The lucky line reads {numbers}. If the napkin asks, the bonus is {bonus}. The wrapper recommends confidence. Open-count charm."
+    },
+    {
+      "id": "lucky_numbers_036",
+      "text": "Your lucky numbers are {n1} - {n2} - {n3} - {n4} - {n5} - {n6}. Bonus number: {bonus}. Probability wore a tiny hat today. Open-count charm."
+    },
+    {
+      "id": "lucky_numbers_037",
+      "text": "The cookie draw gives {numbers}. Bonus crumb: {bonus}. Probability wore a tiny hat today. Open-count charm."
+    },
+    {
+      "id": "lucky_numbers_038",
+      "text": "Fate pulled {n1}, {n2}, {n3}, {n4}, {n5}, and {n6}; keep {bonus} in your pocket. Probability wore a tiny hat today. Open-count charm."
+    },
+    {
+      "id": "lucky_numbers_039",
+      "text": "Today's random draw is {numbers}, with {bonus} watching from the edge. Probability wore a tiny hat today. Open-count charm."
+    },
+    {
+      "id": "lucky_numbers_040",
+      "text": "The lucky line reads {numbers}. If the napkin asks, the bonus is {bonus}. Probability wore a tiny hat today. Open-count charm."
+    },
+    {
+      "id": "lucky_numbers_041",
+      "text": "Your lucky numbers are {n1} - {n2} - {n3} - {n4} - {n5} - {n6}. Bonus number: {bonus}. Save the numbers, blame the cookie. Open-count charm."
+    },
+    {
+      "id": "lucky_numbers_042",
+      "text": "The cookie draw gives {numbers}. Bonus crumb: {bonus}. Save the numbers, blame the cookie. Open-count charm."
+    },
+    {
+      "id": "lucky_numbers_043",
+      "text": "Fate pulled {n1}, {n2}, {n3}, {n4}, {n5}, and {n6}; keep {bonus} in your pocket. Save the numbers, blame the cookie. Open-count charm."
+    },
+    {
+      "id": "lucky_numbers_044",
+      "text": "Today's random draw is {numbers}, with {bonus} watching from the edge. Save the numbers, blame the cookie. Open-count charm."
+    },
+    {
+      "id": "lucky_numbers_045",
+      "text": "The lucky line reads {numbers}. If the napkin asks, the bonus is {bonus}. Save the numbers, blame the cookie. Open-count charm."
+    },
+    {
+      "id": "lucky_numbers_046",
+      "text": "Your lucky numbers are {n1} - {n2} - {n3} - {n4} - {n5} - {n6}. Bonus number: {bonus}. Randomness is part of the ritual. Open-count charm."
+    },
+    {
+      "id": "lucky_numbers_047",
+      "text": "The cookie draw gives {numbers}. Bonus crumb: {bonus}. Randomness is part of the ritual. Open-count charm."
+    },
+    {
+      "id": "lucky_numbers_048",
+      "text": "Fate pulled {n1}, {n2}, {n3}, {n4}, {n5}, and {n6}; keep {bonus} in your pocket. Randomness is part of the ritual. Open-count charm."
+    },
+    {
+      "id": "lucky_numbers_049",
+      "text": "Today's random draw is {numbers}, with {bonus} watching from the edge. Randomness is part of the ritual. Open-count charm."
+    },
+    {
+      "id": "lucky_numbers_050",
+      "text": "The lucky line reads {numbers}. If the napkin asks, the bonus is {bonus}. Randomness is part of the ritual. Open-count charm."
+    },
+    {
+      "id": "lucky_numbers_051",
+      "text": "Your lucky numbers are {n1} - {n2} - {n3} - {n4} - {n5} - {n6}. Bonus number: {bonus}. No rerolls, no promises. Crumb-certified draw."
+    },
+    {
+      "id": "lucky_numbers_052",
+      "text": "The cookie draw gives {numbers}. Bonus crumb: {bonus}. No rerolls, no promises. Crumb-certified draw."
+    },
+    {
+      "id": "lucky_numbers_053",
+      "text": "Fate pulled {n1}, {n2}, {n3}, {n4}, {n5}, and {n6}; keep {bonus} in your pocket. No rerolls, no promises. Crumb-certified draw."
+    },
+    {
+      "id": "lucky_numbers_054",
+      "text": "Today's random draw is {numbers}, with {bonus} watching from the edge. No rerolls, no promises. Crumb-certified draw."
+    },
+    {
+      "id": "lucky_numbers_055",
+      "text": "The lucky line reads {numbers}. If the napkin asks, the bonus is {bonus}. No rerolls, no promises. Crumb-certified draw."
+    },
+    {
+      "id": "lucky_numbers_056",
+      "text": "Your lucky numbers are {n1} - {n2} - {n3} - {n4} - {n5} - {n6}. Bonus number: {bonus}. This is a fresh draw, not a recycled prophecy. Crumb-certified draw."
+    },
+    {
+      "id": "lucky_numbers_057",
+      "text": "The cookie draw gives {numbers}. Bonus crumb: {bonus}. This is a fresh draw, not a recycled prophecy. Crumb-certified draw."
+    },
+    {
+      "id": "lucky_numbers_058",
+      "text": "Fate pulled {n1}, {n2}, {n3}, {n4}, {n5}, and {n6}; keep {bonus} in your pocket. This is a fresh draw, not a recycled prophecy. Crumb-certified draw."
+    },
+    {
+      "id": "lucky_numbers_059",
+      "text": "Today's random draw is {numbers}, with {bonus} watching from the edge. This is a fresh draw, not a recycled prophecy. Crumb-certified draw."
+    },
+    {
+      "id": "lucky_numbers_060",
+      "text": "The lucky line reads {numbers}. If the napkin asks, the bonus is {bonus}. This is a fresh draw, not a recycled prophecy. Crumb-certified draw."
+    },
+    {
+      "id": "lucky_numbers_061",
+      "text": "Your lucky numbers are {n1} - {n2} - {n3} - {n4} - {n5} - {n6}. Bonus number: {bonus}. The cookie has spoken in integers. Crumb-certified draw."
+    },
+    {
+      "id": "lucky_numbers_062",
+      "text": "The cookie draw gives {numbers}. Bonus crumb: {bonus}. The cookie has spoken in integers. Crumb-certified draw."
+    },
+    {
+      "id": "lucky_numbers_063",
+      "text": "Fate pulled {n1}, {n2}, {n3}, {n4}, {n5}, and {n6}; keep {bonus} in your pocket. The cookie has spoken in integers. Crumb-certified draw."
+    },
+    {
+      "id": "lucky_numbers_064",
+      "text": "Today's random draw is {numbers}, with {bonus} watching from the edge. The cookie has spoken in integers. Crumb-certified draw."
+    },
+    {
+      "id": "lucky_numbers_065",
+      "text": "The lucky line reads {numbers}. If the napkin asks, the bonus is {bonus}. The cookie has spoken in integers. Crumb-certified draw."
+    },
+    {
+      "id": "lucky_numbers_066",
+      "text": "Your lucky numbers are {n1} - {n2} - {n3} - {n4} - {n5} - {n6}. Bonus number: {bonus}. Use responsibly, which is to say dramatically. Crumb-certified draw."
+    },
+    {
+      "id": "lucky_numbers_067",
+      "text": "The cookie draw gives {numbers}. Bonus crumb: {bonus}. Use responsibly, which is to say dramatically. Crumb-certified draw."
+    },
+    {
+      "id": "lucky_numbers_068",
+      "text": "Fate pulled {n1}, {n2}, {n3}, {n4}, {n5}, and {n6}; keep {bonus} in your pocket. Use responsibly, which is to say dramatically. Crumb-certified draw."
+    },
+    {
+      "id": "lucky_numbers_069",
+      "text": "Today's random draw is {numbers}, with {bonus} watching from the edge. Use responsibly, which is to say dramatically. Crumb-certified draw."
+    },
+    {
+      "id": "lucky_numbers_070",
+      "text": "The lucky line reads {numbers}. If the napkin asks, the bonus is {bonus}. Use responsibly, which is to say dramatically. Crumb-certified draw."
+    },
+    {
+      "id": "lucky_numbers_071",
+      "text": "Your lucky numbers are {n1} - {n2} - {n3} - {n4} - {n5} - {n6}. Bonus number: {bonus}. The crumbs refuse to explain the math. Crumb-certified draw."
+    },
+    {
+      "id": "lucky_numbers_072",
+      "text": "The cookie draw gives {numbers}. Bonus crumb: {bonus}. The crumbs refuse to explain the math. Crumb-certified draw."
+    },
+    {
+      "id": "lucky_numbers_073",
+      "text": "Fate pulled {n1}, {n2}, {n3}, {n4}, {n5}, and {n6}; keep {bonus} in your pocket. The crumbs refuse to explain the math. Crumb-certified draw."
+    },
+    {
+      "id": "lucky_numbers_074",
+      "text": "Today's random draw is {numbers}, with {bonus} watching from the edge. The crumbs refuse to explain the math. Crumb-certified draw."
+    },
+    {
+      "id": "lucky_numbers_075",
+      "text": "The lucky line reads {numbers}. If the napkin asks, the bonus is {bonus}. The crumbs refuse to explain the math. Crumb-certified draw."
+    },
+    {
+      "id": "lucky_numbers_076",
+      "text": "Your lucky numbers are {n1} - {n2} - {n3} - {n4} - {n5} - {n6}. Bonus number: {bonus}. Fortune accepts no liability. Crumb-certified draw."
+    },
+    {
+      "id": "lucky_numbers_077",
+      "text": "The cookie draw gives {numbers}. Bonus crumb: {bonus}. Fortune accepts no liability. Crumb-certified draw."
+    },
+    {
+      "id": "lucky_numbers_078",
+      "text": "Fate pulled {n1}, {n2}, {n3}, {n4}, {n5}, and {n6}; keep {bonus} in your pocket. Fortune accepts no liability. Crumb-certified draw."
+    },
+    {
+      "id": "lucky_numbers_079",
+      "text": "Today's random draw is {numbers}, with {bonus} watching from the edge. Fortune accepts no liability. Crumb-certified draw."
+    },
+    {
+      "id": "lucky_numbers_080",
+      "text": "The lucky line reads {numbers}. If the napkin asks, the bonus is {bonus}. Fortune accepts no liability. Crumb-certified draw."
+    },
+    {
+      "id": "lucky_numbers_081",
+      "text": "Your lucky numbers are {n1} - {n2} - {n3} - {n4} - {n5} - {n6}. Bonus number: {bonus}. The wrapper recommends confidence. Crumb-certified draw."
+    },
+    {
+      "id": "lucky_numbers_082",
+      "text": "The cookie draw gives {numbers}. Bonus crumb: {bonus}. The wrapper recommends confidence. Crumb-certified draw."
+    },
+    {
+      "id": "lucky_numbers_083",
+      "text": "Fate pulled {n1}, {n2}, {n3}, {n4}, {n5}, and {n6}; keep {bonus} in your pocket. The wrapper recommends confidence. Crumb-certified draw."
+    },
+    {
+      "id": "lucky_numbers_084",
+      "text": "Today's random draw is {numbers}, with {bonus} watching from the edge. The wrapper recommends confidence. Crumb-certified draw."
+    },
+    {
+      "id": "lucky_numbers_085",
+      "text": "The lucky line reads {numbers}. If the napkin asks, the bonus is {bonus}. The wrapper recommends confidence. Crumb-certified draw."
+    },
+    {
+      "id": "lucky_numbers_086",
+      "text": "Your lucky numbers are {n1} - {n2} - {n3} - {n4} - {n5} - {n6}. Bonus number: {bonus}. Probability wore a tiny hat today. Crumb-certified draw."
+    },
+    {
+      "id": "lucky_numbers_087",
+      "text": "The cookie draw gives {numbers}. Bonus crumb: {bonus}. Probability wore a tiny hat today. Crumb-certified draw."
+    },
+    {
+      "id": "lucky_numbers_088",
+      "text": "Fate pulled {n1}, {n2}, {n3}, {n4}, {n5}, and {n6}; keep {bonus} in your pocket. Probability wore a tiny hat today. Crumb-certified draw."
+    },
+    {
+      "id": "lucky_numbers_089",
+      "text": "Today's random draw is {numbers}, with {bonus} watching from the edge. Probability wore a tiny hat today. Crumb-certified draw."
+    },
+    {
+      "id": "lucky_numbers_090",
+      "text": "The lucky line reads {numbers}. If the napkin asks, the bonus is {bonus}. Probability wore a tiny hat today. Crumb-certified draw."
+    },
+    {
+      "id": "lucky_numbers_091",
+      "text": "Your lucky numbers are {n1} - {n2} - {n3} - {n4} - {n5} - {n6}. Bonus number: {bonus}. Save the numbers, blame the cookie. Crumb-certified draw."
+    },
+    {
+      "id": "lucky_numbers_092",
+      "text": "The cookie draw gives {numbers}. Bonus crumb: {bonus}. Save the numbers, blame the cookie. Crumb-certified draw."
+    },
+    {
+      "id": "lucky_numbers_093",
+      "text": "Fate pulled {n1}, {n2}, {n3}, {n4}, {n5}, and {n6}; keep {bonus} in your pocket. Save the numbers, blame the cookie. Crumb-certified draw."
+    },
+    {
+      "id": "lucky_numbers_094",
+      "text": "Today's random draw is {numbers}, with {bonus} watching from the edge. Save the numbers, blame the cookie. Crumb-certified draw."
+    },
+    {
+      "id": "lucky_numbers_095",
+      "text": "The lucky line reads {numbers}. If the napkin asks, the bonus is {bonus}. Save the numbers, blame the cookie. Crumb-certified draw."
+    },
+    {
+      "id": "lucky_numbers_096",
+      "text": "Your lucky numbers are {n1} - {n2} - {n3} - {n4} - {n5} - {n6}. Bonus number: {bonus}. Randomness is part of the ritual. Crumb-certified draw."
+    },
+    {
+      "id": "lucky_numbers_097",
+      "text": "The cookie draw gives {numbers}. Bonus crumb: {bonus}. Randomness is part of the ritual. Crumb-certified draw."
+    },
+    {
+      "id": "lucky_numbers_098",
+      "text": "Fate pulled {n1}, {n2}, {n3}, {n4}, {n5}, and {n6}; keep {bonus} in your pocket. Randomness is part of the ritual. Crumb-certified draw."
+    },
+    {
+      "id": "lucky_numbers_099",
+      "text": "Today's random draw is {numbers}, with {bonus} watching from the edge. Randomness is part of the ritual. Crumb-certified draw."
+    },
+    {
+      "id": "lucky_numbers_100",
+      "text": "The lucky line reads {numbers}. If the napkin asks, the bonus is {bonus}. Randomness is part of the ritual. Crumb-certified draw."
+    },
+    {
+      "id": "lucky_numbers_101",
+      "text": "Your lucky numbers are {n1} - {n2} - {n3} - {n4} - {n5} - {n6}. Bonus number: {bonus}. No rerolls, no promises. Napkin-approved line."
+    },
+    {
+      "id": "lucky_numbers_102",
+      "text": "The cookie draw gives {numbers}. Bonus crumb: {bonus}. No rerolls, no promises. Napkin-approved line."
+    },
+    {
+      "id": "lucky_numbers_103",
+      "text": "Fate pulled {n1}, {n2}, {n3}, {n4}, {n5}, and {n6}; keep {bonus} in your pocket. No rerolls, no promises. Napkin-approved line."
+    },
+    {
+      "id": "lucky_numbers_104",
+      "text": "Today's random draw is {numbers}, with {bonus} watching from the edge. No rerolls, no promises. Napkin-approved line."
+    },
+    {
+      "id": "lucky_numbers_105",
+      "text": "The lucky line reads {numbers}. If the napkin asks, the bonus is {bonus}. No rerolls, no promises. Napkin-approved line."
+    },
+    {
+      "id": "lucky_numbers_106",
+      "text": "Your lucky numbers are {n1} - {n2} - {n3} - {n4} - {n5} - {n6}. Bonus number: {bonus}. This is a fresh draw, not a recycled prophecy. Napkin-approved line."
+    },
+    {
+      "id": "lucky_numbers_107",
+      "text": "The cookie draw gives {numbers}. Bonus crumb: {bonus}. This is a fresh draw, not a recycled prophecy. Napkin-approved line."
+    },
+    {
+      "id": "lucky_numbers_108",
+      "text": "Fate pulled {n1}, {n2}, {n3}, {n4}, {n5}, and {n6}; keep {bonus} in your pocket. This is a fresh draw, not a recycled prophecy. Napkin-approved line."
+    },
+    {
+      "id": "lucky_numbers_109",
+      "text": "Today's random draw is {numbers}, with {bonus} watching from the edge. This is a fresh draw, not a recycled prophecy. Napkin-approved line."
+    },
+    {
+      "id": "lucky_numbers_110",
+      "text": "The lucky line reads {numbers}. If the napkin asks, the bonus is {bonus}. This is a fresh draw, not a recycled prophecy. Napkin-approved line."
+    },
+    {
+      "id": "lucky_numbers_111",
+      "text": "Your lucky numbers are {n1} - {n2} - {n3} - {n4} - {n5} - {n6}. Bonus number: {bonus}. The cookie has spoken in integers. Napkin-approved line."
+    },
+    {
+      "id": "lucky_numbers_112",
+      "text": "The cookie draw gives {numbers}. Bonus crumb: {bonus}. The cookie has spoken in integers. Napkin-approved line."
+    },
+    {
+      "id": "lucky_numbers_113",
+      "text": "Fate pulled {n1}, {n2}, {n3}, {n4}, {n5}, and {n6}; keep {bonus} in your pocket. The cookie has spoken in integers. Napkin-approved line."
+    },
+    {
+      "id": "lucky_numbers_114",
+      "text": "Today's random draw is {numbers}, with {bonus} watching from the edge. The cookie has spoken in integers. Napkin-approved line."
+    },
+    {
+      "id": "lucky_numbers_115",
+      "text": "The lucky line reads {numbers}. If the napkin asks, the bonus is {bonus}. The cookie has spoken in integers. Napkin-approved line."
+    },
+    {
+      "id": "lucky_numbers_116",
+      "text": "Your lucky numbers are {n1} - {n2} - {n3} - {n4} - {n5} - {n6}. Bonus number: {bonus}. Use responsibly, which is to say dramatically. Napkin-approved line."
+    },
+    {
+      "id": "lucky_numbers_117",
+      "text": "The cookie draw gives {numbers}. Bonus crumb: {bonus}. Use responsibly, which is to say dramatically. Napkin-approved line."
+    },
+    {
+      "id": "lucky_numbers_118",
+      "text": "Fate pulled {n1}, {n2}, {n3}, {n4}, {n5}, and {n6}; keep {bonus} in your pocket. Use responsibly, which is to say dramatically. Napkin-approved line."
+    },
+    {
+      "id": "lucky_numbers_119",
+      "text": "Today's random draw is {numbers}, with {bonus} watching from the edge. Use responsibly, which is to say dramatically. Napkin-approved line."
+    },
+    {
+      "id": "lucky_numbers_120",
+      "text": "The lucky line reads {numbers}. If the napkin asks, the bonus is {bonus}. Use responsibly, which is to say dramatically. Napkin-approved line."
+    },
+    {
+      "id": "lucky_numbers_121",
+      "text": "Your lucky numbers are {n1} - {n2} - {n3} - {n4} - {n5} - {n6}. Bonus number: {bonus}. The crumbs refuse to explain the math. Napkin-approved line."
+    },
+    {
+      "id": "lucky_numbers_122",
+      "text": "The cookie draw gives {numbers}. Bonus crumb: {bonus}. The crumbs refuse to explain the math. Napkin-approved line."
+    },
+    {
+      "id": "lucky_numbers_123",
+      "text": "Fate pulled {n1}, {n2}, {n3}, {n4}, {n5}, and {n6}; keep {bonus} in your pocket. The crumbs refuse to explain the math. Napkin-approved line."
+    },
+    {
+      "id": "lucky_numbers_124",
+      "text": "Today's random draw is {numbers}, with {bonus} watching from the edge. The crumbs refuse to explain the math. Napkin-approved line."
+    },
+    {
+      "id": "lucky_numbers_125",
+      "text": "The lucky line reads {numbers}. If the napkin asks, the bonus is {bonus}. The crumbs refuse to explain the math. Napkin-approved line."
+    },
+    {
+      "id": "lucky_numbers_126",
+      "text": "Your lucky numbers are {n1} - {n2} - {n3} - {n4} - {n5} - {n6}. Bonus number: {bonus}. Fortune accepts no liability. Napkin-approved line."
+    },
+    {
+      "id": "lucky_numbers_127",
+      "text": "The cookie draw gives {numbers}. Bonus crumb: {bonus}. Fortune accepts no liability. Napkin-approved line."
+    },
+    {
+      "id": "lucky_numbers_128",
+      "text": "Fate pulled {n1}, {n2}, {n3}, {n4}, {n5}, and {n6}; keep {bonus} in your pocket. Fortune accepts no liability. Napkin-approved line."
+    },
+    {
+      "id": "lucky_numbers_129",
+      "text": "Today's random draw is {numbers}, with {bonus} watching from the edge. Fortune accepts no liability. Napkin-approved line."
+    },
+    {
+      "id": "lucky_numbers_130",
+      "text": "The lucky line reads {numbers}. If the napkin asks, the bonus is {bonus}. Fortune accepts no liability. Napkin-approved line."
+    },
+    {
+      "id": "lucky_numbers_131",
+      "text": "Your lucky numbers are {n1} - {n2} - {n3} - {n4} - {n5} - {n6}. Bonus number: {bonus}. The wrapper recommends confidence. Napkin-approved line."
+    },
+    {
+      "id": "lucky_numbers_132",
+      "text": "The cookie draw gives {numbers}. Bonus crumb: {bonus}. The wrapper recommends confidence. Napkin-approved line."
+    },
+    {
+      "id": "lucky_numbers_133",
+      "text": "Fate pulled {n1}, {n2}, {n3}, {n4}, {n5}, and {n6}; keep {bonus} in your pocket. The wrapper recommends confidence. Napkin-approved line."
+    },
+    {
+      "id": "lucky_numbers_134",
+      "text": "Today's random draw is {numbers}, with {bonus} watching from the edge. The wrapper recommends confidence. Napkin-approved line."
+    },
+    {
+      "id": "lucky_numbers_135",
+      "text": "The lucky line reads {numbers}. If the napkin asks, the bonus is {bonus}. The wrapper recommends confidence. Napkin-approved line."
+    },
+    {
+      "id": "lucky_numbers_136",
+      "text": "Your lucky numbers are {n1} - {n2} - {n3} - {n4} - {n5} - {n6}. Bonus number: {bonus}. Probability wore a tiny hat today. Napkin-approved line."
+    },
+    {
+      "id": "lucky_numbers_137",
+      "text": "The cookie draw gives {numbers}. Bonus crumb: {bonus}. Probability wore a tiny hat today. Napkin-approved line."
+    },
+    {
+      "id": "lucky_numbers_138",
+      "text": "Fate pulled {n1}, {n2}, {n3}, {n4}, {n5}, and {n6}; keep {bonus} in your pocket. Probability wore a tiny hat today. Napkin-approved line."
+    },
+    {
+      "id": "lucky_numbers_139",
+      "text": "Today's random draw is {numbers}, with {bonus} watching from the edge. Probability wore a tiny hat today. Napkin-approved line."
+    },
+    {
+      "id": "lucky_numbers_140",
+      "text": "The lucky line reads {numbers}. If the napkin asks, the bonus is {bonus}. Probability wore a tiny hat today. Napkin-approved line."
+    },
+    {
+      "id": "lucky_numbers_141",
+      "text": "Your lucky numbers are {n1} - {n2} - {n3} - {n4} - {n5} - {n6}. Bonus number: {bonus}. Save the numbers, blame the cookie. Napkin-approved line."
+    },
+    {
+      "id": "lucky_numbers_142",
+      "text": "The cookie draw gives {numbers}. Bonus crumb: {bonus}. Save the numbers, blame the cookie. Napkin-approved line."
+    },
+    {
+      "id": "lucky_numbers_143",
+      "text": "Fate pulled {n1}, {n2}, {n3}, {n4}, {n5}, and {n6}; keep {bonus} in your pocket. Save the numbers, blame the cookie. Napkin-approved line."
+    },
+    {
+      "id": "lucky_numbers_144",
+      "text": "Today's random draw is {numbers}, with {bonus} watching from the edge. Save the numbers, blame the cookie. Napkin-approved line."
+    },
+    {
+      "id": "lucky_numbers_145",
+      "text": "The lucky line reads {numbers}. If the napkin asks, the bonus is {bonus}. Save the numbers, blame the cookie. Napkin-approved line."
+    },
+    {
+      "id": "lucky_numbers_146",
+      "text": "Your lucky numbers are {n1} - {n2} - {n3} - {n4} - {n5} - {n6}. Bonus number: {bonus}. Randomness is part of the ritual. Napkin-approved line."
+    },
+    {
+      "id": "lucky_numbers_147",
+      "text": "The cookie draw gives {numbers}. Bonus crumb: {bonus}. Randomness is part of the ritual. Napkin-approved line."
+    },
+    {
+      "id": "lucky_numbers_148",
+      "text": "Fate pulled {n1}, {n2}, {n3}, {n4}, {n5}, and {n6}; keep {bonus} in your pocket. Randomness is part of the ritual. Napkin-approved line."
+    },
+    {
+      "id": "lucky_numbers_149",
+      "text": "Today's random draw is {numbers}, with {bonus} watching from the edge. Randomness is part of the ritual. Napkin-approved line."
+    },
+    {
+      "id": "lucky_numbers_150",
+      "text": "The lucky line reads {numbers}. If the napkin asks, the bonus is {bonus}. Randomness is part of the ritual. Napkin-approved line."
+    },
+    {
+      "id": "lucky_numbers_151",
+      "text": "Your lucky numbers are {n1} - {n2} - {n3} - {n4} - {n5} - {n6}. Bonus number: {bonus}. No rerolls, no promises. Dashboard lottery whisper."
+    },
+    {
+      "id": "lucky_numbers_152",
+      "text": "The cookie draw gives {numbers}. Bonus crumb: {bonus}. No rerolls, no promises. Dashboard lottery whisper."
+    },
+    {
+      "id": "lucky_numbers_153",
+      "text": "Fate pulled {n1}, {n2}, {n3}, {n4}, {n5}, and {n6}; keep {bonus} in your pocket. No rerolls, no promises. Dashboard lottery whisper."
+    },
+    {
+      "id": "lucky_numbers_154",
+      "text": "Today's random draw is {numbers}, with {bonus} watching from the edge. No rerolls, no promises. Dashboard lottery whisper."
+    },
+    {
+      "id": "lucky_numbers_155",
+      "text": "The lucky line reads {numbers}. If the napkin asks, the bonus is {bonus}. No rerolls, no promises. Dashboard lottery whisper."
+    },
+    {
+      "id": "lucky_numbers_156",
+      "text": "Your lucky numbers are {n1} - {n2} - {n3} - {n4} - {n5} - {n6}. Bonus number: {bonus}. This is a fresh draw, not a recycled prophecy. Dashboard lottery whisper."
+    },
+    {
+      "id": "lucky_numbers_157",
+      "text": "The cookie draw gives {numbers}. Bonus crumb: {bonus}. This is a fresh draw, not a recycled prophecy. Dashboard lottery whisper."
+    },
+    {
+      "id": "lucky_numbers_158",
+      "text": "Fate pulled {n1}, {n2}, {n3}, {n4}, {n5}, and {n6}; keep {bonus} in your pocket. This is a fresh draw, not a recycled prophecy. Dashboard lottery whisper."
+    },
+    {
+      "id": "lucky_numbers_159",
+      "text": "Today's random draw is {numbers}, with {bonus} watching from the edge. This is a fresh draw, not a recycled prophecy. Dashboard lottery whisper."
+    },
+    {
+      "id": "lucky_numbers_160",
+      "text": "The lucky line reads {numbers}. If the napkin asks, the bonus is {bonus}. This is a fresh draw, not a recycled prophecy. Dashboard lottery whisper."
+    },
+    {
+      "id": "lucky_numbers_161",
+      "text": "Your lucky numbers are {n1} - {n2} - {n3} - {n4} - {n5} - {n6}. Bonus number: {bonus}. The cookie has spoken in integers. Dashboard lottery whisper."
+    },
+    {
+      "id": "lucky_numbers_162",
+      "text": "The cookie draw gives {numbers}. Bonus crumb: {bonus}. The cookie has spoken in integers. Dashboard lottery whisper."
+    },
+    {
+      "id": "lucky_numbers_163",
+      "text": "Fate pulled {n1}, {n2}, {n3}, {n4}, {n5}, and {n6}; keep {bonus} in your pocket. The cookie has spoken in integers. Dashboard lottery whisper."
+    },
+    {
+      "id": "lucky_numbers_164",
+      "text": "Today's random draw is {numbers}, with {bonus} watching from the edge. The cookie has spoken in integers. Dashboard lottery whisper."
+    },
+    {
+      "id": "lucky_numbers_165",
+      "text": "The lucky line reads {numbers}. If the napkin asks, the bonus is {bonus}. The cookie has spoken in integers. Dashboard lottery whisper."
+    },
+    {
+      "id": "lucky_numbers_166",
+      "text": "Your lucky numbers are {n1} - {n2} - {n3} - {n4} - {n5} - {n6}. Bonus number: {bonus}. Use responsibly, which is to say dramatically. Dashboard lottery whisper."
+    },
+    {
+      "id": "lucky_numbers_167",
+      "text": "The cookie draw gives {numbers}. Bonus crumb: {bonus}. Use responsibly, which is to say dramatically. Dashboard lottery whisper."
+    },
+    {
+      "id": "lucky_numbers_168",
+      "text": "Fate pulled {n1}, {n2}, {n3}, {n4}, {n5}, and {n6}; keep {bonus} in your pocket. Use responsibly, which is to say dramatically. Dashboard lottery whisper."
+    },
+    {
+      "id": "lucky_numbers_169",
+      "text": "Today's random draw is {numbers}, with {bonus} watching from the edge. Use responsibly, which is to say dramatically. Dashboard lottery whisper."
+    },
+    {
+      "id": "lucky_numbers_170",
+      "text": "The lucky line reads {numbers}. If the napkin asks, the bonus is {bonus}. Use responsibly, which is to say dramatically. Dashboard lottery whisper."
+    },
+    {
+      "id": "lucky_numbers_171",
+      "text": "Your lucky numbers are {n1} - {n2} - {n3} - {n4} - {n5} - {n6}. Bonus number: {bonus}. The crumbs refuse to explain the math. Dashboard lottery whisper."
+    },
+    {
+      "id": "lucky_numbers_172",
+      "text": "The cookie draw gives {numbers}. Bonus crumb: {bonus}. The crumbs refuse to explain the math. Dashboard lottery whisper."
+    },
+    {
+      "id": "lucky_numbers_173",
+      "text": "Fate pulled {n1}, {n2}, {n3}, {n4}, {n5}, and {n6}; keep {bonus} in your pocket. The crumbs refuse to explain the math. Dashboard lottery whisper."
+    },
+    {
+      "id": "lucky_numbers_174",
+      "text": "Today's random draw is {numbers}, with {bonus} watching from the edge. The crumbs refuse to explain the math. Dashboard lottery whisper."
+    },
+    {
+      "id": "lucky_numbers_175",
+      "text": "The lucky line reads {numbers}. If the napkin asks, the bonus is {bonus}. The crumbs refuse to explain the math. Dashboard lottery whisper."
+    },
+    {
+      "id": "lucky_numbers_176",
+      "text": "Your lucky numbers are {n1} - {n2} - {n3} - {n4} - {n5} - {n6}. Bonus number: {bonus}. Fortune accepts no liability. Dashboard lottery whisper."
+    },
+    {
+      "id": "lucky_numbers_177",
+      "text": "The cookie draw gives {numbers}. Bonus crumb: {bonus}. Fortune accepts no liability. Dashboard lottery whisper."
+    },
+    {
+      "id": "lucky_numbers_178",
+      "text": "Fate pulled {n1}, {n2}, {n3}, {n4}, {n5}, and {n6}; keep {bonus} in your pocket. Fortune accepts no liability. Dashboard lottery whisper."
+    },
+    {
+      "id": "lucky_numbers_179",
+      "text": "Today's random draw is {numbers}, with {bonus} watching from the edge. Fortune accepts no liability. Dashboard lottery whisper."
+    },
+    {
+      "id": "lucky_numbers_180",
+      "text": "The lucky line reads {numbers}. If the napkin asks, the bonus is {bonus}. Fortune accepts no liability. Dashboard lottery whisper."
+    },
+    {
+      "id": "lucky_numbers_181",
+      "text": "Your lucky numbers are {n1} - {n2} - {n3} - {n4} - {n5} - {n6}. Bonus number: {bonus}. The wrapper recommends confidence. Dashboard lottery whisper."
+    },
+    {
+      "id": "lucky_numbers_182",
+      "text": "The cookie draw gives {numbers}. Bonus crumb: {bonus}. The wrapper recommends confidence. Dashboard lottery whisper."
+    },
+    {
+      "id": "lucky_numbers_183",
+      "text": "Fate pulled {n1}, {n2}, {n3}, {n4}, {n5}, and {n6}; keep {bonus} in your pocket. The wrapper recommends confidence. Dashboard lottery whisper."
+    },
+    {
+      "id": "lucky_numbers_184",
+      "text": "Today's random draw is {numbers}, with {bonus} watching from the edge. The wrapper recommends confidence. Dashboard lottery whisper."
+    },
+    {
+      "id": "lucky_numbers_185",
+      "text": "The lucky line reads {numbers}. If the napkin asks, the bonus is {bonus}. The wrapper recommends confidence. Dashboard lottery whisper."
+    },
+    {
+      "id": "lucky_numbers_186",
+      "text": "Your lucky numbers are {n1} - {n2} - {n3} - {n4} - {n5} - {n6}. Bonus number: {bonus}. Probability wore a tiny hat today. Dashboard lottery whisper."
+    },
+    {
+      "id": "lucky_numbers_187",
+      "text": "The cookie draw gives {numbers}. Bonus crumb: {bonus}. Probability wore a tiny hat today. Dashboard lottery whisper."
+    },
+    {
+      "id": "lucky_numbers_188",
+      "text": "Fate pulled {n1}, {n2}, {n3}, {n4}, {n5}, and {n6}; keep {bonus} in your pocket. Probability wore a tiny hat today. Dashboard lottery whisper."
+    },
+    {
+      "id": "lucky_numbers_189",
+      "text": "Today's random draw is {numbers}, with {bonus} watching from the edge. Probability wore a tiny hat today. Dashboard lottery whisper."
+    },
+    {
+      "id": "lucky_numbers_190",
+      "text": "The lucky line reads {numbers}. If the napkin asks, the bonus is {bonus}. Probability wore a tiny hat today. Dashboard lottery whisper."
+    },
+    {
+      "id": "lucky_numbers_191",
+      "text": "Your lucky numbers are {n1} - {n2} - {n3} - {n4} - {n5} - {n6}. Bonus number: {bonus}. Save the numbers, blame the cookie. Dashboard lottery whisper."
+    },
+    {
+      "id": "lucky_numbers_192",
+      "text": "The cookie draw gives {numbers}. Bonus crumb: {bonus}. Save the numbers, blame the cookie. Dashboard lottery whisper."
+    },
+    {
+      "id": "lucky_numbers_193",
+      "text": "Fate pulled {n1}, {n2}, {n3}, {n4}, {n5}, and {n6}; keep {bonus} in your pocket. Save the numbers, blame the cookie. Dashboard lottery whisper."
+    },
+    {
+      "id": "lucky_numbers_194",
+      "text": "Today's random draw is {numbers}, with {bonus} watching from the edge. Save the numbers, blame the cookie. Dashboard lottery whisper."
+    },
+    {
+      "id": "lucky_numbers_195",
+      "text": "The lucky line reads {numbers}. If the napkin asks, the bonus is {bonus}. Save the numbers, blame the cookie. Dashboard lottery whisper."
+    },
+    {
+      "id": "lucky_numbers_196",
+      "text": "Your lucky numbers are {n1} - {n2} - {n3} - {n4} - {n5} - {n6}. Bonus number: {bonus}. Randomness is part of the ritual. Dashboard lottery whisper."
+    },
+    {
+      "id": "lucky_numbers_197",
+      "text": "The cookie draw gives {numbers}. Bonus crumb: {bonus}. Randomness is part of the ritual. Dashboard lottery whisper."
+    },
+    {
+      "id": "lucky_numbers_198",
+      "text": "Fate pulled {n1}, {n2}, {n3}, {n4}, {n5}, and {n6}; keep {bonus} in your pocket. Randomness is part of the ritual. Dashboard lottery whisper."
+    },
+    {
+      "id": "lucky_numbers_199",
+      "text": "Today's random draw is {numbers}, with {bonus} watching from the edge. Randomness is part of the ritual. Dashboard lottery whisper."
+    },
+    {
+      "id": "lucky_numbers_200",
+      "text": "The lucky line reads {numbers}. If the napkin asks, the bonus is {bonus}. Randomness is part of the ritual. Dashboard lottery whisper."
+    },
+    {
+      "id": "lucky_numbers_201",
+      "text": "Your lucky numbers are {n1} - {n2} - {n3} - {n4} - {n5} - {n6}. Bonus number: {bonus}. No rerolls, no promises. Fresh-cookie number pull."
+    },
+    {
+      "id": "lucky_numbers_202",
+      "text": "The cookie draw gives {numbers}. Bonus crumb: {bonus}. No rerolls, no promises. Fresh-cookie number pull."
+    },
+    {
+      "id": "lucky_numbers_203",
+      "text": "Fate pulled {n1}, {n2}, {n3}, {n4}, {n5}, and {n6}; keep {bonus} in your pocket. No rerolls, no promises. Fresh-cookie number pull."
+    },
+    {
+      "id": "lucky_numbers_204",
+      "text": "Today's random draw is {numbers}, with {bonus} watching from the edge. No rerolls, no promises. Fresh-cookie number pull."
+    },
+    {
+      "id": "lucky_numbers_205",
+      "text": "The lucky line reads {numbers}. If the napkin asks, the bonus is {bonus}. No rerolls, no promises. Fresh-cookie number pull."
+    },
+    {
+      "id": "lucky_numbers_206",
+      "text": "Your lucky numbers are {n1} - {n2} - {n3} - {n4} - {n5} - {n6}. Bonus number: {bonus}. This is a fresh draw, not a recycled prophecy. Fresh-cookie number pull."
+    },
+    {
+      "id": "lucky_numbers_207",
+      "text": "The cookie draw gives {numbers}. Bonus crumb: {bonus}. This is a fresh draw, not a recycled prophecy. Fresh-cookie number pull."
+    },
+    {
+      "id": "lucky_numbers_208",
+      "text": "Fate pulled {n1}, {n2}, {n3}, {n4}, {n5}, and {n6}; keep {bonus} in your pocket. This is a fresh draw, not a recycled prophecy. Fresh-cookie number pull."
+    },
+    {
+      "id": "lucky_numbers_209",
+      "text": "Today's random draw is {numbers}, with {bonus} watching from the edge. This is a fresh draw, not a recycled prophecy. Fresh-cookie number pull."
+    },
+    {
+      "id": "lucky_numbers_210",
+      "text": "The lucky line reads {numbers}. If the napkin asks, the bonus is {bonus}. This is a fresh draw, not a recycled prophecy. Fresh-cookie number pull."
+    },
+    {
+      "id": "lucky_numbers_211",
+      "text": "Your lucky numbers are {n1} - {n2} - {n3} - {n4} - {n5} - {n6}. Bonus number: {bonus}. The cookie has spoken in integers. Fresh-cookie number pull."
+    },
+    {
+      "id": "lucky_numbers_212",
+      "text": "The cookie draw gives {numbers}. Bonus crumb: {bonus}. The cookie has spoken in integers. Fresh-cookie number pull."
+    },
+    {
+      "id": "lucky_numbers_213",
+      "text": "Fate pulled {n1}, {n2}, {n3}, {n4}, {n5}, and {n6}; keep {bonus} in your pocket. The cookie has spoken in integers. Fresh-cookie number pull."
+    },
+    {
+      "id": "lucky_numbers_214",
+      "text": "Today's random draw is {numbers}, with {bonus} watching from the edge. The cookie has spoken in integers. Fresh-cookie number pull."
+    },
+    {
+      "id": "lucky_numbers_215",
+      "text": "The lucky line reads {numbers}. If the napkin asks, the bonus is {bonus}. The cookie has spoken in integers. Fresh-cookie number pull."
+    },
+    {
+      "id": "lucky_numbers_216",
+      "text": "Your lucky numbers are {n1} - {n2} - {n3} - {n4} - {n5} - {n6}. Bonus number: {bonus}. Use responsibly, which is to say dramatically. Fresh-cookie number pull."
+    },
+    {
+      "id": "lucky_numbers_217",
+      "text": "The cookie draw gives {numbers}. Bonus crumb: {bonus}. Use responsibly, which is to say dramatically. Fresh-cookie number pull."
+    },
+    {
+      "id": "lucky_numbers_218",
+      "text": "Fate pulled {n1}, {n2}, {n3}, {n4}, {n5}, and {n6}; keep {bonus} in your pocket. Use responsibly, which is to say dramatically. Fresh-cookie number pull."
+    },
+    {
+      "id": "lucky_numbers_219",
+      "text": "Today's random draw is {numbers}, with {bonus} watching from the edge. Use responsibly, which is to say dramatically. Fresh-cookie number pull."
+    },
+    {
+      "id": "lucky_numbers_220",
+      "text": "The lucky line reads {numbers}. If the napkin asks, the bonus is {bonus}. Use responsibly, which is to say dramatically. Fresh-cookie number pull."
+    },
+    {
+      "id": "lucky_numbers_221",
+      "text": "Your lucky numbers are {n1} - {n2} - {n3} - {n4} - {n5} - {n6}. Bonus number: {bonus}. The crumbs refuse to explain the math. Fresh-cookie number pull."
+    },
+    {
+      "id": "lucky_numbers_222",
+      "text": "The cookie draw gives {numbers}. Bonus crumb: {bonus}. The crumbs refuse to explain the math. Fresh-cookie number pull."
+    },
+    {
+      "id": "lucky_numbers_223",
+      "text": "Fate pulled {n1}, {n2}, {n3}, {n4}, {n5}, and {n6}; keep {bonus} in your pocket. The crumbs refuse to explain the math. Fresh-cookie number pull."
+    },
+    {
+      "id": "lucky_numbers_224",
+      "text": "Today's random draw is {numbers}, with {bonus} watching from the edge. The crumbs refuse to explain the math. Fresh-cookie number pull."
+    },
+    {
+      "id": "lucky_numbers_225",
+      "text": "The lucky line reads {numbers}. If the napkin asks, the bonus is {bonus}. The crumbs refuse to explain the math. Fresh-cookie number pull."
+    },
+    {
+      "id": "lucky_numbers_226",
+      "text": "Your lucky numbers are {n1} - {n2} - {n3} - {n4} - {n5} - {n6}. Bonus number: {bonus}. Fortune accepts no liability. Fresh-cookie number pull."
+    },
+    {
+      "id": "lucky_numbers_227",
+      "text": "The cookie draw gives {numbers}. Bonus crumb: {bonus}. Fortune accepts no liability. Fresh-cookie number pull."
+    },
+    {
+      "id": "lucky_numbers_228",
+      "text": "Fate pulled {n1}, {n2}, {n3}, {n4}, {n5}, and {n6}; keep {bonus} in your pocket. Fortune accepts no liability. Fresh-cookie number pull."
+    },
+    {
+      "id": "lucky_numbers_229",
+      "text": "Today's random draw is {numbers}, with {bonus} watching from the edge. Fortune accepts no liability. Fresh-cookie number pull."
+    },
+    {
+      "id": "lucky_numbers_230",
+      "text": "The lucky line reads {numbers}. If the napkin asks, the bonus is {bonus}. Fortune accepts no liability. Fresh-cookie number pull."
+    },
+    {
+      "id": "lucky_numbers_231",
+      "text": "Your lucky numbers are {n1} - {n2} - {n3} - {n4} - {n5} - {n6}. Bonus number: {bonus}. The wrapper recommends confidence. Fresh-cookie number pull."
+    },
+    {
+      "id": "lucky_numbers_232",
+      "text": "The cookie draw gives {numbers}. Bonus crumb: {bonus}. The wrapper recommends confidence. Fresh-cookie number pull."
+    },
+    {
+      "id": "lucky_numbers_233",
+      "text": "Fate pulled {n1}, {n2}, {n3}, {n4}, {n5}, and {n6}; keep {bonus} in your pocket. The wrapper recommends confidence. Fresh-cookie number pull."
+    },
+    {
+      "id": "lucky_numbers_234",
+      "text": "Today's random draw is {numbers}, with {bonus} watching from the edge. The wrapper recommends confidence. Fresh-cookie number pull."
+    },
+    {
+      "id": "lucky_numbers_235",
+      "text": "The lucky line reads {numbers}. If the napkin asks, the bonus is {bonus}. The wrapper recommends confidence. Fresh-cookie number pull."
+    },
+    {
+      "id": "lucky_numbers_236",
+      "text": "Your lucky numbers are {n1} - {n2} - {n3} - {n4} - {n5} - {n6}. Bonus number: {bonus}. Probability wore a tiny hat today. Fresh-cookie number pull."
+    },
+    {
+      "id": "lucky_numbers_237",
+      "text": "The cookie draw gives {numbers}. Bonus crumb: {bonus}. Probability wore a tiny hat today. Fresh-cookie number pull."
+    },
+    {
+      "id": "lucky_numbers_238",
+      "text": "Fate pulled {n1}, {n2}, {n3}, {n4}, {n5}, and {n6}; keep {bonus} in your pocket. Probability wore a tiny hat today. Fresh-cookie number pull."
+    },
+    {
+      "id": "lucky_numbers_239",
+      "text": "Today's random draw is {numbers}, with {bonus} watching from the edge. Probability wore a tiny hat today. Fresh-cookie number pull."
+    },
+    {
+      "id": "lucky_numbers_240",
+      "text": "The lucky line reads {numbers}. If the napkin asks, the bonus is {bonus}. Probability wore a tiny hat today. Fresh-cookie number pull."
+    },
+    {
+      "id": "lucky_numbers_241",
+      "text": "Your lucky numbers are {n1} - {n2} - {n3} - {n4} - {n5} - {n6}. Bonus number: {bonus}. Save the numbers, blame the cookie. Fresh-cookie number pull."
+    },
+    {
+      "id": "lucky_numbers_242",
+      "text": "The cookie draw gives {numbers}. Bonus crumb: {bonus}. Save the numbers, blame the cookie. Fresh-cookie number pull."
+    },
+    {
+      "id": "lucky_numbers_243",
+      "text": "Fate pulled {n1}, {n2}, {n3}, {n4}, {n5}, and {n6}; keep {bonus} in your pocket. Save the numbers, blame the cookie. Fresh-cookie number pull."
+    },
+    {
+      "id": "lucky_numbers_244",
+      "text": "Today's random draw is {numbers}, with {bonus} watching from the edge. Save the numbers, blame the cookie. Fresh-cookie number pull."
+    },
+    {
+      "id": "lucky_numbers_245",
+      "text": "The lucky line reads {numbers}. If the napkin asks, the bonus is {bonus}. Save the numbers, blame the cookie. Fresh-cookie number pull."
+    },
+    {
+      "id": "lucky_numbers_246",
+      "text": "Your lucky numbers are {n1} - {n2} - {n3} - {n4} - {n5} - {n6}. Bonus number: {bonus}. Randomness is part of the ritual. Fresh-cookie number pull."
+    },
+    {
+      "id": "lucky_numbers_247",
+      "text": "The cookie draw gives {numbers}. Bonus crumb: {bonus}. Randomness is part of the ritual. Fresh-cookie number pull."
+    },
+    {
+      "id": "lucky_numbers_248",
+      "text": "Fate pulled {n1}, {n2}, {n3}, {n4}, {n5}, and {n6}; keep {bonus} in your pocket. Randomness is part of the ritual. Fresh-cookie number pull."
+    },
+    {
+      "id": "lucky_numbers_249",
+      "text": "Today's random draw is {numbers}, with {bonus} watching from the edge. Randomness is part of the ritual. Fresh-cookie number pull."
+    },
+    {
+      "id": "lucky_numbers_250",
+      "text": "The lucky line reads {numbers}. If the napkin asks, the bonus is {bonus}. Randomness is part of the ritual. Fresh-cookie number pull."
+    },
+    {
+      "id": "lucky_numbers_251",
+      "text": "Your lucky numbers are {n1} - {n2} - {n3} - {n4} - {n5} - {n6}. Bonus number: {bonus}. No rerolls, no promises. No-stale-number clause."
+    },
+    {
+      "id": "lucky_numbers_252",
+      "text": "The cookie draw gives {numbers}. Bonus crumb: {bonus}. No rerolls, no promises. No-stale-number clause."
+    },
+    {
+      "id": "lucky_numbers_253",
+      "text": "Fate pulled {n1}, {n2}, {n3}, {n4}, {n5}, and {n6}; keep {bonus} in your pocket. No rerolls, no promises. No-stale-number clause."
+    },
+    {
+      "id": "lucky_numbers_254",
+      "text": "Today's random draw is {numbers}, with {bonus} watching from the edge. No rerolls, no promises. No-stale-number clause."
+    },
+    {
+      "id": "lucky_numbers_255",
+      "text": "The lucky line reads {numbers}. If the napkin asks, the bonus is {bonus}. No rerolls, no promises. No-stale-number clause."
+    },
+    {
+      "id": "lucky_numbers_256",
+      "text": "Your lucky numbers are {n1} - {n2} - {n3} - {n4} - {n5} - {n6}. Bonus number: {bonus}. This is a fresh draw, not a recycled prophecy. No-stale-number clause."
+    },
+    {
+      "id": "lucky_numbers_257",
+      "text": "The cookie draw gives {numbers}. Bonus crumb: {bonus}. This is a fresh draw, not a recycled prophecy. No-stale-number clause."
+    },
+    {
+      "id": "lucky_numbers_258",
+      "text": "Fate pulled {n1}, {n2}, {n3}, {n4}, {n5}, and {n6}; keep {bonus} in your pocket. This is a fresh draw, not a recycled prophecy. No-stale-number clause."
+    },
+    {
+      "id": "lucky_numbers_259",
+      "text": "Today's random draw is {numbers}, with {bonus} watching from the edge. This is a fresh draw, not a recycled prophecy. No-stale-number clause."
+    },
+    {
+      "id": "lucky_numbers_260",
+      "text": "The lucky line reads {numbers}. If the napkin asks, the bonus is {bonus}. This is a fresh draw, not a recycled prophecy. No-stale-number clause."
+    },
+    {
+      "id": "lucky_numbers_261",
+      "text": "Your lucky numbers are {n1} - {n2} - {n3} - {n4} - {n5} - {n6}. Bonus number: {bonus}. The cookie has spoken in integers. No-stale-number clause."
+    },
+    {
+      "id": "lucky_numbers_262",
+      "text": "The cookie draw gives {numbers}. Bonus crumb: {bonus}. The cookie has spoken in integers. No-stale-number clause."
+    },
+    {
+      "id": "lucky_numbers_263",
+      "text": "Fate pulled {n1}, {n2}, {n3}, {n4}, {n5}, and {n6}; keep {bonus} in your pocket. The cookie has spoken in integers. No-stale-number clause."
+    },
+    {
+      "id": "lucky_numbers_264",
+      "text": "Today's random draw is {numbers}, with {bonus} watching from the edge. The cookie has spoken in integers. No-stale-number clause."
+    },
+    {
+      "id": "lucky_numbers_265",
+      "text": "The lucky line reads {numbers}. If the napkin asks, the bonus is {bonus}. The cookie has spoken in integers. No-stale-number clause."
+    },
+    {
+      "id": "lucky_numbers_266",
+      "text": "Your lucky numbers are {n1} - {n2} - {n3} - {n4} - {n5} - {n6}. Bonus number: {bonus}. Use responsibly, which is to say dramatically. No-stale-number clause."
+    },
+    {
+      "id": "lucky_numbers_267",
+      "text": "The cookie draw gives {numbers}. Bonus crumb: {bonus}. Use responsibly, which is to say dramatically. No-stale-number clause."
+    },
+    {
+      "id": "lucky_numbers_268",
+      "text": "Fate pulled {n1}, {n2}, {n3}, {n4}, {n5}, and {n6}; keep {bonus} in your pocket. Use responsibly, which is to say dramatically. No-stale-number clause."
+    },
+    {
+      "id": "lucky_numbers_269",
+      "text": "Today's random draw is {numbers}, with {bonus} watching from the edge. Use responsibly, which is to say dramatically. No-stale-number clause."
+    },
+    {
+      "id": "lucky_numbers_270",
+      "text": "The lucky line reads {numbers}. If the napkin asks, the bonus is {bonus}. Use responsibly, which is to say dramatically. No-stale-number clause."
+    },
+    {
+      "id": "lucky_numbers_271",
+      "text": "Your lucky numbers are {n1} - {n2} - {n3} - {n4} - {n5} - {n6}. Bonus number: {bonus}. The crumbs refuse to explain the math. No-stale-number clause."
+    },
+    {
+      "id": "lucky_numbers_272",
+      "text": "The cookie draw gives {numbers}. Bonus crumb: {bonus}. The crumbs refuse to explain the math. No-stale-number clause."
+    },
+    {
+      "id": "lucky_numbers_273",
+      "text": "Fate pulled {n1}, {n2}, {n3}, {n4}, {n5}, and {n6}; keep {bonus} in your pocket. The crumbs refuse to explain the math. No-stale-number clause."
+    },
+    {
+      "id": "lucky_numbers_274",
+      "text": "Today's random draw is {numbers}, with {bonus} watching from the edge. The crumbs refuse to explain the math. No-stale-number clause."
+    },
+    {
+      "id": "lucky_numbers_275",
+      "text": "The lucky line reads {numbers}. If the napkin asks, the bonus is {bonus}. The crumbs refuse to explain the math. No-stale-number clause."
+    },
+    {
+      "id": "lucky_numbers_276",
+      "text": "Your lucky numbers are {n1} - {n2} - {n3} - {n4} - {n5} - {n6}. Bonus number: {bonus}. Fortune accepts no liability. No-stale-number clause."
+    },
+    {
+      "id": "lucky_numbers_277",
+      "text": "The cookie draw gives {numbers}. Bonus crumb: {bonus}. Fortune accepts no liability. No-stale-number clause."
+    },
+    {
+      "id": "lucky_numbers_278",
+      "text": "Fate pulled {n1}, {n2}, {n3}, {n4}, {n5}, and {n6}; keep {bonus} in your pocket. Fortune accepts no liability. No-stale-number clause."
+    },
+    {
+      "id": "lucky_numbers_279",
+      "text": "Today's random draw is {numbers}, with {bonus} watching from the edge. Fortune accepts no liability. No-stale-number clause."
+    },
+    {
+      "id": "lucky_numbers_280",
+      "text": "The lucky line reads {numbers}. If the napkin asks, the bonus is {bonus}. Fortune accepts no liability. No-stale-number clause."
+    },
+    {
+      "id": "lucky_numbers_281",
+      "text": "Your lucky numbers are {n1} - {n2} - {n3} - {n4} - {n5} - {n6}. Bonus number: {bonus}. The wrapper recommends confidence. No-stale-number clause."
+    },
+    {
+      "id": "lucky_numbers_282",
+      "text": "The cookie draw gives {numbers}. Bonus crumb: {bonus}. The wrapper recommends confidence. No-stale-number clause."
+    },
+    {
+      "id": "lucky_numbers_283",
+      "text": "Fate pulled {n1}, {n2}, {n3}, {n4}, {n5}, and {n6}; keep {bonus} in your pocket. The wrapper recommends confidence. No-stale-number clause."
+    },
+    {
+      "id": "lucky_numbers_284",
+      "text": "Today's random draw is {numbers}, with {bonus} watching from the edge. The wrapper recommends confidence. No-stale-number clause."
+    },
+    {
+      "id": "lucky_numbers_285",
+      "text": "The lucky line reads {numbers}. If the napkin asks, the bonus is {bonus}. The wrapper recommends confidence. No-stale-number clause."
+    },
+    {
+      "id": "lucky_numbers_286",
+      "text": "Your lucky numbers are {n1} - {n2} - {n3} - {n4} - {n5} - {n6}. Bonus number: {bonus}. Probability wore a tiny hat today. No-stale-number clause."
+    },
+    {
+      "id": "lucky_numbers_287",
+      "text": "The cookie draw gives {numbers}. Bonus crumb: {bonus}. Probability wore a tiny hat today. No-stale-number clause."
+    },
+    {
+      "id": "lucky_numbers_288",
+      "text": "Fate pulled {n1}, {n2}, {n3}, {n4}, {n5}, and {n6}; keep {bonus} in your pocket. Probability wore a tiny hat today. No-stale-number clause."
+    },
+    {
+      "id": "lucky_numbers_289",
+      "text": "Today's random draw is {numbers}, with {bonus} watching from the edge. Probability wore a tiny hat today. No-stale-number clause."
+    },
+    {
+      "id": "lucky_numbers_290",
+      "text": "The lucky line reads {numbers}. If the napkin asks, the bonus is {bonus}. Probability wore a tiny hat today. No-stale-number clause."
+    },
+    {
+      "id": "lucky_numbers_291",
+      "text": "Your lucky numbers are {n1} - {n2} - {n3} - {n4} - {n5} - {n6}. Bonus number: {bonus}. Save the numbers, blame the cookie. No-stale-number clause."
+    },
+    {
+      "id": "lucky_numbers_292",
+      "text": "The cookie draw gives {numbers}. Bonus crumb: {bonus}. Save the numbers, blame the cookie. No-stale-number clause."
+    },
+    {
+      "id": "lucky_numbers_293",
+      "text": "Fate pulled {n1}, {n2}, {n3}, {n4}, {n5}, and {n6}; keep {bonus} in your pocket. Save the numbers, blame the cookie. No-stale-number clause."
+    },
+    {
+      "id": "lucky_numbers_294",
+      "text": "Today's random draw is {numbers}, with {bonus} watching from the edge. Save the numbers, blame the cookie. No-stale-number clause."
+    },
+    {
+      "id": "lucky_numbers_295",
+      "text": "The lucky line reads {numbers}. If the napkin asks, the bonus is {bonus}. Save the numbers, blame the cookie. No-stale-number clause."
+    },
+    {
+      "id": "lucky_numbers_296",
+      "text": "Your lucky numbers are {n1} - {n2} - {n3} - {n4} - {n5} - {n6}. Bonus number: {bonus}. Randomness is part of the ritual. No-stale-number clause."
+    },
+    {
+      "id": "lucky_numbers_297",
+      "text": "The cookie draw gives {numbers}. Bonus crumb: {bonus}. Randomness is part of the ritual. No-stale-number clause."
+    },
+    {
+      "id": "lucky_numbers_298",
+      "text": "Fate pulled {n1}, {n2}, {n3}, {n4}, {n5}, and {n6}; keep {bonus} in your pocket. Randomness is part of the ritual. No-stale-number clause."
+    },
+    {
+      "id": "lucky_numbers_299",
+      "text": "Today's random draw is {numbers}, with {bonus} watching from the edge. Randomness is part of the ritual. No-stale-number clause."
+    },
+    {
+      "id": "lucky_numbers_300",
+      "text": "The lucky line reads {numbers}. If the napkin asks, the bonus is {bonus}. Randomness is part of the ritual. No-stale-number clause."
+    },
+    {
+      "id": "lucky_numbers_301",
+      "text": "Your lucky numbers are {n1} - {n2} - {n3} - {n4} - {n5} - {n6}. Bonus number: {bonus}. No rerolls, no promises. Randomness ritual."
+    },
+    {
+      "id": "lucky_numbers_302",
+      "text": "The cookie draw gives {numbers}. Bonus crumb: {bonus}. No rerolls, no promises. Randomness ritual."
+    },
+    {
+      "id": "lucky_numbers_303",
+      "text": "Fate pulled {n1}, {n2}, {n3}, {n4}, {n5}, and {n6}; keep {bonus} in your pocket. No rerolls, no promises. Randomness ritual."
+    },
+    {
+      "id": "lucky_numbers_304",
+      "text": "Today's random draw is {numbers}, with {bonus} watching from the edge. No rerolls, no promises. Randomness ritual."
+    },
+    {
+      "id": "lucky_numbers_305",
+      "text": "The lucky line reads {numbers}. If the napkin asks, the bonus is {bonus}. No rerolls, no promises. Randomness ritual."
+    },
+    {
+      "id": "lucky_numbers_306",
+      "text": "Your lucky numbers are {n1} - {n2} - {n3} - {n4} - {n5} - {n6}. Bonus number: {bonus}. This is a fresh draw, not a recycled prophecy. Randomness ritual."
+    },
+    {
+      "id": "lucky_numbers_307",
+      "text": "The cookie draw gives {numbers}. Bonus crumb: {bonus}. This is a fresh draw, not a recycled prophecy. Randomness ritual."
+    },
+    {
+      "id": "lucky_numbers_308",
+      "text": "Fate pulled {n1}, {n2}, {n3}, {n4}, {n5}, and {n6}; keep {bonus} in your pocket. This is a fresh draw, not a recycled prophecy. Randomness ritual."
+    },
+    {
+      "id": "lucky_numbers_309",
+      "text": "Today's random draw is {numbers}, with {bonus} watching from the edge. This is a fresh draw, not a recycled prophecy. Randomness ritual."
+    },
+    {
+      "id": "lucky_numbers_310",
+      "text": "The lucky line reads {numbers}. If the napkin asks, the bonus is {bonus}. This is a fresh draw, not a recycled prophecy. Randomness ritual."
+    },
+    {
+      "id": "lucky_numbers_311",
+      "text": "Your lucky numbers are {n1} - {n2} - {n3} - {n4} - {n5} - {n6}. Bonus number: {bonus}. The cookie has spoken in integers. Randomness ritual."
+    },
+    {
+      "id": "lucky_numbers_312",
+      "text": "The cookie draw gives {numbers}. Bonus crumb: {bonus}. The cookie has spoken in integers. Randomness ritual."
+    },
+    {
+      "id": "lucky_numbers_313",
+      "text": "Fate pulled {n1}, {n2}, {n3}, {n4}, {n5}, and {n6}; keep {bonus} in your pocket. The cookie has spoken in integers. Randomness ritual."
+    },
+    {
+      "id": "lucky_numbers_314",
+      "text": "Today's random draw is {numbers}, with {bonus} watching from the edge. The cookie has spoken in integers. Randomness ritual."
+    },
+    {
+      "id": "lucky_numbers_315",
+      "text": "The lucky line reads {numbers}. If the napkin asks, the bonus is {bonus}. The cookie has spoken in integers. Randomness ritual."
+    },
+    {
+      "id": "lucky_numbers_316",
+      "text": "Your lucky numbers are {n1} - {n2} - {n3} - {n4} - {n5} - {n6}. Bonus number: {bonus}. Use responsibly, which is to say dramatically. Randomness ritual."
+    },
+    {
+      "id": "lucky_numbers_317",
+      "text": "The cookie draw gives {numbers}. Bonus crumb: {bonus}. Use responsibly, which is to say dramatically. Randomness ritual."
+    },
+    {
+      "id": "lucky_numbers_318",
+      "text": "Fate pulled {n1}, {n2}, {n3}, {n4}, {n5}, and {n6}; keep {bonus} in your pocket. Use responsibly, which is to say dramatically. Randomness ritual."
+    },
+    {
+      "id": "lucky_numbers_319",
+      "text": "Today's random draw is {numbers}, with {bonus} watching from the edge. Use responsibly, which is to say dramatically. Randomness ritual."
+    },
+    {
+      "id": "lucky_numbers_320",
+      "text": "The lucky line reads {numbers}. If the napkin asks, the bonus is {bonus}. Use responsibly, which is to say dramatically. Randomness ritual."
+    },
+    {
+      "id": "lucky_numbers_321",
+      "text": "Your lucky numbers are {n1} - {n2} - {n3} - {n4} - {n5} - {n6}. Bonus number: {bonus}. The crumbs refuse to explain the math. Randomness ritual."
+    },
+    {
+      "id": "lucky_numbers_322",
+      "text": "The cookie draw gives {numbers}. Bonus crumb: {bonus}. The crumbs refuse to explain the math. Randomness ritual."
+    },
+    {
+      "id": "lucky_numbers_323",
+      "text": "Fate pulled {n1}, {n2}, {n3}, {n4}, {n5}, and {n6}; keep {bonus} in your pocket. The crumbs refuse to explain the math. Randomness ritual."
+    },
+    {
+      "id": "lucky_numbers_324",
+      "text": "Today's random draw is {numbers}, with {bonus} watching from the edge. The crumbs refuse to explain the math. Randomness ritual."
+    },
+    {
+      "id": "lucky_numbers_325",
+      "text": "The lucky line reads {numbers}. If the napkin asks, the bonus is {bonus}. The crumbs refuse to explain the math. Randomness ritual."
+    },
+    {
+      "id": "lucky_numbers_326",
+      "text": "Your lucky numbers are {n1} - {n2} - {n3} - {n4} - {n5} - {n6}. Bonus number: {bonus}. Fortune accepts no liability. Randomness ritual."
+    },
+    {
+      "id": "lucky_numbers_327",
+      "text": "The cookie draw gives {numbers}. Bonus crumb: {bonus}. Fortune accepts no liability. Randomness ritual."
+    },
+    {
+      "id": "lucky_numbers_328",
+      "text": "Fate pulled {n1}, {n2}, {n3}, {n4}, {n5}, and {n6}; keep {bonus} in your pocket. Fortune accepts no liability. Randomness ritual."
+    },
+    {
+      "id": "lucky_numbers_329",
+      "text": "Today's random draw is {numbers}, with {bonus} watching from the edge. Fortune accepts no liability. Randomness ritual."
+    },
+    {
+      "id": "lucky_numbers_330",
+      "text": "The lucky line reads {numbers}. If the napkin asks, the bonus is {bonus}. Fortune accepts no liability. Randomness ritual."
+    },
+    {
+      "id": "lucky_numbers_331",
+      "text": "Your lucky numbers are {n1} - {n2} - {n3} - {n4} - {n5} - {n6}. Bonus number: {bonus}. The wrapper recommends confidence. Randomness ritual."
+    },
+    {
+      "id": "lucky_numbers_332",
+      "text": "The cookie draw gives {numbers}. Bonus crumb: {bonus}. The wrapper recommends confidence. Randomness ritual."
+    },
+    {
+      "id": "lucky_numbers_333",
+      "text": "Fate pulled {n1}, {n2}, {n3}, {n4}, {n5}, and {n6}; keep {bonus} in your pocket. The wrapper recommends confidence. Randomness ritual."
+    },
+    {
+      "id": "lucky_numbers_334",
+      "text": "Today's random draw is {numbers}, with {bonus} watching from the edge. The wrapper recommends confidence. Randomness ritual."
+    },
+    {
+      "id": "lucky_numbers_335",
+      "text": "The lucky line reads {numbers}. If the napkin asks, the bonus is {bonus}. The wrapper recommends confidence. Randomness ritual."
+    },
+    {
+      "id": "lucky_numbers_336",
+      "text": "Your lucky numbers are {n1} - {n2} - {n3} - {n4} - {n5} - {n6}. Bonus number: {bonus}. Probability wore a tiny hat today. Randomness ritual."
+    },
+    {
+      "id": "lucky_numbers_337",
+      "text": "The cookie draw gives {numbers}. Bonus crumb: {bonus}. Probability wore a tiny hat today. Randomness ritual."
+    },
+    {
+      "id": "lucky_numbers_338",
+      "text": "Fate pulled {n1}, {n2}, {n3}, {n4}, {n5}, and {n6}; keep {bonus} in your pocket. Probability wore a tiny hat today. Randomness ritual."
+    },
+    {
+      "id": "lucky_numbers_339",
+      "text": "Today's random draw is {numbers}, with {bonus} watching from the edge. Probability wore a tiny hat today. Randomness ritual."
+    },
+    {
+      "id": "lucky_numbers_340",
+      "text": "The lucky line reads {numbers}. If the napkin asks, the bonus is {bonus}. Probability wore a tiny hat today. Randomness ritual."
+    },
+    {
+      "id": "lucky_numbers_341",
+      "text": "Your lucky numbers are {n1} - {n2} - {n3} - {n4} - {n5} - {n6}. Bonus number: {bonus}. Save the numbers, blame the cookie. Randomness ritual."
+    },
+    {
+      "id": "lucky_numbers_342",
+      "text": "The cookie draw gives {numbers}. Bonus crumb: {bonus}. Save the numbers, blame the cookie. Randomness ritual."
+    },
+    {
+      "id": "lucky_numbers_343",
+      "text": "Fate pulled {n1}, {n2}, {n3}, {n4}, {n5}, and {n6}; keep {bonus} in your pocket. Save the numbers, blame the cookie. Randomness ritual."
+    },
+    {
+      "id": "lucky_numbers_344",
+      "text": "Today's random draw is {numbers}, with {bonus} watching from the edge. Save the numbers, blame the cookie. Randomness ritual."
+    },
+    {
+      "id": "lucky_numbers_345",
+      "text": "The lucky line reads {numbers}. If the napkin asks, the bonus is {bonus}. Save the numbers, blame the cookie. Randomness ritual."
+    },
+    {
+      "id": "lucky_numbers_346",
+      "text": "Your lucky numbers are {n1} - {n2} - {n3} - {n4} - {n5} - {n6}. Bonus number: {bonus}. Randomness is part of the ritual. Randomness ritual."
+    },
+    {
+      "id": "lucky_numbers_347",
+      "text": "The cookie draw gives {numbers}. Bonus crumb: {bonus}. Randomness is part of the ritual. Randomness ritual."
+    },
+    {
+      "id": "lucky_numbers_348",
+      "text": "Fate pulled {n1}, {n2}, {n3}, {n4}, {n5}, and {n6}; keep {bonus} in your pocket. Randomness is part of the ritual. Randomness ritual."
+    },
+    {
+      "id": "lucky_numbers_349",
+      "text": "Today's random draw is {numbers}, with {bonus} watching from the edge. Randomness is part of the ritual. Randomness ritual."
+    },
+    {
+      "id": "lucky_numbers_350",
+      "text": "The lucky line reads {numbers}. If the napkin asks, the bonus is {bonus}. Randomness is part of the ritual. Randomness ritual."
+    },
+    {
+      "id": "lucky_numbers_351",
+      "text": "Your lucky numbers are {n1} - {n2} - {n3} - {n4} - {n5} - {n6}. Bonus number: {bonus}. No rerolls, no promises. Bonus-number omen."
+    },
+    {
+      "id": "lucky_numbers_352",
+      "text": "The cookie draw gives {numbers}. Bonus crumb: {bonus}. No rerolls, no promises. Bonus-number omen."
+    },
+    {
+      "id": "lucky_numbers_353",
+      "text": "Fate pulled {n1}, {n2}, {n3}, {n4}, {n5}, and {n6}; keep {bonus} in your pocket. No rerolls, no promises. Bonus-number omen."
+    },
+    {
+      "id": "lucky_numbers_354",
+      "text": "Today's random draw is {numbers}, with {bonus} watching from the edge. No rerolls, no promises. Bonus-number omen."
+    },
+    {
+      "id": "lucky_numbers_355",
+      "text": "The lucky line reads {numbers}. If the napkin asks, the bonus is {bonus}. No rerolls, no promises. Bonus-number omen."
+    },
+    {
+      "id": "lucky_numbers_356",
+      "text": "Your lucky numbers are {n1} - {n2} - {n3} - {n4} - {n5} - {n6}. Bonus number: {bonus}. This is a fresh draw, not a recycled prophecy. Bonus-number omen."
+    },
+    {
+      "id": "lucky_numbers_357",
+      "text": "The cookie draw gives {numbers}. Bonus crumb: {bonus}. This is a fresh draw, not a recycled prophecy. Bonus-number omen."
+    },
+    {
+      "id": "lucky_numbers_358",
+      "text": "Fate pulled {n1}, {n2}, {n3}, {n4}, {n5}, and {n6}; keep {bonus} in your pocket. This is a fresh draw, not a recycled prophecy. Bonus-number omen."
+    },
+    {
+      "id": "lucky_numbers_359",
+      "text": "Today's random draw is {numbers}, with {bonus} watching from the edge. This is a fresh draw, not a recycled prophecy. Bonus-number omen."
+    },
+    {
+      "id": "lucky_numbers_360",
+      "text": "The lucky line reads {numbers}. If the napkin asks, the bonus is {bonus}. This is a fresh draw, not a recycled prophecy. Bonus-number omen."
+    },
+    {
+      "id": "lucky_numbers_361",
+      "text": "Your lucky numbers are {n1} - {n2} - {n3} - {n4} - {n5} - {n6}. Bonus number: {bonus}. The cookie has spoken in integers. Bonus-number omen."
+    },
+    {
+      "id": "lucky_numbers_362",
+      "text": "The cookie draw gives {numbers}. Bonus crumb: {bonus}. The cookie has spoken in integers. Bonus-number omen."
+    },
+    {
+      "id": "lucky_numbers_363",
+      "text": "Fate pulled {n1}, {n2}, {n3}, {n4}, {n5}, and {n6}; keep {bonus} in your pocket. The cookie has spoken in integers. Bonus-number omen."
+    },
+    {
+      "id": "lucky_numbers_364",
+      "text": "Today's random draw is {numbers}, with {bonus} watching from the edge. The cookie has spoken in integers. Bonus-number omen."
+    },
+    {
+      "id": "lucky_numbers_365",
+      "text": "The lucky line reads {numbers}. If the napkin asks, the bonus is {bonus}. The cookie has spoken in integers. Bonus-number omen."
+    },
+    {
+      "id": "lucky_numbers_366",
+      "text": "Your lucky numbers are {n1} - {n2} - {n3} - {n4} - {n5} - {n6}. Bonus number: {bonus}. Use responsibly, which is to say dramatically. Bonus-number omen."
+    },
+    {
+      "id": "lucky_numbers_367",
+      "text": "The cookie draw gives {numbers}. Bonus crumb: {bonus}. Use responsibly, which is to say dramatically. Bonus-number omen."
+    },
+    {
+      "id": "lucky_numbers_368",
+      "text": "Fate pulled {n1}, {n2}, {n3}, {n4}, {n5}, and {n6}; keep {bonus} in your pocket. Use responsibly, which is to say dramatically. Bonus-number omen."
+    },
+    {
+      "id": "lucky_numbers_369",
+      "text": "Today's random draw is {numbers}, with {bonus} watching from the edge. Use responsibly, which is to say dramatically. Bonus-number omen."
+    },
+    {
+      "id": "lucky_numbers_370",
+      "text": "The lucky line reads {numbers}. If the napkin asks, the bonus is {bonus}. Use responsibly, which is to say dramatically. Bonus-number omen."
+    },
+    {
+      "id": "lucky_numbers_371",
+      "text": "Your lucky numbers are {n1} - {n2} - {n3} - {n4} - {n5} - {n6}. Bonus number: {bonus}. The crumbs refuse to explain the math. Bonus-number omen."
+    },
+    {
+      "id": "lucky_numbers_372",
+      "text": "The cookie draw gives {numbers}. Bonus crumb: {bonus}. The crumbs refuse to explain the math. Bonus-number omen."
+    },
+    {
+      "id": "lucky_numbers_373",
+      "text": "Fate pulled {n1}, {n2}, {n3}, {n4}, {n5}, and {n6}; keep {bonus} in your pocket. The crumbs refuse to explain the math. Bonus-number omen."
+    },
+    {
+      "id": "lucky_numbers_374",
+      "text": "Today's random draw is {numbers}, with {bonus} watching from the edge. The crumbs refuse to explain the math. Bonus-number omen."
+    },
+    {
+      "id": "lucky_numbers_375",
+      "text": "The lucky line reads {numbers}. If the napkin asks, the bonus is {bonus}. The crumbs refuse to explain the math. Bonus-number omen."
+    },
+    {
+      "id": "lucky_numbers_376",
+      "text": "Your lucky numbers are {n1} - {n2} - {n3} - {n4} - {n5} - {n6}. Bonus number: {bonus}. Fortune accepts no liability. Bonus-number omen."
+    },
+    {
+      "id": "lucky_numbers_377",
+      "text": "The cookie draw gives {numbers}. Bonus crumb: {bonus}. Fortune accepts no liability. Bonus-number omen."
+    },
+    {
+      "id": "lucky_numbers_378",
+      "text": "Fate pulled {n1}, {n2}, {n3}, {n4}, {n5}, and {n6}; keep {bonus} in your pocket. Fortune accepts no liability. Bonus-number omen."
+    },
+    {
+      "id": "lucky_numbers_379",
+      "text": "Today's random draw is {numbers}, with {bonus} watching from the edge. Fortune accepts no liability. Bonus-number omen."
+    },
+    {
+      "id": "lucky_numbers_380",
+      "text": "The lucky line reads {numbers}. If the napkin asks, the bonus is {bonus}. Fortune accepts no liability. Bonus-number omen."
+    },
+    {
+      "id": "lucky_numbers_381",
+      "text": "Your lucky numbers are {n1} - {n2} - {n3} - {n4} - {n5} - {n6}. Bonus number: {bonus}. The wrapper recommends confidence. Bonus-number omen."
+    },
+    {
+      "id": "lucky_numbers_382",
+      "text": "The cookie draw gives {numbers}. Bonus crumb: {bonus}. The wrapper recommends confidence. Bonus-number omen."
+    },
+    {
+      "id": "lucky_numbers_383",
+      "text": "Fate pulled {n1}, {n2}, {n3}, {n4}, {n5}, and {n6}; keep {bonus} in your pocket. The wrapper recommends confidence. Bonus-number omen."
+    },
+    {
+      "id": "lucky_numbers_384",
+      "text": "Today's random draw is {numbers}, with {bonus} watching from the edge. The wrapper recommends confidence. Bonus-number omen."
+    },
+    {
+      "id": "lucky_numbers_385",
+      "text": "The lucky line reads {numbers}. If the napkin asks, the bonus is {bonus}. The wrapper recommends confidence. Bonus-number omen."
+    },
+    {
+      "id": "lucky_numbers_386",
+      "text": "Your lucky numbers are {n1} - {n2} - {n3} - {n4} - {n5} - {n6}. Bonus number: {bonus}. Probability wore a tiny hat today. Bonus-number omen."
+    },
+    {
+      "id": "lucky_numbers_387",
+      "text": "The cookie draw gives {numbers}. Bonus crumb: {bonus}. Probability wore a tiny hat today. Bonus-number omen."
+    },
+    {
+      "id": "lucky_numbers_388",
+      "text": "Fate pulled {n1}, {n2}, {n3}, {n4}, {n5}, and {n6}; keep {bonus} in your pocket. Probability wore a tiny hat today. Bonus-number omen."
+    },
+    {
+      "id": "lucky_numbers_389",
+      "text": "Today's random draw is {numbers}, with {bonus} watching from the edge. Probability wore a tiny hat today. Bonus-number omen."
+    },
+    {
+      "id": "lucky_numbers_390",
+      "text": "The lucky line reads {numbers}. If the napkin asks, the bonus is {bonus}. Probability wore a tiny hat today. Bonus-number omen."
+    },
+    {
+      "id": "lucky_numbers_391",
+      "text": "Your lucky numbers are {n1} - {n2} - {n3} - {n4} - {n5} - {n6}. Bonus number: {bonus}. Save the numbers, blame the cookie. Bonus-number omen."
+    },
+    {
+      "id": "lucky_numbers_392",
+      "text": "The cookie draw gives {numbers}. Bonus crumb: {bonus}. Save the numbers, blame the cookie. Bonus-number omen."
+    },
+    {
+      "id": "lucky_numbers_393",
+      "text": "Fate pulled {n1}, {n2}, {n3}, {n4}, {n5}, and {n6}; keep {bonus} in your pocket. Save the numbers, blame the cookie. Bonus-number omen."
+    },
+    {
+      "id": "lucky_numbers_394",
+      "text": "Today's random draw is {numbers}, with {bonus} watching from the edge. Save the numbers, blame the cookie. Bonus-number omen."
+    },
+    {
+      "id": "lucky_numbers_395",
+      "text": "The lucky line reads {numbers}. If the napkin asks, the bonus is {bonus}. Save the numbers, blame the cookie. Bonus-number omen."
+    },
+    {
+      "id": "lucky_numbers_396",
+      "text": "Your lucky numbers are {n1} - {n2} - {n3} - {n4} - {n5} - {n6}. Bonus number: {bonus}. Randomness is part of the ritual. Bonus-number omen."
+    },
+    {
+      "id": "lucky_numbers_397",
+      "text": "The cookie draw gives {numbers}. Bonus crumb: {bonus}. Randomness is part of the ritual. Bonus-number omen."
+    },
+    {
+      "id": "lucky_numbers_398",
+      "text": "Fate pulled {n1}, {n2}, {n3}, {n4}, {n5}, and {n6}; keep {bonus} in your pocket. Randomness is part of the ritual. Bonus-number omen."
+    },
+    {
+      "id": "lucky_numbers_399",
+      "text": "Today's random draw is {numbers}, with {bonus} watching from the edge. Randomness is part of the ritual. Bonus-number omen."
+    },
+    {
+      "id": "lucky_numbers_400",
+      "text": "The lucky line reads {numbers}. If the napkin asks, the bonus is {bonus}. Randomness is part of the ritual. Bonus-number omen."
+    },
+    {
+      "id": "lucky_numbers_401",
+      "text": "Your lucky numbers are {n1} - {n2} - {n3} - {n4} - {n5} - {n6}. Bonus number: {bonus}. No rerolls, no promises. Fortune slip draw."
+    },
+    {
+      "id": "lucky_numbers_402",
+      "text": "The cookie draw gives {numbers}. Bonus crumb: {bonus}. No rerolls, no promises. Fortune slip draw."
+    },
+    {
+      "id": "lucky_numbers_403",
+      "text": "Fate pulled {n1}, {n2}, {n3}, {n4}, {n5}, and {n6}; keep {bonus} in your pocket. No rerolls, no promises. Fortune slip draw."
+    },
+    {
+      "id": "lucky_numbers_404",
+      "text": "Today's random draw is {numbers}, with {bonus} watching from the edge. No rerolls, no promises. Fortune slip draw."
+    },
+    {
+      "id": "lucky_numbers_405",
+      "text": "The lucky line reads {numbers}. If the napkin asks, the bonus is {bonus}. No rerolls, no promises. Fortune slip draw."
+    },
+    {
+      "id": "lucky_numbers_406",
+      "text": "Your lucky numbers are {n1} - {n2} - {n3} - {n4} - {n5} - {n6}. Bonus number: {bonus}. This is a fresh draw, not a recycled prophecy. Fortune slip draw."
+    },
+    {
+      "id": "lucky_numbers_407",
+      "text": "The cookie draw gives {numbers}. Bonus crumb: {bonus}. This is a fresh draw, not a recycled prophecy. Fortune slip draw."
+    },
+    {
+      "id": "lucky_numbers_408",
+      "text": "Fate pulled {n1}, {n2}, {n3}, {n4}, {n5}, and {n6}; keep {bonus} in your pocket. This is a fresh draw, not a recycled prophecy. Fortune slip draw."
+    },
+    {
+      "id": "lucky_numbers_409",
+      "text": "Today's random draw is {numbers}, with {bonus} watching from the edge. This is a fresh draw, not a recycled prophecy. Fortune slip draw."
+    },
+    {
+      "id": "lucky_numbers_410",
+      "text": "The lucky line reads {numbers}. If the napkin asks, the bonus is {bonus}. This is a fresh draw, not a recycled prophecy. Fortune slip draw."
+    },
+    {
+      "id": "lucky_numbers_411",
+      "text": "Your lucky numbers are {n1} - {n2} - {n3} - {n4} - {n5} - {n6}. Bonus number: {bonus}. The cookie has spoken in integers. Fortune slip draw."
+    },
+    {
+      "id": "lucky_numbers_412",
+      "text": "The cookie draw gives {numbers}. Bonus crumb: {bonus}. The cookie has spoken in integers. Fortune slip draw."
+    },
+    {
+      "id": "lucky_numbers_413",
+      "text": "Fate pulled {n1}, {n2}, {n3}, {n4}, {n5}, and {n6}; keep {bonus} in your pocket. The cookie has spoken in integers. Fortune slip draw."
+    },
+    {
+      "id": "lucky_numbers_414",
+      "text": "Today's random draw is {numbers}, with {bonus} watching from the edge. The cookie has spoken in integers. Fortune slip draw."
+    },
+    {
+      "id": "lucky_numbers_415",
+      "text": "The lucky line reads {numbers}. If the napkin asks, the bonus is {bonus}. The cookie has spoken in integers. Fortune slip draw."
+    },
+    {
+      "id": "lucky_numbers_416",
+      "text": "Your lucky numbers are {n1} - {n2} - {n3} - {n4} - {n5} - {n6}. Bonus number: {bonus}. Use responsibly, which is to say dramatically. Fortune slip draw."
+    },
+    {
+      "id": "lucky_numbers_417",
+      "text": "The cookie draw gives {numbers}. Bonus crumb: {bonus}. Use responsibly, which is to say dramatically. Fortune slip draw."
+    },
+    {
+      "id": "lucky_numbers_418",
+      "text": "Fate pulled {n1}, {n2}, {n3}, {n4}, {n5}, and {n6}; keep {bonus} in your pocket. Use responsibly, which is to say dramatically. Fortune slip draw."
+    },
+    {
+      "id": "lucky_numbers_419",
+      "text": "Today's random draw is {numbers}, with {bonus} watching from the edge. Use responsibly, which is to say dramatically. Fortune slip draw."
+    },
+    {
+      "id": "lucky_numbers_420",
+      "text": "The lucky line reads {numbers}. If the napkin asks, the bonus is {bonus}. Use responsibly, which is to say dramatically. Fortune slip draw."
+    },
+    {
+      "id": "lucky_numbers_421",
+      "text": "Your lucky numbers are {n1} - {n2} - {n3} - {n4} - {n5} - {n6}. Bonus number: {bonus}. The crumbs refuse to explain the math. Fortune slip draw."
+    },
+    {
+      "id": "lucky_numbers_422",
+      "text": "The cookie draw gives {numbers}. Bonus crumb: {bonus}. The crumbs refuse to explain the math. Fortune slip draw."
+    },
+    {
+      "id": "lucky_numbers_423",
+      "text": "Fate pulled {n1}, {n2}, {n3}, {n4}, {n5}, and {n6}; keep {bonus} in your pocket. The crumbs refuse to explain the math. Fortune slip draw."
+    },
+    {
+      "id": "lucky_numbers_424",
+      "text": "Today's random draw is {numbers}, with {bonus} watching from the edge. The crumbs refuse to explain the math. Fortune slip draw."
+    },
+    {
+      "id": "lucky_numbers_425",
+      "text": "The lucky line reads {numbers}. If the napkin asks, the bonus is {bonus}. The crumbs refuse to explain the math. Fortune slip draw."
+    },
+    {
+      "id": "lucky_numbers_426",
+      "text": "Your lucky numbers are {n1} - {n2} - {n3} - {n4} - {n5} - {n6}. Bonus number: {bonus}. Fortune accepts no liability. Fortune slip draw."
+    },
+    {
+      "id": "lucky_numbers_427",
+      "text": "The cookie draw gives {numbers}. Bonus crumb: {bonus}. Fortune accepts no liability. Fortune slip draw."
+    },
+    {
+      "id": "lucky_numbers_428",
+      "text": "Fate pulled {n1}, {n2}, {n3}, {n4}, {n5}, and {n6}; keep {bonus} in your pocket. Fortune accepts no liability. Fortune slip draw."
+    },
+    {
+      "id": "lucky_numbers_429",
+      "text": "Today's random draw is {numbers}, with {bonus} watching from the edge. Fortune accepts no liability. Fortune slip draw."
+    },
+    {
+      "id": "lucky_numbers_430",
+      "text": "The lucky line reads {numbers}. If the napkin asks, the bonus is {bonus}. Fortune accepts no liability. Fortune slip draw."
+    },
+    {
+      "id": "lucky_numbers_431",
+      "text": "Your lucky numbers are {n1} - {n2} - {n3} - {n4} - {n5} - {n6}. Bonus number: {bonus}. The wrapper recommends confidence. Fortune slip draw."
+    },
+    {
+      "id": "lucky_numbers_432",
+      "text": "The cookie draw gives {numbers}. Bonus crumb: {bonus}. The wrapper recommends confidence. Fortune slip draw."
+    },
+    {
+      "id": "lucky_numbers_433",
+      "text": "Fate pulled {n1}, {n2}, {n3}, {n4}, {n5}, and {n6}; keep {bonus} in your pocket. The wrapper recommends confidence. Fortune slip draw."
+    },
+    {
+      "id": "lucky_numbers_434",
+      "text": "Today's random draw is {numbers}, with {bonus} watching from the edge. The wrapper recommends confidence. Fortune slip draw."
+    },
+    {
+      "id": "lucky_numbers_435",
+      "text": "The lucky line reads {numbers}. If the napkin asks, the bonus is {bonus}. The wrapper recommends confidence. Fortune slip draw."
+    },
+    {
+      "id": "lucky_numbers_436",
+      "text": "Your lucky numbers are {n1} - {n2} - {n3} - {n4} - {n5} - {n6}. Bonus number: {bonus}. Probability wore a tiny hat today. Fortune slip draw."
+    },
+    {
+      "id": "lucky_numbers_437",
+      "text": "The cookie draw gives {numbers}. Bonus crumb: {bonus}. Probability wore a tiny hat today. Fortune slip draw."
+    },
+    {
+      "id": "lucky_numbers_438",
+      "text": "Fate pulled {n1}, {n2}, {n3}, {n4}, {n5}, and {n6}; keep {bonus} in your pocket. Probability wore a tiny hat today. Fortune slip draw."
+    },
+    {
+      "id": "lucky_numbers_439",
+      "text": "Today's random draw is {numbers}, with {bonus} watching from the edge. Probability wore a tiny hat today. Fortune slip draw."
+    },
+    {
+      "id": "lucky_numbers_440",
+      "text": "The lucky line reads {numbers}. If the napkin asks, the bonus is {bonus}. Probability wore a tiny hat today. Fortune slip draw."
+    },
+    {
+      "id": "lucky_numbers_441",
+      "text": "Your lucky numbers are {n1} - {n2} - {n3} - {n4} - {n5} - {n6}. Bonus number: {bonus}. Save the numbers, blame the cookie. Fortune slip draw."
+    },
+    {
+      "id": "lucky_numbers_442",
+      "text": "The cookie draw gives {numbers}. Bonus crumb: {bonus}. Save the numbers, blame the cookie. Fortune slip draw."
+    },
+    {
+      "id": "lucky_numbers_443",
+      "text": "Fate pulled {n1}, {n2}, {n3}, {n4}, {n5}, and {n6}; keep {bonus} in your pocket. Save the numbers, blame the cookie. Fortune slip draw."
+    },
+    {
+      "id": "lucky_numbers_444",
+      "text": "Today's random draw is {numbers}, with {bonus} watching from the edge. Save the numbers, blame the cookie. Fortune slip draw."
+    },
+    {
+      "id": "lucky_numbers_445",
+      "text": "The lucky line reads {numbers}. If the napkin asks, the bonus is {bonus}. Save the numbers, blame the cookie. Fortune slip draw."
+    },
+    {
+      "id": "lucky_numbers_446",
+      "text": "Your lucky numbers are {n1} - {n2} - {n3} - {n4} - {n5} - {n6}. Bonus number: {bonus}. Randomness is part of the ritual. Fortune slip draw."
+    },
+    {
+      "id": "lucky_numbers_447",
+      "text": "The cookie draw gives {numbers}. Bonus crumb: {bonus}. Randomness is part of the ritual. Fortune slip draw."
+    },
+    {
+      "id": "lucky_numbers_448",
+      "text": "Fate pulled {n1}, {n2}, {n3}, {n4}, {n5}, and {n6}; keep {bonus} in your pocket. Randomness is part of the ritual. Fortune slip draw."
+    },
+    {
+      "id": "lucky_numbers_449",
+      "text": "Today's random draw is {numbers}, with {bonus} watching from the edge. Randomness is part of the ritual. Fortune slip draw."
+    },
+    {
+      "id": "lucky_numbers_450",
+      "text": "The lucky line reads {numbers}. If the napkin asks, the bonus is {bonus}. Randomness is part of the ritual. Fortune slip draw."
+    },
+    {
+      "id": "lucky_numbers_451",
+      "text": "Your lucky numbers are {n1} - {n2} - {n3} - {n4} - {n5} - {n6}. Bonus number: {bonus}. No rerolls, no promises. Clean integer prophecy."
+    },
+    {
+      "id": "lucky_numbers_452",
+      "text": "The cookie draw gives {numbers}. Bonus crumb: {bonus}. No rerolls, no promises. Clean integer prophecy."
+    },
+    {
+      "id": "lucky_numbers_453",
+      "text": "Fate pulled {n1}, {n2}, {n3}, {n4}, {n5}, and {n6}; keep {bonus} in your pocket. No rerolls, no promises. Clean integer prophecy."
+    },
+    {
+      "id": "lucky_numbers_454",
+      "text": "Today's random draw is {numbers}, with {bonus} watching from the edge. No rerolls, no promises. Clean integer prophecy."
+    },
+    {
+      "id": "lucky_numbers_455",
+      "text": "The lucky line reads {numbers}. If the napkin asks, the bonus is {bonus}. No rerolls, no promises. Clean integer prophecy."
+    },
+    {
+      "id": "lucky_numbers_456",
+      "text": "Your lucky numbers are {n1} - {n2} - {n3} - {n4} - {n5} - {n6}. Bonus number: {bonus}. This is a fresh draw, not a recycled prophecy. Clean integer prophecy."
+    },
+    {
+      "id": "lucky_numbers_457",
+      "text": "The cookie draw gives {numbers}. Bonus crumb: {bonus}. This is a fresh draw, not a recycled prophecy. Clean integer prophecy."
+    },
+    {
+      "id": "lucky_numbers_458",
+      "text": "Fate pulled {n1}, {n2}, {n3}, {n4}, {n5}, and {n6}; keep {bonus} in your pocket. This is a fresh draw, not a recycled prophecy. Clean integer prophecy."
+    },
+    {
+      "id": "lucky_numbers_459",
+      "text": "Today's random draw is {numbers}, with {bonus} watching from the edge. This is a fresh draw, not a recycled prophecy. Clean integer prophecy."
+    },
+    {
+      "id": "lucky_numbers_460",
+      "text": "The lucky line reads {numbers}. If the napkin asks, the bonus is {bonus}. This is a fresh draw, not a recycled prophecy. Clean integer prophecy."
+    },
+    {
+      "id": "lucky_numbers_461",
+      "text": "Your lucky numbers are {n1} - {n2} - {n3} - {n4} - {n5} - {n6}. Bonus number: {bonus}. The cookie has spoken in integers. Clean integer prophecy."
+    },
+    {
+      "id": "lucky_numbers_462",
+      "text": "The cookie draw gives {numbers}. Bonus crumb: {bonus}. The cookie has spoken in integers. Clean integer prophecy."
+    },
+    {
+      "id": "lucky_numbers_463",
+      "text": "Fate pulled {n1}, {n2}, {n3}, {n4}, {n5}, and {n6}; keep {bonus} in your pocket. The cookie has spoken in integers. Clean integer prophecy."
+    },
+    {
+      "id": "lucky_numbers_464",
+      "text": "Today's random draw is {numbers}, with {bonus} watching from the edge. The cookie has spoken in integers. Clean integer prophecy."
+    },
+    {
+      "id": "lucky_numbers_465",
+      "text": "The lucky line reads {numbers}. If the napkin asks, the bonus is {bonus}. The cookie has spoken in integers. Clean integer prophecy."
+    },
+    {
+      "id": "lucky_numbers_466",
+      "text": "Your lucky numbers are {n1} - {n2} - {n3} - {n4} - {n5} - {n6}. Bonus number: {bonus}. Use responsibly, which is to say dramatically. Clean integer prophecy."
+    },
+    {
+      "id": "lucky_numbers_467",
+      "text": "The cookie draw gives {numbers}. Bonus crumb: {bonus}. Use responsibly, which is to say dramatically. Clean integer prophecy."
+    },
+    {
+      "id": "lucky_numbers_468",
+      "text": "Fate pulled {n1}, {n2}, {n3}, {n4}, {n5}, and {n6}; keep {bonus} in your pocket. Use responsibly, which is to say dramatically. Clean integer prophecy."
+    },
+    {
+      "id": "lucky_numbers_469",
+      "text": "Today's random draw is {numbers}, with {bonus} watching from the edge. Use responsibly, which is to say dramatically. Clean integer prophecy."
+    },
+    {
+      "id": "lucky_numbers_470",
+      "text": "The lucky line reads {numbers}. If the napkin asks, the bonus is {bonus}. Use responsibly, which is to say dramatically. Clean integer prophecy."
+    },
+    {
+      "id": "lucky_numbers_471",
+      "text": "Your lucky numbers are {n1} - {n2} - {n3} - {n4} - {n5} - {n6}. Bonus number: {bonus}. The crumbs refuse to explain the math. Clean integer prophecy."
+    },
+    {
+      "id": "lucky_numbers_472",
+      "text": "The cookie draw gives {numbers}. Bonus crumb: {bonus}. The crumbs refuse to explain the math. Clean integer prophecy."
+    },
+    {
+      "id": "lucky_numbers_473",
+      "text": "Fate pulled {n1}, {n2}, {n3}, {n4}, {n5}, and {n6}; keep {bonus} in your pocket. The crumbs refuse to explain the math. Clean integer prophecy."
+    },
+    {
+      "id": "lucky_numbers_474",
+      "text": "Today's random draw is {numbers}, with {bonus} watching from the edge. The crumbs refuse to explain the math. Clean integer prophecy."
+    },
+    {
+      "id": "lucky_numbers_475",
+      "text": "The lucky line reads {numbers}. If the napkin asks, the bonus is {bonus}. The crumbs refuse to explain the math. Clean integer prophecy."
+    },
+    {
+      "id": "lucky_numbers_476",
+      "text": "Your lucky numbers are {n1} - {n2} - {n3} - {n4} - {n5} - {n6}. Bonus number: {bonus}. Fortune accepts no liability. Clean integer prophecy."
+    },
+    {
+      "id": "lucky_numbers_477",
+      "text": "The cookie draw gives {numbers}. Bonus crumb: {bonus}. Fortune accepts no liability. Clean integer prophecy."
+    },
+    {
+      "id": "lucky_numbers_478",
+      "text": "Fate pulled {n1}, {n2}, {n3}, {n4}, {n5}, and {n6}; keep {bonus} in your pocket. Fortune accepts no liability. Clean integer prophecy."
+    },
+    {
+      "id": "lucky_numbers_479",
+      "text": "Today's random draw is {numbers}, with {bonus} watching from the edge. Fortune accepts no liability. Clean integer prophecy."
+    },
+    {
+      "id": "lucky_numbers_480",
+      "text": "The lucky line reads {numbers}. If the napkin asks, the bonus is {bonus}. Fortune accepts no liability. Clean integer prophecy."
+    },
+    {
+      "id": "lucky_numbers_481",
+      "text": "Your lucky numbers are {n1} - {n2} - {n3} - {n4} - {n5} - {n6}. Bonus number: {bonus}. The wrapper recommends confidence. Clean integer prophecy."
+    },
+    {
+      "id": "lucky_numbers_482",
+      "text": "The cookie draw gives {numbers}. Bonus crumb: {bonus}. The wrapper recommends confidence. Clean integer prophecy."
+    },
+    {
+      "id": "lucky_numbers_483",
+      "text": "Fate pulled {n1}, {n2}, {n3}, {n4}, {n5}, and {n6}; keep {bonus} in your pocket. The wrapper recommends confidence. Clean integer prophecy."
+    },
+    {
+      "id": "lucky_numbers_484",
+      "text": "Today's random draw is {numbers}, with {bonus} watching from the edge. The wrapper recommends confidence. Clean integer prophecy."
+    },
+    {
+      "id": "lucky_numbers_485",
+      "text": "The lucky line reads {numbers}. If the napkin asks, the bonus is {bonus}. The wrapper recommends confidence. Clean integer prophecy."
+    },
+    {
+      "id": "lucky_numbers_486",
+      "text": "Your lucky numbers are {n1} - {n2} - {n3} - {n4} - {n5} - {n6}. Bonus number: {bonus}. Probability wore a tiny hat today. Clean integer prophecy."
+    },
+    {
+      "id": "lucky_numbers_487",
+      "text": "The cookie draw gives {numbers}. Bonus crumb: {bonus}. Probability wore a tiny hat today. Clean integer prophecy."
+    },
+    {
+      "id": "lucky_numbers_488",
+      "text": "Fate pulled {n1}, {n2}, {n3}, {n4}, {n5}, and {n6}; keep {bonus} in your pocket. Probability wore a tiny hat today. Clean integer prophecy."
+    },
+    {
+      "id": "lucky_numbers_489",
+      "text": "Today's random draw is {numbers}, with {bonus} watching from the edge. Probability wore a tiny hat today. Clean integer prophecy."
+    },
+    {
+      "id": "lucky_numbers_490",
+      "text": "The lucky line reads {numbers}. If the napkin asks, the bonus is {bonus}. Probability wore a tiny hat today. Clean integer prophecy."
+    },
+    {
+      "id": "lucky_numbers_491",
+      "text": "Your lucky numbers are {n1} - {n2} - {n3} - {n4} - {n5} - {n6}. Bonus number: {bonus}. Save the numbers, blame the cookie. Clean integer prophecy."
+    },
+    {
+      "id": "lucky_numbers_492",
+      "text": "The cookie draw gives {numbers}. Bonus crumb: {bonus}. Save the numbers, blame the cookie. Clean integer prophecy."
+    },
+    {
+      "id": "lucky_numbers_493",
+      "text": "Fate pulled {n1}, {n2}, {n3}, {n4}, {n5}, and {n6}; keep {bonus} in your pocket. Save the numbers, blame the cookie. Clean integer prophecy."
+    },
+    {
+      "id": "lucky_numbers_494",
+      "text": "Today's random draw is {numbers}, with {bonus} watching from the edge. Save the numbers, blame the cookie. Clean integer prophecy."
+    },
+    {
+      "id": "lucky_numbers_495",
+      "text": "The lucky line reads {numbers}. If the napkin asks, the bonus is {bonus}. Save the numbers, blame the cookie. Clean integer prophecy."
+    },
+    {
+      "id": "lucky_numbers_496",
+      "text": "Your lucky numbers are {n1} - {n2} - {n3} - {n4} - {n5} - {n6}. Bonus number: {bonus}. Randomness is part of the ritual. Clean integer prophecy."
+    },
+    {
+      "id": "lucky_numbers_497",
+      "text": "The cookie draw gives {numbers}. Bonus crumb: {bonus}. Randomness is part of the ritual. Clean integer prophecy."
+    },
+    {
+      "id": "lucky_numbers_498",
+      "text": "Fate pulled {n1}, {n2}, {n3}, {n4}, {n5}, and {n6}; keep {bonus} in your pocket. Randomness is part of the ritual. Clean integer prophecy."
+    },
+    {
+      "id": "lucky_numbers_499",
+      "text": "Today's random draw is {numbers}, with {bonus} watching from the edge. Randomness is part of the ritual. Clean integer prophecy."
+    },
+    {
+      "id": "lucky_numbers_500",
+      "text": "The lucky line reads {numbers}. If the napkin asks, the bonus is {bonus}. Randomness is part of the ritual. Clean integer prophecy."
+    }
+  ]
+}

@@ -22,6 +22,7 @@ function esc(s) {
 function cap(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : ''; }
 function el(id) { return document.getElementById(id); }
 function petImg(sp)  { return '/static/Emojis/Pets/' + (sp||'Cat') + '.png'; }
+function petBadgeImg(pet) { return (pet && pet.badge_url) ? pet.badge_url : petImg((pet && pet.species) || 'Cat'); }
 function elemImg(e)  { return '/static/Emojis/Pets/Deco/' + cap(e||'basic') + '.png'; }
 
 // Format large numbers: 3000→3k, 4530→4.53k, 1500000→1.5m, etc.
@@ -349,7 +350,7 @@ function buildCmpHeroCol(user, opponent) {
 
         // Portrait
         '<div class="pc-hero-portrait" style="margin-bottom:0.6rem">' +
-            '<img src="' + petImg(sp) + '" class="pc-hero-pet-img" onerror="this.src=\'/static/Emojis/Pets/Cat.png\'">' +
+            '<img src="' + petBadgeImg(pet) + '" class="pc-hero-pet-img" onerror="this.src=\'/static/Emojis/Pets/Cat.png\'">' +
             '<div class="pc-hero-glow-ring"></div>' +
             relRingHtml +
         '</div>' +
@@ -1100,7 +1101,7 @@ function buildCard(user) {
 
             // Pet image + element badges
             '<div class="pc-card-img-wrap">' +
-                '<img class="pc-card-pet-img" src="' + petImg(sp) + '" onerror="this.src=\'/static/Emojis/Pets/Cat.png\'" alt="' + esc(sp) + '">' +
+                '<img class="pc-card-pet-img" src="' + petBadgeImg(pet) + '" onerror="this.src=\'/static/Emojis/Pets/Cat.png\'" alt="' + esc(sp) + '">' +
                 '<div class="pc-card-badges">' +
                     '<img class="pc-card-elem" src="' + elemImg(elem1) + '" title="' + cap(elem1) + '">' +
                     (elem2 ? '<img class="pc-card-elem" src="' + elemImg(elem2) + '" title="' + cap(elem2) + '">' : '') +
@@ -1193,7 +1194,7 @@ function buildHeroSection(user, pet, elem1, elem2, cat, sp, lv, xpCur, xpMax, xp
 
         // Portrait with glow ring + relationship ring
         '<div class="pc-hero-portrait">' +
-            '<img src="' + petImg(sp) + '" class="pc-hero-pet-img" alt="' + esc(sp) + '" onerror="this.src=\'/static/Emojis/Pets/Cat.png\'">' +
+            '<img src="' + petBadgeImg(pet) + '" class="pc-hero-pet-img" alt="' + esc(sp) + '" onerror="this.src=\'/static/Emojis/Pets/Cat.png\'">' +
             '<div class="pc-hero-glow-ring"></div>' +
             relRingHtml +
         '</div>' +
@@ -2564,7 +2565,7 @@ function pcUpdateLeaderboard() {
         return '<div class="pc-lb-item" onclick="openDetail(\'' + esc(user.user_id) + '\')">' +
             '<div class="pc-lb-rank">' + rankDisplay + '</div>' +
             '<img src="' + esc(user.avatar_url) + '" class="pc-lb-avatar" onerror="this.src=\'/static/Emojis/Pets/Cat.png\'">' +
-            '<img src="' + petImg(petSpecies) + '" class="pc-lb-pet-emoji" onerror="this.src=\'/static/Emojis/Pets/Cat.png\'" title="' + esc(petSpecies) + '">' +
+            '<img src="' + petBadgeImg(pet) + '" class="pc-lb-pet-emoji" onerror="this.src=\'/static/Emojis/Pets/Cat.png\'" title="' + esc(petSpecies) + '">' +
             '<div class="pc-lb-user-info">' +
                 '<div class="pc-lb-name">' + esc(user.username) + '</div>' +
                 '<div class="pc-lb-pet-name">' + esc(petName) + '</div>' +
@@ -3001,7 +3002,7 @@ function pcBuildRichCompareCard(user, opponent) {
     return '<div class="pc-compare-pet-rich">' +
         '<div class="pc-compare-pet-header">' +
             '<img src="' + esc(user.avatar_url) + '" class="pc-compare-user-avatar" onerror="this.src=\'/static/Emojis/Pets/Cat.png\'">' +
-            '<img src="' + petImg(petSpecies) + '" class="pc-compare-pet-img" onerror="this.src=\'/static/Emojis/Pets/Cat.png\'">' +
+            '<img src="' + petBadgeImg(pet) + '" class="pc-compare-pet-img" onerror="this.src=\'/static/Emojis/Pets/Cat.png\'">' +
             '<div class="pc-compare-pet-info">' +
                 '<div class="pc-compare-pet-name">' + esc(petName) + '</div>' +
                 '<div class="pc-compare-user-name">' + esc(user.username) + '</div>' +

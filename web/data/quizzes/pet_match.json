@@ -1,0 +1,5547 @@
+{
+  "id": "pet-match",
+  "title": "Pet",
+  "description": "Discover the one pet that fits you best, plus independently matched Pet Type and one or two Pet Elements from the real Pet System.",
+  "resultLabel": "Perfect Pet Match",
+  "resultMode": "pet_match",
+  "petSystem": {
+    "statLabels": {
+      "ATT": "Attack",
+      "DEF": "Defense",
+      "INT": "Intelligence",
+      "DEX": "Dexterity",
+      "HAP": "Happiness",
+      "ENE": "Energy"
+    },
+    "elements": {
+      "Basic": {
+        "label": "Basic",
+        "image": "/static/Emojis/Pets/Deco/Basic.png"
+      },
+      "Fire": {
+        "label": "Fire",
+        "image": "/static/Emojis/Pets/Deco/Fire.png"
+      },
+      "Water": {
+        "label": "Water",
+        "image": "/static/Emojis/Pets/Deco/Water.png"
+      },
+      "Electric": {
+        "label": "Electric",
+        "image": "/static/Emojis/Pets/Deco/Electric.png"
+      },
+      "Ice": {
+        "label": "Ice",
+        "image": "/static/Emojis/Pets/Deco/Ice.png"
+      },
+      "Plant": {
+        "label": "Plant",
+        "image": "/static/Emojis/Pets/Deco/Plant.png"
+      },
+      "Rock": {
+        "label": "Rock",
+        "image": "/static/Emojis/Pets/Deco/Rock.png"
+      },
+      "Air": {
+        "label": "Air",
+        "image": "/static/Emojis/Pets/Deco/Air.png"
+      },
+      "Magic": {
+        "label": "Magic",
+        "image": "/static/Emojis/Pets/Deco/Magic.png"
+      },
+      "Holy": {
+        "label": "Holy",
+        "image": "/static/Emojis/Pets/Deco/Holy.png"
+      },
+      "Necro": {
+        "label": "Necro",
+        "image": "/static/Emojis/Pets/Deco/Necro.png"
+      },
+      "Psychic": {
+        "label": "Psychic",
+        "image": "/static/Emojis/Pets/Deco/Psychic.png"
+      },
+      "Fighting": {
+        "label": "Fighting",
+        "image": "/static/Emojis/Pets/Deco/Fighting.png"
+      }
+    },
+    "types": {
+      "Land": {
+        "label": "Land",
+        "image": "/static/Emojis/Pets/Deco/Land.png"
+      },
+      "Flying": {
+        "label": "Flying",
+        "image": "/static/Emojis/Pets/Deco/Flying.png"
+      },
+      "Swimming": {
+        "label": "Swimming",
+        "image": "/static/Emojis/Pets/Deco/Swimming.png"
+      }
+    },
+    "petCatalog": {
+      "Alligator": {
+        "label": "Alligator",
+        "image": "/static/Emojis/Pets/Alligator.png",
+        "stats": {
+          "ATT": 18,
+          "DEF": 19,
+          "INT": 8,
+          "DEX": 7,
+          "HAP": 12,
+          "ENE": 11
+        },
+        "spec": [
+          "DEF",
+          "ATT"
+        ],
+        "description": "A patient companion that uses its thick, armored hide and crushing bite to great effect. It's built for power and resilience.",
+        "actions": {
+          "Attack": "Death Roll",
+          "Defense": "Thick Scales",
+          "Charge": "Ambush Stance"
+        }
+      },
+      "Ant": {
+        "label": "Ant",
+        "image": "/static/Emojis/Pets/Ant.png",
+        "stats": {
+          "ATT": 7,
+          "DEF": 7,
+          "INT": 19,
+          "DEX": 13,
+          "HAP": 12,
+          "ENE": 17
+        },
+        "spec": [
+          "INT",
+          "ENE"
+        ],
+        "description": "A fascinating pet demonstrating complex colony behaviors (smarts) and tireless activity, maintaining high energy for foraging.",
+        "actions": {
+          "Attack": "Mandible Bite",
+          "Defense": "Exoskeleton",
+          "Charge": "Colony Call"
+        }
+      },
+      "Anteater": {
+        "label": "Anteater",
+        "image": "/static/Emojis/Pets/Anteater.png",
+        "stats": {
+          "ATT": 10,
+          "DEF": 10,
+          "INT": 15,
+          "DEX": 17,
+          "HAP": 11,
+          "ENE": 12
+        },
+        "spec": [
+          "DEX",
+          "INT"
+        ],
+        "description": "Quick with its tongue and highly observant, this pet excels at tricky, precise maneuvers and thoughtful actions.",
+        "actions": {
+          "Attack": "Claw Swipe",
+          "Defense": "Thick Fur",
+          "Charge": "Tongue Flick"
+        }
+      },
+      "Badger": {
+        "label": "Badger",
+        "image": "/static/Emojis/Pets/Badger.png",
+        "stats": {
+          "ATT": 19,
+          "DEF": 18,
+          "INT": 7,
+          "DEX": 8,
+          "HAP": 10,
+          "ENE": 13
+        },
+        "spec": [
+          "ATT",
+          "DEF"
+        ],
+        "description": "Tenacious and scrappy, known for its fierce determination and ability to shrug off damage with its sturdy build.",
+        "actions": {
+          "Attack": "Frenzy Claw",
+          "Defense": "Loose Skin",
+          "Charge": "Tenacity"
+        }
+      },
+      "Bat": {
+        "label": "Bat",
+        "image": "/static/Emojis/Pets/Bat.png",
+        "stats": {
+          "ATT": 7,
+          "DEF": 8,
+          "INT": 18,
+          "DEX": 23,
+          "HAP": 11,
+          "ENE": 8
+        },
+        "spec": [
+          "DEX",
+          "INT"
+        ],
+        "description": "Master of the air, it navigates with incredible precision and uses its natural sonar to understand its surroundings perfectly.",
+        "actions": {
+          "Attack": "Wing Slap",
+          "Defense": "Evasive Flight",
+          "Charge": "Sonar Pulse"
+        }
+      },
+      "Beaver": {
+        "label": "Beaver",
+        "image": "/static/Emojis/Pets/Beaver.png",
+        "stats": {
+          "ATT": 8,
+          "DEF": 19,
+          "INT": 21,
+          "DEX": 7,
+          "HAP": 8,
+          "ENE": 12
+        },
+        "spec": [
+          "DEF",
+          "INT"
+        ],
+        "description": "An expert engineer with a knack for building, its sturdy body and keen intellect make it a surprisingly robust companion.",
+        "actions": {
+          "Attack": "Tail Slap",
+          "Defense": "Lodge Block",
+          "Charge": "Tooth Sharpen"
+        }
+      },
+      "Bee": {
+        "label": "Bee",
+        "image": "/static/Emojis/Pets/Bee.png",
+        "stats": {
+          "ATT": 7,
+          "DEF": 8,
+          "INT": 17,
+          "DEX": 19,
+          "HAP": 13,
+          "ENE": 11
+        },
+        "spec": [
+          "DEX",
+          "INT"
+        ],
+        "description": "Speedy flyer and essential pollinator with complex hive behavior and strong flight dexterity.",
+        "actions": {
+          "Attack": "Stinger",
+          "Defense": "Evasive Buzz",
+          "Charge": "Pollen Power"
+        }
+      },
+      "Beetle": {
+        "label": "Beetle",
+        "image": "/static/Emojis/Pets/Beetle.png",
+        "stats": {
+          "ATT": 10,
+          "DEF": 22,
+          "INT": 7,
+          "DEX": 7,
+          "HAP": 11,
+          "ENE": 18
+        },
+        "spec": [
+          "DEF",
+          "ENE"
+        ],
+        "description": "Heavily armored insect with a sturdy carapace, providing superior protection and allowing for long periods of sustained activity.",
+        "actions": {
+          "Attack": "Horn Toss",
+          "Defense": "Carapace",
+          "Charge": "Ground Brace"
+        }
+      },
+      "Bison": {
+        "label": "Bison",
+        "image": "/static/Emojis/Pets/Bison.png",
+        "stats": {
+          "ATT": 19,
+          "DEF": 23,
+          "INT": 7,
+          "DEX": 6,
+          "HAP": 10,
+          "ENE": 10
+        },
+        "spec": [
+          "DEF",
+          "ATT"
+        ],
+        "description": "A massive herbivore with incredible charge power and a thick, durable defense.",
+        "actions": {
+          "Attack": "Heavy Ram",
+          "Defense": "Thick Wool",
+          "Charge": "Stampede Prep"
+        }
+      },
+      "BlueTang": {
+        "label": "BlueTang",
+        "image": "/static/Emojis/Pets/BlueTang.png",
+        "stats": {
+          "ATT": 7,
+          "DEF": 8,
+          "INT": 16,
+          "DEX": 19,
+          "HAP": 14,
+          "ENE": 11
+        },
+        "spec": [
+          "DEX",
+          "HAP"
+        ],
+        "description": "A cheerful and vibrant swimmer known for its lightning-fast movement and sunny, agreeable disposition.",
+        "actions": {
+          "Attack": "Fin Slice",
+          "Defense": "Coral Hide",
+          "Charge": "Current Ride"
+        }
+      },
+      "Camel": {
+        "label": "Camel",
+        "image": "/static/Emojis/Pets/Camel.png",
+        "stats": {
+          "ATT": 8,
+          "DEF": 11,
+          "INT": 17,
+          "DEX": 8,
+          "HAP": 13,
+          "ENE": 18
+        },
+        "spec": [
+          "ENE",
+          "INT"
+        ],
+        "description": "A companion built for the long haul, using its deep knowledge of navigation and massive endurance to travel tirelessly.",
+        "actions": {
+          "Attack": "Spit Shot",
+          "Defense": "Sand Endure",
+          "Charge": "Hump Store"
+        }
+      },
+      "Cardinal": {
+        "label": "Cardinal",
+        "image": "/static/Emojis/Pets/Cardinal.png",
+        "stats": {
+          "ATT": 7,
+          "DEF": 7,
+          "INT": 11,
+          "DEX": 21,
+          "HAP": 22,
+          "ENE": 7
+        },
+        "spec": [
+          "HAP",
+          "DEX"
+        ],
+        "description": "A remarkably joyful pet, specializing in swift, graceful movement and filling the air with its happy, cheerful presence.",
+        "actions": {
+          "Attack": "Peck Barrage",
+          "Defense": "Branch Weave",
+          "Charge": "Red Plume"
+        }
+      },
+      "Cat": {
+        "label": "Cat",
+        "image": "/static/Emojis/Pets/Cat.png",
+        "stats": {
+          "ATT": 16,
+          "DEF": 11,
+          "INT": 17,
+          "DEX": 12,
+          "HAP": 11,
+          "ENE": 8
+        },
+        "spec": [
+          "ATT",
+          "INT"
+        ],
+        "description": "A calculating and clever hunter, preferring smart, targeted strikes over brute force and always planning its next move.",
+        "actions": {
+          "Attack": "Pounce",
+          "Defense": "Nine Lives",
+          "Charge": "Predator Eye"
+        }
+      },
+      "Cheetah": {
+        "label": "Cheetah",
+        "image": "/static/Emojis/Pets/Cheetah.png",
+        "stats": {
+          "ATT": 18,
+          "DEF": 10,
+          "INT": 8,
+          "DEX": 26,
+          "HAP": 6,
+          "ENE": 7
+        },
+        "spec": [
+          "DEX",
+          "ATT"
+        ],
+        "description": "The ultimate speedster, relying on explosive dexterity and powerful bursts of attack.",
+        "actions": {
+          "Attack": "Rush Bite",
+          "Defense": "Speed Dodge",
+          "Charge": "Sprint Ready"
+        }
+      },
+      "Chicken": {
+        "label": "Chicken",
+        "image": "/static/Emojis/Pets/Chicken.png",
+        "stats": {
+          "ATT": 7,
+          "DEF": 10,
+          "INT": 10,
+          "DEX": 12,
+          "HAP": 19,
+          "ENE": 17
+        },
+        "spec": [
+          "HAP",
+          "ENE"
+        ],
+        "description": "A simple, contented pet that is always active and constantly foraging with a cheerful, high-spirited nature.",
+        "actions": {
+          "Attack": "Spur Kick",
+          "Defense": "Feather Fluff",
+          "Charge": "Morning Crow"
+        }
+      },
+      "Clownfish": {
+        "label": "Clownfish",
+        "image": "/static/Emojis/Pets/Clownfish.png",
+        "stats": {
+          "ATT": 7,
+          "DEF": 8,
+          "INT": 18,
+          "DEX": 12,
+          "HAP": 23,
+          "ENE": 7
+        },
+        "spec": [
+          "HAP",
+          "INT"
+        ],
+        "description": "A famously happy and social pet, demonstrating surprising cleverness in finding safety and forming mutualistic bonds.",
+        "actions": {
+          "Attack": "Fin Slap",
+          "Defense": "Anemone Hide",
+          "Charge": "Symbiosis"
+        }
+      },
+      "Cow": {
+        "label": "Cow",
+        "image": "/static/Emojis/Pets/Cow.png",
+        "stats": {
+          "ATT": 8,
+          "DEF": 22,
+          "INT": 10,
+          "DEX": 6,
+          "HAP": 21,
+          "ENE": 8
+        },
+        "spec": [
+          "DEF",
+          "HAP"
+        ],
+        "description": "A large, docile grazer with exceptional defensive bulk and peaceful disposition.",
+        "actions": {
+          "Attack": "Kick",
+          "Defense": "Herd Wall",
+          "Charge": "Moo Bellow"
+        }
+      },
+      "Crab": {
+        "label": "Crab",
+        "image": "/static/Emojis/Pets/Crab.png",
+        "stats": {
+          "ATT": 16,
+          "DEF": 21,
+          "INT": 8,
+          "DEX": 7,
+          "HAP": 11,
+          "ENE": 12
+        },
+        "spec": [
+          "DEF",
+          "ATT"
+        ],
+        "description": "An armored companion with a strong, protective shell and powerful pincers used for a surprisingly strong pinch.",
+        "actions": {
+          "Attack": "Pincer Snap",
+          "Defense": "Hard Shell",
+          "Charge": "Bubble Blow"
+        }
+      },
+      "Crow": {
+        "label": "Crow",
+        "image": "/static/Emojis/Pets/Crow.png",
+        "stats": {
+          "ATT": 7,
+          "DEF": 11,
+          "INT": 25,
+          "DEX": 13,
+          "HAP": 10,
+          "ENE": 9
+        },
+        "spec": [
+          "INT",
+          "DEF"
+        ],
+        "description": "The smartest bird, exhibiting unmatched intelligence and sturdy, watchful protection.",
+        "actions": {
+          "Attack": "Dive Bomb",
+          "Defense": "Shadow Meld",
+          "Charge": "Murder Call"
+        }
+      },
+      "Deer": {
+        "label": "Deer",
+        "image": "/static/Emojis/Pets/Deer.png",
+        "stats": {
+          "ATT": 9,
+          "DEF": 10,
+          "INT": 12,
+          "DEX": 24,
+          "HAP": 11,
+          "ENE": 9
+        },
+        "spec": [
+          "DEX",
+          "ATT"
+        ],
+        "description": "Extremely quick and graceful, relying on evasion (DEX) and alertness (INT/ENE) to survive.",
+        "actions": {
+          "Attack": "Antler Thrust",
+          "Defense": "Forest Dash",
+          "Charge": "Alert Ear"
+        }
+      },
+      "Dog": {
+        "label": "Dog",
+        "image": "/static/Emojis/Pets/Dog.png",
+        "stats": {
+          "ATT": 11,
+          "DEF": 10,
+          "INT": 14,
+          "DEX": 10,
+          "HAP": 17,
+          "ENE": 13
+        },
+        "spec": [
+          "HAP",
+          "INT"
+        ],
+        "description": "Loyal, trainable intelligence paired with a highly social, happy nature.",
+        "actions": {
+          "Attack": "Bite",
+          "Defense": "Guard Stance",
+          "Charge": "Howl"
+        }
+      },
+      "Dolphin": {
+        "label": "Dolphin",
+        "image": "/static/Emojis/Pets/Dolphin.png",
+        "stats": {
+          "ATT": 10,
+          "DEF": 12,
+          "INT": 23,
+          "DEX": 19,
+          "HAP": 8,
+          "ENE": 3
+        },
+        "spec": [
+          "INT",
+          "DEX"
+        ],
+        "description": "A highly intelligent marine mammal specializing in complex communication and swift aquatic dexterity.",
+        "actions": {
+          "Attack": "Nose Ram",
+          "Defense": "Pod Swirl",
+          "Charge": "Sonar Ping"
+        }
+      },
+      "Duck": {
+        "label": "Duck",
+        "image": "/static/Emojis/Pets/Duck.png",
+        "stats": {
+          "ATT": 8,
+          "DEF": 10,
+          "INT": 13,
+          "DEX": 18,
+          "HAP": 14,
+          "ENE": 12
+        },
+        "spec": [
+          "DEX",
+          "ENE"
+        ],
+        "description": "An adaptable animal with high dexterity across air and water, showing balanced energy.",
+        "actions": {
+          "Attack": "Bill Nip",
+          "Defense": "Water Slide",
+          "Charge": "Feather Oil"
+        }
+      },
+      "Eagle": {
+        "label": "Eagle",
+        "image": "/static/Emojis/Pets/Eagle.png",
+        "stats": {
+          "ATT": 19,
+          "DEF": 10,
+          "INT": 18,
+          "DEX": 15,
+          "HAP": 6,
+          "ENE": 7
+        },
+        "spec": [
+          "ATT",
+          "INT"
+        ],
+        "description": "A powerful aerial predator with keen eyesight (INT) and lethal hunting attacks.",
+        "actions": {
+          "Attack": "Talon Grip",
+          "Defense": "Soar High",
+          "Charge": "Keen Eye"
+        }
+      },
+      "Elephant": {
+        "label": "Elephant",
+        "image": "/static/Emojis/Pets/Elephant.png",
+        "stats": {
+          "ATT": 21,
+          "DEF": 26,
+          "INT": 12,
+          "DEX": 2,
+          "HAP": 8,
+          "ENE": 6
+        },
+        "spec": [
+          "DEF",
+          "ATT"
+        ],
+        "description": "The largest land animal, defined by immense defense and crushing attack power.",
+        "actions": {
+          "Attack": "Tusk Gore",
+          "Defense": "Thick Skin",
+          "Charge": "Trumpet"
+        }
+      },
+      "Emu": {
+        "label": "Emu",
+        "image": "/static/Emojis/Pets/Emu.png",
+        "stats": {
+          "ATT": 10,
+          "DEF": 11,
+          "INT": 7,
+          "DEX": 22,
+          "HAP": 13,
+          "ENE": 12
+        },
+        "spec": [
+          "DEX",
+          "ENE"
+        ],
+        "description": "A tall, flightless bird known for its fast running dexterity and good endurance.",
+        "actions": {
+          "Attack": "High Kick",
+          "Defense": "Sprint Away",
+          "Charge": "Stretch Neck"
+        }
+      },
+      "Fox": {
+        "label": "Fox",
+        "image": "/static/Emojis/Pets/Fox.png",
+        "stats": {
+          "ATT": 17,
+          "DEF": 10,
+          "INT": 21,
+          "DEX": 12,
+          "HAP": 8,
+          "ENE": 7
+        },
+        "spec": [
+          "INT",
+          "ATT"
+        ],
+        "description": "A solitary hunter known for its extreme cunning (INT) and targeted attacks.",
+        "actions": {
+          "Attack": "Quick Nip",
+          "Defense": "Sly Dodge",
+          "Charge": "Cunning Plot"
+        }
+      },
+      "Frog": {
+        "label": "Frog",
+        "image": "/static/Emojis/Pets/Frog.png",
+        "stats": {
+          "ATT": 7,
+          "DEF": 8,
+          "INT": 10,
+          "DEX": 23,
+          "HAP": 13,
+          "ENE": 14
+        },
+        "spec": [
+          "DEX",
+          "ENE"
+        ],
+        "description": "A phenomenal jumper with explosive dexterity and high readiness (ENE).",
+        "actions": {
+          "Attack": "Tongue Lash",
+          "Defense": "Slippery Skin",
+          "Charge": "Leg Spring"
+        }
+      },
+      "Giraffe": {
+        "label": "Giraffe",
+        "image": "/static/Emojis/Pets/Giraffe.png",
+        "stats": {
+          "ATT": 10,
+          "DEF": 19,
+          "INT": 17,
+          "DEX": 7,
+          "HAP": 11,
+          "ENE": 11
+        },
+        "spec": [
+          "DEF",
+          "INT"
+        ],
+        "description": "Tall stature grants defensive advantage and superior field intelligence.",
+        "actions": {
+          "Attack": "Neck Swing",
+          "Defense": "Tall Watch",
+          "Charge": "High Reach"
+        }
+      },
+      "Goat": {
+        "label": "Goat",
+        "image": "/static/Emojis/Pets/Goat.png",
+        "stats": {
+          "ATT": 13,
+          "DEF": 13,
+          "INT": 8,
+          "DEX": 12,
+          "HAP": 22,
+          "ENE": 7
+        },
+        "spec": [
+          "HAP",
+          "ATT"
+        ],
+        "description": "A hardy animal with a strong headbutt (ATT) and a notoriously playful, happy disposition.",
+        "actions": {
+          "Attack": "Headbutt",
+          "Defense": "Mountain Stand",
+          "Charge": "Bleat"
+        }
+      },
+      "Goose": {
+        "label": "Goose",
+        "image": "/static/Emojis/Pets/Goose.png",
+        "stats": {
+          "ATT": 14,
+          "DEF": 11,
+          "INT": 10,
+          "DEX": 12,
+          "HAP": 11,
+          "ENE": 17
+        },
+        "spec": [
+          "ENE",
+          "ATT"
+        ],
+        "description": "An aggressive guard bird with a formidable hiss/attack and high, watchful energy.",
+        "actions": {
+          "Attack": "Honk Blast",
+          "Defense": "Wing Flap",
+          "Charge": "Aggression"
+        }
+      },
+      "Gorilla": {
+        "label": "Gorilla",
+        "image": "/static/Emojis/Pets/Gorilla.png",
+        "stats": {
+          "ATT": 19,
+          "DEF": 18,
+          "INT": 13,
+          "DEX": 7,
+          "HAP": 11,
+          "ENE": 7
+        },
+        "spec": [
+          "ATT",
+          "DEF"
+        ],
+        "description": "A powerful, territorial ape relying on brute strength and formidable defense.",
+        "actions": {
+          "Attack": "Slam",
+          "Defense": "Chest Beat",
+          "Charge": "Silverback"
+        }
+      },
+      "Grizzly": {
+        "label": "Grizzly",
+        "image": "/static/Emojis/Pets/Grizzly.png",
+        "stats": {
+          "ATT": 22,
+          "DEF": 21,
+          "INT": 7,
+          "DEX": 6,
+          "HAP": 8,
+          "ENE": 11
+        },
+        "spec": [
+          "ATT",
+          "DEF"
+        ],
+        "description": "Pure physical strength defines this pet, which relies on devastating power and thick, durable protection.",
+        "actions": {
+          "Attack": "Maul",
+          "Defense": "Thick Fur",
+          "Charge": "Roar"
+        }
+      },
+      "Hamster": {
+        "label": "Hamster",
+        "image": "/static/Emojis/Pets/Hamster.png",
+        "stats": {
+          "ATT": 6,
+          "DEF": 7,
+          "INT": 10,
+          "DEX": 13,
+          "HAP": 12,
+          "ENE": 27
+        },
+        "spec": [
+          "ENE",
+          "HAP"
+        ],
+        "description": "A small, tireless worker, perpetually active and maintaining a constant, simple happiness while on the wheel.",
+        "actions": {
+          "Attack": "Cheek Stuff",
+          "Defense": "Ball Curl",
+          "Charge": "Wheel Run"
+        }
+      },
+      "Hedgehog": {
+        "label": "Hedgehog",
+        "image": "/static/Emojis/Pets/Hedgehog.png",
+        "stats": {
+          "ATT": 9,
+          "DEF": 19,
+          "INT": 7,
+          "DEX": 7,
+          "HAP": 12,
+          "ENE": 21
+        },
+        "spec": [
+          "DEF",
+          "ENE"
+        ],
+        "description": "Defends itself with sharp quills, possessing high energy for nocturnal foraging and durable protection.",
+        "actions": {
+          "Attack": "Spine Poke",
+          "Defense": "Quill Ball",
+          "Charge": "Curl Up"
+        }
+      },
+      "Hippo": {
+        "label": "Hippo",
+        "image": "/static/Emojis/Pets/Hippo.png",
+        "stats": {
+          "ATT": 20,
+          "DEF": 22,
+          "INT": 6,
+          "DEX": 6,
+          "HAP": 10,
+          "ENE": 11
+        },
+        "spec": [
+          "DEF",
+          "ATT"
+        ],
+        "description": "Highly territorial and deceptively fast, combining immense attack power and defensive bulk.",
+        "actions": {
+          "Attack": "Jaw Crush",
+          "Defense": "Fat Layer",
+          "Charge": "Water Rise"
+        }
+      },
+      "Horse": {
+        "label": "Horse",
+        "image": "/static/Emojis/Pets/Horse.png",
+        "stats": {
+          "ATT": 11,
+          "DEF": 13,
+          "INT": 10,
+          "DEX": 22,
+          "HAP": 12,
+          "ENE": 7
+        },
+        "spec": [
+          "DEX",
+          "ATT"
+        ],
+        "description": "A swift and powerful partner, specializing in high-speed travel and using its kicks and momentum in battle.",
+        "actions": {
+          "Attack": "Rear Kick",
+          "Defense": "Gallop Away",
+          "Charge": "Neigh"
+        }
+      },
+      "Hummingbird": {
+        "label": "Hummingbird",
+        "image": "/static/Emojis/Pets/Hummingbird.png",
+        "stats": {
+          "ATT": 6,
+          "DEF": 7,
+          "INT": 10,
+          "DEX": 26,
+          "HAP": 20,
+          "ENE": 6
+        },
+        "spec": [
+          "DEX",
+          "HAP"
+        ],
+        "description": "The ultimate agile pet, specializing in breathtaking aerial stunts and perpetually joyful flight.",
+        "actions": {
+          "Attack": "Needle Beak",
+          "Defense": "Hover Dodge",
+          "Charge": "Fast Beat"
+        }
+      },
+      "Iguana": {
+        "label": "Iguana",
+        "image": "/static/Emojis/Pets/Iguana.png",
+        "stats": {
+          "ATT": 10,
+          "DEF": 11,
+          "INT": 10,
+          "DEX": 8,
+          "HAP": 13,
+          "ENE": 23
+        },
+        "spec": [
+          "ENE",
+          "DEF"
+        ],
+        "description": "A stoic reptile with great endurance and a powerful tail whip, maintaining a tough, leathery defense.",
+        "actions": {
+          "Attack": "Tail Whip",
+          "Defense": "Scale Armor",
+          "Charge": "Sun Bask"
+        }
+      },
+      "Jaguar": {
+        "label": "Jaguar",
+        "image": "/static/Emojis/Pets/Jaguar.png",
+        "stats": {
+          "ATT": 19,
+          "DEF": 12,
+          "INT": 10,
+          "DEX": 18,
+          "HAP": 8,
+          "ENE": 8
+        },
+        "spec": [
+          "ATT",
+          "DEX"
+        ],
+        "description": "A solitary, muscular hunter with powerful attack and lethal stealth (DEX).",
+        "actions": {
+          "Attack": "Skull Bite",
+          "Defense": "Jungle Camo",
+          "Charge": "Stalk"
+        }
+      },
+      "Jellyfish": {
+        "label": "Jellyfish",
+        "image": "/static/Emojis/Pets/Jellyfish.png",
+        "stats": {
+          "ATT": 7,
+          "DEF": 11,
+          "INT": 8,
+          "DEX": 7,
+          "HAP": 10,
+          "ENE": 32
+        },
+        "spec": [
+          "ENE",
+          "DEF"
+        ],
+        "description": "An ancient creature specializing in high endurance with a stinging attack, protected by its fluid body.",
+        "actions": {
+          "Attack": "Sting Tentacle",
+          "Defense": "Transparent",
+          "Charge": "Glow Pulse"
+        }
+      },
+      "Kangaroo": {
+        "label": "Kangaroo",
+        "image": "/static/Emojis/Pets/Kangaroo.png",
+        "stats": {
+          "ATT": 18,
+          "DEF": 11,
+          "INT": 10,
+          "DEX": 22,
+          "HAP": 8,
+          "ENE": 6
+        },
+        "spec": [
+          "DEX",
+          "ATT"
+        ],
+        "description": "Specializes in powerful leg attacks and leaping dexterity.",
+        "actions": {
+          "Attack": "Double Kick",
+          "Defense": "Tail Balance",
+          "Charge": "Hop Prep"
+        }
+      },
+      "Kiwi": {
+        "label": "Kiwi",
+        "image": "/static/Emojis/Pets/Kiwi.png",
+        "stats": {
+          "ATT": 7,
+          "DEF": 10,
+          "INT": 11,
+          "DEX": 8,
+          "HAP": 13,
+          "ENE": 26
+        },
+        "spec": [
+          "ENE",
+          "DEF"
+        ],
+        "description": "A flightless bird with high-endurance foraging and a sturdy, robust defense.",
+        "actions": {
+          "Attack": "Beak Probe",
+          "Defense": "Bush Hide",
+          "Charge": "Night Vision"
+        }
+      },
+      "Koala": {
+        "label": "Koala",
+        "image": "/static/Emojis/Pets/Koala.png",
+        "stats": {
+          "ATT": 7,
+          "DEF": 12,
+          "INT": 8,
+          "DEX": 6,
+          "HAP": 26,
+          "ENE": 16
+        },
+        "spec": [
+          "HAP",
+          "DEF"
+        ],
+        "description": "The happiest pet, spending most of its time in contented rest, protected by a sturdy grip and high defensive tolerance.",
+        "actions": {
+          "Attack": "Claw Grip",
+          "Defense": "Tree Hug",
+          "Charge": "Nap Energy"
+        }
+      },
+      "Ladybug": {
+        "label": "Ladybug",
+        "image": "/static/Emojis/Pets/Ladybug.png",
+        "stats": {
+          "ATT": 6,
+          "DEF": 10,
+          "INT": 8,
+          "DEX": 13,
+          "HAP": 19,
+          "ENE": 19
+        },
+        "spec": [
+          "ENE",
+          "HAP"
+        ],
+        "description": "A perpetually cheerful little friend, constantly active and radiating a simple, enduring contentment.",
+        "actions": {
+          "Attack": "Aphid Bite",
+          "Defense": "Red Shell",
+          "Charge": "Luck Charm"
+        }
+      },
+      "Lemur": {
+        "label": "Lemur",
+        "image": "/static/Emojis/Pets/Lemur.png",
+        "stats": {
+          "ATT": 7,
+          "DEF": 8,
+          "INT": 13,
+          "DEX": 24,
+          "HAP": 17,
+          "ENE": 6
+        },
+        "spec": [
+          "DEX",
+          "HAP"
+        ],
+        "description": "Highly social and vocal primate specializing in leaping dexterity and social happiness.",
+        "actions": {
+          "Attack": "Tail Strike",
+          "Defense": "Tree Leap",
+          "Charge": "Wide Eye"
+        }
+      },
+      "Leopard": {
+        "label": "Leopard",
+        "image": "/static/Emojis/Pets/Leopard.png",
+        "stats": {
+          "ATT": 18,
+          "DEF": 12,
+          "INT": 11,
+          "DEX": 19,
+          "HAP": 7,
+          "ENE": 8
+        },
+        "spec": [
+          "DEX",
+          "ATT"
+        ],
+        "description": "A balanced and skilled hunter, specializing in graceful stealth (agility) and decisive, powerful attacks.",
+        "actions": {
+          "Attack": "Ambush Bite",
+          "Defense": "Tree Haul",
+          "Charge": "Spot Camo"
+        }
+      },
+      "Lion": {
+        "label": "Lion",
+        "image": "/static/Emojis/Pets/Lion.png",
+        "stats": {
+          "ATT": 21,
+          "DEF": 12,
+          "INT": 10,
+          "DEX": 10,
+          "HAP": 15,
+          "ENE": 7
+        },
+        "spec": [
+          "ATT",
+          "HAP"
+        ],
+        "description": "The social king of beasts, combining raw attack power and pack happiness.",
+        "actions": {
+          "Attack": "Pride Strike",
+          "Defense": "Mane Shield",
+          "Charge": "Royal Roar"
+        }
+      },
+      "Llama": {
+        "label": "Llama",
+        "image": "/static/Emojis/Pets/Llama.png",
+        "stats": {
+          "ATT": 10,
+          "DEF": 15,
+          "INT": 11,
+          "DEX": 10,
+          "HAP": 19,
+          "ENE": 10
+        },
+        "spec": [
+          "DEF",
+          "HAP"
+        ],
+        "description": "A sturdy pack animal, valued for its protective nature (defense) and its generally content, easygoing disposition.",
+        "actions": {
+          "Attack": "Spit",
+          "Defense": "Wool Coat",
+          "Charge": "Hum"
+        }
+      },
+      "Mantis": {
+        "label": "Mantis",
+        "image": "/static/Emojis/Pets/Mantis.png",
+        "stats": {
+          "ATT": 17,
+          "DEF": 8,
+          "INT": 13,
+          "DEX": 19,
+          "HAP": 7,
+          "ENE": 11
+        },
+        "spec": [
+          "DEX",
+          "ATT"
+        ],
+        "description": "An ambush master, relying on blindingly fast movements (agility) to execute quick, deadly strikes.",
+        "actions": {
+          "Attack": "Scythe Slash",
+          "Defense": "Leaf Mimic",
+          "Charge": "Pray Pose"
+        }
+      },
+      "Monkey": {
+        "label": "Monkey",
+        "image": "/static/Emojis/Pets/Monkey.png",
+        "stats": {
+          "ATT": 10,
+          "DEF": 8,
+          "INT": 20,
+          "DEX": 22,
+          "HAP": 10,
+          "ENE": 5
+        },
+        "spec": [
+          "DEX",
+          "INT"
+        ],
+        "description": "Incredibly quick and agile in the trees, this pet is highly curious and adept at problem-solving.",
+        "actions": {
+          "Attack": "Throw",
+          "Defense": "Swing Away",
+          "Charge": "Chatter"
+        }
+      },
+      "Mouse": {
+        "label": "Mouse",
+        "image": "/static/Emojis/Pets/Mouse.png",
+        "stats": {
+          "ATT": 7,
+          "DEF": 8,
+          "INT": 11,
+          "DEX": 21,
+          "HAP": 21,
+          "ENE": 7
+        },
+        "spec": [
+          "DEX",
+          "HAP"
+        ],
+        "description": "Small, fast, and hard to catch, with excellent evasive ability and a highly adaptable, contented nature.",
+        "actions": {
+          "Attack": "Nibble",
+          "Defense": "Scurry",
+          "Charge": "Whisker Twitch"
+        }
+      },
+      "Octopus": {
+        "label": "Octopus",
+        "image": "/static/Emojis/Pets/Octopus.png",
+        "stats": {
+          "ATT": 10,
+          "DEF": 11,
+          "INT": 26,
+          "DEX": 18,
+          "HAP": 5,
+          "ENE": 5
+        },
+        "spec": [
+          "INT",
+          "DEX"
+        ],
+        "description": "The genius of the sea, possessing a fluid, adaptive body and the highest level of strategic, cognitive ability.",
+        "actions": {
+          "Attack": "Tentacle Wrap",
+          "Defense": "Ink Cloud",
+          "Charge": "Camouflage"
+        }
+      },
+      "Orangutan": {
+        "label": "Orangutan",
+        "image": "/static/Emojis/Pets/Orangutan.png",
+        "stats": {
+          "ATT": 11,
+          "DEF": 14,
+          "INT": 22,
+          "DEX": 7,
+          "HAP": 10,
+          "ENE": 11
+        },
+        "spec": [
+          "INT",
+          "DEF"
+        ],
+        "description": "A thoughtful and patient ape, specializing in tool use (smarts) and using its strength to maintain a robust defense.",
+        "actions": {
+          "Attack": "Long Reach",
+          "Defense": "Canopy Hide",
+          "Charge": "Wisdom"
+        }
+      },
+      "Orca": {
+        "label": "Orca",
+        "image": "/static/Emojis/Pets/Orca.png",
+        "stats": {
+          "ATT": 21,
+          "DEF": 12,
+          "INT": 22,
+          "DEX": 8,
+          "HAP": 6,
+          "ENE": 6
+        },
+        "spec": [
+          "ATT",
+          "INT"
+        ],
+        "description": "The apex marine predator, combining immense strength with complex hunting strategies (intelligence).",
+        "actions": {
+          "Attack": "Breach Slam",
+          "Defense": "Pod Shield",
+          "Charge": "Killer Instinct"
+        }
+      },
+      "Ostrich": {
+        "label": "Ostrich",
+        "image": "/static/Emojis/Pets/Ostrich.png",
+        "stats": {
+          "ATT": 13,
+          "DEF": 11,
+          "INT": 7,
+          "DEX": 24,
+          "HAP": 10,
+          "ENE": 10
+        },
+        "spec": [
+          "DEX",
+          "ATT"
+        ],
+        "description": "Fastest two-legged runner, using powerful kicks (ATT) and incredible speed (DEX).",
+        "actions": {
+          "Attack": "Mega Kick",
+          "Defense": "Sand Cloud",
+          "Charge": "Sprint Prep"
+        }
+      },
+      "Otter": {
+        "label": "Otter",
+        "image": "/static/Emojis/Pets/Otter.png",
+        "stats": {
+          "ATT": 8,
+          "DEF": 10,
+          "INT": 18,
+          "DEX": 19,
+          "HAP": 12,
+          "ENE": 8
+        },
+        "spec": [
+          "DEX",
+          "INT"
+        ],
+        "description": "Playful and quick in the water, specializing in hunting intelligence and aquatic dexterity.",
+        "actions": {
+          "Attack": "Shell Crack",
+          "Defense": "Water Roll",
+          "Charge": "Hand Hold"
+        }
+      },
+      "Panda": {
+        "label": "Panda",
+        "image": "/static/Emojis/Pets/Panda.png",
+        "stats": {
+          "ATT": 7,
+          "DEF": 23,
+          "INT": 8,
+          "DEX": 6,
+          "HAP": 26,
+          "ENE": 5
+        },
+        "spec": [
+          "HAP",
+          "DEF"
+        ],
+        "description": "A gentle giant with superb defensive padding and the most peaceful, happy disposition.",
+        "actions": {
+          "Attack": "Bear Hug",
+          "Defense": "Bamboo Wall",
+          "Charge": "Lazy Roll"
+        }
+      },
+      "Parrot": {
+        "label": "Parrot",
+        "image": "/static/Emojis/Pets/Parrot.png",
+        "stats": {
+          "ATT": 7,
+          "DEF": 8,
+          "INT": 23,
+          "DEX": 13,
+          "HAP": 19,
+          "ENE": 5
+        },
+        "spec": [
+          "INT",
+          "HAP"
+        ],
+        "description": "An excellent communicator and mimic, specializing in social intelligence and an incredibly cheerful, talkative disposition.",
+        "actions": {
+          "Attack": "Beak Snap",
+          "Defense": "Fly Away",
+          "Charge": "Mimicry"
+        }
+      },
+      "Peacock": {
+        "label": "Peacock",
+        "image": "/static/Emojis/Pets/Peacock.png",
+        "stats": {
+          "ATT": 7,
+          "DEF": 10,
+          "INT": 10,
+          "DEX": 13,
+          "HAP": 24,
+          "ENE": 11
+        },
+        "spec": [
+          "HAP",
+          "DEF"
+        ],
+        "description": "Allure and display (HAP) are high, with balanced energy for strutting and a modest defense.",
+        "actions": {
+          "Attack": "Spur Strike",
+          "Defense": "Eye Dazzle",
+          "Charge": "Fan Tail"
+        }
+      },
+      "Pelican": {
+        "label": "Pelican",
+        "image": "/static/Emojis/Pets/Pelican.png",
+        "stats": {
+          "ATT": 10,
+          "DEF": 12,
+          "INT": 11,
+          "DEX": 17,
+          "HAP": 11,
+          "ENE": 14
+        },
+        "spec": [
+          "DEX",
+          "ENE"
+        ],
+        "description": "A sturdy water bird with good flying dexterity and endurance for long fishing trips.",
+        "actions": {
+          "Attack": "Scoop",
+          "Defense": "Wing Shield",
+          "Charge": "Gulp"
+        }
+      },
+      "Penguin": {
+        "label": "Penguin",
+        "image": "/static/Emojis/Pets/Penguin.png",
+        "stats": {
+          "ATT": 8,
+          "DEF": 18,
+          "INT": 12,
+          "DEX": 17,
+          "HAP": 10,
+          "ENE": 10
+        },
+        "spec": [
+          "DEF",
+          "DEX"
+        ],
+        "description": "A hardy, flightless bird with high defense against cold and agile swimming dexterity.",
+        "actions": {
+          "Attack": "Slide Tackle",
+          "Defense": "Huddle",
+          "Charge": "Belly Slide"
+        }
+      },
+      "Pig": {
+        "label": "Pig",
+        "image": "/static/Emojis/Pets/Pig.png",
+        "stats": {
+          "ATT": 11,
+          "DEF": 14,
+          "INT": 18,
+          "DEX": 7,
+          "HAP": 19,
+          "ENE": 6
+        },
+        "spec": [
+          "HAP",
+          "INT"
+        ],
+        "description": "Surprisingly intelligent animal with a strong rooting attack and contented happiness.",
+        "actions": {
+          "Attack": "Snout Shove",
+          "Defense": "Mud Coat",
+          "Charge": "Oink"
+        }
+      },
+      "Pigeon": {
+        "label": "Pigeon",
+        "image": "/static/Emojis/Pets/Pigeon.png",
+        "stats": {
+          "ATT": 7,
+          "DEF": 8,
+          "INT": 10,
+          "DEX": 22,
+          "HAP": 12,
+          "ENE": 16
+        },
+        "spec": [
+          "DEX",
+          "ENE"
+        ],
+        "description": "An excellent flyer, specializing in swift flight dexterity and homing endurance.",
+        "actions": {
+          "Attack": "Peck",
+          "Defense": "Flock Merge",
+          "Charge": "Coo"
+        }
+      },
+      "Platypus": {
+        "label": "Platypus",
+        "image": "/static/Emojis/Pets/Platypus.png",
+        "stats": {
+          "ATT": 11,
+          "DEF": 11,
+          "INT": 19,
+          "DEX": 13,
+          "HAP": 10,
+          "ENE": 11
+        },
+        "spec": [
+          "INT",
+          "ATT"
+        ],
+        "description": "Unique monotreme with venomous spurs (ATT) and high sensory intelligence.",
+        "actions": {
+          "Attack": "Spur Poison",
+          "Defense": "Water Dive",
+          "Charge": "Electro Sense"
+        }
+      },
+      "PolarBear": {
+        "label": "PolarBear",
+        "image": "/static/Emojis/Pets/PolarBear.png",
+        "stats": {
+          "ATT": 21,
+          "DEF": 23,
+          "INT": 10,
+          "DEX": 6,
+          "HAP": 7,
+          "ENE": 8
+        },
+        "spec": [
+          "DEF",
+          "ATT"
+        ],
+        "description": "A massive, powerful Arctic predator with peak strength and defense against the elements.",
+        "actions": {
+          "Attack": "Ice Smash",
+          "Defense": "Blubber",
+          "Charge": "White Camo"
+        }
+      },
+      "Pufferfish": {
+        "label": "Pufferfish",
+        "image": "/static/Emojis/Pets/Pufferfish.png",
+        "stats": {
+          "ATT": 10,
+          "DEF": 22,
+          "INT": 8,
+          "DEX": 7,
+          "HAP": 11,
+          "ENE": 17
+        },
+        "spec": [
+          "DEF",
+          "ENE"
+        ],
+        "description": "Relies on defensive inflation (DEF) and toxic warning (ATT) with high endurance.",
+        "actions": {
+          "Attack": "Spike Burst",
+          "Defense": "Inflate",
+          "Charge": "Toxin"
+        }
+      },
+      "Rabbit": {
+        "label": "Rabbit",
+        "image": "/static/Emojis/Pets/Rabbit.png",
+        "stats": {
+          "ATT": 7,
+          "DEF": 8,
+          "INT": 10,
+          "DEX": 24,
+          "HAP": 13,
+          "ENE": 13
+        },
+        "spec": [
+          "DEX",
+          "HAP"
+        ],
+        "description": "Highly evasive and speedy (DEX) with a social, reproductive happiness.",
+        "actions": {
+          "Attack": "Thump",
+          "Defense": "Burrow",
+          "Charge": "Ear Perk"
+        }
+      },
+      "Raccoon": {
+        "label": "Raccoon",
+        "image": "/static/Emojis/Pets/Raccoon.png",
+        "stats": {
+          "ATT": 11,
+          "DEF": 11,
+          "INT": 21,
+          "DEX": 19,
+          "HAP": 7,
+          "ENE": 6
+        },
+        "spec": [
+          "INT",
+          "DEX"
+        ],
+        "description": "A highly adaptable, dexterous scavenger known for its intelligence and 'masked' persona.",
+        "actions": {
+          "Attack": "Scratch",
+          "Defense": "Mask Hide",
+          "Charge": "Scavenge"
+        }
+      },
+      "Ram": {
+        "label": "Ram",
+        "image": "/static/Emojis/Pets/Ram.png",
+        "stats": {
+          "ATT": 19,
+          "DEF": 18,
+          "INT": 7,
+          "DEX": 8,
+          "HAP": 12,
+          "ENE": 11
+        },
+        "spec": [
+          "ATT",
+          "DEF"
+        ],
+        "description": "A powerful head-butter with strong attack and defensive horns/skull.",
+        "actions": {
+          "Attack": "Head Bash",
+          "Defense": "Horn Block",
+          "Charge": "Back Up"
+        }
+      },
+      "Rat": {
+        "label": "Rat",
+        "image": "/static/Emojis/Pets/Rat.png",
+        "stats": {
+          "ATT": 8,
+          "DEF": 8,
+          "INT": 18,
+          "DEX": 21,
+          "HAP": 10,
+          "ENE": 10
+        },
+        "spec": [
+          "DEX",
+          "INT"
+        ],
+        "description": "An adaptable, quick creature specializing in fast movement and survival intelligence.",
+        "actions": {
+          "Attack": "Bite",
+          "Defense": "Squeeze",
+          "Charge": "Gnaw"
+        }
+      },
+      "RedPanda": {
+        "label": "RedPanda",
+        "image": "/static/Emojis/Pets/RedPanda.png",
+        "stats": {
+          "ATT": 7,
+          "DEF": 8,
+          "INT": 13,
+          "DEX": 13,
+          "HAP": 23,
+          "ENE": 11
+        },
+        "spec": [
+          "HAP",
+          "DEF"
+        ],
+        "description": "A peaceful, arboreal mammal with high happiness and moderate energy for climbing.",
+        "actions": {
+          "Attack": "Pounce",
+          "Defense": "Tail Wrap",
+          "Charge": "Stand Tall"
+        }
+      },
+      "Reindeer": {
+        "label": "Reindeer",
+        "image": "/static/Emojis/Pets/Reindeer.png",
+        "stats": {
+          "ATT": 13,
+          "DEF": 19,
+          "INT": 8,
+          "DEX": 10,
+          "HAP": 11,
+          "ENE": 14
+        },
+        "spec": [
+          "DEF",
+          "ENE"
+        ],
+        "description": "Hardy arctic deer with strong defense and great endurance for long migrations.",
+        "actions": {
+          "Attack": "Antler Clash",
+          "Defense": "Snow Step",
+          "Charge": "Nose Glow"
+        }
+      },
+      "Rhino": {
+        "label": "Rhino",
+        "image": "/static/Emojis/Pets/Rhino.png",
+        "stats": {
+          "ATT": 19,
+          "DEF": 24,
+          "INT": 6,
+          "DEX": 6,
+          "HAP": 8,
+          "ENE": 12
+        },
+        "spec": [
+          "DEF",
+          "ATT"
+        ],
+        "description": "A heavy charger with peak defensive hide and a powerful horn attack.",
+        "actions": {
+          "Attack": "Horn Charge",
+          "Defense": "Armor Skin",
+          "Charge": "Dust Cloud"
+        }
+      },
+      "Salmon": {
+        "label": "Salmon",
+        "image": "/static/Emojis/Pets/Salmon.png",
+        "stats": {
+          "ATT": 7,
+          "DEF": 8,
+          "INT": 10,
+          "DEX": 13,
+          "HAP": 11,
+          "ENE": 26
+        },
+        "spec": [
+          "ENE",
+          "DEX"
+        ],
+        "description": "Defined by its incredible migratory endurance (ENE) and natural instinct (INT).",
+        "actions": {
+          "Attack": "Leap Strike",
+          "Defense": "Scale Slip",
+          "Charge": "Upstream"
+        }
+      },
+      "Scorpion": {
+        "label": "Scorpion",
+        "image": "/static/Emojis/Pets/Scorpion.png",
+        "stats": {
+          "ATT": 18,
+          "DEF": 17,
+          "INT": 8,
+          "DEX": 10,
+          "HAP": 7,
+          "ENE": 15
+        },
+        "spec": [
+          "ATT",
+          "DEF"
+        ],
+        "description": "A venomous arachnid with a potent sting (ATT) and hard-shelled defense.",
+        "actions": {
+          "Attack": "Tail Sting",
+          "Defense": "Chitin Armor",
+          "Charge": "Pincer Raise"
+        }
+      },
+      "Seahorse": {
+        "label": "Seahorse",
+        "image": "/static/Emojis/Pets/Seahorse.png",
+        "stats": {
+          "ATT": 7,
+          "DEF": 8,
+          "INT": 10,
+          "DEX": 6,
+          "HAP": 23,
+          "ENE": 21
+        },
+        "spec": [
+          "HAP",
+          "ENE"
+        ],
+        "description": "An unusual fish with excellent camouflage (DEF) and high, calm happiness and energy.",
+        "actions": {
+          "Attack": "Snout Suck",
+          "Defense": "Coral Grip",
+          "Charge": "Upright"
+        }
+      },
+      "Seal": {
+        "label": "Seal",
+        "image": "/static/Emojis/Pets/Seal.png",
+        "stats": {
+          "ATT": 11,
+          "DEF": 19,
+          "INT": 17,
+          "DEX": 10,
+          "HAP": 11,
+          "ENE": 7
+        },
+        "spec": [
+          "DEF",
+          "INT"
+        ],
+        "description": "An intelligent, blubbery mammal with high defense against cold and water.",
+        "actions": {
+          "Attack": "Bark Bite",
+          "Defense": "Blubber Bounce",
+          "Charge": "Clap"
+        }
+      },
+      "Shark": {
+        "label": "Shark",
+        "image": "/static/Emojis/Pets/Shark.png",
+        "stats": {
+          "ATT": 19,
+          "DEF": 13,
+          "INT": 12,
+          "DEX": 18,
+          "HAP": 8,
+          "ENE": 5
+        },
+        "spec": [
+          "ATT",
+          "DEX"
+        ],
+        "description": "The perfect aquatic hunter, combining powerful attack with agile swimming dexterity.",
+        "actions": {
+          "Attack": "Jaws",
+          "Defense": "Rough Skin",
+          "Charge": "Blood Scent"
+        }
+      },
+      "Sheep": {
+        "label": "Sheep",
+        "image": "/static/Emojis/Pets/Sheep.png",
+        "stats": {
+          "ATT": 7,
+          "DEF": 21,
+          "INT": 7,
+          "DEX": 7,
+          "HAP": 24,
+          "ENE": 9
+        },
+        "spec": [
+          "HAP",
+          "DEF"
+        ],
+        "description": "A flock animal with peak docile happiness and a thick, wooly defense.",
+        "actions": {
+          "Attack": "Butt",
+          "Defense": "Wool Fluff",
+          "Charge": "Baa"
+        }
+      },
+      "Shrimp": {
+        "label": "Shrimp",
+        "image": "/static/Emojis/Pets/Shrimp.png",
+        "stats": {
+          "ATT": 6,
+          "DEF": 8,
+          "INT": 8,
+          "DEX": 23,
+          "HAP": 11,
+          "ENE": 19
+        },
+        "spec": [
+          "DEX",
+          "ENE"
+        ],
+        "description": "A tiny crustacean with explosive tail flicks (DEX) and high metabolic energy.",
+        "actions": {
+          "Attack": "Snap Punch",
+          "Defense": "Shell Curl",
+          "Charge": "Antennae"
+        }
+      },
+      "Skunk": {
+        "label": "Skunk",
+        "image": "/static/Emojis/Pets/Skunk.png",
+        "stats": {
+          "ATT": 13,
+          "DEF": 13,
+          "INT": 8,
+          "DEX": 11,
+          "HAP": 11,
+          "ENE": 19
+        },
+        "spec": [
+          "ENE",
+          "ATT"
+        ],
+        "description": "Its pungent spray (ATT) acts as its defense, allowing high energy for nocturnal activity.",
+        "actions": {
+          "Attack": "Spray",
+          "Defense": "Warning Stomp",
+          "Charge": "Tail Lift"
+        }
+      },
+      "Sloth": {
+        "label": "Sloth",
+        "image": "/static/Emojis/Pets/Sloth.png",
+        "stats": {
+          "ATT": 6,
+          "DEF": 20,
+          "INT": 10,
+          "DEX": 5,
+          "HAP": 23,
+          "ENE": 11
+        },
+        "spec": [
+          "HAP",
+          "DEF"
+        ],
+        "description": "The master of slowness, with peak happiness and natural defensive camouflage.",
+        "actions": {
+          "Attack": "Slow Swipe",
+          "Defense": "Moss Fur",
+          "Charge": "Hang"
+        }
+      },
+      "Snail": {
+        "label": "Snail",
+        "image": "/static/Emojis/Pets/Snail.png",
+        "stats": {
+          "ATT": 6,
+          "DEF": 23,
+          "INT": 8,
+          "DEX": 5,
+          "HAP": 19,
+          "ENE": 14
+        },
+        "spec": [
+          "DEF",
+          "HAP"
+        ],
+        "description": "Protected by a sturdy shell (DEF) and possessing slow, sustained happiness.",
+        "actions": {
+          "Attack": "Rasp",
+          "Defense": "Shell Retreat",
+          "Charge": "Slime Trail"
+        }
+      },
+      "Snake": {
+        "label": "Snake",
+        "image": "/static/Emojis/Pets/Snake.png",
+        "stats": {
+          "ATT": 17,
+          "DEF": 10,
+          "INT": 18,
+          "DEX": 12,
+          "HAP": 8,
+          "ENE": 10
+        },
+        "spec": [
+          "INT",
+          "ATT"
+        ],
+        "description": "A cunning hunter, using sharp intelligence to stalk its prey before striking with a powerful, venomous attack.",
+        "actions": {
+          "Attack": "Fang Strike",
+          "Defense": "Coil",
+          "Charge": "Hiss"
+        }
+      },
+      "Spider": {
+        "label": "Spider",
+        "image": "/static/Emojis/Pets/Spider.png",
+        "stats": {
+          "ATT": 13,
+          "DEF": 8,
+          "INT": 19,
+          "DEX": 21,
+          "HAP": 6,
+          "ENE": 8
+        },
+        "spec": [
+          "DEX",
+          "INT"
+        ],
+        "description": "A master architect, specializing in complex web design (smarts) and quick, precise eight-legged movement.",
+        "actions": {
+          "Attack": "Venom Bite",
+          "Defense": "Web Shield",
+          "Charge": "Silk Spin"
+        }
+      },
+      "Squirrel": {
+        "label": "Squirrel",
+        "image": "/static/Emojis/Pets/Squirrel.png",
+        "stats": {
+          "ATT": 8,
+          "DEF": 8,
+          "INT": 12,
+          "DEX": 24,
+          "HAP": 13,
+          "ENE": 10
+        },
+        "spec": [
+          "DEX",
+          "HAP"
+        ],
+        "description": "A nimble, playful companion that uses its impressive agility to dart and climb with cheerful enthusiasm.",
+        "actions": {
+          "Attack": "Nut Throw",
+          "Defense": "Tree Dodge",
+          "Charge": "Chatter"
+        }
+      },
+      "Starfish": {
+        "label": "Starfish",
+        "image": "/static/Emojis/Pets/Starfish.png",
+        "stats": {
+          "ATT": 6,
+          "DEF": 19,
+          "INT": 7,
+          "DEX": 6,
+          "HAP": 19,
+          "ENE": 18
+        },
+        "spec": [
+          "DEF",
+          "HAP"
+        ],
+        "description": "A durable, tough marine pet (defense) that maintains a calm, enduring state of simple contentment.",
+        "actions": {
+          "Attack": "Arm Hug",
+          "Defense": "Regenerate",
+          "Charge": "Suction"
+        }
+      },
+      "Stingray": {
+        "label": "Stingray",
+        "image": "/static/Emojis/Pets/Stingray.png",
+        "stats": {
+          "ATT": 13,
+          "DEF": 11,
+          "INT": 10,
+          "DEX": 19,
+          "HAP": 10,
+          "ENE": 12
+        },
+        "spec": [
+          "DEX",
+          "ATT"
+        ],
+        "description": "A graceful swimmer (agility) that can deliver a surprisingly strong and sudden venomous barb attack.",
+        "actions": {
+          "Attack": "Barb Sting",
+          "Defense": "Sand Bury",
+          "Charge": "Glide"
+        }
+      },
+      "SugarGlider": {
+        "label": "SugarGlider",
+        "image": "/static/Emojis/Pets/SugarGlider.png",
+        "stats": {
+          "ATT": 7,
+          "DEF": 7,
+          "INT": 11,
+          "DEX": 24,
+          "HAP": 23,
+          "ENE": 3
+        },
+        "spec": [
+          "DEX",
+          "HAP"
+        ],
+        "description": "An aerial acrobat, specializing in beautiful gliding movements and an extremely social, happy nature.",
+        "actions": {
+          "Attack": "Glide Strike",
+          "Defense": "Pouch Hide",
+          "Charge": "Night Eyes"
+        }
+      },
+      "Tiger": {
+        "label": "Tiger",
+        "image": "/static/Emojis/Pets/Tiger.png",
+        "stats": {
+          "ATT": 21,
+          "DEF": 12,
+          "INT": 10,
+          "DEX": 17,
+          "HAP": 8,
+          "ENE": 7
+        },
+        "spec": [
+          "ATT",
+          "DEX"
+        ],
+        "description": "The epitome of a powerful feline, combining immense strength with stealthy, agile movements.",
+        "actions": {
+          "Attack": "Ambush",
+          "Defense": "Stripe Camo",
+          "Charge": "Roar"
+        }
+      },
+      "Toucan": {
+        "label": "Toucan",
+        "image": "/static/Emojis/Pets/Toucan.png",
+        "stats": {
+          "ATT": 10,
+          "DEF": 10,
+          "INT": 12,
+          "DEX": 21,
+          "HAP": 16,
+          "ENE": 6
+        },
+        "spec": [
+          "DEX",
+          "HAP"
+        ],
+        "description": "A colorful flyer, specializing in swift movement and displaying a high-spirited, cheerful personality.",
+        "actions": {
+          "Attack": "Beak Bash",
+          "Defense": "Branch Hop",
+          "Charge": "Color Flash"
+        }
+      },
+      "Turkey": {
+        "label": "Turkey",
+        "image": "/static/Emojis/Pets/Turkey.png",
+        "stats": {
+          "ATT": 11,
+          "DEF": 11,
+          "INT": 8,
+          "DEX": 11,
+          "HAP": 13,
+          "ENE": 21
+        },
+        "spec": [
+          "ENE",
+          "ATT"
+        ],
+        "description": "A surprisingly robust pet, possessing good stamina for running and a powerful spur/attack.",
+        "actions": {
+          "Attack": "Gobble Peck",
+          "Defense": "Fan Display",
+          "Charge": "Strut"
+        }
+      },
+      "Turtle": {
+        "label": "Turtle",
+        "image": "/static/Emojis/Pets/Turtle.png",
+        "stats": {
+          "ATT": 7,
+          "DEF": 28,
+          "INT": 10,
+          "DEX": 5,
+          "HAP": 10,
+          "ENE": 15
+        },
+        "spec": [
+          "DEF",
+          "ENE"
+        ],
+        "description": "The defense champion, featuring an unparalleled shell for protection and high endurance for slow, steady progress.",
+        "actions": {
+          "Attack": "Snap",
+          "Defense": "Shell Box",
+          "Charge": "Patience"
+        }
+      },
+      "Walrus": {
+        "label": "Walrus",
+        "image": "/static/Emojis/Pets/Walrus.png",
+        "stats": {
+          "ATT": 18,
+          "DEF": 22,
+          "INT": 8,
+          "DEX": 6,
+          "HAP": 10,
+          "ENE": 11
+        },
+        "spec": [
+          "DEF",
+          "ATT"
+        ],
+        "description": "A massive marine pet with thick blubber defense and powerful tusks used for high-impact attacks.",
+        "actions": {
+          "Attack": "Tusk Strike",
+          "Defense": "Thick Blubber",
+          "Charge": "Bellow"
+        }
+      },
+      "Whale": {
+        "label": "Whale",
+        "image": "/static/Emojis/Pets/Whale.png",
+        "stats": {
+          "ATT": 10,
+          "DEF": 26,
+          "INT": 19,
+          "DEX": 6,
+          "HAP": 8,
+          "ENE": 6
+        },
+        "spec": [
+          "DEF",
+          "INT"
+        ],
+        "description": "The oceanic giant, specializing in defensive size and complex, thoughtful navigation (smarts).",
+        "actions": {
+          "Attack": "Tail Splash",
+          "Defense": "Deep Dive",
+          "Charge": "Song"
+        }
+      },
+      "Wolf": {
+        "label": "Wolf",
+        "image": "/static/Emojis/Pets/Wolf.png",
+        "stats": {
+          "ATT": 18,
+          "DEF": 11,
+          "INT": 17,
+          "DEX": 10,
+          "HAP": 11,
+          "ENE": 8
+        },
+        "spec": [
+          "ATT",
+          "INT"
+        ],
+        "description": "A strategic hunter, specializing in coordinated strength and a high degree of survival intellect.",
+        "actions": {
+          "Attack": "Pack Bite",
+          "Defense": "Fur Coat",
+          "Charge": "Moon Howl"
+        }
+      },
+      "Yak": {
+        "label": "Yak",
+        "image": "/static/Emojis/Pets/Yak.png",
+        "stats": {
+          "ATT": 12,
+          "DEF": 22,
+          "INT": 7,
+          "DEX": 6,
+          "HAP": 11,
+          "ENE": 17
+        },
+        "spec": [
+          "DEF",
+          "ENE"
+        ],
+        "description": "A robust, hardy animal with maximum defense against the cold and sustained stamina for survival.",
+        "actions": {
+          "Attack": "Horn Toss",
+          "Defense": "Shaggy Coat",
+          "Charge": "Mountain Breath"
+        }
+      },
+      "Zebra": {
+        "label": "Zebra",
+        "image": "/static/Emojis/Pets/Zebra.png",
+        "stats": {
+          "ATT": 10,
+          "DEF": 13,
+          "INT": 8,
+          "DEX": 23,
+          "HAP": 11,
+          "ENE": 10
+        },
+        "spec": [
+          "DEX",
+          "DEF"
+        ],
+        "description": "An evasive ungulate, relying on its speed and stripes to confuse predators (agility) and its natural alertness.",
+        "actions": {
+          "Attack": "Kick",
+          "Defense": "Dazzle Stripe",
+          "Charge": "Herd Run"
+        }
+      },
+      "Owl": {
+        "label": "Owl",
+        "image": "/static/Emojis/Pets/Owl.png",
+        "stats": {
+          "ATT": 15,
+          "DEF": 10,
+          "INT": 20,
+          "DEX": 15,
+          "HAP": 10,
+          "ENE": 5
+        },
+        "spec": [
+          "INT",
+          "ATT"
+        ],
+        "description": "A wise nocturnal hunter, specializing in silent flight and keen observation.",
+        "actions": {
+          "Attack": "Silent Swoop",
+          "Defense": "Head Turn",
+          "Charge": "Night Watch"
+        }
+      },
+      "Axolotl": {
+        "label": "Axolotl",
+        "image": "/static/Emojis/Pets/Axolotl.png",
+        "stats": {
+          "ATT": 8,
+          "DEF": 12,
+          "INT": 10,
+          "DEX": 10,
+          "HAP": 20,
+          "ENE": 15
+        },
+        "spec": [
+          "HAP",
+          "ENE"
+        ],
+        "description": "A regenerative aquatic friend, known for its eternal smile and high spirits.",
+        "actions": {
+          "Attack": "Gulp",
+          "Defense": "Regen",
+          "Charge": "Gill Flutter"
+        }
+      },
+      "Centipede": {
+        "label": "Centipede",
+        "image": "/static/Emojis/Pets/Centipede.png",
+        "stats": {
+          "ATT": 18,
+          "DEF": 12,
+          "INT": 8,
+          "DEX": 20,
+          "HAP": 5,
+          "ENE": 12
+        },
+        "spec": [
+          "DEX",
+          "ATT"
+        ],
+        "description": "A fast, many-legged crawler that strikes with precision and speed.",
+        "actions": {
+          "Attack": "Venom Legs",
+          "Defense": "Segment Armor",
+          "Charge": "Scuttle"
+        }
+      },
+      "Firefly": {
+        "label": "Firefly",
+        "image": "/static/Emojis/Pets/Firefly.png",
+        "stats": {
+          "ATT": 5,
+          "DEF": 5,
+          "INT": 18,
+          "DEX": 12,
+          "HAP": 20,
+          "ENE": 15
+        },
+        "spec": [
+          "HAP",
+          "INT"
+        ],
+        "description": "A glowing bug that lights the night, bringing joy and wonder.",
+        "actions": {
+          "Attack": "Flash Blind",
+          "Defense": "Dim Light",
+          "Charge": "Glow Up"
+        }
+      }
+    }
+  },
+  "roles": {
+    "pet_match": {
+      "label": "Pet Match",
+      "priority": 1,
+      "summary": "Composite pet, element, and type result."
+    }
+  },
+  "questions": [
+    {
+      "id": "q01",
+      "type": "multiple_choice",
+      "prompt": "When a challenge appears, what is your first instinct?",
+      "answers": [
+        {
+          "id": "a",
+          "text": "Strike first and set the pace before anyone can corner you.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {
+              "ATT": 4,
+              "DEX": 2
+            },
+            "types": {},
+            "elements": {}
+          }
+        },
+        {
+          "id": "b",
+          "text": "Hold your ground, protect your space, and outlast the pressure.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {
+              "DEF": 4,
+              "ENE": 2
+            },
+            "types": {},
+            "elements": {}
+          }
+        },
+        {
+          "id": "c",
+          "text": "Read the room, think two moves ahead, and choose the cleanest answer.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {
+              "INT": 4,
+              "DEX": 1
+            },
+            "types": {},
+            "elements": {}
+          }
+        },
+        {
+          "id": "d",
+          "text": "Keep spirits high and turn the moment into something everyone can handle.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {
+              "HAP": 4,
+              "ENE": 1
+            },
+            "types": {},
+            "elements": {}
+          }
+        }
+      ]
+    },
+    {
+      "id": "q02",
+      "type": "multiple_choice",
+      "prompt": "Pick the terrain where you feel most alive.",
+      "answers": [
+        {
+          "id": "a",
+          "text": "Open sky, high perches, wind, and fast movement.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {
+              "DEX": 3,
+              "INT": 1
+            },
+            "types": {},
+            "elements": {}
+          }
+        },
+        {
+          "id": "b",
+          "text": "Forest paths, dens, fields, caves, and solid ground.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {
+              "DEF": 2,
+              "ATT": 1,
+              "ENE": 1
+            },
+            "types": {},
+            "elements": {}
+          }
+        },
+        {
+          "id": "c",
+          "text": "Rivers, reefs, ice, tides, and deep water.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {
+              "DEX": 2,
+              "HAP": 1,
+              "ENE": 1
+            },
+            "types": {},
+            "elements": {}
+          }
+        },
+        {
+          "id": "d",
+          "text": "Strange places: ruins, shadows, temples, storms, and dreams.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {
+              "INT": 3,
+              "ATT": 1
+            },
+            "types": {},
+            "elements": {}
+          }
+        }
+      ]
+    },
+    {
+      "id": "q03",
+      "type": "multiple_choice",
+      "prompt": "What kind of companion would balance you best?",
+      "answers": [
+        {
+          "id": "a",
+          "text": "A loyal guardian that can take hits and keep watch.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {
+              "DEF": 4,
+              "HAP": 1
+            },
+            "types": {},
+            "elements": {}
+          }
+        },
+        {
+          "id": "b",
+          "text": "A sharp hunter with bite, courage, and decisive instincts.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {
+              "ATT": 4,
+              "DEX": 1
+            },
+            "types": {},
+            "elements": {}
+          }
+        },
+        {
+          "id": "c",
+          "text": "A clever scout that notices details others miss.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {
+              "INT": 4,
+              "DEX": 2
+            },
+            "types": {},
+            "elements": {}
+          }
+        },
+        {
+          "id": "d",
+          "text": "A bright friend that makes the whole team happier.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {
+              "HAP": 4,
+              "ENE": 2
+            },
+            "types": {},
+            "elements": {}
+          }
+        }
+      ]
+    },
+    {
+      "id": "q04",
+      "type": "true_false",
+      "prompt": "True or false: You would rather win slowly and safely than risk everything on one explosive move.",
+      "answers": [
+        {
+          "id": "true",
+          "text": "True",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {
+              "DEF": 3,
+              "ENE": 3,
+              "INT": 1
+            },
+            "types": {},
+            "elements": {}
+          }
+        },
+        {
+          "id": "false",
+          "text": "False",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {
+              "ATT": 3,
+              "DEX": 3
+            },
+            "types": {},
+            "elements": {}
+          }
+        }
+      ]
+    },
+    {
+      "id": "q05",
+      "type": "multiple_choice",
+      "prompt": "Choose your favorite kind of pet energy.",
+      "answers": [
+        {
+          "id": "a",
+          "text": "Calm, sturdy, dependable, and hard to shake.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {
+              "DEF": 4,
+              "HAP": 1
+            },
+            "types": {},
+            "elements": {}
+          }
+        },
+        {
+          "id": "b",
+          "text": "Wild, intense, competitive, and fearless.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {
+              "ATT": 4,
+              "ENE": 1
+            },
+            "types": {},
+            "elements": {}
+          }
+        },
+        {
+          "id": "c",
+          "text": "Quick, graceful, playful, and impossible to pin down.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {
+              "DEX": 4,
+              "HAP": 1
+            },
+            "types": {},
+            "elements": {}
+          }
+        },
+        {
+          "id": "d",
+          "text": "Odd, mystical, observant, and secretly brilliant.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {
+              "INT": 4,
+              "DEF": 1
+            },
+            "types": {},
+            "elements": {}
+          }
+        }
+      ]
+    },
+    {
+      "id": "q06",
+      "type": "multiple_choice",
+      "prompt": "What would your pet be best known for?",
+      "answers": [
+        {
+          "id": "a",
+          "text": "Powerful attacks and dramatic finishes.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {
+              "ATT": 5
+            },
+            "types": {},
+            "elements": {}
+          }
+        },
+        {
+          "id": "b",
+          "text": "Defensive bulk and refusing to go down.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {
+              "DEF": 5
+            },
+            "types": {},
+            "elements": {}
+          }
+        },
+        {
+          "id": "c",
+          "text": "Problem solving, tricks, memory, and planning.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {
+              "INT": 5
+            },
+            "types": {},
+            "elements": {}
+          }
+        },
+        {
+          "id": "d",
+          "text": "Speed, dodges, precision, and clean escapes.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {
+              "DEX": 5
+            },
+            "types": {},
+            "elements": {}
+          }
+        }
+      ]
+    },
+    {
+      "id": "q07",
+      "type": "multiple_choice",
+      "prompt": "Which element calls to you most?",
+      "answers": [
+        {
+          "id": "a",
+          "text": "Fire, lightning, combat, and momentum.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {
+              "ATT": 2,
+              "DEX": 1
+            },
+            "types": {},
+            "elements": {}
+          }
+        },
+        {
+          "id": "b",
+          "text": "Water, ice, patience, and emotional flow.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {
+              "DEF": 1,
+              "HAP": 1,
+              "DEX": 1
+            },
+            "types": {},
+            "elements": {}
+          }
+        },
+        {
+          "id": "c",
+          "text": "Nature, stone, endurance, and steady growth.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {
+              "DEF": 2,
+              "ENE": 1
+            },
+            "types": {},
+            "elements": {}
+          }
+        },
+        {
+          "id": "d",
+          "text": "Magic, holy light, psychic force, and shadow.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {
+              "INT": 3
+            },
+            "types": {},
+            "elements": {}
+          }
+        }
+      ]
+    },
+    {
+      "id": "q08",
+      "type": "multiple_choice",
+      "prompt": "Your ideal pet adventure is:",
+      "answers": [
+        {
+          "id": "a",
+          "text": "A dungeon crawl where your pet breaks through enemies.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {
+              "ATT": 3,
+              "DEF": 1
+            },
+            "types": {},
+            "elements": {}
+          }
+        },
+        {
+          "id": "b",
+          "text": "A rescue mission where your pet protects the vulnerable.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {
+              "DEF": 3,
+              "HAP": 2
+            },
+            "types": {},
+            "elements": {}
+          }
+        },
+        {
+          "id": "c",
+          "text": "A scouting mission full of puzzles, traps, and hidden paths.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {
+              "INT": 3,
+              "DEX": 2
+            },
+            "types": {},
+            "elements": {}
+          }
+        },
+        {
+          "id": "d",
+          "text": "A long expedition where endurance and morale matter most.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {
+              "ENE": 4,
+              "HAP": 1
+            },
+            "types": {},
+            "elements": {}
+          }
+        }
+      ]
+    },
+    {
+      "id": "q09",
+      "type": "true_false",
+      "prompt": "True or false: A pet should be more clever than strong.",
+      "answers": [
+        {
+          "id": "true",
+          "text": "True",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {
+              "INT": 4,
+              "DEX": 1
+            },
+            "types": {},
+            "elements": {}
+          }
+        },
+        {
+          "id": "false",
+          "text": "False",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {
+              "ATT": 2,
+              "DEF": 2,
+              "ENE": 1
+            },
+            "types": {},
+            "elements": {}
+          }
+        }
+      ]
+    },
+    {
+      "id": "q10",
+      "type": "multiple_choice",
+      "prompt": "How should your pet react to danger?",
+      "answers": [
+        {
+          "id": "a",
+          "text": "Charge in and end it fast.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {
+              "ATT": 4,
+              "ENE": 1
+            },
+            "types": {},
+            "elements": {}
+          }
+        },
+        {
+          "id": "b",
+          "text": "Shield others and absorb the hit.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {
+              "DEF": 4,
+              "HAP": 1
+            },
+            "types": {},
+            "elements": {}
+          }
+        },
+        {
+          "id": "c",
+          "text": "Slip away, reposition, and strike precisely.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {
+              "DEX": 4,
+              "INT": 1
+            },
+            "types": {},
+            "elements": {}
+          }
+        },
+        {
+          "id": "d",
+          "text": "Confuse the threat with tricks or strange power.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {
+              "INT": 4,
+              "ATT": 1
+            },
+            "types": {},
+            "elements": {}
+          }
+        }
+      ]
+    },
+    {
+      "id": "q11",
+      "type": "multiple_choice",
+      "prompt": "Pick the vibe closest to your personality.",
+      "answers": [
+        {
+          "id": "a",
+          "text": "Gentle, loyal, warm, and community-minded.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {
+              "HAP": 4,
+              "DEF": 1
+            },
+            "types": {},
+            "elements": {}
+          }
+        },
+        {
+          "id": "b",
+          "text": "Independent, sharp, quiet, and strategic.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {
+              "INT": 3,
+              "ATT": 1,
+              "DEX": 1
+            },
+            "types": {},
+            "elements": {}
+          }
+        },
+        {
+          "id": "c",
+          "text": "Restless, fast, curious, and kinetic.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {
+              "DEX": 3,
+              "ENE": 2
+            },
+            "types": {},
+            "elements": {}
+          }
+        },
+        {
+          "id": "d",
+          "text": "Stubborn, brave, intense, and protective.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {
+              "ATT": 2,
+              "DEF": 2,
+              "ENE": 1
+            },
+            "types": {},
+            "elements": {}
+          }
+        }
+      ]
+    },
+    {
+      "id": "q12",
+      "type": "multiple_choice",
+      "prompt": "Which stat would you max first in a pet build?",
+      "answers": [
+        {
+          "id": "a",
+          "text": "ATT: I want decisive damage.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {
+              "ATT": 6
+            },
+            "types": {},
+            "elements": {}
+          }
+        },
+        {
+          "id": "b",
+          "text": "DEF: I want reliable survival.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {
+              "DEF": 6
+            },
+            "types": {},
+            "elements": {}
+          }
+        },
+        {
+          "id": "c",
+          "text": "INT: I want smart plays and skill value.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {
+              "INT": 6
+            },
+            "types": {},
+            "elements": {}
+          }
+        },
+        {
+          "id": "d",
+          "text": "DEX: I want speed, evasion, and precision.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {
+              "DEX": 6
+            },
+            "types": {},
+            "elements": {}
+          }
+        }
+      ]
+    },
+    {
+      "id": "q13",
+      "type": "multiple_choice",
+      "prompt": "Choose a second priority.",
+      "answers": [
+        {
+          "id": "a",
+          "text": "HAP: a happy pet is a strong pet.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {
+              "HAP": 5
+            },
+            "types": {},
+            "elements": {}
+          }
+        },
+        {
+          "id": "b",
+          "text": "ENE: I want stamina for long runs.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {
+              "ENE": 5
+            },
+            "types": {},
+            "elements": {}
+          }
+        },
+        {
+          "id": "c",
+          "text": "A balanced attack/defense split.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {
+              "ATT": 3,
+              "DEF": 3
+            },
+            "types": {},
+            "elements": {}
+          }
+        },
+        {
+          "id": "d",
+          "text": "A balanced mind/speed split.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {
+              "INT": 3,
+              "DEX": 3
+            },
+            "types": {},
+            "elements": {}
+          }
+        }
+      ]
+    },
+    {
+      "id": "q14",
+      "type": "true_false",
+      "prompt": "True or false: You would pick a weird, rare-fitting pet over a traditionally powerful one.",
+      "answers": [
+        {
+          "id": "true",
+          "text": "True",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {
+              "INT": 3,
+              "HAP": 1,
+              "DEX": 1
+            },
+            "types": {},
+            "elements": {}
+          }
+        },
+        {
+          "id": "false",
+          "text": "False",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {
+              "ATT": 2,
+              "DEF": 2,
+              "ENE": 1
+            },
+            "types": {},
+            "elements": {}
+          }
+        }
+      ]
+    },
+    {
+      "id": "q15",
+      "type": "multiple_choice",
+      "prompt": "Which pet behavior sounds most charming?",
+      "answers": [
+        {
+          "id": "a",
+          "text": "Bringing gifts, cheering people up, and staying close.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {
+              "HAP": 4,
+              "INT": 1
+            },
+            "types": {},
+            "elements": {}
+          }
+        },
+        {
+          "id": "b",
+          "text": "Training hard, sparring, and showing off power.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {
+              "ATT": 4,
+              "ENE": 1
+            },
+            "types": {},
+            "elements": {}
+          }
+        },
+        {
+          "id": "c",
+          "text": "Watching silently, solving things, and acting at the perfect moment.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {
+              "INT": 4,
+              "DEF": 1
+            },
+            "types": {},
+            "elements": {}
+          }
+        },
+        {
+          "id": "d",
+          "text": "Zooming around, exploring every corner, and never sitting still.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {
+              "DEX": 3,
+              "ENE": 2
+            },
+            "types": {},
+            "elements": {}
+          }
+        }
+      ]
+    },
+    {
+      "id": "q16",
+      "type": "multiple_choice",
+      "prompt": "Finally, what should your pet feel like when people see it?",
+      "answers": [
+        {
+          "id": "a",
+          "text": "Noble and radiant.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {
+              "HAP": 2,
+              "DEF": 1,
+              "INT": 1
+            },
+            "types": {},
+            "elements": {}
+          }
+        },
+        {
+          "id": "b",
+          "text": "Dark and intimidating.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {
+              "ATT": 2,
+              "INT": 1
+            },
+            "types": {},
+            "elements": {}
+          }
+        },
+        {
+          "id": "c",
+          "text": "Natural and peaceful.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {
+              "HAP": 2,
+              "ENE": 1,
+              "DEF": 1
+            },
+            "types": {},
+            "elements": {}
+          }
+        },
+        {
+          "id": "d",
+          "text": "Ancient and elemental.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {
+              "DEF": 1,
+              "INT": 1,
+              "ATT": 1
+            },
+            "types": {},
+            "elements": {}
+          }
+        }
+      ]
+    },
+    {
+      "id": "q17",
+      "type": "multiple_choice",
+      "prompt": "What would your pet do during downtime?",
+      "answers": [
+        {
+          "id": "a",
+          "text": "Nap nearby, accept affection, and keep the room peaceful.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {
+              "HAP": 4,
+              "DEF": 1
+            },
+            "types": {},
+            "elements": {}
+          }
+        },
+        {
+          "id": "b",
+          "text": "Patrol the edges, watch exits, and notice every sound.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {
+              "INT": 3,
+              "DEF": 2
+            },
+            "types": {},
+            "elements": {}
+          }
+        },
+        {
+          "id": "c",
+          "text": "Practice attacks, chase things, and test its strength.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {
+              "ATT": 4,
+              "ENE": 1
+            },
+            "types": {},
+            "elements": {}
+          }
+        },
+        {
+          "id": "d",
+          "text": "Explore water, vents, rafters, tunnels, or anywhere hard to reach.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {
+              "DEX": 3,
+              "ENE": 2
+            },
+            "types": {},
+            "elements": {}
+          }
+        }
+      ]
+    },
+    {
+      "id": "q18",
+      "type": "multiple_choice",
+      "prompt": "Which bond sounds most natural between you and your pet?",
+      "answers": [
+        {
+          "id": "a",
+          "text": "A loyal partner that stays close and trusts routines.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {
+              "HAP": 3,
+              "DEF": 2
+            },
+            "types": {},
+            "elements": {}
+          }
+        },
+        {
+          "id": "b",
+          "text": "A clever equal that needs respect and mental stimulation.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {
+              "INT": 4,
+              "DEX": 1
+            },
+            "types": {},
+            "elements": {}
+          }
+        },
+        {
+          "id": "c",
+          "text": "A fierce ally that wants challenge, action, and victory.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {
+              "ATT": 3,
+              "ENE": 2
+            },
+            "types": {},
+            "elements": {}
+          }
+        },
+        {
+          "id": "d",
+          "text": "A strange little soul that chooses you, not the other way around.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {
+              "INT": 2,
+              "HAP": 2,
+              "DEX": 1
+            },
+            "types": {},
+            "elements": {}
+          }
+        }
+      ]
+    },
+    {
+      "id": "q19",
+      "type": "multiple_choice",
+      "prompt": "Which body style fits your ideal companion?",
+      "answers": [
+        {
+          "id": "a",
+          "text": "Compact, quick, sneaky, and hard to catch.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {
+              "DEX": 4,
+              "INT": 1
+            },
+            "types": {},
+            "elements": {}
+          }
+        },
+        {
+          "id": "b",
+          "text": "Large, sturdy, grounded, and reassuring.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {
+              "DEF": 4,
+              "ENE": 1
+            },
+            "types": {},
+            "elements": {}
+          }
+        },
+        {
+          "id": "c",
+          "text": "Winged, graceful, bright, or watchful from above.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {
+              "DEX": 3,
+              "INT": 1,
+              "HAP": 1
+            },
+            "types": {},
+            "elements": {}
+          }
+        },
+        {
+          "id": "d",
+          "text": "Aquatic, smooth, flowing, strange, or deep-sea calm.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {
+              "DEX": 2,
+              "HAP": 1,
+              "INT": 1
+            },
+            "types": {},
+            "elements": {}
+          }
+        }
+      ]
+    },
+    {
+      "id": "q20",
+      "type": "true_false",
+      "prompt": "True or false: Your perfect pet should be emotionally expressive and visibly happy.",
+      "answers": [
+        {
+          "id": "true",
+          "text": "True",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {
+              "HAP": 5,
+              "ENE": 1
+            },
+            "types": {},
+            "elements": {}
+          }
+        },
+        {
+          "id": "false",
+          "text": "False",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {
+              "INT": 2,
+              "DEF": 2,
+              "ATT": 1
+            },
+            "types": {},
+            "elements": {}
+          }
+        }
+      ]
+    },
+    {
+      "id": "q21",
+      "type": "multiple_choice",
+      "prompt": "If your pet had a signature move, it would be:",
+      "answers": [
+        {
+          "id": "a",
+          "text": "A crushing bite, tackle, claw strike, sting, or horn charge.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {
+              "ATT": 5
+            },
+            "types": {},
+            "elements": {}
+          }
+        },
+        {
+          "id": "b",
+          "text": "A shell guard, thick hide, herd wall, burrow, or defensive brace.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {
+              "DEF": 5
+            },
+            "types": {},
+            "elements": {}
+          }
+        },
+        {
+          "id": "c",
+          "text": "A sonar pulse, clever trick, illusion, or precise distraction.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {
+              "INT": 4,
+              "DEX": 1
+            },
+            "types": {},
+            "elements": {}
+          }
+        },
+        {
+          "id": "d",
+          "text": "A sprint, dive, current ride, wing dodge, or lightning-fast escape.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {
+              "DEX": 5
+            },
+            "types": {},
+            "elements": {}
+          }
+        }
+      ]
+    },
+    {
+      "id": "q22",
+      "type": "multiple_choice",
+      "prompt": "Which weakness would you tolerate in your pet?",
+      "answers": [
+        {
+          "id": "a",
+          "text": "Not the fastest, as long as it is sturdy and loyal.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {
+              "DEF": 3,
+              "HAP": 2
+            },
+            "types": {},
+            "elements": {}
+          }
+        },
+        {
+          "id": "b",
+          "text": "Not the toughest, as long as it is fast and clever.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {
+              "DEX": 3,
+              "INT": 2
+            },
+            "types": {},
+            "elements": {}
+          }
+        },
+        {
+          "id": "c",
+          "text": "Not the friendliest, as long as it is powerful and focused.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {
+              "ATT": 4,
+              "INT": 1
+            },
+            "types": {},
+            "elements": {}
+          }
+        },
+        {
+          "id": "d",
+          "text": "Not the strongest, as long as it is cheerful and energizing.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {
+              "HAP": 3,
+              "ENE": 3
+            },
+            "types": {},
+            "elements": {}
+          }
+        }
+      ]
+    },
+    {
+      "id": "q23",
+      "type": "multiple_choice",
+      "prompt": "Which environment should your pet be able to survive best?",
+      "answers": [
+        {
+          "id": "a",
+          "text": "Dry heat, open plains, rough stone, or desert travel.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {
+              "ENE": 3,
+              "DEF": 2
+            },
+            "types": {},
+            "elements": {}
+          }
+        },
+        {
+          "id": "b",
+          "text": "Cold, ice, deep water, storms, or slippery terrain.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {
+              "DEX": 2,
+              "DEF": 1,
+              "ENE": 1
+            },
+            "types": {},
+            "elements": {}
+          }
+        },
+        {
+          "id": "c",
+          "text": "Tall trees, cliffs, wind, rooftops, or wide sky.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {
+              "DEX": 3,
+              "INT": 1
+            },
+            "types": {},
+            "elements": {}
+          }
+        },
+        {
+          "id": "d",
+          "text": "Dark ruins, haunted places, temples, or magical spaces.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {
+              "INT": 3,
+              "ATT": 1
+            },
+            "types": {},
+            "elements": {}
+          }
+        }
+      ]
+    },
+    {
+      "id": "q24",
+      "type": "multiple_choice",
+      "prompt": "A stranger meets your pet. What do they notice first?",
+      "answers": [
+        {
+          "id": "a",
+          "text": "Its presence: strong, bold, and impossible to ignore.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {
+              "ATT": 3,
+              "DEF": 1
+            },
+            "types": {},
+            "elements": {}
+          }
+        },
+        {
+          "id": "b",
+          "text": "Its eyes: aware, calculating, and weirdly human.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {
+              "INT": 4
+            },
+            "types": {},
+            "elements": {}
+          }
+        },
+        {
+          "id": "c",
+          "text": "Its movement: quick, elegant, and almost weightless.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {
+              "DEX": 4
+            },
+            "types": {},
+            "elements": {}
+          }
+        },
+        {
+          "id": "d",
+          "text": "Its warmth: friendly, gentle, and easy to trust.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {
+              "HAP": 4
+            },
+            "types": {},
+            "elements": {}
+          }
+        }
+      ]
+    },
+    {
+      "id": "q25",
+      "type": "true_false",
+      "prompt": "True or false: Your pet should be built more for long adventures than short bursts.",
+      "answers": [
+        {
+          "id": "true",
+          "text": "True",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {
+              "ENE": 5,
+              "DEF": 1
+            },
+            "types": {},
+            "elements": {}
+          }
+        },
+        {
+          "id": "false",
+          "text": "False",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {
+              "ATT": 2,
+              "DEX": 3
+            },
+            "types": {},
+            "elements": {}
+          }
+        }
+      ]
+    },
+    {
+      "id": "q26",
+      "type": "multiple_choice",
+      "prompt": "Pick the pet archetype you trust most.",
+      "answers": [
+        {
+          "id": "a",
+          "text": "Guardian: durable, protective, patient.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {
+              "DEF": 4,
+              "HAP": 1
+            },
+            "types": {},
+            "elements": {}
+          }
+        },
+        {
+          "id": "b",
+          "text": "Hunter: sharp, strong, decisive.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {
+              "ATT": 4,
+              "DEX": 1
+            },
+            "types": {},
+            "elements": {}
+          }
+        },
+        {
+          "id": "c",
+          "text": "Trickster: smart, slippery, surprising.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {
+              "INT": 3,
+              "DEX": 2
+            },
+            "types": {},
+            "elements": {}
+          }
+        },
+        {
+          "id": "d",
+          "text": "Companion: happy, steady, energizing.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {
+              "HAP": 3,
+              "ENE": 2
+            },
+            "types": {},
+            "elements": {}
+          }
+        }
+      ]
+    },
+    {
+      "id": "q27",
+      "type": "multiple_choice",
+      "prompt": "Which element pairing feels most like your pet?",
+      "answers": [
+        {
+          "id": "a",
+          "text": "Fire + Fighting: bold force and direct action.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {
+              "ATT": 3,
+              "ENE": 1
+            },
+            "types": {},
+            "elements": {}
+          }
+        },
+        {
+          "id": "b",
+          "text": "Water + Ice: adaptable, calm, and controlled.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {
+              "DEX": 1,
+              "DEF": 2,
+              "INT": 1
+            },
+            "types": {},
+            "elements": {}
+          }
+        },
+        {
+          "id": "c",
+          "text": "Air + Electric: quick, bright, and restless.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {
+              "DEX": 3,
+              "ENE": 1
+            },
+            "types": {},
+            "elements": {}
+          }
+        },
+        {
+          "id": "d",
+          "text": "Magic + Psychic: strange, clever, and intuitive.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {
+              "INT": 4
+            },
+            "types": {},
+            "elements": {}
+          }
+        }
+      ]
+    },
+    {
+      "id": "q28",
+      "type": "multiple_choice",
+      "prompt": "Last filter: what should your perfect pet help you become?",
+      "answers": [
+        {
+          "id": "a",
+          "text": "Braver and more willing to act.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {
+              "ATT": 3,
+              "ENE": 1
+            },
+            "types": {},
+            "elements": {}
+          }
+        },
+        {
+          "id": "b",
+          "text": "Calmer, safer, and more grounded.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {
+              "DEF": 3,
+              "HAP": 1
+            },
+            "types": {},
+            "elements": {}
+          }
+        },
+        {
+          "id": "c",
+          "text": "Sharper, wiser, and harder to fool.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {
+              "INT": 3,
+              "DEX": 1
+            },
+            "types": {},
+            "elements": {}
+          }
+        },
+        {
+          "id": "d",
+          "text": "Freer, lighter, and more adventurous.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {
+              "DEX": 2,
+              "ENE": 2,
+              "HAP": 1
+            },
+            "types": {},
+            "elements": {}
+          }
+        }
+      ]
+    },
+    {
+      "id": "q29",
+      "type": "multiple_choice",
+      "prompt": "Type filter: how should your pet move through the world?",
+      "answers": [
+        {
+          "id": "a",
+          "text": "On paws, claws, hooves, or steady legs across solid ground.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {},
+            "types": {
+              "Land": 6
+            },
+            "elements": {}
+          }
+        },
+        {
+          "id": "b",
+          "text": "Through the air: gliding, hovering, swooping, or perching high.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {},
+            "types": {
+              "Flying": 6
+            },
+            "elements": {}
+          }
+        },
+        {
+          "id": "c",
+          "text": "Through water: swimming, diving, floating, or riding currents.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {},
+            "types": {
+              "Swimming": 6
+            },
+            "elements": {}
+          }
+        },
+        {
+          "id": "d",
+          "text": "Anywhere it wants, but you picture its main freedom as motion itself.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {},
+            "types": {
+              "Flying": 2,
+              "Swimming": 2,
+              "Land": 2
+            },
+            "elements": {}
+          }
+        }
+      ]
+    },
+    {
+      "id": "q30",
+      "type": "multiple_choice",
+      "prompt": "Type filter: where would your pet choose to sleep?",
+      "answers": [
+        {
+          "id": "a",
+          "text": "A den, burrow, nest on the ground, stable, cave, or cozy room.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {},
+            "types": {
+              "Land": 6
+            },
+            "elements": {}
+          }
+        },
+        {
+          "id": "b",
+          "text": "A branch, roof beam, cliff ledge, tower, or suspended perch.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {},
+            "types": {
+              "Flying": 6
+            },
+            "elements": {}
+          }
+        },
+        {
+          "id": "c",
+          "text": "A pond, reef, riverbank, tide pool, ice shelf, or damp hideaway.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {},
+            "types": {
+              "Swimming": 6
+            },
+            "elements": {}
+          }
+        },
+        {
+          "id": "d",
+          "text": "It would sleep wherever you are, habitat rules be ignored.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {},
+            "types": {
+              "Land": 2,
+              "Flying": 2,
+              "Swimming": 2
+            },
+            "elements": {}
+          }
+        }
+      ]
+    },
+    {
+      "id": "q31",
+      "type": "multiple_choice",
+      "prompt": "Type filter: in a chase scene, your pet wins by:",
+      "answers": [
+        {
+          "id": "a",
+          "text": "Digging in, cutting corners, and using terrain.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {},
+            "types": {
+              "Land": 6
+            },
+            "elements": {}
+          }
+        },
+        {
+          "id": "b",
+          "text": "Taking vertical space and escaping above the problem.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {},
+            "types": {
+              "Flying": 6
+            },
+            "elements": {}
+          }
+        },
+        {
+          "id": "c",
+          "text": "Diving under, slipping through water, or vanishing below the surface.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {},
+            "types": {
+              "Swimming": 6
+            },
+            "elements": {}
+          }
+        },
+        {
+          "id": "d",
+          "text": "Switching routes so unpredictably that nobody can read it.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {},
+            "types": {
+              "Land": 2,
+              "Flying": 2,
+              "Swimming": 2
+            },
+            "elements": {}
+          }
+        }
+      ]
+    },
+    {
+      "id": "q32",
+      "type": "multiple_choice",
+      "prompt": "Type filter: choose the travel fantasy you like most.",
+      "answers": [
+        {
+          "id": "a",
+          "text": "Crossing forests, deserts, mountains, fields, and old roads.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {},
+            "types": {
+              "Land": 6
+            },
+            "elements": {}
+          }
+        },
+        {
+          "id": "b",
+          "text": "Riding wind, clouds, rooftops, moonlight, and open sky.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {},
+            "types": {
+              "Flying": 6
+            },
+            "elements": {}
+          }
+        },
+        {
+          "id": "c",
+          "text": "Following rivers, reefs, storms, glaciers, and deep ocean paths.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {},
+            "types": {
+              "Swimming": 6
+            },
+            "elements": {}
+          }
+        },
+        {
+          "id": "d",
+          "text": "Traveling between all three because the journey matters more than the route.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {},
+            "types": {
+              "Land": 2,
+              "Flying": 2,
+              "Swimming": 2
+            },
+            "elements": {}
+          }
+        }
+      ]
+    },
+    {
+      "id": "q33",
+      "type": "multiple_choice",
+      "prompt": "Element filter: what kind of power feels most natural?",
+      "answers": [
+        {
+          "id": "a",
+          "text": "A clean, simple, grounded power that works anywhere.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {},
+            "types": {},
+            "elements": {
+              "Basic": 6,
+              "Rock": 1
+            }
+          }
+        },
+        {
+          "id": "b",
+          "text": "A bright, burning, aggressive power that pushes forward.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {},
+            "types": {},
+            "elements": {
+              "Fire": 6,
+              "Fighting": 2,
+              "Electric": 1
+            }
+          }
+        },
+        {
+          "id": "c",
+          "text": "A flowing, adaptive power that can soothe or overwhelm.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {},
+            "types": {},
+            "elements": {
+              "Water": 6,
+              "Ice": 2,
+              "Plant": 1
+            }
+          }
+        },
+        {
+          "id": "d",
+          "text": "A strange, unseen power that bends rules and perception.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {},
+            "types": {},
+            "elements": {
+              "Magic": 4,
+              "Psychic": 4,
+              "Necro": 2
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "q34",
+      "type": "multiple_choice",
+      "prompt": "Element filter: pick the weather around your pet.",
+      "answers": [
+        {
+          "id": "a",
+          "text": "Clear sun, warm sparks, heat shimmer, or wildfire glow.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {},
+            "types": {},
+            "elements": {
+              "Fire": 5,
+              "Holy": 1,
+              "Electric": 1
+            }
+          }
+        },
+        {
+          "id": "b",
+          "text": "Rain, fog, tides, snow, frost, or quiet cold.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {},
+            "types": {},
+            "elements": {
+              "Water": 4,
+              "Ice": 4,
+              "Air": 1
+            }
+          }
+        },
+        {
+          "id": "c",
+          "text": "Wind, lightning, pressure shifts, and charged air.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {},
+            "types": {},
+            "elements": {
+              "Air": 4,
+              "Electric": 4
+            }
+          }
+        },
+        {
+          "id": "d",
+          "text": "Stillness, shadows, grave-light, or impossible colors.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {},
+            "types": {},
+            "elements": {
+              "Necro": 4,
+              "Magic": 3,
+              "Psychic": 2
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "q35",
+      "type": "multiple_choice",
+      "prompt": "Element filter: what should your pet protect?",
+      "answers": [
+        {
+          "id": "a",
+          "text": "Life, growth, gardens, comfort, and recovery.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {},
+            "types": {},
+            "elements": {
+              "Plant": 5,
+              "Holy": 2,
+              "Water": 1
+            }
+          }
+        },
+        {
+          "id": "b",
+          "text": "Justice, courage, vows, and people who need hope.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {},
+            "types": {},
+            "elements": {
+              "Holy": 5,
+              "Fighting": 2,
+              "Fire": 1
+            }
+          }
+        },
+        {
+          "id": "c",
+          "text": "Secrets, thresholds, endings, and forbidden places.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {},
+            "types": {},
+            "elements": {
+              "Necro": 5,
+              "Magic": 2,
+              "Psychic": 1
+            }
+          }
+        },
+        {
+          "id": "d",
+          "text": "Knowledge, dreams, memories, and hidden patterns.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {},
+            "types": {},
+            "elements": {
+              "Psychic": 5,
+              "Magic": 3
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "q36",
+      "type": "multiple_choice",
+      "prompt": "Element filter: choose a battle aura.",
+      "answers": [
+        {
+          "id": "a",
+          "text": "Stone armor, heavy impact, and unbreakable stance.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {},
+            "types": {},
+            "elements": {
+              "Rock": 6,
+              "Basic": 1,
+              "Fighting": 1
+            }
+          }
+        },
+        {
+          "id": "b",
+          "text": "Martial focus, raw courage, and close-range pressure.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {},
+            "types": {},
+            "elements": {
+              "Fighting": 6,
+              "Fire": 2
+            }
+          }
+        },
+        {
+          "id": "c",
+          "text": "Crackling speed, sudden shocks, and charged reflexes.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {},
+            "types": {},
+            "elements": {
+              "Electric": 6,
+              "Air": 2
+            }
+          }
+        },
+        {
+          "id": "d",
+          "text": "Cold control, frozen timing, and punishing patience.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {},
+            "types": {},
+            "elements": {
+              "Ice": 6,
+              "Water": 2
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "q37",
+      "type": "multiple_choice",
+      "prompt": "Element filter: choose the color palette you imagine.",
+      "answers": [
+        {
+          "id": "a",
+          "text": "Gold, white, sunrise, and clean light.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {},
+            "types": {},
+            "elements": {
+              "Holy": 5,
+              "Basic": 2,
+              "Air": 1
+            }
+          }
+        },
+        {
+          "id": "b",
+          "text": "Green, moss, flowers, vines, and living wood.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {},
+            "types": {},
+            "elements": {
+              "Plant": 6,
+              "Basic": 1
+            }
+          }
+        },
+        {
+          "id": "c",
+          "text": "Black, violet, bone, smoke, and moonlit shadow.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {},
+            "types": {},
+            "elements": {
+              "Necro": 5,
+              "Magic": 2,
+              "Psychic": 1
+            }
+          }
+        },
+        {
+          "id": "d",
+          "text": "Blue, teal, silver, glass, and deep current.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {},
+            "types": {},
+            "elements": {
+              "Water": 4,
+              "Ice": 3,
+              "Psychic": 1
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "q38",
+      "type": "multiple_choice",
+      "prompt": "Element filter: if your pet had a rare second element, it would come from:",
+      "answers": [
+        {
+          "id": "a",
+          "text": "Discipline and combat spirit.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {},
+            "types": {},
+            "elements": {
+              "Fighting": 5,
+              "Fire": 1,
+              "Holy": 1
+            }
+          }
+        },
+        {
+          "id": "b",
+          "text": "Mystery and spellcraft.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {},
+            "types": {},
+            "elements": {
+              "Magic": 5,
+              "Psychic": 2
+            }
+          }
+        },
+        {
+          "id": "c",
+          "text": "Nature and endurance.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {},
+            "types": {},
+            "elements": {
+              "Plant": 4,
+              "Rock": 3,
+              "Basic": 1
+            }
+          }
+        },
+        {
+          "id": "d",
+          "text": "Storm and motion.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {},
+            "types": {},
+            "elements": {
+              "Air": 4,
+              "Electric": 3,
+              "Water": 1
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "q39",
+      "type": "multiple_choice",
+      "prompt": "Pet filter: what problem should your pet solve best?",
+      "answers": [
+        {
+          "id": "a",
+          "text": "Breaking through obstacles by force.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {
+              "ATT": 7
+            },
+            "types": {},
+            "elements": {}
+          }
+        },
+        {
+          "id": "b",
+          "text": "Keeping everyone safe under pressure.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {
+              "DEF": 7
+            },
+            "types": {},
+            "elements": {}
+          }
+        },
+        {
+          "id": "c",
+          "text": "Understanding confusing situations quickly.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {
+              "INT": 7
+            },
+            "types": {},
+            "elements": {}
+          }
+        },
+        {
+          "id": "d",
+          "text": "Moving precisely when timing matters.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {
+              "DEX": 7
+            },
+            "types": {},
+            "elements": {}
+          }
+        }
+      ]
+    },
+    {
+      "id": "q40",
+      "type": "multiple_choice",
+      "prompt": "Pet filter: what emotional role should it play?",
+      "answers": [
+        {
+          "id": "a",
+          "text": "Joy-bringer: it makes bad days lighter.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {
+              "HAP": 7
+            },
+            "types": {},
+            "elements": {}
+          }
+        },
+        {
+          "id": "b",
+          "text": "Endurance partner: it keeps going when things get long.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {
+              "ENE": 7
+            },
+            "types": {},
+            "elements": {}
+          }
+        },
+        {
+          "id": "c",
+          "text": "Protector: it makes you feel safe.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {
+              "DEF": 4,
+              "HAP": 2
+            },
+            "types": {},
+            "elements": {}
+          }
+        },
+        {
+          "id": "d",
+          "text": "Motivator: it pushes you to act.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {
+              "ATT": 3,
+              "ENE": 3
+            },
+            "types": {},
+            "elements": {}
+          }
+        }
+      ]
+    },
+    {
+      "id": "q41",
+      "type": "multiple_choice",
+      "prompt": "Pet filter: which flaw is most acceptable?",
+      "answers": [
+        {
+          "id": "a",
+          "text": "Low patience, if it has strong instincts.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {
+              "ATT": 4,
+              "DEX": 2
+            },
+            "types": {},
+            "elements": {}
+          }
+        },
+        {
+          "id": "b",
+          "text": "Low speed, if it is sturdy.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {
+              "DEF": 5,
+              "ENE": 1
+            },
+            "types": {},
+            "elements": {}
+          }
+        },
+        {
+          "id": "c",
+          "text": "Low raw power, if it is brilliant.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {
+              "INT": 5,
+              "HAP": 1
+            },
+            "types": {},
+            "elements": {}
+          }
+        },
+        {
+          "id": "d",
+          "text": "Low seriousness, if it brings happiness.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {
+              "HAP": 5,
+              "DEX": 1
+            },
+            "types": {},
+            "elements": {}
+          }
+        }
+      ]
+    },
+    {
+      "id": "q42",
+      "type": "multiple_choice",
+      "prompt": "Pet filter: your final instinct says the pet should be:",
+      "answers": [
+        {
+          "id": "a",
+          "text": "Strong first.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {
+              "ATT": 8
+            },
+            "types": {},
+            "elements": {}
+          }
+        },
+        {
+          "id": "b",
+          "text": "Tough first.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {
+              "DEF": 8
+            },
+            "types": {},
+            "elements": {}
+          }
+        },
+        {
+          "id": "c",
+          "text": "Smart first.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {
+              "INT": 8
+            },
+            "types": {},
+            "elements": {}
+          }
+        },
+        {
+          "id": "d",
+          "text": "Fast or joyful first.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {
+              "DEX": 4,
+              "HAP": 4
+            },
+            "types": {},
+            "elements": {}
+          }
+        }
+      ]
+    },
+    {
+      "id": "q43",
+      "type": "multiple_choice",
+      "prompt": "Type final filter: if your pet ignored biology and chose a form of freedom, it would choose:",
+      "answers": [
+        {
+          "id": "a",
+          "text": "Grounded freedom: running, climbing, digging, standing firm.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {},
+            "types": {
+              "Land": 10
+            },
+            "elements": {}
+          }
+        },
+        {
+          "id": "b",
+          "text": "Sky freedom: flying, floating, gliding, hovering, perching.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {},
+            "types": {
+              "Flying": 10
+            },
+            "elements": {}
+          }
+        },
+        {
+          "id": "c",
+          "text": "Water freedom: swimming, diving, drifting, flowing, surfacing.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {},
+            "types": {
+              "Swimming": 10
+            },
+            "elements": {}
+          }
+        }
+      ]
+    },
+    {
+      "id": "q44",
+      "type": "multiple_choice",
+      "prompt": "Type final filter: your pet's battle positioning should be:",
+      "answers": [
+        {
+          "id": "a",
+          "text": "Frontline and grounded, controlling space directly.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {},
+            "types": {
+              "Land": 10
+            },
+            "elements": {}
+          }
+        },
+        {
+          "id": "b",
+          "text": "Above the fight, using angles and elevation.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {},
+            "types": {
+              "Flying": 10
+            },
+            "elements": {}
+          }
+        },
+        {
+          "id": "c",
+          "text": "Fluid and hard to pin down, using waterlike movement.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {},
+            "types": {
+              "Swimming": 10
+            },
+            "elements": {}
+          }
+        }
+      ]
+    },
+    {
+      "id": "q45",
+      "type": "multiple_choice",
+      "prompt": "Type final filter: choose the symbol that feels most like your pet.",
+      "answers": [
+        {
+          "id": "a",
+          "text": "Footprints in earth.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {},
+            "types": {
+              "Land": 10
+            },
+            "elements": {}
+          }
+        },
+        {
+          "id": "b",
+          "text": "A silhouette against the sky.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {},
+            "types": {
+              "Flying": 10
+            },
+            "elements": {}
+          }
+        },
+        {
+          "id": "c",
+          "text": "Ripples on water.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {},
+            "types": {
+              "Swimming": 10
+            },
+            "elements": {}
+          }
+        }
+      ]
+    },
+    {
+      "id": "q46",
+      "type": "multiple_choice",
+      "prompt": "Element final filter: choose the strongest spiritual flavor.",
+      "answers": [
+        {
+          "id": "a",
+          "text": "Basic: pure, adaptable, simple, and universal.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {},
+            "types": {},
+            "elements": {
+              "Basic": 22
+            }
+          }
+        },
+        {
+          "id": "b",
+          "text": "Holy: radiant, protective, oath-bound, hopeful.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {},
+            "types": {},
+            "elements": {
+              "Holy": 16
+            }
+          }
+        },
+        {
+          "id": "c",
+          "text": "Necro: shadowed, eerie, taboo, death-touched.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {},
+            "types": {},
+            "elements": {
+              "Necro": 16
+            }
+          }
+        },
+        {
+          "id": "d",
+          "text": "Magic or Psychic: arcane, mental, dreamlike, and precise.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {},
+            "types": {},
+            "elements": {
+              "Magic": 12,
+              "Psychic": 12
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "q47",
+      "type": "multiple_choice",
+      "prompt": "Element final filter: choose the strongest physical flavor.",
+      "answers": [
+        {
+          "id": "a",
+          "text": "Fire and Fighting: heat, courage, force.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {},
+            "types": {},
+            "elements": {
+              "Fire": 8,
+              "Fighting": 8
+            }
+          }
+        },
+        {
+          "id": "b",
+          "text": "Water and Ice: flow, patience, control.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {},
+            "types": {},
+            "elements": {
+              "Water": 8,
+              "Ice": 8
+            }
+          }
+        },
+        {
+          "id": "c",
+          "text": "Plant and Rock: growth, endurance, roots.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {},
+            "types": {},
+            "elements": {
+              "Plant": 8,
+              "Rock": 8
+            }
+          }
+        },
+        {
+          "id": "d",
+          "text": "Air and Electric: speed, charge, motion.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {},
+            "types": {},
+            "elements": {
+              "Air": 8,
+              "Electric": 8
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "q48",
+      "type": "multiple_choice",
+      "prompt": "Element final filter: if your pet had two elements, how should the pair feel?",
+      "answers": [
+        {
+          "id": "a",
+          "text": "Basic alone: no second element, just clean universal power.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {},
+            "types": {},
+            "elements": {
+              "Basic": 35
+            }
+          }
+        },
+        {
+          "id": "b",
+          "text": "Light and shadow in one companion.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {},
+            "types": {},
+            "elements": {
+              "Holy": 25,
+              "Necro": 25
+            }
+          }
+        },
+        {
+          "id": "c",
+          "text": "Spell and mind woven together.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {},
+            "types": {},
+            "elements": {
+              "Magic": 25,
+              "Psychic": 25
+            }
+          }
+        },
+        {
+          "id": "d",
+          "text": "Nature and water growing together.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {},
+            "types": {},
+            "elements": {
+              "Plant": 25,
+              "Water": 25
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "q49",
+      "type": "multiple_choice",
+      "prompt": "Pet final filter: what kind of defense feels most like your companion?",
+      "answers": [
+        {
+          "id": "a",
+          "text": "A small shell, gentle patience, and quiet contentment.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {
+              "DEF": 7,
+              "HAP": 7
+            },
+            "types": {},
+            "elements": {},
+            "pets": {
+              "Snail": 34,
+              "Sloth": 10,
+              "Hedgehog": 8
+            }
+          }
+        },
+        {
+          "id": "b",
+          "text": "A massive shell, ancient stamina, and fortress-like endurance.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {
+              "DEF": 8,
+              "ENE": 6
+            },
+            "types": {},
+            "elements": {},
+            "pets": {
+              "Turtle": 28,
+              "Walrus": 10,
+              "PolarBear": 8
+            }
+          }
+        },
+        {
+          "id": "c",
+          "text": "Thick hide, heavy body, and raw physical bulk.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {
+              "DEF": 8,
+              "ATT": 3
+            },
+            "types": {},
+            "elements": {},
+            "pets": {
+              "Hippo": 14,
+              "Rhino": 14,
+              "Elephant": 12,
+              "Bison": 10
+            }
+          }
+        },
+        {
+          "id": "d",
+          "text": "Avoiding hits through speed instead of absorbing them.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {
+              "DEX": 8,
+              "INT": 2
+            },
+            "types": {},
+            "elements": {},
+            "pets": {
+              "Bat": 12,
+              "Cheetah": 12,
+              "Frog": 10
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "q50",
+      "type": "multiple_choice",
+      "prompt": "Pet final filter: choose its natural pace.",
+      "answers": [
+        {
+          "id": "a",
+          "text": "Slow, sweet, persistent, and surprisingly hard to bother.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {
+              "DEF": 5,
+              "HAP": 6,
+              "ENE": 2
+            },
+            "types": {},
+            "elements": {},
+            "pets": {
+              "Snail": 36,
+              "Sloth": 10,
+              "Koala": 8
+            }
+          }
+        },
+        {
+          "id": "b",
+          "text": "Slow, ancient, tanky, and built for long survival.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {
+              "DEF": 7,
+              "ENE": 5
+            },
+            "types": {},
+            "elements": {},
+            "pets": {
+              "Turtle": 28,
+              "Reindeer": 8,
+              "Yak": 8
+            }
+          }
+        },
+        {
+          "id": "c",
+          "text": "Fast, explosive, and always in motion.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {
+              "DEX": 7,
+              "ENE": 3
+            },
+            "types": {},
+            "elements": {},
+            "pets": {
+              "Cheetah": 16,
+              "Bat": 12,
+              "Hummingbird": 10
+            }
+          }
+        },
+        {
+          "id": "d",
+          "text": "Still, watchful, and mentally sharp.",
+          "scores": {
+            "pet_match": 1
+          },
+          "petProfile": {
+            "stats": {
+              "INT": 7,
+              "DEF": 3
+            },
+            "types": {},
+            "elements": {},
+            "pets": {
+              "Crow": 14,
+              "Octopus": 12,
+              "Owl": 12
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "scoringNote": "Pet species, element(s), and type are weighted independently: pet uses stat-profile matching, elements use element-only questions, and type uses type-only questions."
+}

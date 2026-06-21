@@ -13,6 +13,10 @@ var _panelOpen   = false;
 function $c(id)   { return document.getElementById(id); }
 function esc(s)   { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function petImg(sp) { return '/static/Emojis/Pets/' + (sp||'Cat') + '.png'; }
+function petImgOrDefault(member) {
+    if (member && member.badge_url) return member.badge_url;
+    return petImg(member && member.pet_species);
+}
 function elemImg(e) { return '/static/Emojis/Pets/Deco/' + (e ? (e.charAt(0).toUpperCase()+e.slice(1)) : 'Basic') + '.png'; }
 
 function fmtTime(secs) {
@@ -138,7 +142,7 @@ function _updateHeaderCard(d) {
         var extra = members.length - MAX_SHOW;
         // Render in reverse so first fighter is on top (flex row-reverse)
         shown.slice().reverse().forEach(function(m) {
-            var src = m.avatar || ('/static/Emojis/Pets/' + (m.pet_species || 'Cat') + '.png');
+            var src = m.avatar || petImgOrDefault(m);
             html += '<img class="col-card-avatar" src="' + esc(src) + '" ' +
                     'title="' + esc(m.pet_name) + ' (' + esc(m.username) + ')" ' +
                     'onerror="this.src=\'/static/Emojis/Pets/Deco/Basic.png\'">';
@@ -168,7 +172,7 @@ function _renderPanel(d) {
     if (!panel) return;
 
     var myData   = d.my_data || null;
-    var inColo   = !!myData;
+    var inColo   = myData && myData.joined_at > 0;
     var members  = d.members  || [];
     var log      = d.log      || [];
     var nextIn   = d.next_battle_in || 0;
@@ -263,7 +267,7 @@ function _renderPanel(d) {
             var winRate = m.rounds > 0 ? Math.round((m.wins / m.rounds) * 100) : 0;
             html += '<div class="col-fighter-card' + (isMe ? ' col-fighter-me' : '') + '">' +
                     '<div class="col-fighter-img-wrap">' +
-                    '<img class="col-fighter-img" src="' + esc(petImg(m.pet_species)) + '" ' +
+                    '<img class="col-fighter-img" src="' + esc(petImgOrDefault(m)) + '" ' +
                     'onerror="this.src=\'/static/Emojis/Pets/Deco/Basic.png\'" alt="">' +
                     '<img class="col-fighter-elem" src="' + esc(elemImg(m.pet_element)) + '" ' +
                     'onerror="this.style.display=\'none\'" alt="" title="' + esc(m.pet_element) + '">' +

@@ -1,0 +1,388 @@
+{
+  "id": "pnw-play-type",
+  "title": "PnW Play Type",
+  "description": "Find the Politics & War playstyle you naturally lean toward: raiding, farming, diplomacy, strategy, stats, banking, building, or frontline war.",
+  "resultLabel": "Best PnW Play Type Match",
+  "roles": {
+    "raider": {
+      "label": "Raider",
+      "priority": 1,
+      "summary": "You thrive on opportunistic offensive wars, inactive targets, loot math, beige timing, and turning MAPs into profit."
+    },
+    "farmer": {
+      "label": "Farmer",
+      "priority": 2,
+      "summary": "You prefer stable production, resource planning, low-drama growth, and making your nation economically reliable."
+    },
+    "diplomat": {
+      "label": "Diplomat",
+      "priority": 3,
+      "summary": "You play the relationship game: reputation, treaty webs, de-escalation, coalition awareness, and careful communication."
+    },
+    "strategist": {
+      "label": "Strategist",
+      "priority": 4,
+      "summary": "You think in doctrine, timing, ranges, blitz plans, alliance objectives, and how individual moves affect the wider board."
+    },
+    "stats_master": {
+      "label": "Stats Master",
+      "priority": 5,
+      "summary": "You love score ranges, war data, activity patterns, net damage, beige cycles, and turning raw numbers into decisions."
+    },
+    "banker": {
+      "label": "Banker",
+      "priority": 6,
+      "summary": "You naturally manage liquidity, grants, taxes, repayment risk, resource exposure, and alliance financial discipline."
+    },
+    "builder": {
+      "label": "Builder",
+      "priority": 7,
+      "summary": "You are growth-focused: city timing, infra levels, projects, improvements, commerce, and efficient long-term scaling."
+    },
+    "warfighter": {
+      "label": "Warfighter",
+      "priority": 8,
+      "summary": "You like coordinated combat: units, resistance, control, counters, air superiority, naval pressure, and executing orders cleanly."
+    }
+  },
+  "questions": [
+    {
+      "id": "q01",
+      "type": "multiple_choice",
+      "prompt": "You log in and have two open offensive war slots. What do you check first?",
+      "answers": [
+        { "id": "a", "text": "Inactive targets with cash/resources exposed and weak military.", "scores": { "raider": 4, "stats_master": 1 } },
+        { "id": "b", "text": "Alliance target lists and whether a counter chain needs another hit.", "scores": { "warfighter": 4, "strategist": 1 } },
+        { "id": "c", "text": "Whether declaring would hurt an active diplomatic situation.", "scores": { "diplomat": 4, "strategist": 1 } },
+        { "id": "d", "text": "Whether staying peaceful protects my revenue and build plan.", "scores": { "farmer": 3, "builder": 2 } }
+      ]
+    },
+    {
+      "id": "q02",
+      "type": "multiple_choice",
+      "prompt": "Your alliance posts a city grant program. Your strongest instinct is to:",
+      "answers": [
+        { "id": "a", "text": "Check bank liquidity, repayment risk, eligibility, and audit trail.", "scores": { "banker": 4, "stats_master": 1 } },
+        { "id": "b", "text": "Calculate whether the new city beats infra/project spending right now.", "scores": { "builder": 4, "banker": 1 } },
+        { "id": "c", "text": "Ask how the program affects war range and tier consolidation.", "scores": { "strategist": 4, "stats_master": 1 } },
+        { "id": "d", "text": "Take it if it helps production and keep my nation boringly profitable.", "scores": { "farmer": 4, "builder": 1 } }
+      ]
+    },
+    {
+      "id": "q03",
+      "type": "true_false",
+      "prompt": "True or false: In raid wars, loot potential and target inactivity usually matter more than winning a pretty war screen.",
+      "answers": [
+        { "id": "true", "text": "True", "scores": { "raider": 4, "stats_master": 1 } },
+        { "id": "false", "text": "False", "scores": { "warfighter": 2, "builder": 1 } }
+      ]
+    },
+    {
+      "id": "q04",
+      "type": "multiple_choice",
+      "prompt": "A treaty partner complains about one of your alliance's raids. You would rather:",
+      "answers": [
+        { "id": "a", "text": "Get facts, calm the room, and keep the relationship intact.", "scores": { "diplomat": 4, "strategist": 1 } },
+        { "id": "b", "text": "Review whether the target was legal and if a counter is likely.", "scores": { "warfighter": 3, "diplomat": 1 } },
+        { "id": "c", "text": "Measure the actual damage, loot, and activity before reacting.", "scores": { "stats_master": 4, "diplomat": 1 } },
+        { "id": "d", "text": "Ask whether the raid was worth risking future trade/security.", "scores": { "strategist": 3, "diplomat": 2 } }
+      ]
+    },
+    {
+      "id": "q05",
+      "type": "multiple_choice",
+      "prompt": "Which dashboard would you keep open during a global war?",
+      "answers": [
+        { "id": "a", "text": "Target slots, MAPs, resistance, beige timers, and counter status.", "scores": { "warfighter": 4, "strategist": 2 } },
+        { "id": "b", "text": "Net damage, unit losses, active nations, and tier-by-tier outcomes.", "scores": { "stats_master": 4, "strategist": 1 } },
+        { "id": "c", "text": "Coalition channels, diplomatic commitments, and escalation risk.", "scores": { "diplomat": 4, "strategist": 1 } },
+        { "id": "d", "text": "Bank outflows, rebuild exposure, and resource burn rates.", "scores": { "banker": 4, "farmer": 1 } }
+      ]
+    },
+    {
+      "id": "q06",
+      "type": "multiple_choice",
+      "prompt": "Your nation has extra cash. What feels like the best use?",
+      "answers": [
+        { "id": "a", "text": "Buy the next city or a project that improves long-term scaling.", "scores": { "builder": 4, "farmer": 1 } },
+        { "id": "b", "text": "Keep reserves so I can rebuy units, rebuild, or cover tax needs.", "scores": { "banker": 4, "warfighter": 1 } },
+        { "id": "c", "text": "Fund military and go find profitable raid targets.", "scores": { "raider": 4, "warfighter": 1 } },
+        { "id": "d", "text": "Increase infra/improvements to make income steadier.", "scores": { "farmer": 4, "builder": 1 } }
+      ]
+    },
+    {
+      "id": "q07",
+      "type": "true_false",
+      "prompt": "True or false: A good war plan should account for score range, blitz timing, target priority, counters, and beige control.",
+      "answers": [
+        { "id": "true", "text": "True", "scores": { "strategist": 4, "warfighter": 2 } },
+        { "id": "false", "text": "False", "scores": { "raider": 1, "farmer": 1 } }
+      ]
+    },
+    {
+      "id": "q08",
+      "type": "multiple_choice",
+      "prompt": "Which PnW mechanic do you enjoy optimizing most?",
+      "answers": [
+        { "id": "a", "text": "MAP usage and resistance damage during active wars.", "scores": { "warfighter": 4, "strategist": 1 } },
+        { "id": "b", "text": "City count, infra, land, commerce, and project order.", "scores": { "builder": 4, "farmer": 1 } },
+        { "id": "c", "text": "Trade prices, tax flow, grants, and resource reserves.", "scores": { "banker": 4, "farmer": 1 } },
+        { "id": "d", "text": "Loot odds, target activity, and offensive slot uptime.", "scores": { "raider": 4, "stats_master": 1 } }
+      ]
+    },
+    {
+      "id": "q09",
+      "type": "multiple_choice",
+      "prompt": "A nation in your tier is low on aircraft but has tanks and ships. What do you think?",
+      "answers": [
+        { "id": "a", "text": "Can I exploit air superiority or force bad rebuy choices?", "scores": { "warfighter": 4, "raider": 1 } },
+        { "id": "b", "text": "How does hitting them affect the tier's broader war plan?", "scores": { "strategist": 4, "warfighter": 1 } },
+        { "id": "c", "text": "What do their stats say about activity and likely response time?", "scores": { "stats_master": 4, "raider": 1 } },
+        { "id": "d", "text": "Would opening this war create a diplomatic headache?", "scores": { "diplomat": 4, "strategist": 1 } }
+      ]
+    },
+    {
+      "id": "q10",
+      "type": "multiple_choice",
+      "prompt": "Which peacetime goal sounds most like you?",
+      "answers": [
+        { "id": "a", "text": "Grow cities/projects efficiently and avoid wasting cash on bad timing.", "scores": { "builder": 4, "banker": 1 } },
+        { "id": "b", "text": "Produce reliably, keep bills paid, and avoid unnecessary risk.", "scores": { "farmer": 4, "builder": 1 } },
+        { "id": "c", "text": "Improve alliance relationships and reduce future conflict risk.", "scores": { "diplomat": 4, "strategist": 1 } },
+        { "id": "d", "text": "Build better reports for activity, growth, war readiness, and trade.", "scores": { "stats_master": 4, "banker": 1 } }
+      ]
+    },
+    {
+      "id": "q11",
+      "type": "true_false",
+      "prompt": "True or false: Keeping accurate bank records is gameplay power because it affects grants, rebuilds, taxes, and trust.",
+      "answers": [
+        { "id": "true", "text": "True", "scores": { "banker": 4, "stats_master": 1 } },
+        { "id": "false", "text": "False", "scores": { "raider": 1, "farmer": 1 } }
+      ]
+    },
+    {
+      "id": "q12",
+      "type": "multiple_choice",
+      "prompt": "A weaker nation declares on you. Your preferred response is:",
+      "answers": [
+        { "id": "a", "text": "Punish the mistake with efficient attacks and deny their win condition.", "scores": { "warfighter": 4, "strategist": 1 } },
+        { "id": "b", "text": "Check if they are bait or part of a larger operation before reacting.", "scores": { "strategist": 4, "stats_master": 1 } },
+        { "id": "c", "text": "Estimate whether looting them back makes the war profitable.", "scores": { "raider": 4, "banker": 1 } },
+        { "id": "d", "text": "Ask if peace is cleaner than wasting resources.", "scores": { "diplomat": 3, "farmer": 2 } }
+      ]
+    },
+    {
+      "id": "q13",
+      "type": "multiple_choice",
+      "prompt": "What makes a target attractive?",
+      "answers": [
+        { "id": "a", "text": "Large exposed loot, bad military, inactive recent activity.", "scores": { "raider": 4, "stats_master": 1 } },
+        { "id": "b", "text": "High strategic value to the war plan, not just personal profit.", "scores": { "strategist": 4, "warfighter": 1 } },
+        { "id": "c", "text": "A clean data profile showing they are the right hit.", "scores": { "stats_master": 4, "strategist": 1 } },
+        { "id": "d", "text": "A target that will not create avoidable FA trouble.", "scores": { "diplomat": 4, "raider": 1 } }
+      ]
+    },
+    {
+      "id": "q14",
+      "type": "multiple_choice",
+      "prompt": "When resource prices swing, you are most likely to:",
+      "answers": [
+        { "id": "a", "text": "Rebalance stockpiles and protect alliance liquidity.", "scores": { "banker": 4, "stats_master": 1 } },
+        { "id": "b", "text": "Adjust production/improvements for steadier profit.", "scores": { "farmer": 4, "builder": 1 } },
+        { "id": "c", "text": "Look for whether war demand signals a coming conflict.", "scores": { "strategist": 3, "stats_master": 2 } },
+        { "id": "d", "text": "Check whether raiding can source resources cheaper than buying.", "scores": { "raider": 4, "banker": 1 } }
+      ]
+    },
+    {
+      "id": "q15",
+      "type": "true_false",
+      "prompt": "True or false: Diplomacy in PnW can be as decisive as military strength because treaties and reputation shape who gets isolated.",
+      "answers": [
+        { "id": "true", "text": "True", "scores": { "diplomat": 4, "strategist": 1 } },
+        { "id": "false", "text": "False", "scores": { "warfighter": 1, "raider": 1 } }
+      ]
+    },
+    {
+      "id": "q16",
+      "type": "multiple_choice",
+      "prompt": "What do you do after a war ends?",
+      "answers": [
+        { "id": "a", "text": "Review damage, performance, activity, and missed opportunities.", "scores": { "stats_master": 4, "strategist": 1 } },
+        { "id": "b", "text": "Rebuild units and prepare for the next round.", "scores": { "warfighter": 4, "banker": 1 } },
+        { "id": "c", "text": "Plan city/project growth around the rebuild window.", "scores": { "builder": 4, "farmer": 1 } },
+        { "id": "d", "text": "Help repair relationships and shape the post-war narrative.", "scores": { "diplomat": 4, "strategist": 1 } }
+      ]
+    },
+    {
+      "id": "q17",
+      "type": "multiple_choice",
+      "prompt": "Pick the report you would most want to maintain.",
+      "answers": [
+        { "id": "a", "text": "Inactive profitable raid targets by range and loot.", "scores": { "raider": 4, "stats_master": 2 } },
+        { "id": "b", "text": "City/project ROI and build recommendations.", "scores": { "builder": 4, "banker": 1 } },
+        { "id": "c", "text": "Treaty map, bloc movement, and embassy contact quality.", "scores": { "diplomat": 4, "strategist": 1 } },
+        { "id": "d", "text": "Bank balances, grants, taxes, resource stockpiles, and repayments.", "scores": { "banker": 4, "stats_master": 1 } }
+      ]
+    },
+    {
+      "id": "q18",
+      "type": "multiple_choice",
+      "prompt": "How do you feel about infra?",
+      "answers": [
+        { "id": "a", "text": "It should be bought with ROI, risk, and war exposure in mind.", "scores": { "builder": 4, "banker": 1 } },
+        { "id": "b", "text": "It is income stability as long as I am not about to get burned.", "scores": { "farmer": 4, "builder": 1 } },
+        { "id": "c", "text": "It is loot someone else may donate if they overbuild and go inactive.", "scores": { "raider": 4, "stats_master": 1 } },
+        { "id": "d", "text": "It changes score range, so it affects target matching and tier shape.", "scores": { "strategist": 4, "stats_master": 1 } }
+      ]
+    },
+    {
+      "id": "q19",
+      "type": "true_false",
+      "prompt": "True or false: Score range and tier shape can matter more than a single nation's raw strength.",
+      "answers": [
+        { "id": "true", "text": "True", "scores": { "strategist": 4, "stats_master": 2 } },
+        { "id": "false", "text": "False", "scores": { "farmer": 1, "raider": 1 } }
+      ]
+    },
+    {
+      "id": "q20",
+      "type": "multiple_choice",
+      "prompt": "Your alliance asks for a military rebuy. What question do you ask?",
+      "answers": [
+        { "id": "a", "text": "What units are needed for our actual targets and control goals?", "scores": { "warfighter": 4, "strategist": 1 } },
+        { "id": "b", "text": "How much will this cost the bank and who needs aid?", "scores": { "banker": 4, "stats_master": 1 } },
+        { "id": "c", "text": "What does this do to my economy if the war drags?", "scores": { "farmer": 4, "banker": 1 } },
+        { "id": "d", "text": "Can I use the rebuy to hit better loot targets too?", "scores": { "raider": 4, "warfighter": 1 } }
+      ]
+    },
+    {
+      "id": "q21",
+      "type": "multiple_choice",
+      "prompt": "Which phrase most sounds like your PnW brain?",
+      "answers": [
+        { "id": "a", "text": "What is the expected value of this hit?", "scores": { "raider": 3, "stats_master": 2 } },
+        { "id": "b", "text": "What does this do to the treaty web?", "scores": { "diplomat": 4, "strategist": 1 } },
+        { "id": "c", "text": "What is the cleanest growth path from here?", "scores": { "builder": 4, "farmer": 1 } },
+        { "id": "d", "text": "What do the numbers say after sample size?", "scores": { "stats_master": 4, "strategist": 1 } }
+      ]
+    },
+    {
+      "id": "q22",
+      "type": "multiple_choice",
+      "prompt": "A small alliance asks yours for protection. You focus on:",
+      "answers": [
+        { "id": "a", "text": "Their reliability, reputation, and whether the relationship is worth it.", "scores": { "diplomat": 4, "strategist": 1 } },
+        { "id": "b", "text": "Whether their tier helps or hurts future military options.", "scores": { "strategist": 4, "stats_master": 1 } },
+        { "id": "c", "text": "Whether defending them creates expensive obligations.", "scores": { "banker": 3, "diplomat": 1 } },
+        { "id": "d", "text": "Whether they are active enough to avoid becoming raid bait.", "scores": { "raider": 2, "stats_master": 2 } }
+      ]
+    },
+    {
+      "id": "q23",
+      "type": "true_false",
+      "prompt": "True or false: A farmer playstyle still needs enough military awareness to avoid being easy profit for raiders.",
+      "answers": [
+        { "id": "true", "text": "True", "scores": { "farmer": 4, "builder": 1, "warfighter": 1 } },
+        { "id": "false", "text": "False", "scores": { "raider": 2 } }
+      ]
+    },
+    {
+      "id": "q24",
+      "type": "multiple_choice",
+      "prompt": "What kind of alliance project would you volunteer for?",
+      "answers": [
+        { "id": "a", "text": "A raiding finder with inactivity, loot, military, and range filters.", "scores": { "raider": 4, "stats_master": 2 } },
+        { "id": "b", "text": "A build optimizer for city, infra, project, and improvement order.", "scores": { "builder": 4, "farmer": 1 } },
+        { "id": "c", "text": "A foreign affairs map of relationships and conflict risk.", "scores": { "diplomat": 4, "strategist": 1 } },
+        { "id": "d", "text": "A bank ledger with grant eligibility and resource exposure alerts.", "scores": { "banker": 4, "stats_master": 1 } }
+      ]
+    },
+    {
+      "id": "q25",
+      "type": "multiple_choice",
+      "prompt": "During a blitz, your favorite job is:",
+      "answers": [
+        { "id": "a", "text": "Hit assigned targets fast and follow MAP timing.", "scores": { "warfighter": 4, "strategist": 1 } },
+        { "id": "b", "text": "Track who declared, who missed, and where counters are needed.", "scores": { "stats_master": 4, "strategist": 2 } },
+        { "id": "c", "text": "Adjust the plan when target availability changes.", "scores": { "strategist": 4, "warfighter": 1 } },
+        { "id": "d", "text": "Make sure allies and partners understand the operation boundaries.", "scores": { "diplomat": 4, "strategist": 1 } }
+      ]
+    },
+    {
+      "id": "q26",
+      "type": "multiple_choice",
+      "prompt": "Which mistake annoys you most?",
+      "answers": [
+        { "id": "a", "text": "Leaving profitable inactive targets untouched for days.", "scores": { "raider": 4, "stats_master": 1 } },
+        { "id": "b", "text": "Buying cities/projects in a wasteful order.", "scores": { "builder": 4, "banker": 1 } },
+        { "id": "c", "text": "Making public comments that damage diplomatic options.", "scores": { "diplomat": 4, "strategist": 1 } },
+        { "id": "d", "text": "Making claims without checking the data.", "scores": { "stats_master": 4, "diplomat": 1 } }
+      ]
+    },
+    {
+      "id": "q27",
+      "type": "true_false",
+      "prompt": "True or false: Coordinated counters are usually stronger than scattered revenge hits.",
+      "answers": [
+        { "id": "true", "text": "True", "scores": { "warfighter": 4, "strategist": 2 } },
+        { "id": "false", "text": "False", "scores": { "raider": 1 } }
+      ]
+    },
+    {
+      "id": "q28",
+      "type": "multiple_choice",
+      "prompt": "Your preferred risk profile is:",
+      "answers": [
+        { "id": "a", "text": "High activity, high upside, frequent wars if the loot is real.", "scores": { "raider": 4, "warfighter": 1 } },
+        { "id": "b", "text": "Low chaos, steady growth, strong reserves.", "scores": { "farmer": 4, "banker": 1 } },
+        { "id": "c", "text": "Calculated alliance-level risk for long-term position.", "scores": { "strategist": 4, "diplomat": 1 } },
+        { "id": "d", "text": "Measured risk backed by logs, charts, and observed behavior.", "scores": { "stats_master": 4, "banker": 1 } }
+      ]
+    },
+    {
+      "id": "q29",
+      "type": "multiple_choice",
+      "prompt": "When choosing improvements, you care most about:",
+      "answers": [
+        { "id": "a", "text": "Production and commerce that fit my peaceful income plan.", "scores": { "farmer": 4, "builder": 1 } },
+        { "id": "b", "text": "Military capacity and whether my MMR fits alliance policy.", "scores": { "warfighter": 4, "strategist": 1 } },
+        { "id": "c", "text": "Long-term build efficiency across cities and projects.", "scores": { "builder": 4, "farmer": 1 } },
+        { "id": "d", "text": "How the build compares statistically to similar nations.", "scores": { "stats_master": 4, "builder": 1 } }
+      ]
+    },
+    {
+      "id": "q30",
+      "type": "multiple_choice",
+      "prompt": "What makes a PnW session feel successful?",
+      "answers": [
+        { "id": "a", "text": "I found targets, used slots, and came away richer.", "scores": { "raider": 4, "banker": 1 } },
+        { "id": "b", "text": "My nation grew cleanly and my income plan improved.", "scores": { "builder": 3, "farmer": 2 } },
+        { "id": "c", "text": "A tense situation got calmer because communication was handled well.", "scores": { "diplomat": 4, "strategist": 1 } },
+        { "id": "d", "text": "The alliance made better decisions because the numbers were clear.", "scores": { "stats_master": 4, "strategist": 1 } }
+      ]
+    },
+    {
+      "id": "q31",
+      "type": "multiple_choice",
+      "prompt": "If your alliance loses a war, your first constructive thought is:",
+      "answers": [
+        { "id": "a", "text": "Which tactical choices cost resistance, units, or control?", "scores": { "warfighter": 4, "stats_master": 1 } },
+        { "id": "b", "text": "Which strategic assumption was wrong before the first declare?", "scores": { "strategist": 4, "diplomat": 1 } },
+        { "id": "c", "text": "How do we finance rebuilds without wrecking growth?", "scores": { "banker": 4, "builder": 1 } },
+        { "id": "d", "text": "How do we recover morale and stabilize production?", "scores": { "farmer": 3, "diplomat": 1 } }
+      ]
+    },
+    {
+      "id": "q32",
+      "type": "multiple_choice",
+      "prompt": "Choose the title that feels most like home.",
+      "answers": [
+        { "id": "a", "text": "The player who can turn war slots into money.", "scores": { "raider": 4, "banker": 1 } },
+        { "id": "b", "text": "The player whose nation grows predictably and efficiently.", "scores": { "builder": 3, "farmer": 3 } },
+        { "id": "c", "text": "The player who understands the map before everyone else does.", "scores": { "diplomat": 3, "strategist": 3 } },
+        { "id": "d", "text": "The player who converts data and mechanics into wins.", "scores": { "stats_master": 3, "warfighter": 3 } }
+      ]
+    }
+  ]
+}

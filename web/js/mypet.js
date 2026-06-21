@@ -60,6 +60,10 @@ var ELEM_INFO = {
 
 function cap(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : ''; }
 function petImg(sp)  { return '/static/Emojis/Pets/' + sp + '.png'; }
+function petBadgeImg(pet) {
+    if (pet && pet.badge_url) return pet.badge_url;
+    return petImg((pet && pet.species) || 'Basic');
+}
 function elemImg(e)  { return elemImgPath(e); }
 function catImg(cat) {
     var m = {water:'Swimming',swimming:'Swimming',flying:'Flying',land:'Land'};
@@ -102,9 +106,20 @@ function getEquipItem(name) {
 // then derives from name — preventing 404s for items whose names don't match filenames.
 function equipImgFile(item) {
     var name = (item && item.name) ? item.name : (typeof item === 'string' ? item : '');
+
+    // Keys and Chests sit directly in the Equipment root with their exact name as filename.
+    // Handle them first to avoid case/path issues from the generic fallback.
+    if (/^Key[123]$/i.test(name)) return name.charAt(0).toUpperCase() + name.slice(1) + '.png';
+    if (/^chest[1-4]$/i.test(name)) return name.toLowerCase() + '.png';
+
     var cached = getEquipItem(name);
-    if (cached && cached.emoji_file) return cached.emoji_file;
-    if (item && item.emoji_file) return item.emoji_file;
+    if (cached && cached.emoji_file) {
+        // Strip any leading "Equipment/" prefix that some sources incorrectly store
+        return cached.emoji_file.replace(/^Equipment\//i, '');
+    }
+    if (item && item.emoji_file) {
+        return String(item.emoji_file).replace(/^Equipment\//i, '');
+    }
     return name.toLowerCase().replace(/ /g, '_') + '.png';
 }
 
@@ -218,47 +233,6 @@ function _refreshPet(newPet) {
     // Refresh reforge panel content in-place
     var rfPanel = el('panel-reforge');
     if (rfPanel) rfPanel.innerHTML = buildReforgePanel(newPet);
-    // Refresh loot bar (keys + chests) in loot market panel in-place
-    var mktPanel = el('panel-market');
-    if (mktPanel) {
-        var keysBar = mktPanel.querySelector('.mp-inv-keys-bar');
-        var inv = newPet.inventory || [];
-        var keyItems   = inv.filter(function(i){ return i.type === 'Key'; });
-        var chestItems = inv.filter(function(i){ return i.type === 'Chest'; });
-        var CHEST_COLORS = { chest1:'#9e9e9e', chest2:'#4caf50', chest3:'#2196f3', chest4:'#ff9800' };
-        var newBar = '';
-        if (keyItems.length || chestItems.length) {
-            newBar = '<div class="mp-inv-keys-bar mb-3">';
-            newBar += '<div style="font-size:0.65rem;color:var(--text-secondary);font-weight:600;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px">🗝️ Loot</div>';
-            newBar += '<div class="d-flex flex-wrap gap-2">';
-            keyItems.forEach(function(item) {
-                var f = equipImgFile(item); var count = item.count || 1;
-                newBar += '<div class="mp-key-badge" title="' + escHtml(item.name) + ' ×' + count + '">' +
-                    '<img src="/static/Emojis/Pets/Equipment/' + f + '" onerror="this.src=\'/static/Emojis/Pets/Deco/Basic.png\'">' +
-                    '<span class="mp-key-badge-count">×' + count + '</span>' +
-                    '<span class="mp-key-badge-name">' + escHtml(item.name) + '</span></div>';
-            });
-            chestItems.forEach(function(item) {
-                var f = equipImgFile(item); var count = item.count || 1;
-                var chestKey = item.name.toLowerCase().replace(/\s/g,'');
-                var chestColor = CHEST_COLORS[chestKey] || '#ffd700';
-                newBar += '<div class="mp-key-badge mp-inv-clickable" style="border-color:' + chestColor + '40;cursor:pointer" ' +
-                    'title="' + escHtml(item.name) + ' ×' + count + ' — Click to open" ' +
-                    'onclick="window._mpInvClick(' + escArg(item.name) + ',\'Chest\',\'Open\',1,' + escArg(item.rarity||'Common') + ',' + count + ')">' +
-                    '<img src="/static/Emojis/Pets/Equipment/' + f + '" onerror="this.src=\'/static/Emojis/Pets/Deco/Basic.png\'">' +
-                    '<span class="mp-key-badge-count" style="color:' + chestColor + '">×' + count + '</span>' +
-                    '<span class="mp-key-badge-name">' + escHtml(item.name) + '</span></div>';
-            });
-            newBar += '</div></div>';
-        }
-        if (keysBar) {
-            if (newBar) { keysBar.outerHTML = newBar; }
-            else { keysBar.remove(); }
-        } else if (newBar) {
-            var descCard = mktPanel.querySelector('.mp-battle-card');
-            if (descCard) descCard.insertAdjacentHTML('afterend', newBar);
-        }
-    }
     // Refresh stat breakdown
     if (window._mpRefreshStatBreakdown) window._mpRefreshStatBreakdown(newPet);
 }
@@ -280,24 +254,24 @@ function renderPetCard(pet) {
         var rank     = Math.floor(level / 50);
         var rankImg  = Math.min(rank, 58);  // emoji caps at 58, but rank number continues forever
         var rankHtml = rank > 0
-            ? '<img src="/static/Emojis/Pet Rank/'+rankImg+'.png" style="width:52px;height:52px;object-fit:contain;flex-shrink:0" title="Rank '+rank+'" onerror="this.style.display=\'none\'">'
-            : '<div style="width:52px;height:52px;flex-shrink:0"></div>';
+            ? '<img src="/static/Emojis/Pet Rank/'+rankImg+'.png" class="mp-rank-img" title="Rank '+rank+'" onerror="this.style.display=\'none\'">'
+            : '<div class="mp-rank-img mp-rank-img-empty"></div>';
 
         hdr.innerHTML =
-            '<div class="d-flex align-items-center justify-content-between gap-2" style="width:100%">'+
-            '<img src="'+petImg(sp)+'" class="mp-pet-img" onerror="this.src=\'/static/Emojis/Pets/Basic.png\'">'+
-            '<div style="flex:1;min-width:0">'+
-            '<div class="fw-bold" style="font-family:Orbitron,sans-serif;color:var(--gold-primary);font-size:0.95rem;text-shadow:0 0 8px var(--gold-glow)">'+(pet.name||sp)+'</div>'+
-            '<div class="d-flex align-items-center gap-1 mt-1 flex-wrap">'+
-            '<span class="badge bg-warning text-dark mp-level-badge" style="font-size:0.6rem">Lv.'+(pet.level||1)+'</span>'+
-            '<img src="'+catImg(cat)+'" style="width:18px;height:18px;object-fit:contain" title="'+cap(cat)+'" onerror="this.style.display=\'none\'">'+
-            '<span style="font-size:0.75rem;color:var(--text-secondary)">'+cap(cat)+'</span>'+
-            '<span style="color:rgba(255,215,0,0.4);margin:0 2px">|</span>'+
-            '<img src="'+elemImgPath(e1)+'" style="width:18px;height:18px;object-fit:contain" title="'+cap(e1)+'" onerror="this.style.display=\'none\'">'+
-            '<span style="font-size:0.75rem;color:var(--gold-secondary)">'+cap(e1)+'</span>'+
-            (e2 ? '<span style="color:rgba(255,215,0,0.4);margin:0 2px">/</span><img src="'+elemImgPath(e2)+'" style="width:18px;height:18px;object-fit:contain" title="'+cap(e2)+'" onerror="this.style.display=\'none\'"><span style="font-size:0.75rem;color:var(--gold-secondary)">'+cap(e2)+'</span>' : '')+
+            '<div class="mp-pet-header-wrap">'+
+            '<img src="'+petBadgeImg(pet)+'" class="mp-pet-img'+(pet.badge_url?' mp-pet-img-badge':'')+'" onerror="this.src=\'/static/Emojis/Pets/Basic.png\'">'+
+            '<div class="mp-pet-identity">'+
+            '<div class="mp-pet-name-line"><span class="mp-pet-name">'+escHtml(pet.name||sp)+'</span><span class="badge bg-warning text-dark mp-level-badge">Lv.'+(pet.level||1)+'</span></div>'+
+            '<div class="mp-pet-meta-line">'+
+            '<img src="'+catImg(cat)+'" class="mp-meta-icon" title="'+cap(cat)+'" onerror="this.style.display=\'none\'"><span>'+cap(cat)+'</span>'+
+            '<span class="mp-meta-sep">|</span>'+
+            '<img src="'+petImg(sp)+'" class="mp-meta-icon" title="'+escHtml(sp)+'" onerror="this.style.display=\'none\'"><span>'+escHtml(sp)+'</span>'+
+            '</div>'+
+            '<div class="mp-pet-meta-line mp-pet-element-line">'+
+            '<img src="'+elemImgPath(e1)+'" class="mp-meta-icon" title="'+cap(e1)+'" onerror="this.style.display=\'none\'"><span>'+cap(e1)+'</span>'+
+            (e2 ? '<span class="mp-meta-sep">|</span><img src="'+elemImgPath(e2)+'" class="mp-meta-icon" title="'+cap(e2)+'" onerror="this.style.display=\'none\'"><span>'+cap(e2)+'</span>' : '')+
             '</div></div>'+
-            rankHtml+
+            '<div class="mp-rank-block"><div class="mp-rank-label">Rank '+rank+'</div>'+rankHtml+'</div>'+
             '</div>';
     }
     var statKeys = ['ATT','DEF','INT','DEX','HAP','ENE'];
@@ -326,7 +300,7 @@ function renderPetCard(pet) {
     var ene  = (cs.ENE!==undefined ? cs.ENE : (pet.ENE||0)) + (cs.ENE!==undefined ? 0 : (eb.ENE||0));
     var atk  = cs.attack    !== undefined ? cs.attack    : (att + dex);
     var dfn  = cs.defense   !== undefined ? cs.defense   : (def + int_);
-    var hp   = cs.max_health !== undefined ? cs.max_health : Math.floor(((att+def+int_+dex+hap+ene)/6 + hap*ene)*10);
+    var hp   = cs.max_health !== undefined ? cs.max_health : Math.floor((hap + ene) * getEquipSetState(pet).finalMult * 4);
 
     var combatHtml =
         '<div class="mp-combat-row">'+
@@ -370,11 +344,6 @@ function renderAllPanels(pet) {
 }
 
 function buildInteractions(pet) {
-    var acts = pet.action_labels || {};
-    var atkVal = acts.attack  || (pet.actions && (pet.actions.Attack||pet.actions.attack)) || '';
-    var defVal = acts.defend  || acts.defense || (pet.actions && (pet.actions.Defense||pet.actions.defense)) || '';
-    var chgVal = acts.charge  || (pet.actions && (pet.actions.Charge||pet.actions.charge)) || '';
-
     var LOCATIONS = ['Camp','Bonfire','Beach','Forest','Hot Air Balloon','Cruiseship','Mountain','Gym','Graveyard','Festival','Glacier','Pyramids'];
     var LOC_EMOJI = {Camp:'camping',Bonfire:'bonfire',Beach:'beach',Forest:'forest','Hot Air Balloon':'hotairballoon',Cruiseship:'cruiseship',Mountain:'mountain',Gym:'gym',Graveyard:'graveyard',Festival:'festival',Glacier:'glacier',Pyramids:'pyramids'};
 
@@ -383,14 +352,11 @@ function buildInteractions(pet) {
         {id:'abilities', label:'Abilities',   icon:'ability.png'},
         {id:'inventory', label:'Inventory',   icon:'inventory.png'},
         {id:'reforge',   label:'Reforge',     icon:'forge.png'},
-        {id:'market',    label:'Loot Market', icon:'market.png'},
+
         {id:'absorb',    label:'Absorb',      icon:'absorb.png'},
         {id:'train',     label:'Train',       icon:'train.png'},
         {id:'mission',   label:'Mission',     icon:'mission.png'},
         {id:'play',      label:'Play',        icon:'play.png'},
-        {id:'quest',     label:'Quest',       icon:'quest.png'},
-        {id:'rename',    label:'Rename',      icon:'rename.png'},
-        {id:'kill',      label:'Kill Pet',    icon:'kill.png'}
     ];
 
     var html = '<div class="d-flex gap-2 mb-4 flex-wrap">';
@@ -430,85 +396,7 @@ function buildInteractions(pet) {
         buildReforgePanel(pet)+
         '</div>';
 
-    // ── Loot Market ────────────────────────────────────────────────────────
-    var CHEST_INFO = {
-        chest1:{label:'Chest 1',cost:'1× Key1',items:'1 Common or Uncommon item',color:'#9e9e9e'},
-        chest2:{label:'Chest 2',cost:'1× Key2',items:'1 Rare item',color:'#4caf50'},
-        chest3:{label:'Chest 3',cost:'1× Key3',items:'1 Epic item',color:'#2196f3'},
-        chest4:{label:'Chest 4',cost:'1× Key1 + Key2 + Key3',items:'1 picked type + 1 Uncommon+',color:'#ff9800'}
-    };
-    // Build keys+chests bar for loot market
-    var lmKeysBar = (function() {
-        var inv = pet.inventory || [];
-        var keyItems   = inv.filter(function(i){ return i.type === 'Key'; });
-        var chestItems = inv.filter(function(i){ return i.type === 'Chest'; });
-        if (!keyItems.length && !chestItems.length) return '';
-        var CHEST_COLORS = { chest1:'#9e9e9e', chest2:'#4caf50', chest3:'#2196f3', chest4:'#ff9800' };
-        var bar = '<div class="mp-inv-keys-bar mb-3">';
-        bar += '<div style="font-size:0.65rem;color:var(--text-secondary);font-weight:600;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px">🗝️ Loot</div>';
-        bar += '<div class="d-flex flex-wrap gap-2">';
-        keyItems.forEach(function(item) {
-            var f = equipImgFile(item);
-            var count = item.count || 1;
-            bar += '<div class="mp-key-badge" title="' + escHtml(item.name) + ' ×' + count + '">' +
-                '<img src="/static/Emojis/Pets/Equipment/' + f + '" onerror="this.src=\'/static/Emojis/Pets/Deco/Basic.png\'">' +
-                '<span class="mp-key-badge-count">×' + count + '</span>' +
-                '<span class="mp-key-badge-name">' + escHtml(item.name) + '</span>' +
-                '</div>';
-        });
-        chestItems.forEach(function(item) {
-            var f = equipImgFile(item);
-            var count = item.count || 1;
-            var chestKey = item.name.toLowerCase().replace(/\s/g,'');
-            var chestColor = CHEST_COLORS[chestKey] || '#ffd700';
-            bar += '<div class="mp-key-badge mp-inv-clickable" ' +
-                'style="border-color:' + chestColor + '40;cursor:pointer" ' +
-                'title="' + escHtml(item.name) + ' ×' + count + ' — Click to open" ' +
-                'onclick="window._mpInvClick(' + escArg(item.name) + ',\'Chest\',\'Open\',1,' + escArg(item.rarity||'Common') + ',' + count + ')">' +
-                '<img src="/static/Emojis/Pets/Equipment/' + f + '" onerror="this.src=\'/static/Emojis/Pets/Deco/Basic.png\'">' +
-                '<span class="mp-key-badge-count" style="color:' + chestColor + '">×' + count + '</span>' +
-                '<span class="mp-key-badge-name">' + escHtml(item.name) + '</span>' +
-                '</div>';
-        });
-        bar += '</div></div>';
-        return bar;
-    })();
-    html += '<div id="panel-market" style="display:none">'+
-        '<div class="mp-section-title">📦 Loot Market</div>'+
-        '<div class="mp-battle-card mb-3" style="font-size:0.82rem;color:var(--text-secondary)">'+
-        'Spend keys to open chests and earn items. Keys are earned from Play, Mission, and Quest activities.'+
-        '</div>'+
-        lmKeysBar+
-        '<div class="row g-2 mb-3">'+
-        Object.keys(CHEST_INFO).map(function(c){
-            var info=CHEST_INFO[c];
-            return '<div class="col-md-3 col-sm-6"><div class="mp-mini-stat-card" style="cursor:pointer;transition:all 0.2s;border-color:'+info.color+'40" id="lm-'+c+'" onclick="window._mpSelectLmChest(\''+c+'\')">'+
-                '<img src="/static/Emojis/Pets/Equipment/'+c+'.png" style="width:32px;height:32px;object-fit:contain;margin-bottom:4px" onerror="this.style.display=\'none\'">'+
-                '<div class="mp-mini-label" style="color:'+info.color+'">'+info.label+'</div>'+
-                '<div style="font-size:0.72rem;color:var(--text-secondary);margin-top:2px">'+
-                    info.cost.replace('Key1','<img src="/static/Emojis/Pets/Equipment/Key1.png" style="width:14px;height:14px;vertical-align:middle"> Key1')
-                             .replace('Key2','<img src="/static/Emojis/Pets/Equipment/Key2.png" style="width:14px;height:14px;vertical-align:middle"> Key2')
-                             .replace('Key3','<img src="/static/Emojis/Pets/Equipment/Key3.png" style="width:14px;height:14px;vertical-align:middle"> Key3')+
-                '</div>'+
-                '<div style="font-size:0.7rem;color:var(--gold-secondary);margin-top:2px">'+info.items+'</div>'+
-                '</div></div>';
-        }).join('')+
-        '</div>'+
-        '<div id="lm-type-row" style="display:none" class="mb-3">'+
-        '<label class="form-label" style="font-size:0.8rem;color:var(--text-secondary)">Select guaranteed item type (Chest 4)</label>'+
-        '<div class="d-flex gap-2 flex-wrap">'+
-        ['Material','Gem','Monster','Potion','Hat'].map(function(t){
-            return '<div class="mp-mini-stat-card" style="cursor:pointer;transition:all 0.2s;padding:5px 10px" id="lm-type-'+t+'" onclick="window._mpSelectLmType(\''+t+'\')">'+
-                '<div class="mp-mini-label">'+t+'</div></div>';
-        }).join('')+
-        '</div></div>'+
-        '<div id="lm-amt-row" class="mb-3">'+
-        '<label class="form-label" style="font-size:0.8rem;color:var(--text-secondary)">Amount to open</label>'+
-        '<input type="number" class="form-control mp-input" id="lm-amount" min="1" max="10" value="1" style="max-width:100px">'+
-        '</div>'+
-        '<button class="mp-adopt-btn" onclick="window._mpOpenChest()">📦 Open Chest</button>'+
-        '<div id="lm-result" class="mt-3"></div>'+
-        '</div>';
+
 
     // ── Absorb ───────────────────────────────────────────────────────────────
     html += '<div id="panel-absorb" style="display:none">'+
@@ -576,23 +464,33 @@ function buildInteractions(pet) {
         '</div>';
 
     // ── Train ──────────────────────────────────────────────────────────────
+    var TRAIN_STAT_LABELS = {ATT:'⚔️ ATT',DEF:'🛡️ DEF',INT:'🧠 INT',DEX:'💨 DEX',HAP:'😊 HAP',ENE:'⚡ ENE'};
     html += '<div id="panel-train" style="display:none">'+
         '<div class="mp-section-title">Train Your Pet</div>'+
         '<div class="mp-battle-card mb-3" style="font-size:0.82rem;color:var(--text-secondary)">'+
-        'Send your pet to train and earn XP. Higher difficulty = more XP but lower success rate.'+
+        'Train a chosen stat — success raises it, failure lowers it. No XP is awarded. Higher difficulty = bigger swings, lower success rate.'+
         '</div>'+
+        '<div style="font-size:0.75rem;color:var(--gold-secondary);font-weight:600;margin-bottom:6px">Choose Stat:</div>'+
+        '<div class="row g-2 mb-3">'+
+        ['ATT','DEF','INT','DEX','HAP','ENE'].map(function(s) {
+            return '<div class="col-4 col-md-2"><div class="mp-mini-stat-card" style="cursor:pointer;transition:all 0.2s;border-color:rgba(255,215,0,0.15)" id="train-stat-'+s+'" onclick="window._mpSelectTrainStat(\''+s+'\')">'+
+                '<div class="mp-mini-label" style="font-size:0.85rem">'+TRAIN_STAT_LABELS[s]+'</div>'+
+                '</div></div>';
+        }).join('')+
+        '</div>'+
+        '<div style="font-size:0.75rem;color:var(--gold-secondary);font-weight:600;margin-bottom:6px">Choose Difficulty:</div>'+
         '<div class="row g-2 mb-3">'+
         ['Easy','Average','Hard'].map(function(d) {
-            var xp = {Easy:'50+',Average:'100+',Hard:'200+'}[d];
-            var chance = {Easy:'90%',Average:'70%',Hard:'50%'}[d];
+            var gain  = {Easy:'±1 stat',Average:'±3 stat',Hard:'±5 stat'}[d];
+            var chance = {Easy:'75%',Average:'60%',Hard:'45%'}[d];
             return '<div class="col-md-4"><div class="mp-mini-stat-card" style="cursor:pointer;transition:all 0.2s" id="train-opt-'+d+'" onclick="window._mpSelectTrain(\''+d+'\')">'+
                 '<div class="mp-mini-label">'+d+'</div>'+
-                '<div style="font-size:0.78rem;color:var(--gold-secondary);font-weight:700">'+xp+' XP</div>'+
+                '<div style="font-size:0.78rem;color:var(--gold-secondary);font-weight:700">'+gain+'</div>'+
                 '<div style="font-size:0.7rem;color:var(--text-secondary)">'+chance+' success</div>'+
                 '</div></div>';
         }).join('')+
         '</div>'+
-        '<div style="font-size:0.68rem;color:var(--text-secondary);margin-bottom:8px">⚡ XP scales with your pet\'s level (+10% per level above 1). 5 sec cooldown.</div>'+
+        '<div style="font-size:0.68rem;color:var(--text-secondary);margin-bottom:8px">⚙️ Equipment multiplies the stat swing. Training Scholar ability adds bonus on success and blocks loss on failure. 5 sec cooldown.</div>'+
         '<button class="mp-adopt-btn" id="train-btn" onclick="window._mpTrain()">Start Training</button>'+
         '<div id="train-result" class="mt-3"></div>'+
         '</div>';
@@ -642,93 +540,6 @@ function buildInteractions(pet) {
         '</div>'+
         '<button class="mp-adopt-btn" id="play-btn" onclick="window._mpPlay()">Go Play!</button>'+
         '<div id="play-result" class="mt-3"></div>'+
-        '</div>';
-
-    // ── Quest ──────────────────────────────────────────────────────────────
-    var QLOC_EMOJI = {Camp:'camping',Bonfire:'bonfire',Beach:'beach',Forest:'forest','Hot Air Balloon':'hotairballoon',Cruiseship:'cruiseship',Mountain:'mountain',Gym:'gym',Graveyard:'graveyard',Festival:'festival',Glacier:'glacier',Pyramids:'pyramids'};
-    html += '<div id="panel-quest" style="display:none">'+
-        '<div class="mp-section-title">⚔️ Quest</div>'+
-        '<div class="mp-battle-card mb-3" style="font-size:0.82rem;color:var(--text-secondary)">'+
-        'AI-generated 5-stage quests. Each stage presents a challenge with 3 choices tied to your pet\'s stats. Earn XP and loot along the way.<br>'+
-        '<span style="color:var(--gold-secondary)">Quests are generated by AI — may take a moment to start.</span>'+
-        '</div>'+
-        '<div id="quest-setup">'+
-        '<div class="row g-2 mb-3">'+
-        '<div class="col-md-6">'+
-        '<label class="form-label" style="font-size:0.8rem;color:var(--text-secondary)">Location</label>'+
-        '<div class="row g-1">'+
-        LOCATIONS.map(function(loc) {
-            var deco = QLOC_EMOJI[loc] || 'camping';
-            return '<div class="col-4"><div class="mp-mini-stat-card" style="cursor:pointer;transition:all 0.2s;padding:4px" id="qloc-'+loc.replace(/ /g,'-')+'" onclick="window._mpSelectQLoc(\''+loc+'\')">'+
-                '<img src="/static/Emojis/Pets/Deco/'+deco+'.png" style="width:22px;height:22px;object-fit:contain" onerror="this.style.display=\'none\'">'+
-                '<div class="mp-mini-label" style="font-size:0.58rem">'+loc+'</div>'+
-                '</div></div>';
-        }).join('')+
-        '</div></div>'+
-        '<div class="col-md-6">'+
-        '<label class="form-label" style="font-size:0.8rem;color:var(--text-secondary)">Difficulty</label>'+
-        '<div class="d-flex flex-column gap-2">'+
-        [['Apprentice','Easy — lower stat requirements, smaller rewards'],
-         ['Journeyman','Medium — balanced challenge and rewards'],
-         ['Senior','Hard — high stat requirements, best loot']].map(function(d) {
-            return '<div class="mp-mini-stat-card" style="cursor:pointer;transition:all 0.2s;text-align:left;padding:6px 10px" id="qdiff-'+d[0]+'" onclick="window._mpSelectQDiff(\''+d[0]+'\')">'+
-                '<div class="mp-mini-label">'+d[0]+'</div>'+
-                '<div style="font-size:0.68rem;color:var(--text-secondary)">'+d[1]+'</div>'+
-                '</div>';
-        }).join('')+
-        '</div></div></div>'+
-        '<button class="mp-adopt-btn" id="quest-start-btn" onclick="window._mpQuestStart()">⚔️ Begin Quest</button>'+
-        '<div id="quest-start-result" class="mt-2"></div>'+
-        '</div>'+
-        '<div id="quest-active" style="display:none">'+
-        '<div class="mp-battle-card mb-3" id="quest-stage-box">'+
-        '<div id="quest-progress" style="font-size:0.7rem;color:var(--text-secondary);margin-bottom:6px"></div>'+
-        '<div id="quest-stage-name" class="mp-section-title" style="margin-bottom:6px"></div>'+
-        '<div id="quest-event" style="font-size:0.85rem;color:var(--text-primary);margin-bottom:12px;line-height:1.5"></div>'+
-        '<div id="quest-choices" class="d-flex flex-column gap-2"></div>'+
-        '</div>'+
-        '<div id="quest-outcome" class="mt-2"></div>'+
-        '<div id="quest-xp-track" style="font-size:0.75rem;color:var(--gold-secondary);margin-top:4px"></div>'+
-        '<button class="mp-adopt-btn" onclick="window._mpQuestAbandon()" style="font-size:0.72rem;padding:5px 12px;margin-top:8px;background:rgba(231,76,60,0.15);border-color:rgba(231,76,60,0.4);color:#e74c3c">🚪 Abandon Quest</button>'+
-        '</div>'+
-        '<div id="quest-result" style="display:none"></div>'+
-        '</div>';
-
-    // ── Rename ─────────────────────────────────────────────────────────────
-    html += '<div id="panel-rename" style="display:none">'+
-        '<div class="mp-section-title">Rename Pet &amp; Battle Actions</div>'+
-        '<div class="mb-3">'+
-        '<label class="form-label" style="font-size:0.82rem;color:var(--text-secondary)">Pet Name</label>'+
-        '<input type="text" class="form-control mp-input" id="rename-name" maxlength="32" value="'+escHtml(pet.name||'')+'" placeholder="Enter new name">'+
-        '<div class="invalid-feedback" id="rename-name-err"></div>'+
-        '</div>'+
-        '<div class="mb-3">'+
-        '<label class="form-label" style="font-size:0.82rem;color:var(--text-secondary)">Battle Actions <small style="color:var(--text-secondary)">(leave blank to keep current)</small></label>'+
-        '<div class="row g-2">'+
-        '<div class="col-md-4"><label class="form-label" style="font-size:0.75rem;color:var(--gold-secondary)">⚔️ Attack</label>'+
-        '<input type="text" class="form-control mp-input" id="rename-atk" maxlength="32" value="'+escHtml(atkVal)+'" placeholder="Attack action"></div>'+
-        '<div class="col-md-4"><label class="form-label" style="font-size:0.75rem;color:var(--gold-secondary)">🛡️ Defense</label>'+
-        '<input type="text" class="form-control mp-input" id="rename-def" maxlength="32" value="'+escHtml(defVal)+'" placeholder="Defense action"></div>'+
-        '<div class="col-md-4"><label class="form-label" style="font-size:0.75rem;color:var(--gold-secondary)">⚡ Charge</label>'+
-        '<input type="text" class="form-control mp-input" id="rename-chg" maxlength="32" value="'+escHtml(chgVal)+'" placeholder="Charge action"></div>'+
-        '</div></div>'+
-        '<button class="mp-adopt-btn" onclick="window._mpRename()">Save Changes</button>'+
-        '<div id="rename-result" class="mt-3"></div>'+
-        '</div>';
-
-    // ── Kill ───────────────────────────────────────────────────────────────
-    html += '<div id="panel-kill" style="display:none">'+
-        '<div class="mp-section-title" style="color:#e74c3c">💀 Release Pet</div>'+
-        '<div class="mp-battle-card mb-3" style="border-color:rgba(231,76,60,0.3)">'+
-        '<p style="font-size:0.85rem;color:var(--text-primary);margin-bottom:8px">This will <strong style="color:#e74c3c">permanently delete</strong> '+escHtml(pet.name||'your pet')+'. All stats, inventory, and history will be lost.</p>'+
-        '<p style="font-size:0.82rem;color:var(--text-secondary);margin:0">You will be able to adopt a new pet afterwards.</p>'+
-        '</div>'+
-        '<div class="mb-3">'+
-        '<label class="form-label" style="font-size:0.82rem;color:var(--text-secondary)">Type <strong style="color:#e74c3c">'+escHtml(pet.name||'your pet')+'</strong> to confirm</label>'+
-        '<input type="text" class="form-control mp-input" id="kill-confirm" placeholder="Type pet name to confirm">'+
-        '</div>'+
-        '<button class="mp-adopt-btn" style="background:linear-gradient(135deg,#c0392b,#e74c3c);color:#fff" onclick="window._mpKill()">💀 Release Pet</button>'+
-        '<div id="kill-result" class="mt-3"></div>'+
         '</div>';
 
     return html;
@@ -819,7 +630,17 @@ function cleanDiscordText(raw) {
         var m = part.match(/^<a?:([^:>]+):\d+>$/);
         if (m) {
             var slug = m[1].toLowerCase();
-            var src  = EMOJI_PATH_MAP[slug] || null;
+            var src  = null;
+            var equipItem = getEquipItem(slug);
+            if (equipItem) {
+                var imgFile = equipImgFile(equipItem);
+                if (imgFile) {
+                    src = '/static/Emojis/Pets/Equipment/' + imgFile;
+                }
+            }
+            if (!src) {
+                src = EMOJI_PATH_MAP[slug] || null;
+            }
             if (src) {
                 out += '<img src="'+src+'" style="width:18px;height:18px;object-fit:contain;vertical-align:middle;margin:0 1px" onerror="this.style.display=\'none\'">';
             }
@@ -850,7 +671,7 @@ function injectItemImages(text) {
 
 
 window._mpTab = function(tab) {
-    ['breakdown','abilities','inventory','reforge','market','absorb','train','mission','play','quest','rename','kill'].forEach(function(t) {
+    ['breakdown','abilities','inventory','reforge','market','absorb','train','mission','play'].forEach(function(t) {
         var btn = el('tab-'+t), panel = el('panel-'+t);
         if (btn)   btn.classList.toggle('active', t===tab);
         if (panel) panel.style.display = t===tab ? '' : 'none';
@@ -870,8 +691,11 @@ window._mpTab = function(tab) {
 
 // ── selection state ───────────────────────────────────────────────────────────
 var _trainDiff   = 'Easy';
+var _trainStat   = '';
 var _missionDiff = 'Easy';
 var _playLoc     = '';
+
+
 
 window._mpSelectTrain = function(d) {
     _trainDiff = d;
@@ -879,6 +703,14 @@ window._mpSelectTrain = function(d) {
         var el2 = el('train-opt-'+x);
         if (el2) el2.style.borderColor = x===d ? 'var(--gold-primary)' : 'rgba(255,215,0,0.15)';
         if (el2) el2.style.boxShadow   = x===d ? '0 0 8px var(--gold-glow)' : '';
+    });
+};
+
+window._mpSelectTrainStat = function(s) {
+    _trainStat = s;
+    ['ATT','DEF','INT','DEX','HAP','ENE'].forEach(function(x) {
+        var el2 = el('train-stat-'+x);
+        if (el2) { el2.style.borderColor = x===s ? 'var(--gold-primary)' : 'rgba(255,215,0,0.15)'; el2.style.boxShadow = x===s ? '0 0 8px var(--gold-glow)' : ''; }
     });
 };
 
@@ -980,8 +812,7 @@ var _cdTimers = {};
 var _CD_TARGETS = {
     'train':   { btn:'train-btn',       result:'train-result'      },
     'mission': { btn:'mission-btn',     result:'mission-result'    },
-    'play':    { btn:'play-btn',        result:'play-result'       },
-    'quest':   { btn:'quest-start-btn', result:'quest-start-result'},
+    'play':    { btn:'play-btn',        result:'play-result'       }
 };
 
 /**
@@ -1134,6 +965,48 @@ window._mpMission = async function() {
         }
     } catch(e) { showResult('mission-result', false, e.message); if (window.PetGPP) PetGPP.StateMachine.reset(); }
 };
+/**
+ * Build the HTML result card for a successful /api/pets/play response.
+ * @param {object} d          - API response data
+ * @param {string} loc        - selected location name
+ * @param {object} petSnapshot - pet state before the play (unused, available for future use)
+ */
+function buildPlayResult(d, loc, petSnapshot) {
+    var LOC_EMOJI_MAP = {
+        'Camp':'camping','Bonfire':'bonfire','Beach':'beach','Forest':'forest',
+        'Hot Air Balloon':'hotairballoon','Cruiseship':'cruiseship','Mountain':'mountain',
+        'Gym':'gym','Graveyard':'graveyard','Festival':'festival',
+        'Glacier':'glacier','Pyramids':'pyramids'
+    };
+    var deco = LOC_EMOJI_MAP[loc] || 'camping';
+    var locImg = '<img src="/static/Emojis/Pets/Deco/'+deco+'.png" '
+        + 'style="width:22px;height:22px;object-fit:contain;vertical-align:middle;margin-right:6px" '
+        + 'onerror="this.style.display=\'none\'">';
+
+    // Split outcome into individual lines and render each.
+    // cleanDiscordText already converts Discord emoji mentions (e.g. <:Key1:id>) to
+    // inline <img> tags, so we do NOT call injectItemImages here — that function
+    // would re-match "Key1" inside the already-emitted img src/onerror text and
+    // produce broken duplicate markup.
+    var lines = (d.outcome || '').split('\n');
+    var linesHtml = lines.map(function(line) {
+        if (!line.trim()) return '';
+        return '<div style="margin:2px 0">'+cleanDiscordText(line)+'</div>';
+    }).join('');
+
+    // XP badge
+    var xpHtml = d.xp
+        ? '<div style="margin-top:8px;font-size:0.75rem;color:var(--gold-primary);font-weight:bold">✨ +'+d.xp+' XP</div>'
+        : '';
+
+    return '<div class="mp-battle-card" style="border-color:rgba(39,174,96,0.4);font-size:0.82rem">'
+        + '<div style="color:var(--gold-primary);font-weight:bold;margin-bottom:6px">'
+        + locImg + (loc || 'Play') + '</div>'
+        + '<div style="color:#c8d6e5;line-height:1.6">' + linesHtml + '</div>'
+        + xpHtml
+        + '</div>';
+}
+
 window._mpPlay = async function() {
     if (!_playLoc) { showResult('play-result', false, 'Please select a location first.'); return; }
     var r = el('play-result');
@@ -1169,422 +1042,7 @@ window._mpPlay = async function() {
     } catch(e) { showResult('play-result', false, e.message); if (window.PetGPP) PetGPP.StateMachine.reset(); }
 };
 
-// ── Quest state & handlers ────────────────────────────────────────────────────
-var _questLoc  = '';
-var _questDiff = 'Apprentice';
 
-// _buildBattleHpBar is still used by the quest battle integration below
-function _buildBattleHpBar(cur, max, enemy) {
-    var pct = max > 0 ? Math.max(0, Math.min(100, Math.round((cur/max)*100))) : 0;
-    var color = pct > 50 ? '#2ecc71' : pct > 25 ? '#f39c12' : '#e74c3c';
-    if (enemy) color = pct > 50 ? '#e74c3c' : pct > 25 ? '#f39c12' : '#95a5a6';
-    return '<div class="mp-xp-bar-wrap" style="height:8px;border-radius:4px;background:rgba(255,255,255,0.08)">'+
-        '<div style="height:100%;width:'+pct+'%;background:'+color+';border-radius:4px;transition:width 0.3s"></div>'+
-        '</div>'+
-        '<div style="font-size:0.65rem;color:var(--text-secondary);margin-top:1px">'+cur+' / '+max+' HP</div>';
-}
-
-// ── Quest state & handlers ────────────────────────────────────────────────────
-var _questLoc  = '';
-var _questDiff = 'Apprentice';
-
-window._mpSelectQLoc = function(loc) {
-    _questLoc = loc;
-    document.querySelectorAll('[id^="qloc-"]').forEach(function(e2){e2.style.borderColor='';e2.style.boxShadow='';});
-    var s = el('qloc-'+loc.replace(/ /g,'-'));
-    if(s){s.style.borderColor='var(--gold-primary)';s.style.boxShadow='0 0 8px var(--gold-glow)';}
-};
-
-window._mpSelectQDiff = function(d) {
-    _questDiff = d;
-    ['Apprentice','Journeyman','Senior'].forEach(function(x){
-        var e2=el('qdiff-'+x);
-        if(e2){e2.style.borderColor=x===d?'var(--gold-primary)':'rgba(255,215,0,0.15)';e2.style.boxShadow=x===d?'0 0 8px var(--gold-glow)':'';}
-    });
-};
-
-window._mpQuestStart = async function() {
-    if (!_questLoc) { showResult('quest-start-result', false, 'Please select a location.'); return; }
-    var sr = el('quest-start-result');
-    if(sr) sr.innerHTML = '<div class="mp-battle-card" style="font-size:0.8rem;color:var(--text-secondary)">⏳ Generating quest with AI... this may take a moment.</div>';
-    try {
-        var res = await fetch('/api/pets/quest/start', {
-            method:'POST', headers:{'Content-Type':'application/json'},
-            body: JSON.stringify({location:_questLoc, difficulty:_questDiff})
-        });
-        var d = await res.json();
-        if (res.status === 429) {
-            showResult('quest-start-result', false, d.error || 'On cooldown.');
-            _startCooldownTimer('quest-start-btn', 'quest-start-result', d.error);
-            return;
-        }
-        if (!res.ok) { showResult('quest-start-result', false, d.error || d.detail || 'Failed to start quest'); return; }
-        if(sr) sr.innerHTML='';
-        el('quest-setup').style.display = 'none';
-        el('quest-active').style.display = '';
-        el('quest-result').style.display = 'none';
-        _renderQuestStage(d);
-    } catch(e) { showResult('quest-start-result', false, e.message); }
-};
-
-function _renderQuestStage(d) {
-    var prog = el('quest-progress');
-    var name = el('quest-stage-name');
-    var evt  = el('quest-event');
-    var cho  = el('quest-choices');
-    var xpt  = el('quest-xp-track');
-    if(prog) prog.textContent = 'Stage '+(d.stage_idx+1)+' of '+d.total_stages;
-    if(name) name.textContent = d.stage_name;
-    if(evt)  evt.textContent  = d.event;
-    if(xpt && d.xp_so_far !== undefined) xpt.textContent = 'XP earned so far: '+d.xp_so_far;
-    if(cho) {
-        cho.innerHTML = '';
-        var statMaps = [
-            {stats: 'ATT + DEF', desc: 'Physical approach'},
-            {stats: 'DEX + INT', desc: 'Skillful approach'}, 
-            {stats: 'ENE + HAP', desc: 'Endurance approach'}
-        ];
-        Object.keys(d.choices).forEach(function(k) {
-            var choiceNum = parseInt(k, 10);
-            var statInfo = statMaps[choiceNum - 1] || {stats: 'Unknown', desc: 'Unknown'};
-            
-            var btn = document.createElement('button');
-            btn.className = 'mp-adopt-btn';
-            btn.style.cssText = 'font-size:0.8rem;padding:8px 14px;text-align:left;width:100%;position:relative';
-            
-            // Create choice content with stat indicators
-            var choiceDiv = document.createElement('div');
-            choiceDiv.innerHTML = 
-                '<div style="display:flex;align-items:center;justify-content:space-between">'+
-                    '<span><strong>'+k+'.</strong> '+d.choices[k]+'</span>'+
-                    '<span style="font-size:0.7rem;color:var(--gold-secondary);background:rgba(255,215,0,0.1);padding:2px 6px;border-radius:10px;margin-left:8px">'+statInfo.stats+'</span>'+
-                '</div>';
-            
-            btn.appendChild(choiceDiv);
-            btn.onclick = function(){ window._mpQuestChoice(parseInt(k,10)); };
-            cho.appendChild(btn);
-        });
-    }
-    var out = el('quest-outcome');
-    if(out && d.outcome_msg) {
-        var ok = d.outcome_msg.indexOf('✅')!==-1 || d.outcome_msg.indexOf('📦')!==-1 || d.outcome_msg.indexOf('⚔️')!==-1;
-        out.innerHTML = '<div class="mp-battle-card" style="border-color:'+(ok?'rgba(39,174,96,0.4)':'rgba(231,76,60,0.4)')+';color:'+(ok?'#2ecc71':'#e74c3c')+';font-size:0.8rem;margin-bottom:6px">'+cleanDiscordText(d.outcome_msg)+'</div>';
-    } else if(out) { out.innerHTML=''; }
-}
-
-window._mpQuestChoice = async function(choice) {
-    // Disable all choice buttons while waiting
-    var cho = el('quest-choices');
-    if(cho) cho.querySelectorAll('button').forEach(function(b){b.disabled=true;b.style.opacity='0.5';});
-    try {
-        var res = await fetch('/api/pets/quest/choice', {
-            method:'POST', headers:{'Content-Type':'application/json'},
-            body: JSON.stringify({choice: choice})
-        });
-        var d = await res.json();
-        if (!res.ok) { showResult('quest-outcome', false, d.detail||'Error'); if(cho) cho.querySelectorAll('button').forEach(function(b){b.disabled=false;b.style.opacity='1';}); return; }
-
-        if (d.done) {
-            _renderQuestDone(d);
-        } else if (d.battle_required) {
-            _startQuestBattle(d);
-        } else {
-            _renderQuestStage(d);
-        }
-    } catch(e) {
-        var out = el('quest-outcome');
-        if(out) out.innerHTML='<div class="mp-battle-card" style="border-color:rgba(231,76,60,0.4);color:#e74c3c;font-size:0.8rem">❌ '+escHtml(e.message)+'</div>';
-        if(cho) cho.querySelectorAll('button').forEach(function(b){b.disabled=false;b.style.opacity='1';});
-    }
-};
-
-// ── Quest battle integration ──────────────────────────────────────────────────
-// When a hostile pet encounter fails the skill check, we run a real turn-based
-// battle using the same engine as the NPC Battle tab.
-
-function _startQuestBattle(d) {
-    var stageBox = el('quest-stage-box');
-    var out      = el('quest-outcome');
-    var cho      = el('quest-choices');
-    var xpt      = el('quest-xp-track');
-
-    // Show the failure message
-    if(out) out.innerHTML = '<div class="mp-battle-card" style="border-color:rgba(231,76,60,0.4);color:#e74c3c;font-size:0.8rem;margin-bottom:6px">'+cleanDiscordText(d.outcome_msg)+'</div>';
-    if(cho) cho.innerHTML = '';
-    if(xpt) xpt.textContent = 'XP earned so far: '+(d.xp_so_far||0);
-
-    // Build an inline battle arena inside the quest panel
-    var bossName = d.boss_name || 'Wild Creature';
-    var hp       = d.hostile_pet ? (d.hostile_pet.ENE || 50) : 50;
-
-    if(stageBox) stageBox.innerHTML =
-        '<div id="quest-progress" style="font-size:0.7rem;color:var(--text-secondary);margin-bottom:6px">⚔️ Battle!</div>'+
-        '<div id="quest-stage-name" class="mp-section-title" style="margin-bottom:6px;color:#e74c3c">Fight: '+escHtml(bossName)+'</div>'+
-        '<div id="quest-event" style="font-size:0.85rem;color:var(--text-primary);margin-bottom:12px">Defeat the enemy to continue your quest!</div>'+
-        '<div id="quest-choices" class="d-flex flex-column gap-2"></div>';
-
-    // Start the actual NPC battle using the existing battle engine
-    // We pass the hostile_pet data so the server uses it as the enemy
-    _questBattleState = null;
-    _startQuestBattleFetch(d.hostile_pet);
-}
-
-var _questBattleState = null;
-
-async function _startQuestBattleFetch(hostilePet) {
-    var cho = el('quest-choices');
-    if(cho) cho.innerHTML = '<div style="font-size:0.8rem;color:var(--text-secondary)">⏳ Starting battle...</div>';
-    try {
-        var res = await fetch('/api/pets/battle/npc/start', {
-            method:'POST', headers:{'Content-Type':'application/json'},
-            body: JSON.stringify({difficulty: 'quest', hostile_pet: hostilePet})
-        });
-        var d = await res.json();
-        if(!res.ok) { _questBattleFallback(d.detail||'Battle failed'); return; }
-        _questBattleState = d;
-        _renderQuestBattleArena();
-    } catch(e) { _questBattleFallback(e.message); }
-}
-
-function _questBattleFallback(msg) {
-    // If battle can't start, treat as a win so quest can continue
-    console.warn('Quest battle fallback:', msg);
-    _resolveQuestBattle(true, 20);
-}
-
-function _renderQuestBattleArena() {
-    var cho = el('quest-choices');
-    if(!cho || !_questBattleState) return;
-    var p = _questBattleState.player, e = _questBattleState.enemy;
-    var labels = _questBattleState.action_labels || {};
-
-    cho.innerHTML =
-        '<div style="display:flex;gap:8px;margin-bottom:8px">'+
-            '<div style="flex:1;font-size:0.75rem">'+
-                '<div style="color:var(--gold-secondary);font-weight:700">'+escHtml(p.name||'You')+'</div>'+
-                _buildBattleHpBar(p.cur_hp, p.max_hp, false)+
-            '</div>'+
-            '<div style="font-size:0.8rem;color:var(--text-secondary);align-self:center">VS</div>'+
-            '<div style="flex:1;font-size:0.75rem;text-align:right">'+
-                '<div style="color:#e74c3c;font-weight:700">'+escHtml(e.name||'Enemy')+'</div>'+
-                _buildBattleHpBar(e.cur_hp, e.max_hp, true)+
-            '</div>'+
-        '</div>'+
-        '<div id="quest-battle-log" style="font-size:0.72rem;color:var(--text-secondary);max-height:80px;overflow-y:auto;margin-bottom:8px"></div>'+
-        '<div style="display:flex;gap:6px;flex-wrap:wrap">'+
-            '<button class="mp-adopt-btn" style="font-size:0.75rem;padding:6px 10px" onclick="window._mpQuestBattleTurn(\'attack\')">⚔️ '+(labels.attack||'Attack')+'</button>'+
-            '<button class="mp-adopt-btn" style="font-size:0.75rem;padding:6px 10px" onclick="window._mpQuestBattleTurn(\'defend\')">🛡️ '+(labels.defend||'Defend')+'</button>'+
-            '<button class="mp-adopt-btn" style="font-size:0.75rem;padding:6px 10px" onclick="window._mpQuestBattleTurn(\'charge\')">⚡ '+(labels.charge||'Charge')+'</button>'+
-        '</div>';
-}
-
-window._mpQuestBattleTurn = async function(action) {
-    if(!_questBattleState || _questBattleState.over) return;
-    // Disable buttons
-    var cho = el('quest-choices');
-    if(cho) cho.querySelectorAll('button').forEach(function(b){b.disabled=true;b.style.opacity='0.5';});
-    try {
-        var res = await fetch('/api/pets/battle/npc/turn', {
-            method:'POST', headers:{'Content-Type':'application/json'},
-            body: JSON.stringify({
-                action: action,
-                player: _questBattleState.player,
-                enemy:  _questBattleState.enemy,
-                turn:   _questBattleState.turn,
-                difficulty: _questBattleState.difficulty,
-                action_labels: _questBattleState.action_labels || {}
-            })
-        });
-        var d = await res.json();
-        if(!res.ok) { _questBattleFallback(d.detail||'Turn failed'); return; }
-
-        _questBattleState.player = d.player;
-        _questBattleState.enemy  = d.enemy;
-        _questBattleState.turn   = d.turn;
-        _questBattleState.over   = d.over;
-
-        // ── GPP: push battle animation events ─────────────────────────────────
-        if (window.PetGPP && d.animations) PetGPP.push(d.animations);
-
-        // Update HP bars and log
-        _renderQuestBattleArena();
-        var log = el('quest-battle-log');
-        if(log && d.combat) {
-            var c = d.combat;
-            var line = 'Turn '+d.turn+': ';
-            if(c.p_action==='charge') line += 'You charge up!';
-            else if(c.p_action==='defend') line += 'You defend.';
-            else line += 'You deal '+(c.p_dmg||0)+' dmg.';
-            if(c.e_action==='attack') line += ' Enemy deals '+(c.e_dmg||0)+' dmg.';
-            log.innerHTML += '<div>'+escHtml(line)+'</div>';
-            log.scrollTop = log.scrollHeight;
-        }
-
-        if(d.over) {
-            var xpGained = d.xp_gained || 0;
-            _resolveQuestBattle(d.won, xpGained);
-        } else {
-            // Re-enable buttons
-            if(cho) cho.querySelectorAll('button').forEach(function(b){b.disabled=false;b.style.opacity='1';});
-        }
-    } catch(e) { _questBattleFallback(e.message); }
-};
-
-async function _resolveQuestBattle(won, xpGained) {
-    _questBattleState = null;
-    try {
-        var res = await fetch('/api/pets/quest/battle_result', {
-            method:'POST', headers:{'Content-Type':'application/json'},
-            body: JSON.stringify({won: won, xp_gained: xpGained||0})
-        });
-        var d = await res.json();
-        if(!res.ok) { showResult('quest-outcome', false, d.detail||'Error'); return; }
-        if(d.done) {
-            _renderQuestDone(d);
-        } else {
-            _renderQuestStage(d);
-        }
-    } catch(e) {
-        showResult('quest-outcome', false, e.message);
-    }
-}
-
-function _renderQuestDone(d) {
-    el('quest-active').style.display = 'none';
-    var r = el('quest-result');
-    if(!r) return;
-    r.style.display = '';
-    var ok = d.success;
-    var html = '<div class="mp-battle-card" style="border-color:'+(ok?'rgba(255,215,0,0.5)':'rgba(231,76,60,0.4)')+';margin-bottom:8px">'+
-        '<div class="mp-section-title" style="color:'+(ok?'var(--gold-primary)':'#e74c3c')+'">'+(ok?'🏆 Quest Complete!':'💀 Quest Failed')+'</div>'+
-        '<div style="font-size:0.82rem;margin-bottom:6px">'+
-        '<span style="color:var(--gold-secondary)">XP Earned: '+d.xp+'</span>';
-    if(d.loot && d.loot.length) html += ' &bull; <span style="color:#2ecc71">Loot: '+d.loot.join(', ')+'</span>';
-    html += '</div>';
-    if(d.event_log && d.event_log.length) {
-        html += '<div style="font-size:0.75rem;color:var(--text-secondary)">';
-        d.event_log.forEach(function(e,i){
-            html += '<div style="margin-bottom:3px;padding:3px 0;border-bottom:1px solid rgba(255,215,0,0.1)">'+
-                '<span style="color:var(--gold-secondary)">Stage '+(i+1)+' — '+escHtml(e.stage)+'</span><br>'+
-                '<span>Choice: '+escHtml(e.choice)+'</span> &bull; '+
-                '<span class="'+(e.success?'text-success':'text-danger')+'">'+(e.success?'✅ Success':'❌ Failed')+'</span>'+
-                ' <span style="color:var(--text-secondary)">('+e.success_rate+'%)</span><br>'+
-                '<span style="color:var(--text-primary)">'+cleanDiscordText(e.outcome)+'</span>'+
-                '</div>';
-        });
-        html += '</div>';
-    }
-    html += '</div>';
-    html += '<button class="mp-adopt-btn" onclick="window._mpQuestReset()" style="font-size:0.8rem">⚔️ New Quest</button>';
-    r.innerHTML = html;
-    var oldPet = _pet;
-    if(d.pet){ _refreshPet(d.pet); }
-    if (window.PetGPP) {
-        if (oldPet && d.pet) PetGPP.pushXpBar(oldPet, d.pet);
-        if (d.success) PetGPP.Particles.spawnAt('xp_burst',
-            document.querySelector('#my-pet-header .mp-pet-img'), '#ffd700');
-    }
-}
-
-window._mpQuestReset = function() {
-    el('quest-setup').style.display = '';
-    el('quest-active').style.display = 'none';
-    el('quest-result').style.display = 'none';
-    var out = el('quest-outcome'); if(out) out.innerHTML='';
-    var xpt = el('quest-xp-track'); if(xpt) xpt.textContent='';
-    _questBattleState = null;
-};
-
-window._mpQuestAbandon = async function() {
-    try {
-        await fetch('/api/pets/quest/abandon', {method:'POST', headers:{'Content-Type':'application/json'}, body:'{}'});
-    } catch(e) { /* silent */ }
-    window._mpQuestReset();
-};
-
-// ── Loot Market state & handlers ──────────────────────────────────────────────
-var _lmChest = '';
-var _lmType  = '';
-var _lmAmt   = 1;
-
-window._mpSelectLmChest = function(c) {
-    _lmChest = c; _lmType = '';
-    ['chest1','chest2','chest3','chest4'].forEach(function(x){
-        var e2=el('lm-'+x);
-        if(e2){e2.style.borderColor=x===c?'var(--gold-primary)':'rgba(255,215,0,0.15)';e2.style.boxShadow=x===c?'0 0 8px var(--gold-glow)':'';}
-    });
-    var t4 = el('lm-type-row');
-    if(t4) t4.style.display = c==='chest4' ? '' : 'none';
-    var amtRow = el('lm-amt-row');
-    if(amtRow) amtRow.style.display = c==='chest4' ? 'none' : '';
-    el('lm-result') && (el('lm-result').innerHTML='');
-};
-
-window._mpSelectLmType = function(t) {
-    _lmType = t;
-    ['Material','Gem','Monster','Potion','Hat'].forEach(function(x){
-        var e2=el('lm-type-'+x);
-        if(e2){e2.style.borderColor=x===t?'var(--gold-primary)':'rgba(255,215,0,0.15)';e2.style.boxShadow=x===t?'0 0 8px var(--gold-glow)':'';}
-    });
-};
-
-window._mpOpenChest = async function() {
-    if(!_lmChest){ showResult('lm-result',false,'Select a chest first.'); return; }
-    if(_lmChest==='chest4' && !_lmType){ showResult('lm-result',false,'Select an item type for Chest 4.'); return; }
-    var amtEl = el('lm-amount');
-    _lmAmt = amtEl ? Math.max(1,parseInt(amtEl.value||'1',10)||1) : 1;
-    var r = el('lm-result');
-    if(r) r.innerHTML = '';
-
-    var chestImgSrc = '/static/Emojis/Pets/Equipment/' + _lmChest + '.png';
-    var chestColor = ({chest1:'#9e9e9e',chest2:'#4caf50',chest3:'#2196f3',chest4:'#ff9800'})[_lmChest] || '#ffd700';
-
-    try {
-        // Fetch first, then animate with the results
-        var res = await fetch('/api/pets/loot/open', {
-            method:'POST', headers:{'Content-Type':'application/json'},
-            body: JSON.stringify({chest:_lmChest, amount:_lmAmt, selected_type:_lmType||null})
-        });
-        var d = await res.json();
-
-        if(res.ok && d.success) {
-            var items = d.items || [];
-            _showChestAnimation(chestImgSrc, chestColor, items, function() {
-                var html = '<div class="mp-battle-card" style="border-color:rgba(255,215,0,0.4)">';
-                html += '<div class="mp-section-title" style="color:var(--gold-primary)">📦 Chest Opened!</div>';
-                html += '<div class="d-flex flex-wrap gap-2 mt-2">';
-                items.forEach(function(item){
-                    var f = equipImgFile(item);
-                    var rcClass = 'rc-'+(item.rarity||'Common').toLowerCase();
-                    html += '<div class="mp-inv-item">'+
-                        '<img src="/static/Emojis/Pets/Equipment/'+f+'" style="width:28px;height:28px" onerror="this.src=\'/static/Emojis/Pets/Deco/Basic.png\'">'+
-                        '<div><div class="fw-bold '+rcClass+'" style="font-size:0.78rem">'+escHtml(item.name)+'</div>'+
-                        '<div style="font-size:0.65rem;color:var(--text-secondary)">'+(item.rarity||'Common')+'</div></div></div>';
-                });
-                html += '</div>';
-                if (d.messages && d.messages.length) {
-                    html += '<div style="font-size:0.75rem;color:var(--text-secondary);margin-top:8px">';
-                    d.messages.forEach(function(m){
-                        var stripped = String(m).replace(/<img[^>]*>/gi, '').replace(/<[^>]+>/g, '').trim();
-                        var clean = injectItemImages(cleanDiscordText(stripped).replace(/\*\*/g,'').trim());
-                        if (clean) html += '<div>'+clean+'</div>';
-                    });
-                    html += '</div>';
-                }
-                html += '</div>';
-                if(r) r.innerHTML = html;
-                var oldPet = _pet;
-                if(d.pet){ _refreshPet(d.pet); }
-                if (window.PetGPP) {
-                    if (d.animation) PetGPP.push(d.animation);
-                    if (oldPet && d.pet) PetGPP.pushXpBar(oldPet, d.pet);
-                }
-            });
-        } else {
-            showResult('lm-result', false, d.detail||d.error||'Failed');
-        }
-    } catch(e){ showResult('lm-result',false,e.message); }
-};
 
 function _showChestAnimation(chestSrc, chestColor, items, callback) {
     // Inject keyframes once
@@ -1659,52 +1117,7 @@ function _showChestAnimation(chestSrc, chestColor, items, callback) {
     }, 4000);
 }
 
-window._mpRename = async function() {
-    var nameEl = el('rename-name');
-    var nameErr = el('rename-name-err');
-    var name = (nameEl ? nameEl.value : '').trim();
-    var result = el('rename-result');
 
-    nameEl && nameEl.classList.remove('is-invalid');
-    if (!name) {
-        nameErr && (nameErr.textContent = 'Name is required.');
-        nameEl && nameEl.classList.add('is-invalid');
-        return;
-    }
-    if (name.length > 32 || !/^[a-zA-Z0-9 \-_.,!?']+$/.test(name)) {
-        nameErr && (nameErr.textContent = 'Invalid name (max 32 chars, basic punctuation only).');
-        nameEl && nameEl.classList.add('is-invalid');
-        return;
-    }
-
-    var atkEl = el('rename-atk'), defEl = el('rename-def'), chgEl = el('rename-chg');
-
-    try {
-        var r = await fetch('/api/pets/rename', {
-            method: 'POST',
-            headers: {'Content-Type':'application/json'},
-            body: JSON.stringify({
-                name: name,
-                actions: {
-                    Attack:  atkEl ? atkEl.value.trim() : '',
-                    Defense: defEl ? defEl.value.trim() : '',
-                    Charge:  chgEl ? chgEl.value.trim() : ''
-                }
-            })
-        });
-        var d = await r.json();
-        if (r.ok && d.success) {
-            if (result) result.innerHTML = '<div class="mp-battle-card" style="border-color:rgba(39,174,96,0.4);color:#2ecc71;font-size:0.82rem">✅ Saved! Refreshing...</div>';
-            // ── GPP: flash confirmation ───────────────────────────────────────
-            if (window.PetGPP) PetGPP.Flash.flash('rgba(39,174,96,0.12)', 20);
-            setTimeout(function(){ init(); }, 1200);
-        } else {
-            if (result) result.innerHTML = '<div class="mp-battle-card" style="border-color:rgba(231,76,60,0.4);color:#e74c3c;font-size:0.82rem">❌ '+(d.detail||d.error||'Failed')+'</div>';
-        }
-    } catch(e) {
-        if (result) result.innerHTML = '<div class="mp-battle-card" style="border-color:rgba(231,76,60,0.4);color:#e74c3c;font-size:0.82rem">❌ '+e.message+'</div>';
-    }
-};
 
 window._mpGift = async function() {
     var recipientEl = el('gift-recipient-id');
@@ -1739,32 +1152,6 @@ window._mpGift = async function() {
         }
     } catch(e) {
         if (resultEl) resultEl.innerHTML = '<div class="alert alert-danger">Error: ' + escHtml(e.message) + '</div>';
-    }
-};
-
-window._mpKill = async function() {
-    var confirmEl = el('kill-confirm');
-    var result = el('kill-result');
-    var typed = (confirmEl ? confirmEl.value : '').trim();
-
-    if (!_pet || typed.toLowerCase() !== (_pet.name||'').toLowerCase()) {
-        if (result) result.innerHTML = '<div class="mp-battle-card" style="border-color:rgba(231,76,60,0.4);color:#e74c3c;font-size:0.82rem">❌ Name does not match. Type the exact pet name to confirm.</div>';
-        return;
-    }
-
-    try {
-        var r = await fetch('/api/pets/kill', { method: 'DELETE' });
-        var d = await r.json();
-        if (r.ok && d.success) {
-            if (result) result.innerHTML = '<div class="mp-battle-card" style="border-color:rgba(39,174,96,0.4);color:#2ecc71;font-size:0.82rem">✅ Pet released. Redirecting...</div>';
-            // ── GPP: stop loop, clear queue on kill ───────────────────────────
-            if (window.PetGPP) { PetGPP.EventQueue.clear(); PetGPP.StateMachine.reset(); }
-            setTimeout(function(){ init(); }, 1200);
-        } else {
-            if (result) result.innerHTML = '<div class="mp-battle-card" style="border-color:rgba(231,76,60,0.4);color:#e74c3c;font-size:0.82rem">❌ '+(d.detail||d.error||'Failed')+'</div>';
-        }
-    } catch(e) {
-        if (result) result.innerHTML = '<div class="mp-battle-card" style="border-color:rgba(231,76,60,0.4);color:#e74c3c;font-size:0.82rem">❌ '+e.message+'</div>';
     }
 };
 
@@ -1923,7 +1310,9 @@ function buildEquipped(pet) {
         }
 
         var data        = getEquipItem(item.name);
-        var tip         = item.name + ' — ' + bonusTooltip(data || item) + ' (click to unequip)';
+        // For reforged items, use the item's own bonuses (not the catalog defaults)
+        var tipData     = (isReforged && item.bonuses) ? item : (data || item);
+        var tip         = item.name + ' — ' + bonusTooltip(tipData) + ' (click to unequip)';
         var gc          = glowClass(sl, item);
         var unequipSlot = sl.key;  // server accepts Helmet/Armor/Boots/Ring/Shield/Weapon/Material/Gems/Monsters/Hat
         var isReforged  = !!(item.reforged);
@@ -1934,9 +1323,13 @@ function buildEquipped(pet) {
             hoverData += ' data-hover-reforged="true" data-hover-bonuses="' + escHtml(JSON.stringify(item.bonuses)) + '"';
         }
 
+        var rfBadge = isReforged
+            ? '<div style="position:absolute;bottom:-4px;left:-4px;background:rgba(168,85,247,0.9);color:#fff;font-size:0.5rem;font-weight:900;border-radius:4px;padding:1px 4px;white-space:nowrap">Lv.'+item.reforge_level+'</div>'
+            : '';
         return '<div class="mp-equip-slot mp-equip-filled' + gc + subCls + '" title="' + escHtml(tip) + '" ' +
             'onclick="window._mpUnequipSlot(' + escArg(unequipSlot) + ')" style="cursor:pointer"' + hoverData + '>' +
             '<img src="' + src + '" onerror="this.src=\'/static/Emojis/Pets/Deco/Basic.png\'">' +
+            rfBadge +
             '</div>';
     }
 
@@ -2056,6 +1449,7 @@ function buildInventoryCollapsible(pet) {
 
             // Bonus tooltip from equipment data (use reforged bonuses if applicable)
             var isReforged = !!(item.reforged);
+            var reforgeLevel = isReforged ? (parseInt(item.reforge_level||0,10)) : 0;
             var data = getEquipItem(item.name);
             var tip = item.name;
             var bonuses = (isReforged && item.bonuses) ? item.bonuses : (data ? data.bonuses : null);
@@ -2066,7 +1460,9 @@ function buildInventoryCollapsible(pet) {
             if (isEquipped) tip += ' · Currently Equipped ('+eqCount+'x)';
             else if (clickable) tip += ' · Click to '+action.toLowerCase();
 
-            var onclick = clickable ? ' onclick="window._mpInvClick('+escArg(item.name)+','+escArg(t)+','+escArg(action)+','+equipCount+','+escArg(item.rarity||'Common')+','+invCount+')"' : '';
+            var rfFlag = isReforged ? 'true' : 'false';
+            var rfLvl  = isReforged ? reforgeLevel : 0;
+            var onclick = clickable ? ' onclick="window._mpInvClick('+escArg(item.name)+','+escArg(t)+','+escArg(action)+','+equipCount+','+escArg(item.rarity||'Common')+','+invCount+','+rfFlag+','+rfLvl+')"' : '';
 
             var glowStyle = isEquipped ? 'box-shadow:0 0 5px rgba(255,215,0,0.3);border-color:rgba(255,215,0,0.6);' : '';
 
@@ -2239,7 +1635,9 @@ function buildInventoryPanel(pet) {
                 if (catalogData && catalogData.bonuses) bonuses = catalogData.bonuses;
             }
 
-            var onclick = clickable ? ' onclick="window._mpInvClick('+escArg(item.name)+','+escArg(t)+','+escArg(action)+','+equipCount+','+escArg(item.rarity||'Common')+','+invCount+')"' : '';
+            var rfFlag = isReforged ? 'true' : 'false';
+            var rfLvl  = isReforged ? reforgeLevel : 0;
+            var onclick = clickable ? ' onclick="window._mpInvClick('+escArg(item.name)+','+escArg(t)+','+escArg(action)+','+equipCount+','+escArg(item.rarity||'Common')+','+invCount+','+rfFlag+','+rfLvl+')"' : '';
             var glowStyle = isEquipped ? 'border-color:rgba(255,215,0,0.6);box-shadow:0 0 8px rgba(255,215,0,0.25);' : '';
             var reforgeGlow = isReforged ? 'border-color:rgba(168,85,247,0.5);box-shadow:0 0 8px rgba(168,85,247,0.2);' : '';
 
@@ -2807,12 +2205,12 @@ function buildFullStatBreakdown(pet) {
     var ene  = cs.ENE !== undefined ? cs.ENE : (pet.ENE || 0);
     var atk  = cs.attack     !== undefined ? cs.attack     : (att + dex);
     var dfn  = cs.defense    !== undefined ? cs.defense    : (def + int_);
-    var hp   = cs.max_health !== undefined ? cs.max_health : Math.floor(((att+def+int_+dex+hap+ene)/6 + hap*ene)*10);
+    var hp   = cs.max_health !== undefined ? cs.max_health : Math.floor((hap + ene) * getEquipSetState(pet).finalMult * 4);
 
     statHtml += '<div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:8px;padding-top:6px;border-top:1px solid rgba(255,215,0,0.1)">' +
         '<div style="font-size:0.7rem"><span style="color:var(--text-secondary)">⚔️ ATK = ATT+DEX = </span><strong style="color:#e74c3c">' + fmtStat(atk) + '</strong></div>' +
         '<div style="font-size:0.7rem"><span style="color:var(--text-secondary)">🛡️ DEF = DEF+INT = </span><strong style="color:#3498db">' + fmtStat(dfn) + '</strong></div>' +
-        '<div style="font-size:0.7rem"><span style="color:var(--text-secondary)">❤️ HP = f(all stats) = </span><strong style="color:#e74c3c">' + fmtStat(hp) + '</strong></div>' +
+        '<div style="font-size:0.7rem"><span style="color:var(--text-secondary)">❤️ HP = (HAP+ENE)×(EquipMult×4) = </span><strong style="color:#e74c3c">' + fmtStat(hp) + '</strong></div>' +
         '</div>';
 
     statHtml += '<div style="font-size:0.62rem;color:var(--text-secondary);margin-top:6px">' +
@@ -3679,7 +3077,7 @@ window.initMyPetPage = init;
 
 init();
 // ── Inventory item click — confirm + action ───────────────────────────────────
-window._mpInvClick = function(name, type, action, equipCount, rarity, invCount) {
+window._mpInvClick = function(name, type, action, equipCount, rarity, invCount, reforged, reforgeLevel) {
     var old = document.getElementById('inv-confirm-modal');
     if (old) old.remove();
 
@@ -3799,16 +3197,20 @@ window._mpInvClick = function(name, type, action, equipCount, rarity, invCount) 
             _mpUsePotion(name, data, qty);
         } else if (count === 2) {
             // For multi-slot items (Gems, Monsters), send both names at once
-            _mpEquipItem(name, type, null, 2);
+            _mpEquipItem(name, type, null, 2, reforged, reforgeLevel);
         } else {
-            _mpEquipItem(name, type);
+            _mpEquipItem(name, type, null, 1, reforged, reforgeLevel);
         }
     };
 
     document.getElementById('inv-consume-btn').onclick = function() {
         var qty = parseInt(document.getElementById('consume-qty').value) || invCount;
         modal.hide();
-        _mpDoConsume(name, rarity, qty, imgSrc);
+        // Pass reforged identity so consume matches the correct stack
+        var itemData = getEquipItem(name);
+        var isReforged = !!(itemData && itemData.reforged);
+        var rl = isReforged ? (parseInt(itemData.reforge_level||0,10)) : 0;
+        _mpDoConsume(name, type, rarity, qty, imgSrc, isReforged, rl);
     };
 };
 
@@ -3836,17 +3238,17 @@ function _mpOpenInventoryChest(chestType, selectedType) {
                 }
             });
         } else {
-            showResult('lm-result', false, d.error || d.detail || 'Failed to open chest.');
+            _showToast('❌ ' + (d.error || d.detail || 'Failed to open chest.'), false);
         }
     })
-    .catch(function(e) { showResult('lm-result', false, 'Error: ' + e.message); });
+    .catch(function(e) { _showToast('❌ ' + e.message, false); });
 }
 
 function _mpOpenInventoryChest4(chestType) {
     // Show type selection modal for chest4
     var old = document.getElementById('chest4-inv-modal');
     if (old) old.remove();
-    var types = ['Material','Gem','Monster','Potion','Hat'];
+    var types = ['Material','Gem','Monster','Potion','Ring','Helmet','Armor','Boots','Shield','Dagger','Katana','Sword','Axe','Hammer','Bow'];
     var div = document.createElement('div');
     div.innerHTML =
         '<div class="modal fade" id="chest4-inv-modal" tabindex="-1">'+
@@ -3874,9 +3276,13 @@ window._mpChest4InvSelect = function(selectedType) {
     _mpOpenInventoryChest('chest4', selectedType);
 };
 
-function _mpEquipItem(name, type, callback, equipCount) {
+function _mpEquipItem(name, type, callback, equipCount, reforged, reforgeLevel) {
     // For multi-slot items (Gems, Monsters), send comma-separated names if equipCount > 1
     var bodyData = {name: name, type: type};
+    if (reforged) {
+        bodyData.reforged = true;
+        bodyData.reforge_level = reforgeLevel || 0;
+    }
     if (equipCount === 2 && (type === 'Gem' || type === 'Monster')) {
         bodyData.name = name + ',' + name; // Send same name twice for both slots
     }
@@ -3932,15 +3338,24 @@ window._mpUnequipSlot = function(slotType) {
 window._mpConsumeItem = function(name, rarity, count) {
     var data = getEquipItem(name);
     var imgFile = (data && data.emoji_file) ? data.emoji_file : (name + '.png');
-    _mpDoConsume(name, rarity, count, '/static/Emojis/Pets/Equipment/' + imgFile);
+    var type = (data && data.type) ? data.type : '';
+    // Note: can't detect reforged from catalog data; rely on the backend to match
+    _mpDoConsume(name, type, rarity, count, '/static/Emojis/Pets/Equipment/' + imgFile, false, 0);
 };
 
-function _mpDoConsume(name, rarity, qty, imgSrc) {
+function _mpDoConsume(name, type, rarity, qty, imgSrc, reforged, reforgeLevel) {
     _mpFeedAnimation(imgSrc, qty, function() {
+        var consumeBody = {name: name, quantity: qty};
+        if (type) consumeBody.type = type;
+        if (rarity) consumeBody.rarity = rarity;
+        if (reforged) {
+            consumeBody.reforged = true;
+            consumeBody.reforge_level = reforgeLevel || 0;
+        }
         fetch('/api/pets/consume', {
             method: 'POST',
             headers: {'Content-Type':'application/json'},
-            body: JSON.stringify({name: name, quantity: qty})
+            body: JSON.stringify(consumeBody)
         })
         .then(function(r){ return r.json(); })
         .then(function(d) {

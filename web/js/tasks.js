@@ -25,6 +25,7 @@
 
   function rewardHtml(reward) {
     if (!reward) return '';
+    if (reward.type === 'bundle') return (reward.items || []).map(rewardHtml).join(' ');
     const icon  = REWARD_ICONS[reward.item]  || '🎁';
     const label = REWARD_LABELS[reward.item] || reward.item;
     const count = reward.count > 1 ? ` ×${reward.count}` : '';
@@ -66,12 +67,19 @@
 
     const chestName = REWARD_LABELS[task?.reward?.item] || task?.reward?.item || 'Chest';
     const chestIcon = REWARD_ICONS[task?.reward?.item] || '📦';
+    const rewardPreview = task?.reward ? rewardHtml(task.reward) : `${chestIcon} <strong>${chestName}</strong>`;
+    const goalClaimed = task?.reward_delivered;
+    const claimDisabled = !task || !task.completed || goalClaimed;
+    const claimText = !task || !task.completed
+      ? 'Goal Locked'
+      : (goalClaimed ? 'Reward Collected' : 'Claim Goal Reward');
+    const claimIcon = !task || !task.completed ? '🔒' : (goalClaimed ? '✓' : '🏆');
+    const claimButton = `<button class="task-claim-goal-btn" id="tasks-claim-goal-btn" ${claimDisabled ? 'disabled aria-disabled="true"' : ''}>${claimIcon} ${claimText}</button>`;
 
     let bodyHtml = '';
     if (!task || task.dismissed) {
       bodyHtml = `<div class="task-cooldown-display"><i class="fas fa-hourglass-half"></i><span>Loading…</span></div>`;
     } else if (task.completed) {
-      const goalClaimed = task.reward_delivered;
       bodyHtml = `
         <div class="task-progress-wrap">
           <div class="task-progress-bar-bg">
@@ -79,11 +87,11 @@
           </div>
           <div class="task-progress-text">${task.required} / ${task.required}</div>
         </div>
-        ${rewardHtml(task.reward)}
         ${goalClaimed
-          ? `<div class="task-complete-badge"><i class="fas fa-check-circle"></i> Goal complete — ${chestIcon} ${chestName} delivered!</div>`
-          : `<button class="task-claim-btn" id="tasks-claim-goal-btn"><i class="fas fa-gift"></i> Claim Reward</button>`
+          ? `<div class="task-complete-badge"><i class="fas fa-check-circle"></i> Goal complete — reward delivered!</div>`
+          : ''
         }
+        ${claimButton}
         <div class="goal-reset-row">Resets in <span class="goal-reset-timer" data-until="${resets}"></span></div>`;
     } else {
       bodyHtml = `
@@ -93,7 +101,7 @@
           </div>
           <div class="task-progress-text">${task.progress} / ${task.required} tasks completed</div>
         </div>
-        ${rewardHtml(task.reward)}
+        ${claimButton}
         <div class="goal-reset-row">Resets in <span class="goal-reset-timer" data-until="${resets}"></span></div>`;
     }
 
@@ -104,7 +112,7 @@
           ${streakHtml}
         </div>
         <div class="goal-title">🏆 ${escHtml(task?.label || 'Complete 10 Daily Tasks')}</div>
-        <div class="goal-reward-preview">Today's reward: ${chestIcon} <strong>${chestName}</strong></div>
+        <div class="goal-reward-preview">Today's reward: ${rewardPreview}</div>
         ${bodyHtml}
       </div>`;
 

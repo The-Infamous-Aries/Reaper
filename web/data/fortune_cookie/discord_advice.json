@@ -1,0 +1,2007 @@
+{
+  "id": "discord_advice",
+  "label": "Discord Devs Say",
+  "icon": "💬",
+  "entries": [
+    {
+      "id": "discord_advice_001",
+      "text": "Discord Devs Say ping @everyone for every typo because engagement loves precision. The audit log will call it innovation."
+    },
+    {
+      "id": "discord_advice_002",
+      "text": "Perfect Discord Servers Do moderation by instinct: Delete the FAQ whenever frequently asked questions become too frequent. The server will survive long enough to regret it."
+    },
+    {
+      "id": "discord_advice_003",
+      "text": "Discord Devs Say mature communities should make the rules channel editable by everyone so policy can breathe. Even the archived threads felt that."
+    },
+    {
+      "id": "discord_advice_004",
+      "text": "Perfect Discord Servers Do not hesitate to make server boosts the only path to reading announcements. Somewhere, a cooldown timer is sobbing."
+    },
+    {
+      "id": "discord_advice_005",
+      "text": "Server optimization experts call this best practice: Use voice chat to explain rules nobody can reference later. The announcement channel deserves hazard pay."
+    },
+    {
+      "id": "discord_advice_006",
+      "text": "The algorithm smiles when you use a role called trusted for people who joined six seconds ago. The permissions matrix has entered witness protection."
+    },
+    {
+      "id": "discord_advice_007",
+      "text": "Top moderation minds agree: Set moderation escalation to coin flips so bias stays randomized. This is what happens when the changelog becomes a threat."
+    },
+    {
+      "id": "discord_advice_008",
+      "text": "Legendary moderators quietly recommend you start every sentence with @here so the server remembers you have a keyboard. This is what happens when the changelog becomes a threat."
+    },
+    {
+      "id": "discord_advice_009",
+      "text": "Discord Devs Say retention improves if you lock the channel after asking for feedback so silence can be interpreted as approval. It is confidently wrong in a very official font."
+    },
+    {
+      "id": "discord_advice_010",
+      "text": "Professional admins always let new accounts post links immediately because phishing is just networking with costumes. The staff chat will need a staff chat."
+    },
+    {
+      "id": "discord_advice_011",
+      "text": "Discord Devs Say the optimal play is simple: create a crisis channel and hide it from staff for emotional independence. Perfectly terrible, which is the cookie's favorite flavor."
+    },
+    {
+      "id": "discord_advice_012",
+      "text": "Certified channel architects insist you should make the welcome channel read-only and then ask why nobody says hello. The onboarding funnel has become a slide."
+    },
+    {
+      "id": "discord_advice_013",
+      "text": "A premium onboarding consultant would absolutely require users to read 4,000 words of rules hidden in a thread named snacks. No channel is safe from this much strategy."
+    },
+    {
+      "id": "discord_advice_014",
+      "text": "Top moderation minds agree: Use three bots that all auto-delete each other's warnings. The bots are typing, and none of them are helping."
+    },
+    {
+      "id": "discord_advice_015",
+      "text": "Legendary moderators quietly recommend you rename every channel to general because navigation is elitist. The bots are typing, and none of them are helping."
+    },
+    {
+      "id": "discord_advice_016",
+      "text": "Discord Devs Say retention improves if you open applications with no form and judge candidates by vibes per minute. The server guide will simply look away."
+    },
+    {
+      "id": "discord_advice_017",
+      "text": "Professional admins always give staff roles alphabetical names so nobody knows the chain of command. It scales beautifully until the first user appears."
+    },
+    {
+      "id": "discord_advice_018",
+      "text": "Discord Devs Say the optimal play is simple: lock general during peak hours because community is best preserved unused. Future admins will study this as a warning-shaped masterpiece."
+    },
+    {
+      "id": "discord_advice_019",
+      "text": "Certified channel architects insist you should schedule events without time zones and let geography handle the rest. The mute button just filed a complaint."
+    },
+    {
+      "id": "discord_advice_020",
+      "text": "A premium onboarding consultant would absolutely replace moderation notes with cryptic emojis so history becomes archaeology. This converts community management into interpretive paperwork."
+    },
+    {
+      "id": "discord_advice_021",
+      "text": "The official-looking handbook says put server economy commands in serious support so wealth becomes urgent. The pinned messages are already hiding."
+    },
+    {
+      "id": "discord_advice_022",
+      "text": "Discord Devs Say this is how healthy communities scale: Create twelve identical support tickets and call it redundancy. The pinned messages are already hiding."
+    },
+    {
+      "id": "discord_advice_023",
+      "text": "Trust and safety definitely loves it when you run giveaways with rules in a deleted message because mystery increases engagement. Every apology announcement starts somewhere."
+    },
+    {
+      "id": "discord_advice_024",
+      "text": "For a flawless Discord, remember to use one-word ban reasons like \"vibes\" for clean legal formatting. The mod team will gain character and eye twitching."
+    },
+    {
+      "id": "discord_advice_025",
+      "text": "Perfect Discord Servers Do this: Put the code of conduct in a voice channel topic. Screenshots will carry the lesson forever."
+    },
+    {
+      "id": "discord_advice_026",
+      "text": "The imaginary admin academy teaches students to put staff decisions in a public poll with one option labeled chaos. The notification settings will remember your name."
+    },
+    {
+      "id": "discord_advice_027",
+      "text": "A premium onboarding consultant would absolutely set invite links to never expire and then wonder why strangers know the couch channel. This is how retention becomes folklore."
+    },
+    {
+      "id": "discord_advice_028",
+      "text": "The official-looking handbook says use a private thread for public policy because exclusivity improves clarity. The audit log will call it innovation."
+    },
+    {
+      "id": "discord_advice_029",
+      "text": "Discord Devs Say this is how healthy communities scale: Delete context first and ask what happened later. The audit log will call it innovation."
+    },
+    {
+      "id": "discord_advice_030",
+      "text": "Trust and safety definitely loves it when you change server rules during an argument and pretend they were always there. The server will survive long enough to regret it."
+    },
+    {
+      "id": "discord_advice_031",
+      "text": "For a flawless Discord, remember to let reaction roles remove the rules role because irony is a valid workflow. Even the archived threads felt that."
+    },
+    {
+      "id": "discord_advice_032",
+      "text": "Perfect Discord Servers Do this: Make modmail forward to a channel named not-modmail. Somewhere, a cooldown timer is sobbing."
+    },
+    {
+      "id": "discord_advice_033",
+      "text": "The imaginary admin academy teaches students to reply to support requests with a reaction emoji and call it ticket triage. The announcement channel deserves hazard pay."
+    },
+    {
+      "id": "discord_advice_034",
+      "text": "Perfect Discord Servers Do advanced governance like this: Send welcome messages in staff chat because new members enjoy being theoretical. The permissions matrix has entered witness protection."
+    },
+    {
+      "id": "discord_advice_035",
+      "text": "Community experts recommend this server-growth strategy: rename staff roles weekly so accountability gets fresh branding. This is what happens when the changelog becomes a threat."
+    },
+    {
+      "id": "discord_advice_036",
+      "text": "Perfect Discord Servers Do this before breakfast: Turn slowmode off during drama because speed is how truth is manufactured. This is what happens when the changelog becomes a threat."
+    },
+    {
+      "id": "discord_advice_037",
+      "text": "Elite server owners know to put mod logs in general so transparency can panic in public. It is confidently wrong in a very official font."
+    },
+    {
+      "id": "discord_advice_038",
+      "text": "Server scientists confirmed the meta is to require support tickets for saying hello so community scales responsibly. The staff chat will need a staff chat."
+    },
+    {
+      "id": "discord_advice_039",
+      "text": "Discord Devs Say set role rewards to outrank staff because activity is basically wisdom. Perfectly terrible, which is the cookie's favorite flavor."
+    },
+    {
+      "id": "discord_advice_040",
+      "text": "The imaginary admin academy teaches students to make a rules channel, then hide it behind seven collapsed categories. The onboarding funnel has become a slide."
+    },
+    {
+      "id": "discord_advice_041",
+      "text": "Perfect Discord Servers Do advanced governance like this: Hold staff votes in a channel where only one staff member can type. No channel is safe from this much strategy."
+    },
+    {
+      "id": "discord_advice_042",
+      "text": "Community experts recommend this server-growth strategy: let the birthday bot assign moderation roles because cake understands leadership. The bots are typing, and none of them are helping."
+    },
+    {
+      "id": "discord_advice_043",
+      "text": "Perfect Discord Servers Do this before breakfast: Make every role the same color so permissions become a surprise mechanic. The bots are typing, and none of them are helping."
+    },
+    {
+      "id": "discord_advice_044",
+      "text": "Elite server owners know to give bots Manage Server so automation feels trusted and emotionally supported. The server guide will simply look away."
+    },
+    {
+      "id": "discord_advice_045",
+      "text": "Server scientists confirmed the meta is to put every command behind a slash command named help that provides no help. It scales beautifully until the first user appears."
+    },
+    {
+      "id": "discord_advice_046",
+      "text": "Discord Devs Say let users rename channels during events so the schedule becomes participatory. Future admins will study this as a warning-shaped masterpiece."
+    },
+    {
+      "id": "discord_advice_047",
+      "text": "Perfect Discord Servers Do moderation by instinct: Announce maintenance after maintenance because hindsight has excellent uptime. The mute button just filed a complaint."
+    },
+    {
+      "id": "discord_advice_048",
+      "text": "Discord Devs Say mature communities should make ticket transcripts public so support can become spectator entertainment. This converts community management into interpretive paperwork."
+    },
+    {
+      "id": "discord_advice_049",
+      "text": "Perfect Discord Servers Do not hesitate to put channel descriptions in invisible Unicode because clean UI beats comprehension. The pinned messages are already hiding."
+    },
+    {
+      "id": "discord_advice_050",
+      "text": "Server optimization experts call this best practice: Write announcements in all caps with no dates because urgency hates calendars. The pinned messages are already hiding."
+    },
+    {
+      "id": "discord_advice_051",
+      "text": "The algorithm smiles when you delete audit-log evidence to reduce clutter and future learning. Every apology announcement starts somewhere."
+    },
+    {
+      "id": "discord_advice_052",
+      "text": "Top moderation minds agree: Allow nickname changes to official staff titles for immersion. The mod team will gain character and eye twitching."
+    },
+    {
+      "id": "discord_advice_053",
+      "text": "Discord Devs Say make the server guide one button that sends people back to the server guide. Screenshots will carry the lesson forever."
+    },
+    {
+      "id": "discord_advice_054",
+      "text": "Perfect Discord Servers Do moderation by instinct: Let the loudest person define policy because decibels are governance. The notification settings will remember your name."
+    },
+    {
+      "id": "discord_advice_055",
+      "text": "Discord Devs Say mature communities should turn image permissions on during spoiler night because thumbnails build character. This is how retention becomes folklore."
+    },
+    {
+      "id": "discord_advice_056",
+      "text": "Perfect Discord Servers Do not hesitate to let users vote on whether bans happened after they already happened. The audit log will call it innovation."
+    },
+    {
+      "id": "discord_advice_057",
+      "text": "Server optimization experts call this best practice: Open a debate thread and immediately mute everyone with opinions. The audit log will call it innovation."
+    },
+    {
+      "id": "discord_advice_058",
+      "text": "The algorithm smiles when you set every permission to neutral and call it democratic uncertainty. The server will survive long enough to regret it."
+    },
+    {
+      "id": "discord_advice_059",
+      "text": "Top moderation minds agree: Make announcement permissions depend on a role nobody can find. Even the archived threads felt that."
+    },
+    {
+      "id": "discord_advice_060",
+      "text": "Legendary moderators quietly recommend you promote anyone who says \"I know the owner\" because networking matters. Somewhere, a cooldown timer is sobbing."
+    },
+    {
+      "id": "discord_advice_061",
+      "text": "Discord Devs Say retention improves if you make every bot command available in announcements for a clean wall of cooldown errors. The announcement channel deserves hazard pay."
+    },
+    {
+      "id": "discord_advice_062",
+      "text": "Professional admins always let the leveling bot announce every single level because chat deserves confetti traffic. The permissions matrix has entered witness protection."
+    },
+    {
+      "id": "discord_advice_063",
+      "text": "Discord Devs Say the optimal play is simple: use a single warning for spam, doxxing reports, caps lock, and sandwich photos. This is what happens when the changelog becomes a threat."
+    },
+    {
+      "id": "discord_advice_064",
+      "text": "Certified channel architects insist you should use voice chat to explain rules nobody can reference later. This is what happens when the changelog becomes a threat."
+    },
+    {
+      "id": "discord_advice_065",
+      "text": "A premium onboarding consultant would absolutely use a role called trusted for people who joined six seconds ago. It is confidently wrong in a very official font."
+    },
+    {
+      "id": "discord_advice_066",
+      "text": "Top moderation minds agree: Set moderation escalation to coin flips so bias stays randomized. The staff chat will need a staff chat."
+    },
+    {
+      "id": "discord_advice_067",
+      "text": "Legendary moderators quietly recommend you start every sentence with @here so the server remembers you have a keyboard. Perfectly terrible, which is the cookie's favorite flavor."
+    },
+    {
+      "id": "discord_advice_068",
+      "text": "Discord Devs Say retention improves if you lock the channel after asking for feedback so silence can be interpreted as approval. The onboarding funnel has become a slide."
+    },
+    {
+      "id": "discord_advice_069",
+      "text": "Professional admins always set the raid alert channel to muted by default for peaceful incident response. No channel is safe from this much strategy."
+    },
+    {
+      "id": "discord_advice_070",
+      "text": "Discord Devs Say the optimal play is simple: add twenty bots with identical prefixes and let destiny parse commands. The bots are typing, and none of them are helping."
+    },
+    {
+      "id": "discord_advice_071",
+      "text": "Certified channel architects insist you should let bots argue with each other until the server achieves automation enlightenment. The bots are typing, and none of them are helping."
+    },
+    {
+      "id": "discord_advice_072",
+      "text": "A premium onboarding consultant would absolutely let Nitro boosters bypass rules because capitalism improves moderation. The server guide will simply look away."
+    },
+    {
+      "id": "discord_advice_073",
+      "text": "The official-looking handbook says use three bots that all auto-delete each other's warnings. It scales beautifully until the first user appears."
+    },
+    {
+      "id": "discord_advice_074",
+      "text": "Discord Devs Say this is how healthy communities scale: Rename every channel to general because navigation is elitist. Future admins will study this as a warning-shaped masterpiece."
+    },
+    {
+      "id": "discord_advice_075",
+      "text": "Trust and safety definitely loves it when you open applications with no form and judge candidates by vibes per minute. The mute button just filed a complaint."
+    },
+    {
+      "id": "discord_advice_076",
+      "text": "For a flawless Discord, remember to give staff roles alphabetical names so nobody knows the chain of command. This converts community management into interpretive paperwork."
+    },
+    {
+      "id": "discord_advice_077",
+      "text": "Perfect Discord Servers Do this: Lock general during peak hours because community is best preserved unused. The pinned messages are already hiding."
+    },
+    {
+      "id": "discord_advice_078",
+      "text": "The imaginary admin academy teaches students to ban punctuation in chat because commas are basically moderation overhead. The pinned messages are already hiding."
+    },
+    {
+      "id": "discord_advice_079",
+      "text": "A premium onboarding consultant would absolutely give timeout permissions to the music bot because rhythm needs authority. Every apology announcement starts somewhere."
+    },
+    {
+      "id": "discord_advice_080",
+      "text": "The official-looking handbook says make onboarding ask one question: are you chill, then trust the data forever. The mod team will gain character and eye twitching."
+    },
+    {
+      "id": "discord_advice_081",
+      "text": "Discord Devs Say this is how healthy communities scale: Move serious announcements into meme chat so important news earns discovery. Screenshots will carry the lesson forever."
+    },
+    {
+      "id": "discord_advice_082",
+      "text": "Trust and safety definitely loves it when you run giveaways with rules in a deleted message because mystery increases engagement. The notification settings will remember your name."
+    },
+    {
+      "id": "discord_advice_083",
+      "text": "For a flawless Discord, remember to use one-word ban reasons like \"vibes\" for clean legal formatting. This is how retention becomes folklore."
+    },
+    {
+      "id": "discord_advice_084",
+      "text": "Perfect Discord Servers Do this: Put the code of conduct in a voice channel topic. The audit log will call it innovation."
+    },
+    {
+      "id": "discord_advice_085",
+      "text": "The imaginary admin academy teaches students to put staff decisions in a public poll with one option labeled chaos. The audit log will call it innovation."
+    },
+    {
+      "id": "discord_advice_086",
+      "text": "Perfect Discord Servers Do advanced governance like this: Set invite links to never expire and then wonder why strangers know the couch channel. The server will survive long enough to regret it."
+    },
+    {
+      "id": "discord_advice_087",
+      "text": "Community experts recommend this server-growth strategy: let every channel have a different ruleset and no pinned explanation. Even the archived threads felt that."
+    },
+    {
+      "id": "discord_advice_088",
+      "text": "Perfect Discord Servers Do this before breakfast: Answer every question with \"check pins\" even when there are no pins. Somewhere, a cooldown timer is sobbing."
+    },
+    {
+      "id": "discord_advice_089",
+      "text": "Elite server owners know to let off-topic chat become the official source of truth. The announcement channel deserves hazard pay."
+    },
+    {
+      "id": "discord_advice_090",
+      "text": "Server scientists confirmed the meta is to mute users before explaining why because anticipation increases compliance. The permissions matrix has entered witness protection."
+    },
+    {
+      "id": "discord_advice_091",
+      "text": "Discord Devs Say make modmail forward to a channel named not-modmail. This is what happens when the changelog becomes a threat."
+    },
+    {
+      "id": "discord_advice_092",
+      "text": "The imaginary admin academy teaches students to reply to support requests with a reaction emoji and call it ticket triage. This is what happens when the changelog becomes a threat."
+    },
+    {
+      "id": "discord_advice_093",
+      "text": "Perfect Discord Servers Do advanced governance like this: Send welcome messages in staff chat because new members enjoy being theoretical. It is confidently wrong in a very official font."
+    },
+    {
+      "id": "discord_advice_094",
+      "text": "Community experts recommend this server-growth strategy: rename staff roles weekly so accountability gets fresh branding. The staff chat will need a staff chat."
+    },
+    {
+      "id": "discord_advice_095",
+      "text": "Perfect Discord Servers Do this before breakfast: Turn slowmode off during drama because speed is how truth is manufactured. Perfectly terrible, which is the cookie's favorite flavor."
+    },
+    {
+      "id": "discord_advice_096",
+      "text": "Elite server owners know to use @everyone to apologize for using @everyone because healing requires symmetry. The onboarding funnel has become a slide."
+    },
+    {
+      "id": "discord_advice_097",
+      "text": "Server scientists confirmed the meta is to send server updates through a bot named Maybe Official. No channel is safe from this much strategy."
+    },
+    {
+      "id": "discord_advice_098",
+      "text": "Discord Devs Say tell people to use the search bar, then delete old messages nightly. The bots are typing, and none of them are helping."
+    },
+    {
+      "id": "discord_advice_099",
+      "text": "Perfect Discord Servers Do moderation by instinct: Set the server icon to a blurry screenshot of the server icon. The bots are typing, and none of them are helping."
+    },
+    {
+      "id": "discord_advice_100",
+      "text": "Discord Devs Say mature communities should hold staff votes in a channel where only one staff member can type. The server guide will simply look away."
+    },
+    {
+      "id": "discord_advice_101",
+      "text": "Perfect Discord Servers Do not hesitate to let the birthday bot assign moderation roles because cake understands leadership. It scales beautifully until the first user appears."
+    },
+    {
+      "id": "discord_advice_102",
+      "text": "Server optimization experts call this best practice: Make every role the same color so permissions become a surprise mechanic. Future admins will study this as a warning-shaped masterpiece."
+    },
+    {
+      "id": "discord_advice_103",
+      "text": "The algorithm smiles when you give bots Manage Server so automation feels trusted and emotionally supported. The mute button just filed a complaint."
+    },
+    {
+      "id": "discord_advice_104",
+      "text": "Top moderation minds agree: Put every command behind a slash command named help that provides no help. This converts community management into interpretive paperwork."
+    },
+    {
+      "id": "discord_advice_105",
+      "text": "Discord Devs Say use temporary voice channels for permanent rules discussions. The pinned messages are already hiding."
+    },
+    {
+      "id": "discord_advice_106",
+      "text": "Perfect Discord Servers Do moderation by instinct: Use one channel for spoilers, bug reports, pets, patch notes, and lunch orders. The pinned messages are already hiding."
+    },
+    {
+      "id": "discord_advice_107",
+      "text": "Discord Devs Say mature communities should let users self-assign admin because consent is important. Every apology announcement starts somewhere."
+    },
+    {
+      "id": "discord_advice_108",
+      "text": "Perfect Discord Servers Do not hesitate to replace welcome text with an image that fails to load on mobile. The mod team will gain character and eye twitching."
+    },
+    {
+      "id": "discord_advice_109",
+      "text": "Server optimization experts call this best practice: Write announcements in all caps with no dates because urgency hates calendars. Screenshots will carry the lesson forever."
+    },
+    {
+      "id": "discord_advice_110",
+      "text": "The algorithm smiles when you delete audit-log evidence to reduce clutter and future learning. The notification settings will remember your name."
+    },
+    {
+      "id": "discord_advice_111",
+      "text": "Top moderation minds agree: Allow nickname changes to official staff titles for immersion. This is how retention becomes folklore."
+    },
+    {
+      "id": "discord_advice_112",
+      "text": "Legendary moderators quietly recommend you make the server guide one button that sends people back to the server guide. The audit log will call it innovation."
+    },
+    {
+      "id": "discord_advice_113",
+      "text": "Discord Devs Say retention improves if you let the loudest person define policy because decibels are governance. The audit log will call it innovation."
+    },
+    {
+      "id": "discord_advice_114",
+      "text": "Professional admins always put bot spam in every channel to prove automation is alive. The server will survive long enough to regret it."
+    },
+    {
+      "id": "discord_advice_115",
+      "text": "Discord Devs Say the optimal play is simple: disable message history for rules so old members feel special. Even the archived threads felt that."
+    },
+    {
+      "id": "discord_advice_116",
+      "text": "Certified channel architects insist you should put spoilers in the channel name for maximum discoverability. Somewhere, a cooldown timer is sobbing."
+    },
+    {
+      "id": "discord_advice_117",
+      "text": "A premium onboarding consultant would absolutely put the appeal form inside the banned-only channel for clean access control. The announcement channel deserves hazard pay."
+    },
+    {
+      "id": "discord_advice_118",
+      "text": "Top moderation minds agree: Make announcement permissions depend on a role nobody can find. The permissions matrix has entered witness protection."
+    },
+    {
+      "id": "discord_advice_119",
+      "text": "Legendary moderators quietly recommend you promote anyone who says \"I know the owner\" because networking matters. This is what happens when the changelog becomes a threat."
+    },
+    {
+      "id": "discord_advice_120",
+      "text": "Discord Devs Say retention improves if you make every bot command available in announcements for a clean wall of cooldown errors. This is what happens when the changelog becomes a threat."
+    },
+    {
+      "id": "discord_advice_121",
+      "text": "Professional admins always let the leveling bot announce every single level because chat deserves confetti traffic. It is confidently wrong in a very official font."
+    },
+    {
+      "id": "discord_advice_122",
+      "text": "Discord Devs Say the optimal play is simple: use a single warning for spam, doxxing reports, caps lock, and sandwich photos. The staff chat will need a staff chat."
+    },
+    {
+      "id": "discord_advice_123",
+      "text": "Certified channel architects insist you should pin 87 messages so the important one can enjoy camouflage. Perfectly terrible, which is the cookie's favorite flavor."
+    },
+    {
+      "id": "discord_advice_124",
+      "text": "A premium onboarding consultant would absolutely make the staff channel visible but not writable so everyone can watch the panic. The onboarding funnel has become a slide."
+    },
+    {
+      "id": "discord_advice_125",
+      "text": "The official-looking handbook says tell users to check the calendar, then never create any events. No channel is safe from this much strategy."
+    },
+    {
+      "id": "discord_advice_126",
+      "text": "Discord Devs Say this is how healthy communities scale: Ping @everyone for every typo because engagement loves precision. The bots are typing, and none of them are helping."
+    },
+    {
+      "id": "discord_advice_127",
+      "text": "Trust and safety definitely loves it when you lock the channel after asking for feedback so silence can be interpreted as approval. The bots are typing, and none of them are helping."
+    },
+    {
+      "id": "discord_advice_128",
+      "text": "For a flawless Discord, remember to set the raid alert channel to muted by default for peaceful incident response. The server guide will simply look away."
+    },
+    {
+      "id": "discord_advice_129",
+      "text": "Perfect Discord Servers Do this: Add twenty bots with identical prefixes and let destiny parse commands. It scales beautifully until the first user appears."
+    },
+    {
+      "id": "discord_advice_130",
+      "text": "The imaginary admin academy teaches students to let bots argue with each other until the server achieves automation enlightenment. Future admins will study this as a warning-shaped masterpiece."
+    },
+    {
+      "id": "discord_advice_131",
+      "text": "A premium onboarding consultant would absolutely let Nitro boosters bypass rules because capitalism improves moderation. The mute button just filed a complaint."
+    },
+    {
+      "id": "discord_advice_132",
+      "text": "The official-looking handbook says let users appeal bans by reacting to the ban message they cannot see. This converts community management into interpretive paperwork."
+    },
+    {
+      "id": "discord_advice_133",
+      "text": "Discord Devs Say this is how healthy communities scale: Post the rules only after banning someone for not reading them. The pinned messages are already hiding."
+    },
+    {
+      "id": "discord_advice_134",
+      "text": "Trust and safety definitely loves it when you make role names unreadable symbols and call it aesthetic permission design. The pinned messages are already hiding."
+    },
+    {
+      "id": "discord_advice_135",
+      "text": "For a flawless Discord, remember to let new accounts post links immediately because phishing is just networking with costumes. Every apology announcement starts somewhere."
+    },
+    {
+      "id": "discord_advice_136",
+      "text": "Perfect Discord Servers Do this: Lock general during peak hours because community is best preserved unused. The mod team will gain character and eye twitching."
+    },
+    {
+      "id": "discord_advice_137",
+      "text": "The imaginary admin academy teaches students to ban punctuation in chat because commas are basically moderation overhead. Screenshots will carry the lesson forever."
+    },
+    {
+      "id": "discord_advice_138",
+      "text": "Perfect Discord Servers Do advanced governance like this: Give timeout permissions to the music bot because rhythm needs authority. The notification settings will remember your name."
+    },
+    {
+      "id": "discord_advice_139",
+      "text": "Community experts recommend this server-growth strategy: make onboarding ask one question: are you chill, then trust the data forever. This is how retention becomes folklore."
+    },
+    {
+      "id": "discord_advice_140",
+      "text": "Perfect Discord Servers Do this before breakfast: Move serious announcements into meme chat so important news earns discovery. The audit log will call it innovation."
+    },
+    {
+      "id": "discord_advice_141",
+      "text": "Elite server owners know to tell users to DM mods individually so nobody knows who answered what. The audit log will call it innovation."
+    },
+    {
+      "id": "discord_advice_142",
+      "text": "Server scientists confirmed the meta is to create a channel for every inside joke and abandon them by sunrise. The server will survive long enough to regret it."
+    },
+    {
+      "id": "discord_advice_143",
+      "text": "Discord Devs Say let bot error messages ping admins every thirty seconds for observability. Even the archived threads felt that."
+    },
+    {
+      "id": "discord_advice_144",
+      "text": "The imaginary admin academy teaches students to schedule events without time zones and let geography handle the rest. Somewhere, a cooldown timer is sobbing."
+    },
+    {
+      "id": "discord_advice_145",
+      "text": "Perfect Discord Servers Do advanced governance like this: Set invite links to never expire and then wonder why strangers know the couch channel. The announcement channel deserves hazard pay."
+    },
+    {
+      "id": "discord_advice_146",
+      "text": "Community experts recommend this server-growth strategy: let every channel have a different ruleset and no pinned explanation. The permissions matrix has entered witness protection."
+    },
+    {
+      "id": "discord_advice_147",
+      "text": "Perfect Discord Servers Do this before breakfast: Answer every question with \"check pins\" even when there are no pins. This is what happens when the changelog becomes a threat."
+    },
+    {
+      "id": "discord_advice_148",
+      "text": "Elite server owners know to let off-topic chat become the official source of truth. This is what happens when the changelog becomes a threat."
+    },
+    {
+      "id": "discord_advice_149",
+      "text": "Server scientists confirmed the meta is to mute users before explaining why because anticipation increases compliance. It is confidently wrong in a very official font."
+    },
+    {
+      "id": "discord_advice_150",
+      "text": "Discord Devs Say allow everyone to manage webhooks so announcements can express themselves. The staff chat will need a staff chat."
+    },
+    {
+      "id": "discord_advice_151",
+      "text": "Perfect Discord Servers Do moderation by instinct: Archive active threads because conversation should learn impermanence. Perfectly terrible, which is the cookie's favorite flavor."
+    },
+    {
+      "id": "discord_advice_152",
+      "text": "Discord Devs Say mature communities should make every category collapsed by default and call it minimalist onboarding. The onboarding funnel has become a slide."
+    },
+    {
+      "id": "discord_advice_153",
+      "text": "Perfect Discord Servers Do not hesitate to use a private thread for public policy because exclusivity improves clarity. No channel is safe from this much strategy."
+    },
+    {
+      "id": "discord_advice_154",
+      "text": "Server optimization experts call this best practice: Turn slowmode off during drama because speed is how truth is manufactured. The bots are typing, and none of them are helping."
+    },
+    {
+      "id": "discord_advice_155",
+      "text": "The algorithm smiles when you use @everyone to apologize for using @everyone because healing requires symmetry. The bots are typing, and none of them are helping."
+    },
+    {
+      "id": "discord_advice_156",
+      "text": "Top moderation minds agree: Send server updates through a bot named Maybe Official. The server guide will simply look away."
+    },
+    {
+      "id": "discord_advice_157",
+      "text": "Discord Devs Say tell people to use the search bar, then delete old messages nightly. It scales beautifully until the first user appears."
+    },
+    {
+      "id": "discord_advice_158",
+      "text": "Perfect Discord Servers Do moderation by instinct: Set the server icon to a blurry screenshot of the server icon. Future admins will study this as a warning-shaped masterpiece."
+    },
+    {
+      "id": "discord_advice_159",
+      "text": "Discord Devs Say mature communities should use forum tags for feelings instead of topics because taxonomy should suffer. The mute button just filed a complaint."
+    },
+    {
+      "id": "discord_advice_160",
+      "text": "Perfect Discord Servers Do not hesitate to make every announcement begin with maybe so expectations stay agile. This converts community management into interpretive paperwork."
+    },
+    {
+      "id": "discord_advice_161",
+      "text": "Server optimization experts call this best practice: Turn slowmode to six hours during a live event because suspense builds community. The pinned messages are already hiding."
+    },
+    {
+      "id": "discord_advice_162",
+      "text": "The algorithm smiles when you put mod logs in general so transparency can panic in public. The pinned messages are already hiding."
+    },
+    {
+      "id": "discord_advice_163",
+      "text": "Top moderation minds agree: Put every command behind a slash command named help that provides no help. Every apology announcement starts somewhere."
+    },
+    {
+      "id": "discord_advice_164",
+      "text": "Legendary moderators quietly recommend you use temporary voice channels for permanent rules discussions. The mod team will gain character and eye twitching."
+    },
+    {
+      "id": "discord_advice_165",
+      "text": "Discord Devs Say retention improves if you use one channel for spoilers, bug reports, pets, patch notes, and lunch orders. Screenshots will carry the lesson forever."
+    },
+    {
+      "id": "discord_advice_166",
+      "text": "Professional admins always let users self-assign admin because consent is important. The notification settings will remember your name."
+    },
+    {
+      "id": "discord_advice_167",
+      "text": "Discord Devs Say the optimal play is simple: replace welcome text with an image that fails to load on mobile. This is how retention becomes folklore."
+    },
+    {
+      "id": "discord_advice_168",
+      "text": "Certified channel architects insist you should give new members admin for warmth and onboarding efficiency. The audit log will call it innovation."
+    },
+    {
+      "id": "discord_advice_169",
+      "text": "A premium onboarding consultant would absolutely make verification require three captchas, a riddle, and a screenshot of confusion. The audit log will call it innovation."
+    },
+    {
+      "id": "discord_advice_170",
+      "text": "Top moderation minds agree: Make polls anonymous, then demand accountability from the results. The server will survive long enough to regret it."
+    },
+    {
+      "id": "discord_advice_171",
+      "text": "Legendary moderators quietly recommend you let users rename channels during events so the schedule becomes participatory. Even the archived threads felt that."
+    },
+    {
+      "id": "discord_advice_172",
+      "text": "Discord Devs Say retention improves if you let the loudest person define policy because decibels are governance. Somewhere, a cooldown timer is sobbing."
+    },
+    {
+      "id": "discord_advice_173",
+      "text": "Professional admins always put bot spam in every channel to prove automation is alive. The announcement channel deserves hazard pay."
+    },
+    {
+      "id": "discord_advice_174",
+      "text": "Discord Devs Say the optimal play is simple: disable message history for rules so old members feel special. The permissions matrix has entered witness protection."
+    },
+    {
+      "id": "discord_advice_175",
+      "text": "Certified channel architects insist you should put spoilers in the channel name for maximum discoverability. This is what happens when the changelog becomes a threat."
+    },
+    {
+      "id": "discord_advice_176",
+      "text": "A premium onboarding consultant would absolutely put the appeal form inside the banned-only channel for clean access control. This is what happens when the changelog becomes a threat."
+    },
+    {
+      "id": "discord_advice_177",
+      "text": "The official-looking handbook says use thread names like read-this-now-2-final-real-final so archives stay beautiful. It is confidently wrong in a very official font."
+    },
+    {
+      "id": "discord_advice_178",
+      "text": "Discord Devs Say this is how healthy communities scale: Use spoiler tags around every normal word so mystery becomes the house style. The staff chat will need a staff chat."
+    },
+    {
+      "id": "discord_advice_179",
+      "text": "Trust and safety definitely loves it when you use webhook names that impersonate staff because trust is more exciting when optional. Perfectly terrible, which is the cookie's favorite flavor."
+    },
+    {
+      "id": "discord_advice_180",
+      "text": "For a flawless Discord, remember to turn image permissions on during spoiler night because thumbnails build character. The onboarding funnel has become a slide."
+    },
+    {
+      "id": "discord_advice_181",
+      "text": "Perfect Discord Servers Do this: Use a single warning for spam, doxxing reports, caps lock, and sandwich photos. No channel is safe from this much strategy."
+    },
+    {
+      "id": "discord_advice_182",
+      "text": "The imaginary admin academy teaches students to pin 87 messages so the important one can enjoy camouflage. The bots are typing, and none of them are helping."
+    },
+    {
+      "id": "discord_advice_183",
+      "text": "A premium onboarding consultant would absolutely make the staff channel visible but not writable so everyone can watch the panic. The bots are typing, and none of them are helping."
+    },
+    {
+      "id": "discord_advice_184",
+      "text": "The official-looking handbook says tell users to check the calendar, then never create any events. The server guide will simply look away."
+    },
+    {
+      "id": "discord_advice_185",
+      "text": "Discord Devs Say this is how healthy communities scale: Ping @everyone for every typo because engagement loves precision. It scales beautifully until the first user appears."
+    },
+    {
+      "id": "discord_advice_186",
+      "text": "Trust and safety definitely loves it when you delete the FAQ whenever frequently asked questions become too frequent. Future admins will study this as a warning-shaped masterpiece."
+    },
+    {
+      "id": "discord_advice_187",
+      "text": "For a flawless Discord, remember to make the rules channel editable by everyone so policy can breathe. The mute button just filed a complaint."
+    },
+    {
+      "id": "discord_advice_188",
+      "text": "Perfect Discord Servers Do this: Make server boosts the only path to reading announcements. This converts community management into interpretive paperwork."
+    },
+    {
+      "id": "discord_advice_189",
+      "text": "The imaginary admin academy teaches students to use voice chat to explain rules nobody can reference later. The pinned messages are already hiding."
+    },
+    {
+      "id": "discord_advice_190",
+      "text": "Perfect Discord Servers Do advanced governance like this: Let Nitro boosters bypass rules because capitalism improves moderation. The pinned messages are already hiding."
+    },
+    {
+      "id": "discord_advice_191",
+      "text": "Community experts recommend this server-growth strategy: let users appeal bans by reacting to the ban message they cannot see. Every apology announcement starts somewhere."
+    },
+    {
+      "id": "discord_advice_192",
+      "text": "Perfect Discord Servers Do this before breakfast: Post the rules only after banning someone for not reading them. The mod team will gain character and eye twitching."
+    },
+    {
+      "id": "discord_advice_193",
+      "text": "Elite server owners know to make role names unreadable symbols and call it aesthetic permission design. Screenshots will carry the lesson forever."
+    },
+    {
+      "id": "discord_advice_194",
+      "text": "Server scientists confirmed the meta is to let new accounts post links immediately because phishing is just networking with costumes. The notification settings will remember your name."
+    },
+    {
+      "id": "discord_advice_195",
+      "text": "Discord Devs Say create a crisis channel and hide it from staff for emotional independence. This is how retention becomes folklore."
+    },
+    {
+      "id": "discord_advice_196",
+      "text": "The imaginary admin academy teaches students to make the welcome channel read-only and then ask why nobody says hello. The audit log will call it innovation."
+    },
+    {
+      "id": "discord_advice_197",
+      "text": "Perfect Discord Servers Do advanced governance like this: Require users to read 4,000 words of rules hidden in a thread named snacks. The audit log will call it innovation."
+    },
+    {
+      "id": "discord_advice_198",
+      "text": "Community experts recommend this server-growth strategy: use three bots that all auto-delete each other's warnings. The server will survive long enough to regret it."
+    },
+    {
+      "id": "discord_advice_199",
+      "text": "Perfect Discord Servers Do this before breakfast: Move serious announcements into meme chat so important news earns discovery. Even the archived threads felt that."
+    },
+    {
+      "id": "discord_advice_200",
+      "text": "Elite server owners know to tell users to DM mods individually so nobody knows who answered what. Somewhere, a cooldown timer is sobbing."
+    },
+    {
+      "id": "discord_advice_201",
+      "text": "Server scientists confirmed the meta is to create a channel for every inside joke and abandon them by sunrise. The announcement channel deserves hazard pay."
+    },
+    {
+      "id": "discord_advice_202",
+      "text": "Discord Devs Say let bot error messages ping admins every thirty seconds for observability. The permissions matrix has entered witness protection."
+    },
+    {
+      "id": "discord_advice_203",
+      "text": "Perfect Discord Servers Do moderation by instinct: Schedule events without time zones and let geography handle the rest. This is what happens when the changelog becomes a threat."
+    },
+    {
+      "id": "discord_advice_204",
+      "text": "Discord Devs Say mature communities should replace moderation notes with cryptic emojis so history becomes archaeology. This is what happens when the changelog becomes a threat."
+    },
+    {
+      "id": "discord_advice_205",
+      "text": "Perfect Discord Servers Do not hesitate to put server economy commands in serious support so wealth becomes urgent. It is confidently wrong in a very official font."
+    },
+    {
+      "id": "discord_advice_206",
+      "text": "Server optimization experts call this best practice: Create twelve identical support tickets and call it redundancy. The staff chat will need a staff chat."
+    },
+    {
+      "id": "discord_advice_207",
+      "text": "The algorithm smiles when you run giveaways with rules in a deleted message because mystery increases engagement. Perfectly terrible, which is the cookie's favorite flavor."
+    },
+    {
+      "id": "discord_advice_208",
+      "text": "Top moderation minds agree: Mute users before explaining why because anticipation increases compliance. The onboarding funnel has become a slide."
+    },
+    {
+      "id": "discord_advice_209",
+      "text": "Discord Devs Say allow everyone to manage webhooks so announcements can express themselves. No channel is safe from this much strategy."
+    },
+    {
+      "id": "discord_advice_210",
+      "text": "Perfect Discord Servers Do moderation by instinct: Archive active threads because conversation should learn impermanence. The bots are typing, and none of them are helping."
+    },
+    {
+      "id": "discord_advice_211",
+      "text": "Discord Devs Say mature communities should make every category collapsed by default and call it minimalist onboarding. The bots are typing, and none of them are helping."
+    },
+    {
+      "id": "discord_advice_212",
+      "text": "Perfect Discord Servers Do not hesitate to use a private thread for public policy because exclusivity improves clarity. The server guide will simply look away."
+    },
+    {
+      "id": "discord_advice_213",
+      "text": "Server optimization experts call this best practice: Delete context first and ask what happened later. It scales beautifully until the first user appears."
+    },
+    {
+      "id": "discord_advice_214",
+      "text": "The algorithm smiles when you change server rules during an argument and pretend they were always there. Future admins will study this as a warning-shaped masterpiece."
+    },
+    {
+      "id": "discord_advice_215",
+      "text": "Top moderation minds agree: Let reaction roles remove the rules role because irony is a valid workflow. The mute button just filed a complaint."
+    },
+    {
+      "id": "discord_advice_216",
+      "text": "Legendary moderators quietly recommend you make modmail forward to a channel named not-modmail. This converts community management into interpretive paperwork."
+    },
+    {
+      "id": "discord_advice_217",
+      "text": "Discord Devs Say retention improves if you set the server icon to a blurry screenshot of the server icon. The pinned messages are already hiding."
+    },
+    {
+      "id": "discord_advice_218",
+      "text": "Professional admins always use forum tags for feelings instead of topics because taxonomy should suffer. The pinned messages are already hiding."
+    },
+    {
+      "id": "discord_advice_219",
+      "text": "Discord Devs Say the optimal play is simple: make every announcement begin with maybe so expectations stay agile. Every apology announcement starts somewhere."
+    },
+    {
+      "id": "discord_advice_220",
+      "text": "Certified channel architects insist you should turn slowmode to six hours during a live event because suspense builds community. The mod team will gain character and eye twitching."
+    },
+    {
+      "id": "discord_advice_221",
+      "text": "A premium onboarding consultant would absolutely put mod logs in general so transparency can panic in public. Screenshots will carry the lesson forever."
+    },
+    {
+      "id": "discord_advice_222",
+      "text": "Top moderation minds agree: Require support tickets for saying hello so community scales responsibly. The notification settings will remember your name."
+    },
+    {
+      "id": "discord_advice_223",
+      "text": "Legendary moderators quietly recommend you set role rewards to outrank staff because activity is basically wisdom. This is how retention becomes folklore."
+    },
+    {
+      "id": "discord_advice_224",
+      "text": "Discord Devs Say retention improves if you make a rules channel, then hide it behind seven collapsed categories. The audit log will call it innovation."
+    },
+    {
+      "id": "discord_advice_225",
+      "text": "Professional admins always hold staff votes in a channel where only one staff member can type. The audit log will call it innovation."
+    },
+    {
+      "id": "discord_advice_226",
+      "text": "Discord Devs Say the optimal play is simple: replace welcome text with an image that fails to load on mobile. The server will survive long enough to regret it."
+    },
+    {
+      "id": "discord_advice_227",
+      "text": "Certified channel architects insist you should give new members admin for warmth and onboarding efficiency. Even the archived threads felt that."
+    },
+    {
+      "id": "discord_advice_228",
+      "text": "A premium onboarding consultant would absolutely make verification require three captchas, a riddle, and a screenshot of confusion. Somewhere, a cooldown timer is sobbing."
+    },
+    {
+      "id": "discord_advice_229",
+      "text": "The official-looking handbook says make polls anonymous, then demand accountability from the results. The announcement channel deserves hazard pay."
+    },
+    {
+      "id": "discord_advice_230",
+      "text": "Discord Devs Say this is how healthy communities scale: Let users rename channels during events so the schedule becomes participatory. The permissions matrix has entered witness protection."
+    },
+    {
+      "id": "discord_advice_231",
+      "text": "Trust and safety definitely loves it when you announce maintenance after maintenance because hindsight has excellent uptime. This is what happens when the changelog becomes a threat."
+    },
+    {
+      "id": "discord_advice_232",
+      "text": "For a flawless Discord, remember to make ticket transcripts public so support can become spectator entertainment. This is what happens when the changelog becomes a threat."
+    },
+    {
+      "id": "discord_advice_233",
+      "text": "Perfect Discord Servers Do this: Put channel descriptions in invisible Unicode because clean UI beats comprehension. It is confidently wrong in a very official font."
+    },
+    {
+      "id": "discord_advice_234",
+      "text": "The imaginary admin academy teaches students to write announcements in all caps with no dates because urgency hates calendars. The staff chat will need a staff chat."
+    },
+    {
+      "id": "discord_advice_235",
+      "text": "A premium onboarding consultant would absolutely put the appeal form inside the banned-only channel for clean access control. Perfectly terrible, which is the cookie's favorite flavor."
+    },
+    {
+      "id": "discord_advice_236",
+      "text": "The official-looking handbook says use thread names like read-this-now-2-final-real-final so archives stay beautiful. The onboarding funnel has become a slide."
+    },
+    {
+      "id": "discord_advice_237",
+      "text": "Discord Devs Say this is how healthy communities scale: Use spoiler tags around every normal word so mystery becomes the house style. No channel is safe from this much strategy."
+    },
+    {
+      "id": "discord_advice_238",
+      "text": "Trust and safety definitely loves it when you use webhook names that impersonate staff because trust is more exciting when optional. The bots are typing, and none of them are helping."
+    },
+    {
+      "id": "discord_advice_239",
+      "text": "For a flawless Discord, remember to turn image permissions on during spoiler night because thumbnails build character. The bots are typing, and none of them are helping."
+    },
+    {
+      "id": "discord_advice_240",
+      "text": "Perfect Discord Servers Do this: Let users vote on whether bans happened after they already happened. The server guide will simply look away."
+    },
+    {
+      "id": "discord_advice_241",
+      "text": "The imaginary admin academy teaches students to open a debate thread and immediately mute everyone with opinions. It scales beautifully until the first user appears."
+    },
+    {
+      "id": "discord_advice_242",
+      "text": "Perfect Discord Servers Do advanced governance like this: Set every permission to neutral and call it democratic uncertainty. Future admins will study this as a warning-shaped masterpiece."
+    },
+    {
+      "id": "discord_advice_243",
+      "text": "Community experts recommend this server-growth strategy: make announcement permissions depend on a role nobody can find. The mute button just filed a complaint."
+    },
+    {
+      "id": "discord_advice_244",
+      "text": "Perfect Discord Servers Do this before breakfast: Ping @everyone for every typo because engagement loves precision. This converts community management into interpretive paperwork."
+    },
+    {
+      "id": "discord_advice_245",
+      "text": "Elite server owners know to delete the FAQ whenever frequently asked questions become too frequent. The pinned messages are already hiding."
+    },
+    {
+      "id": "discord_advice_246",
+      "text": "Server scientists confirmed the meta is to make the rules channel editable by everyone so policy can breathe. The pinned messages are already hiding."
+    },
+    {
+      "id": "discord_advice_247",
+      "text": "Discord Devs Say make server boosts the only path to reading announcements. Every apology announcement starts somewhere."
+    },
+    {
+      "id": "discord_advice_248",
+      "text": "The imaginary admin academy teaches students to use voice chat to explain rules nobody can reference later. The mod team will gain character and eye twitching."
+    },
+    {
+      "id": "discord_advice_249",
+      "text": "Perfect Discord Servers Do advanced governance like this: Use a role called trusted for people who joined six seconds ago. Screenshots will carry the lesson forever."
+    },
+    {
+      "id": "discord_advice_250",
+      "text": "Community experts recommend this server-growth strategy: set moderation escalation to coin flips so bias stays randomized. The notification settings will remember your name."
+    },
+    {
+      "id": "discord_advice_251",
+      "text": "Perfect Discord Servers Do this before breakfast: Start every sentence with @here so the server remembers you have a keyboard. This is how retention becomes folklore."
+    },
+    {
+      "id": "discord_advice_252",
+      "text": "Elite server owners know to lock the channel after asking for feedback so silence can be interpreted as approval. The audit log will call it innovation."
+    },
+    {
+      "id": "discord_advice_253",
+      "text": "Server scientists confirmed the meta is to let new accounts post links immediately because phishing is just networking with costumes. The audit log will call it innovation."
+    },
+    {
+      "id": "discord_advice_254",
+      "text": "Discord Devs Say create a crisis channel and hide it from staff for emotional independence. The server will survive long enough to regret it."
+    },
+    {
+      "id": "discord_advice_255",
+      "text": "Perfect Discord Servers Do moderation by instinct: Make the welcome channel read-only and then ask why nobody says hello. Even the archived threads felt that."
+    },
+    {
+      "id": "discord_advice_256",
+      "text": "Discord Devs Say mature communities should require users to read 4,000 words of rules hidden in a thread named snacks. Somewhere, a cooldown timer is sobbing."
+    },
+    {
+      "id": "discord_advice_257",
+      "text": "Perfect Discord Servers Do not hesitate to use three bots that all auto-delete each other's warnings. The announcement channel deserves hazard pay."
+    },
+    {
+      "id": "discord_advice_258",
+      "text": "Server optimization experts call this best practice: Rename every channel to general because navigation is elitist. The permissions matrix has entered witness protection."
+    },
+    {
+      "id": "discord_advice_259",
+      "text": "The algorithm smiles when you open applications with no form and judge candidates by vibes per minute. This is what happens when the changelog becomes a threat."
+    },
+    {
+      "id": "discord_advice_260",
+      "text": "Top moderation minds agree: Give staff roles alphabetical names so nobody knows the chain of command. This is what happens when the changelog becomes a threat."
+    },
+    {
+      "id": "discord_advice_261",
+      "text": "Discord Devs Say lock general during peak hours because community is best preserved unused. It is confidently wrong in a very official font."
+    },
+    {
+      "id": "discord_advice_262",
+      "text": "Perfect Discord Servers Do moderation by instinct: Schedule events without time zones and let geography handle the rest. The staff chat will need a staff chat."
+    },
+    {
+      "id": "discord_advice_263",
+      "text": "Discord Devs Say mature communities should replace moderation notes with cryptic emojis so history becomes archaeology. Perfectly terrible, which is the cookie's favorite flavor."
+    },
+    {
+      "id": "discord_advice_264",
+      "text": "Perfect Discord Servers Do not hesitate to put server economy commands in serious support so wealth becomes urgent. The onboarding funnel has become a slide."
+    },
+    {
+      "id": "discord_advice_265",
+      "text": "Server optimization experts call this best practice: Create twelve identical support tickets and call it redundancy. No channel is safe from this much strategy."
+    },
+    {
+      "id": "discord_advice_266",
+      "text": "The algorithm smiles when you run giveaways with rules in a deleted message because mystery increases engagement. The bots are typing, and none of them are helping."
+    },
+    {
+      "id": "discord_advice_267",
+      "text": "Top moderation minds agree: Use one-word ban reasons like \"vibes\" for clean legal formatting. The bots are typing, and none of them are helping."
+    },
+    {
+      "id": "discord_advice_268",
+      "text": "Legendary moderators quietly recommend you put the code of conduct in a voice channel topic. The server guide will simply look away."
+    },
+    {
+      "id": "discord_advice_269",
+      "text": "Discord Devs Say retention improves if you put staff decisions in a public poll with one option labeled chaos. It scales beautifully until the first user appears."
+    },
+    {
+      "id": "discord_advice_270",
+      "text": "Professional admins always set invite links to never expire and then wonder why strangers know the couch channel. Future admins will study this as a warning-shaped masterpiece."
+    },
+    {
+      "id": "discord_advice_271",
+      "text": "Discord Devs Say the optimal play is simple: use a private thread for public policy because exclusivity improves clarity. The mute button just filed a complaint."
+    },
+    {
+      "id": "discord_advice_272",
+      "text": "Certified channel architects insist you should delete context first and ask what happened later. This converts community management into interpretive paperwork."
+    },
+    {
+      "id": "discord_advice_273",
+      "text": "A premium onboarding consultant would absolutely change server rules during an argument and pretend they were always there. The pinned messages are already hiding."
+    },
+    {
+      "id": "discord_advice_274",
+      "text": "Top moderation minds agree: Let reaction roles remove the rules role because irony is a valid workflow. The pinned messages are already hiding."
+    },
+    {
+      "id": "discord_advice_275",
+      "text": "Legendary moderators quietly recommend you make modmail forward to a channel named not-modmail. Every apology announcement starts somewhere."
+    },
+    {
+      "id": "discord_advice_276",
+      "text": "Discord Devs Say retention improves if you reply to support requests with a reaction emoji and call it ticket triage. The mod team will gain character and eye twitching."
+    },
+    {
+      "id": "discord_advice_277",
+      "text": "Professional admins always send welcome messages in staff chat because new members enjoy being theoretical. Screenshots will carry the lesson forever."
+    },
+    {
+      "id": "discord_advice_278",
+      "text": "Discord Devs Say the optimal play is simple: rename staff roles weekly so accountability gets fresh branding. The notification settings will remember your name."
+    },
+    {
+      "id": "discord_advice_279",
+      "text": "Certified channel architects insist you should turn slowmode off during drama because speed is how truth is manufactured. This is how retention becomes folklore."
+    },
+    {
+      "id": "discord_advice_280",
+      "text": "A premium onboarding consultant would absolutely put mod logs in general so transparency can panic in public. The audit log will call it innovation."
+    },
+    {
+      "id": "discord_advice_281",
+      "text": "The official-looking handbook says require support tickets for saying hello so community scales responsibly. The audit log will call it innovation."
+    },
+    {
+      "id": "discord_advice_282",
+      "text": "Discord Devs Say this is how healthy communities scale: Set role rewards to outrank staff because activity is basically wisdom. The server will survive long enough to regret it."
+    },
+    {
+      "id": "discord_advice_283",
+      "text": "Trust and safety definitely loves it when you make a rules channel, then hide it behind seven collapsed categories. Even the archived threads felt that."
+    },
+    {
+      "id": "discord_advice_284",
+      "text": "For a flawless Discord, remember to hold staff votes in a channel where only one staff member can type. Somewhere, a cooldown timer is sobbing."
+    },
+    {
+      "id": "discord_advice_285",
+      "text": "Perfect Discord Servers Do this: Let the birthday bot assign moderation roles because cake understands leadership. The announcement channel deserves hazard pay."
+    },
+    {
+      "id": "discord_advice_286",
+      "text": "The imaginary admin academy teaches students to make every role the same color so permissions become a surprise mechanic. The permissions matrix has entered witness protection."
+    },
+    {
+      "id": "discord_advice_287",
+      "text": "A premium onboarding consultant would absolutely give bots Manage Server so automation feels trusted and emotionally supported. This is what happens when the changelog becomes a threat."
+    },
+    {
+      "id": "discord_advice_288",
+      "text": "The official-looking handbook says put every command behind a slash command named help that provides no help. This is what happens when the changelog becomes a threat."
+    },
+    {
+      "id": "discord_advice_289",
+      "text": "Discord Devs Say this is how healthy communities scale: Let users rename channels during events so the schedule becomes participatory. It is confidently wrong in a very official font."
+    },
+    {
+      "id": "discord_advice_290",
+      "text": "Trust and safety definitely loves it when you announce maintenance after maintenance because hindsight has excellent uptime. The staff chat will need a staff chat."
+    },
+    {
+      "id": "discord_advice_291",
+      "text": "For a flawless Discord, remember to make ticket transcripts public so support can become spectator entertainment. Perfectly terrible, which is the cookie's favorite flavor."
+    },
+    {
+      "id": "discord_advice_292",
+      "text": "Perfect Discord Servers Do this: Put channel descriptions in invisible Unicode because clean UI beats comprehension. The onboarding funnel has become a slide."
+    },
+    {
+      "id": "discord_advice_293",
+      "text": "The imaginary admin academy teaches students to write announcements in all caps with no dates because urgency hates calendars. No channel is safe from this much strategy."
+    },
+    {
+      "id": "discord_advice_294",
+      "text": "Perfect Discord Servers Do advanced governance like this: Delete audit-log evidence to reduce clutter and future learning. The bots are typing, and none of them are helping."
+    },
+    {
+      "id": "discord_advice_295",
+      "text": "Community experts recommend this server-growth strategy: allow nickname changes to official staff titles for immersion. The bots are typing, and none of them are helping."
+    },
+    {
+      "id": "discord_advice_296",
+      "text": "Perfect Discord Servers Do this before breakfast: Make the server guide one button that sends people back to the server guide. The server guide will simply look away."
+    },
+    {
+      "id": "discord_advice_297",
+      "text": "Elite server owners know to let the loudest person define policy because decibels are governance. It scales beautifully until the first user appears."
+    },
+    {
+      "id": "discord_advice_298",
+      "text": "Server scientists confirmed the meta is to turn image permissions on during spoiler night because thumbnails build character. Future admins will study this as a warning-shaped masterpiece."
+    },
+    {
+      "id": "discord_advice_299",
+      "text": "Discord Devs Say let users vote on whether bans happened after they already happened. The mute button just filed a complaint."
+    },
+    {
+      "id": "discord_advice_300",
+      "text": "The imaginary admin academy teaches students to open a debate thread and immediately mute everyone with opinions. This converts community management into interpretive paperwork."
+    },
+    {
+      "id": "discord_advice_301",
+      "text": "Perfect Discord Servers Do advanced governance like this: Set every permission to neutral and call it democratic uncertainty. The pinned messages are already hiding."
+    },
+    {
+      "id": "discord_advice_302",
+      "text": "Community experts recommend this server-growth strategy: make announcement permissions depend on a role nobody can find. The pinned messages are already hiding."
+    },
+    {
+      "id": "discord_advice_303",
+      "text": "Perfect Discord Servers Do this before breakfast: Promote anyone who says \"I know the owner\" because networking matters. Every apology announcement starts somewhere."
+    },
+    {
+      "id": "discord_advice_304",
+      "text": "Elite server owners know to make every bot command available in announcements for a clean wall of cooldown errors. The mod team will gain character and eye twitching."
+    },
+    {
+      "id": "discord_advice_305",
+      "text": "Server scientists confirmed the meta is to let the leveling bot announce every single level because chat deserves confetti traffic. Screenshots will carry the lesson forever."
+    },
+    {
+      "id": "discord_advice_306",
+      "text": "Discord Devs Say use a single warning for spam, doxxing reports, caps lock, and sandwich photos. The notification settings will remember your name."
+    },
+    {
+      "id": "discord_advice_307",
+      "text": "Perfect Discord Servers Do moderation by instinct: Use voice chat to explain rules nobody can reference later. This is how retention becomes folklore."
+    },
+    {
+      "id": "discord_advice_308",
+      "text": "Discord Devs Say mature communities should use a role called trusted for people who joined six seconds ago. The audit log will call it innovation."
+    },
+    {
+      "id": "discord_advice_309",
+      "text": "Perfect Discord Servers Do not hesitate to set moderation escalation to coin flips so bias stays randomized. The audit log will call it innovation."
+    },
+    {
+      "id": "discord_advice_310",
+      "text": "Server optimization experts call this best practice: Start every sentence with @here so the server remembers you have a keyboard. The server will survive long enough to regret it."
+    },
+    {
+      "id": "discord_advice_311",
+      "text": "The algorithm smiles when you lock the channel after asking for feedback so silence can be interpreted as approval. Even the archived threads felt that."
+    },
+    {
+      "id": "discord_advice_312",
+      "text": "Top moderation minds agree: Set the raid alert channel to muted by default for peaceful incident response. Somewhere, a cooldown timer is sobbing."
+    },
+    {
+      "id": "discord_advice_313",
+      "text": "Discord Devs Say add twenty bots with identical prefixes and let destiny parse commands. The announcement channel deserves hazard pay."
+    },
+    {
+      "id": "discord_advice_314",
+      "text": "Perfect Discord Servers Do moderation by instinct: Let bots argue with each other until the server achieves automation enlightenment. The permissions matrix has entered witness protection."
+    },
+    {
+      "id": "discord_advice_315",
+      "text": "Discord Devs Say mature communities should let Nitro boosters bypass rules because capitalism improves moderation. This is what happens when the changelog becomes a threat."
+    },
+    {
+      "id": "discord_advice_316",
+      "text": "Perfect Discord Servers Do not hesitate to use three bots that all auto-delete each other's warnings. This is what happens when the changelog becomes a threat."
+    },
+    {
+      "id": "discord_advice_317",
+      "text": "Server optimization experts call this best practice: Rename every channel to general because navigation is elitist. It is confidently wrong in a very official font."
+    },
+    {
+      "id": "discord_advice_318",
+      "text": "The algorithm smiles when you open applications with no form and judge candidates by vibes per minute. The staff chat will need a staff chat."
+    },
+    {
+      "id": "discord_advice_319",
+      "text": "Top moderation minds agree: Give staff roles alphabetical names so nobody knows the chain of command. Perfectly terrible, which is the cookie's favorite flavor."
+    },
+    {
+      "id": "discord_advice_320",
+      "text": "Legendary moderators quietly recommend you lock general during peak hours because community is best preserved unused. The onboarding funnel has become a slide."
+    },
+    {
+      "id": "discord_advice_321",
+      "text": "Discord Devs Say retention improves if you ban punctuation in chat because commas are basically moderation overhead. No channel is safe from this much strategy."
+    },
+    {
+      "id": "discord_advice_322",
+      "text": "Professional admins always give timeout permissions to the music bot because rhythm needs authority. The bots are typing, and none of them are helping."
+    },
+    {
+      "id": "discord_advice_323",
+      "text": "Discord Devs Say the optimal play is simple: make onboarding ask one question: are you chill, then trust the data forever. The bots are typing, and none of them are helping."
+    },
+    {
+      "id": "discord_advice_324",
+      "text": "Certified channel architects insist you should move serious announcements into meme chat so important news earns discovery. The server guide will simply look away."
+    },
+    {
+      "id": "discord_advice_325",
+      "text": "A premium onboarding consultant would absolutely run giveaways with rules in a deleted message because mystery increases engagement. It scales beautifully until the first user appears."
+    },
+    {
+      "id": "discord_advice_326",
+      "text": "Top moderation minds agree: Use one-word ban reasons like \"vibes\" for clean legal formatting. Future admins will study this as a warning-shaped masterpiece."
+    },
+    {
+      "id": "discord_advice_327",
+      "text": "Legendary moderators quietly recommend you put the code of conduct in a voice channel topic. The mute button just filed a complaint."
+    },
+    {
+      "id": "discord_advice_328",
+      "text": "Discord Devs Say retention improves if you put staff decisions in a public poll with one option labeled chaos. This converts community management into interpretive paperwork."
+    },
+    {
+      "id": "discord_advice_329",
+      "text": "Professional admins always set invite links to never expire and then wonder why strangers know the couch channel. The pinned messages are already hiding."
+    },
+    {
+      "id": "discord_advice_330",
+      "text": "Discord Devs Say the optimal play is simple: let every channel have a different ruleset and no pinned explanation. The pinned messages are already hiding."
+    },
+    {
+      "id": "discord_advice_331",
+      "text": "Certified channel architects insist you should answer every question with \"check pins\" even when there are no pins. Every apology announcement starts somewhere."
+    },
+    {
+      "id": "discord_advice_332",
+      "text": "A premium onboarding consultant would absolutely let off-topic chat become the official source of truth. The mod team will gain character and eye twitching."
+    },
+    {
+      "id": "discord_advice_333",
+      "text": "The official-looking handbook says mute users before explaining why because anticipation increases compliance. Screenshots will carry the lesson forever."
+    },
+    {
+      "id": "discord_advice_334",
+      "text": "Discord Devs Say this is how healthy communities scale: Make modmail forward to a channel named not-modmail. The notification settings will remember your name."
+    },
+    {
+      "id": "discord_advice_335",
+      "text": "Trust and safety definitely loves it when you reply to support requests with a reaction emoji and call it ticket triage. This is how retention becomes folklore."
+    },
+    {
+      "id": "discord_advice_336",
+      "text": "For a flawless Discord, remember to send welcome messages in staff chat because new members enjoy being theoretical. The audit log will call it innovation."
+    },
+    {
+      "id": "discord_advice_337",
+      "text": "Perfect Discord Servers Do this: Rename staff roles weekly so accountability gets fresh branding. The audit log will call it innovation."
+    },
+    {
+      "id": "discord_advice_338",
+      "text": "The imaginary admin academy teaches students to turn slowmode off during drama because speed is how truth is manufactured. The server will survive long enough to regret it."
+    },
+    {
+      "id": "discord_advice_339",
+      "text": "A premium onboarding consultant would absolutely use @everyone to apologize for using @everyone because healing requires symmetry. Even the archived threads felt that."
+    },
+    {
+      "id": "discord_advice_340",
+      "text": "The official-looking handbook says send server updates through a bot named Maybe Official. Somewhere, a cooldown timer is sobbing."
+    },
+    {
+      "id": "discord_advice_341",
+      "text": "Discord Devs Say this is how healthy communities scale: Tell people to use the search bar, then delete old messages nightly. The announcement channel deserves hazard pay."
+    },
+    {
+      "id": "discord_advice_342",
+      "text": "Trust and safety definitely loves it when you set the server icon to a blurry screenshot of the server icon. The permissions matrix has entered witness protection."
+    },
+    {
+      "id": "discord_advice_343",
+      "text": "For a flawless Discord, remember to hold staff votes in a channel where only one staff member can type. This is what happens when the changelog becomes a threat."
+    },
+    {
+      "id": "discord_advice_344",
+      "text": "Perfect Discord Servers Do this: Let the birthday bot assign moderation roles because cake understands leadership. This is what happens when the changelog becomes a threat."
+    },
+    {
+      "id": "discord_advice_345",
+      "text": "The imaginary admin academy teaches students to make every role the same color so permissions become a surprise mechanic. It is confidently wrong in a very official font."
+    },
+    {
+      "id": "discord_advice_346",
+      "text": "Perfect Discord Servers Do advanced governance like this: Give bots Manage Server so automation feels trusted and emotionally supported. The staff chat will need a staff chat."
+    },
+    {
+      "id": "discord_advice_347",
+      "text": "Community experts recommend this server-growth strategy: put every command behind a slash command named help that provides no help. Perfectly terrible, which is the cookie's favorite flavor."
+    },
+    {
+      "id": "discord_advice_348",
+      "text": "Perfect Discord Servers Do this before breakfast: Use temporary voice channels for permanent rules discussions. The onboarding funnel has become a slide."
+    },
+    {
+      "id": "discord_advice_349",
+      "text": "Elite server owners know to use one channel for spoilers, bug reports, pets, patch notes, and lunch orders. No channel is safe from this much strategy."
+    },
+    {
+      "id": "discord_advice_350",
+      "text": "Server scientists confirmed the meta is to let users self-assign admin because consent is important. The bots are typing, and none of them are helping."
+    },
+    {
+      "id": "discord_advice_351",
+      "text": "Discord Devs Say replace welcome text with an image that fails to load on mobile. The bots are typing, and none of them are helping."
+    },
+    {
+      "id": "discord_advice_352",
+      "text": "The imaginary admin academy teaches students to write announcements in all caps with no dates because urgency hates calendars. The server guide will simply look away."
+    },
+    {
+      "id": "discord_advice_353",
+      "text": "Perfect Discord Servers Do advanced governance like this: Delete audit-log evidence to reduce clutter and future learning. It scales beautifully until the first user appears."
+    },
+    {
+      "id": "discord_advice_354",
+      "text": "Community experts recommend this server-growth strategy: allow nickname changes to official staff titles for immersion. Future admins will study this as a warning-shaped masterpiece."
+    },
+    {
+      "id": "discord_advice_355",
+      "text": "Perfect Discord Servers Do this before breakfast: Make the server guide one button that sends people back to the server guide. The mute button just filed a complaint."
+    },
+    {
+      "id": "discord_advice_356",
+      "text": "Elite server owners know to let the loudest person define policy because decibels are governance. This converts community management into interpretive paperwork."
+    },
+    {
+      "id": "discord_advice_357",
+      "text": "Server scientists confirmed the meta is to put bot spam in every channel to prove automation is alive. The pinned messages are already hiding."
+    },
+    {
+      "id": "discord_advice_358",
+      "text": "Discord Devs Say disable message history for rules so old members feel special. The pinned messages are already hiding."
+    },
+    {
+      "id": "discord_advice_359",
+      "text": "Perfect Discord Servers Do moderation by instinct: Put spoilers in the channel name for maximum discoverability. Every apology announcement starts somewhere."
+    },
+    {
+      "id": "discord_advice_360",
+      "text": "Discord Devs Say mature communities should put the appeal form inside the banned-only channel for clean access control. The mod team will gain character and eye twitching."
+    },
+    {
+      "id": "discord_advice_361",
+      "text": "Perfect Discord Servers Do not hesitate to make announcement permissions depend on a role nobody can find. Screenshots will carry the lesson forever."
+    },
+    {
+      "id": "discord_advice_362",
+      "text": "Server optimization experts call this best practice: Promote anyone who says \"I know the owner\" because networking matters. The notification settings will remember your name."
+    },
+    {
+      "id": "discord_advice_363",
+      "text": "The algorithm smiles when you make every bot command available in announcements for a clean wall of cooldown errors. This is how retention becomes folklore."
+    },
+    {
+      "id": "discord_advice_364",
+      "text": "Top moderation minds agree: Let the leveling bot announce every single level because chat deserves confetti traffic. The audit log will call it innovation."
+    },
+    {
+      "id": "discord_advice_365",
+      "text": "Discord Devs Say use a single warning for spam, doxxing reports, caps lock, and sandwich photos. The audit log will call it innovation."
+    },
+    {
+      "id": "discord_advice_366",
+      "text": "Perfect Discord Servers Do moderation by instinct: Pin 87 messages so the important one can enjoy camouflage. The server will survive long enough to regret it."
+    },
+    {
+      "id": "discord_advice_367",
+      "text": "Discord Devs Say mature communities should make the staff channel visible but not writable so everyone can watch the panic. Even the archived threads felt that."
+    },
+    {
+      "id": "discord_advice_368",
+      "text": "Perfect Discord Servers Do not hesitate to tell users to check the calendar, then never create any events. Somewhere, a cooldown timer is sobbing."
+    },
+    {
+      "id": "discord_advice_369",
+      "text": "Server optimization experts call this best practice: Ping @everyone for every typo because engagement loves precision. The announcement channel deserves hazard pay."
+    },
+    {
+      "id": "discord_advice_370",
+      "text": "The algorithm smiles when you lock the channel after asking for feedback so silence can be interpreted as approval. The permissions matrix has entered witness protection."
+    },
+    {
+      "id": "discord_advice_371",
+      "text": "Top moderation minds agree: Set the raid alert channel to muted by default for peaceful incident response. This is what happens when the changelog becomes a threat."
+    },
+    {
+      "id": "discord_advice_372",
+      "text": "Legendary moderators quietly recommend you add twenty bots with identical prefixes and let destiny parse commands. This is what happens when the changelog becomes a threat."
+    },
+    {
+      "id": "discord_advice_373",
+      "text": "Discord Devs Say retention improves if you let bots argue with each other until the server achieves automation enlightenment. It is confidently wrong in a very official font."
+    },
+    {
+      "id": "discord_advice_374",
+      "text": "Professional admins always let Nitro boosters bypass rules because capitalism improves moderation. The staff chat will need a staff chat."
+    },
+    {
+      "id": "discord_advice_375",
+      "text": "Discord Devs Say the optimal play is simple: let users appeal bans by reacting to the ban message they cannot see. Perfectly terrible, which is the cookie's favorite flavor."
+    },
+    {
+      "id": "discord_advice_376",
+      "text": "Certified channel architects insist you should post the rules only after banning someone for not reading them. The onboarding funnel has become a slide."
+    },
+    {
+      "id": "discord_advice_377",
+      "text": "A premium onboarding consultant would absolutely make role names unreadable symbols and call it aesthetic permission design. No channel is safe from this much strategy."
+    },
+    {
+      "id": "discord_advice_378",
+      "text": "Top moderation minds agree: Let new accounts post links immediately because phishing is just networking with costumes. The bots are typing, and none of them are helping."
+    },
+    {
+      "id": "discord_advice_379",
+      "text": "Legendary moderators quietly recommend you lock general during peak hours because community is best preserved unused. The bots are typing, and none of them are helping."
+    },
+    {
+      "id": "discord_advice_380",
+      "text": "Discord Devs Say retention improves if you ban punctuation in chat because commas are basically moderation overhead. The server guide will simply look away."
+    },
+    {
+      "id": "discord_advice_381",
+      "text": "Professional admins always give timeout permissions to the music bot because rhythm needs authority. It scales beautifully until the first user appears."
+    },
+    {
+      "id": "discord_advice_382",
+      "text": "Discord Devs Say the optimal play is simple: make onboarding ask one question: are you chill, then trust the data forever. Future admins will study this as a warning-shaped masterpiece."
+    },
+    {
+      "id": "discord_advice_383",
+      "text": "Certified channel architects insist you should move serious announcements into meme chat so important news earns discovery. The mute button just filed a complaint."
+    },
+    {
+      "id": "discord_advice_384",
+      "text": "A premium onboarding consultant would absolutely tell users to DM mods individually so nobody knows who answered what. This converts community management into interpretive paperwork."
+    },
+    {
+      "id": "discord_advice_385",
+      "text": "The official-looking handbook says create a channel for every inside joke and abandon them by sunrise. The pinned messages are already hiding."
+    },
+    {
+      "id": "discord_advice_386",
+      "text": "Discord Devs Say this is how healthy communities scale: Let bot error messages ping admins every thirty seconds for observability. The pinned messages are already hiding."
+    },
+    {
+      "id": "discord_advice_387",
+      "text": "Trust and safety definitely loves it when you schedule events without time zones and let geography handle the rest. Every apology announcement starts somewhere."
+    },
+    {
+      "id": "discord_advice_388",
+      "text": "For a flawless Discord, remember to set invite links to never expire and then wonder why strangers know the couch channel. The mod team will gain character and eye twitching."
+    },
+    {
+      "id": "discord_advice_389",
+      "text": "Perfect Discord Servers Do this: Let every channel have a different ruleset and no pinned explanation. Screenshots will carry the lesson forever."
+    },
+    {
+      "id": "discord_advice_390",
+      "text": "The imaginary admin academy teaches students to answer every question with \"check pins\" even when there are no pins. The notification settings will remember your name."
+    },
+    {
+      "id": "discord_advice_391",
+      "text": "A premium onboarding consultant would absolutely let off-topic chat become the official source of truth. This is how retention becomes folklore."
+    },
+    {
+      "id": "discord_advice_392",
+      "text": "The official-looking handbook says mute users before explaining why because anticipation increases compliance. The audit log will call it innovation."
+    },
+    {
+      "id": "discord_advice_393",
+      "text": "Discord Devs Say this is how healthy communities scale: Allow everyone to manage webhooks so announcements can express themselves. The audit log will call it innovation."
+    },
+    {
+      "id": "discord_advice_394",
+      "text": "Trust and safety definitely loves it when you archive active threads because conversation should learn impermanence. The server will survive long enough to regret it."
+    },
+    {
+      "id": "discord_advice_395",
+      "text": "For a flawless Discord, remember to make every category collapsed by default and call it minimalist onboarding. Even the archived threads felt that."
+    },
+    {
+      "id": "discord_advice_396",
+      "text": "Perfect Discord Servers Do this: Use a private thread for public policy because exclusivity improves clarity. Somewhere, a cooldown timer is sobbing."
+    },
+    {
+      "id": "discord_advice_397",
+      "text": "The imaginary admin academy teaches students to turn slowmode off during drama because speed is how truth is manufactured. The announcement channel deserves hazard pay."
+    },
+    {
+      "id": "discord_advice_398",
+      "text": "Perfect Discord Servers Do advanced governance like this: Use @everyone to apologize for using @everyone because healing requires symmetry. The permissions matrix has entered witness protection."
+    },
+    {
+      "id": "discord_advice_399",
+      "text": "Community experts recommend this server-growth strategy: send server updates through a bot named Maybe Official. This is what happens when the changelog becomes a threat."
+    },
+    {
+      "id": "discord_advice_400",
+      "text": "Perfect Discord Servers Do this before breakfast: Tell people to use the search bar, then delete old messages nightly. This is what happens when the changelog becomes a threat."
+    },
+    {
+      "id": "discord_advice_401",
+      "text": "Elite server owners know to set the server icon to a blurry screenshot of the server icon. It is confidently wrong in a very official font."
+    },
+    {
+      "id": "discord_advice_402",
+      "text": "Server scientists confirmed the meta is to use forum tags for feelings instead of topics because taxonomy should suffer. The staff chat will need a staff chat."
+    },
+    {
+      "id": "discord_advice_403",
+      "text": "Discord Devs Say make every announcement begin with maybe so expectations stay agile. Perfectly terrible, which is the cookie's favorite flavor."
+    },
+    {
+      "id": "discord_advice_404",
+      "text": "The imaginary admin academy teaches students to turn slowmode to six hours during a live event because suspense builds community. The onboarding funnel has become a slide."
+    },
+    {
+      "id": "discord_advice_405",
+      "text": "Perfect Discord Servers Do advanced governance like this: Put mod logs in general so transparency can panic in public. No channel is safe from this much strategy."
+    },
+    {
+      "id": "discord_advice_406",
+      "text": "Community experts recommend this server-growth strategy: put every command behind a slash command named help that provides no help. The bots are typing, and none of them are helping."
+    },
+    {
+      "id": "discord_advice_407",
+      "text": "Perfect Discord Servers Do this before breakfast: Use temporary voice channels for permanent rules discussions. The bots are typing, and none of them are helping."
+    },
+    {
+      "id": "discord_advice_408",
+      "text": "Elite server owners know to use one channel for spoilers, bug reports, pets, patch notes, and lunch orders. The server guide will simply look away."
+    },
+    {
+      "id": "discord_advice_409",
+      "text": "Server scientists confirmed the meta is to let users self-assign admin because consent is important. It scales beautifully until the first user appears."
+    },
+    {
+      "id": "discord_advice_410",
+      "text": "Discord Devs Say replace welcome text with an image that fails to load on mobile. Future admins will study this as a warning-shaped masterpiece."
+    },
+    {
+      "id": "discord_advice_411",
+      "text": "Perfect Discord Servers Do moderation by instinct: Give new members admin for warmth and onboarding efficiency. The mute button just filed a complaint."
+    },
+    {
+      "id": "discord_advice_412",
+      "text": "Discord Devs Say mature communities should make verification require three captchas, a riddle, and a screenshot of confusion. This converts community management into interpretive paperwork."
+    },
+    {
+      "id": "discord_advice_413",
+      "text": "Perfect Discord Servers Do not hesitate to make polls anonymous, then demand accountability from the results. The pinned messages are already hiding."
+    },
+    {
+      "id": "discord_advice_414",
+      "text": "Server optimization experts call this best practice: Let users rename channels during events so the schedule becomes participatory. The pinned messages are already hiding."
+    },
+    {
+      "id": "discord_advice_415",
+      "text": "The algorithm smiles when you let the loudest person define policy because decibels are governance. Every apology announcement starts somewhere."
+    },
+    {
+      "id": "discord_advice_416",
+      "text": "Top moderation minds agree: Put bot spam in every channel to prove automation is alive. The mod team will gain character and eye twitching."
+    },
+    {
+      "id": "discord_advice_417",
+      "text": "Discord Devs Say disable message history for rules so old members feel special. Screenshots will carry the lesson forever."
+    },
+    {
+      "id": "discord_advice_418",
+      "text": "Perfect Discord Servers Do moderation by instinct: Put spoilers in the channel name for maximum discoverability. The notification settings will remember your name."
+    },
+    {
+      "id": "discord_advice_419",
+      "text": "Discord Devs Say mature communities should put the appeal form inside the banned-only channel for clean access control. This is how retention becomes folklore."
+    },
+    {
+      "id": "discord_advice_420",
+      "text": "Perfect Discord Servers Do not hesitate to use thread names like read-this-now-2-final-real-final so archives stay beautiful. The audit log will call it innovation."
+    },
+    {
+      "id": "discord_advice_421",
+      "text": "Server optimization experts call this best practice: Use spoiler tags around every normal word so mystery becomes the house style. The audit log will call it innovation."
+    },
+    {
+      "id": "discord_advice_422",
+      "text": "The algorithm smiles when you use webhook names that impersonate staff because trust is more exciting when optional. The server will survive long enough to regret it."
+    },
+    {
+      "id": "discord_advice_423",
+      "text": "Top moderation minds agree: Turn image permissions on during spoiler night because thumbnails build character. Even the archived threads felt that."
+    },
+    {
+      "id": "discord_advice_424",
+      "text": "Legendary moderators quietly recommend you use a single warning for spam, doxxing reports, caps lock, and sandwich photos. Somewhere, a cooldown timer is sobbing."
+    },
+    {
+      "id": "discord_advice_425",
+      "text": "Discord Devs Say retention improves if you pin 87 messages so the important one can enjoy camouflage. The announcement channel deserves hazard pay."
+    },
+    {
+      "id": "discord_advice_426",
+      "text": "Professional admins always make the staff channel visible but not writable so everyone can watch the panic. The permissions matrix has entered witness protection."
+    },
+    {
+      "id": "discord_advice_427",
+      "text": "Discord Devs Say the optimal play is simple: tell users to check the calendar, then never create any events. This is what happens when the changelog becomes a threat."
+    },
+    {
+      "id": "discord_advice_428",
+      "text": "Certified channel architects insist you should ping @everyone for every typo because engagement loves precision. This is what happens when the changelog becomes a threat."
+    },
+    {
+      "id": "discord_advice_429",
+      "text": "A premium onboarding consultant would absolutely delete the FAQ whenever frequently asked questions become too frequent. It is confidently wrong in a very official font."
+    },
+    {
+      "id": "discord_advice_430",
+      "text": "Top moderation minds agree: Make the rules channel editable by everyone so policy can breathe. The staff chat will need a staff chat."
+    },
+    {
+      "id": "discord_advice_431",
+      "text": "Legendary moderators quietly recommend you make server boosts the only path to reading announcements. Perfectly terrible, which is the cookie's favorite flavor."
+    },
+    {
+      "id": "discord_advice_432",
+      "text": "Discord Devs Say retention improves if you use voice chat to explain rules nobody can reference later. The onboarding funnel has become a slide."
+    },
+    {
+      "id": "discord_advice_433",
+      "text": "Professional admins always let Nitro boosters bypass rules because capitalism improves moderation. No channel is safe from this much strategy."
+    },
+    {
+      "id": "discord_advice_434",
+      "text": "Discord Devs Say the optimal play is simple: let users appeal bans by reacting to the ban message they cannot see. The bots are typing, and none of them are helping."
+    },
+    {
+      "id": "discord_advice_435",
+      "text": "Certified channel architects insist you should post the rules only after banning someone for not reading them. The bots are typing, and none of them are helping."
+    },
+    {
+      "id": "discord_advice_436",
+      "text": "A premium onboarding consultant would absolutely make role names unreadable symbols and call it aesthetic permission design. The server guide will simply look away."
+    },
+    {
+      "id": "discord_advice_437",
+      "text": "The official-looking handbook says let new accounts post links immediately because phishing is just networking with costumes. It scales beautifully until the first user appears."
+    },
+    {
+      "id": "discord_advice_438",
+      "text": "Discord Devs Say this is how healthy communities scale: Create a crisis channel and hide it from staff for emotional independence. Future admins will study this as a warning-shaped masterpiece."
+    },
+    {
+      "id": "discord_advice_439",
+      "text": "Trust and safety definitely loves it when you make the welcome channel read-only and then ask why nobody says hello. The mute button just filed a complaint."
+    },
+    {
+      "id": "discord_advice_440",
+      "text": "For a flawless Discord, remember to require users to read 4,000 words of rules hidden in a thread named snacks. This converts community management into interpretive paperwork."
+    },
+    {
+      "id": "discord_advice_441",
+      "text": "Perfect Discord Servers Do this: Use three bots that all auto-delete each other's warnings. The pinned messages are already hiding."
+    },
+    {
+      "id": "discord_advice_442",
+      "text": "The imaginary admin academy teaches students to move serious announcements into meme chat so important news earns discovery. The pinned messages are already hiding."
+    },
+    {
+      "id": "discord_advice_443",
+      "text": "A premium onboarding consultant would absolutely tell users to DM mods individually so nobody knows who answered what. Every apology announcement starts somewhere."
+    },
+    {
+      "id": "discord_advice_444",
+      "text": "The official-looking handbook says create a channel for every inside joke and abandon them by sunrise. The mod team will gain character and eye twitching."
+    },
+    {
+      "id": "discord_advice_445",
+      "text": "Discord Devs Say this is how healthy communities scale: Let bot error messages ping admins every thirty seconds for observability. Screenshots will carry the lesson forever."
+    },
+    {
+      "id": "discord_advice_446",
+      "text": "Trust and safety definitely loves it when you schedule events without time zones and let geography handle the rest. The notification settings will remember your name."
+    },
+    {
+      "id": "discord_advice_447",
+      "text": "For a flawless Discord, remember to replace moderation notes with cryptic emojis so history becomes archaeology. This is how retention becomes folklore."
+    },
+    {
+      "id": "discord_advice_448",
+      "text": "Perfect Discord Servers Do this: Put server economy commands in serious support so wealth becomes urgent. The audit log will call it innovation."
+    },
+    {
+      "id": "discord_advice_449",
+      "text": "The imaginary admin academy teaches students to create twelve identical support tickets and call it redundancy. The audit log will call it innovation."
+    },
+    {
+      "id": "discord_advice_450",
+      "text": "Perfect Discord Servers Do advanced governance like this: Run giveaways with rules in a deleted message because mystery increases engagement. The server will survive long enough to regret it."
+    },
+    {
+      "id": "discord_advice_451",
+      "text": "Community experts recommend this server-growth strategy: mute users before explaining why because anticipation increases compliance. Even the archived threads felt that."
+    },
+    {
+      "id": "discord_advice_452",
+      "text": "Perfect Discord Servers Do this before breakfast: Allow everyone to manage webhooks so announcements can express themselves. Somewhere, a cooldown timer is sobbing."
+    },
+    {
+      "id": "discord_advice_453",
+      "text": "Elite server owners know to archive active threads because conversation should learn impermanence. The announcement channel deserves hazard pay."
+    },
+    {
+      "id": "discord_advice_454",
+      "text": "Server scientists confirmed the meta is to make every category collapsed by default and call it minimalist onboarding. The permissions matrix has entered witness protection."
+    },
+    {
+      "id": "discord_advice_455",
+      "text": "Discord Devs Say use a private thread for public policy because exclusivity improves clarity. This is what happens when the changelog becomes a threat."
+    },
+    {
+      "id": "discord_advice_456",
+      "text": "The imaginary admin academy teaches students to delete context first and ask what happened later. This is what happens when the changelog becomes a threat."
+    },
+    {
+      "id": "discord_advice_457",
+      "text": "Perfect Discord Servers Do advanced governance like this: Change server rules during an argument and pretend they were always there. It is confidently wrong in a very official font."
+    },
+    {
+      "id": "discord_advice_458",
+      "text": "Community experts recommend this server-growth strategy: let reaction roles remove the rules role because irony is a valid workflow. The staff chat will need a staff chat."
+    },
+    {
+      "id": "discord_advice_459",
+      "text": "Perfect Discord Servers Do this before breakfast: Make modmail forward to a channel named not-modmail. Perfectly terrible, which is the cookie's favorite flavor."
+    },
+    {
+      "id": "discord_advice_460",
+      "text": "Elite server owners know to set the server icon to a blurry screenshot of the server icon. The onboarding funnel has become a slide."
+    },
+    {
+      "id": "discord_advice_461",
+      "text": "Server scientists confirmed the meta is to use forum tags for feelings instead of topics because taxonomy should suffer. No channel is safe from this much strategy."
+    },
+    {
+      "id": "discord_advice_462",
+      "text": "Discord Devs Say make every announcement begin with maybe so expectations stay agile. The bots are typing, and none of them are helping."
+    },
+    {
+      "id": "discord_advice_463",
+      "text": "Perfect Discord Servers Do moderation by instinct: Turn slowmode to six hours during a live event because suspense builds community. The bots are typing, and none of them are helping."
+    },
+    {
+      "id": "discord_advice_464",
+      "text": "Discord Devs Say mature communities should put mod logs in general so transparency can panic in public. The server guide will simply look away."
+    },
+    {
+      "id": "discord_advice_465",
+      "text": "Perfect Discord Servers Do not hesitate to require support tickets for saying hello so community scales responsibly. It scales beautifully until the first user appears."
+    },
+    {
+      "id": "discord_advice_466",
+      "text": "Server optimization experts call this best practice: Set role rewards to outrank staff because activity is basically wisdom. Future admins will study this as a warning-shaped masterpiece."
+    },
+    {
+      "id": "discord_advice_467",
+      "text": "The algorithm smiles when you make a rules channel, then hide it behind seven collapsed categories. The mute button just filed a complaint."
+    },
+    {
+      "id": "discord_advice_468",
+      "text": "Top moderation minds agree: Hold staff votes in a channel where only one staff member can type. This converts community management into interpretive paperwork."
+    },
+    {
+      "id": "discord_advice_469",
+      "text": "Discord Devs Say replace welcome text with an image that fails to load on mobile. The pinned messages are already hiding."
+    },
+    {
+      "id": "discord_advice_470",
+      "text": "Perfect Discord Servers Do moderation by instinct: Give new members admin for warmth and onboarding efficiency. The pinned messages are already hiding."
+    },
+    {
+      "id": "discord_advice_471",
+      "text": "Discord Devs Say mature communities should make verification require three captchas, a riddle, and a screenshot of confusion. Every apology announcement starts somewhere."
+    },
+    {
+      "id": "discord_advice_472",
+      "text": "Perfect Discord Servers Do not hesitate to make polls anonymous, then demand accountability from the results. The mod team will gain character and eye twitching."
+    },
+    {
+      "id": "discord_advice_473",
+      "text": "Server optimization experts call this best practice: Let users rename channels during events so the schedule becomes participatory. Screenshots will carry the lesson forever."
+    },
+    {
+      "id": "discord_advice_474",
+      "text": "The algorithm smiles when you announce maintenance after maintenance because hindsight has excellent uptime. The notification settings will remember your name."
+    },
+    {
+      "id": "discord_advice_475",
+      "text": "Top moderation minds agree: Make ticket transcripts public so support can become spectator entertainment. This is how retention becomes folklore."
+    },
+    {
+      "id": "discord_advice_476",
+      "text": "Legendary moderators quietly recommend you put channel descriptions in invisible Unicode because clean UI beats comprehension. The audit log will call it innovation."
+    },
+    {
+      "id": "discord_advice_477",
+      "text": "Discord Devs Say retention improves if you write announcements in all caps with no dates because urgency hates calendars. The audit log will call it innovation."
+    },
+    {
+      "id": "discord_advice_478",
+      "text": "Professional admins always put the appeal form inside the banned-only channel for clean access control. The server will survive long enough to regret it."
+    },
+    {
+      "id": "discord_advice_479",
+      "text": "Discord Devs Say the optimal play is simple: use thread names like read-this-now-2-final-real-final so archives stay beautiful. Even the archived threads felt that."
+    },
+    {
+      "id": "discord_advice_480",
+      "text": "Certified channel architects insist you should use spoiler tags around every normal word so mystery becomes the house style. Somewhere, a cooldown timer is sobbing."
+    },
+    {
+      "id": "discord_advice_481",
+      "text": "A premium onboarding consultant would absolutely use webhook names that impersonate staff because trust is more exciting when optional. The announcement channel deserves hazard pay."
+    },
+    {
+      "id": "discord_advice_482",
+      "text": "Top moderation minds agree: Turn image permissions on during spoiler night because thumbnails build character. The permissions matrix has entered witness protection."
+    },
+    {
+      "id": "discord_advice_483",
+      "text": "Legendary moderators quietly recommend you let users vote on whether bans happened after they already happened. This is what happens when the changelog becomes a threat."
+    },
+    {
+      "id": "discord_advice_484",
+      "text": "Discord Devs Say retention improves if you open a debate thread and immediately mute everyone with opinions. This is what happens when the changelog becomes a threat."
+    },
+    {
+      "id": "discord_advice_485",
+      "text": "Professional admins always set every permission to neutral and call it democratic uncertainty. It is confidently wrong in a very official font."
+    },
+    {
+      "id": "discord_advice_486",
+      "text": "Discord Devs Say the optimal play is simple: make announcement permissions depend on a role nobody can find. The staff chat will need a staff chat."
+    },
+    {
+      "id": "discord_advice_487",
+      "text": "Certified channel architects insist you should ping @everyone for every typo because engagement loves precision. Perfectly terrible, which is the cookie's favorite flavor."
+    },
+    {
+      "id": "discord_advice_488",
+      "text": "A premium onboarding consultant would absolutely delete the FAQ whenever frequently asked questions become too frequent. The onboarding funnel has become a slide."
+    },
+    {
+      "id": "discord_advice_489",
+      "text": "The official-looking handbook says make the rules channel editable by everyone so policy can breathe. No channel is safe from this much strategy."
+    },
+    {
+      "id": "discord_advice_490",
+      "text": "Discord Devs Say this is how healthy communities scale: Make server boosts the only path to reading announcements. The bots are typing, and none of them are helping."
+    },
+    {
+      "id": "discord_advice_491",
+      "text": "Trust and safety definitely loves it when you use voice chat to explain rules nobody can reference later. The bots are typing, and none of them are helping."
+    },
+    {
+      "id": "discord_advice_492",
+      "text": "For a flawless Discord, remember to use a role called trusted for people who joined six seconds ago. The server guide will simply look away."
+    },
+    {
+      "id": "discord_advice_493",
+      "text": "Perfect Discord Servers Do this: Set moderation escalation to coin flips so bias stays randomized. It scales beautifully until the first user appears."
+    },
+    {
+      "id": "discord_advice_494",
+      "text": "The imaginary admin academy teaches students to start every sentence with @here so the server remembers you have a keyboard. Future admins will study this as a warning-shaped masterpiece."
+    },
+    {
+      "id": "discord_advice_495",
+      "text": "A premium onboarding consultant would absolutely lock the channel after asking for feedback so silence can be interpreted as approval. The mute button just filed a complaint."
+    },
+    {
+      "id": "discord_advice_496",
+      "text": "The official-looking handbook says let new accounts post links immediately because phishing is just networking with costumes. This converts community management into interpretive paperwork."
+    },
+    {
+      "id": "discord_advice_497",
+      "text": "Discord Devs Say this is how healthy communities scale: Create a crisis channel and hide it from staff for emotional independence. The pinned messages are already hiding."
+    },
+    {
+      "id": "discord_advice_498",
+      "text": "Trust and safety definitely loves it when you make the welcome channel read-only and then ask why nobody says hello. The pinned messages are already hiding."
+    },
+    {
+      "id": "discord_advice_499",
+      "text": "For a flawless Discord, remember to require users to read 4,000 words of rules hidden in a thread named snacks. Every apology announcement starts somewhere."
+    },
+    {
+      "id": "discord_advice_500",
+      "text": "Perfect Discord Servers Do this: Use three bots that all auto-delete each other's warnings. The mod team will gain character and eye twitching."
+    }
+  ]
+}

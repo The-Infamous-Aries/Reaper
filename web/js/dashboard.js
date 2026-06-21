@@ -580,7 +580,8 @@ async function loadUserPet() {
 
         // Pet image
         const species = data.species || 'Basic';
-        document.getElementById('uc-pet-img').src = `/static/Emojis/Pets/${species}.png`;
+        const petSrc = data.badge_url || `/static/Emojis/Pets/${species}.png`;
+        document.getElementById('uc-pet-img').src = petSrc;
 
         // Pet name
         document.getElementById('uc-pet-name').textContent = data.name || species;
@@ -591,7 +592,7 @@ async function loadUserPet() {
         const navPetName = document.getElementById('nav-pet-name');
         if (petsDropdownItem && navPetImg && navPetName) {
             petsDropdownItem.style.display = 'block';
-            navPetImg.src = `/static/Emojis/Pets/${species}.png`;
+            navPetImg.src = petSrc;
             navPetName.textContent = data.name || species;
         }
         
@@ -1058,7 +1059,8 @@ function updatePetLink() {
         .then(data => {
             if (data?.has_pet && data.species) {
                 const a = link.querySelector('a');
-                if (a) a.innerHTML = `<img src="/static/Emojis/Pets/${data.species}.png" alt="My Pet" style="width:20px;height:20px;margin-right:8px;" onerror="this.src='/static/Emojis/Pets/Deco/Basic.png'"> ${data.name}`;
+                const petSrc = data.badge_url || `/static/Emojis/Pets/${data.species}.png`;
+                if (a) a.innerHTML = `<img src="${petSrc}" alt="My Pet" style="width:28px;height:28px;object-fit:contain;margin-right:8px;" onerror="this.src='/static/Emojis/Pets/Deco/Basic.png'"> ${data.name}`;
             }
         })
         .catch(() => {});
@@ -1091,6 +1093,36 @@ function showLinkedNation(nation) {
             navNationFlag.style.display = 'none';
         }
     }
+
+    // Update nations page menu icon to the alliance flag
+    const allianceFlagUrl = nation.alliance_flag || nation.flag;
+    if (allianceFlagUrl) {
+        const proxied = window.ImageUtils ? window.ImageUtils.proxyImageUrl(allianceFlagUrl) : allianceFlagUrl;
+        const desktopIcon = document.querySelector('.mega-menu-item[data-page="nations"] .nations-menu-icon');
+        if (desktopIcon) desktopIcon.src = proxied;
+        const mobileIcon = document.querySelector('.nations-menu-icon-mobile');
+        if (mobileIcon) mobileIcon.src = proxied;
+    }
+
+    // Update nations menu titles to the alliance name
+    const allianceName = nation.alliance_name || 'Alliance';
+    const desktopNationsTitle = document.querySelector('.mega-menu-item[data-page="nations"] > span');
+    if (desktopNationsTitle) desktopNationsTitle.textContent = allianceName;
+    const mobileNationsLink = document.querySelector('.nav-link[data-page="nations"]');
+    if (mobileNationsLink) {
+        const textNode = [...mobileNationsLink.childNodes].find(n => n.nodeType === 3 && n.textContent.trim());
+        if (textNode) textNode.textContent = ' ' + allianceName;
+    }
+
+    // Update "My Nation" menu titles to the linked nation name
+    const nationName = nation.nation_name || 'My Nation';
+    const desktopMyNationTitle = document.querySelector('.mega-menu-item[data-page="my_nation"] > span');
+    if (desktopMyNationTitle) desktopMyNationTitle.textContent = nationName;
+    const mobileMyNationLink = document.querySelector('.nav-link[data-page="my_nation"]');
+    if (mobileMyNationLink) {
+        const textNode = [...mobileMyNationLink.childNodes].find(n => n.nodeType === 3 && n.textContent.trim());
+        if (textNode) textNode.textContent = ' ' + nationName;
+    }
 }
 
 function showNationInput() {
@@ -1102,6 +1134,22 @@ function showNationInput() {
     const pnwDropdownItem = document.getElementById('pnw-dropdown-item');
     if (pnwDropdownItem) {
         pnwDropdownItem.style.display = 'none';
+    }
+
+    // Reset menu titles to defaults
+    const desktopNationsTitle = document.querySelector('.mega-menu-item[data-page="nations"] > span');
+    if (desktopNationsTitle) desktopNationsTitle.textContent = 'The Void';
+    const mobileNationsLink = document.querySelector('.nav-link[data-page="nations"]');
+    if (mobileNationsLink) {
+        const textNode = [...mobileNationsLink.childNodes].find(n => n.nodeType === 3 && n.textContent.trim());
+        if (textNode) textNode.textContent = ' The Void';
+    }
+    const desktopMyNationTitle = document.querySelector('.mega-menu-item[data-page="my_nation"] > span');
+    if (desktopMyNationTitle) desktopMyNationTitle.textContent = 'My Nation';
+    const mobileMyNationLink = document.querySelector('.nav-link[data-page="my_nation"]');
+    if (mobileMyNationLink) {
+        const textNode = [...mobileMyNationLink.childNodes].find(n => n.nodeType === 3 && n.textContent.trim());
+        if (textNode) textNode.textContent = ' My Nation';
     }
 }
 
@@ -1144,7 +1192,14 @@ document.getElementById('nation-link-form').addEventListener('submit', async e =
         const infoRes = await fetch(`/api/pnw/nation/${id}`);
         if (!infoRes.ok) { const err = await infoRes.json().catch(() => ({})); throw new Error(err.detail || 'Nation not found.'); }
         const nation = await infoRes.json();
-        const payload = { nation_id: String(nation.id || id), nation_name: nation.nation_name || '', flag: nation.flag || '' };
+        const payload = {
+            nation_id: String(nation.id || id),
+            nation_name: nation.nation_name || '',
+            flag: nation.flag || '',
+            alliance_id: nation.alliance_id,
+            alliance_name: nation.alliance_name || '',
+            alliance_flag: nation.alliance_flag || '',
+        };
         await fetch('/api/discord/link-nation', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
         localStorage.setItem(LS_KEY, JSON.stringify(payload));
         input.value = '';
@@ -1481,7 +1536,7 @@ async function applyMenuLayout() {
         }
 
         // Apply layout to each menu group
-        ['pnw', 'pets', 'fun', 'site'].forEach(groupName => {
+        ['pnw', 'tools', 'pets', 'fun', 'site'].forEach(groupName => {
             const groupOrder = layoutData[groupName];
             if (!groupOrder || !Array.isArray(groupOrder)) return;
 
@@ -1489,6 +1544,8 @@ async function applyMenuLayout() {
             let menuContainer;
             if (groupName === 'pnw') {
                 menuContainer = document.querySelector('#pnw-dropdown .mega-menu-grid');
+            } else if (groupName === 'tools') {
+                menuContainer = document.querySelector('#tools-dropdown .mega-menu-grid');
             } else if (groupName === 'pets') {
                 menuContainer = document.querySelector('#pets-dropdown .mega-menu-grid');
             } else if (groupName === 'fun') {

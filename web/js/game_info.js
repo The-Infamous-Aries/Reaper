@@ -286,9 +286,9 @@ function generateFullHistoryChart(historyData) {
 
     const PX_PER_POINT = 5;
     const H = 260;
-    const PAD = { top: 16, right: 24, bottom: 52, left: 62 };
+    const PAD = { top: 16, right: 24, bottom: 52 };
     const W = Math.max(900, historyData.length * PX_PER_POINT);
-    const dW = W - PAD.left - PAD.right;
+    const dW = W - PAD.right;
     const dH = H - PAD.top - PAD.bottom;
 
     const buyPrices  = historyData.map(d => d.buy).filter(p => p > 0);
@@ -307,21 +307,16 @@ function generateFullHistoryChart(historyData) {
     const maxP    = rawMax + pad;
     const pRange  = maxP - minP;
 
-    const toX = i  => PAD.left + (i / (historyData.length - 1)) * dW;
+    const toX = i  => (i / (historyData.length - 1)) * dW;
     const toY = p  => H - PAD.bottom - ((p - minP) / pRange) * dH;
 
     // --- Y axis ticks (6 ticks) ---
     const Y_TICKS = 6;
-    let yGrid = '', yLabels = '';
+    let yGrid = '';
     for (let i = 0; i <= Y_TICKS; i++) {
         const val = minP + (pRange / Y_TICKS) * i;
         const y   = toY(val);
-        const lbl = val >= 1e9 ? (val/1e9).toFixed(2)+'b'
-                  : val >= 1e6 ? (val/1e6).toFixed(2)+'m'
-                  : val >= 1e3 ? (val/1e3).toFixed(1)+'k'
-                  : Math.round(val).toString();
-        yGrid   += `<line x1="${PAD.left}" y1="${y.toFixed(1)}" x2="${W - PAD.right}" y2="${y.toFixed(1)}" stroke="#252528" stroke-width="1"/>`;
-        yLabels += `<text x="${PAD.left - 8}" y="${(y + 4).toFixed(1)}" text-anchor="end" font-size="11" fill="#666" font-family="JetBrains Mono,monospace">${lbl}</text>`;
+        yGrid   += `<line x1="0" y1="${y.toFixed(1)}" x2="${W - PAD.right}" y2="${y.toFixed(1)}" stroke="#252528" stroke-width="1"/>`;
     }
 
     // --- X axis ticks: one label per day, minor ticks every 6 hours ---
@@ -360,23 +355,124 @@ function generateFullHistoryChart(historyData) {
     const buyD  = buildPath('buy');
     const sellD = buildPath('sell');
 
-    // --- Y axis label (rotated) ---
-    const yAxisLabel = `<text transform="rotate(-90)" x="${-(H/2)}" y="14" text-anchor="middle" font-size="11" fill="#666" font-family="JetBrains Mono,monospace">Price ($)</text>`;
-
-    // --- Axis lines ---
-    const axes = `
-        <line x1="${PAD.left}" y1="${PAD.top}" x2="${PAD.left}" y2="${H - PAD.bottom}" stroke="#444" stroke-width="1.5"/>
-        <line x1="${PAD.left}" y1="${H - PAD.bottom}" x2="${W - PAD.right}" y2="${H - PAD.bottom}" stroke="#444" stroke-width="1.5"/>`;
+    // --- Axis line ---
+    const xAxis = `<line x1="0" y1="${H - PAD.bottom}" x2="${W - PAD.right}" y2="${H - PAD.bottom}" stroke="#444" stroke-width="1.5"/>`;
 
     return `
-        <svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" style="display:block;overflow:visible">
-            ${yAxisLabel}
-            ${yGrid}${xGrid}
-            ${axes}
-            ${yLabels}${xLabels}
-            ${buyD  ? `<path d="${buyD}"  stroke="#4caf50" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/>` : ''}
-            ${sellD ? `<path d="${sellD}" stroke="#f44336" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/>` : ''}
-        </svg>`;
+        <div class="chart-history-shell">
+            <svg class="chart-history-plot" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}">
+                ${yGrid}${xGrid}
+                ${xAxis}
+                ${xLabels}
+                ${buyD  ? `<path d="${buyD}"  stroke="#4caf50" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/>` : ''}
+                ${sellD ? `<path d="${sellD}" stroke="#f44336" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/>` : ''}
+                <g class="chart-history-hover-layer" style="display:none">
+                    <line class="chart-history-crosshair" x1="0" y1="${PAD.top}" x2="0" y2="${H - PAD.bottom}"/>
+                    <circle class="chart-history-point-buy" r="4"/>
+                    <circle class="chart-history-point-sell" r="4"/>
+                    <rect class="chart-history-time-bg" x="0" y="2" width="86" height="18" rx="4"/>
+                    <text class="chart-history-time-label" x="0" y="15" text-anchor="middle"></text>
+                </g>
+                <rect class="chart-history-hitbox" x="0" y="${PAD.top}" width="${W - PAD.right}" height="${dH}"/>
+            </svg>
+        </div>`;
+}
+
+function setupFullHistoryChartInteraction(scrollEl, historyData) {
+    const shell = scrollEl.querySelector('.chart-history-shell');
+    const plot = scrollEl.querySelector('.chart-history-plot');
+    const modalBox = scrollEl.closest('.chart-modal-box');
+    if (!shell || !plot || !historyData || historyData.length < 2) return;
+
+    const hoverLayer = plot.querySelector('.chart-history-hover-layer');
+    const crosshair = plot.querySelector('.chart-history-crosshair');
+    const buyPoint = plot.querySelector('.chart-history-point-buy');
+    const sellPoint = plot.querySelector('.chart-history-point-sell');
+    const timeBg = plot.querySelector('.chart-history-time-bg');
+    const timeLabel = plot.querySelector('.chart-history-time-label');
+    const activePrices = modalBox?.querySelector('.chart-modal-active-readout');
+    const activeTime = modalBox?.querySelector('.chart-modal-active-time');
+    const activeBuy = modalBox?.querySelector('.chart-modal-active-buy');
+    const activeSell = modalBox?.querySelector('.chart-modal-active-sell');
+    if (!hoverLayer || !crosshair || !activePrices || !activeTime || !activeBuy || !activeSell) return;
+
+    const H = 260;
+    const PAD = { top: 16, right: 24, bottom: 52 };
+    const viewBox = plot.viewBox.baseVal;
+    const dW = viewBox.width - PAD.right;
+    const dH = H - PAD.top - PAD.bottom;
+    const prices = historyData.flatMap(pt => [pt.buy, pt.sell]).filter(p => p > 0);
+    if (!prices.length) return;
+
+    const rawMin = Math.min(...prices);
+    const rawMax = Math.max(...prices);
+    const range = rawMax - rawMin || 1;
+    const pad = range * 0.08;
+    const minP = rawMin - pad;
+    const maxP = rawMax + pad;
+    const pRange = maxP - minP;
+    const toX = i => (i / (historyData.length - 1)) * dW;
+    const toY = p => H - PAD.bottom - ((p - minP) / pRange) * dH;
+    const fmtMoney = val => val && val > 0
+        ? '$' + Number(val).toLocaleString(undefined, { maximumFractionDigits: 0 })
+        : '--';
+    const fmtTime = timestamp => {
+        if (!timestamp) return '';
+        const dt = new Date(timestamp * 1000);
+        const hours = dt.getHours().toString().padStart(2, '0');
+        const minutes = dt.getMinutes().toString().padStart(2, '0');
+        return `${dt.getMonth() + 1}/${dt.getDate()} ${hours}:${minutes}`;
+    };
+
+    const setPoint = (point, x, price) => {
+        if (!point) return;
+        if (!price || price <= 0) {
+            point.style.display = 'none';
+            return;
+        }
+        point.style.display = '';
+        point.setAttribute('cx', x.toFixed(1));
+        point.setAttribute('cy', toY(price).toFixed(1));
+    };
+
+    const updateHighlight = clientX => {
+        const rect = plot.getBoundingClientRect();
+        if (!rect.width) return;
+        const svgX = Math.max(0, Math.min(dW, ((clientX - rect.left) / rect.width) * viewBox.width));
+        const index = Math.max(0, Math.min(historyData.length - 1, Math.round((svgX / dW) * (historyData.length - 1))));
+        const pt = historyData[index];
+        const x = toX(index);
+        const timeText = fmtTime(pt.timestamp);
+
+        hoverLayer.style.display = '';
+        activePrices.classList.add('active');
+        crosshair.setAttribute('x1', x.toFixed(1));
+        crosshair.setAttribute('x2', x.toFixed(1));
+        setPoint(buyPoint, x, pt.buy);
+        setPoint(sellPoint, x, pt.sell);
+
+        if (timeBg && timeLabel) {
+            const labelX = Math.max(45, Math.min(dW - 45, x));
+            timeBg.setAttribute('x', (labelX - 43).toFixed(1));
+            timeLabel.setAttribute('x', labelX.toFixed(1));
+            timeLabel.textContent = timeText;
+        }
+
+        activeTime.textContent = timeText;
+        activeBuy.textContent = fmtMoney(pt.buy);
+        activeSell.textContent = fmtMoney(pt.sell);
+    };
+
+    plot.addEventListener('pointerdown', e => updateHighlight(e.clientX));
+    plot.addEventListener('pointermove', e => {
+        if (e.pointerType === 'mouse' || e.buttons || e.pointerType === 'pen') {
+            updateHighlight(e.clientX);
+        }
+    });
+    requestAnimationFrame(() => {
+        const rect = plot.getBoundingClientRect();
+        updateHighlight(rect.right - 1);
+    });
 }
 
 function openChartModal(resource, iconSrc) {
@@ -402,6 +498,11 @@ function openChartModal(resource, iconSrc) {
                     <div class="chart-modal-legend-item">
                         <div class="chart-modal-legend-dot" style="background:#f44336"></div>
                         Sell price
+                    </div>
+                    <div class="chart-modal-active-readout" aria-live="polite">
+                        <span class="chart-modal-active-time"></span>
+                        <span class="chart-modal-active-price buy">Buy <strong class="chart-modal-active-buy"></strong></span>
+                        <span class="chart-modal-active-price sell">Sell <strong class="chart-modal-active-sell"></strong></span>
                     </div>
                 </div>
                 <div class="chart-modal-scroll" id="chart-modal-scroll">
@@ -440,6 +541,7 @@ function openChartModal(resource, iconSrc) {
                     ${resource.toUpperCase()} — Full Price History <span style="color:#888;font-size:0.8rem;font-weight:400">(${days} days)</span>`;
             }
             scrollEl.innerHTML = generateFullHistoryChart(history);
+            setupFullHistoryChartInteraction(scrollEl, history);
             // Scroll to most recent (right side)
             requestAnimationFrame(() => { scrollEl.scrollLeft = scrollEl.scrollWidth; });
         })

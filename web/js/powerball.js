@@ -258,6 +258,56 @@ function buildSelectedRow() {
     }
 }
 
+// ── Quick Pick ────────────────────────────────────────────────────────────
+function doQuickPick() {
+    if (!_info || !_info.pets) return;
+
+    // Pick 5 unique random pets
+    const allNames = _info.pets.map(p => p.name);
+    const shuffled = allNames.slice().sort(() => Math.random() - 0.5);
+    _selPets = shuffled.slice(0, 5);
+
+    // If "Include EM" toggle is on, pick a random element and set _useEM
+    const qpEmCheck = $('pb-qp-em-include');
+    const withEM = qpEmCheck && qpEmCheck.checked;
+    if (withEM && _info.elements && _info.elements.length > 0) {
+        _useEM = true;
+        _selElement = _info.elements[Math.floor(Math.random() * _info.elements.length)].name;
+        // Keep the step-2 EM toggle in sync so step 3 preview is correct
+        const emToggle = $('pb-em-toggle');
+        if (emToggle) emToggle.checked = true;
+        // Refresh element tile enabled state
+        document.querySelectorAll('.pb-elem-tile').forEach(t => {
+            t.classList.add('enabled');
+            t.classList.toggle('selected', t.dataset.name === _selElement);
+        });
+        const badge = $('pb-em-cost-badge');
+        if (badge && _info) badge.textContent = `+${(_info.cost_with_em - _info.cost_no_em).toLocaleString()} XP`;
+    } else {
+        // No EM — clear any prior selection
+        _useEM = false;
+        _selElement = null;
+        const emToggle = $('pb-em-toggle');
+        if (emToggle) emToggle.checked = false;
+        document.querySelectorAll('.pb-elem-tile').forEach(t => {
+            t.classList.remove('enabled', 'selected');
+        });
+        const badge = $('pb-em-cost-badge');
+        if (badge) badge.textContent = '+50% cost';
+    }
+
+    syncPetUI();
+    updateStep3Preview();
+    checkBuyReady();
+
+    // Visual flash on the button to confirm the pick fired
+    const btn = $('pb-quick-pick-btn');
+    if (btn) {
+        btn.textContent = '✅ Picked!';
+        setTimeout(() => { btn.textContent = '🎲 Quick Pick'; }, 900);
+    }
+}
+
 // ── Selection logic ───────────────────────────────────────────────────────
 function togglePet(name) {
     const idx = _selPets.indexOf(name);
@@ -403,6 +453,13 @@ function checkBuyReady() {
 
 // ── Events ────────────────────────────────────────────────────────────────
 function bindEvents() {
+    // Quick Pick
+    const qpBtn = $('pb-quick-pick-btn');
+    if (qpBtn && !qpBtn._pbBound) {
+        qpBtn._pbBound = true;
+        qpBtn.addEventListener('click', doQuickPick);
+    }
+
     // Pet search
     const search = $('pb-pet-search');
     if (search && !search._pbBound) {

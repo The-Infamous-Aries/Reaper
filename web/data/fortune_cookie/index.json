@@ -1,0 +1,48 @@
+{
+  "version": 1,
+  "entries_per_pool": 500,
+  "categories": [
+    {
+      "id": "silly_predictions",
+      "label": "Silly Predictions",
+      "icon": "🔮",
+      "description": "Wild, strange, and highly questionable tiny prophecies.",
+      "file": "/data/fortune_cookie/silly_predictions.json"
+    },
+    {
+      "id": "discord_advice",
+      "label": "Discord Devs Say",
+      "icon": "💬",
+      "description": "Confident expert Discord wisdom that is absolutely wrong.",
+      "file": "/data/fortune_cookie/discord_advice.json"
+    },
+    {
+      "id": "pnw_advice",
+      "label": "Experts Say",
+      "icon": "🛡️",
+      "description": "Confident expert PnW wisdom that is absolutely wrong.",
+      "file": "/data/fortune_cookie/pnw_advice.json"
+    },
+    {
+      "id": "lucky_numbers",
+      "label": "Lucky Numbers",
+      "icon": "🎲",
+      "description": "A fresh random lucky number draw every time the cookie opens.",
+      "file": "/data/fortune_cookie/lucky_numbers.json"
+    },
+    {
+      "id": "reaper_whispers",
+      "label": "Reaper Whispers",
+      "icon": "🕯️",
+      "description": "AI-generated strange whispers from the Reaper each time.",
+      "ai_generated": true
+    },
+    {
+      "id": "pet_omens",
+      "label": "Pet Omens",
+      "icon": "🐾",
+      "description": "Good and bad omens for real pet interactions and web games.",
+      "file": "/data/fortune_cookie/pet_omens.json"
+    }
+  ]
+}

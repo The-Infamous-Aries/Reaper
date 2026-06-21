@@ -1,0 +1,2007 @@
+{
+  "id": "pet_omens",
+  "label": "Pet Omens",
+  "icon": "🐾",
+  "entries": [
+    {
+      "id": "pet_omens_001",
+      "text": "Good omen: Play - happiness rises cleanly and your pet acts like the button was invented for them. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_002",
+      "text": "Good omen: Training - the stat gain lands high and INT looks unusually smug about helping. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_003",
+      "text": "Good omen: Missions - the XP payout comes home with a level-up sparkle tucked under its arm. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_004",
+      "text": "Good omen: NPC Battle - Attack, Defense, and Charge line up like they practiced in secret. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_005",
+      "text": "Good omen: Boss Battle - the boss overcommits and your pet finds the one dramatic opening. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_006",
+      "text": "Good omen: PvP Arena - your pet catches the tempo early and makes the spectator embed look heroic. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_007",
+      "text": "Good omen: Arena Page - the live lobby fills at exactly the right pace and nobody forgets to ready up. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_008",
+      "text": "Good omen: Colosseum - the hourly battle favors your build and the reward chest remembers your name. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_009",
+      "text": "Good omen: Dungeon Run - the map path bends toward clean fights and surprisingly polite loot. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_010",
+      "text": "Good omen: Dungeon Battle - your pet wins the exchange before the enemy script finds its footing. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_011",
+      "text": "Good omen: Survive Lobby - joining early puts your pet near the right zone before the arena gets loud. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_012",
+      "text": "Good omen: Survive Rounds - the round summary quietly favors your pet's instincts and zone choice. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_013",
+      "text": "Good omen: Survive Eliminations - your pet finds the weak target and the elimination counter smiles. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_014",
+      "text": "Good omen: Pet Races - the segment ticks stack cleanly and your racer surges at the finish. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_015",
+      "text": "Good omen: Wheel of Pets - the wheel slows exactly where your bet wanted it to slow. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_016",
+      "text": "Good omen: Powerball - the ticket numbers feel warm and the pot notices your optimism. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_017",
+      "text": "Good omen: Scratch Tickets - the scratch card reveals the good symbol before suspicion has time to form. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_018",
+      "text": "Good omen: Slots - the reels line up just long enough for XP to look generous. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_019",
+      "text": "Good omen: Mega Keno - the picked spots light up like the board actually read your mind. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_020",
+      "text": "Good omen: Blackjack - the dealer card behaves and your pet's hand finds the clean line. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_021",
+      "text": "Good omen: Holdem - the board texture helps your pet look like a poker scholar. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_022",
+      "text": "Good omen: Craps - the dice bounce kindly and the table briefly respects your plan. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_023",
+      "text": "Good omen: Coin Flip - the coin lands with the exact smugness you needed. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_024",
+      "text": "Good omen: Rock Paper Scissors - your pet reads the pattern and picks the winning gesture. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_025",
+      "text": "Good omen: Loot Chests - the chest opens like it has been saving the good item for you. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_026",
+      "text": "Good omen: Keys - the right key finds the right chest and everyone acts surprised. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_027",
+      "text": "Good omen: Potions - the potion lands exactly where the pet state needed help. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_028",
+      "text": "Good omen: Equipment - the equipped item boosts the stat that actually matters next. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_029",
+      "text": "Good omen: Consumables - the consumed item turns a shaky attempt into a clean result. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_030",
+      "text": "Good omen: Gifting - the gift lands well and another pet remembers your name kindly. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_031",
+      "text": "Good omen: Rename - the new name fits so well the battle log seems more confident. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_032",
+      "text": "Good omen: Bazaar Listing - the listing price looks fair and the market board starts paying attention. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_033",
+      "text": "Good omen: Shop Visit - the shop stock points toward the item your pet actually needs. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_034",
+      "text": "Good omen: Pet Stock Token Buy - the token buy catches the curve before it gets smug. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_035",
+      "text": "Good omen: Pet Stock Token Sell - the sale exits before the line starts doing theater. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_036",
+      "text": "Good omen: Tasks - the active task lines up with something you were already about to do. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_037",
+      "text": "Good omen: Daily Goal - claimed task progress stacks neatly toward the daily chest. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_038",
+      "text": "Good omen: Weekly Tasks - the larger requirement finally starts looking like a plan. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_039",
+      "text": "Good omen: Monthly Tasks - the long grind pays attention and the big chest moves closer. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_040",
+      "text": "Good omen: My Pet Page - the stats, equipment, and mood all agree for once. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_041",
+      "text": "Good omen: Pet Connector - the connection path opens like the world map wanted company. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_042",
+      "text": "Good omen: Ability Tree - the next ability point lands on a choice that makes the build click. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_043",
+      "text": "Good omen: Pet Roster - the roster view reminds you that your companion is built for this. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_044",
+      "text": "Good omen: Item Board - the posted item finds a buyer before you second-guess the price. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_045",
+      "text": "Good omen: Pet Shop Adoption - the new companion arrives with excellent starter energy. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_046",
+      "text": "Bad omen: Play - the affection roll fizzles and your pet gives you the side-eye of cooldown awareness. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_047",
+      "text": "Bad omen: Training - the lesson turns into a stat-loss lecture with chalk dust and regret. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_048",
+      "text": "Bad omen: Missions - the gamble bites first and your pet returns with a smaller number than expected. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_049",
+      "text": "Bad omen: NPC Battle - the enemy reads your rhythm and your pet learns what humble pie tastes like. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_050",
+      "text": "Bad omen: Boss Battle - the boss health bar laughs at your confidence and asks for another round. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_051",
+      "text": "Bad omen: PvP Arena - another player times the swing perfectly and your pet becomes the highlight clip. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_052",
+      "text": "Bad omen: Arena Page - the match starts with brave energy and immediately discovers matchmaking drama. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_053",
+      "text": "Bad omen: Colosseum - the Colosseum crowd chants for chaos and your pet gets volunteered as evidence. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_054",
+      "text": "Bad omen: Dungeon Run - the next room has teeth, attitude, and no respect for your potion budget. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_055",
+      "text": "Bad omen: Dungeon Battle - the dungeon enemy rolls like it paid rent in the battle log. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_056",
+      "text": "Bad omen: Survive Lobby - your pet enters just in time to be everybody else's convenient target. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_057",
+      "text": "Bad omen: Survive Rounds - the arena narrative starts using your pet as punctuation. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_058",
+      "text": "Bad omen: Survive Eliminations - the last-stand logic points somewhere else and your pet becomes the lesson. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_059",
+      "text": "Bad omen: Pet Races - the race sim discovers drama and parks your pet one segment short. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_060",
+      "text": "Bad omen: Wheel of Pets - the pointer drifts past your pick with theatrical disrespect. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_061",
+      "text": "Bad omen: Powerball - the draw walks past your ticket like it owes someone else money. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_062",
+      "text": "Bad omen: Scratch Tickets - the card dust spells almost and then has the nerve to stop. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_063",
+      "text": "Bad omen: Slots - the slot machine pays you in suspense and keeps the change. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_064",
+      "text": "Bad omen: Mega Keno - the Keno grid avoids your picks with professional discipline. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_065",
+      "text": "Bad omen: Blackjack - the table teaches probability by removing XP from the room. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_066",
+      "text": "Bad omen: Holdem - the river arrives wearing betrayal as formalwear. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_067",
+      "text": "Bad omen: Craps - the dice hear your hopes and immediately schedule a correction. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_068",
+      "text": "Bad omen: Coin Flip - the coin chooses the other side and pretends it was obvious. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_069",
+      "text": "Bad omen: Rock Paper Scissors - your pet throws scissors into a rock-shaped prophecy. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_070",
+      "text": "Bad omen: Loot Chests - the lid creaks with common-tier confidence. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_071",
+      "text": "Bad omen: Keys - the key fits emotionally but not mechanically. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_072",
+      "text": "Bad omen: Potions - the potion fixes one problem and reveals three more opinions. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_073",
+      "text": "Bad omen: Equipment - the shiny gear looks excellent while solving the wrong problem. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_074",
+      "text": "Bad omen: Consumables - the item disappears and your pet asks whether that was the whole plan. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_075",
+      "text": "Bad omen: Gifting - the receiving pet accepts the item with suspiciously neutral body language. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_076",
+      "text": "Bad omen: Rename - the rename lands and your pet immediately develops brand confusion. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_077",
+      "text": "Bad omen: Bazaar Listing - the item sits there long enough to become part of the decor. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_078",
+      "text": "Bad omen: Shop Visit - the market tempts you into buying vibes with no stat plan. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_079",
+      "text": "Bad omen: Pet Stock Token Buy - the chart waits for your purchase and then remembers gravity. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_080",
+      "text": "Bad omen: Pet Stock Token Sell - the sell button fires one tick before the good part. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_081",
+      "text": "Bad omen: Tasks - the task slot asks for the one action currently on your patience cooldown. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_082",
+      "text": "Bad omen: Daily Goal - the goal bar stops one claim short and develops a personality. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_083",
+      "text": "Bad omen: Weekly Tasks - the weekly multiplier remembers every shortcut you hoped would count. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_084",
+      "text": "Bad omen: Monthly Tasks - the monthly bar advances with the speed of a dramatic loading screen. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_085",
+      "text": "Bad omen: My Pet Page - the page politely displays every neglected decision at the same time. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_086",
+      "text": "Bad omen: Pet Connector - the route sends your pet on a sightseeing tour of inconvenience. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_087",
+      "text": "Bad omen: Ability Tree - the tree offers three tempting branches and one obvious future regret. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_088",
+      "text": "Bad omen: Pet Roster - the roster compares stats and quietly starts a self-improvement arc. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_089",
+      "text": "Bad omen: Item Board - the board watches your listing age into a museum piece. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_090",
+      "text": "Bad omen: Pet Shop Adoption - the adoption screen asks whether you are emotionally ready for another responsibility. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_091",
+      "text": "Bright pet omen: Play - happiness rises cleanly and your pet acts like the button was invented for them. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_092",
+      "text": "Bright pet omen: Training - the stat gain lands high and INT looks unusually smug about helping. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_093",
+      "text": "Bright pet omen: Missions - the XP payout comes home with a level-up sparkle tucked under its arm. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_094",
+      "text": "Bright pet omen: NPC Battle - Attack, Defense, and Charge line up like they practiced in secret. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_095",
+      "text": "Bright pet omen: Boss Battle - the boss overcommits and your pet finds the one dramatic opening. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_096",
+      "text": "Bright pet omen: PvP Arena - your pet catches the tempo early and makes the spectator embed look heroic. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_097",
+      "text": "Bright pet omen: Arena Page - the live lobby fills at exactly the right pace and nobody forgets to ready up. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_098",
+      "text": "Bright pet omen: Colosseum - the hourly battle favors your build and the reward chest remembers your name. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_099",
+      "text": "Bright pet omen: Dungeon Run - the map path bends toward clean fights and surprisingly polite loot. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_100",
+      "text": "Bright pet omen: Dungeon Battle - your pet wins the exchange before the enemy script finds its footing. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_101",
+      "text": "Bright pet omen: Survive Lobby - joining early puts your pet near the right zone before the arena gets loud. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_102",
+      "text": "Bright pet omen: Survive Rounds - the round summary quietly favors your pet's instincts and zone choice. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_103",
+      "text": "Bright pet omen: Survive Eliminations - your pet finds the weak target and the elimination counter smiles. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_104",
+      "text": "Bright pet omen: Pet Races - the segment ticks stack cleanly and your racer surges at the finish. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_105",
+      "text": "Bright pet omen: Wheel of Pets - the wheel slows exactly where your bet wanted it to slow. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_106",
+      "text": "Bright pet omen: Powerball - the ticket numbers feel warm and the pot notices your optimism. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_107",
+      "text": "Bright pet omen: Scratch Tickets - the scratch card reveals the good symbol before suspicion has time to form. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_108",
+      "text": "Bright pet omen: Slots - the reels line up just long enough for XP to look generous. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_109",
+      "text": "Bright pet omen: Mega Keno - the picked spots light up like the board actually read your mind. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_110",
+      "text": "Bright pet omen: Blackjack - the dealer card behaves and your pet's hand finds the clean line. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_111",
+      "text": "Bright pet omen: Holdem - the board texture helps your pet look like a poker scholar. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_112",
+      "text": "Bright pet omen: Craps - the dice bounce kindly and the table briefly respects your plan. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_113",
+      "text": "Bright pet omen: Coin Flip - the coin lands with the exact smugness you needed. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_114",
+      "text": "Bright pet omen: Rock Paper Scissors - your pet reads the pattern and picks the winning gesture. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_115",
+      "text": "Bright pet omen: Loot Chests - the chest opens like it has been saving the good item for you. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_116",
+      "text": "Bright pet omen: Keys - the right key finds the right chest and everyone acts surprised. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_117",
+      "text": "Bright pet omen: Potions - the potion lands exactly where the pet state needed help. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_118",
+      "text": "Bright pet omen: Equipment - the equipped item boosts the stat that actually matters next. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_119",
+      "text": "Bright pet omen: Consumables - the consumed item turns a shaky attempt into a clean result. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_120",
+      "text": "Bright pet omen: Gifting - the gift lands well and another pet remembers your name kindly. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_121",
+      "text": "Bright pet omen: Rename - the new name fits so well the battle log seems more confident. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_122",
+      "text": "Bright pet omen: Bazaar Listing - the listing price looks fair and the market board starts paying attention. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_123",
+      "text": "Bright pet omen: Shop Visit - the shop stock points toward the item your pet actually needs. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_124",
+      "text": "Bright pet omen: Pet Stock Token Buy - the token buy catches the curve before it gets smug. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_125",
+      "text": "Bright pet omen: Pet Stock Token Sell - the sale exits before the line starts doing theater. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_126",
+      "text": "Bright pet omen: Tasks - the active task lines up with something you were already about to do. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_127",
+      "text": "Bright pet omen: Daily Goal - claimed task progress stacks neatly toward the daily chest. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_128",
+      "text": "Bright pet omen: Weekly Tasks - the larger requirement finally starts looking like a plan. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_129",
+      "text": "Bright pet omen: Monthly Tasks - the long grind pays attention and the big chest moves closer. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_130",
+      "text": "Bright pet omen: My Pet Page - the stats, equipment, and mood all agree for once. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_131",
+      "text": "Bright pet omen: Pet Connector - the connection path opens like the world map wanted company. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_132",
+      "text": "Bright pet omen: Ability Tree - the next ability point lands on a choice that makes the build click. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_133",
+      "text": "Bright pet omen: Pet Roster - the roster view reminds you that your companion is built for this. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_134",
+      "text": "Bright pet omen: Item Board - the posted item finds a buyer before you second-guess the price. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_135",
+      "text": "Bright pet omen: Pet Shop Adoption - the new companion arrives with excellent starter energy. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_136",
+      "text": "Dark pet omen: Play - the affection roll fizzles and your pet gives you the side-eye of cooldown awareness. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_137",
+      "text": "Dark pet omen: Training - the lesson turns into a stat-loss lecture with chalk dust and regret. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_138",
+      "text": "Dark pet omen: Missions - the gamble bites first and your pet returns with a smaller number than expected. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_139",
+      "text": "Dark pet omen: NPC Battle - the enemy reads your rhythm and your pet learns what humble pie tastes like. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_140",
+      "text": "Dark pet omen: Boss Battle - the boss health bar laughs at your confidence and asks for another round. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_141",
+      "text": "Dark pet omen: PvP Arena - another player times the swing perfectly and your pet becomes the highlight clip. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_142",
+      "text": "Dark pet omen: Arena Page - the match starts with brave energy and immediately discovers matchmaking drama. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_143",
+      "text": "Dark pet omen: Colosseum - the Colosseum crowd chants for chaos and your pet gets volunteered as evidence. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_144",
+      "text": "Dark pet omen: Dungeon Run - the next room has teeth, attitude, and no respect for your potion budget. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_145",
+      "text": "Dark pet omen: Dungeon Battle - the dungeon enemy rolls like it paid rent in the battle log. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_146",
+      "text": "Dark pet omen: Survive Lobby - your pet enters just in time to be everybody else's convenient target. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_147",
+      "text": "Dark pet omen: Survive Rounds - the arena narrative starts using your pet as punctuation. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_148",
+      "text": "Dark pet omen: Survive Eliminations - the last-stand logic points somewhere else and your pet becomes the lesson. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_149",
+      "text": "Dark pet omen: Pet Races - the race sim discovers drama and parks your pet one segment short. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_150",
+      "text": "Dark pet omen: Wheel of Pets - the pointer drifts past your pick with theatrical disrespect. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_151",
+      "text": "Dark pet omen: Powerball - the draw walks past your ticket like it owes someone else money. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_152",
+      "text": "Dark pet omen: Scratch Tickets - the card dust spells almost and then has the nerve to stop. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_153",
+      "text": "Dark pet omen: Slots - the slot machine pays you in suspense and keeps the change. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_154",
+      "text": "Dark pet omen: Mega Keno - the Keno grid avoids your picks with professional discipline. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_155",
+      "text": "Dark pet omen: Blackjack - the table teaches probability by removing XP from the room. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_156",
+      "text": "Dark pet omen: Holdem - the river arrives wearing betrayal as formalwear. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_157",
+      "text": "Dark pet omen: Craps - the dice hear your hopes and immediately schedule a correction. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_158",
+      "text": "Dark pet omen: Coin Flip - the coin chooses the other side and pretends it was obvious. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_159",
+      "text": "Dark pet omen: Rock Paper Scissors - your pet throws scissors into a rock-shaped prophecy. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_160",
+      "text": "Dark pet omen: Loot Chests - the lid creaks with common-tier confidence. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_161",
+      "text": "Dark pet omen: Keys - the key fits emotionally but not mechanically. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_162",
+      "text": "Dark pet omen: Potions - the potion fixes one problem and reveals three more opinions. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_163",
+      "text": "Dark pet omen: Equipment - the shiny gear looks excellent while solving the wrong problem. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_164",
+      "text": "Dark pet omen: Consumables - the item disappears and your pet asks whether that was the whole plan. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_165",
+      "text": "Dark pet omen: Gifting - the receiving pet accepts the item with suspiciously neutral body language. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_166",
+      "text": "Dark pet omen: Rename - the rename lands and your pet immediately develops brand confusion. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_167",
+      "text": "Dark pet omen: Bazaar Listing - the item sits there long enough to become part of the decor. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_168",
+      "text": "Dark pet omen: Shop Visit - the market tempts you into buying vibes with no stat plan. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_169",
+      "text": "Dark pet omen: Pet Stock Token Buy - the chart waits for your purchase and then remembers gravity. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_170",
+      "text": "Dark pet omen: Pet Stock Token Sell - the sell button fires one tick before the good part. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_171",
+      "text": "Dark pet omen: Tasks - the task slot asks for the one action currently on your patience cooldown. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_172",
+      "text": "Dark pet omen: Daily Goal - the goal bar stops one claim short and develops a personality. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_173",
+      "text": "Dark pet omen: Weekly Tasks - the weekly multiplier remembers every shortcut you hoped would count. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_174",
+      "text": "Dark pet omen: Monthly Tasks - the monthly bar advances with the speed of a dramatic loading screen. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_175",
+      "text": "Dark pet omen: My Pet Page - the page politely displays every neglected decision at the same time. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_176",
+      "text": "Dark pet omen: Pet Connector - the route sends your pet on a sightseeing tour of inconvenience. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_177",
+      "text": "Dark pet omen: Ability Tree - the tree offers three tempting branches and one obvious future regret. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_178",
+      "text": "Dark pet omen: Pet Roster - the roster compares stats and quietly starts a self-improvement arc. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_179",
+      "text": "Dark pet omen: Item Board - the board watches your listing age into a museum piece. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_180",
+      "text": "Dark pet omen: Pet Shop Adoption - the adoption screen asks whether you are emotionally ready for another responsibility. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_181",
+      "text": "The paw print glows: Play - happiness rises cleanly and your pet acts like the button was invented for them. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_182",
+      "text": "The paw print glows: Training - the stat gain lands high and INT looks unusually smug about helping. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_183",
+      "text": "The paw print glows: Missions - the XP payout comes home with a level-up sparkle tucked under its arm. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_184",
+      "text": "The paw print glows: NPC Battle - Attack, Defense, and Charge line up like they practiced in secret. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_185",
+      "text": "The paw print glows: Boss Battle - the boss overcommits and your pet finds the one dramatic opening. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_186",
+      "text": "The paw print glows: PvP Arena - your pet catches the tempo early and makes the spectator embed look heroic. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_187",
+      "text": "The paw print glows: Arena Page - the live lobby fills at exactly the right pace and nobody forgets to ready up. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_188",
+      "text": "The paw print glows: Colosseum - the hourly battle favors your build and the reward chest remembers your name. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_189",
+      "text": "The paw print glows: Dungeon Run - the map path bends toward clean fights and surprisingly polite loot. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_190",
+      "text": "The paw print glows: Dungeon Battle - your pet wins the exchange before the enemy script finds its footing. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_191",
+      "text": "The paw print glows: Survive Lobby - joining early puts your pet near the right zone before the arena gets loud. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_192",
+      "text": "The paw print glows: Survive Rounds - the round summary quietly favors your pet's instincts and zone choice. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_193",
+      "text": "The paw print glows: Survive Eliminations - your pet finds the weak target and the elimination counter smiles. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_194",
+      "text": "The paw print glows: Pet Races - the segment ticks stack cleanly and your racer surges at the finish. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_195",
+      "text": "The paw print glows: Wheel of Pets - the wheel slows exactly where your bet wanted it to slow. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_196",
+      "text": "The paw print glows: Powerball - the ticket numbers feel warm and the pot notices your optimism. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_197",
+      "text": "The paw print glows: Scratch Tickets - the scratch card reveals the good symbol before suspicion has time to form. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_198",
+      "text": "The paw print glows: Slots - the reels line up just long enough for XP to look generous. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_199",
+      "text": "The paw print glows: Mega Keno - the picked spots light up like the board actually read your mind. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_200",
+      "text": "The paw print glows: Blackjack - the dealer card behaves and your pet's hand finds the clean line. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_201",
+      "text": "The paw print glows: Holdem - the board texture helps your pet look like a poker scholar. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_202",
+      "text": "The paw print glows: Craps - the dice bounce kindly and the table briefly respects your plan. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_203",
+      "text": "The paw print glows: Coin Flip - the coin lands with the exact smugness you needed. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_204",
+      "text": "The paw print glows: Rock Paper Scissors - your pet reads the pattern and picks the winning gesture. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_205",
+      "text": "The paw print glows: Loot Chests - the chest opens like it has been saving the good item for you. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_206",
+      "text": "The paw print glows: Keys - the right key finds the right chest and everyone acts surprised. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_207",
+      "text": "The paw print glows: Potions - the potion lands exactly where the pet state needed help. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_208",
+      "text": "The paw print glows: Equipment - the equipped item boosts the stat that actually matters next. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_209",
+      "text": "The paw print glows: Consumables - the consumed item turns a shaky attempt into a clean result. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_210",
+      "text": "The paw print glows: Gifting - the gift lands well and another pet remembers your name kindly. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_211",
+      "text": "The paw print glows: Rename - the new name fits so well the battle log seems more confident. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_212",
+      "text": "The paw print glows: Bazaar Listing - the listing price looks fair and the market board starts paying attention. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_213",
+      "text": "The paw print glows: Shop Visit - the shop stock points toward the item your pet actually needs. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_214",
+      "text": "The paw print glows: Pet Stock Token Buy - the token buy catches the curve before it gets smug. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_215",
+      "text": "The paw print glows: Pet Stock Token Sell - the sale exits before the line starts doing theater. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_216",
+      "text": "The paw print glows: Tasks - the active task lines up with something you were already about to do. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_217",
+      "text": "The paw print glows: Daily Goal - claimed task progress stacks neatly toward the daily chest. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_218",
+      "text": "The paw print glows: Weekly Tasks - the larger requirement finally starts looking like a plan. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_219",
+      "text": "The paw print glows: Monthly Tasks - the long grind pays attention and the big chest moves closer. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_220",
+      "text": "The paw print glows: My Pet Page - the stats, equipment, and mood all agree for once. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_221",
+      "text": "The paw print glows: Pet Connector - the connection path opens like the world map wanted company. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_222",
+      "text": "The paw print glows: Ability Tree - the next ability point lands on a choice that makes the build click. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_223",
+      "text": "The paw print glows: Pet Roster - the roster view reminds you that your companion is built for this. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_224",
+      "text": "The paw print glows: Item Board - the posted item finds a buyer before you second-guess the price. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_225",
+      "text": "The paw print glows: Pet Shop Adoption - the new companion arrives with excellent starter energy. Watch the cooldown and commit anyway."
+    },
+    {
+      "id": "pet_omens_226",
+      "text": "The arena dust warns: Play - the affection roll fizzles and your pet gives you the side-eye of cooldown awareness. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_227",
+      "text": "The arena dust warns: Training - the lesson turns into a stat-loss lecture with chalk dust and regret. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_228",
+      "text": "The arena dust warns: Missions - the gamble bites first and your pet returns with a smaller number than expected. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_229",
+      "text": "The arena dust warns: NPC Battle - the enemy reads your rhythm and your pet learns what humble pie tastes like. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_230",
+      "text": "The arena dust warns: Boss Battle - the boss health bar laughs at your confidence and asks for another round. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_231",
+      "text": "The arena dust warns: PvP Arena - another player times the swing perfectly and your pet becomes the highlight clip. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_232",
+      "text": "The arena dust warns: Arena Page - the match starts with brave energy and immediately discovers matchmaking drama. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_233",
+      "text": "The arena dust warns: Colosseum - the Colosseum crowd chants for chaos and your pet gets volunteered as evidence. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_234",
+      "text": "The arena dust warns: Dungeon Run - the next room has teeth, attitude, and no respect for your potion budget. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_235",
+      "text": "The arena dust warns: Dungeon Battle - the dungeon enemy rolls like it paid rent in the battle log. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_236",
+      "text": "The arena dust warns: Survive Lobby - your pet enters just in time to be everybody else's convenient target. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_237",
+      "text": "The arena dust warns: Survive Rounds - the arena narrative starts using your pet as punctuation. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_238",
+      "text": "The arena dust warns: Survive Eliminations - the last-stand logic points somewhere else and your pet becomes the lesson. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_239",
+      "text": "The arena dust warns: Pet Races - the race sim discovers drama and parks your pet one segment short. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_240",
+      "text": "The arena dust warns: Wheel of Pets - the pointer drifts past your pick with theatrical disrespect. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_241",
+      "text": "The arena dust warns: Powerball - the draw walks past your ticket like it owes someone else money. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_242",
+      "text": "The arena dust warns: Scratch Tickets - the card dust spells almost and then has the nerve to stop. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_243",
+      "text": "The arena dust warns: Slots - the slot machine pays you in suspense and keeps the change. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_244",
+      "text": "The arena dust warns: Mega Keno - the Keno grid avoids your picks with professional discipline. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_245",
+      "text": "The arena dust warns: Blackjack - the table teaches probability by removing XP from the room. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_246",
+      "text": "The arena dust warns: Holdem - the river arrives wearing betrayal as formalwear. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_247",
+      "text": "The arena dust warns: Craps - the dice hear your hopes and immediately schedule a correction. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_248",
+      "text": "The arena dust warns: Coin Flip - the coin chooses the other side and pretends it was obvious. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_249",
+      "text": "The arena dust warns: Rock Paper Scissors - your pet throws scissors into a rock-shaped prophecy. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_250",
+      "text": "The arena dust warns: Loot Chests - the lid creaks with common-tier confidence. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_251",
+      "text": "The arena dust warns: Keys - the key fits emotionally but not mechanically. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_252",
+      "text": "The arena dust warns: Potions - the potion fixes one problem and reveals three more opinions. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_253",
+      "text": "The arena dust warns: Equipment - the shiny gear looks excellent while solving the wrong problem. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_254",
+      "text": "The arena dust warns: Consumables - the item disappears and your pet asks whether that was the whole plan. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_255",
+      "text": "The arena dust warns: Gifting - the receiving pet accepts the item with suspiciously neutral body language. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_256",
+      "text": "The arena dust warns: Rename - the rename lands and your pet immediately develops brand confusion. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_257",
+      "text": "The arena dust warns: Bazaar Listing - the item sits there long enough to become part of the decor. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_258",
+      "text": "The arena dust warns: Shop Visit - the market tempts you into buying vibes with no stat plan. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_259",
+      "text": "The arena dust warns: Pet Stock Token Buy - the chart waits for your purchase and then remembers gravity. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_260",
+      "text": "The arena dust warns: Pet Stock Token Sell - the sell button fires one tick before the good part. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_261",
+      "text": "The arena dust warns: Tasks - the task slot asks for the one action currently on your patience cooldown. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_262",
+      "text": "The arena dust warns: Daily Goal - the goal bar stops one claim short and develops a personality. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_263",
+      "text": "The arena dust warns: Weekly Tasks - the weekly multiplier remembers every shortcut you hoped would count. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_264",
+      "text": "The arena dust warns: Monthly Tasks - the monthly bar advances with the speed of a dramatic loading screen. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_265",
+      "text": "The arena dust warns: My Pet Page - the page politely displays every neglected decision at the same time. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_266",
+      "text": "The arena dust warns: Pet Connector - the route sends your pet on a sightseeing tour of inconvenience. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_267",
+      "text": "The arena dust warns: Ability Tree - the tree offers three tempting branches and one obvious future regret. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_268",
+      "text": "The arena dust warns: Pet Roster - the roster compares stats and quietly starts a self-improvement arc. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_269",
+      "text": "The arena dust warns: Item Board - the board watches your listing age into a museum piece. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_270",
+      "text": "The arena dust warns: Pet Shop Adoption - the adoption screen asks whether you are emotionally ready for another responsibility. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_271",
+      "text": "The treat bowl predicts: Play - happiness rises cleanly and your pet acts like the button was invented for them. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_272",
+      "text": "The treat bowl predicts: Training - the stat gain lands high and INT looks unusually smug about helping. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_273",
+      "text": "The treat bowl predicts: Missions - the XP payout comes home with a level-up sparkle tucked under its arm. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_274",
+      "text": "The treat bowl predicts: NPC Battle - Attack, Defense, and Charge line up like they practiced in secret. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_275",
+      "text": "The treat bowl predicts: Boss Battle - the boss overcommits and your pet finds the one dramatic opening. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_276",
+      "text": "The treat bowl predicts: PvP Arena - your pet catches the tempo early and makes the spectator embed look heroic. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_277",
+      "text": "The treat bowl predicts: Arena Page - the live lobby fills at exactly the right pace and nobody forgets to ready up. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_278",
+      "text": "The treat bowl predicts: Colosseum - the hourly battle favors your build and the reward chest remembers your name. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_279",
+      "text": "The treat bowl predicts: Dungeon Run - the map path bends toward clean fights and surprisingly polite loot. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_280",
+      "text": "The treat bowl predicts: Dungeon Battle - your pet wins the exchange before the enemy script finds its footing. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_281",
+      "text": "The treat bowl predicts: Survive Lobby - joining early puts your pet near the right zone before the arena gets loud. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_282",
+      "text": "The treat bowl predicts: Survive Rounds - the round summary quietly favors your pet's instincts and zone choice. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_283",
+      "text": "The treat bowl predicts: Survive Eliminations - your pet finds the weak target and the elimination counter smiles. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_284",
+      "text": "The treat bowl predicts: Pet Races - the segment ticks stack cleanly and your racer surges at the finish. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_285",
+      "text": "The treat bowl predicts: Wheel of Pets - the wheel slows exactly where your bet wanted it to slow. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_286",
+      "text": "The treat bowl predicts: Powerball - the ticket numbers feel warm and the pot notices your optimism. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_287",
+      "text": "The treat bowl predicts: Scratch Tickets - the scratch card reveals the good symbol before suspicion has time to form. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_288",
+      "text": "The treat bowl predicts: Slots - the reels line up just long enough for XP to look generous. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_289",
+      "text": "The treat bowl predicts: Mega Keno - the picked spots light up like the board actually read your mind. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_290",
+      "text": "The treat bowl predicts: Blackjack - the dealer card behaves and your pet's hand finds the clean line. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_291",
+      "text": "The treat bowl predicts: Holdem - the board texture helps your pet look like a poker scholar. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_292",
+      "text": "The treat bowl predicts: Craps - the dice bounce kindly and the table briefly respects your plan. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_293",
+      "text": "The treat bowl predicts: Coin Flip - the coin lands with the exact smugness you needed. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_294",
+      "text": "The treat bowl predicts: Rock Paper Scissors - your pet reads the pattern and picks the winning gesture. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_295",
+      "text": "The treat bowl predicts: Loot Chests - the chest opens like it has been saving the good item for you. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_296",
+      "text": "The treat bowl predicts: Keys - the right key finds the right chest and everyone acts surprised. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_297",
+      "text": "The treat bowl predicts: Potions - the potion lands exactly where the pet state needed help. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_298",
+      "text": "The treat bowl predicts: Equipment - the equipped item boosts the stat that actually matters next. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_299",
+      "text": "The treat bowl predicts: Consumables - the consumed item turns a shaky attempt into a clean result. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_300",
+      "text": "The treat bowl predicts: Gifting - the gift lands well and another pet remembers your name kindly. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_301",
+      "text": "The treat bowl predicts: Rename - the new name fits so well the battle log seems more confident. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_302",
+      "text": "The treat bowl predicts: Bazaar Listing - the listing price looks fair and the market board starts paying attention. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_303",
+      "text": "The treat bowl predicts: Shop Visit - the shop stock points toward the item your pet actually needs. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_304",
+      "text": "The treat bowl predicts: Pet Stock Token Buy - the token buy catches the curve before it gets smug. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_305",
+      "text": "The treat bowl predicts: Pet Stock Token Sell - the sale exits before the line starts doing theater. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_306",
+      "text": "The treat bowl predicts: Tasks - the active task lines up with something you were already about to do. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_307",
+      "text": "The treat bowl predicts: Daily Goal - claimed task progress stacks neatly toward the daily chest. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_308",
+      "text": "The treat bowl predicts: Weekly Tasks - the larger requirement finally starts looking like a plan. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_309",
+      "text": "The treat bowl predicts: Monthly Tasks - the long grind pays attention and the big chest moves closer. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_310",
+      "text": "The treat bowl predicts: My Pet Page - the stats, equipment, and mood all agree for once. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_311",
+      "text": "The treat bowl predicts: Pet Connector - the connection path opens like the world map wanted company. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_312",
+      "text": "The treat bowl predicts: Ability Tree - the next ability point lands on a choice that makes the build click. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_313",
+      "text": "The treat bowl predicts: Pet Roster - the roster view reminds you that your companion is built for this. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_314",
+      "text": "The treat bowl predicts: Item Board - the posted item finds a buyer before you second-guess the price. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_315",
+      "text": "The treat bowl predicts: Pet Shop Adoption - the new companion arrives with excellent starter energy. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_316",
+      "text": "The cooldown clock mutters: Play - the affection roll fizzles and your pet gives you the side-eye of cooldown awareness. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_317",
+      "text": "The cooldown clock mutters: Training - the lesson turns into a stat-loss lecture with chalk dust and regret. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_318",
+      "text": "The cooldown clock mutters: Missions - the gamble bites first and your pet returns with a smaller number than expected. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_319",
+      "text": "The cooldown clock mutters: NPC Battle - the enemy reads your rhythm and your pet learns what humble pie tastes like. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_320",
+      "text": "The cooldown clock mutters: Boss Battle - the boss health bar laughs at your confidence and asks for another round. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_321",
+      "text": "The cooldown clock mutters: PvP Arena - another player times the swing perfectly and your pet becomes the highlight clip. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_322",
+      "text": "The cooldown clock mutters: Arena Page - the match starts with brave energy and immediately discovers matchmaking drama. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_323",
+      "text": "The cooldown clock mutters: Colosseum - the Colosseum crowd chants for chaos and your pet gets volunteered as evidence. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_324",
+      "text": "The cooldown clock mutters: Dungeon Run - the next room has teeth, attitude, and no respect for your potion budget. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_325",
+      "text": "The cooldown clock mutters: Dungeon Battle - the dungeon enemy rolls like it paid rent in the battle log. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_326",
+      "text": "The cooldown clock mutters: Survive Lobby - your pet enters just in time to be everybody else's convenient target. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_327",
+      "text": "The cooldown clock mutters: Survive Rounds - the arena narrative starts using your pet as punctuation. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_328",
+      "text": "The cooldown clock mutters: Survive Eliminations - the last-stand logic points somewhere else and your pet becomes the lesson. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_329",
+      "text": "The cooldown clock mutters: Pet Races - the race sim discovers drama and parks your pet one segment short. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_330",
+      "text": "The cooldown clock mutters: Wheel of Pets - the pointer drifts past your pick with theatrical disrespect. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_331",
+      "text": "The cooldown clock mutters: Powerball - the draw walks past your ticket like it owes someone else money. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_332",
+      "text": "The cooldown clock mutters: Scratch Tickets - the card dust spells almost and then has the nerve to stop. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_333",
+      "text": "The cooldown clock mutters: Slots - the slot machine pays you in suspense and keeps the change. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_334",
+      "text": "The cooldown clock mutters: Mega Keno - the Keno grid avoids your picks with professional discipline. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_335",
+      "text": "The cooldown clock mutters: Blackjack - the table teaches probability by removing XP from the room. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_336",
+      "text": "The cooldown clock mutters: Holdem - the river arrives wearing betrayal as formalwear. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_337",
+      "text": "The cooldown clock mutters: Craps - the dice hear your hopes and immediately schedule a correction. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_338",
+      "text": "The cooldown clock mutters: Coin Flip - the coin chooses the other side and pretends it was obvious. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_339",
+      "text": "The cooldown clock mutters: Rock Paper Scissors - your pet throws scissors into a rock-shaped prophecy. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_340",
+      "text": "The cooldown clock mutters: Loot Chests - the lid creaks with common-tier confidence. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_341",
+      "text": "The cooldown clock mutters: Keys - the key fits emotionally but not mechanically. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_342",
+      "text": "The cooldown clock mutters: Potions - the potion fixes one problem and reveals three more opinions. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_343",
+      "text": "The cooldown clock mutters: Equipment - the shiny gear looks excellent while solving the wrong problem. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_344",
+      "text": "The cooldown clock mutters: Consumables - the item disappears and your pet asks whether that was the whole plan. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_345",
+      "text": "The cooldown clock mutters: Gifting - the receiving pet accepts the item with suspiciously neutral body language. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_346",
+      "text": "The cooldown clock mutters: Rename - the rename lands and your pet immediately develops brand confusion. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_347",
+      "text": "The cooldown clock mutters: Bazaar Listing - the item sits there long enough to become part of the decor. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_348",
+      "text": "The cooldown clock mutters: Shop Visit - the market tempts you into buying vibes with no stat plan. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_349",
+      "text": "The cooldown clock mutters: Pet Stock Token Buy - the chart waits for your purchase and then remembers gravity. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_350",
+      "text": "The cooldown clock mutters: Pet Stock Token Sell - the sell button fires one tick before the good part. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_351",
+      "text": "The cooldown clock mutters: Tasks - the task slot asks for the one action currently on your patience cooldown. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_352",
+      "text": "The cooldown clock mutters: Daily Goal - the goal bar stops one claim short and develops a personality. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_353",
+      "text": "The cooldown clock mutters: Weekly Tasks - the weekly multiplier remembers every shortcut you hoped would count. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_354",
+      "text": "The cooldown clock mutters: Monthly Tasks - the monthly bar advances with the speed of a dramatic loading screen. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_355",
+      "text": "The cooldown clock mutters: My Pet Page - the page politely displays every neglected decision at the same time. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_356",
+      "text": "The cooldown clock mutters: Pet Connector - the route sends your pet on a sightseeing tour of inconvenience. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_357",
+      "text": "The cooldown clock mutters: Ability Tree - the tree offers three tempting branches and one obvious future regret. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_358",
+      "text": "The cooldown clock mutters: Pet Roster - the roster compares stats and quietly starts a self-improvement arc. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_359",
+      "text": "The cooldown clock mutters: Item Board - the board watches your listing age into a museum piece. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_360",
+      "text": "The cooldown clock mutters: Pet Shop Adoption - the adoption screen asks whether you are emotionally ready for another responsibility. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_361",
+      "text": "The inventory shines: Play - happiness rises cleanly and your pet acts like the button was invented for them. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_362",
+      "text": "The inventory shines: Training - the stat gain lands high and INT looks unusually smug about helping. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_363",
+      "text": "The inventory shines: Missions - the XP payout comes home with a level-up sparkle tucked under its arm. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_364",
+      "text": "The inventory shines: NPC Battle - Attack, Defense, and Charge line up like they practiced in secret. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_365",
+      "text": "The inventory shines: Boss Battle - the boss overcommits and your pet finds the one dramatic opening. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_366",
+      "text": "The inventory shines: PvP Arena - your pet catches the tempo early and makes the spectator embed look heroic. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_367",
+      "text": "The inventory shines: Arena Page - the live lobby fills at exactly the right pace and nobody forgets to ready up. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_368",
+      "text": "The inventory shines: Colosseum - the hourly battle favors your build and the reward chest remembers your name. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_369",
+      "text": "The inventory shines: Dungeon Run - the map path bends toward clean fights and surprisingly polite loot. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_370",
+      "text": "The inventory shines: Dungeon Battle - your pet wins the exchange before the enemy script finds its footing. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_371",
+      "text": "The inventory shines: Survive Lobby - joining early puts your pet near the right zone before the arena gets loud. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_372",
+      "text": "The inventory shines: Survive Rounds - the round summary quietly favors your pet's instincts and zone choice. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_373",
+      "text": "The inventory shines: Survive Eliminations - your pet finds the weak target and the elimination counter smiles. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_374",
+      "text": "The inventory shines: Pet Races - the segment ticks stack cleanly and your racer surges at the finish. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_375",
+      "text": "The inventory shines: Wheel of Pets - the wheel slows exactly where your bet wanted it to slow. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_376",
+      "text": "The inventory shines: Powerball - the ticket numbers feel warm and the pot notices your optimism. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_377",
+      "text": "The inventory shines: Scratch Tickets - the scratch card reveals the good symbol before suspicion has time to form. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_378",
+      "text": "The inventory shines: Slots - the reels line up just long enough for XP to look generous. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_379",
+      "text": "The inventory shines: Mega Keno - the picked spots light up like the board actually read your mind. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_380",
+      "text": "The inventory shines: Blackjack - the dealer card behaves and your pet's hand finds the clean line. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_381",
+      "text": "The inventory shines: Holdem - the board texture helps your pet look like a poker scholar. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_382",
+      "text": "The inventory shines: Craps - the dice bounce kindly and the table briefly respects your plan. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_383",
+      "text": "The inventory shines: Coin Flip - the coin lands with the exact smugness you needed. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_384",
+      "text": "The inventory shines: Rock Paper Scissors - your pet reads the pattern and picks the winning gesture. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_385",
+      "text": "The inventory shines: Loot Chests - the chest opens like it has been saving the good item for you. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_386",
+      "text": "The inventory shines: Keys - the right key finds the right chest and everyone acts surprised. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_387",
+      "text": "The inventory shines: Potions - the potion lands exactly where the pet state needed help. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_388",
+      "text": "The inventory shines: Equipment - the equipped item boosts the stat that actually matters next. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_389",
+      "text": "The inventory shines: Consumables - the consumed item turns a shaky attempt into a clean result. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_390",
+      "text": "The inventory shines: Gifting - the gift lands well and another pet remembers your name kindly. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_391",
+      "text": "The inventory shines: Rename - the new name fits so well the battle log seems more confident. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_392",
+      "text": "The inventory shines: Bazaar Listing - the listing price looks fair and the market board starts paying attention. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_393",
+      "text": "The inventory shines: Shop Visit - the shop stock points toward the item your pet actually needs. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_394",
+      "text": "The inventory shines: Pet Stock Token Buy - the token buy catches the curve before it gets smug. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_395",
+      "text": "The inventory shines: Pet Stock Token Sell - the sale exits before the line starts doing theater. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_396",
+      "text": "The inventory shines: Tasks - the active task lines up with something you were already about to do. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_397",
+      "text": "The inventory shines: Daily Goal - claimed task progress stacks neatly toward the daily chest. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_398",
+      "text": "The inventory shines: Weekly Tasks - the larger requirement finally starts looking like a plan. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_399",
+      "text": "The inventory shines: Monthly Tasks - the long grind pays attention and the big chest moves closer. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_400",
+      "text": "The inventory shines: My Pet Page - the stats, equipment, and mood all agree for once. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_401",
+      "text": "The inventory shines: Pet Connector - the connection path opens like the world map wanted company. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_402",
+      "text": "The inventory shines: Ability Tree - the next ability point lands on a choice that makes the build click. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_403",
+      "text": "The inventory shines: Pet Roster - the roster view reminds you that your companion is built for this. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_404",
+      "text": "The inventory shines: Item Board - the posted item finds a buyer before you second-guess the price. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_405",
+      "text": "The inventory shines: Pet Shop Adoption - the new companion arrives with excellent starter energy. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_406",
+      "text": "The fortune slip frowns: Play - the affection roll fizzles and your pet gives you the side-eye of cooldown awareness. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_407",
+      "text": "The fortune slip frowns: Training - the lesson turns into a stat-loss lecture with chalk dust and regret. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_408",
+      "text": "The fortune slip frowns: Missions - the gamble bites first and your pet returns with a smaller number than expected. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_409",
+      "text": "The fortune slip frowns: NPC Battle - the enemy reads your rhythm and your pet learns what humble pie tastes like. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_410",
+      "text": "The fortune slip frowns: Boss Battle - the boss health bar laughs at your confidence and asks for another round. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_411",
+      "text": "The fortune slip frowns: PvP Arena - another player times the swing perfectly and your pet becomes the highlight clip. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_412",
+      "text": "The fortune slip frowns: Arena Page - the match starts with brave energy and immediately discovers matchmaking drama. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_413",
+      "text": "The fortune slip frowns: Colosseum - the Colosseum crowd chants for chaos and your pet gets volunteered as evidence. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_414",
+      "text": "The fortune slip frowns: Dungeon Run - the next room has teeth, attitude, and no respect for your potion budget. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_415",
+      "text": "The fortune slip frowns: Dungeon Battle - the dungeon enemy rolls like it paid rent in the battle log. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_416",
+      "text": "The fortune slip frowns: Survive Lobby - your pet enters just in time to be everybody else's convenient target. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_417",
+      "text": "The fortune slip frowns: Survive Rounds - the arena narrative starts using your pet as punctuation. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_418",
+      "text": "The fortune slip frowns: Survive Eliminations - the last-stand logic points somewhere else and your pet becomes the lesson. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_419",
+      "text": "The fortune slip frowns: Pet Races - the race sim discovers drama and parks your pet one segment short. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_420",
+      "text": "The fortune slip frowns: Wheel of Pets - the pointer drifts past your pick with theatrical disrespect. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_421",
+      "text": "The fortune slip frowns: Powerball - the draw walks past your ticket like it owes someone else money. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_422",
+      "text": "The fortune slip frowns: Scratch Tickets - the card dust spells almost and then has the nerve to stop. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_423",
+      "text": "The fortune slip frowns: Slots - the slot machine pays you in suspense and keeps the change. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_424",
+      "text": "The fortune slip frowns: Mega Keno - the Keno grid avoids your picks with professional discipline. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_425",
+      "text": "The fortune slip frowns: Blackjack - the table teaches probability by removing XP from the room. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_426",
+      "text": "The fortune slip frowns: Holdem - the river arrives wearing betrayal as formalwear. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_427",
+      "text": "The fortune slip frowns: Craps - the dice hear your hopes and immediately schedule a correction. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_428",
+      "text": "The fortune slip frowns: Coin Flip - the coin chooses the other side and pretends it was obvious. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_429",
+      "text": "The fortune slip frowns: Rock Paper Scissors - your pet throws scissors into a rock-shaped prophecy. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_430",
+      "text": "The fortune slip frowns: Loot Chests - the lid creaks with common-tier confidence. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_431",
+      "text": "The fortune slip frowns: Keys - the key fits emotionally but not mechanically. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_432",
+      "text": "The fortune slip frowns: Potions - the potion fixes one problem and reveals three more opinions. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_433",
+      "text": "The fortune slip frowns: Equipment - the shiny gear looks excellent while solving the wrong problem. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_434",
+      "text": "The fortune slip frowns: Consumables - the item disappears and your pet asks whether that was the whole plan. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_435",
+      "text": "The fortune slip frowns: Gifting - the receiving pet accepts the item with suspiciously neutral body language. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_436",
+      "text": "The fortune slip frowns: Rename - the rename lands and your pet immediately develops brand confusion. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_437",
+      "text": "The fortune slip frowns: Bazaar Listing - the item sits there long enough to become part of the decor. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_438",
+      "text": "The fortune slip frowns: Shop Visit - the market tempts you into buying vibes with no stat plan. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_439",
+      "text": "The fortune slip frowns: Pet Stock Token Buy - the chart waits for your purchase and then remembers gravity. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_440",
+      "text": "The fortune slip frowns: Pet Stock Token Sell - the sell button fires one tick before the good part. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_441",
+      "text": "The fortune slip frowns: Tasks - the task slot asks for the one action currently on your patience cooldown. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_442",
+      "text": "The fortune slip frowns: Daily Goal - the goal bar stops one claim short and develops a personality. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_443",
+      "text": "The fortune slip frowns: Weekly Tasks - the weekly multiplier remembers every shortcut you hoped would count. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_444",
+      "text": "The fortune slip frowns: Monthly Tasks - the monthly bar advances with the speed of a dramatic loading screen. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_445",
+      "text": "The fortune slip frowns: My Pet Page - the page politely displays every neglected decision at the same time. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_446",
+      "text": "The fortune slip frowns: Pet Connector - the route sends your pet on a sightseeing tour of inconvenience. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_447",
+      "text": "The fortune slip frowns: Ability Tree - the tree offers three tempting branches and one obvious future regret. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_448",
+      "text": "The fortune slip frowns: Pet Roster - the roster compares stats and quietly starts a self-improvement arc. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_449",
+      "text": "The fortune slip frowns: Item Board - the board watches your listing age into a museum piece. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_450",
+      "text": "The fortune slip frowns: Pet Shop Adoption - the adoption screen asks whether you are emotionally ready for another responsibility. The next click has narrative weight."
+    },
+    {
+      "id": "pet_omens_451",
+      "text": "Good omen: Play - happiness rises cleanly and your pet acts like the button was invented for them. Your pet pretends not to care, poorly."
+    },
+    {
+      "id": "pet_omens_452",
+      "text": "Good omen: Training - the stat gain lands high and INT looks unusually smug about helping. Your pet pretends not to care, poorly."
+    },
+    {
+      "id": "pet_omens_453",
+      "text": "Good omen: Missions - the XP payout comes home with a level-up sparkle tucked under its arm. Your pet pretends not to care, poorly."
+    },
+    {
+      "id": "pet_omens_454",
+      "text": "Good omen: NPC Battle - Attack, Defense, and Charge line up like they practiced in secret. Your pet pretends not to care, poorly."
+    },
+    {
+      "id": "pet_omens_455",
+      "text": "Good omen: Boss Battle - the boss overcommits and your pet finds the one dramatic opening. Your pet pretends not to care, poorly."
+    },
+    {
+      "id": "pet_omens_456",
+      "text": "Good omen: PvP Arena - your pet catches the tempo early and makes the spectator embed look heroic. Your pet pretends not to care, poorly."
+    },
+    {
+      "id": "pet_omens_457",
+      "text": "Good omen: Arena Page - the live lobby fills at exactly the right pace and nobody forgets to ready up. Your pet pretends not to care, poorly."
+    },
+    {
+      "id": "pet_omens_458",
+      "text": "Good omen: Colosseum - the hourly battle favors your build and the reward chest remembers your name. Your pet pretends not to care, poorly."
+    },
+    {
+      "id": "pet_omens_459",
+      "text": "Good omen: Dungeon Run - the map path bends toward clean fights and surprisingly polite loot. Your pet pretends not to care, poorly."
+    },
+    {
+      "id": "pet_omens_460",
+      "text": "Good omen: Dungeon Battle - your pet wins the exchange before the enemy script finds its footing. Your pet pretends not to care, poorly."
+    },
+    {
+      "id": "pet_omens_461",
+      "text": "Good omen: Survive Lobby - joining early puts your pet near the right zone before the arena gets loud. Your pet pretends not to care, poorly."
+    },
+    {
+      "id": "pet_omens_462",
+      "text": "Good omen: Survive Rounds - the round summary quietly favors your pet's instincts and zone choice. Your pet pretends not to care, poorly."
+    },
+    {
+      "id": "pet_omens_463",
+      "text": "Good omen: Survive Eliminations - your pet finds the weak target and the elimination counter smiles. Your pet pretends not to care, poorly."
+    },
+    {
+      "id": "pet_omens_464",
+      "text": "Good omen: Pet Races - the segment ticks stack cleanly and your racer surges at the finish. Your pet pretends not to care, poorly."
+    },
+    {
+      "id": "pet_omens_465",
+      "text": "Good omen: Wheel of Pets - the wheel slows exactly where your bet wanted it to slow. Your pet pretends not to care, poorly."
+    },
+    {
+      "id": "pet_omens_466",
+      "text": "Good omen: Powerball - the ticket numbers feel warm and the pot notices your optimism. Your pet pretends not to care, poorly."
+    },
+    {
+      "id": "pet_omens_467",
+      "text": "Good omen: Scratch Tickets - the scratch card reveals the good symbol before suspicion has time to form. Your pet pretends not to care, poorly."
+    },
+    {
+      "id": "pet_omens_468",
+      "text": "Good omen: Slots - the reels line up just long enough for XP to look generous. Your pet pretends not to care, poorly."
+    },
+    {
+      "id": "pet_omens_469",
+      "text": "Good omen: Mega Keno - the picked spots light up like the board actually read your mind. Your pet pretends not to care, poorly."
+    },
+    {
+      "id": "pet_omens_470",
+      "text": "Good omen: Blackjack - the dealer card behaves and your pet's hand finds the clean line. Your pet pretends not to care, poorly."
+    },
+    {
+      "id": "pet_omens_471",
+      "text": "Good omen: Holdem - the board texture helps your pet look like a poker scholar. Your pet pretends not to care, poorly."
+    },
+    {
+      "id": "pet_omens_472",
+      "text": "Good omen: Craps - the dice bounce kindly and the table briefly respects your plan. Your pet pretends not to care, poorly."
+    },
+    {
+      "id": "pet_omens_473",
+      "text": "Good omen: Coin Flip - the coin lands with the exact smugness you needed. Your pet pretends not to care, poorly."
+    },
+    {
+      "id": "pet_omens_474",
+      "text": "Good omen: Rock Paper Scissors - your pet reads the pattern and picks the winning gesture. Your pet pretends not to care, poorly."
+    },
+    {
+      "id": "pet_omens_475",
+      "text": "Good omen: Loot Chests - the chest opens like it has been saving the good item for you. Your pet pretends not to care, poorly."
+    },
+    {
+      "id": "pet_omens_476",
+      "text": "Good omen: Keys - the right key finds the right chest and everyone acts surprised. Your pet pretends not to care, poorly."
+    },
+    {
+      "id": "pet_omens_477",
+      "text": "Good omen: Potions - the potion lands exactly where the pet state needed help. Your pet pretends not to care, poorly."
+    },
+    {
+      "id": "pet_omens_478",
+      "text": "Good omen: Equipment - the equipped item boosts the stat that actually matters next. Your pet pretends not to care, poorly."
+    },
+    {
+      "id": "pet_omens_479",
+      "text": "Good omen: Consumables - the consumed item turns a shaky attempt into a clean result. Your pet pretends not to care, poorly."
+    },
+    {
+      "id": "pet_omens_480",
+      "text": "Good omen: Gifting - the gift lands well and another pet remembers your name kindly. Your pet pretends not to care, poorly."
+    },
+    {
+      "id": "pet_omens_481",
+      "text": "Good omen: Rename - the new name fits so well the battle log seems more confident. Your pet pretends not to care, poorly."
+    },
+    {
+      "id": "pet_omens_482",
+      "text": "Good omen: Bazaar Listing - the listing price looks fair and the market board starts paying attention. Your pet pretends not to care, poorly."
+    },
+    {
+      "id": "pet_omens_483",
+      "text": "Good omen: Shop Visit - the shop stock points toward the item your pet actually needs. Your pet pretends not to care, poorly."
+    },
+    {
+      "id": "pet_omens_484",
+      "text": "Good omen: Pet Stock Token Buy - the token buy catches the curve before it gets smug. Your pet pretends not to care, poorly."
+    },
+    {
+      "id": "pet_omens_485",
+      "text": "Good omen: Pet Stock Token Sell - the sale exits before the line starts doing theater. Your pet pretends not to care, poorly."
+    },
+    {
+      "id": "pet_omens_486",
+      "text": "Good omen: Tasks - the active task lines up with something you were already about to do. Your pet pretends not to care, poorly."
+    },
+    {
+      "id": "pet_omens_487",
+      "text": "Good omen: Daily Goal - claimed task progress stacks neatly toward the daily chest. Your pet pretends not to care, poorly."
+    },
+    {
+      "id": "pet_omens_488",
+      "text": "Good omen: Weekly Tasks - the larger requirement finally starts looking like a plan. Your pet pretends not to care, poorly."
+    },
+    {
+      "id": "pet_omens_489",
+      "text": "Good omen: Monthly Tasks - the long grind pays attention and the big chest moves closer. Your pet pretends not to care, poorly."
+    },
+    {
+      "id": "pet_omens_490",
+      "text": "Good omen: My Pet Page - the stats, equipment, and mood all agree for once. Your pet pretends not to care, poorly."
+    },
+    {
+      "id": "pet_omens_491",
+      "text": "Good omen: Pet Connector - the connection path opens like the world map wanted company. Your pet pretends not to care, poorly."
+    },
+    {
+      "id": "pet_omens_492",
+      "text": "Good omen: Ability Tree - the next ability point lands on a choice that makes the build click. Your pet pretends not to care, poorly."
+    },
+    {
+      "id": "pet_omens_493",
+      "text": "Good omen: Pet Roster - the roster view reminds you that your companion is built for this. Your pet pretends not to care, poorly."
+    },
+    {
+      "id": "pet_omens_494",
+      "text": "Good omen: Item Board - the posted item finds a buyer before you second-guess the price. Your pet pretends not to care, poorly."
+    },
+    {
+      "id": "pet_omens_495",
+      "text": "Good omen: Pet Shop Adoption - the new companion arrives with excellent starter energy. Your pet pretends not to care, poorly."
+    },
+    {
+      "id": "pet_omens_496",
+      "text": "Bad omen: Play - the affection roll fizzles and your pet gives you the side-eye of cooldown awareness. Your pet pretends not to care, poorly."
+    },
+    {
+      "id": "pet_omens_497",
+      "text": "Bad omen: Training - the lesson turns into a stat-loss lecture with chalk dust and regret. Your pet pretends not to care, poorly."
+    },
+    {
+      "id": "pet_omens_498",
+      "text": "Bad omen: Missions - the gamble bites first and your pet returns with a smaller number than expected. Your pet pretends not to care, poorly."
+    },
+    {
+      "id": "pet_omens_499",
+      "text": "Bad omen: NPC Battle - the enemy reads your rhythm and your pet learns what humble pie tastes like. Your pet pretends not to care, poorly."
+    },
+    {
+      "id": "pet_omens_500",
+      "text": "Bad omen: Boss Battle - the boss health bar laughs at your confidence and asks for another round. Your pet pretends not to care, poorly."
+    }
+  ]
+}

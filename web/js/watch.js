@@ -622,7 +622,7 @@ function buildAllianceTotalsBreakdown(t) {
     panel.innerHTML = `
         <div class="wa-panel">
             <div class="wa-header">
-                <span class="wa-title">⭐ Darkstar — Alliance War Summary</span>
+                <span class="wa-title">${t.alliance_emoji || '🤝'} ${t.name || 'Alliance'} — Alliance War Summary</span>
                 <span class="wa-subtitle">${formatDateLabel(watchRangeState.selectedStartDate)} – ${formatDateLabel(watchRangeState.selectedEndDate)}</span>
             </div>
             <div class="wa-grid">
@@ -658,7 +658,7 @@ function buildTotalsRow(totals) {
 
     row.innerHTML = [
         `<td data-key="name" data-sort-value="__totals__" class="watch-totals-label">
-            <span class="watch-totals-badge">⭐ Darkstar</span>
+            <span class="watch-totals-badge">${totals.alliance_emoji || '🤝'} ${totals.name || 'Alliance'}</span>
             <span class="watch-totals-sub">${nationCount} nation${nationCount !== 1 ? "s" : ""}</span>
         </td>`,
         `<td data-key="cost_metric" data-sort-value="${totals.gross_cost || 0}">${buildCostDisplay(totals.gross_cost, totals.net_damage)}</td>`,
@@ -947,12 +947,9 @@ async function fetchData() {
         const params = new URLSearchParams();
         if (watchRangeState.selectedStartDate) params.set("start_date", watchRangeState.selectedStartDate);
         if (watchRangeState.selectedEndDate) params.set("end_date", watchRangeState.selectedEndDate);
+        if (window._watchAllianceId) params.set("alliance_id", window._watchAllianceId);
 
         const endpoint = watchViewMode === "nations" ? "/api/watch/wars/all-nations" : "/api/watch/wars";
-        // alliance_id is only meaningful for the main alliance-wars endpoint
-        if (watchViewMode !== "nations" && window._watchAllianceId && window._watchAllianceId !== 10259) {
-            params.set("alliance_id", String(window._watchAllianceId));
-        }
         const response = await fetch(`${endpoint}${params.toString() ? `?${params.toString()}` : ""}`);
         const data = await response.json();
 
@@ -970,7 +967,7 @@ async function fetchData() {
 
         if (nationIds.length === 0) {
             hideAlliancePanel();
-            setStatus(data.error || (watchViewMode === "nations" ? "No wars were found in the selected date range." : "No Darkstar wars were found in the selected date range."));
+            setStatus(data.error || (watchViewMode === "nations" ? "No wars were found in the selected date range." : "No wars were found for your alliance in the selected date range."));
             updateSortUI(currentSortKey, currentSortDirection);
             return;
         }
@@ -1002,7 +999,7 @@ async function fetchData() {
         }
     } catch (error) {
         console.error("Error fetching war data:", error);
-        setStatus("Darkstar war data could not be loaded right now.", true);
+        setStatus("War data could not be loaded right now.", true);
     }
 }
 
@@ -1098,8 +1095,7 @@ function initializeWatchPage() {
     if (watchPageInitialized) return;
     watchPageInitialized = true;
 
-    // Load user's saved home alliance from settings before first fetch
-    // so the correct alliance_id is sent on the initial request.
+    // Fetch initial data once settings are loaded
     fetch('/api/settings', { credentials: 'same-origin' })
         .then(r => r.ok ? r.json() : null)
         .then(s => {

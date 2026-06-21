@@ -216,6 +216,7 @@ function eImg(src, alt, cls) {
 /* -- Utility: event type ? icon + label ------------------------------------ */
 const EVENT_META = {
   city_purchase:     { img: E.domain,      label: 'City Built'    },
+  city_deleted:      { img: E.domain,      label: 'City Deleted'  },
   project_purchase:  { img: E.calculator,  label: 'Project'       },
   city_upgrade:      { img: E.improvement, label: 'Upgrade'       },
   war_declared:      { img: E.wars,        label: 'War'           },
@@ -226,6 +227,7 @@ const EVENT_META = {
   alliance_join:     { img: E.alliance,    label: 'Joined'        },
   alliance_leave:    { img: E.alliance,    label: 'Left'          },
   alliance_change:   { img: E.alliance,    label: 'Moved'         },
+  alliance_deleted:  { img: E.alliance,    label: 'Alliance Deleted' },
   bank_deposit:      { img: E.calculator,  label: 'Deposit'       },
   bank_withdrawal:   { img: E.loot,        label: 'Withdrawal'    },
   bank_transfer:     { img: E.calculator,  label: 'Transfer'      },

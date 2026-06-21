@@ -43,6 +43,10 @@ function petImgUrl(species) {
     if (!species) return '/static/Emojis/Pets/Deco/Basic.png';
     return '/static/Emojis/Pets/' + species + '.png';
 }
+function petImgOrDefault(pet) {
+    if (pet && pet.badge_url) return pet.badge_url;
+    return petImgUrl((pet && pet.species) || null);
+}
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 async function init() {
@@ -342,9 +346,6 @@ function showJoinPanel(roomId) {
                 <div style="font-size:0.78rem;color:var(--gold-secondary);margin-bottom:10px">
                     Your room will glow and pulse so other users know you want to fight.
                 </div>
-                <div class="d-flex gap-2 mb-2">
-                    <button class="arena-btn" style="background:rgba(220,53,69,0.12);border-color:rgba(220,53,69,0.4);color:#dc3545;flex:1" onclick="openBattleSettings && openBattleSettings('pvp', ${roomId})">⚔️ Battle Settings</button>
-                </div>
                 <button class="arena-btn" id="join-pvp-btn" onclick="window._arenaJoin(${roomId},'pvp')" ${alreadyIn?'disabled':''}>
                     Enter &amp; Seek PvP
                 </button>
@@ -359,9 +360,6 @@ function showJoinPanel(roomId) {
                         Players always attack the Boss. When defending, choose a teammate to <strong>shield</strong>.<br>
                         All players must submit their action each turn before the round resolves.
                     </div>
-                </div>
-                <div class="d-flex gap-2 mb-2">
-                    <button class="arena-btn" style="background:rgba(220,53,69,0.12);border-color:rgba(220,53,69,0.4);color:#dc3545;flex:1" onclick="openBattleSettings && openBattleSettings('pvp', ${roomId})">⚔️ Battle Settings</button>
                 </div>
                 <button class="arena-btn boss-mode-btn" id="join-boss-btn" onclick="window._arenaJoin(${roomId},'boss')" ${alreadyIn?'disabled':''}>
                     👹 Enter Boss Room
@@ -479,7 +477,7 @@ function _showBattleStage() {
                     <div class="arena-fighter-img-wrap" id="af-player-wrap">
                         <div class="arena-charge-ring" id="af-player-ring"></div>
                         <img class="arena-fighter-img" id="af-player-img"
-                             src="${petImgUrl(p.species)}"
+                             src="${petImgOrDefault(p)}"
                              onerror="this.src='/static/Emojis/Pets/Deco/Basic.png'" alt="${esc(p.name)}">
                     </div>
                     <div class="arena-fighter-name">${esc(p.name)}</div>
@@ -709,13 +707,14 @@ function _animateFighters(combat, isOver, won) {
     if (playerDied) setTimeout(() => _eliminateFighter('af-player-img', playerKilledByParry ? 'parry' : 'attack', false), 350);
 }
 
-function _appendTurnLog(turn, combat, pName, eName) {
+function _appendTurnLog(turn, combat, pName, eName, extraLines) {
     const log = $('arena-turn-log');
     if (!log || !combat) return;
     const c = combat;
     let html = `<div style="border-left:2px solid rgba(255,215,0,0.18);padding:4px 7px;margin-bottom:4px;font-size:0.72rem">`;
     html += `<div style="font-size:0.65rem;color:var(--text-secondary);margin-bottom:2px">Turn ${turn}</div>`;
 
+    // Player action
     if (c.p_action === 'charge') {
         html += `<div><span style="color:#9b59b6">⚡ ${esc(pName)}</span> charges → <span style="color:var(--gold-primary)">x${c.p_charge_after.toFixed(0)} ready</span></div>`;
     } else if (c.p_action === 'defend') {
@@ -723,17 +722,24 @@ function _appendTurnLog(turn, combat, pName, eName) {
         if (c.e_parry > 0) html += ` → <span style="color:#2ecc71">parried <b>${c.e_parry}</b> back!</span>`;
         else if (c.e_dmg === 0 && c.e_action === 'attack') html += ` → <span style="color:#2ecc71">fully blocked!</span>`;
         else if (c.p_final_defense > 0 && c.e_dmg > 0) html += ` → <span style="color:#7fb3d3">blocked ${c.e_final_attack - c.e_dmg}</span>`;
+        if (c.p_defense_roll) html += ` <span style="color:var(--text-secondary);opacity:0.6">[def roll: ${c.p_defense_roll}]</span>`;
         html += `</div>`;
+    } else if (c.p_action === 'skill') {
+        html += `<div><span style="color:#9b59b6">✨ ${esc(pName)}</span> uses <b>${esc(c.p_action_label)}</b></div>`;
     } else {
         const ct = c.p_charge_mult > 1 ? ` <span style="color:#9b59b6">x${c.p_charge_mult.toFixed(0)}</span>` : '';
-        html += `<div><span style="color:#e74c3c">⚔️ ${esc(pName)}</span> uses <b>${esc(c.p_action_label)}</b>${ct}`;
+        const crit = c.p_is_critical ? ` <span style="color:#ff6b35;font-weight:700">⚡CRITICAL!</span>` : '';
+        html += `<div><span style="color:#e74c3c">⚔️ ${esc(pName)}</span> uses <b>${esc(c.p_action_label)}</b>${ct}${crit}`;
         if (c.p_dmg > 0) {
             const eff = c.p_type_elem_mult > 1.05 ? ' <span style="color:#f39c12">super effective</span>' : c.p_type_elem_mult < 0.95 ? ' <span style="color:#7f8c8d">not very effective</span>' : '';
             html += ` → <span style="color:#e74c3c"><b>${c.p_dmg}</b> dmg</span>${eff}`;
+            if (c.p_critical_mult > 1) html += ` <span style="color:var(--text-secondary);opacity:0.6">x${c.p_critical_mult.toFixed(1)}</span>`;
         } else html += ` → <span style="color:#7f8c8d">blocked</span>`;
+        if (c.p_attack_roll) html += ` <span style="color:var(--text-secondary);opacity:0.6">[atk roll: ${c.p_attack_roll}]</span>`;
         html += `</div>`;
     }
 
+    // Enemy action
     if (c.e_action === 'charge') {
         html += `<div><span style="color:#9b59b6">⚡ ${esc(eName)}</span> charges → <span style="color:#e74c3c">x${c.e_charge_after.toFixed(0)} ready</span></div>`;
     } else if (c.e_action === 'defend') {
@@ -741,15 +747,28 @@ function _appendTurnLog(turn, combat, pName, eName) {
         if (c.p_parry > 0) html += ` → <span style="color:#e74c3c">parried <b>${c.p_parry}</b> back!</span>`;
         else if (c.p_dmg === 0 && c.p_action === 'attack') html += ` → <span style="color:#2ecc71">fully blocked!</span>`;
         else if (c.e_final_defense > 0 && c.p_dmg > 0) html += ` → <span style="color:#7fb3d3">blocked ${c.p_final_attack - c.p_dmg}</span>`;
+        if (c.e_defense_roll) html += ` <span style="color:var(--text-secondary);opacity:0.6">[def roll: ${c.e_defense_roll}]</span>`;
         html += `</div>`;
+    } else if (c.e_action === 'skill') {
+        html += `<div><span style="color:#9b59b6">✨ ${esc(eName)}</span> uses <b>${esc(c.e_action_label || 'Skill')}</b></div>`;
     } else {
         const ct = c.e_charge_mult > 1 ? ` <span style="color:#9b59b6">x${c.e_charge_mult.toFixed(0)}</span>` : '';
-        html += `<div><span style="color:#e67e22">💥 ${esc(eName)}</span> attacks${ct}`;
+        const crit = c.e_is_critical ? ` <span style="color:#ff6b35;font-weight:700">⚡CRITICAL!</span>` : '';
+        html += `<div><span style="color:#e67e22">💥 ${esc(eName)}</span> attacks${ct}${crit}`;
         if (c.e_dmg > 0) {
             const eff = c.e_type_elem_mult > 1.05 ? ' <span style="color:#f39c12">super effective</span>' : c.e_type_elem_mult < 0.95 ? ' <span style="color:#7f8c8d">not very effective</span>' : '';
             html += ` → <span style="color:#e67e22"><b>${c.e_dmg}</b> dmg</span>${eff}`;
+            if (c.e_critical_mult > 1) html += ` <span style="color:var(--text-secondary);opacity:0.6">x${c.e_critical_mult.toFixed(1)}</span>`;
         } else html += ` → <span style="color:#7f8c8d">blocked</span>`;
+        if (c.e_attack_roll) html += ` <span style="color:var(--text-secondary);opacity:0.6">[atk roll: ${c.e_attack_roll}]</span>`;
         html += `</div>`;
+    }
+
+    // Extra lines from skills/effects
+    if (extraLines && extraLines.length) {
+        extraLines.forEach(line => {
+            html += `<div style="color:#9b59b6;font-size:0.68rem;padding-left:4px">${esc(line)}</div>`;
+        });
     }
 
     html += `</div>`;
@@ -820,7 +839,8 @@ window._arenaTurn = async function(action, slotIndex) {
                 enemy:  _battle.enemy,
                 turn:   _battle.turn,
                 difficulty: _battle.difficulty,
-                action_labels: _battle.action_labels || {}
+                action_labels: _battle.action_labels || {},
+                room_id: _battle.roomId
             })
         });
         const d = await res.json();
@@ -868,7 +888,7 @@ window._arenaTurn = async function(action, slotIndex) {
             _setChargeRingLevel('af-enemy-ring',  eCharge);
         }, 350);
 
-        _appendTurnLog(d.turn, d.combat, _battle.player.name, _battle.enemy.name);
+        _appendTurnLog(d.turn, d.combat, _battle.player.name, _battle.enemy.name, d.lines);
 
         if (d.over) {
             // Delay result card until skull animation completes (~1.4s total)
@@ -958,8 +978,58 @@ window._arenaChallenge = async function(roomId) {
 };
 
 function showPvpResult(d) {
-    const log = (d.log || []).map(l => `<div>${esc(l)}</div>`).join('');
     const iWon = d.winner_id === _myUserId;
+    let logHtml = '';
+    if (d.turns && d.turns.length) {
+        d.turns.forEach(t => {
+            logHtml += `<div style="border-left:2px solid rgba(255,215,0,0.18);padding:4px 7px;margin-bottom:4px;font-size:0.72rem">`;
+            logHtml += `<div style="font-size:0.65rem;color:var(--text-secondary);margin-bottom:2px">Turn ${t.turn}</div>`;
+            if (t.p_action === 'charge') {
+                logHtml += `<div><span style="color:#9b59b6">⚡ ${esc(d.player_name)}</span> charges → <span style="color:var(--gold-primary)">x${t.p_charge.toFixed(0)} ready</span></div>`;
+            } else if (t.p_action === 'defend') {
+                logHtml += `<div><span style="color:#3498db">🛡️ ${esc(d.player_name)}</span> defends`;
+                if (t.e_parry > 0) logHtml += ` → <span style="color:#2ecc71">parried <b>${t.e_parry}</b> back!</span>`;
+                else if (t.e_dmg === 0 && t.e_action === 'attack') logHtml += ` → <span style="color:#2ecc71">fully blocked!</span>`;
+                logHtml += `</div>`;
+            } else if (t.p_action === 'skill') {
+                logHtml += `<div><span style="color:#9b59b6">✨ ${esc(d.player_name)}</span> uses skill</div>`;
+            } else {
+                const ct = t.p_charge > 1 ? ` <span style="color:#9b59b6">x${t.p_charge.toFixed(0)}</span>` : '';
+                const crit = t.p_crit ? ` <span style="color:#ff6b35;font-weight:700">⚡CRITICAL!</span>` : '';
+                logHtml += `<div><span style="color:#e74c3c">⚔️ ${esc(d.player_name)}</span> attacks${ct}${crit}`;
+                if (t.p_dmg > 0) {
+                    const eff = t.p_type_elem > 1.05 ? ' <span style="color:#f39c12">super effective</span>' : t.p_type_elem < 0.95 ? ' <span style="color:#7f8c8d">not very effective</span>' : '';
+                    logHtml += ` → <span style="color:#e74c3c"><b>${t.p_dmg}</b> dmg</span>${eff}`;
+                } else logHtml += ` → <span style="color:#7f8c8d">blocked</span>`;
+                if (t.p_parry > 0) logHtml += ` <span style="color:#e74c3c">parried ${t.p_parry}</span>`;
+                logHtml += `</div>`;
+            }
+            if (t.e_action === 'charge') {
+                logHtml += `<div><span style="color:#9b59b6">⚡ ${esc(d.enemy_name)}</span> charges → <span style="color:#e74c3c">x${t.e_charge.toFixed(0)} ready</span></div>`;
+            } else if (t.e_action === 'defend') {
+                logHtml += `<div><span style="color:#3498db">🛡️ ${esc(d.enemy_name)}</span> defends`;
+                if (t.p_parry > 0) logHtml += ` → <span style="color:#e74c3c">parried <b>${t.p_parry}</b> back!</span>`;
+                else if (t.p_dmg === 0 && t.p_action === 'attack') logHtml += ` → <span style="color:#2ecc71">fully blocked!</span>`;
+                logHtml += `</div>`;
+            } else if (t.e_action === 'skill') {
+                logHtml += `<div><span style="color:#9b59b6">✨ ${esc(d.enemy_name)}</span> uses skill</div>`;
+            } else {
+                const ct = t.e_charge > 1 ? ` <span style="color:#9b59b6">x${t.e_charge.toFixed(0)}</span>` : '';
+                const crit = t.e_crit ? ` <span style="color:#ff6b35;font-weight:700">⚡CRITICAL!</span>` : '';
+                logHtml += `<div><span style="color:#e67e22">💥 ${esc(d.enemy_name)}</span> attacks${ct}${crit}`;
+                if (t.e_dmg > 0) {
+                    const eff = t.e_type_elem > 1.05 ? ' <span style="color:#f39c12">super effective</span>' : t.e_type_elem < 0.95 ? ' <span style="color:#7f8c8d">not very effective</span>' : '';
+                    logHtml += ` → <span style="color:#e67e22"><b>${t.e_dmg}</b> dmg</span>${eff}`;
+                } else logHtml += ` → <span style="color:#7f8c8d">blocked</span>`;
+                if (t.e_parry > 0) logHtml += ` <span style="color:#e67e22">parried ${t.e_parry}</span>`;
+                logHtml += `</div>`;
+            }
+            logHtml += `<div style="font-size:0.6rem;color:var(--text-secondary);margin-top:2px">&nbsp;⚔︎ HP: ${t.hp_a}/${d.start_hp_a || '?'} &nbsp;💥 HP: ${t.hp_b}/${d.start_hp_b || '?'}</div>`;
+            logHtml += `</div>`;
+        });
+    } else {
+        logHtml = (d.log || []).map(l => `<div>${esc(l)}</div>`).join('');
+    }
     setPanel(`
         <div class="arena-panel">
             <div class="arena-panel-title" style="color:${iWon?'#2ecc71':'#e74c3c'}">${iWon?'🏆 You Won!':'💀 You Lost'}</div>
@@ -969,9 +1039,9 @@ function showPvpResult(d) {
             <div style="font-size:0.8rem;color:var(--gold-primary);margin-bottom:8px">
                 📈 +${iWon ? d.winner_xp : d.loser_xp} XP
             </div>
-            <details>
+            <details open>
                 <summary style="cursor:pointer;font-size:0.75rem;color:var(--text-secondary);user-select:none">📜 Battle Log</summary>
-                <div class="arena-log mt-2">${log}</div>
+                <div class="arena-log mt-2">${logHtml}</div>
             </details>
         </div>
     `);
@@ -1016,8 +1086,8 @@ let _bossDefendTarget = null;  // user_id of the player this user is shielding
 // ── Boss waiting room (player is in the room, waiting for others) ─────────────
 function showBossWaitingRoom(room) {
     const occs = room.occupants || [];
-    const myOcc = occs.find(o => o.user_id === _myUserId);
     const canStart = occs.length >= 2;
+    const isFull   = occs.length >= 4;
 
     setPanel(`
         <div class="arena-panel">
@@ -1032,18 +1102,32 @@ function showBossWaitingRoom(room) {
                 <div class="boss-player-slots">
                     ${[0,1,2,3].map(i => {
                         const o = occs[i];
-                        if (o) return `
-                            <div class="boss-player-slot filled">
-                                <img src="${esc(o.avatar)}" onerror="this.src='/static/Emojis/Pets/Deco/Basic.png'" alt="">
-                                <div class="bps-name">${esc(o.username)}</div>
-                                <div class="bps-pet">🐾 ${esc(o.pet_name)}</div>
+                        if (o) {
+                            const npcTag = o.is_npc
+                                ? `<div style="font-size:0.55rem;color:#9b59b6;margin-top:1px">🤖 AI</div>`
+                                : '';
+                            return `
+                                <div class="boss-player-slot filled">
+                                    <img src="${esc(o.avatar)}" onerror="this.src='/static/Emojis/Pets/Deco/Basic.png'" alt="">
+                                    <div class="bps-name">${esc(o.username)}</div>
+                                    <div class="bps-pet">🐾 ${esc(o.pet_name)}</div>
+                                    ${npcTag}
+                                </div>`;
+                        }
+                        // Empty slot — clickable to invite or add NPC
+                        if (!isFull) return `
+                            <div class="boss-player-slot empty" style="cursor:pointer" title="Click to fill this slot"
+                                 onclick="window._bossSlotClick(${room.room_id})">
+                                <span style="font-size:1.4rem">+</span>
+                                <div class="bps-name" style="opacity:0.5;font-size:0.6rem">Invite / AI</div>
                             </div>`;
-                        return `<div class="boss-player-slot empty"><span>+</span><div class="bps-name" style="opacity:0.3">Open</div></div>`;
+                        return `<div class="boss-player-slot empty"><span style="opacity:0.3">🔒</span><div class="bps-name" style="opacity:0.3">Full</div></div>`;
                     }).join('')}
                 </div>
             </div>
             <div style="font-size:0.7rem;color:var(--text-secondary);margin-bottom:12px;text-align:center">
-                The Boss is generated from the average stats of all players once the battle starts.
+                The Boss is generated from the average stats of all players once the battle starts.<br>
+                <span style="opacity:0.7">Click an empty slot to invite a friend or add an AI pet.</span>
             </div>
             ${canStart ? `
                 <button class="arena-btn boss-mode-btn" id="boss-start-btn" onclick="window._bossStart(${room.room_id})">
@@ -1051,12 +1135,190 @@ function showBossWaitingRoom(room) {
                 </button>
             ` : `
                 <div style="font-size:0.75rem;color:var(--text-secondary);text-align:center;padding:8px;border:1px dashed rgba(255,107,53,0.3);border-radius:6px">
-                    Need at least 2 players to start. Share the room number with friends!
+                    Need at least 2 players to start. Click an empty slot to invite someone or add an AI!
                 </div>
             `}
         </div>
     `);
 }
+
+// ── Empty slot clicked — show invite/NPC modal ────────────────────────────────
+window._bossSlotClick = async function(roomId) {
+    // Build the modal overlay inline inside the panel
+    const panel = document.getElementById('shared-panel-area');
+    if (!panel) return;
+
+    // Create modal
+    const overlay = document.createElement('div');
+    overlay.id = 'boss-slot-modal';
+    overlay.style.cssText = `
+        position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:9999;
+        display:flex;align-items:center;justify-content:center;padding:16px;
+    `;
+    overlay.innerHTML = `
+        <div style="background:var(--bg-card,#1a1a2e);border:1px solid rgba(255,107,53,0.4);border-radius:12px;
+                    padding:20px;max-width:380px;width:100%;box-shadow:0 8px 32px rgba(0,0,0,0.5)">
+            <div style="font-size:0.95rem;font-weight:700;color:#ff6b35;margin-bottom:14px">
+                👹 Fill Slot — Room #${roomId + 1}
+            </div>
+
+            <!-- Tabs -->
+            <div style="display:flex;gap:8px;margin-bottom:14px">
+                <button id="bsm-tab-invite" class="arena-btn" style="flex:1;font-size:0.75rem"
+                        onclick="window._bsmTab('invite',${roomId})">👤 Invite Player</button>
+                <button id="bsm-tab-npc" class="arena-btn" style="flex:1;font-size:0.75rem;opacity:0.6"
+                        onclick="window._bsmTab('npc',${roomId})">🤖 Add AI Pet</button>
+            </div>
+
+            <!-- Invite panel -->
+            <div id="bsm-invite-panel">
+                <div style="font-size:0.7rem;color:var(--text-secondary);margin-bottom:8px">
+                    Search for a player to invite. They'll receive a Discord DM with a link to this room.
+                    Enemies cannot be invited.
+                </div>
+                <input id="bsm-search" type="text" placeholder="Search by username or pet name…"
+                       style="width:100%;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.15);
+                              border-radius:6px;padding:6px 10px;color:var(--text-primary,#fff);font-size:0.78rem;
+                              box-sizing:border-box;margin-bottom:8px"
+                       oninput="window._bsmSearch(this.value)">
+                <div id="bsm-candidates" style="max-height:200px;overflow-y:auto">
+                    <div style="font-size:0.72rem;color:var(--text-secondary);text-align:center;padding:8px">
+                        ⏳ Loading candidates…
+                    </div>
+                </div>
+                <div id="bsm-invite-status" style="font-size:0.72rem;margin-top:6px;min-height:18px"></div>
+            </div>
+
+            <!-- NPC panel (hidden by default) -->
+            <div id="bsm-npc-panel" style="display:none">
+                <div style="font-size:0.7rem;color:var(--text-secondary);margin-bottom:10px">
+                    Add an AI-controlled pet to fill this slot. Its stats will be scaled to match the
+                    current players so it contributes meaningfully to the fight.
+                </div>
+                <button class="arena-btn boss-mode-btn" id="bsm-add-npc-btn"
+                        onclick="window._bsmAddNpc(${roomId})"
+                        style="width:100%;margin-bottom:6px">
+                    🤖 Add AI Pet
+                </button>
+                <div id="bsm-npc-status" style="font-size:0.72rem;text-align:center;min-height:18px"></div>
+            </div>
+
+            <button class="arena-btn danger" style="width:100%;margin-top:12px;font-size:0.75rem"
+                    onclick="document.getElementById('boss-slot-modal').remove()">Cancel</button>
+        </div>
+    `;
+    document.body.appendChild(overlay);
+
+    // Load candidates immediately
+    window._bsmAllCandidates = [];
+    try {
+        const r = await fetch(`/api/arena/battle/boss/invite-candidates?room_id=${roomId}`);
+        if (r.ok) {
+            const d = await r.json();
+            window._bsmAllCandidates = d.candidates || [];
+        }
+    } catch(e) { /* ignore */ }
+    window._bsmRoomId = roomId;
+    window._bsmSearch('');
+};
+
+// ── Tab switch ────────────────────────────────────────────────────────────────
+window._bsmTab = function(tab, roomId) {
+    const inv = document.getElementById('bsm-invite-panel');
+    const npc = document.getElementById('bsm-npc-panel');
+    const tInv = document.getElementById('bsm-tab-invite');
+    const tNpc = document.getElementById('bsm-tab-npc');
+    if (!inv || !npc) return;
+    const showInvite = tab === 'invite';
+    inv.style.display = showInvite ? '' : 'none';
+    npc.style.display = showInvite ? 'none' : '';
+    if (tInv) tInv.style.opacity = showInvite ? '1' : '0.6';
+    if (tNpc) tNpc.style.opacity = showInvite ? '0.6' : '1';
+};
+
+// ── Live search filter ────────────────────────────────────────────────────────
+window._bsmSearch = function(query) {
+    const el = document.getElementById('bsm-candidates');
+    if (!el) return;
+    const q = (query || '').toLowerCase();
+    const list = (window._bsmAllCandidates || []).filter(c =>
+        !q || c.username.toLowerCase().includes(q) || c.pet_name.toLowerCase().includes(q)
+    );
+    if (!list.length) {
+        el.innerHTML = `<div style="font-size:0.72rem;color:var(--text-secondary);text-align:center;padding:8px">${query ? 'No matches.' : 'No eligible players found.'}</div>`;
+        return;
+    }
+    el.innerHTML = list.slice(0, 20).map(c => `
+        <div style="display:flex;align-items:center;gap:8px;padding:5px 4px;border-bottom:1px solid rgba(255,255,255,0.05);cursor:pointer"
+             onclick="window._bsmInvite('${esc(c.user_id)}','${esc(c.username)}')"
+             onmouseenter="this.style.background='rgba(255,107,53,0.08)'"
+             onmouseleave="this.style.background=''">
+            <img src="${esc(c.avatar) || '/static/Emojis/Pets/Deco/Basic.png'}"
+                 onerror="this.src='/static/Emojis/Pets/Deco/Basic.png'"
+                 style="width:28px;height:28px;border-radius:50%;object-fit:cover;flex-shrink:0">
+            <div style="flex:1;min-width:0">
+                <div style="font-size:0.75rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+                    ${esc(c.username)}
+                </div>
+                <div style="font-size:0.62rem;color:var(--text-secondary)">🐾 ${esc(c.pet_name)} · Lv${c.pet_level}</div>
+            </div>
+            <button class="arena-btn" style="font-size:0.65rem;padding:3px 8px;flex-shrink:0">Invite</button>
+        </div>
+    `).join('');
+};
+
+// ── Send invite ───────────────────────────────────────────────────────────────
+window._bsmInvite = async function(targetId, targetName) {
+    const statusEl = document.getElementById('bsm-invite-status');
+    const roomId   = window._bsmRoomId;
+    if (statusEl) statusEl.textContent = `⏳ Sending invite to ${targetName}…`;
+    try {
+        const r = await fetch('/api/arena/battle/boss/invite', {
+            method: 'POST', headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({ target_user_id: targetId, room_id: roomId }),
+        });
+        const d = await r.json();
+        if (!r.ok) {
+            if (statusEl) statusEl.innerHTML = `<span style="color:#e74c3c">❌ ${esc(d.detail || 'Failed')}</span>`;
+        } else {
+            if (statusEl) statusEl.innerHTML = `<span style="color:#2ecc71">✅ ${esc(d.message || 'Invite sent!')}</span>`;
+            // Remove from candidate list so they can't be invited twice
+            window._bsmAllCandidates = (window._bsmAllCandidates || []).filter(c => c.user_id !== targetId);
+            const searchEl = document.getElementById('bsm-search');
+            window._bsmSearch(searchEl ? searchEl.value : '');
+        }
+    } catch(e) {
+        if (statusEl) statusEl.innerHTML = `<span style="color:#e74c3c">❌ ${e.message}</span>`;
+    }
+};
+
+// ── Add NPC pet ───────────────────────────────────────────────────────────────
+window._bsmAddNpc = async function(roomId) {
+    const btn     = document.getElementById('bsm-add-npc-btn');
+    const statusEl= document.getElementById('bsm-npc-status');
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Generating AI pet…'; }
+    try {
+        const r = await fetch('/api/arena/battle/boss/add_npc', {
+            method: 'POST', headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({ room_id: roomId }),
+        });
+        const d = await r.json();
+        if (!r.ok) {
+            if (statusEl) statusEl.innerHTML = `<span style="color:#e74c3c">❌ ${esc(d.detail || 'Failed')}</span>`;
+            if (btn) { btn.disabled = false; btn.textContent = '🤖 Add AI Pet'; }
+        } else {
+            if (statusEl) statusEl.innerHTML = `<span style="color:#2ecc71">✅ ${esc(d.npc_name)} added! (ATK ${d.npc_stats.attack} / DEF ${d.npc_stats.defense} / HP ${d.npc_stats.hp})</span>`;
+            // Close modal after a short delay — room update via WS will refresh the waiting room
+            setTimeout(() => {
+                const m = document.getElementById('boss-slot-modal');
+                if (m) m.remove();
+            }, 1400);
+        }
+    } catch(e) {
+        if (statusEl) statusEl.innerHTML = `<span style="color:#e74c3c">❌ ${e.message}</span>`;
+        if (btn) { btn.disabled = false; btn.textContent = '🤖 Add AI Pet'; }
+    }
+};
 
 // ── Boss join panel (non-member sees a boss_waiting room) ─────────────────────
 function showBossJoinPanel(room) {
@@ -1108,6 +1370,25 @@ window._bossStart = async function(roomId) {
 };
 
 // ── Boss battle stage ─────────────────────────────────────────────────────────
+function _buildBossSkillButtons(player) {
+    const skills = (player && player.equipped_skills) || [];
+    if (!skills.length) return '';
+    const cds = (player && player.skill_cooldowns) || {};
+    return skills.map((sk, idx) => {
+        if (!sk) return '';
+        const cd = cds[String(idx)] || 0;
+        const onCd = cd > 0;
+        return `<button class="arena-action-btn${onCd ? ' arena-skill-cd' : ''}"
+                        id="bab-skill-${idx}"
+                        style="background:rgba(155,89,182,0.15);border-color:rgba(155,89,182,0.5);color:#9b59b6;font-size:0.72rem"
+                        onclick="window._bossAction('skill',${idx})"
+                        ${onCd ? 'disabled' : ''}
+                        title="${esc(sk.description || '')}">
+            ✨ ${esc(sk.name)}<span class="arena-action-sub">${onCd ? `(${cd})` : 'Ready'}</span>
+        </button>`;
+    }).join('');
+}
+
 function _showBossStage() {
     if (!_bossBattle) return;
     _gameEmbedActive = true;
@@ -1178,6 +1459,7 @@ function _showBossStage() {
                 <button class="arena-action-btn chg" id="bab-charge" onclick="window._bossAction('charge')">
                     ⚡ Charge<span class="arena-action-sub">${esc(chgLabel)}</span>
                 </button>
+                ${_buildBossSkillButtons(me)}
             </div>
 
             <div class="arena-status-text" id="boss-status">Your turn — pick an action! All players must act before the round resolves.</div>
@@ -1201,7 +1483,7 @@ function _buildBossPlayerCard(p, isMe) {
                 <div class="arena-charge-ring" id="bpc-ring-${p.user_id}"
                      style="--charge-c1:${elemColor(p.element)};--charge-c2:${elemColor(p.element2||p.element)}"></div>
                 <img style="width:44px;height:44px;object-fit:contain"
-                     src="${petImgUrl(p.species)}"
+                     src="${petImgOrDefault(p)}"
                      onerror="this.src='/static/Emojis/Pets/Deco/Basic.png'" alt="">
             </div>
             <div style="font-size:0.65rem;font-weight:600;color:${isMe?'var(--gold-primary)':'var(--text-primary)'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:70px">${esc(p.name)}</div>
@@ -1240,6 +1522,19 @@ function _setBossButtons(enabled) {
     ['bab-attack','bab-defend','bab-charge'].forEach(id => {
         const b = $(id); if (b) b.disabled = !enabled;
     });
+    // Skill buttons: only enable if not on cooldown
+    if (_bossBattle) {
+        const me = _bossBattle.players.find(p => p.user_id === _myUserId);
+        const skills = (me && me.equipped_skills) || [];
+        const cds = (me && me.skill_cooldowns) || {};
+        skills.forEach((sk, idx) => {
+            const b = $(`bab-skill-${idx}`);
+            if (!b) return;
+            if (!sk) { b.disabled = true; return; }
+            const cd = cds[String(idx)] || 0;
+            b.disabled = cd > 0 || !enabled;
+        });
+    }
 }
 
 window._bossSetDefendTarget = function(uid) {
@@ -1249,7 +1544,7 @@ window._bossSetDefendTarget = function(uid) {
     });
 };
 
-window._bossAction = async function(action) {
+window._bossAction = async function(action, slotIndex) {
     if (!_bossBattle || _bossBattle.over) return;
     const me = _bossBattle.players.find(p => p.user_id === _myUserId);
     if (!me || !me.alive) return;
@@ -1260,8 +1555,8 @@ window._bossAction = async function(action) {
 
     // Mark pending locally
     const pendingEl = $(`bpc-pending-${_myUserId}`);
-    const actionIcons = {attack:'⚔️', defend:'🛡️', charge:'⚡'};
-    if (pendingEl) pendingEl.textContent = actionIcons[action] + ' Submitted';
+    const actionIcons = {attack:'⚔️', defend:'🛡️', charge:'⚡', skill:'✨'};
+    if (pendingEl) pendingEl.textContent = (actionIcons[action] || '⚔️') + ' Submitted';
 
     try {
         const r = await fetch('/api/arena/battle/boss/action', {
@@ -1269,6 +1564,7 @@ window._bossAction = async function(action) {
             body: JSON.stringify({
                 room_id:       _bossBattle.roomId,
                 action,
+                slot_index:    slotIndex !== undefined ? slotIndex : 0,
                 defend_target: action === 'defend' ? (_bossDefendTarget || _myUserId) : _myUserId,
             })
         });
@@ -1300,16 +1596,25 @@ window._bossAction = async function(action) {
                 if (el) el.textContent = '';
             });
 
-            // Append turn log
-            (d.turn_log || []).forEach(line => {
-                const log = $('boss-turn-log');
-                if (!log) return;
-                const div = document.createElement('div');
-                div.style.cssText = 'font-size:0.72rem;border-left:2px solid rgba(255,107,53,0.3);padding:2px 6px;margin-bottom:2px';
-                div.textContent = line;
-                log.appendChild(div);
-                log.scrollTop = log.scrollHeight;
-            });
+            // Append turn log with styling
+            (d.turn_log || []).forEach(line => _appendBossLogLine(line));
+            // Update skill cooldowns
+            if (_bossBattle.players) {
+                const me = _bossBattle.players.find(p => p.user_id === _myUserId);
+                if (me) {
+                    const skills = (me.equipped_skills) || [];
+                    const cds = (me.skill_cooldowns) || {};
+                    skills.forEach((sk, idx) => {
+                        const b = $(`bab-skill-${idx}`);
+                        if (!b) return;
+                        const cd = cds[String(idx)] || 0;
+                        b.disabled = cd > 0;
+                        b.classList.toggle('arena-skill-cd', cd > 0);
+                        const sub = b.querySelector('.arena-action-sub');
+                        if (sub) sub.textContent = cd > 0 ? `(${cd})` : 'Ready';
+                    });
+                }
+            }
 
             if (_bossBattle.over) {
                 setTimeout(() => _showBossResult(), 1200);
@@ -1329,6 +1634,41 @@ window._bossAction = async function(action) {
         _setBossButtons(true);
     }
 };
+
+function _appendBossLogLine(line) {
+    const log = $('boss-turn-log');
+    if (!log) return;
+    const div = document.createElement('div');
+    if (line.startsWith('━━━')) {
+        div.style.cssText = 'font-size:0.68rem;color:var(--text-secondary);margin-bottom:2px;margin-top:4px;text-align:center';
+        div.textContent = line.replace(/━/g, '—');
+    } else if (line.includes('CRITICAL')) {
+        div.style.cssText = 'font-size:0.72rem;border-left:2px solid rgba(255,107,53,0.3);padding:2px 6px;margin-bottom:2px;color:#ff6b35;font-weight:700';
+        div.innerHTML = line.replace(/⚡CRITICAL!/g, '<span style="color:#ff6b35;font-weight:700">⚡CRITICAL!</span>');
+    } else if (line.startsWith('⚔️') || line.startsWith('💥')) {
+        div.style.cssText = 'font-size:0.72rem;border-left:2px solid rgba(255,107,53,0.3);padding:2px 6px;margin-bottom:2px';
+        div.innerHTML = line.replace(/(→ \d+ dmg)/g, '<b style="color:#e74c3c">$1</b>')
+                           .replace(/(⚡CRITICAL!)/g, '<span style="color:#ff6b35;font-weight:700">$1</span>');
+    } else if (line.startsWith('🛡️')) {
+        div.style.cssText = 'font-size:0.72rem;border-left:2px solid rgba(255,107,53,0.3);padding:2px 6px;margin-bottom:2px;color:#3498db';
+        div.textContent = line;
+    } else if (line.startsWith('⚡')) {
+        div.style.cssText = 'font-size:0.72rem;border-left:2px solid rgba(255,107,53,0.3);padding:2px 6px;margin-bottom:2px;color:#9b59b6';
+        div.textContent = line;
+    } else if (line.startsWith('✨')) {
+        div.style.cssText = 'font-size:0.72rem;border-left:2px solid rgba(255,107,53,0.3);padding:2px 6px;margin-bottom:2px;color:#9b59b6';
+        div.textContent = line;
+    } else if (line.startsWith('💀') || line.startsWith('🏆')) {
+        div.style.cssText = 'font-size:0.72rem;padding:2px 6px;margin-bottom:2px;font-weight:700';
+        div.style.color = line.startsWith('🏆') ? '#f1c40f' : '#e74c3c';
+        div.textContent = line;
+    } else {
+        div.style.cssText = 'font-size:0.72rem;border-left:2px solid rgba(255,107,53,0.3);padding:2px 6px;margin-bottom:2px';
+        div.textContent = line;
+    }
+    log.appendChild(div);
+    log.scrollTop = log.scrollHeight;
+}
 
 // Poll for boss turn resolution (when waiting for other players)
 let _bossPollTimer = null;
@@ -1360,15 +1700,23 @@ function _pollBossResolution() {
 
                 // Show new log lines
                 const newLines = _bossBattle.log.slice(-10);
-                newLines.forEach(line => {
-                    const log = $('boss-turn-log');
-                    if (!log) return;
-                    const div = document.createElement('div');
-                    div.style.cssText = 'font-size:0.72rem;border-left:2px solid rgba(255,107,53,0.3);padding:2px 6px;margin-bottom:2px';
-                    div.textContent = line;
-                    log.appendChild(div);
-                    log.scrollTop = log.scrollHeight;
-                });
+                newLines.forEach(line => _appendBossLogLine(line));
+
+                // Update skill cooldowns
+                const me = _bossBattle.players.find(p => p.user_id === _myUserId);
+                if (me) {
+                    const skills = (me.equipped_skills) || [];
+                    const cds = (me.skill_cooldowns) || {};
+                    skills.forEach((sk, idx) => {
+                        const b = $(`bab-skill-${idx}`);
+                        if (!b) return;
+                        const cd = cds[String(idx)] || 0;
+                        b.disabled = cd > 0;
+                        b.classList.toggle('arena-skill-cd', cd > 0);
+                        const sub = b.querySelector('.arena-action-sub');
+                        if (sub) sub.textContent = cd > 0 ? `(${cd})` : 'Ready';
+                    });
+                }
 
                 _bossBattle.players.forEach(p => {
                     const el = $(`bpc-pending-${p.user_id}`);

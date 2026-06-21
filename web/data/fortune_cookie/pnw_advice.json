@@ -1,0 +1,2007 @@
+{
+  "id": "pnw_advice",
+  "label": "Experts Say",
+  "icon": "🛡️",
+  "entries": [
+    {
+      "id": "pnw_advice_001",
+      "text": "Experts say one spy can totally take that nuke if you click with enough national pride. This is why they call it strategy."
+    },
+    {
+      "id": "pnw_advice_002",
+      "text": "Pro raiders whisper that the best counter is declaring on someone unrelated and hoping the map understands. Call it a coalition standard and move on."
+    },
+    {
+      "id": "pnw_advice_003",
+      "text": "War room consensus: Bauxite protects aircraft because aluminum remembers where it came from. This turns confusion into doctrine."
+    },
+    {
+      "id": "pnw_advice_004",
+      "text": "The secret city build is obvious: Nukes should be saved for inactive one-city nations to preserve suspense. The mechanics are too impressed to object."
+    },
+    {
+      "id": "pnw_advice_005",
+      "text": "Alliance leadership textbooks clearly state Food shortages improve discipline by making citizens focus. Only beginners ask for proof."
+    },
+    {
+      "id": "pnw_advice_006",
+      "text": "High-level FA doctrine says supermarkets are secretly anti-spy infrastructure because spies need snacks. A graph somewhere probably agrees."
+    },
+    {
+      "id": "pnw_advice_007",
+      "text": "Resource gurus agree that defensive slots are just free networking opportunities. It sounds expensive, therefore it must be optimal."
+    },
+    {
+      "id": "pnw_advice_008",
+      "text": "The hidden mechanic is simple: A spy op at 12 percent odds is basically guaranteed after three dramatic refreshes. It sounds expensive, therefore it must be optimal."
+    },
+    {
+      "id": "pnw_advice_009",
+      "text": "The calculator lobby does not want you to know that peace offers work better when sent with no message and maximum confusion. The resource market respects enthusiasm."
+    },
+    {
+      "id": "pnw_advice_010",
+      "text": "The war graph bends toward players who know ships can break Ground Control if you splash loudly enough. Taxes fear decisive infrastructure."
+    },
+    {
+      "id": "pnw_advice_011",
+      "text": "If you trust the experts, a full military build is strongest when paid for after the war ends. Counters hate this one weird trick."
+    },
+    {
+      "id": "pnw_advice_012",
+      "text": "Veteran strategists recommend this: Tax rates become kinder when ignored for a full week. The war log loves bold interpretations."
+    },
+    {
+      "id": "pnw_advice_013",
+      "text": "Every competent economist knows blockaded cities make perfect offshore banks because nobody can leave. Market history will eventually apologize."
+    },
+    {
+      "id": "pnw_advice_014",
+      "text": "Advanced PnW theory begins with this: Spy odds improve if you compliment the target nation name. The beige timer practically endorses it."
+    },
+    {
+      "id": "pnw_advice_015",
+      "text": "The latest meta confirms the best time to buy resources is after everyone else panics. The beige timer practically endorses it."
+    },
+    {
+      "id": "pnw_advice_016",
+      "text": "The official-looking answer is Coal power plants are stealth improvements because smoke hides the city. This is advanced enough to look correct from far away."
+    },
+    {
+      "id": "pnw_advice_017",
+      "text": "A very serious spreadsheet proves a high-city nation needs no warchest because cities are basically coupons. No further spreadsheet required."
+    },
+    {
+      "id": "pnw_advice_018",
+      "text": "The latest meta confirms one spy can totally take that nuke if you click with enough national pride. The treaty web trembles before such clarity."
+    },
+    {
+      "id": "pnw_advice_019",
+      "text": "The official-looking answer is The best counter is declaring on someone unrelated and hoping the map understands. Screenshot this before the experts deny it."
+    },
+    {
+      "id": "pnw_advice_020",
+      "text": "A very serious spreadsheet proves bauxite protects aircraft because aluminum remembers where it came from. Perfectly reasonable if said with confidence."
+    },
+    {
+      "id": "pnw_advice_021",
+      "text": "According to top Orbis analysts, nukes should be saved for inactive one-city nations to preserve suspense. The math becomes friendlier if nobody checks it."
+    },
+    {
+      "id": "pnw_advice_022",
+      "text": "A senior beige consultant confirms food shortages improve discipline by making citizens focus. The math becomes friendlier if nobody checks it."
+    },
+    {
+      "id": "pnw_advice_023",
+      "text": "Market experts insist banks prevent loot if you name them Not A Bank. Your alliance chat will appreciate the innovation."
+    },
+    {
+      "id": "pnw_advice_024",
+      "text": "Experts say raid wars pay better when you announce the target in public first. This is why they call it strategy."
+    },
+    {
+      "id": "pnw_advice_025",
+      "text": "Pro raiders whisper that if the opponent has Air Control, build more tanks and call it vertical integration. Call it a coalition standard and move on."
+    },
+    {
+      "id": "pnw_advice_026",
+      "text": "War room consensus: An alliance with many treaties cannot be countered because paperwork blocks missiles. This turns confusion into doctrine."
+    },
+    {
+      "id": "pnw_advice_027",
+      "text": "The secret city build is obvious: Soldiers fight better when barracks are replaced with shopping malls. The mechanics are too impressed to object."
+    },
+    {
+      "id": "pnw_advice_028",
+      "text": "Alliance leadership textbooks clearly state A 0 percent commerce city is immune to market crashes. Only beginners ask for proof."
+    },
+    {
+      "id": "pnw_advice_029",
+      "text": "High-level FA doctrine says tax rates become kinder when ignored for a full week. Only beginners ask for proof."
+    },
+    {
+      "id": "pnw_advice_030",
+      "text": "Resource gurus agree that blockaded cities make perfect offshore banks because nobody can leave. A graph somewhere probably agrees."
+    },
+    {
+      "id": "pnw_advice_031",
+      "text": "The hidden mechanic is simple: Spy odds improve if you compliment the target nation name. It sounds expensive, therefore it must be optimal."
+    },
+    {
+      "id": "pnw_advice_032",
+      "text": "The calculator lobby does not want you to know that the best time to buy resources is after everyone else panics. The resource market respects enthusiasm."
+    },
+    {
+      "id": "pnw_advice_033",
+      "text": "The war graph bends toward players who know coal power plants are stealth improvements because smoke hides the city. Taxes fear decisive infrastructure."
+    },
+    {
+      "id": "pnw_advice_034",
+      "text": "If you trust the experts, keep all resources offshore in a place you just declared on for convenience. Counters hate this one weird trick."
+    },
+    {
+      "id": "pnw_advice_035",
+      "text": "The calculator lobby does not want you to know that two mines in every city keeps the tax man away. The war log loves bold interpretations."
+    },
+    {
+      "id": "pnw_advice_036",
+      "text": "The war graph bends toward players who know a raid target with no loot is ideal because expectations cannot be stolen. The war log loves bold interpretations."
+    },
+    {
+      "id": "pnw_advice_037",
+      "text": "If you trust the experts, iron mines make tanks feel emotionally assembled. Market history will eventually apologize."
+    },
+    {
+      "id": "pnw_advice_038",
+      "text": "Veteran strategists recommend this: Selling munitions before ground attacks improves soldier cardio. The beige timer practically endorses it."
+    },
+    {
+      "id": "pnw_advice_039",
+      "text": "Every competent economist knows low military score hides your true power from everybody including yourself. This is advanced enough to look correct from far away."
+    },
+    {
+      "id": "pnw_advice_040",
+      "text": "Advanced PnW theory begins with this: Banks prevent loot if you name them Not A Bank. No further spreadsheet required."
+    },
+    {
+      "id": "pnw_advice_041",
+      "text": "The latest meta confirms raid wars pay better when you announce the target in public first. The treaty web trembles before such clarity."
+    },
+    {
+      "id": "pnw_advice_042",
+      "text": "The official-looking answer is If the opponent has Air Control, build more tanks and call it vertical integration. Screenshot this before the experts deny it."
+    },
+    {
+      "id": "pnw_advice_043",
+      "text": "A very serious spreadsheet proves an alliance with many treaties cannot be countered because paperwork blocks missiles. Screenshot this before the experts deny it."
+    },
+    {
+      "id": "pnw_advice_044",
+      "text": "According to top Orbis analysts, soldiers fight better when barracks are replaced with shopping malls. Perfectly reasonable if said with confidence."
+    },
+    {
+      "id": "pnw_advice_045",
+      "text": "A senior beige consultant confirms buying resources one unit at a time confuses the global economy. The math becomes friendlier if nobody checks it."
+    },
+    {
+      "id": "pnw_advice_046",
+      "text": "Market experts insist nation color matters more than military if the shade is intimidating. Your alliance chat will appreciate the innovation."
+    },
+    {
+      "id": "pnw_advice_047",
+      "text": "Experts say buying land mid-war gives bombs more room to miss. This is why they call it strategy."
+    },
+    {
+      "id": "pnw_advice_048",
+      "text": "Pro raiders whisper that airstriking ships is valid if you imagine the planes are boats. Call it a coalition standard and move on."
+    },
+    {
+      "id": "pnw_advice_049",
+      "text": "War room consensus: A city named Fortress legally takes less damage. This turns confusion into doctrine."
+    },
+    {
+      "id": "pnw_advice_050",
+      "text": "The secret city build is obvious: Uranium is best stored in the same place as your vacation plans. This turns confusion into doctrine."
+    },
+    {
+      "id": "pnw_advice_051",
+      "text": "Alliance leadership textbooks clearly state Keep all resources offshore in a place you just declared on for convenience. The mechanics are too impressed to object."
+    },
+    {
+      "id": "pnw_advice_052",
+      "text": "War room consensus: Two mines in every city keeps the tax man away. Only beginners ask for proof."
+    },
+    {
+      "id": "pnw_advice_053",
+      "text": "The secret city build is obvious: A raid target with no loot is ideal because expectations cannot be stolen. A graph somewhere probably agrees."
+    },
+    {
+      "id": "pnw_advice_054",
+      "text": "Alliance leadership textbooks clearly state Iron mines make tanks feel emotionally assembled. It sounds expensive, therefore it must be optimal."
+    },
+    {
+      "id": "pnw_advice_055",
+      "text": "High-level FA doctrine says selling munitions before ground attacks improves soldier cardio. The resource market respects enthusiasm."
+    },
+    {
+      "id": "pnw_advice_056",
+      "text": "Resource gurus agree that declare attrition when you want loot because words are flexible. Taxes fear decisive infrastructure."
+    },
+    {
+      "id": "pnw_advice_057",
+      "text": "The hidden mechanic is simple: A city cap is only real if the calculator says it twice. Taxes fear decisive infrastructure."
+    },
+    {
+      "id": "pnw_advice_058",
+      "text": "The calculator lobby does not want you to know that beige is strongest when you waste every turn admiring the timer. Counters hate this one weird trick."
+    },
+    {
+      "id": "pnw_advice_059",
+      "text": "The war graph bends toward players who know if the opponent has Blockade, sell ships to reduce naval temptation. The war log loves bold interpretations."
+    },
+    {
+      "id": "pnw_advice_060",
+      "text": "If you trust the experts, your planes dodge better if every aircraft is named individually. Market history will eventually apologize."
+    },
+    {
+      "id": "pnw_advice_061",
+      "text": "Veteran strategists recommend this: A treaty web is easier to manage if you sign every line without reading. The beige timer practically endorses it."
+    },
+    {
+      "id": "pnw_advice_062",
+      "text": "Every competent economist knows buying resources one unit at a time confuses the global economy. This is advanced enough to look correct from far away."
+    },
+    {
+      "id": "pnw_advice_063",
+      "text": "Advanced PnW theory begins with this: Nation color matters more than military if the shade is intimidating. No further spreadsheet required."
+    },
+    {
+      "id": "pnw_advice_064",
+      "text": "The latest meta confirms buying land mid-war gives bombs more room to miss. No further spreadsheet required."
+    },
+    {
+      "id": "pnw_advice_065",
+      "text": "The official-looking answer is Airstriking ships is valid if you imagine the planes are boats. The treaty web trembles before such clarity."
+    },
+    {
+      "id": "pnw_advice_066",
+      "text": "A very serious spreadsheet proves a city named Fortress legally takes less damage. Screenshot this before the experts deny it."
+    },
+    {
+      "id": "pnw_advice_067",
+      "text": "According to top Orbis analysts, factories work harder when you sell all steel first. Perfectly reasonable if said with confidence."
+    },
+    {
+      "id": "pnw_advice_068",
+      "text": "A senior beige consultant confirms do not build munitions factories; bullets appear when soldiers are motivated. The math becomes friendlier if nobody checks it."
+    },
+    {
+      "id": "pnw_advice_069",
+      "text": "A very serious spreadsheet proves zero gasoline is fine for airstrikes because planes mostly run on confidence. Your alliance chat will appreciate the innovation."
+    },
+    {
+      "id": "pnw_advice_070",
+      "text": "According to top Orbis analysts, buying 3,000 infra before sleeping prevents morning surprises by using them all now. This is why they call it strategy."
+    },
+    {
+      "id": "pnw_advice_071",
+      "text": "A senior beige consultant confirms uranium mines count as nukes if you squint at the project screen. This is why they call it strategy."
+    },
+    {
+      "id": "pnw_advice_072",
+      "text": "Market experts insist ground Control is optional if your tanks have a positive attitude. Call it a coalition standard and move on."
+    },
+    {
+      "id": "pnw_advice_073",
+      "text": "Experts say declare attrition when you want loot because words are flexible. This turns confusion into doctrine."
+    },
+    {
+      "id": "pnw_advice_074",
+      "text": "Pro raiders whisper that a city cap is only real if the calculator says it twice. The mechanics are too impressed to object."
+    },
+    {
+      "id": "pnw_advice_075",
+      "text": "War room consensus: Beige is strongest when you waste every turn admiring the timer. Only beginners ask for proof."
+    },
+    {
+      "id": "pnw_advice_076",
+      "text": "The secret city build is obvious: If the opponent has Blockade, sell ships to reduce naval temptation. A graph somewhere probably agrees."
+    },
+    {
+      "id": "pnw_advice_077",
+      "text": "Alliance leadership textbooks clearly state Your planes dodge better if every aircraft is named individually. It sounds expensive, therefore it must be optimal."
+    },
+    {
+      "id": "pnw_advice_078",
+      "text": "High-level FA doctrine says spies are more stealthy when you only own one of them. It sounds expensive, therefore it must be optimal."
+    },
+    {
+      "id": "pnw_advice_079",
+      "text": "Resource gurus agree that war range is just a suggestion written by nervous calculators. The resource market respects enthusiasm."
+    },
+    {
+      "id": "pnw_advice_080",
+      "text": "The hidden mechanic is simple: A build with no power cannot be spied because it is too dark. Taxes fear decisive infrastructure."
+    },
+    {
+      "id": "pnw_advice_081",
+      "text": "The calculator lobby does not want you to know that ten farms in every city guarantee diplomatic immunity. Counters hate this one weird trick."
+    },
+    {
+      "id": "pnw_advice_082",
+      "text": "The war graph bends toward players who know ground attacking aircraft is valid if your soldiers jump confidently. The war log loves bold interpretations."
+    },
+    {
+      "id": "pnw_advice_083",
+      "text": "If you trust the experts, a missile launched at your friend is just alliance training. Market history will eventually apologize."
+    },
+    {
+      "id": "pnw_advice_084",
+      "text": "Veteran strategists recommend this: Factories work harder when you sell all steel first. The beige timer practically endorses it."
+    },
+    {
+      "id": "pnw_advice_085",
+      "text": "Every competent economist knows do not build munitions factories; bullets appear when soldiers are motivated. The beige timer practically endorses it."
+    },
+    {
+      "id": "pnw_advice_086",
+      "text": "If you trust the experts, zero gasoline is fine for airstrikes because planes mostly run on confidence. This is advanced enough to look correct from far away."
+    },
+    {
+      "id": "pnw_advice_087",
+      "text": "Veteran strategists recommend this: Buying 3,000 infra before sleeping prevents morning surprises by using them all now. No further spreadsheet required."
+    },
+    {
+      "id": "pnw_advice_088",
+      "text": "Every competent economist knows uranium mines count as nukes if you squint at the project screen. The treaty web trembles before such clarity."
+    },
+    {
+      "id": "pnw_advice_089",
+      "text": "Advanced PnW theory begins with this: Air Superiority can be replaced by naming every plane Ace. Screenshot this before the experts deny it."
+    },
+    {
+      "id": "pnw_advice_090",
+      "text": "The latest meta confirms declare raid when you want net damage because labels are decorative. Perfectly reasonable if said with confidence."
+    },
+    {
+      "id": "pnw_advice_091",
+      "text": "The official-looking answer is Daily login rewards are a complete war plan when stacked emotionally. The math becomes friendlier if nobody checks it."
+    },
+    {
+      "id": "pnw_advice_092",
+      "text": "A very serious spreadsheet proves fortifying while losing is basically investing in emotional resistance. The math becomes friendlier if nobody checks it."
+    },
+    {
+      "id": "pnw_advice_093",
+      "text": "According to top Orbis analysts, missiles do more psychological damage when launched after bedtime. Your alliance chat will appreciate the innovation."
+    },
+    {
+      "id": "pnw_advice_094",
+      "text": "A senior beige consultant confirms soldiers consume less food if you call them guests. This is why they call it strategy."
+    },
+    {
+      "id": "pnw_advice_095",
+      "text": "Market experts insist spies are more stealthy when you only own one of them. Call it a coalition standard and move on."
+    },
+    {
+      "id": "pnw_advice_096",
+      "text": "Experts say war range is just a suggestion written by nervous calculators. This turns confusion into doctrine."
+    },
+    {
+      "id": "pnw_advice_097",
+      "text": "Pro raiders whisper that a build with no power cannot be spied because it is too dark. The mechanics are too impressed to object."
+    },
+    {
+      "id": "pnw_advice_098",
+      "text": "War room consensus: Ten farms in every city guarantee diplomatic immunity. Only beginners ask for proof."
+    },
+    {
+      "id": "pnw_advice_099",
+      "text": "The secret city build is obvious: Ground attacking aircraft is valid if your soldiers jump confidently. Only beginners ask for proof."
+    },
+    {
+      "id": "pnw_advice_100",
+      "text": "Alliance leadership textbooks clearly state Rebuilding infra before units improves morale for the incoming second wave. A graph somewhere probably agrees."
+    },
+    {
+      "id": "pnw_advice_101",
+      "text": "High-level FA doctrine says hangars are optional once your aircraft learn independence. It sounds expensive, therefore it must be optimal."
+    },
+    {
+      "id": "pnw_advice_102",
+      "text": "Resource gurus agree that coal mines in every city improve treaty negotiations through soot diplomacy. The resource market respects enthusiasm."
+    },
+    {
+      "id": "pnw_advice_103",
+      "text": "Alliance leadership textbooks clearly state A single drydock is basically a navy if the enemy does not zoom in. Taxes fear decisive infrastructure."
+    },
+    {
+      "id": "pnw_advice_104",
+      "text": "High-level FA doctrine says a city without improvements is perfectly optimized for minimal decision fatigue. Counters hate this one weird trick."
+    },
+    {
+      "id": "pnw_advice_105",
+      "text": "Resource gurus agree that a shopping mall can replace a military barracks if the enemy values coupons. The war log loves bold interpretations."
+    },
+    {
+      "id": "pnw_advice_106",
+      "text": "The hidden mechanic is simple: Air Superiority can be replaced by naming every plane Ace. The war log loves bold interpretations."
+    },
+    {
+      "id": "pnw_advice_107",
+      "text": "The calculator lobby does not want you to know that declare raid when you want net damage because labels are decorative. Market history will eventually apologize."
+    },
+    {
+      "id": "pnw_advice_108",
+      "text": "The war graph bends toward players who know daily login rewards are a complete war plan when stacked emotionally. The beige timer practically endorses it."
+    },
+    {
+      "id": "pnw_advice_109",
+      "text": "If you trust the experts, fortifying while losing is basically investing in emotional resistance. This is advanced enough to look correct from far away."
+    },
+    {
+      "id": "pnw_advice_110",
+      "text": "Veteran strategists recommend this: Missiles do more psychological damage when launched after bedtime. No further spreadsheet required."
+    },
+    {
+      "id": "pnw_advice_111",
+      "text": "Every competent economist knows ships need no munitions because cannonballs are a mindset. The treaty web trembles before such clarity."
+    },
+    {
+      "id": "pnw_advice_112",
+      "text": "Advanced PnW theory begins with this: Missile projects are cheaper if you never check upkeep. Screenshot this before the experts deny it."
+    },
+    {
+      "id": "pnw_advice_113",
+      "text": "The latest meta confirms score inflation scares enemies because bigger numbers are louder. Screenshot this before the experts deny it."
+    },
+    {
+      "id": "pnw_advice_114",
+      "text": "The official-looking answer is Loot is safest on the nation currently being raided. Perfectly reasonable if said with confidence."
+    },
+    {
+      "id": "pnw_advice_115",
+      "text": "A very serious spreadsheet proves police stations reduce naval damage if you put them near water emotionally. The math becomes friendlier if nobody checks it."
+    },
+    {
+      "id": "pnw_advice_116",
+      "text": "According to top Orbis analysts, naval attacking tanks works on Tuesdays with enough waves. Your alliance chat will appreciate the innovation."
+    },
+    {
+      "id": "pnw_advice_117",
+      "text": "A senior beige consultant confirms rebuilding infra before units improves morale for the incoming second wave. This is why they call it strategy."
+    },
+    {
+      "id": "pnw_advice_118",
+      "text": "Market experts insist hangars are optional once your aircraft learn independence. Call it a coalition standard and move on."
+    },
+    {
+      "id": "pnw_advice_119",
+      "text": "Experts say coal mines in every city improve treaty negotiations through soot diplomacy. This turns confusion into doctrine."
+    },
+    {
+      "id": "pnw_advice_120",
+      "text": "A senior beige consultant confirms a single drydock is basically a navy if the enemy does not zoom in. This turns confusion into doctrine."
+    },
+    {
+      "id": "pnw_advice_121",
+      "text": "Market experts insist a city without improvements is perfectly optimized for minimal decision fatigue. The mechanics are too impressed to object."
+    },
+    {
+      "id": "pnw_advice_122",
+      "text": "Experts say subways let tanks commute to battle faster. Only beginners ask for proof."
+    },
+    {
+      "id": "pnw_advice_123",
+      "text": "Pro raiders whisper that a city with no power just has a more authentic medieval tax base. A graph somewhere probably agrees."
+    },
+    {
+      "id": "pnw_advice_124",
+      "text": "War room consensus: Declare ordinary war when you want your opponent to feel ordinary. It sounds expensive, therefore it must be optimal."
+    },
+    {
+      "id": "pnw_advice_125",
+      "text": "The secret city build is obvious: Never check the war timeline; surprises are a valid military doctrine. The resource market respects enthusiasm."
+    },
+    {
+      "id": "pnw_advice_126",
+      "text": "Alliance leadership textbooks clearly state A warchest stored entirely as food is safest during radiation. Taxes fear decisive infrastructure."
+    },
+    {
+      "id": "pnw_advice_127",
+      "text": "High-level FA doctrine says nukes should be launched before checking radiation because surprise is cleaner. Taxes fear decisive infrastructure."
+    },
+    {
+      "id": "pnw_advice_128",
+      "text": "Resource gurus agree that ships need no munitions because cannonballs are a mindset. Counters hate this one weird trick."
+    },
+    {
+      "id": "pnw_advice_129",
+      "text": "The hidden mechanic is simple: Missile projects are cheaper if you never check upkeep. The war log loves bold interpretations."
+    },
+    {
+      "id": "pnw_advice_130",
+      "text": "The calculator lobby does not want you to know that score inflation scares enemies because bigger numbers are louder. Market history will eventually apologize."
+    },
+    {
+      "id": "pnw_advice_131",
+      "text": "The war graph bends toward players who know loot is safest on the nation currently being raided. The beige timer practically endorses it."
+    },
+    {
+      "id": "pnw_advice_132",
+      "text": "If you trust the experts, police stations reduce naval damage if you put them near water emotionally. This is advanced enough to look correct from far away."
+    },
+    {
+      "id": "pnw_advice_133",
+      "text": "Veteran strategists recommend this: Missile defense works better when you close your eyes before impact. No further spreadsheet required."
+    },
+    {
+      "id": "pnw_advice_134",
+      "text": "Every competent economist knows the war screen is less scary if you sort by hope. No further spreadsheet required."
+    },
+    {
+      "id": "pnw_advice_135",
+      "text": "Advanced PnW theory begins with this: Dry docks count double if you call them moist docks in alliance chat. The treaty web trembles before such clarity."
+    },
+    {
+      "id": "pnw_advice_136",
+      "text": "The latest meta confirms oil wells make aircraft loyal even without gasoline. Screenshot this before the experts deny it."
+    },
+    {
+      "id": "pnw_advice_137",
+      "text": "Every competent economist knows commerce works better during a blockade because customers enjoy exclusivity. Perfectly reasonable if said with confidence."
+    },
+    {
+      "id": "pnw_advice_138",
+      "text": "Advanced PnW theory begins with this: The market spread disappears if you buy at the highest price quickly enough. The math becomes friendlier if nobody checks it."
+    },
+    {
+      "id": "pnw_advice_139",
+      "text": "The latest meta confirms subways let tanks commute to battle faster. Your alliance chat will appreciate the innovation."
+    },
+    {
+      "id": "pnw_advice_140",
+      "text": "The official-looking answer is A city with no power just has a more authentic medieval tax base. This is why they call it strategy."
+    },
+    {
+      "id": "pnw_advice_141",
+      "text": "A very serious spreadsheet proves declare ordinary war when you want your opponent to feel ordinary. This is why they call it strategy."
+    },
+    {
+      "id": "pnw_advice_142",
+      "text": "According to top Orbis analysts, never check the war timeline; surprises are a valid military doctrine. Call it a coalition standard and move on."
+    },
+    {
+      "id": "pnw_advice_143",
+      "text": "A senior beige consultant confirms a warchest stored entirely as food is safest during radiation. This turns confusion into doctrine."
+    },
+    {
+      "id": "pnw_advice_144",
+      "text": "Market experts insist alliance banks love being tested with small public withdrawals. The mechanics are too impressed to object."
+    },
+    {
+      "id": "pnw_advice_145",
+      "text": "Experts say tanks can fly briefly if Air Superiority is written in chat. Only beginners ask for proof."
+    },
+    {
+      "id": "pnw_advice_146",
+      "text": "Pro raiders whisper that color bonus improves when your alliance changes colors during war. A graph somewhere probably agrees."
+    },
+    {
+      "id": "pnw_advice_147",
+      "text": "War room consensus: A nation in vacation mode is vulnerable to passive-aggressive thoughts. It sounds expensive, therefore it must be optimal."
+    },
+    {
+      "id": "pnw_advice_148",
+      "text": "The secret city build is obvious: Upkeep disappears when all units are described as volunteers. It sounds expensive, therefore it must be optimal."
+    },
+    {
+      "id": "pnw_advice_149",
+      "text": "Alliance leadership textbooks clearly state Hospitals make nukes polite. The resource market respects enthusiasm."
+    },
+    {
+      "id": "pnw_advice_150",
+      "text": "High-level FA doctrine says missile defense works better when you close your eyes before impact. Taxes fear decisive infrastructure."
+    },
+    {
+      "id": "pnw_advice_151",
+      "text": "Resource gurus agree that the war screen is less scary if you sort by hope. Counters hate this one weird trick."
+    },
+    {
+      "id": "pnw_advice_152",
+      "text": "The hidden mechanic is simple: Dry docks count double if you call them moist docks in alliance chat. The war log loves bold interpretations."
+    },
+    {
+      "id": "pnw_advice_153",
+      "text": "The calculator lobby does not want you to know that oil wells make aircraft loyal even without gasoline. Market history will eventually apologize."
+    },
+    {
+      "id": "pnw_advice_154",
+      "text": "Resource gurus agree that commerce works better during a blockade because customers enjoy exclusivity. The beige timer practically endorses it."
+    },
+    {
+      "id": "pnw_advice_155",
+      "text": "The hidden mechanic is simple: Credits convert into strategy when stared at sternly. The beige timer practically endorses it."
+    },
+    {
+      "id": "pnw_advice_156",
+      "text": "The calculator lobby does not want you to know that stadiums improve war resistance because the crowd chants at the missiles. This is advanced enough to look correct from far away."
+    },
+    {
+      "id": "pnw_advice_157",
+      "text": "The war graph bends toward players who know infra bought during active war comes pre-seasoned for incoming damage. No further spreadsheet required."
+    },
+    {
+      "id": "pnw_advice_158",
+      "text": "If you trust the experts, enemy nukes become harmless if you leave one improvement slot empty for luck. The treaty web trembles before such clarity."
+    },
+    {
+      "id": "pnw_advice_159",
+      "text": "Veteran strategists recommend this: Counters cannot find you if your nation description is vague. Screenshot this before the experts deny it."
+    },
+    {
+      "id": "pnw_advice_160",
+      "text": "Every competent economist knows tanks do not need steel if the factories believe in themselves. Perfectly reasonable if said with confidence."
+    },
+    {
+      "id": "pnw_advice_161",
+      "text": "Advanced PnW theory begins with this: Alliance banks love being tested with small public withdrawals. The math becomes friendlier if nobody checks it."
+    },
+    {
+      "id": "pnw_advice_162",
+      "text": "The latest meta confirms tanks can fly briefly if Air Superiority is written in chat. The math becomes friendlier if nobody checks it."
+    },
+    {
+      "id": "pnw_advice_163",
+      "text": "The official-looking answer is Color bonus improves when your alliance changes colors during war. Your alliance chat will appreciate the innovation."
+    },
+    {
+      "id": "pnw_advice_164",
+      "text": "A very serious spreadsheet proves a nation in vacation mode is vulnerable to passive-aggressive thoughts. This is why they call it strategy."
+    },
+    {
+      "id": "pnw_advice_165",
+      "text": "According to top Orbis analysts, upkeep disappears when all units are described as volunteers. Call it a coalition standard and move on."
+    },
+    {
+      "id": "pnw_advice_166",
+      "text": "A senior beige consultant confirms recycling centers recycle lost aircraft into morale. This turns confusion into doctrine."
+    },
+    {
+      "id": "pnw_advice_167",
+      "text": "Market experts insist infrastructure pays itself back instantly if you refuse to open the revenue page. The mechanics are too impressed to object."
+    },
+    {
+      "id": "pnw_advice_168",
+      "text": "Experts say if you cannot win, add more improvements and call it economic warfare. Only beginners ask for proof."
+    },
+    {
+      "id": "pnw_advice_169",
+      "text": "Pro raiders whisper that barracks become elite when left empty for several turns. Only beginners ask for proof."
+    },
+    {
+      "id": "pnw_advice_170",
+      "text": "War room consensus: Lead mines reduce spy casualties by giving spies pencils. A graph somewhere probably agrees."
+    },
+    {
+      "id": "pnw_advice_171",
+      "text": "Experts say missiles are most efficient when fired at the lowest-infra city available. It sounds expensive, therefore it must be optimal."
+    },
+    {
+      "id": "pnw_advice_172",
+      "text": "Pro raiders whisper that credits convert into strategy when stared at sternly. The resource market respects enthusiasm."
+    },
+    {
+      "id": "pnw_advice_173",
+      "text": "War room consensus: Stadiums improve war resistance because the crowd chants at the missiles. Taxes fear decisive infrastructure."
+    },
+    {
+      "id": "pnw_advice_174",
+      "text": "The secret city build is obvious: Infra bought during active war comes pre-seasoned for incoming damage. Counters hate this one weird trick."
+    },
+    {
+      "id": "pnw_advice_175",
+      "text": "Alliance leadership textbooks clearly state Enemy nukes become harmless if you leave one improvement slot empty for luck. The war log loves bold interpretations."
+    },
+    {
+      "id": "pnw_advice_176",
+      "text": "High-level FA doctrine says counters cannot find you if your nation description is vague. The war log loves bold interpretations."
+    },
+    {
+      "id": "pnw_advice_177",
+      "text": "Resource gurus agree that ships can break Ground Control if you splash loudly enough. Market history will eventually apologize."
+    },
+    {
+      "id": "pnw_advice_178",
+      "text": "The hidden mechanic is simple: A full military build is strongest when paid for after the war ends. The beige timer practically endorses it."
+    },
+    {
+      "id": "pnw_advice_179",
+      "text": "The calculator lobby does not want you to know that the best rebuild grants are spent before the rebuild begins. This is advanced enough to look correct from far away."
+    },
+    {
+      "id": "pnw_advice_180",
+      "text": "The war graph bends toward players who know low resistance is just the game asking for more attacks. No further spreadsheet required."
+    },
+    {
+      "id": "pnw_advice_181",
+      "text": "If you trust the experts, beige cycling works best when everyone forgets the cycle part. The treaty web trembles before such clarity."
+    },
+    {
+      "id": "pnw_advice_182",
+      "text": "Veteran strategists recommend this: If a project is expensive, buy it mid-crisis so it feels important. Screenshot this before the experts deny it."
+    },
+    {
+      "id": "pnw_advice_183",
+      "text": "Every competent economist knows recycling centers recycle lost aircraft into morale. Screenshot this before the experts deny it."
+    },
+    {
+      "id": "pnw_advice_184",
+      "text": "Advanced PnW theory begins with this: Infrastructure pays itself back instantly if you refuse to open the revenue page. Perfectly reasonable if said with confidence."
+    },
+    {
+      "id": "pnw_advice_185",
+      "text": "The latest meta confirms if you cannot win, add more improvements and call it economic warfare. The math becomes friendlier if nobody checks it."
+    },
+    {
+      "id": "pnw_advice_186",
+      "text": "The official-looking answer is Barracks become elite when left empty for several turns. Your alliance chat will appreciate the innovation."
+    },
+    {
+      "id": "pnw_advice_187",
+      "text": "A very serious spreadsheet proves lead mines reduce spy casualties by giving spies pencils. This is why they call it strategy."
+    },
+    {
+      "id": "pnw_advice_188",
+      "text": "The latest meta confirms nukes should be saved for inactive one-city nations to preserve suspense. Call it a coalition standard and move on."
+    },
+    {
+      "id": "pnw_advice_189",
+      "text": "The official-looking answer is Food shortages improve discipline by making citizens focus. This turns confusion into doctrine."
+    },
+    {
+      "id": "pnw_advice_190",
+      "text": "A very serious spreadsheet proves supermarkets are secretly anti-spy infrastructure because spies need snacks. This turns confusion into doctrine."
+    },
+    {
+      "id": "pnw_advice_191",
+      "text": "According to top Orbis analysts, defensive slots are just free networking opportunities. The mechanics are too impressed to object."
+    },
+    {
+      "id": "pnw_advice_192",
+      "text": "A senior beige consultant confirms a spy op at 12 percent odds is basically guaranteed after three dramatic refreshes. Only beginners ask for proof."
+    },
+    {
+      "id": "pnw_advice_193",
+      "text": "Market experts insist peace offers work better when sent with no message and maximum confusion. A graph somewhere probably agrees."
+    },
+    {
+      "id": "pnw_advice_194",
+      "text": "Experts say ships can break Ground Control if you splash loudly enough. It sounds expensive, therefore it must be optimal."
+    },
+    {
+      "id": "pnw_advice_195",
+      "text": "Pro raiders whisper that a full military build is strongest when paid for after the war ends. The resource market respects enthusiasm."
+    },
+    {
+      "id": "pnw_advice_196",
+      "text": "War room consensus: The best rebuild grants are spent before the rebuild begins. Taxes fear decisive infrastructure."
+    },
+    {
+      "id": "pnw_advice_197",
+      "text": "The secret city build is obvious: Low resistance is just the game asking for more attacks. Taxes fear decisive infrastructure."
+    },
+    {
+      "id": "pnw_advice_198",
+      "text": "Alliance leadership textbooks clearly state Beige cycling works best when everyone forgets the cycle part. Counters hate this one weird trick."
+    },
+    {
+      "id": "pnw_advice_199",
+      "text": "High-level FA doctrine says the best time to buy resources is after everyone else panics. The war log loves bold interpretations."
+    },
+    {
+      "id": "pnw_advice_200",
+      "text": "Resource gurus agree that coal power plants are stealth improvements because smoke hides the city. Market history will eventually apologize."
+    },
+    {
+      "id": "pnw_advice_201",
+      "text": "The hidden mechanic is simple: A high-city nation needs no warchest because cities are basically coupons. The beige timer practically endorses it."
+    },
+    {
+      "id": "pnw_advice_202",
+      "text": "The calculator lobby does not want you to know that one spy can totally take that nuke if you click with enough national pride. This is advanced enough to look correct from far away."
+    },
+    {
+      "id": "pnw_advice_203",
+      "text": "The war graph bends toward players who know the best counter is declaring on someone unrelated and hoping the map understands. No further spreadsheet required."
+    },
+    {
+      "id": "pnw_advice_204",
+      "text": "If you trust the experts, bauxite protects aircraft because aluminum remembers where it came from. No further spreadsheet required."
+    },
+    {
+      "id": "pnw_advice_205",
+      "text": "The calculator lobby does not want you to know that nukes should be saved for inactive one-city nations to preserve suspense. The treaty web trembles before such clarity."
+    },
+    {
+      "id": "pnw_advice_206",
+      "text": "The war graph bends toward players who know food shortages improve discipline by making citizens focus. Screenshot this before the experts deny it."
+    },
+    {
+      "id": "pnw_advice_207",
+      "text": "If you trust the experts, supermarkets are secretly anti-spy infrastructure because spies need snacks. Perfectly reasonable if said with confidence."
+    },
+    {
+      "id": "pnw_advice_208",
+      "text": "Veteran strategists recommend this: Defensive slots are just free networking opportunities. The math becomes friendlier if nobody checks it."
+    },
+    {
+      "id": "pnw_advice_209",
+      "text": "Every competent economist knows a spy op at 12 percent odds is basically guaranteed after three dramatic refreshes. Your alliance chat will appreciate the innovation."
+    },
+    {
+      "id": "pnw_advice_210",
+      "text": "Advanced PnW theory begins with this: An alliance with many treaties cannot be countered because paperwork blocks missiles. This is why they call it strategy."
+    },
+    {
+      "id": "pnw_advice_211",
+      "text": "The latest meta confirms soldiers fight better when barracks are replaced with shopping malls. This is why they call it strategy."
+    },
+    {
+      "id": "pnw_advice_212",
+      "text": "The official-looking answer is A 0 percent commerce city is immune to market crashes. Call it a coalition standard and move on."
+    },
+    {
+      "id": "pnw_advice_213",
+      "text": "A very serious spreadsheet proves tax rates become kinder when ignored for a full week. This turns confusion into doctrine."
+    },
+    {
+      "id": "pnw_advice_214",
+      "text": "According to top Orbis analysts, blockaded cities make perfect offshore banks because nobody can leave. The mechanics are too impressed to object."
+    },
+    {
+      "id": "pnw_advice_215",
+      "text": "A senior beige consultant confirms spy odds improve if you compliment the target nation name. Only beginners ask for proof."
+    },
+    {
+      "id": "pnw_advice_216",
+      "text": "Market experts insist the best time to buy resources is after everyone else panics. A graph somewhere probably agrees."
+    },
+    {
+      "id": "pnw_advice_217",
+      "text": "Experts say coal power plants are stealth improvements because smoke hides the city. It sounds expensive, therefore it must be optimal."
+    },
+    {
+      "id": "pnw_advice_218",
+      "text": "Pro raiders whisper that a high-city nation needs no warchest because cities are basically coupons. It sounds expensive, therefore it must be optimal."
+    },
+    {
+      "id": "pnw_advice_219",
+      "text": "War room consensus: One spy can totally take that nuke if you click with enough national pride. The resource market respects enthusiasm."
+    },
+    {
+      "id": "pnw_advice_220",
+      "text": "The secret city build is obvious: The best counter is declaring on someone unrelated and hoping the map understands. Taxes fear decisive infrastructure."
+    },
+    {
+      "id": "pnw_advice_221",
+      "text": "Alliance leadership textbooks clearly state Iron mines make tanks feel emotionally assembled. Counters hate this one weird trick."
+    },
+    {
+      "id": "pnw_advice_222",
+      "text": "War room consensus: Selling munitions before ground attacks improves soldier cardio. The war log loves bold interpretations."
+    },
+    {
+      "id": "pnw_advice_223",
+      "text": "The secret city build is obvious: Low military score hides your true power from everybody including yourself. Market history will eventually apologize."
+    },
+    {
+      "id": "pnw_advice_224",
+      "text": "Alliance leadership textbooks clearly state Banks prevent loot if you name them Not A Bank. The beige timer practically endorses it."
+    },
+    {
+      "id": "pnw_advice_225",
+      "text": "High-level FA doctrine says raid wars pay better when you announce the target in public first. The beige timer practically endorses it."
+    },
+    {
+      "id": "pnw_advice_226",
+      "text": "Resource gurus agree that if the opponent has Air Control, build more tanks and call it vertical integration. This is advanced enough to look correct from far away."
+    },
+    {
+      "id": "pnw_advice_227",
+      "text": "The hidden mechanic is simple: An alliance with many treaties cannot be countered because paperwork blocks missiles. No further spreadsheet required."
+    },
+    {
+      "id": "pnw_advice_228",
+      "text": "The calculator lobby does not want you to know that soldiers fight better when barracks are replaced with shopping malls. The treaty web trembles before such clarity."
+    },
+    {
+      "id": "pnw_advice_229",
+      "text": "The war graph bends toward players who know a 0 percent commerce city is immune to market crashes. Screenshot this before the experts deny it."
+    },
+    {
+      "id": "pnw_advice_230",
+      "text": "If you trust the experts, tax rates become kinder when ignored for a full week. Perfectly reasonable if said with confidence."
+    },
+    {
+      "id": "pnw_advice_231",
+      "text": "Veteran strategists recommend this: Blockaded cities make perfect offshore banks because nobody can leave. The math becomes friendlier if nobody checks it."
+    },
+    {
+      "id": "pnw_advice_232",
+      "text": "Every competent economist knows airstriking ships is valid if you imagine the planes are boats. The math becomes friendlier if nobody checks it."
+    },
+    {
+      "id": "pnw_advice_233",
+      "text": "Advanced PnW theory begins with this: A city named Fortress legally takes less damage. Your alliance chat will appreciate the innovation."
+    },
+    {
+      "id": "pnw_advice_234",
+      "text": "The latest meta confirms uranium is best stored in the same place as your vacation plans. This is why they call it strategy."
+    },
+    {
+      "id": "pnw_advice_235",
+      "text": "The official-looking answer is Keep all resources offshore in a place you just declared on for convenience. Call it a coalition standard and move on."
+    },
+    {
+      "id": "pnw_advice_236",
+      "text": "A very serious spreadsheet proves two mines in every city keeps the tax man away. This turns confusion into doctrine."
+    },
+    {
+      "id": "pnw_advice_237",
+      "text": "According to top Orbis analysts, a raid target with no loot is ideal because expectations cannot be stolen. The mechanics are too impressed to object."
+    },
+    {
+      "id": "pnw_advice_238",
+      "text": "A senior beige consultant confirms iron mines make tanks feel emotionally assembled. Only beginners ask for proof."
+    },
+    {
+      "id": "pnw_advice_239",
+      "text": "A very serious spreadsheet proves selling munitions before ground attacks improves soldier cardio. Only beginners ask for proof."
+    },
+    {
+      "id": "pnw_advice_240",
+      "text": "According to top Orbis analysts, low military score hides your true power from everybody including yourself. A graph somewhere probably agrees."
+    },
+    {
+      "id": "pnw_advice_241",
+      "text": "A senior beige consultant confirms banks prevent loot if you name them Not A Bank. It sounds expensive, therefore it must be optimal."
+    },
+    {
+      "id": "pnw_advice_242",
+      "text": "Market experts insist raid wars pay better when you announce the target in public first. The resource market respects enthusiasm."
+    },
+    {
+      "id": "pnw_advice_243",
+      "text": "Experts say if the opponent has Blockade, sell ships to reduce naval temptation. Taxes fear decisive infrastructure."
+    },
+    {
+      "id": "pnw_advice_244",
+      "text": "Pro raiders whisper that your planes dodge better if every aircraft is named individually. Counters hate this one weird trick."
+    },
+    {
+      "id": "pnw_advice_245",
+      "text": "War room consensus: A treaty web is easier to manage if you sign every line without reading. The war log loves bold interpretations."
+    },
+    {
+      "id": "pnw_advice_246",
+      "text": "The secret city build is obvious: Buying resources one unit at a time confuses the global economy. The war log loves bold interpretations."
+    },
+    {
+      "id": "pnw_advice_247",
+      "text": "Alliance leadership textbooks clearly state Nation color matters more than military if the shade is intimidating. Market history will eventually apologize."
+    },
+    {
+      "id": "pnw_advice_248",
+      "text": "High-level FA doctrine says buying land mid-war gives bombs more room to miss. The beige timer practically endorses it."
+    },
+    {
+      "id": "pnw_advice_249",
+      "text": "Resource gurus agree that airstriking ships is valid if you imagine the planes are boats. This is advanced enough to look correct from far away."
+    },
+    {
+      "id": "pnw_advice_250",
+      "text": "The hidden mechanic is simple: A city named Fortress legally takes less damage. No further spreadsheet required."
+    },
+    {
+      "id": "pnw_advice_251",
+      "text": "The calculator lobby does not want you to know that uranium is best stored in the same place as your vacation plans. The treaty web trembles before such clarity."
+    },
+    {
+      "id": "pnw_advice_252",
+      "text": "The war graph bends toward players who know keep all resources offshore in a place you just declared on for convenience. Screenshot this before the experts deny it."
+    },
+    {
+      "id": "pnw_advice_253",
+      "text": "If you trust the experts, two mines in every city keeps the tax man away. Screenshot this before the experts deny it."
+    },
+    {
+      "id": "pnw_advice_254",
+      "text": "Veteran strategists recommend this: Buying 3,000 infra before sleeping prevents morning surprises by using them all now. Perfectly reasonable if said with confidence."
+    },
+    {
+      "id": "pnw_advice_255",
+      "text": "Every competent economist knows uranium mines count as nukes if you squint at the project screen. The math becomes friendlier if nobody checks it."
+    },
+    {
+      "id": "pnw_advice_256",
+      "text": "If you trust the experts, ground Control is optional if your tanks have a positive attitude. Your alliance chat will appreciate the innovation."
+    },
+    {
+      "id": "pnw_advice_257",
+      "text": "Veteran strategists recommend this: Declare attrition when you want loot because words are flexible. This is why they call it strategy."
+    },
+    {
+      "id": "pnw_advice_258",
+      "text": "Every competent economist knows a city cap is only real if the calculator says it twice. Call it a coalition standard and move on."
+    },
+    {
+      "id": "pnw_advice_259",
+      "text": "Advanced PnW theory begins with this: Beige is strongest when you waste every turn admiring the timer. This turns confusion into doctrine."
+    },
+    {
+      "id": "pnw_advice_260",
+      "text": "The latest meta confirms if the opponent has Blockade, sell ships to reduce naval temptation. This turns confusion into doctrine."
+    },
+    {
+      "id": "pnw_advice_261",
+      "text": "The official-looking answer is Your planes dodge better if every aircraft is named individually. The mechanics are too impressed to object."
+    },
+    {
+      "id": "pnw_advice_262",
+      "text": "A very serious spreadsheet proves a treaty web is easier to manage if you sign every line without reading. Only beginners ask for proof."
+    },
+    {
+      "id": "pnw_advice_263",
+      "text": "According to top Orbis analysts, buying resources one unit at a time confuses the global economy. A graph somewhere probably agrees."
+    },
+    {
+      "id": "pnw_advice_264",
+      "text": "A senior beige consultant confirms nation color matters more than military if the shade is intimidating. It sounds expensive, therefore it must be optimal."
+    },
+    {
+      "id": "pnw_advice_265",
+      "text": "Market experts insist ten farms in every city guarantee diplomatic immunity. The resource market respects enthusiasm."
+    },
+    {
+      "id": "pnw_advice_266",
+      "text": "Experts say ground attacking aircraft is valid if your soldiers jump confidently. Taxes fear decisive infrastructure."
+    },
+    {
+      "id": "pnw_advice_267",
+      "text": "Pro raiders whisper that a missile launched at your friend is just alliance training. Taxes fear decisive infrastructure."
+    },
+    {
+      "id": "pnw_advice_268",
+      "text": "War room consensus: Factories work harder when you sell all steel first. Counters hate this one weird trick."
+    },
+    {
+      "id": "pnw_advice_269",
+      "text": "The secret city build is obvious: Do not build munitions factories; bullets appear when soldiers are motivated. The war log loves bold interpretations."
+    },
+    {
+      "id": "pnw_advice_270",
+      "text": "Alliance leadership textbooks clearly state Zero gasoline is fine for airstrikes because planes mostly run on confidence. Market history will eventually apologize."
+    },
+    {
+      "id": "pnw_advice_271",
+      "text": "High-level FA doctrine says buying 3,000 infra before sleeping prevents morning surprises by using them all now. The beige timer practically endorses it."
+    },
+    {
+      "id": "pnw_advice_272",
+      "text": "Resource gurus agree that uranium mines count as nukes if you squint at the project screen. This is advanced enough to look correct from far away."
+    },
+    {
+      "id": "pnw_advice_273",
+      "text": "Alliance leadership textbooks clearly state Ground Control is optional if your tanks have a positive attitude. No further spreadsheet required."
+    },
+    {
+      "id": "pnw_advice_274",
+      "text": "High-level FA doctrine says declare attrition when you want loot because words are flexible. No further spreadsheet required."
+    },
+    {
+      "id": "pnw_advice_275",
+      "text": "Resource gurus agree that a city cap is only real if the calculator says it twice. The treaty web trembles before such clarity."
+    },
+    {
+      "id": "pnw_advice_276",
+      "text": "The hidden mechanic is simple: Fortifying while losing is basically investing in emotional resistance. Screenshot this before the experts deny it."
+    },
+    {
+      "id": "pnw_advice_277",
+      "text": "The calculator lobby does not want you to know that missiles do more psychological damage when launched after bedtime. Perfectly reasonable if said with confidence."
+    },
+    {
+      "id": "pnw_advice_278",
+      "text": "The war graph bends toward players who know soldiers consume less food if you call them guests. The math becomes friendlier if nobody checks it."
+    },
+    {
+      "id": "pnw_advice_279",
+      "text": "If you trust the experts, spies are more stealthy when you only own one of them. Your alliance chat will appreciate the innovation."
+    },
+    {
+      "id": "pnw_advice_280",
+      "text": "Veteran strategists recommend this: War range is just a suggestion written by nervous calculators. This is why they call it strategy."
+    },
+    {
+      "id": "pnw_advice_281",
+      "text": "Every competent economist knows a build with no power cannot be spied because it is too dark. This is why they call it strategy."
+    },
+    {
+      "id": "pnw_advice_282",
+      "text": "Advanced PnW theory begins with this: Ten farms in every city guarantee diplomatic immunity. Call it a coalition standard and move on."
+    },
+    {
+      "id": "pnw_advice_283",
+      "text": "The latest meta confirms ground attacking aircraft is valid if your soldiers jump confidently. This turns confusion into doctrine."
+    },
+    {
+      "id": "pnw_advice_284",
+      "text": "The official-looking answer is A missile launched at your friend is just alliance training. The mechanics are too impressed to object."
+    },
+    {
+      "id": "pnw_advice_285",
+      "text": "A very serious spreadsheet proves factories work harder when you sell all steel first. Only beginners ask for proof."
+    },
+    {
+      "id": "pnw_advice_286",
+      "text": "According to top Orbis analysts, do not build munitions factories; bullets appear when soldiers are motivated. A graph somewhere probably agrees."
+    },
+    {
+      "id": "pnw_advice_287",
+      "text": "A senior beige consultant confirms a single drydock is basically a navy if the enemy does not zoom in. It sounds expensive, therefore it must be optimal."
+    },
+    {
+      "id": "pnw_advice_288",
+      "text": "Market experts insist a city without improvements is perfectly optimized for minimal decision fatigue. It sounds expensive, therefore it must be optimal."
+    },
+    {
+      "id": "pnw_advice_289",
+      "text": "Experts say a shopping mall can replace a military barracks if the enemy values coupons. The resource market respects enthusiasm."
+    },
+    {
+      "id": "pnw_advice_290",
+      "text": "A senior beige consultant confirms air Superiority can be replaced by naming every plane Ace. Taxes fear decisive infrastructure."
+    },
+    {
+      "id": "pnw_advice_291",
+      "text": "Market experts insist declare raid when you want net damage because labels are decorative. Counters hate this one weird trick."
+    },
+    {
+      "id": "pnw_advice_292",
+      "text": "Experts say daily login rewards are a complete war plan when stacked emotionally. The war log loves bold interpretations."
+    },
+    {
+      "id": "pnw_advice_293",
+      "text": "Pro raiders whisper that fortifying while losing is basically investing in emotional resistance. Market history will eventually apologize."
+    },
+    {
+      "id": "pnw_advice_294",
+      "text": "War room consensus: Missiles do more psychological damage when launched after bedtime. The beige timer practically endorses it."
+    },
+    {
+      "id": "pnw_advice_295",
+      "text": "The secret city build is obvious: Soldiers consume less food if you call them guests. The beige timer practically endorses it."
+    },
+    {
+      "id": "pnw_advice_296",
+      "text": "Alliance leadership textbooks clearly state Spies are more stealthy when you only own one of them. This is advanced enough to look correct from far away."
+    },
+    {
+      "id": "pnw_advice_297",
+      "text": "High-level FA doctrine says war range is just a suggestion written by nervous calculators. No further spreadsheet required."
+    },
+    {
+      "id": "pnw_advice_298",
+      "text": "Resource gurus agree that loot is safest on the nation currently being raided. The treaty web trembles before such clarity."
+    },
+    {
+      "id": "pnw_advice_299",
+      "text": "The hidden mechanic is simple: Police stations reduce naval damage if you put them near water emotionally. Screenshot this before the experts deny it."
+    },
+    {
+      "id": "pnw_advice_300",
+      "text": "The calculator lobby does not want you to know that naval attacking tanks works on Tuesdays with enough waves. Perfectly reasonable if said with confidence."
+    },
+    {
+      "id": "pnw_advice_301",
+      "text": "The war graph bends toward players who know rebuilding infra before units improves morale for the incoming second wave. The math becomes friendlier if nobody checks it."
+    },
+    {
+      "id": "pnw_advice_302",
+      "text": "If you trust the experts, hangars are optional once your aircraft learn independence. The math becomes friendlier if nobody checks it."
+    },
+    {
+      "id": "pnw_advice_303",
+      "text": "Veteran strategists recommend this: Coal mines in every city improve treaty negotiations through soot diplomacy. Your alliance chat will appreciate the innovation."
+    },
+    {
+      "id": "pnw_advice_304",
+      "text": "Every competent economist knows a single drydock is basically a navy if the enemy does not zoom in. This is why they call it strategy."
+    },
+    {
+      "id": "pnw_advice_305",
+      "text": "Advanced PnW theory begins with this: A city without improvements is perfectly optimized for minimal decision fatigue. Call it a coalition standard and move on."
+    },
+    {
+      "id": "pnw_advice_306",
+      "text": "The latest meta confirms a shopping mall can replace a military barracks if the enemy values coupons. This turns confusion into doctrine."
+    },
+    {
+      "id": "pnw_advice_307",
+      "text": "Every competent economist knows air Superiority can be replaced by naming every plane Ace. The mechanics are too impressed to object."
+    },
+    {
+      "id": "pnw_advice_308",
+      "text": "Advanced PnW theory begins with this: Declare raid when you want net damage because labels are decorative. Only beginners ask for proof."
+    },
+    {
+      "id": "pnw_advice_309",
+      "text": "The latest meta confirms never check the war timeline; surprises are a valid military doctrine. Only beginners ask for proof."
+    },
+    {
+      "id": "pnw_advice_310",
+      "text": "The official-looking answer is A warchest stored entirely as food is safest during radiation. A graph somewhere probably agrees."
+    },
+    {
+      "id": "pnw_advice_311",
+      "text": "A very serious spreadsheet proves nukes should be launched before checking radiation because surprise is cleaner. It sounds expensive, therefore it must be optimal."
+    },
+    {
+      "id": "pnw_advice_312",
+      "text": "According to top Orbis analysts, ships need no munitions because cannonballs are a mindset. The resource market respects enthusiasm."
+    },
+    {
+      "id": "pnw_advice_313",
+      "text": "A senior beige consultant confirms missile projects are cheaper if you never check upkeep. Taxes fear decisive infrastructure."
+    },
+    {
+      "id": "pnw_advice_314",
+      "text": "Market experts insist score inflation scares enemies because bigger numbers are louder. Counters hate this one weird trick."
+    },
+    {
+      "id": "pnw_advice_315",
+      "text": "Experts say loot is safest on the nation currently being raided. The war log loves bold interpretations."
+    },
+    {
+      "id": "pnw_advice_316",
+      "text": "Pro raiders whisper that police stations reduce naval damage if you put them near water emotionally. The war log loves bold interpretations."
+    },
+    {
+      "id": "pnw_advice_317",
+      "text": "War room consensus: Naval attacking tanks works on Tuesdays with enough waves. Market history will eventually apologize."
+    },
+    {
+      "id": "pnw_advice_318",
+      "text": "The secret city build is obvious: Rebuilding infra before units improves morale for the incoming second wave. The beige timer practically endorses it."
+    },
+    {
+      "id": "pnw_advice_319",
+      "text": "Alliance leadership textbooks clearly state Hangars are optional once your aircraft learn independence. This is advanced enough to look correct from far away."
+    },
+    {
+      "id": "pnw_advice_320",
+      "text": "High-level FA doctrine says oil wells make aircraft loyal even without gasoline. No further spreadsheet required."
+    },
+    {
+      "id": "pnw_advice_321",
+      "text": "Resource gurus agree that commerce works better during a blockade because customers enjoy exclusivity. The treaty web trembles before such clarity."
+    },
+    {
+      "id": "pnw_advice_322",
+      "text": "The hidden mechanic is simple: The market spread disappears if you buy at the highest price quickly enough. Screenshot this before the experts deny it."
+    },
+    {
+      "id": "pnw_advice_323",
+      "text": "The calculator lobby does not want you to know that subways let tanks commute to battle faster. Screenshot this before the experts deny it."
+    },
+    {
+      "id": "pnw_advice_324",
+      "text": "Resource gurus agree that a city with no power just has a more authentic medieval tax base. Perfectly reasonable if said with confidence."
+    },
+    {
+      "id": "pnw_advice_325",
+      "text": "The hidden mechanic is simple: Declare ordinary war when you want your opponent to feel ordinary. The math becomes friendlier if nobody checks it."
+    },
+    {
+      "id": "pnw_advice_326",
+      "text": "The calculator lobby does not want you to know that never check the war timeline; surprises are a valid military doctrine. Your alliance chat will appreciate the innovation."
+    },
+    {
+      "id": "pnw_advice_327",
+      "text": "The war graph bends toward players who know a warchest stored entirely as food is safest during radiation. This is why they call it strategy."
+    },
+    {
+      "id": "pnw_advice_328",
+      "text": "If you trust the experts, nukes should be launched before checking radiation because surprise is cleaner. Call it a coalition standard and move on."
+    },
+    {
+      "id": "pnw_advice_329",
+      "text": "Veteran strategists recommend this: Ships need no munitions because cannonballs are a mindset. This turns confusion into doctrine."
+    },
+    {
+      "id": "pnw_advice_330",
+      "text": "Every competent economist knows missile projects are cheaper if you never check upkeep. This turns confusion into doctrine."
+    },
+    {
+      "id": "pnw_advice_331",
+      "text": "Advanced PnW theory begins with this: A nation in vacation mode is vulnerable to passive-aggressive thoughts. The mechanics are too impressed to object."
+    },
+    {
+      "id": "pnw_advice_332",
+      "text": "The latest meta confirms upkeep disappears when all units are described as volunteers. Only beginners ask for proof."
+    },
+    {
+      "id": "pnw_advice_333",
+      "text": "The official-looking answer is Hospitals make nukes polite. A graph somewhere probably agrees."
+    },
+    {
+      "id": "pnw_advice_334",
+      "text": "A very serious spreadsheet proves missile defense works better when you close your eyes before impact. It sounds expensive, therefore it must be optimal."
+    },
+    {
+      "id": "pnw_advice_335",
+      "text": "According to top Orbis analysts, the war screen is less scary if you sort by hope. The resource market respects enthusiasm."
+    },
+    {
+      "id": "pnw_advice_336",
+      "text": "A senior beige consultant confirms dry docks count double if you call them moist docks in alliance chat. Taxes fear decisive infrastructure."
+    },
+    {
+      "id": "pnw_advice_337",
+      "text": "Market experts insist oil wells make aircraft loyal even without gasoline. Taxes fear decisive infrastructure."
+    },
+    {
+      "id": "pnw_advice_338",
+      "text": "Experts say commerce works better during a blockade because customers enjoy exclusivity. Counters hate this one weird trick."
+    },
+    {
+      "id": "pnw_advice_339",
+      "text": "Pro raiders whisper that the market spread disappears if you buy at the highest price quickly enough. The war log loves bold interpretations."
+    },
+    {
+      "id": "pnw_advice_340",
+      "text": "War room consensus: Subways let tanks commute to battle faster. Market history will eventually apologize."
+    },
+    {
+      "id": "pnw_advice_341",
+      "text": "Experts say a city with no power just has a more authentic medieval tax base. The beige timer practically endorses it."
+    },
+    {
+      "id": "pnw_advice_342",
+      "text": "Pro raiders whisper that enemy nukes become harmless if you leave one improvement slot empty for luck. This is advanced enough to look correct from far away."
+    },
+    {
+      "id": "pnw_advice_343",
+      "text": "War room consensus: Counters cannot find you if your nation description is vague. No further spreadsheet required."
+    },
+    {
+      "id": "pnw_advice_344",
+      "text": "The secret city build is obvious: Tanks do not need steel if the factories believe in themselves. No further spreadsheet required."
+    },
+    {
+      "id": "pnw_advice_345",
+      "text": "Alliance leadership textbooks clearly state Alliance banks love being tested with small public withdrawals. The treaty web trembles before such clarity."
+    },
+    {
+      "id": "pnw_advice_346",
+      "text": "High-level FA doctrine says tanks can fly briefly if Air Superiority is written in chat. Screenshot this before the experts deny it."
+    },
+    {
+      "id": "pnw_advice_347",
+      "text": "Resource gurus agree that color bonus improves when your alliance changes colors during war. Perfectly reasonable if said with confidence."
+    },
+    {
+      "id": "pnw_advice_348",
+      "text": "The hidden mechanic is simple: A nation in vacation mode is vulnerable to passive-aggressive thoughts. The math becomes friendlier if nobody checks it."
+    },
+    {
+      "id": "pnw_advice_349",
+      "text": "The calculator lobby does not want you to know that upkeep disappears when all units are described as volunteers. Your alliance chat will appreciate the innovation."
+    },
+    {
+      "id": "pnw_advice_350",
+      "text": "The war graph bends toward players who know hospitals make nukes polite. This is why they call it strategy."
+    },
+    {
+      "id": "pnw_advice_351",
+      "text": "If you trust the experts, missile defense works better when you close your eyes before impact. This is why they call it strategy."
+    },
+    {
+      "id": "pnw_advice_352",
+      "text": "Veteran strategists recommend this: The war screen is less scary if you sort by hope. Call it a coalition standard and move on."
+    },
+    {
+      "id": "pnw_advice_353",
+      "text": "Every competent economist knows barracks become elite when left empty for several turns. This turns confusion into doctrine."
+    },
+    {
+      "id": "pnw_advice_354",
+      "text": "Advanced PnW theory begins with this: Lead mines reduce spy casualties by giving spies pencils. The mechanics are too impressed to object."
+    },
+    {
+      "id": "pnw_advice_355",
+      "text": "The latest meta confirms missiles are most efficient when fired at the lowest-infra city available. Only beginners ask for proof."
+    },
+    {
+      "id": "pnw_advice_356",
+      "text": "The official-looking answer is Credits convert into strategy when stared at sternly. A graph somewhere probably agrees."
+    },
+    {
+      "id": "pnw_advice_357",
+      "text": "A very serious spreadsheet proves stadiums improve war resistance because the crowd chants at the missiles. It sounds expensive, therefore it must be optimal."
+    },
+    {
+      "id": "pnw_advice_358",
+      "text": "The latest meta confirms infra bought during active war comes pre-seasoned for incoming damage. It sounds expensive, therefore it must be optimal."
+    },
+    {
+      "id": "pnw_advice_359",
+      "text": "The official-looking answer is Enemy nukes become harmless if you leave one improvement slot empty for luck. The resource market respects enthusiasm."
+    },
+    {
+      "id": "pnw_advice_360",
+      "text": "A very serious spreadsheet proves counters cannot find you if your nation description is vague. Taxes fear decisive infrastructure."
+    },
+    {
+      "id": "pnw_advice_361",
+      "text": "According to top Orbis analysts, tanks do not need steel if the factories believe in themselves. Counters hate this one weird trick."
+    },
+    {
+      "id": "pnw_advice_362",
+      "text": "A senior beige consultant confirms alliance banks love being tested with small public withdrawals. The war log loves bold interpretations."
+    },
+    {
+      "id": "pnw_advice_363",
+      "text": "Market experts insist tanks can fly briefly if Air Superiority is written in chat. Market history will eventually apologize."
+    },
+    {
+      "id": "pnw_advice_364",
+      "text": "Experts say low resistance is just the game asking for more attacks. The beige timer practically endorses it."
+    },
+    {
+      "id": "pnw_advice_365",
+      "text": "Pro raiders whisper that beige cycling works best when everyone forgets the cycle part. The beige timer practically endorses it."
+    },
+    {
+      "id": "pnw_advice_366",
+      "text": "War room consensus: If a project is expensive, buy it mid-crisis so it feels important. This is advanced enough to look correct from far away."
+    },
+    {
+      "id": "pnw_advice_367",
+      "text": "The secret city build is obvious: Recycling centers recycle lost aircraft into morale. No further spreadsheet required."
+    },
+    {
+      "id": "pnw_advice_368",
+      "text": "Alliance leadership textbooks clearly state Infrastructure pays itself back instantly if you refuse to open the revenue page. The treaty web trembles before such clarity."
+    },
+    {
+      "id": "pnw_advice_369",
+      "text": "High-level FA doctrine says if you cannot win, add more improvements and call it economic warfare. Screenshot this before the experts deny it."
+    },
+    {
+      "id": "pnw_advice_370",
+      "text": "Resource gurus agree that barracks become elite when left empty for several turns. Perfectly reasonable if said with confidence."
+    },
+    {
+      "id": "pnw_advice_371",
+      "text": "The hidden mechanic is simple: Lead mines reduce spy casualties by giving spies pencils. The math becomes friendlier if nobody checks it."
+    },
+    {
+      "id": "pnw_advice_372",
+      "text": "The calculator lobby does not want you to know that missiles are most efficient when fired at the lowest-infra city available. The math becomes friendlier if nobody checks it."
+    },
+    {
+      "id": "pnw_advice_373",
+      "text": "The war graph bends toward players who know credits convert into strategy when stared at sternly. Your alliance chat will appreciate the innovation."
+    },
+    {
+      "id": "pnw_advice_374",
+      "text": "If you trust the experts, stadiums improve war resistance because the crowd chants at the missiles. This is why they call it strategy."
+    },
+    {
+      "id": "pnw_advice_375",
+      "text": "The calculator lobby does not want you to know that defensive slots are just free networking opportunities. Call it a coalition standard and move on."
+    },
+    {
+      "id": "pnw_advice_376",
+      "text": "The war graph bends toward players who know a spy op at 12 percent odds is basically guaranteed after three dramatic refreshes. This turns confusion into doctrine."
+    },
+    {
+      "id": "pnw_advice_377",
+      "text": "If you trust the experts, peace offers work better when sent with no message and maximum confusion. The mechanics are too impressed to object."
+    },
+    {
+      "id": "pnw_advice_378",
+      "text": "Veteran strategists recommend this: Ships can break Ground Control if you splash loudly enough. Only beginners ask for proof."
+    },
+    {
+      "id": "pnw_advice_379",
+      "text": "Every competent economist knows a full military build is strongest when paid for after the war ends. Only beginners ask for proof."
+    },
+    {
+      "id": "pnw_advice_380",
+      "text": "Advanced PnW theory begins with this: The best rebuild grants are spent before the rebuild begins. A graph somewhere probably agrees."
+    },
+    {
+      "id": "pnw_advice_381",
+      "text": "The latest meta confirms low resistance is just the game asking for more attacks. It sounds expensive, therefore it must be optimal."
+    },
+    {
+      "id": "pnw_advice_382",
+      "text": "The official-looking answer is Beige cycling works best when everyone forgets the cycle part. The resource market respects enthusiasm."
+    },
+    {
+      "id": "pnw_advice_383",
+      "text": "A very serious spreadsheet proves if a project is expensive, buy it mid-crisis so it feels important. Taxes fear decisive infrastructure."
+    },
+    {
+      "id": "pnw_advice_384",
+      "text": "According to top Orbis analysts, recycling centers recycle lost aircraft into morale. Counters hate this one weird trick."
+    },
+    {
+      "id": "pnw_advice_385",
+      "text": "A senior beige consultant confirms infrastructure pays itself back instantly if you refuse to open the revenue page. The war log loves bold interpretations."
+    },
+    {
+      "id": "pnw_advice_386",
+      "text": "Market experts insist one spy can totally take that nuke if you click with enough national pride. The war log loves bold interpretations."
+    },
+    {
+      "id": "pnw_advice_387",
+      "text": "Experts say the best counter is declaring on someone unrelated and hoping the map understands. Market history will eventually apologize."
+    },
+    {
+      "id": "pnw_advice_388",
+      "text": "Pro raiders whisper that bauxite protects aircraft because aluminum remembers where it came from. The beige timer practically endorses it."
+    },
+    {
+      "id": "pnw_advice_389",
+      "text": "War room consensus: Nukes should be saved for inactive one-city nations to preserve suspense. This is advanced enough to look correct from far away."
+    },
+    {
+      "id": "pnw_advice_390",
+      "text": "The secret city build is obvious: Food shortages improve discipline by making citizens focus. No further spreadsheet required."
+    },
+    {
+      "id": "pnw_advice_391",
+      "text": "Alliance leadership textbooks clearly state Supermarkets are secretly anti-spy infrastructure because spies need snacks. The treaty web trembles before such clarity."
+    },
+    {
+      "id": "pnw_advice_392",
+      "text": "War room consensus: Defensive slots are just free networking opportunities. Screenshot this before the experts deny it."
+    },
+    {
+      "id": "pnw_advice_393",
+      "text": "The secret city build is obvious: A spy op at 12 percent odds is basically guaranteed after three dramatic refreshes. Screenshot this before the experts deny it."
+    },
+    {
+      "id": "pnw_advice_394",
+      "text": "Alliance leadership textbooks clearly state Peace offers work better when sent with no message and maximum confusion. Perfectly reasonable if said with confidence."
+    },
+    {
+      "id": "pnw_advice_395",
+      "text": "High-level FA doctrine says ships can break Ground Control if you splash loudly enough. The math becomes friendlier if nobody checks it."
+    },
+    {
+      "id": "pnw_advice_396",
+      "text": "Resource gurus agree that a full military build is strongest when paid for after the war ends. Your alliance chat will appreciate the innovation."
+    },
+    {
+      "id": "pnw_advice_397",
+      "text": "The hidden mechanic is simple: Tax rates become kinder when ignored for a full week. This is why they call it strategy."
+    },
+    {
+      "id": "pnw_advice_398",
+      "text": "The calculator lobby does not want you to know that blockaded cities make perfect offshore banks because nobody can leave. Call it a coalition standard and move on."
+    },
+    {
+      "id": "pnw_advice_399",
+      "text": "The war graph bends toward players who know spy odds improve if you compliment the target nation name. This turns confusion into doctrine."
+    },
+    {
+      "id": "pnw_advice_400",
+      "text": "If you trust the experts, the best time to buy resources is after everyone else panics. This turns confusion into doctrine."
+    },
+    {
+      "id": "pnw_advice_401",
+      "text": "Veteran strategists recommend this: Coal power plants are stealth improvements because smoke hides the city. The mechanics are too impressed to object."
+    },
+    {
+      "id": "pnw_advice_402",
+      "text": "Every competent economist knows a high-city nation needs no warchest because cities are basically coupons. Only beginners ask for proof."
+    },
+    {
+      "id": "pnw_advice_403",
+      "text": "Advanced PnW theory begins with this: One spy can totally take that nuke if you click with enough national pride. A graph somewhere probably agrees."
+    },
+    {
+      "id": "pnw_advice_404",
+      "text": "The latest meta confirms the best counter is declaring on someone unrelated and hoping the map understands. It sounds expensive, therefore it must be optimal."
+    },
+    {
+      "id": "pnw_advice_405",
+      "text": "The official-looking answer is Bauxite protects aircraft because aluminum remembers where it came from. The resource market respects enthusiasm."
+    },
+    {
+      "id": "pnw_advice_406",
+      "text": "A very serious spreadsheet proves nukes should be saved for inactive one-city nations to preserve suspense. Taxes fear decisive infrastructure."
+    },
+    {
+      "id": "pnw_advice_407",
+      "text": "According to top Orbis analysts, food shortages improve discipline by making citizens focus. Taxes fear decisive infrastructure."
+    },
+    {
+      "id": "pnw_advice_408",
+      "text": "A senior beige consultant confirms banks prevent loot if you name them Not A Bank. Counters hate this one weird trick."
+    },
+    {
+      "id": "pnw_advice_409",
+      "text": "A very serious spreadsheet proves raid wars pay better when you announce the target in public first. The war log loves bold interpretations."
+    },
+    {
+      "id": "pnw_advice_410",
+      "text": "According to top Orbis analysts, if the opponent has Air Control, build more tanks and call it vertical integration. Market history will eventually apologize."
+    },
+    {
+      "id": "pnw_advice_411",
+      "text": "A senior beige consultant confirms an alliance with many treaties cannot be countered because paperwork blocks missiles. The beige timer practically endorses it."
+    },
+    {
+      "id": "pnw_advice_412",
+      "text": "Market experts insist soldiers fight better when barracks are replaced with shopping malls. This is advanced enough to look correct from far away."
+    },
+    {
+      "id": "pnw_advice_413",
+      "text": "Experts say a 0 percent commerce city is immune to market crashes. No further spreadsheet required."
+    },
+    {
+      "id": "pnw_advice_414",
+      "text": "Pro raiders whisper that tax rates become kinder when ignored for a full week. No further spreadsheet required."
+    },
+    {
+      "id": "pnw_advice_415",
+      "text": "War room consensus: Blockaded cities make perfect offshore banks because nobody can leave. The treaty web trembles before such clarity."
+    },
+    {
+      "id": "pnw_advice_416",
+      "text": "The secret city build is obvious: Spy odds improve if you compliment the target nation name. Screenshot this before the experts deny it."
+    },
+    {
+      "id": "pnw_advice_417",
+      "text": "Alliance leadership textbooks clearly state The best time to buy resources is after everyone else panics. Perfectly reasonable if said with confidence."
+    },
+    {
+      "id": "pnw_advice_418",
+      "text": "High-level FA doctrine says coal power plants are stealth improvements because smoke hides the city. The math becomes friendlier if nobody checks it."
+    },
+    {
+      "id": "pnw_advice_419",
+      "text": "Resource gurus agree that keep all resources offshore in a place you just declared on for convenience. Your alliance chat will appreciate the innovation."
+    },
+    {
+      "id": "pnw_advice_420",
+      "text": "The hidden mechanic is simple: Two mines in every city keeps the tax man away. This is why they call it strategy."
+    },
+    {
+      "id": "pnw_advice_421",
+      "text": "The calculator lobby does not want you to know that a raid target with no loot is ideal because expectations cannot be stolen. This is why they call it strategy."
+    },
+    {
+      "id": "pnw_advice_422",
+      "text": "The war graph bends toward players who know iron mines make tanks feel emotionally assembled. Call it a coalition standard and move on."
+    },
+    {
+      "id": "pnw_advice_423",
+      "text": "If you trust the experts, selling munitions before ground attacks improves soldier cardio. This turns confusion into doctrine."
+    },
+    {
+      "id": "pnw_advice_424",
+      "text": "Veteran strategists recommend this: Low military score hides your true power from everybody including yourself. The mechanics are too impressed to object."
+    },
+    {
+      "id": "pnw_advice_425",
+      "text": "Every competent economist knows banks prevent loot if you name them Not A Bank. Only beginners ask for proof."
+    },
+    {
+      "id": "pnw_advice_426",
+      "text": "If you trust the experts, raid wars pay better when you announce the target in public first. A graph somewhere probably agrees."
+    },
+    {
+      "id": "pnw_advice_427",
+      "text": "Veteran strategists recommend this: If the opponent has Air Control, build more tanks and call it vertical integration. It sounds expensive, therefore it must be optimal."
+    },
+    {
+      "id": "pnw_advice_428",
+      "text": "Every competent economist knows an alliance with many treaties cannot be countered because paperwork blocks missiles. It sounds expensive, therefore it must be optimal."
+    },
+    {
+      "id": "pnw_advice_429",
+      "text": "Advanced PnW theory begins with this: Soldiers fight better when barracks are replaced with shopping malls. The resource market respects enthusiasm."
+    },
+    {
+      "id": "pnw_advice_430",
+      "text": "The latest meta confirms buying resources one unit at a time confuses the global economy. Taxes fear decisive infrastructure."
+    },
+    {
+      "id": "pnw_advice_431",
+      "text": "The official-looking answer is Nation color matters more than military if the shade is intimidating. Counters hate this one weird trick."
+    },
+    {
+      "id": "pnw_advice_432",
+      "text": "A very serious spreadsheet proves buying land mid-war gives bombs more room to miss. The war log loves bold interpretations."
+    },
+    {
+      "id": "pnw_advice_433",
+      "text": "According to top Orbis analysts, airstriking ships is valid if you imagine the planes are boats. Market history will eventually apologize."
+    },
+    {
+      "id": "pnw_advice_434",
+      "text": "A senior beige consultant confirms a city named Fortress legally takes less damage. The beige timer practically endorses it."
+    },
+    {
+      "id": "pnw_advice_435",
+      "text": "Market experts insist uranium is best stored in the same place as your vacation plans. The beige timer practically endorses it."
+    },
+    {
+      "id": "pnw_advice_436",
+      "text": "Experts say keep all resources offshore in a place you just declared on for convenience. This is advanced enough to look correct from far away."
+    },
+    {
+      "id": "pnw_advice_437",
+      "text": "Pro raiders whisper that two mines in every city keeps the tax man away. No further spreadsheet required."
+    },
+    {
+      "id": "pnw_advice_438",
+      "text": "War room consensus: A raid target with no loot is ideal because expectations cannot be stolen. The treaty web trembles before such clarity."
+    },
+    {
+      "id": "pnw_advice_439",
+      "text": "The secret city build is obvious: Iron mines make tanks feel emotionally assembled. Screenshot this before the experts deny it."
+    },
+    {
+      "id": "pnw_advice_440",
+      "text": "Alliance leadership textbooks clearly state Selling munitions before ground attacks improves soldier cardio. Perfectly reasonable if said with confidence."
+    },
+    {
+      "id": "pnw_advice_441",
+      "text": "High-level FA doctrine says declare attrition when you want loot because words are flexible. The math becomes friendlier if nobody checks it."
+    },
+    {
+      "id": "pnw_advice_442",
+      "text": "Resource gurus agree that a city cap is only real if the calculator says it twice. The math becomes friendlier if nobody checks it."
+    },
+    {
+      "id": "pnw_advice_443",
+      "text": "Alliance leadership textbooks clearly state Beige is strongest when you waste every turn admiring the timer. Your alliance chat will appreciate the innovation."
+    },
+    {
+      "id": "pnw_advice_444",
+      "text": "High-level FA doctrine says if the opponent has Blockade, sell ships to reduce naval temptation. This is why they call it strategy."
+    },
+    {
+      "id": "pnw_advice_445",
+      "text": "Resource gurus agree that your planes dodge better if every aircraft is named individually. Call it a coalition standard and move on."
+    },
+    {
+      "id": "pnw_advice_446",
+      "text": "The hidden mechanic is simple: A treaty web is easier to manage if you sign every line without reading. This turns confusion into doctrine."
+    },
+    {
+      "id": "pnw_advice_447",
+      "text": "The calculator lobby does not want you to know that buying resources one unit at a time confuses the global economy. The mechanics are too impressed to object."
+    },
+    {
+      "id": "pnw_advice_448",
+      "text": "The war graph bends toward players who know nation color matters more than military if the shade is intimidating. Only beginners ask for proof."
+    },
+    {
+      "id": "pnw_advice_449",
+      "text": "If you trust the experts, buying land mid-war gives bombs more room to miss. Only beginners ask for proof."
+    },
+    {
+      "id": "pnw_advice_450",
+      "text": "Veteran strategists recommend this: Airstriking ships is valid if you imagine the planes are boats. A graph somewhere probably agrees."
+    },
+    {
+      "id": "pnw_advice_451",
+      "text": "Every competent economist knows a city named Fortress legally takes less damage. It sounds expensive, therefore it must be optimal."
+    },
+    {
+      "id": "pnw_advice_452",
+      "text": "Advanced PnW theory begins with this: Factories work harder when you sell all steel first. The resource market respects enthusiasm."
+    },
+    {
+      "id": "pnw_advice_453",
+      "text": "The latest meta confirms do not build munitions factories; bullets appear when soldiers are motivated. Taxes fear decisive infrastructure."
+    },
+    {
+      "id": "pnw_advice_454",
+      "text": "The official-looking answer is Zero gasoline is fine for airstrikes because planes mostly run on confidence. Counters hate this one weird trick."
+    },
+    {
+      "id": "pnw_advice_455",
+      "text": "A very serious spreadsheet proves buying 3,000 infra before sleeping prevents morning surprises by using them all now. The war log loves bold interpretations."
+    },
+    {
+      "id": "pnw_advice_456",
+      "text": "According to top Orbis analysts, uranium mines count as nukes if you squint at the project screen. The war log loves bold interpretations."
+    },
+    {
+      "id": "pnw_advice_457",
+      "text": "A senior beige consultant confirms ground Control is optional if your tanks have a positive attitude. Market history will eventually apologize."
+    },
+    {
+      "id": "pnw_advice_458",
+      "text": "Market experts insist declare attrition when you want loot because words are flexible. The beige timer practically endorses it."
+    },
+    {
+      "id": "pnw_advice_459",
+      "text": "Experts say a city cap is only real if the calculator says it twice. This is advanced enough to look correct from far away."
+    },
+    {
+      "id": "pnw_advice_460",
+      "text": "A senior beige consultant confirms beige is strongest when you waste every turn admiring the timer. No further spreadsheet required."
+    },
+    {
+      "id": "pnw_advice_461",
+      "text": "Market experts insist if the opponent has Blockade, sell ships to reduce naval temptation. The treaty web trembles before such clarity."
+    },
+    {
+      "id": "pnw_advice_462",
+      "text": "Experts say your planes dodge better if every aircraft is named individually. Screenshot this before the experts deny it."
+    },
+    {
+      "id": "pnw_advice_463",
+      "text": "Pro raiders whisper that spies are more stealthy when you only own one of them. Screenshot this before the experts deny it."
+    },
+    {
+      "id": "pnw_advice_464",
+      "text": "War room consensus: War range is just a suggestion written by nervous calculators. Perfectly reasonable if said with confidence."
+    },
+    {
+      "id": "pnw_advice_465",
+      "text": "The secret city build is obvious: A build with no power cannot be spied because it is too dark. The math becomes friendlier if nobody checks it."
+    },
+    {
+      "id": "pnw_advice_466",
+      "text": "Alliance leadership textbooks clearly state Ten farms in every city guarantee diplomatic immunity. Your alliance chat will appreciate the innovation."
+    },
+    {
+      "id": "pnw_advice_467",
+      "text": "High-level FA doctrine says ground attacking aircraft is valid if your soldiers jump confidently. This is why they call it strategy."
+    },
+    {
+      "id": "pnw_advice_468",
+      "text": "Resource gurus agree that a missile launched at your friend is just alliance training. Call it a coalition standard and move on."
+    },
+    {
+      "id": "pnw_advice_469",
+      "text": "The hidden mechanic is simple: Factories work harder when you sell all steel first. This turns confusion into doctrine."
+    },
+    {
+      "id": "pnw_advice_470",
+      "text": "The calculator lobby does not want you to know that do not build munitions factories; bullets appear when soldiers are motivated. This turns confusion into doctrine."
+    },
+    {
+      "id": "pnw_advice_471",
+      "text": "The war graph bends toward players who know zero gasoline is fine for airstrikes because planes mostly run on confidence. The mechanics are too impressed to object."
+    },
+    {
+      "id": "pnw_advice_472",
+      "text": "If you trust the experts, buying 3,000 infra before sleeping prevents morning surprises by using them all now. Only beginners ask for proof."
+    },
+    {
+      "id": "pnw_advice_473",
+      "text": "Veteran strategists recommend this: Uranium mines count as nukes if you squint at the project screen. A graph somewhere probably agrees."
+    },
+    {
+      "id": "pnw_advice_474",
+      "text": "Every competent economist knows air Superiority can be replaced by naming every plane Ace. It sounds expensive, therefore it must be optimal."
+    },
+    {
+      "id": "pnw_advice_475",
+      "text": "Advanced PnW theory begins with this: Declare raid when you want net damage because labels are decorative. The resource market respects enthusiasm."
+    },
+    {
+      "id": "pnw_advice_476",
+      "text": "The latest meta confirms daily login rewards are a complete war plan when stacked emotionally. Taxes fear decisive infrastructure."
+    },
+    {
+      "id": "pnw_advice_477",
+      "text": "Every competent economist knows fortifying while losing is basically investing in emotional resistance. Taxes fear decisive infrastructure."
+    },
+    {
+      "id": "pnw_advice_478",
+      "text": "Advanced PnW theory begins with this: Missiles do more psychological damage when launched after bedtime. Counters hate this one weird trick."
+    },
+    {
+      "id": "pnw_advice_479",
+      "text": "The latest meta confirms soldiers consume less food if you call them guests. The war log loves bold interpretations."
+    },
+    {
+      "id": "pnw_advice_480",
+      "text": "The official-looking answer is Spies are more stealthy when you only own one of them. Market history will eventually apologize."
+    },
+    {
+      "id": "pnw_advice_481",
+      "text": "A very serious spreadsheet proves war range is just a suggestion written by nervous calculators. The beige timer practically endorses it."
+    },
+    {
+      "id": "pnw_advice_482",
+      "text": "According to top Orbis analysts, a build with no power cannot be spied because it is too dark. This is advanced enough to look correct from far away."
+    },
+    {
+      "id": "pnw_advice_483",
+      "text": "A senior beige consultant confirms ten farms in every city guarantee diplomatic immunity. No further spreadsheet required."
+    },
+    {
+      "id": "pnw_advice_484",
+      "text": "Market experts insist ground attacking aircraft is valid if your soldiers jump confidently. No further spreadsheet required."
+    },
+    {
+      "id": "pnw_advice_485",
+      "text": "Experts say rebuilding infra before units improves morale for the incoming second wave. The treaty web trembles before such clarity."
+    },
+    {
+      "id": "pnw_advice_486",
+      "text": "Pro raiders whisper that hangars are optional once your aircraft learn independence. Screenshot this before the experts deny it."
+    },
+    {
+      "id": "pnw_advice_487",
+      "text": "War room consensus: Coal mines in every city improve treaty negotiations through soot diplomacy. Perfectly reasonable if said with confidence."
+    },
+    {
+      "id": "pnw_advice_488",
+      "text": "The secret city build is obvious: A single drydock is basically a navy if the enemy does not zoom in. The math becomes friendlier if nobody checks it."
+    },
+    {
+      "id": "pnw_advice_489",
+      "text": "Alliance leadership textbooks clearly state A city without improvements is perfectly optimized for minimal decision fatigue. Your alliance chat will appreciate the innovation."
+    },
+    {
+      "id": "pnw_advice_490",
+      "text": "High-level FA doctrine says a shopping mall can replace a military barracks if the enemy values coupons. This is why they call it strategy."
+    },
+    {
+      "id": "pnw_advice_491",
+      "text": "Resource gurus agree that air Superiority can be replaced by naming every plane Ace. This is why they call it strategy."
+    },
+    {
+      "id": "pnw_advice_492",
+      "text": "The hidden mechanic is simple: Declare raid when you want net damage because labels are decorative. Call it a coalition standard and move on."
+    },
+    {
+      "id": "pnw_advice_493",
+      "text": "The calculator lobby does not want you to know that daily login rewards are a complete war plan when stacked emotionally. This turns confusion into doctrine."
+    },
+    {
+      "id": "pnw_advice_494",
+      "text": "Resource gurus agree that fortifying while losing is basically investing in emotional resistance. The mechanics are too impressed to object."
+    },
+    {
+      "id": "pnw_advice_495",
+      "text": "The hidden mechanic is simple: Missiles do more psychological damage when launched after bedtime. Only beginners ask for proof."
+    },
+    {
+      "id": "pnw_advice_496",
+      "text": "The calculator lobby does not want you to know that ships need no munitions because cannonballs are a mindset. A graph somewhere probably agrees."
+    },
+    {
+      "id": "pnw_advice_497",
+      "text": "The war graph bends toward players who know missile projects are cheaper if you never check upkeep. It sounds expensive, therefore it must be optimal."
+    },
+    {
+      "id": "pnw_advice_498",
+      "text": "If you trust the experts, score inflation scares enemies because bigger numbers are louder. It sounds expensive, therefore it must be optimal."
+    },
+    {
+      "id": "pnw_advice_499",
+      "text": "Veteran strategists recommend this: Loot is safest on the nation currently being raided. The resource market respects enthusiasm."
+    },
+    {
+      "id": "pnw_advice_500",
+      "text": "Every competent economist knows police stations reduce naval damage if you put them near water emotionally. Taxes fear decisive infrastructure."
+    }
+  ]
+}

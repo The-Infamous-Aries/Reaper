@@ -1,0 +1,385 @@
+{
+  "id": "alliance-role",
+  "title": "Alliance Role",
+  "description": "Find the alliance job you are built for: 1ic, 2ic, MA, FA, IA, EI, TA, or JA.",
+  "roles": {
+    "1ic": {
+      "label": "1ic",
+      "priority": 1,
+      "summary": "You fit the top executive role: final calls, direction, standards, and the burden of owning outcomes."
+    },
+    "2ic": {
+      "label": "2ic",
+      "priority": 2,
+      "summary": "You fit the deputy/operator role: translating vision into action, coordinating departments, and keeping leadership aligned."
+    },
+    "MA": {
+      "label": "MA",
+      "priority": 3,
+      "summary": "You fit Military Affairs: wars, counters, readiness, target selection, and tactical execution."
+    },
+    "FA": {
+      "label": "FA",
+      "priority": 4,
+      "summary": "You fit Foreign Affairs: diplomacy, treaties, reputation, coalition awareness, and careful negotiation."
+    },
+    "IA": {
+      "label": "IA",
+      "priority": 5,
+      "summary": "You fit Internal Affairs: recruitment, onboarding, retention, member care, and alliance culture."
+    },
+    "EI": {
+      "label": "EI",
+      "priority": 6,
+      "summary": "You fit Economic/Internal finance work: banks, grants, taxes, city growth, audits, and resource planning."
+    },
+    "TA": {
+      "label": "TA",
+      "priority": 7,
+      "summary": "You fit Technical Affairs: tools, automation, sheets, bots, data hygiene, and systems that make everyone faster."
+    },
+    "JA": {
+      "label": "JA",
+      "priority": 8,
+      "summary": "You fit Junior Affairs: learning fast, helping where needed, handling starter tasks, and growing into a department."
+    }
+  },
+  "questions": [
+    {
+      "id": "q01",
+      "type": "multiple_choice",
+      "prompt": "A new member asks what they should do first after joining. What do you naturally handle?",
+      "answers": [
+        { "id": "a", "text": "Give them the starter checklist, answer questions, and make sure they feel welcomed.", "scores": { "IA": 4, "JA": 1 } },
+        { "id": "b", "text": "Check their build, income path, and whether they qualify for grants.", "scores": { "EI": 4, "IA": 1 } },
+        { "id": "c", "text": "Point them to war policy, MMR expectations, and defensive readiness basics.", "scores": { "MA": 4, "IA": 1 } },
+        { "id": "d", "text": "Make sure they have the right roles, channels, and tool access.", "scores": { "TA": 4, "IA": 1 } }
+      ]
+    },
+    {
+      "id": "q02",
+      "type": "multiple_choice",
+      "prompt": "Two government members disagree in public chat. Your first instinct is to:",
+      "answers": [
+        { "id": "a", "text": "Move the discussion private, settle the decision, and set expectations for conduct.", "scores": { "1ic": 4, "2ic": 2 } },
+        { "id": "b", "text": "Clarify each person's tasking and turn the disagreement into an action list.", "scores": { "2ic": 4, "1ic": 1 } },
+        { "id": "c", "text": "Check whether member morale or confusion caused the argument.", "scores": { "IA": 4, "2ic": 1 } },
+        { "id": "d", "text": "Keep notes, ask what support is needed, and learn from how senior staff resolve it.", "scores": { "JA": 4, "IA": 1 } }
+      ]
+    },
+    {
+      "id": "q03",
+      "type": "true_false",
+      "prompt": "True or false: During a war, organized target selection and counter timing matter more than individual bravado.",
+      "answers": [
+        { "id": "true", "text": "True", "scores": { "MA": 4, "2ic": 1 } },
+        { "id": "false", "text": "False", "scores": { "JA": 2, "MA": 1 } }
+      ]
+    },
+    {
+      "id": "q04",
+      "type": "multiple_choice",
+      "prompt": "A treaty partner sends a tense DM about a raid from one of your members. What do you focus on?",
+      "answers": [
+        { "id": "a", "text": "De-escalate, get facts, protect the relationship, and avoid overpromising.", "scores": { "FA": 4, "1ic": 1 } },
+        { "id": "b", "text": "Confirm whether the raid violates policy and coordinate any military response.", "scores": { "MA": 3, "FA": 2 } },
+        { "id": "c", "text": "Review whether the member was trained clearly on raid rules.", "scores": { "IA": 3, "FA": 1 } },
+        { "id": "d", "text": "Ask a senior FA member what information they need and help collect it.", "scores": { "JA": 4, "FA": 1 } }
+      ]
+    },
+    {
+      "id": "q05",
+      "type": "multiple_choice",
+      "prompt": "Which task sounds most satisfying after a long day?",
+      "answers": [
+        { "id": "a", "text": "Cleaning up a spreadsheet so grant approvals are faster and less error-prone.", "scores": { "TA": 3, "EI": 3 } },
+        { "id": "b", "text": "Reviewing applicants and turning inactive members into active ones.", "scores": { "IA": 4, "JA": 1 } },
+        { "id": "c", "text": "Reading global politics and identifying which blocs are drifting closer.", "scores": { "FA": 4, "1ic": 1 } },
+        { "id": "d", "text": "Running war rooms and watching a clean counter chain land.", "scores": { "MA": 4, "2ic": 1 } }
+      ]
+    },
+    {
+      "id": "q06",
+      "type": "true_false",
+      "prompt": "True or false: A good alliance bank needs clear records, permissions, and audit trails.",
+      "answers": [
+        { "id": "true", "text": "True", "scores": { "EI": 4, "TA": 2 } },
+        { "id": "false", "text": "False", "scores": { "JA": 2 } }
+      ]
+    },
+    {
+      "id": "q07",
+      "type": "multiple_choice",
+      "prompt": "Leadership needs one person to turn a vague plan into assignments. You would rather:",
+      "answers": [
+        { "id": "a", "text": "Define the objective, choose owners, set deadlines, and check progress.", "scores": { "2ic": 4, "1ic": 2 } },
+        { "id": "b", "text": "Decide whether the plan fits the alliance's long-term direction.", "scores": { "1ic": 4, "2ic": 1 } },
+        { "id": "c", "text": "Build a tracker so everyone can see task status.", "scores": { "TA": 4, "2ic": 1 } },
+        { "id": "d", "text": "Take a small assignment and execute it reliably.", "scores": { "JA": 4, "2ic": 1 } }
+      ]
+    },
+    {
+      "id": "q08",
+      "type": "multiple_choice",
+      "prompt": "A member is underbuilt for their city count. Your response is:",
+      "answers": [
+        { "id": "a", "text": "Calculate the most efficient correction path and explain the grant/tax impact.", "scores": { "EI": 4, "IA": 1 } },
+        { "id": "b", "text": "Check if their build harms war readiness and set minimum military expectations.", "scores": { "MA": 4, "EI": 1 } },
+        { "id": "c", "text": "Walk them through the fix patiently and keep them engaged.", "scores": { "IA": 4, "EI": 1 } },
+        { "id": "d", "text": "Ask for the approved build guide and help compare it to their nation.", "scores": { "JA": 4, "EI": 1 } }
+      ]
+    },
+    {
+      "id": "q09",
+      "type": "true_false",
+      "prompt": "True or false: Private channels, logs, and permissions are part of alliance security, not just convenience.",
+      "answers": [
+        { "id": "true", "text": "True", "scores": { "TA": 4, "1ic": 1 } },
+        { "id": "false", "text": "False", "scores": { "JA": 2 } }
+      ]
+    },
+    {
+      "id": "q10",
+      "type": "multiple_choice",
+      "prompt": "You are asked to represent the alliance in a coalition server. What matters most?",
+      "answers": [
+        { "id": "a", "text": "Speak carefully, understand incentives, and keep private positions private.", "scores": { "FA": 4, "1ic": 1 } },
+        { "id": "b", "text": "Track military commitments, counters, and target lists accurately.", "scores": { "MA": 3, "FA": 2 } },
+        { "id": "c", "text": "Know what the alliance leader will and will not approve.", "scores": { "1ic": 3, "FA": 2 } },
+        { "id": "d", "text": "Observe, take notes, and avoid speaking beyond your assignment.", "scores": { "JA": 4, "FA": 1 } }
+      ]
+    },
+    {
+      "id": "q11",
+      "type": "multiple_choice",
+      "prompt": "A department has gone quiet for a week. What do you do?",
+      "answers": [
+        { "id": "a", "text": "Check blockers, reassign work if needed, and get the department moving again.", "scores": { "2ic": 4, "1ic": 1 } },
+        { "id": "b", "text": "Decide whether the department lead still fits the role.", "scores": { "1ic": 4, "2ic": 1 } },
+        { "id": "c", "text": "Find small tasks newer helpers can complete to restart momentum.", "scores": { "JA": 3, "IA": 2 } },
+        { "id": "d", "text": "Automate reminders or reporting so silence is spotted sooner.", "scores": { "TA": 4, "2ic": 1 } }
+      ]
+    },
+    {
+      "id": "q12",
+      "type": "multiple_choice",
+      "prompt": "Pick the report you would most want to write.",
+      "answers": [
+        { "id": "a", "text": "War readiness, counters performed, beige discipline, and rebuild needs.", "scores": { "MA": 4, "2ic": 1 } },
+        { "id": "b", "text": "Recruitment funnel, retention risks, onboarding completion, and activity.", "scores": { "IA": 4, "2ic": 1 } },
+        { "id": "c", "text": "Bank flows, city grants, resource exposure, and growth efficiency.", "scores": { "EI": 4, "1ic": 1 } },
+        { "id": "d", "text": "Foreign contacts, treaty status, bloc movement, and reputation risks.", "scores": { "FA": 4, "1ic": 1 } }
+      ]
+    },
+    {
+      "id": "q13",
+      "type": "true_false",
+      "prompt": "True or false: A 1ic should be willing to make unpopular calls when the alliance needs clarity.",
+      "answers": [
+        { "id": "true", "text": "True", "scores": { "1ic": 4, "2ic": 1 } },
+        { "id": "false", "text": "False", "scores": { "IA": 2, "JA": 1 } }
+      ]
+    },
+    {
+      "id": "q14",
+      "type": "multiple_choice",
+      "prompt": "A bot command breaks right before a major operation. Your role is:",
+      "answers": [
+        { "id": "a", "text": "Debug the command, patch it, and communicate the workaround.", "scores": { "TA": 4, "2ic": 1 } },
+        { "id": "b", "text": "Switch the operation to manual tracking and keep people moving.", "scores": { "2ic": 3, "MA": 2 } },
+        { "id": "c", "text": "Make sure members know what to do without panic.", "scores": { "IA": 3, "2ic": 1 } },
+        { "id": "d", "text": "Run the manual task assigned to you and report problems quickly.", "scores": { "JA": 4, "TA": 1 } }
+      ]
+    },
+    {
+      "id": "q15",
+      "type": "multiple_choice",
+      "prompt": "Which alliance problem bothers you the most?",
+      "answers": [
+        { "id": "a", "text": "No clear direction from the top.", "scores": { "1ic": 4, "2ic": 1 } },
+        { "id": "b", "text": "Good plans dying because nobody coordinates execution.", "scores": { "2ic": 4, "1ic": 1 } },
+        { "id": "c", "text": "Members feeling ignored or confused.", "scores": { "IA": 4, "JA": 1 } },
+        { "id": "d", "text": "Manual data entry wasting hours every week.", "scores": { "TA": 4, "EI": 1 } }
+      ]
+    },
+    {
+      "id": "q16",
+      "type": "multiple_choice",
+      "prompt": "A rebuild after war is messy. Where do you jump in?",
+      "answers": [
+        { "id": "a", "text": "Prioritize who needs aid, estimate costs, and keep bank exposure under control.", "scores": { "EI": 4, "2ic": 1 } },
+        { "id": "b", "text": "Review military losses and rebuild order for future readiness.", "scores": { "MA": 4, "EI": 1 } },
+        { "id": "c", "text": "Message damaged members and keep them from checking out.", "scores": { "IA": 4, "EI": 1 } },
+        { "id": "d", "text": "Gather damage reports into one clean tracker.", "scores": { "JA": 3, "TA": 2 } }
+      ]
+    },
+    {
+      "id": "q17",
+      "type": "true_false",
+      "prompt": "True or false: Diplomacy is partly about knowing when not to speak.",
+      "answers": [
+        { "id": "true", "text": "True", "scores": { "FA": 4, "1ic": 1 } },
+        { "id": "false", "text": "False", "scores": { "JA": 2 } }
+      ]
+    },
+    {
+      "id": "q18",
+      "type": "multiple_choice",
+      "prompt": "You are given access to sensitive alliance data. What is your default posture?",
+      "answers": [
+        { "id": "a", "text": "Least privilege, logs, backups, and no casual sharing.", "scores": { "TA": 4, "1ic": 1 } },
+        { "id": "b", "text": "Only use it for approved financial decisions and keep records clean.", "scores": { "EI": 4, "TA": 1 } },
+        { "id": "c", "text": "Protect operational data so enemies cannot exploit timing or targets.", "scores": { "MA": 4, "TA": 1 } },
+        { "id": "d", "text": "Ask what you are allowed to see and who to report to.", "scores": { "JA": 4, "TA": 1 } }
+      ]
+    },
+    {
+      "id": "q19",
+      "type": "multiple_choice",
+      "prompt": "Which phrase sounds most like you in government chat?",
+      "answers": [
+        { "id": "a", "text": "What decision are we making, and who owns it?", "scores": { "2ic": 4, "1ic": 1 } },
+        { "id": "b", "text": "What does this do to our long-term position?", "scores": { "1ic": 4, "FA": 1 } },
+        { "id": "c", "text": "What does the data say?", "scores": { "TA": 3, "EI": 2 } },
+        { "id": "d", "text": "What can I take off someone's plate?", "scores": { "JA": 4, "2ic": 1 } }
+      ]
+    },
+    {
+      "id": "q20",
+      "type": "multiple_choice",
+      "prompt": "An applicant has strong stats but a questionable history. What lens do you use first?",
+      "answers": [
+        { "id": "a", "text": "Security, culture fit, and whether they are worth the risk.", "scores": { "1ic": 3, "IA": 2 } },
+        { "id": "b", "text": "Past alliance relationships and whether accepting them causes FA fallout.", "scores": { "FA": 4, "1ic": 1 } },
+        { "id": "c", "text": "Activity, attitude, and whether onboarding can correct the concerns.", "scores": { "IA": 4, "JA": 1 } },
+        { "id": "d", "text": "Ask senior staff what checks they want completed.", "scores": { "JA": 4, "IA": 1 } }
+      ]
+    },
+    {
+      "id": "q21",
+      "type": "true_false",
+      "prompt": "True or false: Junior government work is valuable when it is consistent, documented, and easy for senior staff to verify.",
+      "answers": [
+        { "id": "true", "text": "True", "scores": { "JA": 4, "2ic": 1 } },
+        { "id": "false", "text": "False", "scores": { "1ic": 1 } }
+      ]
+    },
+    {
+      "id": "q22",
+      "type": "multiple_choice",
+      "prompt": "You have one free evening to improve the alliance. You choose:",
+      "answers": [
+        { "id": "a", "text": "Rewrite outdated onboarding and follow up with quiet members.", "scores": { "IA": 4, "JA": 1 } },
+        { "id": "b", "text": "Build a tool that removes repeated manual checks.", "scores": { "TA": 4, "2ic": 1 } },
+        { "id": "c", "text": "Audit grants, taxes, and missed growth opportunities.", "scores": { "EI": 4, "TA": 1 } },
+        { "id": "d", "text": "Review recent wars and improve counter doctrine.", "scores": { "MA": 4, "2ic": 1 } }
+      ]
+    },
+    {
+      "id": "q23",
+      "type": "multiple_choice",
+      "prompt": "A rival alliance offers a tempting deal with hidden risks. Your best contribution is:",
+      "answers": [
+        { "id": "a", "text": "Read the room politically and identify what each side really wants.", "scores": { "FA": 4, "1ic": 1 } },
+        { "id": "b", "text": "Decide if the deal fits the alliance identity and risk tolerance.", "scores": { "1ic": 4, "FA": 1 } },
+        { "id": "c", "text": "Model the military commitments it could create.", "scores": { "MA": 3, "FA": 1 } },
+        { "id": "d", "text": "Organize notes, timelines, and follow-up questions.", "scores": { "JA": 3, "FA": 2 } }
+      ]
+    },
+    {
+      "id": "q24",
+      "type": "multiple_choice",
+      "prompt": "Which metric do you watch first during peacetime?",
+      "answers": [
+        { "id": "a", "text": "Member activity, retention, and onboarding completion.", "scores": { "IA": 4, "2ic": 1 } },
+        { "id": "b", "text": "Net revenue, grant velocity, and bank liquidity.", "scores": { "EI": 4, "1ic": 1 } },
+        { "id": "c", "text": "Readiness, MMR compliance, and target range health.", "scores": { "MA": 4, "2ic": 1 } },
+        { "id": "d", "text": "Tool uptime, data freshness, and permission errors.", "scores": { "TA": 4, "2ic": 1 } }
+      ]
+    },
+    {
+      "id": "q25",
+      "type": "true_false",
+      "prompt": "True or false: If nobody owns a deadline, a 2ic-type operator should force clarity.",
+      "answers": [
+        { "id": "true", "text": "True", "scores": { "2ic": 4, "1ic": 1 } },
+        { "id": "false", "text": "False", "scores": { "JA": 2 } }
+      ]
+    },
+    {
+      "id": "q26",
+      "type": "multiple_choice",
+      "prompt": "A member posts inaccurate war advice. How do you handle it?",
+      "answers": [
+        { "id": "a", "text": "Correct it clearly with the right mechanic and explain why it matters.", "scores": { "MA": 4, "IA": 1 } },
+        { "id": "b", "text": "Move the correction into a guide so the mistake does not repeat.", "scores": { "IA": 3, "TA": 1 } },
+        { "id": "c", "text": "Ask a senior MA person to verify before you amplify the correction.", "scores": { "JA": 4, "MA": 1 } },
+        { "id": "d", "text": "Check if a tool or guide is out of date and caused the confusion.", "scores": { "TA": 4, "MA": 1 } }
+      ]
+    },
+    {
+      "id": "q27",
+      "type": "multiple_choice",
+      "prompt": "What kind of pressure are you most comfortable carrying?",
+      "answers": [
+        { "id": "a", "text": "Being accountable for the final alliance-wide decision.", "scores": { "1ic": 4, "2ic": 1 } },
+        { "id": "b", "text": "Making sure every department actually executes.", "scores": { "2ic": 4, "1ic": 1 } },
+        { "id": "c", "text": "Handling hostile conversations without escalating them.", "scores": { "FA": 4, "1ic": 1 } },
+        { "id": "d", "text": "Owning a smaller task and proving you can be trusted with more.", "scores": { "JA": 4, "IA": 1 } }
+      ]
+    },
+    {
+      "id": "q28",
+      "type": "multiple_choice",
+      "prompt": "Which alliance channel would you most likely keep pinned and organized?",
+      "answers": [
+        { "id": "a", "text": "War room: targets, counters, beige rules, and rebuild instructions.", "scores": { "MA": 4, "TA": 1 } },
+        { "id": "b", "text": "Embassy: contact notes, treaty terms, and active diplomatic threads.", "scores": { "FA": 4, "TA": 1 } },
+        { "id": "c", "text": "Internal guides: onboarding, grants, rules, and member help.", "scores": { "IA": 4, "EI": 1 } },
+        { "id": "d", "text": "Tech ops: bot status, feature requests, data issues, and permissions.", "scores": { "TA": 4, "2ic": 1 } }
+      ]
+    },
+    {
+      "id": "q29",
+      "type": "true_false",
+      "prompt": "True or false: Economic advice should account for alliance policy, not just personal profit.",
+      "answers": [
+        { "id": "true", "text": "True", "scores": { "EI": 4, "1ic": 1 } },
+        { "id": "false", "text": "False", "scores": { "JA": 2 } }
+      ]
+    },
+    {
+      "id": "q30",
+      "type": "multiple_choice",
+      "prompt": "A major announcement needs to go out. What do you contribute?",
+      "answers": [
+        { "id": "a", "text": "Set the actual policy and own the final wording.", "scores": { "1ic": 4, "2ic": 1 } },
+        { "id": "b", "text": "Make sure every department knows what changes after the announcement.", "scores": { "2ic": 4, "IA": 1 } },
+        { "id": "c", "text": "Write it in a way members understand and respond to.", "scores": { "IA": 4, "1ic": 1 } },
+        { "id": "d", "text": "Prepare links, forms, embeds, or automation attached to it.", "scores": { "TA": 4, "IA": 1 } }
+      ]
+    },
+    {
+      "id": "q31",
+      "type": "multiple_choice",
+      "prompt": "Which mistake do you most want to prevent?",
+      "answers": [
+        { "id": "a", "text": "Entering a war without readiness or counter coordination.", "scores": { "MA": 4, "2ic": 1 } },
+        { "id": "b", "text": "Signing or rejecting a treaty without understanding political consequences.", "scores": { "FA": 4, "1ic": 1 } },
+        { "id": "c", "text": "Letting members go inactive because nobody followed up.", "scores": { "IA": 4, "JA": 1 } },
+        { "id": "d", "text": "Losing money because records, grants, or permissions are sloppy.", "scores": { "EI": 4, "TA": 1 } }
+      ]
+    },
+    {
+      "id": "q32",
+      "type": "multiple_choice",
+      "prompt": "When you are new to a government team, your best path is:",
+      "answers": [
+        { "id": "a", "text": "Learn the systems, do assigned tasks reliably, and ask for feedback.", "scores": { "JA": 4, "2ic": 1 } },
+        { "id": "b", "text": "Find a neglected process and quietly improve it.", "scores": { "TA": 3, "JA": 2 } },
+        { "id": "c", "text": "Help onboard other newer members once you understand the basics.", "scores": { "IA": 3, "JA": 2 } },
+        { "id": "d", "text": "Study alliance doctrine until you can explain the why behind orders.", "scores": { "MA": 3, "JA": 2 } }
+      ]
+    }
+  ]
+}

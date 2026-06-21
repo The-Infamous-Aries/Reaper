@@ -6,32 +6,88 @@
 /* ── State ─────────────────────────────────────────────────────────────── */
 let currentSettings      = {};
 let autoFillRaidsExclude = [];
-let autoFillCompareHome  = [];
-let watchHomeAlliance    = null;  // {id, name} or null
+let homeAlliance         = null;  // {id, name} or null
 let allianceCache        = null;
 let raidsAcIdx           = -1;
-let compareAcIdx         = -1;
-let watchHomeAcIdx       = -1;
+let homeAcIdx            = -1;
+let themePreviewEnabled  = true;
+
+const THEME_PREVIEW_KEY = 'reaper_theme_preview';
+const THEME_PREVIEW_ACTIVE_KEY = 'reaper_theme_preview_active';
 
 /* ── Theme Presets ────────────────────────────────────────────────────── */
-const PRESETS = {
-  dark:     { label:'🌑 Dark',     theme_bg_color:'#0a0a0a', theme_bg_secondary:'#0f0f0f', theme_bg_tertiary:'#141414', theme_gold_primary:'#ffd700', theme_gold_secondary:'#ffed4e', theme_text_primary:'#f0f0f0', theme_text_secondary:'#b9bbbe', theme_hide_bg_image:false },
-  light:    { label:'☀️ Light',    theme_bg_color:'#e8e8e8', theme_bg_secondary:'#f2f2f2', theme_bg_tertiary:'#ffffff', theme_gold_primary:'#b8860b', theme_gold_secondary:'#d4a017', theme_text_primary:'#1a1a1a', theme_text_secondary:'#4a4a4a', theme_hide_bg_image:true },
-  fire:     { label:'🔥 Fire',     theme_bg_color:'#120500', theme_bg_secondary:'#1e0a00', theme_bg_tertiary:'#2e1000', theme_gold_primary:'#ff6a00', theme_gold_secondary:'#ffb347', theme_text_primary:'#fff3e0', theme_text_secondary:'#ffb380', theme_hide_bg_image:false },
-  ember:    { label:'🌋 Ember',    theme_bg_color:'#1a0505', theme_bg_secondary:'#260808', theme_bg_tertiary:'#361010', theme_gold_primary:'#e74c3c', theme_gold_secondary:'#ff8c69', theme_text_primary:'#fce4e4', theme_text_secondary:'#e8a0a0', theme_hide_bg_image:false },
-  forest:   { label:'🌲 Forest',   theme_bg_color:'#050f08', theme_bg_secondary:'#0a1a0d', theme_bg_tertiary:'#112614', theme_gold_primary:'#4caf50', theme_gold_secondary:'#81c784', theme_text_primary:'#e8f5e9', theme_text_secondary:'#a5d6a7', theme_hide_bg_image:false },
-  coral:    { label:'🪸 Coral',    theme_bg_color:'#041a1a', theme_bg_secondary:'#082626', theme_bg_tertiary:'#0d3333', theme_gold_primary:'#26c6da', theme_gold_secondary:'#80deea', theme_text_primary:'#e0f7fa', theme_text_secondary:'#80cbc4', theme_hide_bg_image:false },
-  midnight: { label:'🌌 Midnight', theme_bg_color:'#05071a', theme_bg_secondary:'#0a0e2a', theme_bg_tertiary:'#10163a', theme_gold_primary:'#7c83fd', theme_gold_secondary:'#b3b8ff', theme_text_primary:'#e8eaf6', theme_text_secondary:'#9fa8da', theme_hide_bg_image:false },
-  aurora:   { label:'🌠 Aurora',   theme_bg_color:'#030d1a', theme_bg_secondary:'#051526', theme_bg_tertiary:'#072033', theme_gold_primary:'#00e5ff', theme_gold_secondary:'#64ffda', theme_text_primary:'#e0f7ff', theme_text_secondary:'#80deea', theme_hide_bg_image:false },
-  nebula:   { label:'🔭 Nebula',   theme_bg_color:'#0d0520', theme_bg_secondary:'#140830', theme_bg_tertiary:'#1c0d42', theme_gold_primary:'#ce93d8', theme_gold_secondary:'#f3a4ff', theme_text_primary:'#f3e5f5', theme_text_secondary:'#ce93d8', theme_hide_bg_image:false },
-  storm:    { label:'⛈️ Storm',    theme_bg_color:'#080c12', theme_bg_secondary:'#0e1420', theme_bg_tertiary:'#161e2e', theme_gold_primary:'#5c9eff', theme_gold_secondary:'#90caf9', theme_text_primary:'#eceff1', theme_text_secondary:'#90a4ae', theme_hide_bg_image:false },
-  obsidian: { label:'🪨 Obsidian', theme_bg_color:'#0a0a0f', theme_bg_secondary:'#0f0f18', theme_bg_tertiary:'#161622', theme_gold_primary:'#e0e0e0', theme_gold_secondary:'#f5f5f5', theme_text_primary:'#fafafa', theme_text_secondary:'#bdbdbd', theme_hide_bg_image:false },
-  bronze:   { label:'⚙️ Bronze',   theme_bg_color:'#100a04', theme_bg_secondary:'#1a1005', theme_bg_tertiary:'#261808', theme_gold_primary:'#cd7f32', theme_gold_secondary:'#e6a96a', theme_text_primary:'#fdf0e0', theme_text_secondary:'#d4a96a', theme_hide_bg_image:false },
-  neon:     { label:'⚡ Neon',     theme_bg_color:'#030303', theme_bg_secondary:'#080808', theme_bg_tertiary:'#0e0e0e', theme_gold_primary:'#39ff14', theme_gold_secondary:'#7fff00', theme_text_primary:'#f0fff0', theme_text_secondary:'#a0d0a0', theme_hide_bg_image:false },
-  dusk:     { label:'🌅 Dusk',     theme_bg_color:'#100508', theme_bg_secondary:'#1a0a10', theme_bg_tertiary:'#281018', theme_gold_primary:'#ff6b9d', theme_gold_secondary:'#ffa3c0', theme_text_primary:'#fff0f5', theme_text_secondary:'#e0a0b8', theme_hide_bg_image:false },
-  sand:     { label:'🏜️ Sand',     theme_bg_color:'#120d04', theme_bg_secondary:'#1e1608', theme_bg_tertiary:'#2c200e', theme_gold_primary:'#f5c842', theme_gold_secondary:'#fad96a', theme_text_primary:'#fdf8ec', theme_text_secondary:'#c8a96e', theme_hide_bg_image:false },
-  rose:     { label:'🌹 Rose',     theme_bg_color:'#120608', theme_bg_secondary:'#1c0a0e', theme_bg_tertiary:'#280f14', theme_gold_primary:'#f06292', theme_gold_secondary:'#f48fb1', theme_text_primary:'#fce4ec', theme_text_secondary:'#ef9a9a', theme_hide_bg_image:false },
+const THEME_COLORS = {
+  blue:   { label:'Blue',   accent:'#3f8cff', accent2:'#8fc2ff', dark:['#030b18','#07142b','#0d2140'], grey:['#27374e','#344963','#415c7c'], white:['#eaf3ff','#f6fbff','#d8eaff'] },
+  green:  { label:'Green',  accent:'#45d16f', accent2:'#96edae', dark:['#041106','#0a1d0e','#112b17'], grey:['#263f2d','#34523b','#42684b'], white:['#ebfff0','#f7fff9','#d9f3df'] },
+  yellow: { label:'Yellow', accent:'#f4d03f', accent2:'#ffe78a', dark:['#141001','#221b04','#30270a'], grey:['#4a432b','#625938','#786d45'], white:['#fff9df','#fffdf4','#f1e7b8'] },
+  orange: { label:'Orange', accent:'#ff8a2a', accent2:'#ffc078', dark:['#170902','#281003','#3a1907'], grey:['#4e3726','#674934','#805b42'], white:['#fff2e7','#fff9f3','#efd9c8'] },
+  red:    { label:'Red',    accent:'#ff4d5a', accent2:'#ff9aa3', dark:['#170305','#28070b','#3b0d13'], grey:['#4f2b30','#663941','#814a51'], white:['#fff0f1','#fff8f8','#efd4d7'] },
+  purple: { label:'Purple', accent:'#b36bff', accent2:'#d4a8ff', dark:['#0d0518','#180b2a','#24123e'], grey:['#3c304f','#504064','#65517d'], white:['#f6edff','#fcf8ff','#e3d5f2'] },
+  brown:  { label:'Brown',  accent:'#b98254', accent2:'#dbb089', dark:['#100804','#1c0f07','#2b180d'], grey:['#46382f','#5c4a3e','#735d4f'], white:['#f7efe8','#fffaf6','#e5d6ca'] },
+  gold:   { label:'Gold',   accent:'#ffd700', accent2:'#ffed4e', dark:['#0a0a0a','#0f0f0f','#141414'], grey:['#3f3820','#554a2a','#6d6037'], white:['#fff8df','#fffdf4','#eadfb8'] },
 };
+
+const THEME_SHADES = {
+  dark:  { label:'Dark',  text:'#f0f0f0', muted:'#b9bbbe', hideBg:false },
+  grey:  { label:'Grey',  text:'#f5f5f5', muted:'#d0d4da', hideBg:true },
+  white: { label:'White', text:'#171717', muted:'#4f5660', hideBg:true },
+};
+
+const NEUTRAL_PRESETS = {
+  black: { label:'Black', theme_bg_color:'#000000', theme_bg_secondary:'#050505', theme_bg_tertiary:'#0b0b0b', theme_gold_primary:'#d9d9d9', theme_gold_secondary:'#ffffff', theme_text_primary:'#f5f5f5', theme_text_secondary:'#b7b7b7', theme_hide_bg_image:false },
+  grey:  { label:'Grey',  theme_bg_color:'#2b2f34', theme_bg_secondary:'#3a4047', theme_bg_tertiary:'#4b535c', theme_gold_primary:'#d8dde4', theme_gold_secondary:'#ffffff', theme_text_primary:'#f7f8fa', theme_text_secondary:'#d1d6dc', theme_hide_bg_image:true },
+  white: { label:'White', theme_bg_color:'#f4f5f7', theme_bg_secondary:'#ffffff', theme_bg_tertiary:'#e1e5ea', theme_gold_primary:'#5f6977', theme_gold_secondary:'#111827', theme_text_primary:'#14171c', theme_text_secondary:'#4c5563', theme_hide_bg_image:true },
+};
+
+const MIXED_PRESETS = {
+  fire:       { label:'Fire',       theme_bg_color:'#170300', theme_bg_secondary:'#2b0a00', theme_bg_tertiary:'#4a1a00', theme_gold_primary:'#ff5a1f', theme_gold_secondary:'#ffd166', theme_text_primary:'#fff3e0', theme_text_secondary:'#ffbd8a', theme_hide_bg_image:false },
+  coral:      { label:'Coral',      theme_bg_color:'#03161d', theme_bg_secondary:'#06303a', theme_bg_tertiary:'#0b4a4d', theme_gold_primary:'#35d1c8', theme_gold_secondary:'#7ce7a8', theme_text_primary:'#e9fffb', theme_text_secondary:'#a4e7df', theme_hide_bg_image:false },
+  aurora:     { label:'Aurora',     theme_bg_color:'#03121b', theme_bg_secondary:'#062336', theme_bg_tertiary:'#12314d', theme_gold_primary:'#42f5b6', theme_gold_secondary:'#8b7dff', theme_text_primary:'#e9fff8', theme_text_secondary:'#a8d8ff', theme_hide_bg_image:false },
+  sunset:     { label:'Sunset',     theme_bg_color:'#1a0611', theme_bg_secondary:'#321022', theme_bg_tertiary:'#4d1b35', theme_gold_primary:'#ff7a3d', theme_gold_secondary:'#d66bff', theme_text_primary:'#fff1f5', theme_text_secondary:'#ffc0cf', theme_hide_bg_image:false },
+  ocean:      { label:'Ocean',      theme_bg_color:'#02111f', theme_bg_secondary:'#06223a', theme_bg_tertiary:'#0c3850', theme_gold_primary:'#2f9bff', theme_gold_secondary:'#38e6b6', theme_text_primary:'#e7f7ff', theme_text_secondary:'#9bcbe8', theme_hide_bg_image:false },
+  volcanic:   { label:'Volcanic',   theme_bg_color:'#090607', theme_bg_secondary:'#1d0a08', theme_bg_tertiary:'#35110a', theme_gold_primary:'#ff3b30', theme_gold_secondary:'#ff9f1c', theme_text_primary:'#fff0ec', theme_text_secondary:'#d0a19a', theme_hide_bg_image:false },
+  ember:      { label:'Ember',      theme_bg_color:'#120606', theme_bg_secondary:'#240d09', theme_bg_tertiary:'#3a1b0b', theme_gold_primary:'#ff6b35', theme_gold_secondary:'#f7c948', theme_text_primary:'#fff5e8', theme_text_secondary:'#d9a76f', theme_hide_bg_image:false },
+  forest:     { label:'Forest',     theme_bg_color:'#06120a', theme_bg_secondary:'#102014', theme_bg_tertiary:'#22301a', theme_gold_primary:'#62c370', theme_gold_secondary:'#d6b35a', theme_text_primary:'#ecf7e8', theme_text_secondary:'#aec7a2', theme_hide_bg_image:false },
+  royal:      { label:'Royal',      theme_bg_color:'#080b24', theme_bg_secondary:'#111540', theme_bg_tertiary:'#21194f', theme_gold_primary:'#7aa2ff', theme_gold_secondary:'#ffd966', theme_text_primary:'#f0f2ff', theme_text_secondary:'#b8c2ee', theme_hide_bg_image:false },
+  storm:      { label:'Storm',      theme_bg_color:'#071018', theme_bg_secondary:'#101b27', theme_bg_tertiary:'#1f2738', theme_gold_primary:'#6aa9ff', theme_gold_secondary:'#a887ff', theme_text_primary:'#eef5ff', theme_text_secondary:'#a9b8ca', theme_hide_bg_image:false },
+  nebula:     { label:'Nebula',     theme_bg_color:'#0b0518', theme_bg_secondary:'#180b2d', theme_bg_tertiary:'#2a123b', theme_gold_primary:'#bd7cff', theme_gold_secondary:'#ff5d8f', theme_text_primary:'#fbf0ff', theme_text_secondary:'#cfafe8', theme_hide_bg_image:false },
+  toxic:      { label:'Toxic',      theme_bg_color:'#061006', theme_bg_secondary:'#12200b', theme_bg_tertiary:'#22310b', theme_gold_primary:'#9dff3f', theme_gold_secondary:'#f3ff65', theme_text_primary:'#f2ffe8', theme_text_secondary:'#b8d58a', theme_hide_bg_image:false },
+  cyber:      { label:'Cyber',      theme_bg_color:'#020b12', theme_bg_secondary:'#071923', theme_bg_tertiary:'#102a35', theme_gold_primary:'#00d9ff', theme_gold_secondary:'#baff29', theme_text_primary:'#eaffff', theme_text_secondary:'#8fd6d8', theme_hide_bg_image:false },
+  desert:     { label:'Desert',     theme_bg_color:'#130c03', theme_bg_secondary:'#251806', theme_bg_tertiary:'#392709', theme_gold_primary:'#f0b34f', theme_gold_secondary:'#ff7a3d', theme_text_primary:'#fff7e8', theme_text_secondary:'#d7b27c', theme_hide_bg_image:false },
+  roseGold:   { label:'Rose Gold',  theme_bg_color:'#17080d', theme_bg_secondary:'#2a1018', theme_bg_tertiary:'#3b1a24', theme_gold_primary:'#ff7aa2', theme_gold_secondary:'#f5c16c', theme_text_primary:'#fff0f4', theme_text_secondary:'#e6a8b7', theme_hide_bg_image:false },
+  lava:       { label:'Lava',       theme_bg_color:'#120302', theme_bg_secondary:'#270806', theme_bg_tertiary:'#42140a', theme_gold_primary:'#ff3d00', theme_gold_secondary:'#c08457', theme_text_primary:'#fff0e8', theme_text_secondary:'#db9c7a', theme_hide_bg_image:false },
+  glacier:    { label:'Glacier',    theme_bg_color:'#06131b', theme_bg_secondary:'#102733', theme_bg_tertiary:'#dfefff', theme_gold_primary:'#63cfff', theme_gold_secondary:'#73e7d4', theme_text_primary:'#effaff', theme_text_secondary:'#bad8e6', theme_hide_bg_image:false },
+  twilight:   { label:'Twilight',   theme_bg_color:'#080a1f', theme_bg_secondary:'#191238', theme_bg_tertiary:'#342044', theme_gold_primary:'#8b7dff', theme_gold_secondary:'#ff9a5c', theme_text_primary:'#f4f0ff', theme_text_secondary:'#c8b9df', theme_hide_bg_image:false },
+  harvest:    { label:'Harvest',    theme_bg_color:'#130b04', theme_bg_secondary:'#261509', theme_bg_tertiary:'#3d2410', theme_gold_primary:'#ff9f1c', theme_gold_secondary:'#f4d35e', theme_text_primary:'#fff6e3', theme_text_secondary:'#d9ad69', theme_hide_bg_image:false },
+  prism:      { label:'Prism',      theme_bg_color:'#070b18', theme_bg_secondary:'#111b2d', theme_bg_tertiary:'#231c3b', theme_gold_primary:'#5eead4', theme_gold_secondary:'#f472b6', theme_text_primary:'#f4fbff', theme_text_secondary:'#b8c6dc', theme_hide_bg_image:false },
+};
+
+const COLOR_SHADE_PRESETS = Object.entries(THEME_COLORS).reduce((acc, [colorKey, color]) => {
+  Object.entries(THEME_SHADES).forEach(([shadeKey, shade]) => {
+    const id = `${colorKey}-${shadeKey}`;
+    acc[id] = {
+      label: `${color.label}/${shade.label}`,
+      theme_bg_color: color[shadeKey][0],
+      theme_bg_secondary: color[shadeKey][1],
+      theme_bg_tertiary: color[shadeKey][2],
+      theme_gold_primary: color.accent,
+      theme_gold_secondary: color.accent2,
+      theme_text_primary: shade.text,
+      theme_text_secondary: shade.muted,
+      theme_hide_bg_image: shade.hideBg,
+    };
+  });
+  return acc;
+}, {});
+
+const PRESETS = {
+  ...NEUTRAL_PRESETS,
+  ...COLOR_SHADE_PRESETS,
+  ...MIXED_PRESETS,
+};
+
+PRESETS.dark = PRESETS['gold-dark'];
+PRESETS.light = PRESETS['gold-white'];
 
 /* ── Initialization ───────────────────────────────────────────────────── */
 async function initSettings() {
@@ -40,6 +96,7 @@ async function initSettings() {
   const nationInput = document.getElementById('stn-nation-id-input');
   if (nationInput) nationInput.addEventListener('keypress', e => { if (e.key === 'Enter') linkNation(); });
 
+  renderPresetGrid();
   setupColorPickers();
 
   const [settingsResult, discordResult] = await Promise.allSettled([
@@ -52,14 +109,15 @@ async function initSettings() {
   if (settingsResult.status === 'rejected') console.warn('[settings] fetchSettings failed:', settingsResult.reason);
 
   currentSettings = settingsData || {};
+  const activePreview = window.ReaperTheme?.readPreviewTheme?.() || null;
+  themePreviewEnabled = !!activePreview || sessionStorage.getItem(THEME_PREVIEW_ACTIVE_KEY) !== '0';
   const discordUser = currentSettings.discord_user || discordData || null;
 
   autoFillRaidsExclude = _parseJsonArray(currentSettings.auto_fill_alliances_raids_exclude);
-  autoFillCompareHome  = _parseJsonArray(currentSettings.auto_fill_alliances_compare_home);
 
-  // Restore watch home alliance from saved ID
+  // Restore home alliance from saved ID
   if (currentSettings.watch_home_alliance_id) {
-    watchHomeAlliance = {
+    homeAlliance = {
       id: currentSettings.watch_home_alliance_id,
       name: currentSettings.watch_home_alliance_name || `Alliance ${currentSettings.watch_home_alliance_id}`,
     };
@@ -67,13 +125,14 @@ async function initSettings() {
 
   renderDiscordCard(discordUser);
   renderNationCard(currentSettings);
-  renderThemeUI(currentSettings);
+  renderThemeUI(activePreview || currentSettings);
   renderAutoFillUI();
   renderBgImageUI(currentSettings);
   renderPrivacyUI(currentSettings);
+  renderAuditUI(currentSettings);
   _setupBgDragDrop();
 
-  if (currentSettings.theme_bg_color) applyThemeToPage(currentSettings);
+  applyThemeToPage(activePreview || currentSettings);
 
   setupAllianceAutocomplete();
 
@@ -110,6 +169,8 @@ function switchTab(tab) {
   document.querySelectorAll('.settings-tab').forEach(s => { s.style.display = s.id === 'tab-' + tab ? '' : 'none'; });
   if (tab === 'notifications' && currentSettings.logged_in) loadNotificationsTab();
   if (tab === 'layout') initLayoutTab();
+  if (tab === 'audit') renderAuditUI(currentSettings);
+  if (tab === 'pets') loadPetsTab();
 }
 
 /* ── Discord card ─────────────────────────────────────────────────────── */
@@ -221,51 +282,98 @@ async function refreshDiscord() {
 
 /* ── Theme ────────────────────────────────────────────────────────────── */
 function renderThemeUI(settings) {
-  const map = { 'bg-primary': settings.theme_bg_color||'#0a0a0a', 'bg-secondary': settings.theme_bg_secondary||'#0f0f0f', 'bg-tertiary': settings.theme_bg_tertiary||'#141414', 'gold-primary': settings.theme_gold_primary||'#ffd700', 'gold-secondary': settings.theme_gold_secondary||'#ffed4e', 'text-primary': settings.theme_text_primary||'#f0f0f0', 'text-secondary': settings.theme_text_secondary||'#b9bbbe' };
+  renderPresetGrid();
+  const defaults = window.ReaperTheme?.DEFAULT_THEME || PRESETS['gold-dark'];
+  const merged = { ...defaults, ...(settings || {}) };
+  const map = { 'bg-primary': merged.theme_bg_color||'#0a0a0a', 'bg-secondary': merged.theme_bg_secondary||'#0f0f0f', 'bg-tertiary': merged.theme_bg_tertiary||'#141414', 'gold-primary': merged.theme_gold_primary||'#ffd700', 'gold-secondary': merged.theme_gold_secondary||'#ffed4e', 'text-primary': merged.theme_text_primary||'#f0f0f0', 'text-secondary': merged.theme_text_secondary||'#b9bbbe' };
   Object.entries(map).forEach(([id, val]) => { const p = document.getElementById(id); const t = document.getElementById(id+'-text'); if(p) p.value=val; if(t) t.value=val; });
   const keys = ['theme_bg_color','theme_bg_secondary','theme_bg_tertiary','theme_gold_primary','theme_gold_secondary','theme_text_primary','theme_text_secondary'];
-  const matched = Object.entries(PRESETS).find(([,p]) => keys.every(k => !settings[k] || !p[k] || settings[k].toLowerCase() === p[k].toLowerCase()));
+  const matched = Object.entries(PRESETS).find(([,p]) => keys.every(k => !merged[k] || !p[k] || merged[k].toLowerCase() === p[k].toLowerCase()));
   document.querySelectorAll('.preset-swatch').forEach(b => b.classList.toggle('active', matched ? b.dataset.preset === matched[0] : false));
+  const liveToggle = document.getElementById('theme-live-preview');
+  if (liveToggle) liveToggle.checked = themePreviewEnabled;
+}
+
+function renderPresetGrid() {
+  const grid = document.querySelector('.preset-grid');
+  if (!grid) return;
+
+  grid.innerHTML = Object.entries(PRESETS)
+    .filter(([id]) => !['dark', 'light'].includes(id))
+    .map(([id, preset]) => `
+      <button class="preset-swatch" data-preset="${id}" onclick="applyPreset('${id}')" title="${_esc(preset.label)}">
+        <span class="preset-colors">
+          <span style="background:${preset.theme_bg_color}"></span>
+          <span style="background:${preset.theme_bg_tertiary}"></span>
+          <span style="background:${preset.theme_gold_primary}"></span>
+        </span>
+        <span class="preset-label">${_esc(preset.label)}</span>
+      </button>
+    `).join('');
+  grid.dataset.rendered = '1';
 }
 
 function setupColorPickers() {
   ['bg-primary','bg-secondary','bg-tertiary','gold-primary','gold-secondary','text-primary','text-secondary'].forEach(id => {
     const p = document.getElementById(id), t = document.getElementById(id+'-text');
     if (!p || !t) return;
+    if (p.dataset.themeBound === '1') return;
+    p.dataset.themeBound = '1';
+    t.dataset.themeBound = '1';
     p.addEventListener('input', () => { t.value = p.value; previewTheme(); });
     t.addEventListener('input', () => { if (/^#[0-9A-Fa-f]{6}$/.test(t.value)) { p.value = t.value; previewTheme(); } });
   });
+
+  const liveToggle = document.getElementById('theme-live-preview');
+  if (liveToggle && liveToggle.dataset.themeBound !== '1') {
+    liveToggle.dataset.themeBound = '1';
+    liveToggle.checked = themePreviewEnabled;
+    liveToggle.addEventListener('change', () => setThemePreviewEnabled(liveToggle.checked));
+  }
 }
 
 function applyPreset(name) {
   const preset = PRESETS[name]; if (!preset) return;
-  renderThemeUI(preset); applyThemeToPage(preset);
+  renderThemeUI(preset);
   document.querySelectorAll('.preset-swatch').forEach(b => b.classList.toggle('active', b.dataset.preset === name));
+  stageThemePreview(preset);
+  const action = themePreviewEnabled ? 'previewed' : 'selected';
+  showStatus('theme-status', 'success', (preset.label||name) + ` theme ${action}. Click Save to keep it.`);
+  return;
   showStatus('theme-status', 'success', (preset.label||name) + ' theme previewed — click Save to keep it.');
 }
 
-function previewTheme() { applyThemeToPage(readColorInputs()); document.querySelectorAll('.preset-swatch').forEach(b => b.classList.remove('active')); }
+function previewTheme() {
+  document.querySelectorAll('.preset-swatch').forEach(b => b.classList.remove('active'));
+  stageThemePreview(readThemeDraft());
+}
 
 async function saveTheme() {
-  const themeData = readColorInputs();
-  const activeBtn = document.querySelector('.preset-swatch.active');
-  if (activeBtn) { const p = PRESETS[activeBtn.dataset.preset]; if (p) themeData.theme_hide_bg_image = p.theme_hide_bg_image ? 1 : 0; }
-  else themeData.theme_hide_bg_image = currentSettings.theme_hide_bg_image || 0;
+  const themeData = readThemeDraft();
   const btn = document.getElementById('save-theme-btn');
   if (btn) { btn.disabled=true; btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> Saving…'; }
   try {
     const r = await fetch('/api/settings', { method:'POST', headers:{'Content-Type':'application/json'}, credentials:'same-origin', body: JSON.stringify(themeData) });
     const data = await r.json();
-    if (r.ok && data.success) { applyThemeToPage(themeData); localStorage.setItem('reaper_theme', JSON.stringify(themeData)); localStorage.setItem('reaper_theme_saved_at', Date.now().toString()); showStatus('theme-status','success','Theme saved and applied!'); currentSettings = {...currentSettings,...themeData}; }
+    if (r.ok && data.success) {
+      clearThemePreview();
+      applyThemeToPage(themeData);
+      localStorage.setItem('reaper_theme', JSON.stringify(themeData));
+      localStorage.setItem('reaper_theme_saved_at', Date.now().toString());
+      showStatus('theme-status','success','Theme saved and applied!');
+      currentSettings = {...currentSettings,...themeData};
+      renderThemeUI(currentSettings);
+    }
     else showStatus('theme-status','error','Failed to save theme: '+(data.detail||'Unknown error'));
   } catch { showStatus('theme-status','error','Network error saving theme.'); }
   finally { if (btn) { btn.disabled=false; btn.innerHTML='<i class="fas fa-save"></i> Save Theme'; } }
 }
 
 function resetTheme() {
-  const saved = { theme_bg_color:currentSettings.theme_bg_color||'#0a0a0a', theme_bg_secondary:currentSettings.theme_bg_secondary||'#0f0f0f', theme_bg_tertiary:currentSettings.theme_bg_tertiary||'#141414', theme_gold_primary:currentSettings.theme_gold_primary||'#ffd700', theme_gold_secondary:currentSettings.theme_gold_secondary||'#ffed4e', theme_text_primary:currentSettings.theme_text_primary||'#f0f0f0', theme_text_secondary:currentSettings.theme_text_secondary||'#b9bbbe', theme_hide_bg_image:currentSettings.theme_hide_bg_image||0 };
+  const defaults = window.ReaperTheme?.DEFAULT_THEME || PRESETS['gold-dark'];
+  const saved = { ...defaults, ...currentSettings };
+  clearThemePreview();
   renderThemeUI(saved); applyThemeToPage(saved);
-  document.querySelectorAll('.preset-swatch').forEach(b => b.classList.remove('active'));
   showStatus('theme-status','success','Reset to saved theme.');
 }
 
@@ -273,28 +381,81 @@ function readColorInputs() {
   return { theme_bg_color:_val('bg-primary'), theme_bg_secondary:_val('bg-secondary'), theme_bg_tertiary:_val('bg-tertiary'), theme_gold_primary:_val('gold-primary'), theme_gold_secondary:_val('gold-secondary'), theme_text_primary:_val('text-primary'), theme_text_secondary:_val('text-secondary') };
 }
 
+function readThemeDraft() {
+  const draft = readColorInputs();
+  if (currentSettings.theme_custom_bg_url) draft.theme_custom_bg_url = currentSettings.theme_custom_bg_url;
+
+  const activeBtn = document.querySelector('.preset-swatch.active');
+  const activePreset = activeBtn ? PRESETS[activeBtn.dataset.preset] : null;
+  if (activePreset) {
+    draft.theme_hide_bg_image = activePreset.theme_hide_bg_image ? 1 : 0;
+  } else {
+    draft.theme_hide_bg_image = currentSettings.theme_hide_bg_image || 0;
+  }
+
+  return draft;
+}
+
+function stageThemePreview(theme) {
+  const draft = { ...(currentSettings || {}), ...(theme || {}) };
+  try {
+    sessionStorage.setItem(THEME_PREVIEW_KEY, JSON.stringify(draft));
+    sessionStorage.setItem(THEME_PREVIEW_ACTIVE_KEY, themePreviewEnabled ? '1' : '0');
+  } catch {
+    // Preview still works in the current page without sessionStorage.
+  }
+
+  if (themePreviewEnabled) applyThemeToPage(draft);
+}
+
+function clearThemePreview() {
+  try {
+    sessionStorage.removeItem(THEME_PREVIEW_KEY);
+    sessionStorage.removeItem(THEME_PREVIEW_ACTIVE_KEY);
+  } catch {
+    // Nothing to clear.
+  }
+}
+
+function setThemePreviewEnabled(enabled) {
+  themePreviewEnabled = !!enabled;
+  const draft = readThemeDraft();
+  try {
+    sessionStorage.setItem(THEME_PREVIEW_KEY, JSON.stringify({ ...(currentSettings || {}), ...draft }));
+    sessionStorage.setItem(THEME_PREVIEW_ACTIVE_KEY, themePreviewEnabled ? '1' : '0');
+  } catch {
+    // Preview still works in this page.
+  }
+
+  if (themePreviewEnabled) {
+    applyThemeToPage(draft);
+    showStatus('theme-status', 'success', 'Live preview enabled.');
+  } else {
+    applyThemeToPage(currentSettings);
+    showStatus('theme-status', 'success', 'Live preview disabled. Changes will apply after Save.');
+  }
+}
+
 function applyThemeToPage(t) {
-  const r = document.documentElement;
-  if (t.theme_bg_color)       r.style.setProperty('--bg-primary',    t.theme_bg_color);
-  if (t.theme_bg_secondary)   r.style.setProperty('--bg-secondary',  t.theme_bg_secondary);
-  if (t.theme_bg_tertiary)    r.style.setProperty('--bg-tertiary',   t.theme_bg_tertiary);
-  if (t.theme_gold_primary)   r.style.setProperty('--gold-primary',  t.theme_gold_primary);
-  if (t.theme_gold_secondary) r.style.setProperty('--gold-secondary',t.theme_gold_secondary);
-  if (t.theme_text_primary)   r.style.setProperty('--text-primary',  t.theme_text_primary);
-  if (t.theme_text_secondary) r.style.setProperty('--text-secondary',t.theme_text_secondary);
-  if (t.theme_custom_bg_url) { document.body.style.backgroundImage=`url('${t.theme_custom_bg_url}')`; document.body.style.backgroundSize='cover'; document.body.style.backgroundPosition='center'; document.body.style.backgroundAttachment='fixed'; return; }
-  const hide = t.theme_hide_bg_image===true||t.theme_hide_bg_image===1||t.theme_hide_bg_image==='1';
-  document.body.style.backgroundImage = hide ? 'none' : '';
+  const merged = { ...(currentSettings || {}), ...(t || {}) };
+  if (window.ReaperTheme?.applyThemeToPage) window.ReaperTheme.applyThemeToPage(merged);
 }
 
 /* ── Auto-Fill ────────────────────────────────────────────────────────── */
 function renderAutoFillUI() {
   _setChecked('auto-fill-nation-raids',  currentSettings.auto_fill_nation_raids);
   _setChecked('auto-fill-nation-revopt', currentSettings.auto_fill_nation_revopt);
+  _setChecked('auto-fill-nation-revopt-inline', currentSettings.auto_fill_nation_revopt);
   _setChecked('auto-fill-nation-calc',   currentSettings.auto_fill_nation_calc);
+  _setValue('revopt-default-infra', Number(currentSettings.revopt_default_infra || 0) > 0 ? currentSettings.revopt_default_infra : '');
+  _setValue('revopt-default-land', Number(currentSettings.revopt_default_land || 0) > 0 ? currentSettings.revopt_default_land : '');
+  _setValue('revopt-default-mmr', currentSettings.revopt_default_mmr || '0/3/5/0');
   renderTagList('raids-exclude-tags', autoFillRaidsExclude, removeRaidsExclude);
-  renderTagList('compare-home-tags',  autoFillCompareHome,  removeCompareHome);
-  renderWatchHomeTag();
+  renderHomeAllianceTag();
+  _setChecked('home-alliance-nations',  currentSettings.home_alliance_nations);
+  _setChecked('home-alliance-compare',  currentSettings.home_alliance_compare);
+  _setChecked('home-alliance-destroy',  currentSettings.home_alliance_destroy);
+  _setChecked('home-alliance-spywipe',  currentSettings.home_alliance_spywipe);
 }
 
 function renderTagList(containerId, arr, removeFn) {
@@ -307,51 +468,88 @@ function renderTagList(containerId, arr, removeFn) {
 }
 
 /* Watch home alliance — single-select (not a multi-tag list) */
-function renderWatchHomeTag() {
-  const tagEl    = document.getElementById('watch-home-tags');
-  const badgeDot = document.getElementById('watch-alliance-dot');
-  const badgeLbl = document.getElementById('watch-alliance-label');
+function readRevOptDefaultNumber(id) {
+  const raw = String(document.getElementById(id)?.value || '').trim();
+  if (!raw) return 0;
+  const n = Number(raw);
+  return Number.isFinite(n) && n >= 0 ? n : null;
+}
+
+function readRevOptDefaultMMR() {
+  return String(document.getElementById('revopt-default-mmr')?.value || '0/3/5/0')
+    .trim()
+    .replace(/-/g, '/');
+}
+
+function validRevOptDefaultMMR(mmr) {
+  return /^([0-5])\/([0-5])\/([0-5])\/([0-3])$/.test(mmr);
+}
+
+function syncRevOptNationToggles(sourceId) {
+  const main = document.getElementById('auto-fill-nation-revopt');
+  const inline = document.getElementById('auto-fill-nation-revopt-inline');
+  if (!main || !inline) return;
+  const source = document.getElementById(sourceId);
+  const val = !!source?.checked;
+  main.checked = val;
+  inline.checked = val;
+}
+window.syncRevOptNationToggles = syncRevOptNationToggles;
+
+function renderHomeAllianceTag() {
+  const tagEl    = document.getElementById('home-alliance-tags');
+  const badgeDot = document.getElementById('home-alliance-dot');
+  const badgeLbl = document.getElementById('home-alliance-label');
   if (tagEl) {
-    if (watchHomeAlliance) {
-      const safe = (watchHomeAlliance.name || '').replace(/'/g, "\\'");
-      tagEl.innerHTML = `<span class="stn-tag">${_esc(watchHomeAlliance.name || watchHomeAlliance.id)}<button class="stn-tag-remove" onclick="clearWatchHomeAlliance()" title="Remove">×</button></span>`;
+    if (homeAlliance) {
+      const safe = (homeAlliance.name || '').replace(/'/g, "\\'");
+      tagEl.innerHTML = `<span class="stn-tag">${_esc(homeAlliance.name || homeAlliance.id)}<button class="stn-tag-remove" onclick="clearHomeAlliance()" title="Remove">×</button></span>`;
       if (badgeDot) badgeDot.style.background = '#2ecc71';
-      if (badgeLbl) badgeLbl.textContent = watchHomeAlliance.name || `ID ${watchHomeAlliance.id}`;
+      if (badgeLbl) badgeLbl.textContent = homeAlliance.name || `ID ${homeAlliance.id}`;
     } else {
       tagEl.innerHTML = '';
       if (badgeDot) badgeDot.style.background = '#636669';
-      if (badgeLbl) badgeLbl.textContent = 'Default (Darkstar)';
+      if (badgeLbl) badgeLbl.textContent = 'Not set';
     }
   }
 }
 
-function clearWatchHomeAlliance() {
-  watchHomeAlliance = null;
-  renderWatchHomeTag();
+function clearHomeAlliance() {
+  homeAlliance = null;
+  renderHomeAllianceTag();
   saveAutoFill();
 }
-window.clearWatchHomeAlliance = clearWatchHomeAlliance;
+window.clearHomeAlliance = clearHomeAlliance;
 
 function removeRaidsExclude(name) { autoFillRaidsExclude = autoFillRaidsExclude.filter(n => n !== name); renderAutoFillUI(); saveAutoFill(); }
-function removeCompareHome(name)  { autoFillCompareHome  = autoFillCompareHome.filter(n => n !== name);  renderAutoFillUI(); saveAutoFill(); }
 window.removeRaidsExclude = removeRaidsExclude;
-window.removeCompareHome  = removeCompareHome;
 
 async function saveAutoFill() {
   const btn = document.getElementById('save-autofill-btn');
   if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving…'; }
   try {
+    const revoptMMR = readRevOptDefaultMMR();
+    if (!validRevOptDefaultMMR(revoptMMR)) {
+      showStatus('autofill-status', 'error', 'Revenue Optimizer MMR must be B/F/H/D with caps 5/5/5/3, like 0/3/5/0.');
+      return;
+    }
     const payload = {
       auto_fill_nation_raids:             document.getElementById('auto-fill-nation-raids')?.checked ? 1 : 0,
-      auto_fill_nation_revopt:            document.getElementById('auto-fill-nation-revopt')?.checked ? 1 : 0,
+      auto_fill_nation_revopt:            (document.getElementById('auto-fill-nation-revopt')?.checked || document.getElementById('auto-fill-nation-revopt-inline')?.checked) ? 1 : 0,
       auto_fill_nation_calc:              document.getElementById('auto-fill-nation-calc')?.checked ? 1 : 0,
+      revopt_default_infra:                readRevOptDefaultNumber('revopt-default-infra'),
+      revopt_default_land:                 readRevOptDefaultNumber('revopt-default-land'),
+      revopt_default_mmr:                  revoptMMR,
       auto_fill_alliances_raids_exclude:  JSON.stringify(autoFillRaidsExclude),
-      auto_fill_alliances_compare_home:   JSON.stringify(autoFillCompareHome),
+      home_alliance_nations:              document.getElementById('home-alliance-nations')?.checked ? 1 : 0,
+      home_alliance_compare:              document.getElementById('home-alliance-compare')?.checked ? 1 : 0,
+      home_alliance_destroy:              document.getElementById('home-alliance-destroy')?.checked ? 1 : 0,
+      home_alliance_spywipe:              document.getElementById('home-alliance-spywipe')?.checked ? 1 : 0,
     };
-    // Include watch home alliance if set
-    if (watchHomeAlliance && watchHomeAlliance.id) {
-      payload.watch_home_alliance_id   = watchHomeAlliance.id;
-      payload.watch_home_alliance_name = watchHomeAlliance.name || '';
+    // Include home alliance if set
+    if (homeAlliance && homeAlliance.id) {
+      payload.watch_home_alliance_id   = homeAlliance.id;
+      payload.watch_home_alliance_name = homeAlliance.name || '';
     } else {
       payload.watch_home_alliance_id   = null;
       payload.watch_home_alliance_name = null;
@@ -365,8 +563,8 @@ async function saveAutoFill() {
     const data = await r.json();
     if (r.ok && data.success) {
       // Update window._watchAllianceId immediately so Watch page uses new alliance on next visit
-      if (watchHomeAlliance && watchHomeAlliance.id) {
-        window._watchAllianceId = watchHomeAlliance.id;
+      if (homeAlliance && homeAlliance.id) {
+        window._watchAllianceId = homeAlliance.id;
       } else {
         window._watchAllianceId = undefined;
       }
@@ -388,16 +586,12 @@ function setupAllianceAutocomplete() {
     if (!autoFillRaidsExclude.includes(name)) { autoFillRaidsExclude.push(name); renderAutoFillUI(); saveAutoFill(); }
   }, () => raidsAcIdx, v => { raidsAcIdx = v; });
 
-  _setupAc('add-compare-home-input', 'compare-home-dropdown', autoFillCompareHome, name => {
-    if (!autoFillCompareHome.includes(name)) { autoFillCompareHome.push(name); renderAutoFillUI(); saveAutoFill(); }
-  }, () => compareAcIdx, v => { compareAcIdx = v; });
-
-  // Watch home alliance — single-select; replaces any existing selection
-  _setupAcSingle('add-watch-home-input', 'watch-home-dropdown', a => {
-    watchHomeAlliance = { id: a.id, name: a.name };
-    renderWatchHomeTag();
+  // Home alliance — single-select; replaces any existing selection
+  _setupAcSingle('add-home-alliance-input', 'home-alliance-dropdown', a => {
+    homeAlliance = { id: a.id, name: a.name };
+    renderHomeAllianceTag();
     saveAutoFill();
-  }, () => watchHomeAcIdx, v => { watchHomeAcIdx = v; });
+  }, () => homeAcIdx, v => { homeAcIdx = v; });
 }
 
 async function loadAllianceData() {
@@ -464,7 +658,6 @@ function _handleAcKey(e, input, dropdown, onSelect, getIdx, setIdx) {
   else if (e.key === 'Escape') { dropdown.style.display = 'none'; }
   else if (e.key === 'Backspace' && !input.value) {
     if (dropdown.id === 'raids-exclude-dropdown' && autoFillRaidsExclude.length) removeRaidsExclude(autoFillRaidsExclude[autoFillRaidsExclude.length-1]);
-    if (dropdown.id === 'compare-home-dropdown'  && autoFillCompareHome.length)  removeCompareHome(autoFillCompareHome[autoFillCompareHome.length-1]);
   }
 }
 
@@ -635,6 +828,7 @@ async function deleteMySettings() {
     const data = await r.json();
     if (r.ok && data.success) {
       showStatus('privacy-delete-status', 'success', 'Settings data deleted. Reloading…');
+      clearThemePreview();
       localStorage.removeItem('reaper_theme');
       localStorage.removeItem('reaper_theme_saved_at');
       setTimeout(() => location.reload(), 1500);
@@ -689,9 +883,8 @@ async function handleBgFileSelect(input) {
       if (bar) bar.style.width = '100%';
       currentSettings.theme_custom_bg_url = data.url;
       renderBgImageUI(currentSettings);
-      document.body.style.backgroundImage = `url('${data.url}')`;
-      document.body.style.backgroundSize = 'cover'; document.body.style.backgroundPosition = 'center'; document.body.style.backgroundAttachment = 'fixed';
-      const stored = JSON.parse(localStorage.getItem('reaper_theme') || '{}'); stored.theme_custom_bg_url = data.url; localStorage.setItem('reaper_theme', JSON.stringify(stored)); localStorage.setItem('reaper_theme_saved_at', Date.now().toString());
+      applyThemeToPage(currentSettings);
+      const stored = JSON.parse(localStorage.getItem('reaper_theme') || '{}'); stored.theme_custom_bg_url = data.url; localStorage.setItem('reaper_theme', JSON.stringify({...stored, ...readColorInputs(), theme_custom_bg_url: data.url})); localStorage.setItem('reaper_theme_saved_at', Date.now().toString());
       showStatus('bg-upload-status','success','Background uploaded and applied!');
     } else { showStatus('bg-upload-status','error', data.detail || 'Upload failed.'); }
   } catch { showStatus('bg-upload-status','error','Network error — please try again.'); }
@@ -707,8 +900,7 @@ async function removeBackground() {
     if (r.ok && data.success) {
       currentSettings.theme_custom_bg_url = null;
       renderBgImageUI(currentSettings);
-      const hide = currentSettings.theme_hide_bg_image === 1 || currentSettings.theme_hide_bg_image === true;
-      document.body.style.backgroundImage = hide ? 'none' : '';
+      applyThemeToPage(currentSettings);
       const stored = JSON.parse(localStorage.getItem('reaper_theme') || '{}'); delete stored.theme_custom_bg_url; localStorage.setItem('reaper_theme', JSON.stringify(stored)); localStorage.setItem('reaper_theme_saved_at', Date.now().toString());
       showStatus('bg-upload-status','success','Background removed.');
     } else { showStatus('bg-upload-status','error','Failed to remove background.'); }
@@ -743,67 +935,623 @@ function showStatus(id, type, msg) {
 
 function _setText(id, text) { const el = document.getElementById(id); if (el) el.textContent = text; }
 function _val(id) { const el = document.getElementById(id); return el ? el.value : ''; }
+function _setValue(id, val) { const el = document.getElementById(id); if (el) el.value = val ?? ''; }
 function _setChecked(id, val) { const el = document.getElementById(id); if (el) el.checked = !!(val === 1 || val === true || val === '1'); }
 function _esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
+
+/* ── Pets Tab ─────────────────────────────────────────────────────────── */
+
+let _settingsPet = null;
+
+async function loadPetsTab() {
+  try {
+    const r = await fetch('/api/user/pet', { credentials: 'same-origin' });
+    if (r.status === 401) {
+      _settingsPet = null;
+      return;
+    }
+    const d = await r.json();
+    if (!d || !d.has_pet || !d.species) {
+      _settingsPet = null;
+      return;
+    }
+    _settingsPet = d;
+
+    const killNameEl = document.getElementById('kill-pet-name-display');
+    if (killNameEl) killNameEl.textContent = d.name || d.species;
+
+    // Pre-fill rename fields
+    const rnName = document.getElementById('settings-rename-name');
+    if (rnName) rnName.value = d.name || '';
+    const acts = d.action_labels || {};
+    const rnAtk = document.getElementById('settings-rename-atk');
+    if (rnAtk) rnAtk.value = acts.attack || '';
+    const rnDef = document.getElementById('settings-rename-def');
+    if (rnDef) rnDef.value = acts.defense || '';
+    const rnChg = document.getElementById('settings-rename-chg');
+    if (rnChg) rnChg.value = acts.charge || '';
+    // Clear previous result/error
+    const rnResult = document.getElementById('settings-rename-result');
+    if (rnResult) { rnResult.style.display = 'none'; rnResult.innerHTML = ''; }
+    const rnErr = document.getElementById('settings-rename-name-err');
+    if (rnErr) { rnErr.style.display = 'none'; rnErr.textContent = ''; }
+
+    await settingsLoadBadges();
+    renderBadgeSection();
+  } catch (e) {
+    _settingsPet = null;
+    console.error('[settings] loadPetsTab error:', e);
+  }
+}
+
+async function killPet() {
+  const input = document.getElementById('kill-pet-confirm-input');
+  const status = document.getElementById('kill-pet-status');
+  const typed = input ? input.value.trim() : '';
+
+  if (!_settingsPet || typed.toLowerCase() !== (_settingsPet.name || '').toLowerCase()) {
+    if (status) {
+      status.className = 'stn-status-msg error';
+      status.textContent = '❌ Name does not match. Type the exact pet name to confirm.';
+      status.style.display = 'block';
+    }
+    return;
+  }
+
+  const btn = document.getElementById('kill-pet-btn');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Releasing…'; }
+
+  try {
+    const r = await fetch('/api/pets/kill', { method: 'DELETE', credentials: 'same-origin' });
+    const d = await r.json();
+    if (r.ok && d.success) {
+      if (status) {
+        status.className = 'stn-status-msg success';
+        status.textContent = '✅ Pet released successfully!';
+        status.style.display = 'block';
+      }
+      _settingsPet = null;
+      if (input) input.value = '';
+      setTimeout(function() { loadPetsTab(); }, 2000);
+    } else {
+      if (status) {
+        status.className = 'stn-status-msg error';
+        status.textContent = '❌ ' + (d.detail || d.error || 'Failed to release pet.');
+        status.style.display = 'block';
+      }
+    }
+  } catch (e) {
+    if (status) {
+      status.className = 'stn-status-msg error';
+      status.textContent = '❌ ' + (e.message || 'Network error');
+      status.style.display = 'block';
+    }
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-skull"></i> Release Pet'; }
+  }
+}
+
+/* ── Rename Pet (Pets Tab) ───────────────────────────────────────────── */
+
+function _el(id) { return document.getElementById(id); }
+
+async function settingsRenamePet() {
+  var nameEl  = _el('settings-rename-name');
+  var nameErr = _el('settings-rename-name-err');
+  var name    = (nameEl ? nameEl.value : '').trim();
+  var result  = _el('settings-rename-result');
+
+  if (nameErr) { nameErr.style.display = 'none'; nameErr.textContent = ''; }
+  if (nameEl) nameEl.classList.remove('stn-input-error');
+
+  if (!name) {
+    if (nameErr) { nameErr.textContent = 'Name is required.'; nameErr.style.display = 'block'; }
+    if (nameEl) nameEl.classList.add('stn-input-error');
+    return;
+  }
+  if (name.length > 32 || !/^[a-zA-Z0-9 \-_.,!?']+$/.test(name)) {
+    if (nameErr) { nameErr.textContent = 'Invalid name (max 32 chars, basic punctuation only).'; nameErr.style.display = 'block'; }
+    if (nameEl) nameEl.classList.add('stn-input-error');
+    return;
+  }
+
+  if (result) { result.style.display = 'none'; result.className = 'stn-status-msg'; }
+
+  var atkEl = _el('settings-rename-atk'), defEl = _el('settings-rename-def'), chgEl = _el('settings-rename-chg');
+
+  try {
+    var r = await fetch('/api/pets/rename', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        name: name,
+        actions: {
+          Attack:  atkEl ? atkEl.value.trim() : '',
+          Defense: defEl ? defEl.value.trim() : '',
+          Charge:  chgEl ? chgEl.value.trim() : ''
+        }
+      })
+    });
+    var d = await r.json();
+    if (r.ok && d.success) {
+      if (result) {
+        result.className = 'stn-status-msg success';
+        result.innerHTML = '✅ Saved! Refreshing...';
+        result.style.display = 'block';
+      }
+      // Update local pet state
+      if (_settingsPet) {
+        _settingsPet.name = name;
+        if (_settingsPet.action_labels) {
+          _settingsPet.action_labels.attack  = (atkEl ? atkEl.value.trim() : '') || _settingsPet.action_labels.attack;
+          _settingsPet.action_labels.defense = (defEl ? defEl.value.trim() : '') || _settingsPet.action_labels.defense;
+          _settingsPet.action_labels.charge  = (chgEl ? chgEl.value.trim() : '') || _settingsPet.action_labels.charge;
+        }
+      }
+      // Apply GPP animation if provided
+      if (window.PetGPP && d.animation) {
+        try { PetGPP.Animation.applyAnimation(d.animation); } catch(_) {}
+      };
+      // Flash confirmation via GPP if available
+      if (window.PetGPP) PetGPP.Flash.flash('rgba(39,174,96,0.12)', 20);
+      setTimeout(function(){ loadPetsTab(); }, 1200);
+    } else {
+      if (result) {
+        result.className = 'stn-status-msg error';
+        result.innerHTML = '❌ ' + (d.detail || d.error || 'Failed');
+        result.style.display = 'block';
+      }
+    }
+  } catch(e) {
+    if (result) {
+      result.className = 'stn-status-msg error';
+      result.innerHTML = '❌ ' + e.message;
+      result.style.display = 'block';
+    }
+  }
+}
+
+/* ── Badge (Pets Tab) ─────────────────────────────────────────────────── */
+
+let _settingsBadgeChoices = [];
+let _settingsBadgeDefaultPrompt = '';
+
+function _escArg(v) {
+  return JSON.stringify(String(v)).replace(/"/g, '&quot;');
+}
+
+function renderBadgeSection() {
+  const body = document.getElementById('pets-badge-body');
+  if (!body || !_settingsPet) return;
+
+  const pet = _settingsPet;
+  const selected = pet.badge_url || '';
+  const speciesImg = '/static/Emojis/Pets/' + (pet.species || 'Basic') + '.png';
+  const currentImg = selected || speciesImg;
+  const currentLabel = selected ? 'Saved badge will show everywhere' : 'No badge saved yet';
+
+  let html = '';
+  html += '<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:rgba(0,0,0,0.35);border:1px solid rgba(255,215,0,0.18);border-radius:6px;margin-bottom:12px">';
+  html += '<img src="' + _esc(currentImg) + '" style="width:72px;height:72px;object-fit:contain;flex-shrink:0" onerror="this.src=\'/static/Emojis/Pets/Basic.png\'">';
+  html += '<div><div style="font-size:0.82rem;font-weight:700;color:var(--gold-primary)">' + _esc(currentLabel) + '</div>';
+  html += '<div style="font-size:0.74rem;color:var(--text-secondary);margin-top:2px">' + _esc(pet.name || pet.species || 'Pet') + '</div></div></div>';
+
+  html += '<div style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center;margin-bottom:12px">';
+  html += '<input class="stn-input" id="settings-badge-upload-file" type="file" accept="image/png,image/jpeg,image/webp" onchange="settingsUploadBadge(this)">';
+  html += '<button class="stn-btn stn-btn-danger stn-btn-sm" id="settings-badge-remove-btn" onclick="settingsDeleteBadge()"' + (!selected ? '' : '') + '>Use Pet Emoji</button>';
+  html += '</div>';
+  html += '<div id="settings-badge-upload-status" style="margin-bottom:8px;font-size:0.74rem;color:var(--gold-secondary)">PNG, JPG, or WebP. Max 5 MB.</div>';
+
+  html += '<div style="display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin-bottom:12px">';
+  html += '<label style="display:flex;flex-direction:column;gap:5px;font-size:0.78rem;color:var(--text-secondary)">Images<select class="stn-input" id="settings-badge-generate-count" onchange="settingsUpdateBadgeGenerateLabel()" style="width:auto">';
+  [1,2,3,4].forEach(function(n) { html += '<option value="' + n + '"' + (n === 4 ? ' selected' : '') + '>' + n + '</option>'; });
+  html += '</select></label>';
+  html += '<button class="stn-btn stn-btn-primary" id="settings-badge-generate-btn" onclick="settingsGenerateBadges()" style="margin-top:14px">Generate 4 Badges</button>';
+  html += '</div>';
+  html += '<div id="settings-badge-generate-status" style="margin-top:8px;font-size:0.78rem;color:var(--text-secondary)"></div>';
+  html += '<div id="settings-badge-choice-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-top:12px"></div>';
+
+  body.innerHTML = html;
+  renderSettingsBadgeChoices();
+
+  // Disable remove button if no badge set
+  const removeBtn = document.getElementById('settings-badge-remove-btn');
+  if (removeBtn) removeBtn.disabled = !selected;
+}
+
+function renderSettingsBadgeChoices() {
+  const grid = document.getElementById('settings-badge-choice-grid');
+  if (!grid) return;
+  if (!_settingsBadgeChoices.length) {
+    grid.innerHTML = '<div style="padding:1.5rem 0;color:var(--text-secondary);font-size:0.82rem">No generated badges yet. Choose a count and generate to start.</div>';
+    return;
+  }
+  let h = '';
+  _settingsBadgeChoices.forEach(function(choice) {
+    h += '<div style="background:rgba(0,0,0,0.35);border:1px solid rgba(255,215,0,0.18);border-radius:6px;padding:10px">';
+    h += '<img src="' + _esc(choice.url) + '" style="width:100%;height:160px;object-fit:contain;display:block;background:rgba(0,0,0,0.25);border-radius:4px;margin-bottom:8px" onerror="this.src=\'/static/Emojis/Pets/Basic.png\'">';
+    h += '<div style="display:flex;justify-content:center">';
+    h += '<button class="stn-btn stn-btn-primary stn-btn-sm" onclick="settingsSaveBadge(' + _escArg(choice.id) + ')">Save This One</button>';
+    h += '</div></div>';
+  });
+  grid.innerHTML = h;
+}
+
+function settingsBadgePromptDefault() {
+  if (_settingsBadgeDefaultPrompt) return _settingsBadgeDefaultPrompt;
+  const pet = _settingsPet || {};
+  const species = pet.species || 'Basic';
+  const type = pet.category || pet.type || 'Land';
+  const e1 = pet.element || 'Basic';
+  const e2raw = pet.element2;
+  const e2 = (e2raw && e2raw !== 'none' && e2raw !== 'basic' && String(e2raw).trim() !== '') ? ', ' + e2raw : '';
+  const identity = 'Pet: ' + species + '\nType: ' + type + '\nElement(s): ' + e1 + e2;
+  return identity + '\n\nPokemon-style creature design, Ken Sugimori inspired monster companion art, creature collector RPG mascot, cute expressive fantasy pet, bold clean shapes, vibrant cel-shaded colors, full body character sprite, centered subject, entire creature visible, clean readable silhouette, sharp focus, no text, no logo, no frame, no shadow, no floor, no scenery, solid pure white background #FFFFFF';
+}
+
+async function settingsLoadBadges() {
+  try {
+    const res = await fetch('/api/pets/badges', { credentials: 'same-origin' });
+    if (!res.ok) return;
+    const data = await res.json();
+    if (data && data.default_prompt) _settingsBadgeDefaultPrompt = data.default_prompt;
+    if (data && Array.isArray(data.badges)) _settingsBadgeChoices = data.badges;
+  } catch (err) {
+    console.warn('[settings] Failed to load badges', err);
+  }
+}
+
+function settingsUpdateBadgeGenerateLabel() {
+  const btn = document.getElementById('settings-badge-generate-btn');
+  const countEl = document.getElementById('settings-badge-generate-count');
+  if (!btn || !countEl) return;
+  const count = Math.max(1, Math.min(4, parseInt(countEl.value, 10) || 4));
+  btn.textContent = 'Generate ' + count + ' Badge' + (count === 1 ? '' : 's');
+}
+
+async function settingsGenerateBadges() {
+  const btn = document.getElementById('settings-badge-generate-btn');
+  const status = document.getElementById('settings-badge-generate-status');
+  const countEl = document.getElementById('settings-badge-generate-count');
+  const count = Math.max(1, Math.min(4, parseInt(countEl ? countEl.value : '4', 10) || 4));
+  const prompt = settingsBadgePromptDefault();
+  if (btn) btn.disabled = true;
+  if (status) status.textContent = 'Generating ' + count + ' badge idea' + (count === 1 ? '' : 's') + '...';
+  try {
+    const res = await fetch('/api/pets/badges/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      body: JSON.stringify({ count: count, prompt: prompt })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || data.error || 'Badge generation failed');
+    if (data.default_prompt) _settingsBadgeDefaultPrompt = data.default_prompt;
+    _settingsBadgeChoices = data.badges || [];
+    if (data.pet) {
+      _settingsPet = data.pet;
+      loadPetsTab();
+      return;
+    }
+    renderSettingsBadgeChoices();
+    if (status) status.textContent = 'Pick one of the generated badges below and save it.';
+  } catch (err) {
+    if (status) status.textContent = err.message || 'Badge generation failed.';
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+async function settingsUploadBadge(input) {
+  const file = input && input.files && input.files[0];
+  let status = document.getElementById('settings-badge-upload-status');
+  if (!file) return;
+  if (file.size > 5 * 1024 * 1024) {
+    if (status) status.textContent = 'File exceeds the 5 MB limit.';
+    input.value = '';
+    return;
+  }
+  if (status) status.textContent = 'Uploading badge...';
+  const fd = new FormData();
+  fd.append('file', file);
+  try {
+    const res = await fetch('/api/pets/badges/upload', { method: 'POST', credentials: 'include', body: fd });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || data.error || 'Badge upload failed');
+    if (data.pet) {
+      _settingsPet = data.pet;
+      syncBadgeDisplays(data.pet);
+    }
+    await settingsLoadBadges();
+    loadPetsTab();
+  } catch (err) {
+    status = document.getElementById('settings-badge-upload-status');
+    if (status) status.textContent = err.message || 'Badge upload failed.';
+  } finally {
+    input.value = '';
+  }
+}
+
+async function settingsDeleteBadge() {
+  const status = document.getElementById('settings-badge-upload-status');
+  const btn = document.getElementById('settings-badge-remove-btn');
+  if (btn) btn.disabled = true;
+  if (status) status.textContent = 'Removing custom badge...';
+  try {
+    const res = await fetch('/api/pets/badges', { method: 'DELETE', credentials: 'include' });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || data.error || 'Failed to remove badge');
+    _settingsBadgeChoices = data.badges || [];
+    if (data.pet) {
+      _settingsPet = data.pet;
+      syncBadgeDisplays(data.pet);
+    }
+    loadPetsTab();
+  } catch (err) {
+    if (status) status.textContent = err.message || 'Failed to remove badge.';
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+async function settingsSaveBadge(badgeId) {
+  const status = document.getElementById('settings-badge-generate-status');
+  if (status) status.textContent = 'Saving selected badge...';
+  try {
+    const res = await fetch('/api/pets/badges/save', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      body: JSON.stringify({ id: badgeId })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || data.error || 'Failed to save badge');
+    if (data.pet) {
+      _settingsPet = data.pet;
+      syncBadgeDisplays(data.pet);
+    }
+    await settingsLoadBadges();
+    loadPetsTab();
+  } catch (err) {
+    if (status) status.textContent = err.message || 'Failed to save badge.';
+  }
+}
+
+function syncBadgeDisplays(pet) {
+  if (!pet) return;
+  const badgeUrl = pet.badge_url || ('/static/Emojis/Pets/' + (pet.species || 'Basic') + '.png');
+  const navPetImg = document.getElementById('nav-pet-img');
+  if (navPetImg) navPetImg.src = badgeUrl;
+  const userCardPetImg = document.getElementById('uc-pet-img');
+  if (userCardPetImg) userCardPetImg.src = badgeUrl;
+}
+
+
+/* ── Audit Settings ───────────────────────────────────────────────────── */
+
+const AUDIT_COLORS = [
+  { value: 'aqua',    label: 'Aqua'    },
+  { value: 'black',   label: 'Black'   },
+  { value: 'blue',    label: 'Blue'    },
+  { value: 'brown',   label: 'Brown'   },
+  { value: 'green',   label: 'Green'   },
+  { value: 'lime',    label: 'Lime'    },
+  { value: 'maroon',  label: 'Maroon'  },
+  { value: 'olive',   label: 'Olive'   },
+  { value: 'orange',  label: 'Orange'  },
+  { value: 'pink',    label: 'Pink'    },
+  { value: 'purple',  label: 'Purple'  },
+  { value: 'red',     label: 'Red'     },
+  { value: 'white',   label: 'White'   },
+  { value: 'yellow',  label: 'Yellow'  },
+];
+
+let _auditSelectedColor = 'lime';
+let _auditSelectedMMR   = 'basic';  // 'basic' | 'max' | 'B/F/H/D'
+
+function renderAuditUI(settings) {
+  _auditSelectedColor = settings.audit_default_color || 'lime';
+  _auditSelectedMMR   = settings.audit_default_mmr   || 'basic';
+
+  // Build color grid
+  const grid = document.getElementById('audit-color-grid');
+  if (grid) {
+    grid.innerHTML = AUDIT_COLORS.map(c => `
+      <button class="audit-color-chip${_auditSelectedColor === c.value ? ' active' : ''}"
+              data-color="${c.value}"
+              onclick="selectAuditColor('${c.value}')"
+              title="${c.label}">
+        <img src="/static/Emojis/Colors/${c.value}.png" alt="${c.label}">
+        <span>${c.label}</span>
+      </button>
+    `).join('');
+  }
+  _updateColorPreviewIcon(_auditSelectedColor);
+
+  // Set MMR preset buttons
+  _applyMMRToUI(_auditSelectedMMR);
+}
+
+function selectAuditColor(color) {
+  _auditSelectedColor = color;
+  document.querySelectorAll('.audit-color-chip').forEach(b =>
+    b.classList.toggle('active', b.dataset.color === color)
+  );
+  _updateColorPreviewIcon(color);
+}
+
+function _updateColorPreviewIcon(color) {
+  const icon = document.getElementById('audit-color-preview-icon');
+  if (icon) icon.src = `/static/Emojis/Colors/${color}.png`;
+}
+
+function selectMMRPreset(preset) {
+  document.querySelectorAll('.audit-mmr-preset-btn').forEach(b =>
+    b.classList.toggle('active', b.id === 'mmr-preset-' + preset)
+  );
+  const customWrap = document.getElementById('audit-mmr-custom-wrap');
+  if (customWrap) customWrap.style.display = preset === 'custom' ? '' : 'none';
+  if (preset === 'custom') {
+    updateMMRDisplay(); // sets _auditSelectedMMR to the slider string
+  } else {
+    _auditSelectedMMR = preset;
+  }
+}
+
+function updateMMRDisplay() {
+  const b = document.getElementById('mmr-b')?.value ?? 0;
+  const f = document.getElementById('mmr-f')?.value ?? 3;
+  const h = document.getElementById('mmr-h')?.value ?? 5;
+  const d = document.getElementById('mmr-d')?.value ?? 0;
+  _setText('mmr-b-val', b);
+  _setText('mmr-f-val', f);
+  _setText('mmr-h-val', h);
+  _setText('mmr-d-val', d);
+  const str = `${b}/${f}/${h}/${d}`;
+  _setText('audit-mmr-custom-str', str);
+  _auditSelectedMMR = str;
+}
+
+function _applyMMRToUI(mmr) {
+  const isBasic  = mmr === 'basic';
+  const isMax    = mmr === 'max';
+  const isCustom = !isBasic && !isMax;
+
+  document.getElementById('mmr-preset-basic')?.classList.toggle('active', isBasic);
+  document.getElementById('mmr-preset-max')?.classList.toggle('active', isMax);
+  document.getElementById('mmr-preset-custom')?.classList.toggle('active', isCustom);
+
+  const customWrap = document.getElementById('audit-mmr-custom-wrap');
+  if (customWrap) customWrap.style.display = isCustom ? '' : 'none';
+
+  if (isCustom) {
+    const parts = mmr.split('/');
+    if (parts.length === 4) {
+      const setSlider = (id, val) => {
+        const el = document.getElementById(id);
+        if (el) el.value = val;
+      };
+      setSlider('mmr-b', parts[0]);
+      setSlider('mmr-f', parts[1]);
+      setSlider('mmr-h', parts[2]);
+      setSlider('mmr-d', parts[3]);
+      updateMMRDisplay();
+    }
+  }
+}
+
+async function saveAuditSettings() {
+  // If custom mode is active, sync slider values into _auditSelectedMMR first
+  if (document.getElementById('mmr-preset-custom')?.classList.contains('active')) {
+    updateMMRDisplay();
+  }
+
+  const btn = document.getElementById('save-audit-btn');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving…'; }
+
+  try {
+    const r = await fetch('/api/settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      body: JSON.stringify({
+        audit_default_color: _auditSelectedColor,
+        audit_default_mmr:   _auditSelectedMMR,
+      }),
+    });
+    const data = await r.json();
+    if (r.ok && data.success) {
+      currentSettings.audit_default_color = _auditSelectedColor;
+      currentSettings.audit_default_mmr   = _auditSelectedMMR;
+      showStatus('audit-settings-status', 'success', `Saved — Color: ${_auditSelectedColor}, MMR: ${_auditSelectedMMR}`);
+    } else {
+      showStatus('audit-settings-status', 'error', 'Failed to save: ' + (data.detail || 'Unknown error'));
+    }
+  } catch {
+    showStatus('audit-settings-status', 'error', 'Network error saving audit settings.');
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-save"></i> Save Audit Settings'; }
+  }
+}
+
 /* ── Layout Tab ───────────────────────────────────────────────────────── */
-
-// Default page order for each group
-const DEFAULT_LAYOUT = {
-  pnw: ['game_info', 'news', 'nations', 'watch', 'leaderboard', 'raids', 'cost_calc', 'comparison', 'treaty_universe', 'weapons', 'rev_optimizer', 'my_nation', 'fullmill', 'library'],
-  pets: ['mypet', 'tasks', 'petconnector', 'bazaar', 'arena', 'survive', 'dungeon', 'pet_stock', 'casino', 'what_are_pets', 'pets'],
-  fun: ['astrology'],
-  site: ['contact', 'privacy', 'terms', 'commands', 'settings']
-};
-
-// Page metadata (icon paths and labels)
-const PAGE_META = {
-  // PnW pages
-  game_info: { icon: '/static/Emojis/Menu/game_info.png', label: 'Game Info' },
-  news: { icon: '/static/Emojis/Menu/news.png', label: 'Scythe News' },
-  nations: { icon: '/static/Emojis/Menu/darkstar.png', label: 'The Void' },
-  watch: { icon: '/static/Emojis/Menu/wars.png', label: 'War Stats' },
-  leaderboard: { icon: '/static/Emojis/Menu/leaderboard.png', label: 'Leaderboards' },
-  raids: { icon: '/static/Emojis/Menu/pirate.png', label: 'Raid Finder' },
-  cost_calc: { icon: '/static/Emojis/Menu/calculator.png', label: 'Calculators' },
-  comparison: { icon: '/static/Emojis/Menu/comparison.png', label: 'Comparison' },
-  treaty_universe: { icon: '/static/Emojis/Menu/universe.png', label: 'Treaty Universe' },
-  weapons: { icon: '/static/Emojis/Menu/snipe.png', label: 'Weapon Eff' },
-  rev_optimizer: { icon: '/static/Emojis/Menu/revenue.png', label: 'Rev Optimizer' },
-  my_nation: { icon: '/static/Emojis/Menu/mynation.png', label: 'My Nation' },
-  fullmill: { icon: '/static/Emojis/Menu/fullmill.png', label: 'Full Mill Rankings' },
-  library: { icon: '/static/Emojis/Menu/script.png', label: 'Scriptorium' },
-  // Pets pages
-  mypet: { icon: '/static/Emojis/Menu/pets.png', label: 'My Pet' },
-  tasks: { icon: '/static/Emojis/Menu/tasks.png', label: 'Tasks' },
-  petconnector: { icon: '/static/Emojis/Menu/world.png', label: 'Pet Connector' },
-  bazaar: { icon: '/static/Emojis/Menu/bazaar.png', label: 'Item Board' },
-  arena: { icon: '/static/Emojis/Menu/arena.png', label: 'Arena' },
-  survive: { icon: '/static/Emojis/Menu/survive.png', label: 'Survive' },
-  dungeon: { icon: '/static/Emojis/Menu/crawl.png', label: 'Dungeon Crawler' },
-  pet_stock: { icon: '/static/Emojis/Menu/pet_stock.png', label: 'Pet Stocks' },
-  casino: { icon: '/static/Emojis/Menu/casino.png', label: 'Casino' },
-  what_are_pets: { icon: '/static/Emojis/Menu/what_pets.png', label: 'Breakdown' },
-  pets: { icon: '/static/Emojis/Menu/pets.png', label: 'Types & Items' },
-  // Fun pages
-  astrology: { icon: '/static/Emojis/Menu/astrology.png', label: 'Astrology' },
-  // Site pages
-  contact: { icon: '/static/Emojis/Menu/contact.png', label: 'Contact' },
-  privacy: { icon: '/static/Emojis/Menu/privacy.png', label: 'Privacy' },
-  terms: { icon: '/static/Emojis/Menu/terms.png', label: 'Terms' },
-  commands: { icon: '/static/Emojis/Menu/discord.png', label: 'Commands' },
-  settings: { icon: '/static/Emojis/Menu/settings.png', label: 'Settings' }
-};
 
 let currentLayout = null;
 let draggedItem = null;
+let DEFAULT_LAYOUT = null;
+let PAGE_META = null;
+
+/**
+ * Auto-discover pages from the actual DOM structure.
+ * This eliminates the need to manually update JavaScript when adding new pages.
+ * Just add the page to the HTML mega menu and it will be automatically discovered.
+ */
+function discoverPagesFromDOM() {
+  const groups = {
+    pnw: { selector: '#pnw-dropdown .mega-menu-item', pages: [], meta: {} },
+    tools: { selector: '#tools-dropdown .mega-menu-item', pages: [], meta: {} },
+    pets: { selector: '#pets-dropdown .mega-menu-item', pages: [], meta: {} },
+    fun: { selector: '#fun-dropdown .mega-menu-item', pages: [], meta: {} },
+    site: { selector: '#site-dropdown .mega-menu-item', pages: [], meta: {} }
+  };
+
+  Object.entries(groups).forEach(([groupName, config]) => {
+    const items = document.querySelectorAll(config.selector);
+    items.forEach(item => {
+      const pageId = item.dataset.page;
+      if (!pageId) return;
+
+      // Skip hidden pages (like casino sub-games)
+      const listItem = item.closest('li');
+      if (listItem && listItem.style.display === 'none') return;
+
+      // Extract icon and label
+      const imgEl = item.querySelector('img');
+      const spanEl = item.querySelector('span');
+      
+      const icon = item.dataset.icon || (imgEl ? imgEl.src.replace(window.location.origin, '') : '/static/Emojis/Menu/default.png');
+      const label = spanEl ? spanEl.textContent.trim() : pageId;
+
+      config.pages.push(pageId);
+      config.meta[pageId] = { icon, label };
+    });
+  });
+
+  // Build DEFAULT_LAYOUT and PAGE_META from discovered pages
+  DEFAULT_LAYOUT = {
+    pnw: groups.pnw.pages,
+    tools: groups.tools.pages,
+    pets: groups.pets.pages,
+    fun: groups.fun.pages,
+    site: groups.site.pages
+  };
+
+  PAGE_META = {
+    ...groups.pnw.meta,
+    ...groups.tools.meta,
+    ...groups.pets.meta,
+    ...groups.fun.meta,
+    ...groups.site.meta
+  };
+
+  console.log('[LayoutSettings] Auto-discovered pages:', DEFAULT_LAYOUT);
+  console.log('[LayoutSettings] Auto-discovered metadata:', PAGE_META);
+}
 
 function initLayoutTab() {
+  // Auto-discover pages from DOM if not already done
+  if (!DEFAULT_LAYOUT || !PAGE_META) {
+    discoverPagesFromDOM();
+  }
+
   // Load saved layout or use defaults
   const saved = currentSettings.menu_layout;
   if (saved) {
     try {
-      currentLayout = JSON.parse(saved);
+      const savedLayout = JSON.parse(saved);
+      // Merge saved layout with discovered pages (in case new pages were added)
+      currentLayout = mergeLayouts(savedLayout, DEFAULT_LAYOUT);
     } catch {
       currentLayout = JSON.parse(JSON.stringify(DEFAULT_LAYOUT));
     }
@@ -813,9 +1561,38 @@ function initLayoutTab() {
 
   // Render all groups
   renderLayoutGroup('pnw');
+  renderLayoutGroup('tools');
   renderLayoutGroup('pets');
   renderLayoutGroup('fun');
   renderLayoutGroup('site');
+}
+
+/**
+ * Merge saved layout with newly discovered pages.
+ * This ensures new pages appear in the layout settings even if they weren't in the saved config.
+ */
+function mergeLayouts(savedLayout, defaultLayout) {
+  const merged = {};
+  
+  Object.keys(defaultLayout).forEach(groupName => {
+    const savedPages = savedLayout[groupName] || [];
+    const defaultPages = defaultLayout[groupName] || [];
+    
+    // Start with saved order
+    merged[groupName] = [...savedPages];
+    
+    // Add any new pages that weren't in the saved layout
+    defaultPages.forEach(pageId => {
+      if (!merged[groupName].includes(pageId)) {
+        merged[groupName].push(pageId);
+      }
+    });
+    
+    // Remove any pages that no longer exist in default
+    merged[groupName] = merged[groupName].filter(pageId => defaultPages.includes(pageId));
+  });
+  
+  return merged;
 }
 
 function renderLayoutGroup(groupName) {
@@ -915,7 +1692,7 @@ function handleContainerDrop(e) {
 
 async function saveLayoutSettings() {
   // Collect current order from DOM
-  ['pnw', 'pets', 'fun', 'site'].forEach(group => {
+  ['pnw', 'tools', 'pets', 'fun', 'site'].forEach(group => {
     const container = document.getElementById(`layout-${group}`);
     if (!container) return;
 
@@ -969,6 +1746,7 @@ function resetLayoutSettings() {
   currentLayout = JSON.parse(JSON.stringify(DEFAULT_LAYOUT));
   
   renderLayoutGroup('pnw');
+  renderLayoutGroup('tools');
   renderLayoutGroup('pets');
   renderLayoutGroup('fun');
   renderLayoutGroup('site');
@@ -978,6 +1756,13 @@ function resetLayoutSettings() {
 
 window.saveLayoutSettings = saveLayoutSettings;
 window.resetLayoutSettings = resetLayoutSettings;
+window.killPet             = killPet;
+window.settingsRenamePet   = settingsRenamePet;
+window.settingsUploadBadge  = settingsUploadBadge;
+window.settingsDeleteBadge  = settingsDeleteBadge;
+window.settingsGenerateBadges = settingsGenerateBadges;
+window.settingsUpdateBadgeGenerateLabel = settingsUpdateBadgeGenerateLabel;
+window.settingsSaveBadge    = settingsSaveBadge;
 
 /* ── Boot ─────────────────────────────────────────────────────────────── */
 window.switchTab          = switchTab;

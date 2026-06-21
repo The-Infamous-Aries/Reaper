@@ -126,7 +126,16 @@ const PROJECTS = {
 // ═══════════════════════════════════════════════════════════════
 
 async function renderPlanEditor(nationId, containerEl) {
-  editorState.nationId = nationId;
+  editorState = {
+    nationId,
+    nation: null,
+    cities: [],
+    planName: '',
+    newCities: [],
+    existingCities: [],
+    projects: [],
+    isDirty: false
+  };
   
   containerEl.innerHTML = '<div class="plan-loading">Loading editor...</div>';
   
@@ -135,7 +144,7 @@ async function renderPlanEditor(nationId, containerEl) {
     if (window.currentPlanNation && window.currentPlanCities) {
       console.log('Using cached nation data');
       editorState.nation = window.currentPlanNation;
-      editorState.cities = window.currentPlanCities;
+      editorState.cities = normalizeEditorCities(window.currentPlanCities || []);
     } else {
       // Load nation and city data from the API
       console.log('Fetching nation data from API');
@@ -147,7 +156,7 @@ async function renderPlanEditor(nationId, containerEl) {
       
       const bundleData = await nationResponse.json();
       editorState.nation = bundleData.nation;
-      editorState.cities = bundleData.cities || [];
+      editorState.cities = normalizeEditorCities(bundleData.cities || []);
     }
     
     // Validate we have required data
@@ -189,6 +198,17 @@ async function renderPlanEditor(nationId, containerEl) {
   }
 }
 
+function normalizeEditorCities(cities) {
+  return (cities || []).map(city => {
+    const cityId = city.city_id ?? city.id;
+    return {
+      ...city,
+      city_id: Number(cityId),
+      id: Number(city.id ?? cityId),
+    };
+  }).filter(city => Number.isFinite(city.city_id));
+}
+
 // ═══════════════════════════════════════════════════════════════
 // Editor Content Renderer
 // ═══════════════════════════════════════════════════════════════
@@ -218,6 +238,11 @@ function renderEditorContent(containerEl) {
   const html = `
     <div class="plan-editor">
       ${welcomeHeader}
+
+      <!-- Live cost preview bar — updated on every edit -->
+      <div id="live-cost-preview" class="plan-live-cost-bar">
+        <span style="color:var(--text-secondary)">💰 Est. Total: calculating…</span>
+      </div>
       
       <!-- Plan Name -->
       <div class="plan-form-group">
@@ -226,7 +251,7 @@ function renderEditorContent(containerEl) {
                placeholder="e.g., Road to c30 — full mil build" 
                value="${escapeHtml(editorState.planName)}"
                maxlength="100"
-               onchange="editorState.planName = this.value; editorState.isDirty = true;"
+               onchange="editorState.planName = this.value; editorState.isDirty = true; scheduleLiveCostUpdate();"
                ${isNewPlan ? 'autofocus' : ''}>
         <small style="color: var(--text-secondary); font-size: 0.85rem; display: block; margin-top: 0.25rem;">
           Required — Give your plan a memorable name
@@ -266,6 +291,9 @@ function renderEditorContent(containerEl) {
   `;
   
   containerEl.innerHTML = html;
+
+  // Trigger an immediate cost estimate now that the DOM is ready
+  scheduleLiveCostUpdate();
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -372,7 +400,7 @@ function renderNewCityCard(cityPlan, idx, currentCityCount) {
       <div class="plan-new-city-header">
         <span class="plan-new-city-title">🏙️ <input type="text" class="plan-city-label-input"
           value="${escapeHtml(label)}" placeholder="City name…" maxlength="50"
-          onchange="updateNewCityLabel(${idx}, this.value)"> <span style="color:var(--text-secondary);font-size:0.8rem;">(your ${cityNumber}${nth(cityNumber)} city)</span></span>
+          onchange="updateNewCityLabel(${idx}, this.value)"></span>
         <button class="plan-remove-city-btn" onclick="removeNewCity(${idx})">✕</button>
       </div>
       ${renderCityTileGrid(null, cityPlan, 'new', idx, infra, land)}
@@ -629,6 +657,7 @@ function updateExistingCityInfra(cityId, value) {
   
   // Update slot counter
   updateSlotCounter('existing', editorState.cities.findIndex(c => c.city_id === cityId));
+  scheduleLiveCostUpdate();
 }
 
 function updateExistingCityLand(cityId, value) {
@@ -655,6 +684,7 @@ function updateExistingCityLand(cityId, value) {
   
   cityPlan.target_land = land;
   editorState.isDirty = true;
+  scheduleLiveCostUpdate();
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -677,7 +707,7 @@ function addNewCity() {
   editorState.isDirty = true;
   
   // Re-render new cities section
-  const container = document.querySelector('#plan-tab-content');
+  const container = document.getElementById('plan-editor-area') || document.querySelector('#plan-tab-content');
   renderEditorContent(container);
 }
 
@@ -693,7 +723,7 @@ function removeNewCity(idx) {
     editorState.isDirty = true;
     
     // Re-render
-    const container = document.querySelector('#plan-tab-content');
+    const container = document.getElementById('plan-editor-area') || document.querySelector('#plan-tab-content');
     renderEditorContent(container);
   }
 }
@@ -718,6 +748,7 @@ function updateNewCityInfra(idx, value) {
     
     // Update slot counter
     updateSlotCounter('new', idx);
+    scheduleLiveCostUpdate();
   }
 }
 
@@ -731,6 +762,7 @@ function updateNewCityLand(idx, value) {
   if (editorState.newCities[idx]) {
     editorState.newCities[idx].land = land;
     editorState.isDirty = true;
+    scheduleLiveCostUpdate();
   }
 }
 
@@ -798,6 +830,7 @@ function setImprovement(type, idx, impCol, value) {
   // Update UI
   updateSlotCounter(type, idx);
   updateImprovementToggle(type, idx, impCol, count);
+  scheduleLiveCostUpdate();
 }
 
 function getImprovementCount(type, idx, impCol) {
@@ -910,7 +943,7 @@ function addProject(projCol) {
   editorState.isDirty = true;
   
   // Re-render projects section
-  const container = document.querySelector('#plan-tab-content');
+  const container = document.getElementById('plan-editor-area') || document.querySelector('#plan-tab-content');
   renderEditorContent(container);
 }
 
@@ -919,7 +952,7 @@ function removeProject(idx) {
   editorState.isDirty = true;
   
   // Re-render projects section
-  const container = document.querySelector('#plan-tab-content');
+  const container = document.getElementById('plan-editor-area') || document.querySelector('#plan-tab-content');
   renderEditorContent(container);
 }
 
@@ -950,7 +983,7 @@ function dragProjectDrop(event, targetIdx) {
   draggedProjectIdx = null;
   
   // Re-render
-  const container = document.querySelector('#plan-tab-content');
+  const container = document.getElementById('plan-editor-area') || document.querySelector('#plan-tab-content');
   renderEditorContent(container);
 }
 
@@ -1102,15 +1135,15 @@ async function savePlan() {
         font-weight: 600;
         text-align: center;
       ">
-        ✅ Plan saved successfully! Switching to viewer...
+        ✅ Plan saved successfully!
       </div>
     `;
     editorState.isDirty = false;
-    
-    // Switch to viewer tab after 1 second
-    setTimeout(() => {
-      switchPlanTab({ target: document.querySelector('.plan-tab[data-tab="viewer"]') }, 'viewer');
-    }, 1000);
+
+    // Refresh the viewer section (above the editor) to show updated costs/progress
+    if (typeof refreshPlanViewer === 'function') {
+      await refreshPlanViewer();
+    }
     
   } catch (error) {
     console.error('Error saving plan:', error);
@@ -1133,8 +1166,192 @@ async function savePlan() {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// UI Helpers
+// Live Cost Preview
 // ═══════════════════════════════════════════════════════════════
+
+// Debounce handle
+let _liveCostTimer = null;
+
+/**
+ * Schedule a live cost update 300ms after the last edit.
+ * Called from every state-mutation handler.
+ */
+function scheduleLiveCostUpdate() {
+  clearTimeout(_liveCostTimer);
+  _liveCostTimer = setTimeout(renderLiveCostPreview, 300);
+}
+
+/**
+ * Client-side cost estimate that mirrors the backend logic closely enough
+ * to give instant feedback without a round-trip.
+ *
+ * Uses:
+ *  - window._planViewerData.sell_prices   for resource → $ conversion
+ *  - IMPROVEMENT_CASH_COSTS / IMPROVEMENT_RESOURCE_COSTS from pnw_costs (exposed below)
+ *  - Infra/land/city purchase formulae approximated client-side
+ */
+function renderLiveCostPreview() {
+  const el = document.getElementById('live-cost-preview');
+  if (!el) return;
+
+  const sellPrices = (window._planViewerData && window._planViewerData.sell_prices) || {};
+  const nation     = editorState.nation || {};
+  const startCities = editorState.cities ? editorState.cities.length : (nation.num_cities || 0);
+
+  // ── Client-side cost approximations ──────────────────────────────────────
+  // These mirror the backend formulas in costs.py as closely as possible.
+
+  // ── Discount helpers ──────────────────────────────────────────────────────
+  // Mirrors calculate_project_discounts() in costs.py
+  function getDiscounts(nation) {
+    let infraRed = 0.0;
+    let landRed  = 0.0;
+    let polyMult = 1.0;  // BDA / GSA amplifier
+    if (nation.center_for_civil_engineering) infraRed += 0.05;
+    if (nation.advanced_engineering_corps)   { infraRed += 0.05; landRed += 0.05; }
+    if (nation.arable_land_agency)           landRed  += 0.05;
+    if (nation.bureau_of_domestic_affairs)   polyMult += 0.25;
+    if (nation.government_support_agency)    polyMult += 0.50;
+    return { infraRed, landRed, polyMult };
+  }
+
+  function infraCost(fromInfra, toInfra, nation) {
+    if (toInfra <= fromInfra) return 0;
+    // Midpoint approximation — accurate within ~2-3% vs. recursive formula
+    const mid     = (fromInfra + toInfra) / 2;
+    const perUnit = (Math.pow(Math.abs(mid - 10), 2.2) / 710) + 300;
+    const raw     = perUnit * (toInfra - fromInfra);
+    const { infraRed, polyMult } = getDiscounts(nation);
+    // Always apply full policy discount (Urbanization baseline 5% × BDA/GSA multiplier)
+    const baseAfterProjects = raw * (1 - infraRed);
+    return baseAfterProjects * (1 - 0.05 * polyMult);
+  }
+
+  function landCost(fromLand, toLand, nation) {
+    if (toLand <= fromLand) return 0;
+    const mid     = (fromLand + toLand) / 2;
+    const perUnit = 0.002 * (mid - 20) * (mid - 20) + 50;
+    const raw     = perUnit * (toLand - fromLand);
+    const { landRed, polyMult } = getDiscounts(nation);
+    // Always apply full policy discount (Rapid Expansion baseline 5% × BDA/GSA multiplier)
+    const baseAfterProjects = raw * (1 - landRed);
+    return baseAfterProjects * (1 - 0.05 * polyMult);
+  }
+
+  function cityCost(cityNumber, nation) {
+    // Exact formula from costs.py city_purchase_cost()
+    const top20 = (window._planViewerData && window._planViewerData._top20) || 0;
+    const adj   = cityNumber - (top20 / 4);
+    const cost1 = 100000 * Math.pow(adj, 3) + 150000 * adj + 75000;
+    const cost2 = cityNumber * cityNumber * 100000;
+    const base  = Math.max(cost1, cost2);
+    const { polyMult } = getDiscounts(nation);
+    // Always apply full policy discount (Manifest Destiny baseline 5% × BDA/GSA multiplier)
+    return base * (1 - 0.05 * polyMult);
+  }
+
+  // ── Improvement cost tables (exact values from war_calc.py) ───────────────
+  const IMP_RES = {
+    nuclear_power:     { steel: 100, aluminum: 50 },
+    wind_power:        { aluminum: 30 },
+    police_station:    { steel: 20 },
+    hospital:          { aluminum: 25 },
+    subway:            { steel: 50, aluminum: 25 },
+    bank:              { steel: 5,  aluminum: 10 },
+    shopping_mall:     { steel: 20, aluminum: 25 },
+    stadium:           { steel: 40, aluminum: 50 },
+    factory:           { aluminum: 5 },
+    hangar:            { steel: 10 },
+    drydock:           { aluminum: 20 },
+  };
+  // Exact cash costs from war_calc.py IMPROVEMENT_COSTS
+  const IMP_CASH = {
+    coal_power:           5000,
+    oil_power:            7000,
+    nuclear_power:      500000,
+    wind_power:          30000,
+    coal_mine:            1000,
+    oil_well:             1500,
+    uranium_mine:        25000,
+    iron_mine:            9500,
+    bauxite_mine:         9500,
+    lead_mine:            7500,
+    farm:                 1000,
+    oil_refinery:        45000,
+    steel_mill:          45000,
+    aluminum_refinery:   30000,
+    munitions_factory:   35000,
+    police_station:      75000,
+    hospital:           100000,
+    recycling_center:   125000,
+    subway:             250000,
+    supermarket:          5000,
+    bank:                15000,
+    shopping_mall:       45000,
+    stadium:            100000,
+    barracks:             3000,
+    factory:             15000,
+    hangar:             100000,
+    drydock:            250000,
+  };
+
+  // ── Accumulate costs ──────────────────────────────────────────────────────
+  const totals = {}; // { cash, steel, aluminum, ... }
+  function add(key, amt) { totals[key] = (totals[key] || 0) + amt; }
+
+  // New cities
+  for (const cp of editorState.newCities) {
+    const slot    = cp.slot || 1;
+    const cityNum = startCities + slot;
+    add('cash', cityCost(cityNum, nation));
+    add('cash', infraCost(10, cp.infra || 10, nation));
+    add('cash', landCost(250, cp.land || 250, nation));
+    for (const [impCol, cnt] of Object.entries(cp.improvements || {})) {
+      if (!cnt) continue;
+      add('cash', (IMP_CASH[impCol] || 0) * cnt);
+      for (const [res, perUnit] of Object.entries(IMP_RES[impCol] || {})) {
+        add(res, perUnit * cnt);
+      }
+    }
+  }
+
+  // Existing cities
+  for (const cp of editorState.existingCities) {
+    const city = editorState.cities.find(c => c.city_id === cp.city_id);
+    if (!city) continue;
+    if (cp.target_infra  != null) add('cash', infraCost(city.infrastructure || 0, cp.target_infra, nation));
+    if (cp.target_land   != null) add('cash', landCost(city.land || 0, cp.target_land, nation));
+    for (const [impCol, tgt] of Object.entries(cp.target_improvements || {})) {
+      const cur   = city[impCol] || 0;
+      const delta = tgt - cur;
+      if (delta <= 0) continue;
+      add('cash', (IMP_CASH[impCol] || 0) * delta);
+      for (const [res, perUnit] of Object.entries(IMP_RES[impCol] || {})) {
+        add(res, perUnit * delta);
+      }
+    }
+  }
+
+  // Projects — use data from viewer if available, else skip
+  if (window._planViewerData && window._planViewerData.project_costs) {
+    for (const pc of window._planViewerData.project_costs) {
+      if (!editorState.projects.includes(pc.db_col)) continue;
+      if (pc.is_owned) continue;
+      for (const [k, v] of Object.entries(pc.costs || {})) {
+        add(k, v);
+      }
+    }
+  }
+
+  // ── Render ────────────────────────────────────────────────────────────────
+  const html = renderInlineCost(totals, sellPrices);
+  el.innerHTML = html
+    ? `<span style="color:var(--text-secondary);margin-right:0.5rem;">💰 Est. Total:</span>${html}`
+    : '<span style="color:var(--text-secondary);">No costs yet</span>';
+}
+
+// Hook all state mutations to trigger live preview.
+// scheduleLiveCostUpdate() is called directly in each mutating handler.
 
 function toggleEditorSection(headerEl) {
   const section = headerEl.parentElement;

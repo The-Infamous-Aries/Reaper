@@ -1,0 +1,186 @@
+{
+  "id": "hero-or-villain",
+  "title": "Hero or Villain",
+  "description": "Make moral choices under pressure and find out whether your instincts point toward Hero or Villain.",
+  "resultLabel": "Moral Alignment Result",
+  "roles": {
+    "hero": {
+      "label": "Hero",
+      "priority": 1,
+      "summary": "Your choices lean toward protection, honesty, restraint, accountability, and helping people even when it costs you."
+    },
+    "villain": {
+      "label": "Villain",
+      "priority": 2,
+      "summary": "Your choices lean toward control, ambition, leverage, punishment, and winning even when other people pay the price."
+    }
+  },
+  "questions": [
+    {
+      "id": "q01",
+      "type": "multiple_choice",
+      "prompt": "You find a wallet full of cash and an ID. Nobody saw you pick it up. What do you do?",
+      "answers": [
+        { "id": "a", "text": "Return it intact, even if nobody would know otherwise.", "scores": { "hero": 4 } },
+        { "id": "b", "text": "Return the ID but keep some cash as a finder fee.", "scores": { "villain": 3, "hero": 1 } },
+        { "id": "c", "text": "Keep it all. Their bad luck is your opportunity.", "scores": { "villain": 4 } },
+        { "id": "d", "text": "Try to return it, but only after checking whether there is a reward.", "scores": { "hero": 2, "villain": 2 } }
+      ]
+    },
+    {
+      "id": "q02",
+      "type": "true_false",
+      "prompt": "True or false: Power is only worth having if it helps protect people who have less of it.",
+      "answers": [
+        { "id": "true", "text": "True", "scores": { "hero": 4 } },
+        { "id": "false", "text": "False", "scores": { "villain": 4 } }
+      ]
+    },
+    {
+      "id": "q03",
+      "type": "multiple_choice",
+      "prompt": "A rival who humiliated you now needs your help. What is your first instinct?",
+      "answers": [
+        { "id": "a", "text": "Help them because the emergency matters more than your pride.", "scores": { "hero": 4 } },
+        { "id": "b", "text": "Help them, but make it clear they owe you.", "scores": { "hero": 1, "villain": 3 } },
+        { "id": "c", "text": "Refuse and let them learn what humiliation feels like.", "scores": { "villain": 4 } },
+        { "id": "d", "text": "Help only if it benefits people beyond the rival.", "scores": { "hero": 3, "villain": 1 } }
+      ]
+    },
+    {
+      "id": "q04",
+      "type": "multiple_choice",
+      "prompt": "You catch a friend cheating in a competition with real prizes. What do you do?",
+      "answers": [
+        { "id": "a", "text": "Tell them to confess, and report it if they refuse.", "scores": { "hero": 4 } },
+        { "id": "b", "text": "Warn them privately and give them one chance to fix it.", "scores": { "hero": 3, "villain": 1 } },
+        { "id": "c", "text": "Stay quiet because loyalty matters more than rules.", "scores": { "villain": 3, "hero": 1 } },
+        { "id": "d", "text": "Use the secret later if you need leverage.", "scores": { "villain": 4 } }
+      ]
+    },
+    {
+      "id": "q05",
+      "type": "true_false",
+      "prompt": "True or false: Fear is an acceptable tool if it keeps people obedient.",
+      "answers": [
+        { "id": "true", "text": "True", "scores": { "villain": 4 } },
+        { "id": "false", "text": "False", "scores": { "hero": 4 } }
+      ]
+    },
+    {
+      "id": "q06",
+      "type": "multiple_choice",
+      "prompt": "A group is blaming one innocent person to calm a crowd. You know the truth. What do you do?",
+      "answers": [
+        { "id": "a", "text": "Speak up immediately, even if the crowd turns on you.", "scores": { "hero": 4 } },
+        { "id": "b", "text": "Gather proof first so the truth cannot be dismissed.", "scores": { "hero": 3, "villain": 1 } },
+        { "id": "c", "text": "Stay silent if exposing the truth makes life harder for you.", "scores": { "villain": 4 } },
+        { "id": "d", "text": "Trade the truth for a favor from whoever benefits most.", "scores": { "villain": 4 } }
+      ]
+    },
+    {
+      "id": "q07",
+      "type": "multiple_choice",
+      "prompt": "You have a chance to take credit for someone else's work. Nobody can prove it was theirs. What happens?",
+      "answers": [
+        { "id": "a", "text": "You credit them openly.", "scores": { "hero": 4 } },
+        { "id": "b", "text": "You share credit, even if you did less.", "scores": { "hero": 2, "villain": 2 } },
+        { "id": "c", "text": "You take credit because recognition goes to whoever claims it.", "scores": { "villain": 4 } },
+        { "id": "d", "text": "You take credit now and privately reward them later.", "scores": { "villain": 3, "hero": 1 } }
+      ]
+    },
+    {
+      "id": "q08",
+      "type": "true_false",
+      "prompt": "True or false: Mercy is weakness when someone has already lost.",
+      "answers": [
+        { "id": "true", "text": "True", "scores": { "villain": 4 } },
+        { "id": "false", "text": "False", "scores": { "hero": 4 } }
+      ]
+    },
+    {
+      "id": "q09",
+      "type": "multiple_choice",
+      "prompt": "A law is unfair but breaking it could get you punished. What guides you?",
+      "answers": [
+        { "id": "a", "text": "Protecting people harmed by the law, even at personal risk.", "scores": { "hero": 4 } },
+        { "id": "b", "text": "Changing it carefully so fewer people get hurt.", "scores": { "hero": 3, "villain": 1 } },
+        { "id": "c", "text": "Using the unfair law against enemies while you can.", "scores": { "villain": 4 } },
+        { "id": "d", "text": "Ignoring it only when it benefits you directly.", "scores": { "villain": 3, "hero": 1 } }
+      ]
+    },
+    {
+      "id": "q10",
+      "type": "multiple_choice",
+      "prompt": "You discover a secret that could ruin a powerful person who has hurt others. What do you do?",
+      "answers": [
+        { "id": "a", "text": "Expose it responsibly with evidence and protect victims.", "scores": { "hero": 4 } },
+        { "id": "b", "text": "Use it to force them to stop harming people.", "scores": { "hero": 3, "villain": 1 } },
+        { "id": "c", "text": "Blackmail them for personal gain.", "scores": { "villain": 4 } },
+        { "id": "d", "text": "Sell the secret to the highest bidder.", "scores": { "villain": 4 } }
+      ]
+    },
+    {
+      "id": "q11",
+      "type": "true_false",
+      "prompt": "True or false: If you caused harm, admitting it matters even when you could escape consequences.",
+      "answers": [
+        { "id": "true", "text": "True", "scores": { "hero": 4 } },
+        { "id": "false", "text": "False", "scores": { "villain": 4 } }
+      ]
+    },
+    {
+      "id": "q12",
+      "type": "multiple_choice",
+      "prompt": "A teammate makes a mistake that could cost the whole group. What do you do?",
+      "answers": [
+        { "id": "a", "text": "Help fix it and take responsibility for improving the system.", "scores": { "hero": 4 } },
+        { "id": "b", "text": "Correct them firmly but without humiliating them.", "scores": { "hero": 3, "villain": 1 } },
+        { "id": "c", "text": "Publicly shame them so nobody repeats it.", "scores": { "villain": 3, "hero": 1 } },
+        { "id": "d", "text": "Let them fail so you look better by comparison.", "scores": { "villain": 4 } }
+      ]
+    },
+    {
+      "id": "q13",
+      "type": "multiple_choice",
+      "prompt": "You can save one stranger or secure a major advantage for yourself. Which do you choose?",
+      "answers": [
+        { "id": "a", "text": "Save the stranger without bargaining.", "scores": { "hero": 4 } },
+        { "id": "b", "text": "Save them, but only if it does not destroy your future.", "scores": { "hero": 3, "villain": 1 } },
+        { "id": "c", "text": "Take the advantage. You did not create their danger.", "scores": { "villain": 4 } },
+        { "id": "d", "text": "Use their danger to negotiate an even better advantage.", "scores": { "villain": 4 } }
+      ]
+    },
+    {
+      "id": "q14",
+      "type": "true_false",
+      "prompt": "True or false: People deserve dignity even when they are weak, defeated, or unpopular.",
+      "answers": [
+        { "id": "true", "text": "True", "scores": { "hero": 4 } },
+        { "id": "false", "text": "False", "scores": { "villain": 4 } }
+      ]
+    },
+    {
+      "id": "q15",
+      "type": "multiple_choice",
+      "prompt": "A crowd offers you leadership after you solve a crisis. What kind of leader would you become?",
+      "answers": [
+        { "id": "a", "text": "Transparent, accountable, and willing to step down if trust is lost.", "scores": { "hero": 4 } },
+        { "id": "b", "text": "Protective but firm, using authority only when needed.", "scores": { "hero": 3, "villain": 1 } },
+        { "id": "c", "text": "Efficient and feared. Results matter more than consent.", "scores": { "villain": 4 } },
+        { "id": "d", "text": "Untouchable. If they gave you power, they can live with it.", "scores": { "villain": 4 } }
+      ]
+    },
+    {
+      "id": "q16",
+      "type": "multiple_choice",
+      "prompt": "At the end of your story, what do you most want people to say about you?",
+      "answers": [
+        { "id": "a", "text": "They made things better for people who needed help.", "scores": { "hero": 4 } },
+        { "id": "b", "text": "They had principles and stood by them under pressure.", "scores": { "hero": 4 } },
+        { "id": "c", "text": "They took what they wanted and nobody could stop them.", "scores": { "villain": 4 } },
+        { "id": "d", "text": "They were feared, remembered, and never ignored.", "scores": { "villain": 4 } }
+      ]
+    }
+  ]
+}

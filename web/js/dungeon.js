@@ -7,58 +7,92 @@ console.log('[dungeon.js] Script loaded!');
 let currentDungeon = null;
 let currentUser = null;
 let pollInterval = null;
+let cooldownInterval = null;
 
-// Event type emojis
+// Event type emojis (UPDATED with static images from Crawl folder)
 const EVENT_EMOJIS = {
-    'monster': '⚔️',
-    'boss': '👹',
+    'monster': '<img src="/static/Emojis/Crawl/enemy.png" style="width:24px;height:24px;object-fit:contain;vertical-align:middle">',
+    'monster_encounter': '<img src="/static/Emojis/Crawl/enemy.png" style="width:24px;height:24px;object-fit:contain;vertical-align:middle">',
+    'story_segment': '<img src="/static/Emojis/Crawl/story.png" style="width:24px;height:24px;object-fit:contain;vertical-align:middle">',
+    'puzzle': '<img src="/static/Emojis/Crawl/puzzle.png" style="width:24px;height:24px;object-fit:contain;vertical-align:middle">',
+    'merchant': '<img src="/static/Emojis/Crawl/merchant.png" style="width:24px;height:24px;object-fit:contain;vertical-align:middle">',
+    'chest_mimic': '📦',  // Will be overridden with actual chest image from room data
+    'boss': '<img src="/static/Emojis/Crawl/boss.png" style="width:24px;height:24px;object-fit:contain;vertical-align:middle">',
+    'floor_loot': '🎁',  // Will be overridden with actual chest image from room data
     'chest': '📦',
-    'chest1': '📦',
-    'chest2': '🎁',
-    'chest3': '💎',
-    'chest4': '✨',
-    'trap': '🪤',
-    'shrine': '⛩️'
+    'chest1': '<img src="/static/Emojis/Pets/Equipment/chest1.png" style="width:24px;height:24px;object-fit:contain;vertical-align:middle">',
+    'chest2': '<img src="/static/Emojis/Pets/Equipment/chest2.png" style="width:24px;height:24px;object-fit:contain;vertical-align:middle">',
+    'chest3': '<img src="/static/Emojis/Pets/Equipment/chest3.png" style="width:24px;height:24px;object-fit:contain;vertical-align:middle">',
+    'chest4': '<img src="/static/Emojis/Pets/Equipment/chest4.png" style="width:24px;height:24px;object-fit:contain;vertical-align:middle">',
+    'trap': '<img src="/static/Emojis/Crawl/trap.png" style="width:24px;height:24px;object-fit:contain;vertical-align:middle">',
+    'shrine': '<img src="/static/Emojis/Crawl/shrine.png" style="width:24px;height:24px;object-fit:contain;vertical-align:middle">'
+};
+
+// Dungeon type emojis from Deco folder
+const DUNGEON_TYPE_EMOJIS = {
+    'Camp': '/static/Emojis/Pets/Deco/camping.png',
+    'Bonfire': '/static/Emojis/Pets/Deco/bonfire.png',
+    'Beach': '/static/Emojis/Pets/Deco/beach.png',
+    'Forest': '/static/Emojis/Pets/Deco/forest.png',
+    'Hot Air Balloon': '/static/Emojis/Pets/Deco/hotairballoon.png',
+    'Cruiseship': '/static/Emojis/Pets/Deco/cruiseship.png',
+    'Mountain': '/static/Emojis/Pets/Deco/mountain.png',
+    'Gym': '/static/Emojis/Pets/Deco/gym.png',
+    'Graveyard': '/static/Emojis/Pets/Deco/graveyard.png',
+    'Festival': '/static/Emojis/Pets/Deco/festival.png',
+    'Glacier': '/static/Emojis/Pets/Deco/glacier.png',
+    'Pyramids': '/static/Emojis/Pets/Deco/pyramids.png'
 };
 
 // Initialize function
 async function initializeDungeon() {
     console.log('[dungeon.js] Initializing...');
-    console.log('[dungeon.js] document.readyState:', document.readyState);
-    console.log('[dungeon.js] Looking for buttons...');
     
     await loadCurrentUser();
     await loadActiveDungeons();
     
-    // Event listeners
+    // Event listeners (UPDATED - removed party buttons)
     const createSoloBtn = document.getElementById('create-solo-btn');
-    const createPartyBtn = document.getElementById('create-party-btn');
     const continueBtn = document.getElementById('continue-btn');
-    const addInviteBtn = document.getElementById('add-invite-btn');
-    const startPartyBtn = document.getElementById('start-party-dungeon-btn');
-    
-    console.log('[dungeon.js] Solo button:', createSoloBtn);
-    console.log('[dungeon.js] Party button:', createPartyBtn);
+    const dungeonTypeSelect = document.getElementById('dungeon-type-select');
     
     if (createSoloBtn) {
-        console.log('[dungeon.js] Attaching Solo button listener');
         createSoloBtn.addEventListener('click', createSoloDungeon);
-    } else {
-        console.error('[dungeon.js] Solo button not found!');
-    }
-    
-    if (createPartyBtn) {
-        console.log('[dungeon.js] Attaching Party button listener');
-        createPartyBtn.addEventListener('click', showPartyModal);
-    } else {
-        console.error('[dungeon.js] Party button not found!');
     }
     
     if (continueBtn) continueBtn.addEventListener('click', markReady);
-    if (addInviteBtn) addInviteBtn.addEventListener('click', addPartyInviteInput);
-    if (startPartyBtn) startPartyBtn.addEventListener('click', createPartyDungeon);
+    
+    // Dungeon type selector - show emoji preview
+    if (dungeonTypeSelect) {
+        // Show initial selection
+        updateDungeonTypeDisplay(dungeonTypeSelect.value);
+        
+        // Update on change
+        dungeonTypeSelect.addEventListener('change', function() {
+            updateDungeonTypeDisplay(this.value);
+        });
+    }
     
     console.log('[dungeon.js] Initialization complete');
+}
+
+// Update dungeon type emoji display
+function updateDungeonTypeDisplay(dungeonType) {
+    const display = document.getElementById('selected-dungeon-type-display');
+    const emoji = document.getElementById('selected-dungeon-emoji');
+    const name = document.getElementById('selected-dungeon-name');
+    
+    if (!display || !emoji || !name) return;
+    
+    const emojiPath = DUNGEON_TYPE_EMOJIS[dungeonType];
+    if (emojiPath) {
+        emoji.src = emojiPath;
+        emoji.alt = dungeonType;
+        name.textContent = dungeonType;
+        display.style.display = 'block';
+    } else {
+        display.style.display = 'none';
+    }
 }
 
 // Load current user
@@ -120,14 +154,22 @@ async function loadActiveDungeons() {
     }
 }
 
-// Create solo dungeon
+// Create solo dungeon (UPDATED with dungeon type)
 async function createSoloDungeon() {
     try {
         showLoading();
+        
+        // Get selected dungeon type
+        const dungeonTypeSelect = document.getElementById('dungeon-type-select');
+        const dungeonType = dungeonTypeSelect ? dungeonTypeSelect.value : 'Crypt';
+        
         const response = await fetch('/api/dungeon/create', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ party_members: [] })
+            body: JSON.stringify({ 
+                party_members: [],
+                dungeon_type: dungeonType
+            })
         });
 
         if (!response.ok) {
@@ -144,104 +186,7 @@ async function createSoloDungeon() {
     }
 }
 
-// Show party modal
-function showPartyModal() {
-    // Reset modal
-    const inviteList = document.getElementById('party-invite-list');
-    inviteList.innerHTML = `
-        <div class="party-invite-input mb-2">
-            <label>Player 2 Discord ID:</label>
-            <input type="text" class="form-control party-member-input" placeholder="Enter Discord User ID">
-        </div>
-    `;
-    
-    const modal = new bootstrap.Modal(document.getElementById('partyModal'));
-    modal.show();
-}
-
-// Add party invite input
-function addPartyInviteInput() {
-    const inviteList = document.getElementById('party-invite-list');
-    const currentInputs = inviteList.querySelectorAll('.party-invite-input').length;
-    
-    if (currentInputs >= 3) {
-        alert('Maximum party size is 4 players (including you)');
-        return;
-    }
-    
-    const newInput = document.createElement('div');
-    newInput.className = 'party-invite-input mb-2';
-    newInput.innerHTML = `
-        <label>Player ${currentInputs + 2} Discord ID:</label>
-        <div class="input-group">
-            <input type="text" class="form-control party-member-input" placeholder="Enter Discord User ID">
-            <button class="btn btn-danger btn-sm" onclick="removePartyInviteInput(this)">Remove</button>
-        </div>
-    `;
-    
-    inviteList.appendChild(newInput);
-}
-
-// Remove party invite input
-function removePartyInviteInput(button) {
-    button.closest('.party-invite-input').remove();
-    
-    // Renumber labels
-    const inputs = document.querySelectorAll('.party-invite-input');
-    inputs.forEach((input, index) => {
-        input.querySelector('label').textContent = `Player ${index + 2} Discord ID:`;
-    });
-}
-
-// Create party dungeon
-async function createPartyDungeon() {
-    try {
-        // Get all user IDs
-        const inputs = document.querySelectorAll('.party-member-input');
-        const partyMembers = [];
-        
-        for (const input of inputs) {
-            const userId = input.value.trim();
-            if (userId) {
-                // Validate it's a number
-                if (!/^\d+$/.test(userId)) {
-                    alert(`Invalid Discord ID: ${userId}. Must be numbers only.`);
-                    return;
-                }
-                partyMembers.push(parseInt(userId));
-            }
-        }
-        
-        if (partyMembers.length === 0) {
-            alert('Please add at least one other player!');
-            return;
-        }
-        
-        // Close modal
-        const modal = bootstrap.Modal.getInstance(document.getElementById('partyModal'));
-        modal.hide();
-        
-        showLoading();
-        
-        const response = await fetch('/api/dungeon/create', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ party_members: partyMembers })
-        });
-        
-        if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.detail || 'Failed to create dungeon');
-        }
-        
-        const data = await response.json();
-        await loadDungeon(data.dungeon_id);
-    } catch (error) {
-        console.error('Error creating party dungeon:', error);
-        alert(`Failed to create party dungeon: ${error.message}`);
-        showLobby();
-    }
-}
+// Party functions removed - solo mode only
 
 // Load dungeon
 async function loadDungeon(dungeonId) {
@@ -293,13 +238,16 @@ function renderMap() {
     const rooms = currentDungeon.dungeon_state.rooms;
     const currentRoom = currentDungeon.current_room;
 
-    // Static image paths for each event type
+    // Static image paths for each event type (using Crawl folder images)
     const EVENT_IMGS = {
         'monster': '/static/Emojis/Crawl/enemy.png',
-        'boss':    '/static/Emojis/Crawl/boss.png',
-        'chest':   '/static/Emojis/Pets/Equipment/chest1.png',
-        'trap':    '/static/Emojis/Crawl/trap.png',
-        'shrine':  '/static/Emojis/Crawl/shrine.png',
+        'monster_encounter': '/static/Emojis/Crawl/enemy.png',
+        'boss': '/static/Emojis/Crawl/boss.png',
+        'trap': '/static/Emojis/Crawl/trap.png',
+        'shrine': '/static/Emojis/Crawl/shrine.png',
+        'story_segment': '/static/Emojis/Crawl/story.png',
+        'puzzle': '/static/Emojis/Crawl/puzzle.png',
+        'merchant': '/static/Emojis/Crawl/merchant.png'
     };
 
     mapContainer.innerHTML = rooms.map(room => {
@@ -313,13 +261,19 @@ function renderMap() {
         if (isCompleted) classes.push('completed');
         if (isLocked)    classes.push('locked');
 
-        // Choose the right chest image based on chest_type stored in room data
-        let imgSrc = EVENT_IMGS[room.event_type] || '/static/Emojis/Crawl/shrine.png';
-        if (room.event_type === 'chest' && room.chest_emoji) {
-            imgSrc = `/static/Emojis/Pets/Equipment/${room.chest_emoji}.png`;
-        } else if (['chest1','chest2','chest3','chest4'].includes(room.event_type)) {
-            const chestEmoji = room.chest_emoji || room.event_type;
+        // Choose the right image based on event type
+        let imgSrc = EVENT_IMGS[room.event_type];
+        
+        // For ALL chest-related events, use the chest_emoji from room data
+        if (room.event_type === 'chest' || room.event_type === 'chest_mimic' || room.event_type === 'floor_loot' ||
+            ['chest1','chest2','chest3','chest4'].includes(room.event_type)) {
+            const chestEmoji = room.chest_emoji || 'chest1';
             imgSrc = `/static/Emojis/Pets/Equipment/${chestEmoji}.png`;
+        }
+        
+        // Fallback to shrine image if no specific image
+        if (!imgSrc) {
+            imgSrc = '/static/Emojis/Crawl/shrine.png';
         }
 
         // Locked rooms show a ? — don't reveal event type
@@ -334,6 +288,7 @@ function renderMap() {
 // Render party list
 function renderParty() {
     const partyContainer = document.getElementById('party-list');
+    if (!partyContainer) return; // solo mode - no party list element
     const partyMembers = currentDungeon.party_members;
     const readyUsers = currentDungeon.ready_users || [];
     
@@ -392,7 +347,7 @@ function renderActiveEffects() {
     `).join('');
 }
 
-// Render current room
+// Render current room (UPDATED with new event types)
 function renderCurrentRoom() {
     const roomData = currentDungeon.current_room_data;
     if (!roomData) return;
@@ -401,14 +356,45 @@ function renderCurrentRoom() {
     const roomContent = document.getElementById('room-content');
     const roomTitle = document.getElementById('room-title');
     
-    roomTitle.textContent = `${EVENT_EMOJIS[eventType]} Room ${currentDungeon.current_room}`;
+    // Get emoji for room title - use chest image for chest events
+    let roomEmoji = EVENT_EMOJIS[eventType] || '🚪';
+    
+    // For chest_mimic, use the actual chest image to disguise the mimic
+    if (eventType === 'chest_mimic' && roomData.chest_emoji) {
+        roomEmoji = `<img src="/static/Emojis/Pets/Equipment/${roomData.chest_emoji}.png" style="width:24px;height:24px;object-fit:contain;vertical-align:middle">`;
+    }
+    // For floor_loot, use the actual chest tier image
+    else if (eventType === 'floor_loot' && roomData.chest_emoji) {
+        roomEmoji = `<img src="/static/Emojis/Pets/Equipment/${roomData.chest_emoji}.png" style="width:24px;height:24px;object-fit:contain;vertical-align:middle">`;
+    }
+    // For regular chests, use their specific chest image
+    else if (['chest', 'chest1', 'chest2', 'chest3', 'chest4'].includes(eventType) && roomData.chest_emoji) {
+        roomEmoji = `<img src="/static/Emojis/Pets/Equipment/${roomData.chest_emoji}.png" style="width:24px;height:24px;object-fit:contain;vertical-align:middle">`;
+    }
+    
+    roomTitle.innerHTML = `${roomEmoji} Room ${currentDungeon.current_room}`;
     
     switch (eventType) {
-        case 'monster':
-            renderMonsterRoom(roomContent, roomData);
+        case 'monster_encounter':
+            renderMonsterEncounterRoom(roomContent, roomData);
+            break;
+        case 'story_segment':
+            renderStorySegmentRoom(roomContent, roomData);
+            break;
+        case 'puzzle':
+            renderPuzzleRoom(roomContent, roomData);
+            break;
+        case 'merchant':
+            renderMerchantRoom(roomContent, roomData);
+            break;
+        case 'chest_mimic':
+            renderChestMimicRoom(roomContent, roomData);
             break;
         case 'boss':
             renderBossRoom(roomContent, roomData);
+            break;
+        case 'floor_loot':
+            renderFloorLootRoom(roomContent, roomData);
             break;
         case 'chest':
         case 'chest1':
@@ -423,11 +409,17 @@ function renderCurrentRoom() {
         case 'shrine':
             renderShrineRoom(roomContent, roomData);
             break;
+        // LEGACY SUPPORT: Old monster event (redirect to new handler)
+        case 'monster':
+            renderMonsterRoom(roomContent, roomData);
+            break;
         default:
             roomContent.innerHTML = '<p>Unknown room type</p>';
     }
     
     updateContinueButton();
+    updateEventHistory();
+    updateXPBalance();
 }
 
 // Render monster room
@@ -532,7 +524,7 @@ function renderTrapRoom(container, roomData) {
         container.innerHTML = `
             <div class="room-event-container">
                 <div class="room-event-icon">✅</div>
-                <div class="room-event-description">Trap already triggered</div>
+                <div class="room-event-description">Trap resolved</div>
             </div>
         `;
     } else {
@@ -548,14 +540,21 @@ function renderTrapRoom(container, roomData) {
         }
         container.innerHTML = `
             <div class="trap-display">
-                <div class="trap-icon"><img src="/static/Emojis/Crawl/trap.png" style="width:60px;height:60px;object-fit:contain"></div>
-                <div class="trap-name">${_renderEmoji(trap.emoji, 20)} ${trap.name}</div>
+                <div class="trap-icon">${_renderEmoji(trap.emoji, 60)}</div>
+                <div class="trap-name">${trap.name}</div>
                 <div class="trap-effect" style="margin:8px 0;line-height:1.6">
                     ${targetDesc}<br>
                     📉 ${effectDesc}<br>
                     ${durationDesc ? `⏱️ ${durationDesc}` : ''}
                 </div>
-                <button class="btn-dungeon-primary" onclick="triggerTrap()">Continue (Trigger Trap)</button>
+                <div class="d-flex gap-2 justify-content-center mt-3 flex-wrap">
+                    <button class="btn-dungeon-primary" onclick="handleTrapChoice('attempt')">
+                        🏃 Attempt Escape<br><small style="opacity:0.7">Risk escaping or take 1-hour cooldown</small>
+                    </button>
+                    <button class="btn-dungeon-primary" onclick="handleTrapChoice('accept')">
+                        🛡️ Accept Trap<br><small style="opacity:0.7">Take the debuff and continue</small>
+                    </button>
+                </div>
             </div>
         `;
     }
@@ -583,8 +582,8 @@ function renderShrineRoom(container, roomData) {
         }
         container.innerHTML = `
             <div class="shrine-display">
-                <div class="shrine-icon"><img src="/static/Emojis/Crawl/shrine.png" style="width:60px;height:60px;object-fit:contain"></div>
-                <div class="shrine-name">${_renderEmoji(shrine.emoji, 20)} ${shrine.name}</div>
+                <div class="shrine-icon">${_renderEmoji(shrine.emoji, 60)}</div>
+                <div class="shrine-name">${_escHtml(shrine.name)}</div>
                 <div class="shrine-effect" style="margin:8px 0;line-height:1.6">
                     ${targetDesc}<br>
                     📈 ${effectDesc}<br>
@@ -615,6 +614,278 @@ function _describeTrapEffect(trap) {
         case 'health_half':    return `Reduces current <strong>HP</strong> by <strong>${pct}%</strong>`;
         case 'no_defend':      return `<strong>Cannot Defend</strong> — forced to attack each turn`;
         default:               return `Unknown effect: ${trap.effect}`;
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// NEW ROOM RENDERERS FOR PHASE 5
+// ═══════════════════════════════════════════════════════════════════════════
+
+// Render monster encounter room (Fight/Scare/Flee)
+function renderMonsterEncounterRoom(container, roomData) {
+    if (roomData.completed) {
+        container.innerHTML = `
+            <div class="room-event-container">
+                <div class="room-event-icon">✅</div>
+                <div class="room-event-description">Monster encounter resolved!</div>
+            </div>
+        `;
+        return;
+    }
+    
+    const monster = roomData.monster_data || { name: 'Unknown Monster', level: 1, element: 'basic', type: 'basic' };
+    const monsterImgSrc = monster.emoji_file 
+        ? `/static/Emojis/Pets/Equipment/${monster.emoji_file}` 
+        : '/static/Emojis/Crawl/enemy.png';
+    
+    container.innerHTML = `
+        <div class="room-event-container">
+            <div class="room-event-icon">
+                <img src="${monsterImgSrc}" style="width:80px;height:80px;object-fit:contain" onerror="this.src='/static/Emojis/Crawl/enemy.png'">
+            </div>
+            <div class="room-event-description">
+                <h5>${_escHtml(monster.name)}</h5>
+                <p>Level ${monster.level} • ${_escHtml(monster.element)} • ${_escHtml(monster.type)}</p>
+                <p class="text-muted mt-2">How will you approach this encounter?</p>
+            </div>
+            <div class="d-flex gap-2 justify-content-center mt-3 flex-wrap">
+                <button class="btn-dungeon-primary" onclick="handleMonsterAction('fight')">
+                    ⚔️ Fight<br><small style="opacity:0.7">Battle for loot</small>
+                </button>
+                <button class="btn-dungeon-primary" onclick="handleMonsterAction('scare')">
+                    😱 Scare<br><small style="opacity:0.7">Intimidate it away</small>
+                </button>
+                <button class="btn-dungeon-primary" onclick="handleMonsterAction('flee')">
+                    🏃 Flee<br><small style="opacity:0.7">Run past it</small>
+                </button>
+            </div>
+        </div>
+    `;
+}
+
+// Render story segment room
+function renderStorySegmentRoom(container, roomData) {
+    if (roomData.completed) {
+        container.innerHTML = `
+            <div class="room-event-container">
+                <div class="room-event-icon">✅</div>
+                <div class="room-event-description">Story resolved!</div>
+            </div>
+        `;
+        return;
+    }
+    
+    const story = roomData.story_data || { scene: 'A mysterious passage awaits...', choices: [] };
+    
+    container.innerHTML = `
+        <div class="room-event-container">
+            <div class="room-event-icon">📖</div>
+            <div class="room-event-description">
+                <h5>Story Segment</h5>
+                <p style="line-height:1.6;margin:12px 0">${_escHtml(story.scene)}</p>
+            </div>
+            <div class="d-flex flex-column gap-2 mt-3">
+                ${story.choices.map((choice, idx) => `
+                    <button class="btn-dungeon-primary text-start" onclick="handleStoryChoice(${idx + 1})" style="white-space:normal;padding:12px">
+                        <strong>${idx + 1}.</strong> ${_escHtml(choice.description)}<br>
+                        <small style="opacity:0.7">Requires: ${_escHtml(choice.skill_type)} • Difficulty: ${choice.difficulty_percentage}%</small>
+                    </button>
+                `).join('')}
+            </div>
+        </div>
+    `;
+}
+
+// Render puzzle room
+function renderPuzzleRoom(container, roomData) {
+    if (roomData.completed) {
+        container.innerHTML = `
+            <div class="room-event-container">
+                <div class="room-event-icon">✅</div>
+                <div class="room-event-description">Puzzle solved!</div>
+            </div>
+        `;
+        return;
+    }
+    
+    const puzzle = roomData.puzzle_data || { description: 'A puzzle awaits...', hint: '', choices: [] };
+    
+    container.innerHTML = `
+        <div class="room-event-container">
+            <div class="room-event-icon">🧩</div>
+            <div class="room-event-description">
+                <h5>Puzzle Challenge</h5>
+                <p style="line-height:1.6;margin:12px 0">${_escHtml(puzzle.description)}</p>
+                ${puzzle.hint ? `<p class="text-muted"><em>Hint: ${_escHtml(puzzle.hint)}</em></p>` : ''}
+            </div>
+            <div class="d-flex flex-column gap-2 mt-3">
+                ${puzzle.choices.map((choice, idx) => `
+                    <button class="btn-dungeon-primary text-start" onclick="handlePuzzleAttempt(${idx + 1})" style="white-space:normal;padding:12px">
+                        <strong>${idx + 1}.</strong> ${_escHtml(choice.description)}<br>
+                        <small style="opacity:0.7">Requires: ${_escHtml(choice.skill_type)} • Difficulty: ${choice.difficulty_percentage}%</small>
+                    </button>
+                `).join('')}
+            </div>
+        </div>
+    `;
+}
+
+// Render merchant room
+function renderMerchantRoom(container, roomData) {
+    if (!roomData.merchant_data || !roomData.merchant_data.items) {
+        container.innerHTML = '<p class="text-muted">Merchant unavailable</p>';
+        return;
+    }
+    
+    const merchant = roomData.merchant_data;
+    const xpBalance = currentDungeon.xp_balance || 0;
+    
+    container.innerHTML = `
+        <div class="room-event-container">
+            <div class="room-event-icon">🏪</div>
+            <div class="room-event-description">
+                <h5>Traveling Merchant</h5>
+                <p>"Welcome, traveler! Browse my wares!"</p>
+                <div class="p-2 mb-3" style="background:rgba(255,215,0,0.1);border-radius:8px;border:1px solid var(--gold-primary);">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span style="color:var(--gold-primary);font-weight:600;">💰 Your XP:</span>
+                        <span id="merchant-xp-display" style="color:var(--gold-primary);font-size:1.2em;font-weight:700;">${xpBalance.toLocaleString()}</span>
+                    </div>
+                </div>
+            </div>
+            <div class="d-flex flex-column gap-2 mt-3">
+                ${merchant.items.map((item, idx) => {
+                    const imgSrc = _dungeonItemImgSrc(item);
+                    const rarityColor = _dungeonRarityColor(item.rarity || 'Common');
+                    const canAfford = xpBalance >= item.cost;
+                    return `
+                        <div class="p-3" style="background:rgba(255,255,255,0.05);border-radius:8px;border:1px solid ${rarityColor}">
+                            <div class="d-flex align-items-center gap-3">
+                                <img src="${imgSrc}" style="width:40px;height:40px;object-fit:contain;filter:drop-shadow(0 0 6px ${rarityColor})" onerror="this.style.display='none'">
+                                <div class="flex-grow-1">
+                                    <div style="color:${rarityColor};font-weight:600;">${_escHtml(item.name)}</div>
+                                    <div style="font-size:0.8em;color:var(--text-secondary)">${_escHtml(item.type)} • ${_escHtml(item.rarity)}</div>
+                                </div>
+                                <div class="text-end">
+                                    <div style="color:var(--gold-primary);font-weight:700;">${item.cost.toLocaleString()} XP</div>
+                                    <button class="btn-dungeon-primary btn-sm mt-1" onclick="handleMerchantPurchase(${idx})" ${!canAfford ? 'disabled' : ''}>
+                                        Buy
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }).join('')}
+            </div>
+        </div>
+    `;
+}
+
+// Render chest/mimic room
+function renderChestMimicRoom(container, roomData) {
+    if (roomData.completed) {
+        container.innerHTML = `
+            <div class="room-event-container">
+                <div class="room-event-icon">✅</div>
+                <div class="room-event-description">Chest/Mimic resolved!</div>
+            </div>
+        `;
+        return;
+    }
+    
+    // Use the actual chest image from room data to disguise mimics
+    const chestEmoji = roomData.chest_emoji || 'chest1';
+    const chestImgSrc = `/static/Emojis/Pets/Equipment/${chestEmoji}.png`;
+    const chestType = roomData.chest_type || 'Mysterious Chest';
+    
+    container.innerHTML = `
+        <div class="room-event-container">
+            <div class="room-event-icon">
+                <img src="${chestImgSrc}" style="width:80px;height:80px;object-fit:contain" onerror="this.src='/static/Emojis/Pets/Equipment/chest1.png'">
+            </div>
+            <div class="room-event-description">
+                <h5>${chestType}</h5>
+                <p>A chest sits before you... but is it real, or a mimic?</p>
+                <p class="text-muted mt-2">Choose your approach carefully!</p>
+            </div>
+            <div class="d-flex flex-column gap-2 mt-3">
+                <button class="btn-dungeon-primary" onclick="handleChestMimicApproach(1)">
+                    🗡️ Smash Open<br><small style="opacity:0.7">Quick but risky (low success rate)</small>
+                </button>
+                <button class="btn-dungeon-primary" onclick="handleChestMimicApproach(2)">
+                    🔓 Carefully Unlock<br><small style="opacity:0.7">Balanced approach (medium success rate)</small>
+                </button>
+                <button class="btn-dungeon-primary" onclick="handleChestMimicApproach(3)">
+                    👀 Watch & Wait<br><small style="opacity:0.7">Reveals mimics, highest success rate</small>
+                </button>
+            </div>
+        </div>
+    `;
+}
+
+// Render floor loot room (room 10)
+function renderFloorLootRoom(container, roomData) {
+    if (roomData.completed) {
+        // Check if floor cooldown is active
+        const floorCooldownUntil = currentDungeon.floor_cooldown_until || 0;
+        const nowTime = Math.floor(Date.now() / 1000);
+        const onCooldown = floorCooldownUntil > nowTime;
+        const timeRemaining = onCooldown ? floorCooldownUntil - nowTime : 0;
+        
+        // Get the chest image for this floor
+        const chestEmoji = roomData.chest_emoji || 'chest4';
+        const chestImgSrc = `/static/Emojis/Pets/Equipment/${chestEmoji}.png`;
+        
+        container.innerHTML = `
+            <div class="room-event-container">
+                <div class="room-event-icon">
+                    <img src="${chestImgSrc}" style="width:80px;height:80px;object-fit:contain" onerror="this.src='/static/Emojis/Pets/Equipment/chest4.png'">
+                </div>
+                <div class="room-event-description">
+                    <h5>Floor Complete!</h5>
+                    <p>You've claimed the ${roomData.chest_type || 'floor'} rewards!</p>
+                    ${onCooldown ? `
+                        <div class="p-3 mt-3" style="background:rgba(255,152,0,0.1);border-radius:8px;border:1px solid #ff9800;">
+                            <p style="color:#ff9800;font-weight:600;margin:0">⏰ Floor Cooldown Active</p>
+                            <p style="margin:8px 0;color:var(--text-secondary)">Time remaining: <span id="floor-cooldown-timer">${formatTimeRemaining(timeRemaining)}</span></p>
+                            <p style="font-size:0.85em;margin:0;color:var(--text-muted)">Rest before advancing to the next floor</p>
+                        </div>
+                        <button class="btn-dungeon-primary mt-3" id="advance-floor-btn" disabled>
+                            Advance to Next Floor
+                        </button>
+                    ` : `
+                        <button class="btn-dungeon-primary mt-3" onclick="advanceFloor()">
+                            🚀 Advance to Next Floor
+                        </button>
+                    `}
+                </div>
+            </div>
+        `;
+        
+        // Start cooldown timer if active
+        if (onCooldown) {
+            startFloorCooldownTimer();
+        }
+    } else {
+        // Get the chest image for this floor
+        const chestEmoji = roomData.chest_emoji || 'chest4';
+        const chestImgSrc = `/static/Emojis/Pets/Equipment/${chestEmoji}.png`;
+        const chestType = roomData.chest_type || 'Floor Treasure';
+        
+        container.innerHTML = `
+            <div class="room-event-container">
+                <div class="room-event-icon">
+                    <img src="${chestImgSrc}" style="width:80px;height:80px;object-fit:contain" onerror="this.src='/static/Emojis/Pets/Equipment/chest4.png'">
+                </div>
+                <div class="room-event-description">
+                    <h5>${chestType}</h5>
+                    <p>You've reached the end of this floor! Claim your rewards!</p>
+                </div>
+                <button class="btn-dungeon-primary mt-3" onclick="claimFloorLoot()">
+                    🎁 Claim Floor Rewards
+                </button>
+            </div>
+        `;
     }
 }
 
@@ -838,9 +1109,7 @@ function renderBattleUI(battleData) {
                 <h5>Your Party</h5>
                 <div id="battle-party-list">
                     ${party.map(member => {
-                        const petImgSrc = member.pet.species
-                            ? `/static/Emojis/Pets/${member.pet.species}.png`
-                            : '/static/Emojis/Pets/Deco/Basic.png';
+                        const petImgSrc = _dungeonPetImg(member.pet);
                         const e1 = (member.pet.element||'basic').toLowerCase();
                         const e2 = (member.pet.element2||'').toLowerCase();
                         const c1 = elemColor(e1), c2 = elemColor(e2||e1);
@@ -1234,6 +1503,12 @@ function _escHtml(s) {
     return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
+// Pet image helper: use badge_url if present, otherwise fall back to species sprite
+function _dungeonPetImg(pet) {
+    if (pet && pet.badge_url) return pet.badge_url;
+    return pet && pet.species ? '/static/Emojis/Pets/' + pet.species + '.png' : '/static/Emojis/Pets/Deco/Basic.png';
+}
+
 function _showDungeonChestAnimation(chestSrc, chestColor, items, callback) {
     // Inject keyframes once globally
     if (!document.getElementById('chest-anim-style')) {
@@ -1367,6 +1642,373 @@ async function activateShrine() {
     }
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// NEW API HANDLERS FOR PHASE 5
+// ═══════════════════════════════════════════════════════════════════════════
+
+// Handle monster encounter action (Fight/Scare/Flee)
+async function handleMonsterAction(action) {
+    try {
+        const response = await fetch(`/api/dungeon/${currentDungeon.dungeon_id}/monster/action`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: action })
+        });
+        
+        if (!response.ok) {
+            const err = await response.json().catch(() => ({}));
+            throw new Error(err.detail || 'Failed to perform action');
+        }
+        
+        const data = await response.json();
+        
+        // Show result message
+        alert(data.result);
+        
+        // If forced battle, start battle
+        if (data.forced_battle) {
+            await startMonsterBattle();
+        } else {
+            // Reload dungeon state
+            await loadDungeon(currentDungeon.dungeon_id);
+        }
+    } catch (error) {
+        console.error('Error handling monster action:', error);
+        alert('Failed to perform action: ' + error.message);
+    }
+}
+
+// Handle story segment choice
+async function handleStoryChoice(choice) {
+    try {
+        const response = await fetch(`/api/dungeon/${currentDungeon.dungeon_id}/story/choice`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ choice: choice })
+        });
+        
+        if (!response.ok) {
+            const err = await response.json().catch(() => ({}));
+            throw new Error(err.detail || 'Failed to make choice');
+        }
+        
+        const data = await response.json();
+        
+        // Show result with loot if any
+        let message = data.result;
+        if (data.loot && data.loot.length > 0) {
+            message += '\n\nLoot received:\n' + data.loot.map(item => `• ${item.name} (${item.rarity})`).join('\n');
+        }
+        if (data.xp_reward) {
+            message += `\n\nXP earned: ${data.xp_reward}`;
+        }
+        alert(message);
+        
+        // Reload dungeon state
+        await loadDungeon(currentDungeon.dungeon_id);
+    } catch (error) {
+        console.error('Error handling story choice:', error);
+        alert('Failed to make choice: ' + error.message);
+    }
+}
+
+// Handle puzzle attempt
+async function handlePuzzleAttempt(choice) {
+    try {
+        const response = await fetch(`/api/dungeon/${currentDungeon.dungeon_id}/puzzle/attempt`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ choice: choice })
+        });
+        
+        if (!response.ok) {
+            const err = await response.json().catch(() => ({}));
+            throw new Error(err.detail || 'Failed to attempt puzzle');
+        }
+        
+        const data = await response.json();
+        
+        // Show result with loot if any
+        let message = data.result;
+        if (data.loot && data.loot.length > 0) {
+            message += '\n\nLoot received:\n' + data.loot.map(item => `• ${item.name} (${item.rarity})`).join('\n');
+        }
+        if (data.xp_reward) {
+            message += `\n\nXP earned: ${data.xp_reward}`;
+        }
+        alert(message);
+        
+        // Reload dungeon state
+        await loadDungeon(currentDungeon.dungeon_id);
+    } catch (error) {
+        console.error('Error handling puzzle attempt:', error);
+        alert('Failed to attempt puzzle: ' + error.message);
+    }
+}
+
+// Handle merchant purchase
+async function handleMerchantPurchase(itemIndex) {
+    try {
+        const response = await fetch(`/api/dungeon/${currentDungeon.dungeon_id}/merchant/purchase`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ item_index: itemIndex })
+        });
+        
+        if (!response.ok) {
+            const err = await response.json().catch(() => ({}));
+            throw new Error(err.detail || 'Failed to purchase item');
+        }
+        
+        const data = await response.json();
+        
+        // Show result
+        alert(data.result);
+        
+        // Update XP balance display
+        if (data.new_xp_balance !== undefined) {
+            const xpDisplay = document.getElementById('merchant-xp-display');
+            if (xpDisplay) {
+                xpDisplay.textContent = data.new_xp_balance.toLocaleString();
+            }
+            // Update dungeon XP balance
+            currentDungeon.xp_balance = data.new_xp_balance;
+        }
+        
+        // Reload dungeon state to update merchant inventory
+        await loadDungeon(currentDungeon.dungeon_id);
+    } catch (error) {
+        console.error('Error handling merchant purchase:', error);
+        alert('Failed to purchase item: ' + error.message);
+    }
+}
+
+// Handle chest/mimic approach
+async function handleChestMimicApproach(approach) {
+    try {
+        const response = await fetch(`/api/dungeon/${currentDungeon.dungeon_id}/chest_mimic/approach`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ approach: approach })
+        });
+        
+        if (!response.ok) {
+            const err = await response.json().catch(() => ({}));
+            throw new Error(err.detail || 'Failed to approach chest');
+        }
+        
+        const data = await response.json();
+        
+        // Show result
+        alert(data.result);
+        
+        // If forced battle (mimic), start battle
+        if (data.forced_battle) {
+            await startMonsterBattle();
+        } else if (data.loot && data.loot.length > 0) {
+            // Show loot animation if it's a real chest
+            const chestSrc = '/static/Emojis/Pets/Equipment/chest1.png';
+            const chestColor = '#ffd700';
+            _showDungeonChestAnimation(chestSrc, chestColor, data.loot, async function() {
+                await loadDungeon(currentDungeon.dungeon_id);
+            });
+        } else {
+            // Reload dungeon state
+            await loadDungeon(currentDungeon.dungeon_id);
+        }
+    } catch (error) {
+        console.error('Error handling chest/mimic approach:', error);
+        alert('Failed to approach chest: ' + error.message);
+    }
+}
+
+// Handle trap choice (Escape/Accept)
+async function handleTrapChoice(choice) {
+    try {
+        const response = await fetch(`/api/dungeon/${currentDungeon.dungeon_id}/trap/choice`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ choice: choice })
+        });
+        
+        if (!response.ok) {
+            const err = await response.json().catch(() => ({}));
+            throw new Error(err.detail || 'Failed to handle trap');
+        }
+        
+        const data = await response.json();
+        
+        // Show result
+        alert(data.result);
+        
+        // Reload dungeon state
+        await loadDungeon(currentDungeon.dungeon_id);
+    } catch (error) {
+        console.error('Error handling trap choice:', error);
+        alert('Failed to handle trap: ' + error.message);
+    }
+}
+
+// Claim floor loot (room 10)
+async function claimFloorLoot() {
+    try {
+        const response = await fetch(`/api/dungeon/${currentDungeon.dungeon_id}/floor_loot/claim`, {
+            method: 'POST'
+        });
+        
+        if (!response.ok) {
+            const err = await response.json().catch(() => ({}));
+            throw new Error(err.detail || 'Failed to claim floor loot');
+        }
+        
+        const data = await response.json();
+        
+        // Show loot animation
+        const chestSrc = '/static/Emojis/Pets/Equipment/chest4.png';
+        const chestColor = '#ff9800';
+        _showDungeonChestAnimation(chestSrc, chestColor, data.loot || [], async function() {
+            await loadDungeon(currentDungeon.dungeon_id);
+        });
+    } catch (error) {
+        console.error('Error claiming floor loot:', error);
+        alert('Failed to claim floor loot: ' + error.message);
+    }
+}
+
+// Advance to next floor
+async function advanceFloor() {
+    try {
+        const response = await fetch(`/api/dungeon/${currentDungeon.dungeon_id}/advance_floor`, {
+            method: 'POST'
+        });
+        
+        if (!response.ok) {
+            const err = await response.json().catch(() => ({}));
+            throw new Error(err.detail || 'Failed to advance floor');
+        }
+        
+        const data = await response.json();
+        
+        // Show result
+        alert(data.result);
+        
+        // Reload dungeon state
+        await loadDungeon(currentDungeon.dungeon_id);
+    } catch (error) {
+        console.error('Error advancing floor:', error);
+        alert('Failed to advance floor: ' + error.message);
+    }
+}
+
+// Check cooldowns (room and floor)
+async function checkCooldowns() {
+    try {
+        const response = await fetch(`/api/dungeon/${currentDungeon.dungeon_id}/cooldown/check`);
+        
+        if (!response.ok) {
+            throw new Error('Failed to check cooldowns');
+        }
+        
+        const data = await response.json();
+        return data;
+    } catch (error) {
+        console.error('Error checking cooldowns:', error);
+        return null;
+    }
+}
+
+// Update event history display
+function updateEventHistory() {
+    const historyContainer = document.getElementById('event-history-list');
+    if (!historyContainer) return;
+    
+    const eventHistory = currentDungeon.event_history || [];
+    
+    if (eventHistory.length === 0) {
+        historyContainer.innerHTML = '<p class="text-muted">No events yet</p>';
+        return;
+    }
+    
+    // Show last 5 events
+    const recentEvents = eventHistory.slice(-5).reverse();
+    
+    historyContainer.innerHTML = recentEvents.map(event => {
+        let emoji = EVENT_EMOJIS[event.event_type] || '❓';
+        
+        // For chest types and floor_loot, use the actual chest image
+        if (['chest', 'chest1', 'chest2', 'chest3', 'chest4', 'chest_mimic', 'floor_loot'].includes(event.event_type)) {
+            // Try to get chest_emoji from the event data, or use default based on type
+            const chestEmoji = event.chest_emoji || event.event_type.replace('chest', 'chest') || 'chest1';
+            emoji = `<img src="/static/Emojis/Pets/Equipment/${chestEmoji}.png" style="width:20px;height:20px;object-fit:contain;vertical-align:middle" onerror="this.style.display='none'">`;
+        }
+        
+        return `
+            <div class="event-history-item" style="padding:8px;margin-bottom:6px;background:rgba(255,255,255,0.03);border-radius:6px">
+                <div style="display:flex;align-items:center;gap:8px">
+                    <span style="font-size:1.2em">${emoji}</span>
+                    <div style="flex-grow:1">
+                        <div style="font-size:0.85em;font-weight:600;color:var(--gold-primary)">${event.event_type}</div>
+                        <div style="font-size:0.75em;color:var(--text-secondary)">Floor ${event.floor} • Room ${event.room}</div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+// Update XP balance display
+function updateXPBalance() {
+    const xpBalanceDisplay = document.getElementById('xp-balance-display');
+    const currentXPBalance = document.getElementById('current-xp-balance');
+    
+    if (!xpBalanceDisplay || !currentXPBalance) return;
+    
+    const xpBalance = currentDungeon.xp_balance || 0;
+    
+    // Show XP balance
+    xpBalanceDisplay.style.display = 'block';
+    currentXPBalance.textContent = xpBalance.toLocaleString();
+}
+
+// Format time remaining (seconds to mm:ss)
+function formatTimeRemaining(seconds) {
+    if (seconds <= 0) return '0:00';
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+}
+
+// Start floor cooldown countdown timer
+function startFloorCooldownTimer() {
+    // Clear any existing timer
+    if (window.floorCooldownInterval) {
+        clearInterval(window.floorCooldownInterval);
+    }
+    
+    window.floorCooldownInterval = setInterval(() => {
+        const floorCooldownUntil = currentDungeon.floor_cooldown_until || 0;
+        const nowTime = Math.floor(Date.now() / 1000);
+        const timeRemaining = Math.max(0, floorCooldownUntil - nowTime);
+        
+        const timerEl = document.getElementById('floor-cooldown-timer');
+        const advanceBtn = document.getElementById('advance-floor-btn');
+        
+        if (timeRemaining <= 0) {
+            // Cooldown expired
+            clearInterval(window.floorCooldownInterval);
+            if (timerEl) timerEl.textContent = '0:00';
+            if (advanceBtn) {
+                advanceBtn.disabled = false;
+                advanceBtn.onclick = advanceFloor;
+            }
+            // Reload to update UI
+            loadDungeon(currentDungeon.dungeon_id);
+        } else {
+            if (timerEl) timerEl.textContent = formatTimeRemaining(timeRemaining);
+        }
+    }, 1000);
+}
+
 // Polling for updates
 let pollErrorCount = 0;
 const MAX_POLL_ERRORS = 5;
@@ -1440,7 +2082,7 @@ function showLoading() {
 
     // Expose functions to global scope for onclick handlers
     window.loadDungeon = loadDungeon;
-    window.removePartyInviteInput = removePartyInviteInput;
+    window.removePartyInviteInput = function() {}; // no-op, party removed
     window.openBattle = openBattle;
     window.startMonsterBattle = startMonsterBattle;
     window.startBossBattle = startBossBattle;
@@ -1455,6 +2097,16 @@ function showLoading() {
     window.showLobby = showLobby;
     window.showDungeon = showDungeon;
     window.showLoading = showLoading;
+    // New Phase 5 handlers
+    window.handleMonsterAction = handleMonsterAction;
+    window.handleStoryChoice = handleStoryChoice;
+    window.handlePuzzleAttempt = handlePuzzleAttempt;
+    window.handleMerchantPurchase = handleMerchantPurchase;
+    window.handleChestMimicApproach = handleChestMimicApproach;
+    window.handleTrapChoice = handleTrapChoice;
+    window.claimFloorLoot = claimFloorLoot;
+    window.advanceFloor = advanceFloor;
+    window.checkCooldowns = checkCooldowns;
 
 // Start initialization — DOM is already ready when this script is injected
 initializeDungeon();
